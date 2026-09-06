@@ -89,7 +89,7 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // packages/adapters/redis-cache -> packages/contexts/jobs, which is a second
   // OWNER edge on a directory that had one. The count is still read back rather
   // than computed.
-  assert.match(output, /32 V1 projects and 113 project edges/u);
+  assert.match(output, /32 V1 projects and 114 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -575,7 +575,10 @@ const LIVE_ADAPTERS = [
   // The fixture copy has to carry it, or the non-vacuity anchor below is
   // comparing the refusals against a table the tree no longer has.
   { dir: "redis-cache", port: "Cache", owner: "memory", note: "n",
-    additional: [{ port: "IdempotencyStore", owner: "jobs" }] },
+    additional: [
+      { port: "IdempotencyStore", owner: "jobs" },
+      { port: "RequestIdempotency", owner: "kernel" },
+    ] },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
   { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n" },
@@ -598,21 +601,24 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a FORTY-SIXTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FORTY-SEVENTH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
   // `eventing`'s one canonical-store binding all landed in the one directory.
   // WIN-260 (M2.5) moved it to forty-five, and NOT in that directory: the
   // forty-fifth is `redis-cache:IdempotencyStore`, the first application of the
-  // §15 amendment anywhere but `postgres-tenancy`.
+  // §15 amendment anywhere but `postgres-tenancy`. Its errors-and-idempotency
+  // dimension moved it again to forty-six, in the same directory and for the
+  // kernel: `redis-cache:RequestIdempotency`, M0.4 §2's Idempotency-Key
+  // envelope.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 45 adapter bindings; ADAPTERS flattens to 46")));
+  assert.ok(errors.some((error) => error.includes("declares 46 adapter bindings; ADAPTERS flattens to 47")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

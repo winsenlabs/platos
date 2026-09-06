@@ -453,7 +453,14 @@ test("the live owner map passes its own check", () => {
   // The DIRECTORY count is deliberately unmoved at twelve, for the eighteenth
   // time. Another port behind an existing vendor client is a row on an existing
   // directory, not a thirteenth package holding a second client for one server.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 17, "redis-cache": 2 });
+  //
+  // WIN-260's errors-and-idempotency dimension takes that entry from two to
+  // THREE. The same directory also satisfies the kernel's `RequestIdempotency` —
+  // M0.4 §2's `Idempotency-Key` envelope — behind the same client, so it carries
+  // an owner edge into `packages/kernel` alongside the two into `memory` and
+  // `jobs`. The DIRECTORY count is unmoved at twelve a nineteenth time, for the
+  // same reason as every time before it.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 17, "redis-cache": 3 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
 });
 
@@ -475,17 +482,17 @@ test("§15 refusal: an adapter granted an owner edge it was not given fails", ()
 });
 
 test("§15 refusal: a directory ON the allow-list is still held to its exact count", () => {
-  // WIN-260 (M2.5). `redis-cache` is now permitted TWO owners and no more: an
+  // WIN-260 (M2.5). `redis-cache` is now permitted THREE owners and no more: an
   // allow-list entry is a counted exception, not a licence. Without this case
   // the entry the same issue added would be the one place in the map that had
   // gained a permission with no refusal beside it.
   const errors = checkAdapterOwnerCounts(
-    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "jobs", "tenancy"] },
+    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "jobs", "kernel", "tenancy"] },
     EXPECTED_MULTI_OWNER_ADAPTERS,
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/redis-cache expects 3 owner edge(s); 2 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/redis-cache expects 4 owner edge(s); 3 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

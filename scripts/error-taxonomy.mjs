@@ -64,7 +64,32 @@ const repositoryRoot = fileURLToPath(new URL("..", import.meta.url));
 export const TAXONOMY_PATH = "docs/error-taxonomy.json";
 export const RUNTIME_PATH = "apps/core-api/src/transports/error-status.ts";
 export const KERNEL_ERROR_PATH = "packages/kernel/src/vo/error.ts";
-export const SOURCE_ROOTS = ["packages/contexts"];
+/**
+ * Where a canonical code may be minted.
+ *
+ * IT WAS `packages/contexts` ALONE, AND THAT WAS A HOLE. The banner above calls
+ * this "the canonical failure taxonomy: every SCREAMING_SNAKE code any of the 17
+ * bounded contexts mints" — true, and narrower than the claim the gate is
+ * relied on for. A code minted anywhere else was invisible: E1 never asked for a
+ * taxonomy entry, E4 never checked its status, and E6 never noticed two guards
+ * refusing identically. WIN-260's errors-and-idempotency dimension walked
+ * straight into it, because M0.4 §2's `Idempotency-Key` refusals belong to the
+ * TRANSPORT — no context knows a header exists — and would have been minted
+ * outside the scan.
+ *
+ * So the roots are now every V1-owned source root, the same five
+ * `scripts/arch/arch-boundaries.mjs` and `scripts/arch/env-access.mjs` walk.
+ * Widening them found four uniform guards nobody had registered, in
+ * `postgres-tenancy` and `redis-cache`, which is the evidence the widening was
+ * not cosmetic.
+ */
+export const SOURCE_ROOTS = [
+  "packages/kernel/src",
+  "packages/contexts",
+  "packages/adapters",
+  "apps/core-api/src",
+  "apps/mcp-stdio/src",
+];
 
 /**
  * The statuses a category may resolve to.
@@ -134,9 +159,23 @@ function listSourceFiles(root) {
   return found.sort();
 }
 
+/**
+ * Who a mint site belongs to, for the `contexts` field E10 reconciles.
+ *
+ * A context is named by its directory. Everything else is named by the LAYER
+ * that owns it — `kernel`, `adapters` or a deployable — because that is the
+ * honest answer: a code minted in `apps/core-api/src/http` belongs to the
+ * transport edge and to no bounded context, and calling it "unknown" would put a
+ * word in the taxonomy that names nothing an operator could look up.
+ */
 function contextOf(path) {
-  const match = /^packages\/contexts\/([^/]+)\//u.exec(path);
-  return match === null ? "unknown" : match[1];
+  const context = /^packages\/contexts\/([^/]+)\//u.exec(path);
+  if (context !== null) return context[1];
+  if (path.startsWith("packages/kernel/")) return "kernel";
+  if (path.startsWith("packages/adapters/")) return "adapters";
+  const app = /^apps\/([^/]+)\//u.exec(path);
+  if (app !== null) return app[1];
+  return "unknown";
 }
 
 /** The literal first two arguments of a `domainError(...)` call, or null. */

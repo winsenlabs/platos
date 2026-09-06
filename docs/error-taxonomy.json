@@ -1416,6 +1416,55 @@
         "jobs"
       ]
     },
+    "IDEMPOTENCY_KEY_MALFORMED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "IDEMPOTENCY_KEY_REQUIRED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "IDEMPOTENCY_RECORD_ABSENT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "IDEMPOTENCY_RECORD_MALFORMED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "IDEMPOTENCY_REQUEST_IN_FLIGHT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "IDEMPOTENCY_REQUEST_MISMATCH": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "IDEMPOTENCY_STORE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "core-api"
+      ]
+    },
     "IDEMPOTENCY_UNAVAILABLE": {
       "category": "unavailable",
       "status": 503,
@@ -2854,6 +2903,38 @@
   },
   "uniformGuards": [
     {
+      "file": "packages/adapters/postgres-tenancy/src/providers-keys.ts",
+      "function": "createProviderKeyStore",
+      "code": "TOOLS_CREDENTIAL_UNAVAILABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "One store-unreachable refusal, raised from each command of the same factory. The guards report the SAME fact - this PostgreSQL client could not answer - and an operator's next move is identical whichever command hit it. Distinguishing them would name the command, which the log line already carries."
+    },
+    {
+      "file": "packages/adapters/postgres-tenancy/src/providers-keys.ts",
+      "function": "createProviderKeyStore",
+      "code": "TOOLS_REPOSITORY_UNAVAILABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "The repository half of the same fact, uniform for the same reason: every command of this factory reports one unreachable store, and the command that hit it travels in the log line rather than in the code."
+    },
+    {
+      "file": "packages/adapters/postgres-tenancy/src/secrets-credentials.ts",
+      "function": "createSecretsCredentialStore",
+      "code": "TOOLS_CREDENTIAL_UNAVAILABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "The same store-unreachable refusal inside the credential store's own factory. Two commands, one incident, one operator action."
+    },
+    {
+      "file": "packages/adapters/redis-cache/src/cache.ts",
+      "function": "createRedisCache",
+      "code": "MEMORY_CACHE_UNAVAILABLE",
+      "sites": 4,
+      "shapes": 1,
+      "reason": "Four cache commands - get, set, delete and the prefix sweep - each reporting that this Redis connection could not answer. Deliberately uniform: the caller falls through to the canonical store in every case, so which command failed is a log field rather than a contract."
+    },
+    {
       "file": "packages/contexts/agents/application/macros.ts",
       "function": "requireVisible",
       "code": "AGENTS_MACRO_NOT_FOUND",
@@ -2875,7 +2956,7 @@
       "code": "CHANNELS_REFRESH_NOT_CLAIMABLE",
       "sites": 2,
       "shapes": 1,
-      "reason": "'Not refreshing at all' and 'refreshing but not yet stale' are one instruction to the caller \u2014 do not reclaim this lease \u2014 and the error already carries refreshState in details, which is the field that separates them for an operator."
+      "reason": "'Not refreshing at all' and 'refreshing but not yet stale' are one instruction to the caller — do not reclaim this lease — and the error already carries refreshState in details, which is the field that separates them for an operator."
     },
     {
       "file": "packages/contexts/cost-monitoring/application/configure-budget.ts",
@@ -2899,7 +2980,7 @@
       "code": "COST_THRESHOLD_INVALID",
       "sites": 2,
       "shapes": 1,
-      "reason": "Both raises interpolate the offending value into the message and pass it in details, so the two guards \u2014 not an integer, and out of range \u2014 are distinguishable in the payload even though the constructor call is identical."
+      "reason": "Both raises interpolate the offending value into the message and pass it in details, so the two guards — not an integer, and out of range — are distinguishable in the payload even though the constructor call is identical."
     },
     {
       "file": "packages/contexts/eventing/domain/destination.ts",
@@ -2947,7 +3028,7 @@
       "code": "GOVERNANCE_RATING_VALUE_INVALID",
       "sites": 2,
       "shapes": 1,
-      "reason": "A rating is +1 or -1. 'Not an integer' and 'an integer that is not one of the two' are one fact \u2014 this is not a rating \u2014 and the offending value travels in the error."
+      "reason": "A rating is +1 or -1. 'Not an integer' and 'an integer that is not one of the two' are one fact — this is not a rating — and the offending value travels in the error."
     },
     {
       "file": "packages/contexts/governance/domain/safety-observation.ts",
@@ -2995,7 +3076,7 @@
       "code": "INVALID_MFA_CODE",
       "sites": 3,
       "shapes": 1,
-      "reason": "REQUIRED to be uniform. No enrolled secret, wrong digits, and a counter another request advanced first are one answer by design \u2014 the last is a replay, and naming it would confirm that the code presented was otherwise correct."
+      "reason": "REQUIRED to be uniform. No enrolled secret, wrong digits, and a counter another request advanced first are one answer by design — the last is a replay, and naming it would confirm that the code presented was otherwise correct."
     },
     {
       "file": "packages/contexts/memory/domain/scope.ts",
@@ -3051,7 +3132,7 @@
       "code": "TENANCY_NOT_FOUND",
       "sites": 2,
       "shapes": 1,
-      "reason": "Two closures in one factory \u2014 resolveEnvironmentScope and describeTenant \u2014 each refuse an unknown environment. They are two readings of one fact, not two guards in one decision; the scan sees one function because the closures share the factory body."
+      "reason": "Two closures in one factory — resolveEnvironmentScope and describeTenant — each refuse an unknown environment. They are two readings of one fact, not two guards in one decision; the scan sees one function because the closures share the factory body."
     },
     {
       "file": "packages/contexts/tenancy/domain/authorization.ts",

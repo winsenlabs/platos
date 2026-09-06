@@ -55,6 +55,29 @@ export const COMPOSITION_ROOT_FILE = "apps/core-api/src/composition/adapter-bind
 export const DYNAMIC_IMPORT_FILE = "apps/mcp-stdio/src/runtime.ts";
 export const DYNAMIC_IMPORT_DECLARATION = "FINDING (WIN-297, reported not absorbed)";
 
+/**
+ * The suites entitled to build a real adapter, named one by one.
+ *
+ * WIN-260 (M2.5). M0.4 §2's `Idempotency-Key` gate has to be proved against a
+ * REAL store — two identical requests racing produce one execution is a claim
+ * about a server's `NX`, and a single-threaded double cannot lose a race. The
+ * process under test is `apps/core-api`, so the harness that starts it is in
+ * `apps/core-api`, and it has to hand `startCoreApi` an adapter somebody built.
+ *
+ * IT IS A CARVE-OUT AND IT IS SHAPED SO IT CANNOT GROW QUIETLY. Every entry is
+ * spelled here rather than matched by a pattern; every entry must be a
+ * `.integration.test.ts`, which is a suite and composes nothing at run time; and
+ * — the half that makes the list self-cleaning — an entry that has stopped
+ * existing, or that no longer imports an adapter, is itself a FAILURE. A stale
+ * permission is a permission nobody is watching, which is how a carve-out for
+ * one harness becomes a carve-out for a transport.
+ *
+ * The property rule (j) protects is untouched: no `src` module outside
+ * `COMPOSITION_ROOT_FILE` may name an adapter, and `arch-boundaries.mjs` still
+ * fails on any import of `packages/adapters/*` from outside `apps/core-api`.
+ */
+export const ADAPTER_HARNESS_FILES = ["apps/core-api/src/http/idempotency.integration.test.ts"];
+
 const SCAN_ROOTS = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api", "apps/mcp-stdio"];
 const SKIP_DIRECTORIES = new Set(["node_modules", "dist", ".turbo", "coverage"]);
 
@@ -180,7 +203,23 @@ export function auditCompositionRoot(root = repositoryRoot) {
     // An adapter naming its own package is not a composition-root violation;
     // rule (j2) `adapter-is-self-contained` judges that case.
     if (path.startsWith("packages/adapters/")) continue;
+    if (ADAPTER_HARNESS_FILES.includes(path)) continue;
     problems.push(`${path} imports an adapter package; only ${COMPOSITION_ROOT_FILE} may`);
+  }
+  // The carve-out is self-cleaning: an entry that has stopped existing, or that
+  // no longer names an adapter, is a permission nobody is watching.
+  for (const path of ADAPTER_HARNESS_FILES) {
+    if (!path.endsWith(".integration.test.ts")) {
+      problems.push(`${path} is permitted to build an adapter but is not an integration suite`);
+      continue;
+    }
+    if (!files.includes(path)) {
+      problems.push(`${path} is permitted to build an adapter and does not exist`);
+      continue;
+    }
+    if (importedAdapters(parsed.get(path)).size === 0) {
+      problems.push(`${path} is permitted to build an adapter and imports none; drop the permission`);
+    }
   }
   if (!importers.includes(COMPOSITION_ROOT_FILE)) {
     problems.push(

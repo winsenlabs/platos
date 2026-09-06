@@ -1052,10 +1052,18 @@ const APP_PROJECTS = new Set(["apps/core-api", "apps/mcp-stdio"]);
 // reason and with a byte-identical run: it ships a real-Redis suite that proves
 // two identical requests racing produce one execution, which needs a container
 // and therefore a daemon `pnpm test:v1-packages` does not have.
+//
+// And `apps/core-api` for the third time and the same reason: WIN-260's
+// errors-and-idempotency dimension proves M0.4 §2's `Idempotency-Key` gate end to
+// end — a real process, a real socket, a real Redis and two identical requests
+// racing — which is a container, which is a daemon the typecheck job does not
+// have. The run is byte-identical to the two above so the three cannot drift.
 const PROJECT_TEST_SCRIPTS = {
   "packages/adapters/postgres-tenancy":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "packages/adapters/redis-cache":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  "apps/core-api":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
 
@@ -1357,7 +1365,27 @@ const CORE_API_RUNTIME_DEPENDENCIES = {
   rxjs: "^7.8.1",
 };
 
-function appManifest({ name, description, dependencies, scripts, externalDependencies = {} }) {
+// What apps/core-api needs to TEST itself and must not ship with (WIN-260, the
+// errors-and-idempotency dimension). `@testcontainers/redis` is the container
+// the `Idempotency-Key` gate's race is proved against, end to end, through the
+// real process. A DEV dependency for the same reason `postgres-tenancy`'s and
+// `redis-cache`'s are: a container library that followed the composition root
+// into the production image would sit in the SBOM of a process that never starts
+// a container. The specifier is byte-identical to the two already in the
+// lockfile, so pnpm resolves it to @testcontainers/redis@10.28.0 rather than
+// opening a new resolution.
+const CORE_API_DEV_DEPENDENCIES = {
+  "@testcontainers/redis": "^10.28.0",
+};
+
+function appManifest({
+  name,
+  description,
+  dependencies,
+  scripts,
+  externalDependencies = {},
+  devDependencies = {},
+}) {
   return packageManifest({
     scripts,
     name,
@@ -1365,6 +1393,7 @@ function appManifest({ name, description, dependencies, scripts, externalDepende
     main: "./dist/main.js",
     types: "./dist/main.d.ts",
     dependencies: { ...workspaceDependencies(dependencies), ...externalDependencies },
+    devDependencies,
   });
 }
 
@@ -1579,6 +1608,10 @@ export function renderSkeleton(
     description: "THE single V1 deployable: the composition root and every transport.",
     dependencies: coreDependencies,
     externalDependencies: CORE_API_RUNTIME_DEPENDENCIES,
+    // Only once the project is adopted, exactly as `adapterManifest` gates its
+    // own: a generated placeholder has no suite to run and gets no test-only
+    // dependency.
+    devDependencies: adoptedSet(adopted).has("apps/core-api") ? CORE_API_DEV_DEPENDENCIES : {},
   }));
   put("apps/core-api/tsconfig.json", projectTsconfig("apps/core-api", ["src/**/*.ts"], references.get("apps/core-api"), "src"));
   put(
