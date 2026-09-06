@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "79a1154de2ee4f742a1807872a1ac2f6d12bed817e54fab0d8a4101305720d46",
+  "evidenceSha256": "6a8003360aaf616209a82ee2e7a96620e8eb8521570ed262bb53fb52c03419c8",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "a77cd5c32cc2945fbc867cbc2a7d265cf48e2e14383bd9cccebcd1f0d8b63b69",
+    "aggregateSha256": "95d450b2896d3d3051ee56ebcea88db53b86283ff05eaf4b711e3f083eec4745",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2509,7 +2509,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "7e48a2bd783d9a6fe6b65785bd24724fae4f27790a4235c0c014a9b58f4a5ac9"
+        "sha256": "5038ff36580043be2713be196f0a256111cb630a4b7ee50953cea87154732980"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "743fa0f290150221ab8cde474b2ae928ad0b49e79781a33e37080e6b9436974b"
+        "sha256": "c27c191583afd5d4fba6c51de44150eeaa6e0f795be082aaf5bb9fcf6fb12dfa"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -15029,7 +15029,7 @@
       },
       {
         "path": "packages/contexts/observability/application/ports/index.ts",
-        "sha256": "c080a5d29b53e8989d908a617f96fee6448f732dc62e314bcb85606ada7d993c"
+        "sha256": "c7539bbee167780bcc3ea59a697dbffca60f897e8faeb2b80c7ca08037854804"
       },
       {
         "path": "packages/contexts/observability/application/ports/observability-repository.ts",
@@ -74254,13 +74254,13 @@
             {
               "file": "packages/contexts/observability/application/ports/index.ts",
               "from": "packages/contexts/observability",
-              "line": 53,
+              "line": 64,
               "specifier": "@platos/kernel"
             },
             {
               "file": "packages/contexts/observability/application/ports/index.ts",
               "from": "packages/contexts/observability",
-              "line": 64,
+              "line": 72,
               "specifier": "@platos/kernel"
             },
             {
@@ -81260,7 +81260,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "96e4ee3a6f464b56a965de94f1465c7aa2d4e07b2a103b9a997f9695dd2c571f",
+      "evidenceSha256": "84748198d414d3d2fe4df741f13a25e9231e72b9c90544b410a551add1be9ffc",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
