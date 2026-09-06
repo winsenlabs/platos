@@ -165,7 +165,7 @@ export async function deleteEnvironmentVariable(
     if (!existing.ok) return err(existing.error);
     if (existing.value === null) return ok({ deleted: false, key: key.value });
 
-    const removed = await deps.variables.remove(existing.value.id, transaction);
+    const removed = await deps.variables.remove(environmentId, existing.value.id, transaction);
     if (!removed.ok) return err(removed.error);
     if (existing.value.credentialId !== null) {
       const swept = await revokeIfUnreferenced(deps, granted.value, existing.value.credentialId);

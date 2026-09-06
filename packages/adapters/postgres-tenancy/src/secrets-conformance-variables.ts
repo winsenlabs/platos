@@ -197,10 +197,16 @@ export async function runVariableConformance(
   );
 
   await environment.run(async (transaction) => {
-    record("removeBravo", await variables.remove(variableId(ids.bravoVariableId), transaction));
+    record(
+      "removeBravo",
+      await variables.remove(environmentId, variableId(ids.bravoVariableId), transaction),
+    );
     // The SECOND remove is the idempotence claim: an absent row is `false`, not
     // a raised P2025 that would poison the transaction its caller is inside.
-    record("removeBravoAgain", await variables.remove(variableId(ids.bravoVariableId), transaction));
+    record(
+      "removeBravoAgain",
+      await variables.remove(environmentId, variableId(ids.bravoVariableId), transaction),
+    );
     // A read taken INSIDE the same transaction as the delete above. On the pool
     // it would still see the removed row, and `revokeIfUnreferenced` — the one
     // caller — would leave live readable material behind a variable nothing

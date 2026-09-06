@@ -135,7 +135,11 @@ describe("a row that is not there is an outcome, not an exception", () => {
 
   test("remove answers false for a variable that is not there, and the transaction survives", async () => {
     const removed = await inTransaction(async (transaction) => {
-      const gone = await harness.variables.remove(variableIdOf(fresh()), transaction);
+      const gone = await harness.variables.remove(
+        environmentId,
+        variableIdOf(fresh()),
+        transaction,
+      );
       // THE SECOND HALF IS THE POINT. `delete` would raise P2025 and poison the
       // transaction, so a write after it would fail with 25P02 rather than land.
       await harness.variables.upsert(

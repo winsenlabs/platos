@@ -314,7 +314,12 @@ export function inMemorySecretsStore(): InMemorySecretsStore {
       return ok(variable);
     },
 
-    async remove(id) {
+    async remove(environmentId, id) {
+      // SCOPED, like the canonical store. A double that deleted on the id alone
+      // would answer `true` for another tenant's row and the difference would
+      // only ever show up in production.
+      const held = tables.variables.get(id);
+      if (held === undefined || held.environmentId !== environmentId) return ok(false);
       return ok(tables.variables.delete(id));
     },
 

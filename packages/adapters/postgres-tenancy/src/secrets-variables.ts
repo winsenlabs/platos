@@ -126,6 +126,13 @@ export function createEnvironmentVariableStore(
       // `channels-links.ts` documents the same fact from the other side and
       // deliberately reads nothing after its own catch.
       //
+      // WORSE, THE COMMIT THEN REPORTS SUCCESS. PostgreSQL turns the COMMIT of an
+      // aborted transaction into a ROLLBACK and answers `COMMIT`, so the caller
+      // is told the whole block landed while every row in it was discarded —
+      // measured in `transaction-boundaries.integration.test.ts`. A store that
+      // wants to keep answering `Result` therefore has to avoid the violation,
+      // not catch it.
+      //
       // `skipDuplicates` emits `ON CONFLICT DO NOTHING`, so the conflict is an
       // EMPTY RESULT and no error is raised at all: one statement, the row back
       // when it was written, a usable transaction either way.
@@ -198,6 +205,7 @@ export function createEnvironmentVariableStore(
     },
 
     async remove(
+      environmentId: EnvironmentId,
       id: EnvironmentVariableId,
       transaction: TransactionScope,
     ): Promise<Result<boolean>> {
@@ -205,8 +213,17 @@ export function createEnvironmentVariableStore(
       // port answers `Result<boolean>` and the double answers `Map.delete`'s
       // boolean, so a store that raised on an absent row would turn an idempotent
       // delete into a poisoned transaction.
+      //
+      // AND THE `environmentId` IS IN THE WHERE CLAUSE, not merely in the
+      // signature. `id` is a bare uuid primary key, so without it this statement
+      // reaches any tenant's row that a caller can name — WIN-258 T7 ran exactly
+      // that against a real database and watched a second environment's variable
+      // disappear.
       const removed = await transactions.writer(transaction).environmentVariable.deleteMany({
-        where: { id: requireUuid("EnvironmentVariable.id", id) },
+        where: {
+          id: requireUuid("EnvironmentVariable.id", id),
+          environmentId: requireUuid("EnvironmentVariable.environmentId", environmentId),
+        },
       });
       return ok(removed.count > 0);
     },

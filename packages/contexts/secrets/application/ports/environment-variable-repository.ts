@@ -60,7 +60,24 @@ export interface EnvironmentVariableRepository {
     transaction: TransactionScope,
   ): Promise<Result<EnvironmentVariable>>;
 
+  /**
+   * Delete one variable, WITHIN an environment.
+   *
+   * WIN-258 T7 added the `environmentId`. The row id alone is a global address:
+   * `EnvironmentVariable.id` is a uuid primary key with no tenant in it, so a
+   * store keyed on it deletes whatever row carries that id no matter whose it is,
+   * and the only thing standing between a caller and another tenant's variable
+   * was that `deleteEnvironmentVariable` happened to have looked the id up in
+   * scope first. Every other read on this port already names the environment; a
+   * WRITE that did not was the one asymmetry, and it was proved against a real
+   * database before it was closed.
+   *
+   * `false` when the pair matches nothing — an absent row and a row belonging to
+   * somebody else are the SAME answer on purpose, because distinguishing them
+   * would turn this into an existence oracle over another tenant's ids.
+   */
   remove(
+    environmentId: EnvironmentId,
     id: EnvironmentVariableId,
     transaction: TransactionScope,
   ): Promise<Result<boolean>>;
