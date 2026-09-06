@@ -875,7 +875,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1220,
+    packages: 1242,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1046,27 +1046,41 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   = 1241, + 16 (WIN-258 tranche 5, the `channels` canonical store, in that
     //   SAME directory again) + 19 (that tranche's `governance` canonical store,
     //   in the same directory once more) + 20 (its `secrets` canonical store,
-    //   there too) = 1296.
+    //   there too) = 1296, + 22 (its `memory` canonical store, in that ONE
+    //   directory for the ninth owner) = 1318.
     //
     // EACH SLICE CARRIES ITS GUARD LEDGER AND IS ONE LARGER THAN ITS `.ts`
     // COUNT. `channels`' 16 are 15 source-and-test files plus
     // `mutations-channels.json`, `governance`'s 19 are 18 plus
-    // `mutations-governance.json`, and `secrets`' 20 are 19 — ten source and
-    // nine suites — plus `mutations-secrets.json`. The existing
-    // `packages.adapters.config` rule already classifies all three, so no ledger
-    // rule changed for any of them: a guard ledger is DATA beside the package
-    // rather than a module in it. `packages/contexts/secrets` gains NO file —
-    // its port entry point was widened IN PLACE, and a widened file is not a new
-    // one.
+    // `mutations-governance.json`, `secrets`' 20 are 19 — ten source and nine
+    // suites — plus `mutations-secrets.json`, and `memory`'s 22 are 21 —
+    // fourteen source and seven suites — plus `mutations-memory.json`. The
+    // existing `packages.adapters.config` rule already classifies all four, so
+    // no ledger rule changed for any of them: a guard ledger is DATA beside the
+    // package rather than a module in it. `packages/contexts/secrets` and
+    // `packages/contexts/memory` gain NO file — each port entry point was
+    // widened IN PLACE, and a widened file is not a new one.
     //
-    // ALL FOUR TRANCHE-5 SLICES ARE ALL `packages`, every file under
+    // `memory`'s FOURTEEN SOURCE MODULES ARE THE MOST ANY TRANCHE HAS ADDED,
+    // and that is the ADR M0.3 §6 budget pointing at seams the two ports already
+    // had rather than a store spread thin. `MemoryRepository` alone is twenty
+    // methods: the five that read rows this context does NOT own are
+    // `memory-placement`, the point writes and point reads `memory-store`, and
+    // the set reads `memory-listing`; `KnowledgeGraphRepository` is
+    // `memory-entities` and `memory-relationships`; and the six erasure methods
+    // are `memory-erasure` because they SPAN both ports and are one operation.
+    // The seventh suite exists for the same reason and arrived later: three
+    // cases closing a surviving mutation took the rules suite to 500 effective
+    // lines exactly.
+    //
+    // ALL FIVE TRANCHE-5 SLICES ARE ALL `packages`, every file under
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1296);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1318);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1091,7 +1105,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `governance` +19 and `secrets` +20, all in ONE, plus that tranche's second
     // sweep +1); this one re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1296
+    rulesDocument.baseline.totalFiles + 1318
   );
 });
 
