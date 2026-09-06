@@ -1381,7 +1381,7 @@
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "aebe3674a588cb6d003808375b4cded6589baeb407a1b71f79d48901a82e46f0",
+      "sha256": "163811567e0986e55bb751685e1001b380aa67ff591956de17ec9e9afa45d51a",
       "sourceSnapshot": "OSV advisory response recorded by scripts/audit-advisory.mjs",
       "baseline": "network advisory snapshot; current dependency truth is the checked lock/image inventory",
       "date": "2026-09-06"
@@ -1397,7 +1397,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "56974df51500053da7abec1956e64e334359c4440a3494070ddbbcfd18f4aa17",
+      "sha256": "023e0cbdb1311a6d786013f7abee3ba9bef1cc2c48a097fbd7f63da9af422702",
       "binds": "current-repository-truth"
     },
     {
@@ -1511,14 +1511,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "9beb3714e1a6afe7d9ebaceb179ffd86257fc80400d34443830e05ae7c18e6c9",
+      "sha256": "a0d18bc28718b6bf00b7d21d956493fdead1c9d1aec2b08cb2d45d1a87fe8590",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "be1d2d0e31d2ca2b8bc84a0fbed975698c6f4d8fe82315611d63abc6154b883d",
+      "sha256": "f071567883a1062c7497bad2cf772824bb002730577ec4742a00d3e90946004a",
       "binds": "current-repository-truth"
     },
     {
@@ -1539,7 +1539,7 @@
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "282ad16a6ff36901aa9a790f16217370d9487986d7ce851ab8ee24f002158be6",
+      "sha256": "462ef4db506059f3a812230a97e36ede25c0dd180709fd7ba77406f47dd7e713",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1553,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "8b80b37979c75c94e07ed5429a7a6dd26bd6c2a4ebeb636c25eaa8804ec80197",
+      "sha256": "cff1740526485e3d1a4106971cde7065cd7c35115e7198d30afc1c7032600de9",
       "binds": "current-repository-truth"
     },
     {
