@@ -2378,11 +2378,27 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * rather than a case of its own, so the catalogue's "mints every declared code
  * and nothing else" assertion covers it without a census row moving twice.
  *
- * The tree total is 503 + 4 + 1 + 1 = 509 files and 7399 + 40 + 5 + 8 = 7452
- * cases. The adapters term of the three-way identity carries five of the six new
- * files — four in `keyring-envelope`, one in `postgres-tenancy` — and the
- * contexts term carries the sixth: 151 + 5 = 156, 349 + 1 = 350, and
- * 350 + 3 + 156 = 509.
+ *   packages/contexts/secrets            16 -> 17 files,  162 -> 178 cases
+ *
+ * ONE FILE, SIXTEEN CASES: `sweep-root-key-reencryption.test.ts`, the bounded,
+ * resumable re-encryption sweep — rotation as a JOB rather than as a
+ * request-time loop. TWO of the sixteen exist because the sweep was WRONG and
+ * a case caught it rather than a reviewer thinking of it: the first draft asked
+ * `needsReEncryption`, which is true only for the `prior` status, so a
+ * credential whose root key had LEFT the ring was counted as already-done and
+ * the environment was reported complete over it. A third replaced a case whose
+ * own comment admitted its assertion was 'not observable'.
+ *
+ * `packages/contexts/secrets` GAINS NO SOURCE ROW HERE and its port entry point
+ * gains no case: the seven values re-exported for the cryptography ports are
+ * a widening of an existing file, and a widened file is not a new one.
+ *
+ * The tree total is 503 + 4 + 1 + 1 + 1 = 510 files and
+ * 7399 + 40 + 5 + 8 + 16 = 7468 cases. The adapters term of the three-way
+ * identity carries five of the seven new files — four in `keyring-envelope`,
+ * one in `postgres-tenancy` — and the contexts term carries the other two, in
+ * `providers` and `secrets`: 151 + 5 = 156, 349 + 2 = 351, and
+ * 351 + 3 + 156 = 510.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2411,7 +2427,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 28, cases: 383 },
-  "packages/contexts/secrets": { files: 16, cases: 162 },
+  "packages/contexts/secrets": { files: 17, cases: 178 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
@@ -2688,27 +2704,30 @@ export const EXPECTED = Object.freeze({
  * files / 1054 tests is therefore a check on this split derived without it.
  */
 /*
- * WIN-259 (M2.4) 7399 -> 7452: +40 in the new `packages/adapters/keyring-envelope`
- * row, +5 in `packages/adapters/postgres-tenancy` and +8 in
- * `packages/contexts/providers`. 7399 + 40 + 5 + 8 = 7452.
+ * WIN-259 (M2.4) 7399 -> 7468: +40 in the new `packages/adapters/keyring-envelope`
+ * row, +5 in `packages/adapters/postgres-tenancy`, +8 in
+ * `packages/contexts/providers` and +16 in `packages/contexts/secrets`.
+ * 7399 + 40 + 5 + 8 + 16 = 7468.
  *
  * THE RUNNABLE/INTEGRATION SPLIT MOVES ON BOTH SIDES, WHICH IS UNUSUAL FOR A
- * TRANCHE THAT TOUCHES THIS ADAPTER. Forty-eight of the fifty-three are RUNNABLE
+ * TRANCHE THAT TOUCHES THIS ADAPTER. Sixty-four of the sixty-nine are RUNNABLE
  * by `pnpm test:v1-packages` — the whole keyring-envelope row plus providers'
- * eight — because real AES-256-GCM needs no daemon and neither does an in-memory
- * probe cache. Only the remaining five carry `.integration.` in the name, so the
- * cases this census records that the script does not execute go 1054 -> 1059
- * over 109 -> 110 files, and the runnable side goes 429 -> 477 for the postgres
- * row's own split plus the two rows outside it.
+ * eight and secrets' sixteen — because real AES-256-GCM needs no daemon and
+ * neither does an in-memory probe cache or an in-memory vault. Only the
+ * remaining five carry `.integration.` in the name, so the cases this census
+ * records that the script does not execute go 1054 -> 1059 over 109 -> 110
+ * files, and the runnable side goes 429 -> 493 for the postgres row's own split
+ * plus the three rows outside it.
  *
  * The three-way file identity holds with the same shape:
- * packages.contexts.test 350 + packages.kernel.test 3 +
- * packages.adapters.test 156 = 509, which is this census's own totalFiles. The
+ * packages.contexts.test 351 + packages.kernel.test 3 +
+ * packages.adapters.test 156 = 510, which is this census's own totalFiles. The
  * adapters term moved 151 -> 156, of which FOUR are the new directory's suites
- * and ONE is the postgres row's; the contexts term moved 349 -> 350 for
- * providers'. The v1 ledger counts the same six inside its seventeen.
+ * and ONE is the postgres row's; the contexts term moved 349 -> 351, one for
+ * `providers` and one for `secrets`. The v1 ledger counts the same seven inside
+ * its nineteen.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7452;
+export const EXPECTED_RUNTIME_TOTAL = 7468;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

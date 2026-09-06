@@ -955,7 +955,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 14 + 2 + 1 = 17. `packages/contexts/secrets` gains NO file: its port entry
     // point was widened IN PLACE to publish the seven values its three
     // cryptography ports' signatures use, and a widened file is not a new one.
-    packages: 1414,
+    // WIN-259 (M2.4) 1414 -> 1416. The sweep and its suite:
+    // `packages/contexts/secrets/application/sweep-root-key-reencryption.ts`
+    // and `…test.ts`, rotation as a JOB rather than as a request-time loop.
+    // 14 (keyring-envelope) + 2 (providers) + 1 (postgres) + 2 (secrets) = 19.
+    packages: 1416,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1205,9 +1209,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-    // WIN-259 (M2.4) 1482 -> 1499: the seventeen files enumerated on the
+    // WIN-259 (M2.4) 1482 -> 1501: the nineteen files enumerated on the
     // `packages` delta above, all in that one area.
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1499);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1501);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1245,7 +1249,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and 8 in `internal-packages`); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1499
+    rulesDocument.baseline.totalFiles + 1501
   );
 });
 

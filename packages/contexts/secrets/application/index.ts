@@ -33,6 +33,18 @@ export type { RotateCredentialCommand } from "./rotate-credential.js";
 export { reEncryptCredential } from "./re-encrypt-credential.js";
 export type { ReEncryptCredentialCommand } from "./re-encrypt-credential.js";
 
+// WIN-259 M2.4 — the same operation as a JOB rather than a request. Published
+// beside it because a composition root wiring a durable schedule needs the
+// bounded, resumable form and a transport handling one credential needs the
+// single one, and neither should have to reach past this entry point for the
+// other.
+export { SWEEP_HARD_LIMIT, sweepRootKeyReEncryption } from "./sweep-root-key-reencryption.js";
+export type {
+  RootKeySweepReport,
+  SweepRootKeyReEncryptionCommand,
+  SweepSkip,
+} from "./sweep-root-key-reencryption.js";
+
 export {
   DEFAULT_REVOKED_SECRET_RETENTION_MS,
   MAX_REVOKED_SECRET_RETENTION_MS,
