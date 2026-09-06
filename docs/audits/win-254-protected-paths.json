@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "2a0c8235019f1d4dec9681bf295f66dd427fd75005d2ce8be00d7485c0398b5b"
+      "sha256": "7a8fd62cbcf4c482bf20f35871b548d544b8c87ada4679095516035c3df207a9"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "6ce6d4c98195963efea1b9f8d12fdd563498011d04ef6cf29f8cc5159d1a871d"
+      "sha256": "42105c141868655d04ffa3bef6d8d92ca402994d409e33a51306c65da9f13e06"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "301e9b58b17964dc9377b4eaffd9ccf558230f1b0bee1a695b4b25ac11ac45d9"
+      "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -3493,7 +3493,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "8362f1c530b80ee1dd775174ad1e3d606556c38c72a066332ccf4162d38891c4"
+      "sha256": "e7e5387f0563f28360f1eda048bb9200e210d865ddacb8148feb3fcaf4b3599d"
     },
     {
       "path": "docs/vocabulary-boundary.md",

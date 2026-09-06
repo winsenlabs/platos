@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e557bcc40e8bfee0549fa34588d951e99bdb0546203dc0ec34fa693dd97a86e8",
+  "evidenceSha256": "d4065a4f25ddce199d4b03ed419e3567a75dd3c66d3d96b21f77465a16f046be",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9a1e55ad4ea969b6ece070afe09b65f752f6af8b960611014a6f293223f9d134",
+    "aggregateSha256": "c869acebfea476634b8168ffe97e775f872a7245e81dac0a6a951281662dbeb0",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -257,7 +257,7 @@
       },
       {
         "path": ".github/workflows/build-images.yml",
-        "sha256": "0daade8d9424f5f713cc601a1c67a6c0eb5277cf85f67aff1ee77e76b59eb9f3"
+        "sha256": "1940c8865188383f748a586ac5ed7e366be1905c974d51562cc8ddf1b4211869"
       },
       {
         "path": ".github/workflows/ci.yml",
@@ -4121,7 +4121,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "301e9b58b17964dc9377b4eaffd9ccf558230f1b0bee1a695b4b25ac11ac45d9"
+        "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6065,7 +6065,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "8362f1c530b80ee1dd775174ad1e3d606556c38c72a066332ccf4162d38891c4"
+        "sha256": "e7e5387f0563f28360f1eda048bb9200e210d865ddacb8148feb3fcaf4b3599d"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -10624,8 +10624,16 @@
         "sha256": "2dc0f6254bd97e0e21c2cb6e10183eec3d42ec2827b903edbdf98c3b6f6b536d"
       },
       {
+        "path": "internal-packages/tenancy-database/prisma/upgrade-baselines/oracle-head/schema.prisma",
+        "sha256": "a14129d38ae09c46a200ecc7ce804862e36ee58e3884081e90c61d1d14bd3021"
+      },
+      {
         "path": "internal-packages/tenancy-database/prisma/upgrade-baselines/origin-main/00000000000000_initial.sql",
         "sha256": "5c43055e8b4d134676d7252ceba59bfe72d90b63c34be03e1807512b30ea19d3"
+      },
+      {
+        "path": "internal-packages/tenancy-database/prisma/upgrade-baselines/origin-main/schema.prisma",
+        "sha256": "90febf41289f5167425930f494c751471cd331b9148b06f723cd66024ea0da4f"
       },
       {
         "path": "internal-packages/tenancy-database/src/access-key.test.ts",
@@ -10657,7 +10665,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/index.ts",
-        "sha256": "8e2a4c5094e6723d1aab040546ed5e2189bd6b825c45c81979930536bb14dcef"
+        "sha256": "e428b940a094611b44886f0dc0837f965e563281b679cd93106c009dc9888252"
       },
       {
         "path": "internal-packages/tenancy-database/src/integration.test.ts",
@@ -10724,8 +10732,32 @@
         "sha256": "96955137a2381723490c57194a244f1026c804cb0d4152ba77a4a03b326b20fc"
       },
       {
+        "path": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
+        "sha256": "909ea92be8d060824bab3371b7f690ca438b809977695ad9d93f2c93913259a9"
+      },
+      {
+        "path": "internal-packages/tenancy-database/src/upgrade-catalogue.ts",
+        "sha256": "5f76a5c5d383cd8374c36cdb6bc9d29ecfb7e218a8badbc5db0629643114db2f"
+      },
+      {
         "path": "internal-packages/tenancy-database/src/upgrade-contract.test.ts",
-        "sha256": "c6207d00b87ccac121af7db6f62a22c0e4ea6b4ec014529365222a36e29dcda5"
+        "sha256": "5cfadb138fade05d052d5274e6e9f361a1a1f0b4ef54847199c067d368f72ada"
+      },
+      {
+        "path": "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts",
+        "sha256": "3141386a77ad0dcb6df404b7d6661b0f2bd95720775271970f2277da463e0601"
+      },
+      {
+        "path": "internal-packages/tenancy-database/src/upgrade-fixture.ts",
+        "sha256": "0171ca37c1455c25e66b6d19e36d29dcc8a6a5d208a40960732fad310309f1c5"
+      },
+      {
+        "path": "internal-packages/tenancy-database/src/upgrade-guards.test.ts",
+        "sha256": "d96d1eb53e0c0586511320a0df9866e5512282da49de424e7b1098796c722f3b"
+      },
+      {
+        "path": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+        "sha256": "8c0b4229bf2fe38a7dae72b7b37ab0f33aa49763eb0298ffb1bdd3aeaea9a7fa"
       },
       {
         "path": "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
@@ -11258,6 +11290,10 @@
       {
         "path": "packages/adapters/postgres-tenancy/mutations-tools.json",
         "sha256": "7f87af6d9396ea9f357b7eb8f80788bef68bcac544ad2d5f6738a548faa96fad"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/mutations-upgrade-rollout.json",
+        "sha256": "68b09315ae1419204291632d09c9c119fea46fa2f8e5a5509de64b6e43512321"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations.json",
@@ -12486,6 +12522,14 @@
       {
         "path": "packages/adapters/postgres-tenancy/src/tree.ts",
         "sha256": "7db2223bdcf260d3ffb8489c96924fe8284f793e7b80cbad1377327d139e8603"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
+        "sha256": "2627d232012a8daaf776bab52bcd431fd3b7dfe84c31a75ae55e195439cb29a1"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+        "sha256": "ac368eab7813308b4fed221297059deac5a5fc392de716e9983e381184b3c15d"
       },
       {
         "path": "packages/adapters/postgres-tenancy/tsconfig.json",
@@ -38931,12 +38975,22 @@
               "from": "packages/adapters/postgres-tenancy",
               "line": 118,
               "specifier": "@platos/tenancy-database"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 77,
+              "specifier": "@platos/tenancy-database"
             }
           ],
           "reversePaths": [
             [
               "packages/adapters/postgres-tenancy",
               "packages/adapters/postgres-tenancy/src/harness.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts"
             ]
           ],
           "roots": [
@@ -39257,6 +39311,12 @@
               "from": "packages/adapters/postgres-tenancy",
               "line": 18,
               "specifier": "@platos/tenancy-database"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 25,
+              "specifier": "@platos/tenancy-database"
             }
           ],
           "reversePaths": [
@@ -39467,6 +39527,10 @@
             [
               "packages/adapters/postgres-tenancy",
               "packages/adapters/postgres-tenancy/src/identity-differential-harness.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts"
             ]
           ],
           "roots": [
@@ -39709,6 +39773,16 @@
               "line": 61
             },
             {
+              "from": "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "internal-packages/tenancy-database/src/upgrade-guards.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 250
+            },
+            {
               "from": "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -39812,6 +39886,11 @@
               "from": "packages/adapters/postgres-tenancy/src/skills-transaction.integration.test.ts",
               "kind": "reference",
               "line": 56
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "kind": "reference",
+              "line": 3
             },
             {
               "from": "packages/contexts/secrets/contracts/index.test.ts",
@@ -40095,6 +40174,14 @@
               "internal-packages/tenancy-database/src/upgrade-contract.test.ts"
             ],
             [
+              "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts",
+              "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts"
+            ],
+            [
+              "internal-packages/tenancy-database/src/upgrade-guards.test.ts",
+              "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+            ],
+            [
               "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
               "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts"
             ],
@@ -40177,6 +40264,10 @@
             [
               "packages/adapters/postgres-tenancy/src/skills-transaction.integration.test.ts",
               "packages/adapters/postgres-tenancy/src/skills-transaction.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
             ],
             [
               "packages/contexts/secrets/contracts/index.test.ts",
@@ -40302,6 +40393,8 @@
             "internal-packages/tenancy-database/src/secrets.test.ts",
             "internal-packages/tenancy-database/src/tool-policy.test.ts",
             "internal-packages/tenancy-database/src/upgrade-contract.test.ts",
+            "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts",
+            "internal-packages/tenancy-database/src/upgrade-guards.test.ts",
             "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
             "internal-packages/tenancy-database/src/win124.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
@@ -40323,6 +40416,7 @@
             "packages/adapters/postgres-tenancy/src/providers-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/secrets-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/skills-transaction.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "packages/contexts/secrets/contracts/index.test.ts",
             "packages/contexts/secrets/domain/envelope.test.ts",
             "scripts/arch/sole-writer.test.mjs",
@@ -40498,7 +40592,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "3b898237a409b05abc9c4d3ea6c94964947117aba83ee57e28ab133d5a36594e",
+      "evidenceSha256": "9126ad17465cfffed2eedeaf70d3452598afc72f530527c4441e33f32e61a8f8",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -47652,6 +47746,11 @@
               "line": 1
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 639
@@ -48199,6 +48298,10 @@
               "packages/adapters/postgres-tenancy/src/transaction.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -48361,6 +48464,7 @@
             "packages/adapters/postgres-tenancy/src/tools-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/tools-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/transaction.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
@@ -48428,7 +48532,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "fd174d95f65433cf9f054b34ad35e2614568167169c9e5c6ab93db4e009a5242",
+      "evidenceSha256": "4bbe88b1d41e08dfc81b2a26a615f8dd85f92ab29286853122239c6b8cdb811a",
       "manifestSha256": "f736a95a4330a56db4332704a1cf9abf6ff567e3cb142f99ba950bf90a34fb47",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -51215,6 +51319,11 @@
               "line": 37
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "kind": "reference",
+              "line": 35
+            },
+            {
               "from": "packages/contexts/channels/application/admit-channel-event.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -51341,6 +51450,10 @@
               "packages/adapters/postgres-tenancy/src/channels-transaction.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+            ],
+            [
               "packages/contexts/channels/application/admit-channel-event.test.ts",
               "packages/contexts/channels/application/admit-channel-event.test.ts"
             ],
@@ -51428,6 +51541,7 @@
             "packages/adapters/postgres-tenancy/src/channels-rules.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/channels-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/channels-transaction.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "packages/contexts/channels/application/admit-channel-event.test.ts",
             "packages/contexts/channels/application/channels-erasure-target.test.ts",
             "packages/contexts/channels/application/configure-agent-routing.test.ts",
@@ -51550,7 +51664,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "ae5828d06ec761bf857ed9d89bcc5ba0cb037942eca92ae823220d12fa0cb95a",
+      "evidenceSha256": "03182394072238d7dbd56ec7d9a608e916067d9e08f0bc7354f967410c4d1a41",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -55067,6 +55181,11 @@
               "line": 36
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "kind": "reference",
+              "line": 51
+            },
+            {
               "from": "packages/contexts/files/application/artifact-revisions.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -55203,6 +55322,10 @@
               "packages/adapters/postgres-tenancy/src/files-transaction.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+            ],
+            [
               "packages/contexts/files/application/artifact-revisions.test.ts",
               "packages/contexts/files/application/artifact-revisions.test.ts"
             ],
@@ -55298,6 +55421,7 @@
             "packages/adapters/postgres-tenancy/src/files-scope.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/files-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/files-transaction.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "packages/contexts/files/application/artifact-revisions.test.ts",
             "packages/contexts/files/application/bind-attachments-to-turn.test.ts",
             "packages/contexts/files/application/destroy-attachment.test.ts",
@@ -55516,7 +55640,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "8cab9e27112ab0732dcb20cd7e563bcfb899e19b04820530e869462f11751d3f",
+      "evidenceSha256": "42071e258d96b50a2e3e45fbafd6c114c506acc654f047e7165f3af7a6f6de05",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -70523,6 +70647,11 @@
               "line": 49
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "kind": "reference",
+              "line": 44
+            },
+            {
               "from": "packages/contexts/tools/application/execution.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -70684,6 +70813,10 @@
               "packages/adapters/postgres-tenancy/src/tools-transaction.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+            ],
+            [
               "packages/contexts/tools/application/execution.test.ts",
               "packages/contexts/tools/application/execution.test.ts"
             ],
@@ -70799,6 +70932,7 @@
             "packages/adapters/postgres-tenancy/src/tools-mapping.test.ts",
             "packages/adapters/postgres-tenancy/src/tools-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/tools-transaction.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "packages/contexts/tools/application/execution.test.ts",
             "packages/contexts/tools/application/mcp-surface.test.ts",
             "packages/contexts/tools/application/registry.test.ts",
@@ -70954,7 +71088,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "7d6ad7d860a82621e0885a94668a7c91d8b398cec53719d961bbb8c75ba072dc",
+      "evidenceSha256": "7ff06ea60c778fc50aa8104d8dfa6130019d733e880973a60051ee2b8038c43c",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -80038,6 +80172,11 @@
               "line": 18
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "kind": "reference",
+              "line": 33
+            },
+            {
               "from": "packages/contexts/agents/application/authorization.test.ts",
               "kind": "reference",
               "line": 1
@@ -81165,6 +81304,10 @@
               "packages/adapters/outbox/src/envelope.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+            ],
+            [
               "packages/contexts/agents/application/authorization.test.ts",
               "packages/contexts/agents/application/authorization.test.ts"
             ],
@@ -82055,6 +82198,7 @@
             "packages/adapters/outbox/src/adapter.test.ts",
             "packages/adapters/outbox/src/conformance.test.ts",
             "packages/adapters/outbox/src/envelope.test.ts",
+            "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "packages/contexts/agents/application/authorization.test.ts",
             "packages/contexts/agents/domain/agent.test.ts",
             "packages/contexts/agents/domain/binding.test.ts",
@@ -83018,7 +83162,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "6e4c7bc3051d96e7c57104d665e62b7e51546f37f3cc65f81f58f79c106c79a7",
+      "evidenceSha256": "cfd729d1afa2e5e032649f36f7c487ee9d44f81a786530e896ce40afde0f61a5",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

@@ -1511,14 +1511,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "2a0c8235019f1d4dec9681bf295f66dd427fd75005d2ce8be00d7485c0398b5b",
+      "sha256": "7a8fd62cbcf4c482bf20f35871b548d544b8c87ada4679095516035c3df207a9",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "6ce6d4c98195963efea1b9f8d12fdd563498011d04ef6cf29f8cc5159d1a871d",
+      "sha256": "42105c141868655d04ffa3bef6d8d92ca402994d409e33a51306c65da9f13e06",
       "binds": "current-repository-truth"
     },
     {
@@ -1539,7 +1539,7 @@
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "301e9b58b17964dc9377b4eaffd9ccf558230f1b0bee1a695b4b25ac11ac45d9",
+      "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d",
       "binds": "current-repository-truth"
     },
     {
