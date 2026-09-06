@@ -50,6 +50,7 @@ import {
   readSkillOrigin,
   readTextList,
 } from "./skills-rows.js";
+import { createSkillsStamps } from "./skills-repository.js";
 
 const ORGANIZATION = "bbbbbbbb-0001-4000-8000-000000000001";
 const PROJECT = "bbbbbbbb-0002-4000-8000-000000000001";
@@ -276,6 +277,37 @@ describe("the remaining two write guards", () => {
     expect(codeOfThrow(() => requireInstant("Skill.updatedAt", new Date("nonsense")))).toBe(
       INSTANT_NOT_REPRESENTABLE,
     );
+  });
+});
+
+describe("the default stamps mint what the columns will hold", () => {
+  test("the instant source never repeats, so two rows in ONE transaction can be ordered", () => {
+    // `createdAt` and `updatedAt` are `timestamp(3)`, so two rows written in the
+    // same millisecond TIE — and `now()` would be worse, because on PostgreSQL
+    // it is the TRANSACTION'S start time and every row a seeding run wrote in
+    // one unit of work would carry the identical instant.
+    //
+    // A THOUSAND READINGS, not two. Two readings a millisecond apart pass
+    // against a source with no monotonicity in it at all; a thousand cannot,
+    // because a thousand calls to `Date.now()` do not span a thousand
+    // milliseconds.
+    const stamps = createSkillsStamps();
+    let previous = 0;
+    for (let index = 0; index < 1000; index += 1) {
+      const instant = stamps.now().getTime();
+      expect(instant).toBeGreaterThan(previous);
+      previous = instant;
+    }
+  });
+
+  test("every minted identifier is a uuid the column accepts", () => {
+    // All three primary keys are `@db.Uuid`. A source that minted anything else
+    // would be refused by the database on the first insert — and by the guard
+    // one line earlier, which is why this is asserted rather than assumed.
+    const stamps = createSkillsStamps();
+    const minted = [stamps.skillId(), stamps.projectSkillId(), stamps.environmentSkillId()];
+    for (const id of minted) expect(looksLikeUuid(id)).toBe(true);
+    expect(new Set(minted).size).toBe(3);
   });
 });
 

@@ -343,6 +343,25 @@ export async function runSkillsInstallConformance(
   );
 
   // ---------------------------------------------------------------- erasure
+  //
+  // ONE ROW WITH NO AUTHOR AT ALL, registered first. Without it every row in the
+  // organization carries a principal, `principalId: null` selects nothing for a
+  // reason that has nothing to do with the guard, and a store that dropped the
+  // null check would answer zero anyway — the guard would be unfalsifiable and
+  // the case below would be theatre.
+  observed["upsertSkill.unauthored"] = outcome(
+    await environment.run((transaction) =>
+      repository.upsertSkill(
+        conformanceDraft(scope, "acme.anon", "1.0.0", {
+          isOfficial: true,
+          manifest: { author: null },
+        }),
+        transaction,
+      ),
+    ),
+    (entry) => ({ slug: entry.identity.slug, author: entry.author }),
+  );
+
   observed["countAuthoredSkills.organization"] = outcome(
     await repository.countAuthoredSkills({
       scope: { level: "organization", organizationId: scope.environment.organizationId },

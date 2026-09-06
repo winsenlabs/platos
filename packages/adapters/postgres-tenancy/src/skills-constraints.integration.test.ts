@@ -292,6 +292,114 @@ describe("the shapes the schema will not hold, refused BEFORE a statement is sen
   });
 });
 
+describe("the clauses that decide WHICH ROW a call reaches", () => {
+  test("a patch of a non-uuid id refuses without aborting the caller's transaction", async () => {
+    // The uuid guard on the WRITE path, which is the one that costs a
+    // transaction rather than an answer: `Skill.id` is `@db.Uuid`, and an
+    // unguarded `updateManyAndReturn({ where: { id } })` sends the string to
+    // `uuid_in`. The double answers `repositoryUnavailable("no such skill …")`
+    // for the same input.
+    const written = await harness.run(async (transaction) => {
+      const refused = await harness.repository.patchSkill(
+        asIdentifier<SkillId>("acme.search"),
+        { name: "x" },
+        transaction,
+      );
+      expect(refused.ok).toBe(false);
+      expect(reasonOf(refused)).toContain("no such skill");
+      return harness.repository.upsertSkill(
+        conformanceDraft(tenant.scope, "acme.afterpatch", "1.0.0"),
+        transaction,
+      );
+    });
+    expect(written.ok).toBe(true);
+  });
+
+  test("a binding is not resolvable through a scope whose PROJECT is somebody else's", async () => {
+    // `EnvironmentSkill` carries `environmentId` and `projectSkillId` and
+    // nothing above either, so the project and organization halves of a read's
+    // scope are the CALLER'S claim. The database's ancestry triggers check the
+    // rows against each other when they are WRITTEN and have nothing to say
+    // about a scope assembled later, which is why the read joins through
+    // `ProjectSkill.project` rather than trusting the environment id alone.
+    const skill = await harness.run((transaction) =>
+      harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.forged", "1.0.0"), transaction),
+    );
+    const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
+    const binding = await harness.run(async (transaction) => {
+      const project = await harness.repository.upsertProjectInstallation(
+        tenant.scope,
+        skillId,
+        transaction,
+      );
+      if (!project.ok) throw new Error("the adoption is the fixture");
+      return harness.repository.upsertEnvironmentInstallation(
+        tenant.scope,
+        project.value,
+        transaction,
+      );
+    });
+    expect(binding.ok).toBe(true);
+    const environmentSkillId = binding.ok
+      ? binding.value.environmentSkillId
+      : asIdentifier<EnvironmentSkillId>("x");
+
+    // The RIGHT environment, the WRONG project. A read that trusted
+    // `environmentId` alone would resolve it.
+    const forged: CatalogueScope = catalogueScope({
+      level: "environment",
+      organizationId: asIdentifier(tenant.organizationId),
+      projectId: asIdentifier(tenant.siblingProjectId),
+      environmentId: asIdentifier(tenant.environmentId),
+    });
+    expect(await harness.repository.findInstallationById(forged, environmentSkillId)).toEqual({
+      ok: true,
+      value: null,
+    });
+    expect(
+      await harness.repository.findInstallationsByIds(forged, [environmentSkillId]),
+    ).toEqual({ ok: true, value: [] });
+    // And the negative control: the honest scope resolves it.
+    const honest = await harness.repository.findInstallationById(tenant.scope, environmentSkillId);
+    expect(honest.ok && honest.value !== null).toBe(true);
+  });
+
+  test("an anonymisation is confined to ONE organization", async () => {
+    // The `organizationId` clause of the raw `UPDATE "Skill"`. Without it an
+    // erasure addressed at one tenant would rewrite the author of every skill in
+    // the installation that happened to carry the same principal string.
+    const author = "subject-shared";
+    for (const scope of [tenant.scope, foreign.scope]) {
+      const written = await harness.run((transaction) =>
+        harness.repository.upsertSkill(
+          conformanceDraft(scope, "acme.shared", "1.0.0", { manifest: { author } }),
+          transaction,
+        ),
+      );
+      expect(written.ok).toBe(true);
+    }
+    const erased = await harness.run((transaction) =>
+      harness.repository.anonymizeAuthoredSkills(
+        {
+          scope: { level: "organization", organizationId: asIdentifier(tenant.organizationId) },
+          principalId: author,
+        },
+        transaction,
+      ),
+    );
+    expect(erased).toEqual({ ok: true, value: 1 });
+
+    const theirs = await harness.repository.findSkillByIdentity(
+      conformanceIdentity(foreign.scope, "acme.shared", "1.0.0"),
+    );
+    expect(theirs.ok && theirs.value !== null ? theirs.value.author : null).toBe(author);
+    const ours = await harness.repository.findSkillByIdentity(
+      conformanceIdentity(tenant.scope, "acme.shared", "1.0.0"),
+    );
+    expect(ours.ok && ours.value !== null ? ours.value.author : null).toBe("[erased]");
+  });
+});
+
 describe("a refusal leaves the caller's transaction usable", () => {
   test("a refused write and a real one in the SAME unit of work", async () => {
     // The property every guard in `skills-guards.ts` exists to preserve. If any

@@ -272,6 +272,88 @@ describe("Skill.providesTools is the column the RUNTIME reads", () => {
   });
 });
 
+describe("the write paths whose input the port itself cannot produce", () => {
+  test("a DISABLED binding is re-enabled by a re-install", async () => {
+    // `domain/installation.ts` fixes it: "a re-install is the documented way to
+    // undo a disable". The port has no disable METHOD, so the only way to build
+    // the input is to plant it — which is exactly why an adapter can drop
+    // `enabled: true` from the update clause and every suite that goes through
+    // the port stays green.
+    const skill = await harness.run((transaction) =>
+      harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.disabled", "1.0.0"), transaction),
+    );
+    const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
+    const project = await harness.run((transaction) =>
+      harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
+    );
+    if (!project.ok) throw new Error("the adoption is the fixture");
+    const binding = await harness.run((transaction) =>
+      harness.repository.upsertEnvironmentInstallation(tenant.scope, project.value, transaction),
+    );
+    expect(binding.ok).toBe(true);
+
+    harness.applyRows(
+      `UPDATE "EnvironmentSkill" SET "enabled" = false
+        WHERE "environmentId" = '${tenant.environmentId}'
+          AND "projectSkillId" = '${project.value.projectSkillId}';
+       UPDATE "ProjectSkill" SET "enabled" = false
+        WHERE "id" = '${project.value.projectSkillId}';`,
+    );
+    const disabled = await harness.repository.findInstallation(tenant.scope, skillId);
+    expect(
+      disabled.ok && disabled.value !== null
+        ? [disabled.value.project.enabled, disabled.value.environment.enabled]
+        : null,
+    ).toEqual([false, false]);
+
+    const readopted = await harness.run((transaction) =>
+      harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
+    );
+    expect(readopted.ok && readopted.value.enabled).toBe(true);
+    const rebound = await harness.run((transaction) =>
+      harness.repository.upsertEnvironmentInstallation(
+        tenant.scope,
+        readopted.ok ? readopted.value : project.value,
+        transaction,
+      ),
+    );
+    expect(rebound.ok && rebound.value.enabled).toBe(true);
+  });
+
+  test("a manifest that never carried an author GAINS one when the row is anonymised", async () => {
+    // `jsonb_set(..., create_missing => true)`. A row written before `author`
+    // was in the frontmatter has the name in the COLUMN and no key in the JSON,
+    // and with `false` the anonymisation would leave the JSON untouched — which
+    // reads as complete, because the column says `[erased]`.
+    const id = plantSkill({
+      slug: "legacy.authorless",
+      author: "subject-legacy",
+      manifest:
+        '{"id":"legacy.authorless","name":"n","description":"d","version":"1.0.0"}',
+    });
+    const before = await readPlanted(id);
+    expect(before.ok && before.value !== null ? before.value.manifest.author : "?").toBeNull();
+
+    const erased = await harness.run((transaction) =>
+      harness.repository.anonymizeAuthoredSkills(
+        {
+          scope: { level: "organization", organizationId: asIdentifier(tenant.organizationId) },
+          principalId: "subject-legacy",
+        },
+        transaction,
+      ),
+    );
+    expect(erased).toEqual({ ok: true, value: 1 });
+
+    const after = await readPlanted(id);
+    expect(
+      after.ok && after.value !== null
+        ? [after.value.author, after.value.manifest.author]
+        : null,
+    ).toEqual(["[erased]", "[erased]"]);
+  });
+});
+
 describe("the two divergences between this store and the double, PINNED and reported", () => {
   test("FINDING 1: the catalogue ORDER is the database's collation, not JavaScript's", async () => {
     // THE COLLATION IS PART OF THE PIN. A different image with a different
