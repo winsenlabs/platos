@@ -224,3 +224,38 @@ export {
   UNREADABLE_EVAL_COST,
   UNREADABLE_SAFETY_METADATA,
 } from "./governance-rows.js";
+
+// WIN-258 T5 — `secrets`' canonical store. The two factories leave the package
+// for the reason `cost-monitoring`'s does: a composition root that wanted the
+// vault's repositories WITHOUT tenancy's — a purge sweep, say — has to be able
+// to build them over the same transactions rather than over a second client.
+//
+// THE REFUSAL CODES LEAVE IT FOR A SHARPER REASON THAN ANYWHERE ELSE IN THIS
+// FILE. `secrets/domain/errors.ts` publishes ONE code for every way a store can
+// refuse — `CREDENTIAL_UNAVAILABLE` — deliberately, because a caller able to
+// tell a missing credential from a tampered envelope has a probing oracle. That
+// collapse is right for a caller and useless for an operator, so the nine
+// write-shape refusals and the three unreadable-row refusals are named here and
+// carried out of band, where an operator reads them and a caller never does.
+export {
+  createEnvironmentVariableRepository,
+  createSecretsRepository,
+} from "./secrets-repository.js";
+export {
+  AUDIT_ORDINAL_OUT_OF_RANGE,
+  ENVELOPE_BYTES_MISWIDTH,
+  ENVELOPE_ORDINAL_OUT_OF_RANGE,
+  IDENTIFIER_NOT_UUID as SECRETS_IDENTIFIER_NOT_UUID,
+  INSTANT_NOT_REPRESENTABLE,
+  PURGE_LIMIT_INVALID,
+  SecretsWriteRefused,
+  VARIABLE_KEY_INVALID,
+  VARIABLE_SHAPE_INCOHERENT,
+  VARIABLE_VALUE_TOO_LONG,
+} from "./secrets-guards.js";
+export {
+  UNKNOWN_CREDENTIAL_KIND,
+  UNKNOWN_ENVELOPE_FORMAT,
+  UNKNOWN_VARIABLE_KIND,
+  UnreadableSecretsRowError,
+} from "./secrets-rows.js";

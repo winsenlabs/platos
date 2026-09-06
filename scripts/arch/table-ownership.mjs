@@ -388,6 +388,37 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // have had its own pool, and an erasure that failed between the two halves
   // would have left the ledger anonymised and the votes intact.
   governance: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The EIGHTH context to resolve to this directory, on the sentence
+  // every entry above stands on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FOUR rows `secrets` owns — `Credential`,
+  // `CredentialSecretVersion`, `CredentialAudit` and `EnvironmentVariable`.
+  // Nothing else. `checkSoleWriter` asks per WRITE whether the file's directory
+  // is one of `ownerDirectories(OWNER[model])`, so a write to `Memory` or to
+  // `ProviderKey` from this package still fails, and a write to any of these
+  // four from anywhere else still fails. `SecretReference` is NOT granted and
+  // could not be: `UNOWNED_ADR_ROWS` above records that the ADR's fifth row for
+  // this context does not exist in the canonical schema at all.
+  //
+  // IT IS ALSO WHAT MAKES THE `EnvironmentVariable` SEAM IMPLEMENTABLE.
+  // `setEnvironmentVariable` seals a credential, writes its envelope, points the
+  // credential at it, writes the variable row and appends two audit records, and
+  // `enforce_win124_credential_kind` re-reads the credential from INSIDE the
+  // variable's write to check it is unrevoked and already has an active version.
+  // A thirteenth adapter package holding only this context's repositories would
+  // have had its own pool: the credential would be uncommitted on one connection
+  // while the rule that has to see it ran on another, and the rule would refuse
+  // a row that is correct.
+  //
+  // THE CONVERSE IS ALSO TRUE AND IS WHY `providers` IS ABSENT. The extraction
+  // source writes `ProviderKey` inside its secret store; ADR M0.3 §1 row 4 gives
+  // that row to `providers`, which has no entry here, so this directory cannot
+  // write it. `domain/credential.ts` already records that those three methods
+  // were deliberately not extracted for exactly that reason.
+  secrets: "packages/adapters/postgres-tenancy",
 });
 
 /**

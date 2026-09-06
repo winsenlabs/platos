@@ -67,11 +67,12 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `CriteriaRepository`, `EvalsRepository`, `GoldenSetsRepository`) and to
 // `packages/contexts/secrets` (`SecretsRepository`,
 // `EnvironmentVariableRepository`). THREE edges carrying EIGHT bindings,
-// because a project reference is per PACKAGE, not per port. Each of the three
-// contexts depends on `tenancy` and on peers that do not depend back
-// (`identity-access`, `agents`), and nothing depends on any of them, so
-// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 101;
+// because a project reference is per PACKAGE, not per port. None can create a
+// cycle: contexts are leaves relative to adapters, `channels` depends on
+// `tenancy` and `identity-access`, `governance` on `tenancy` and `agents`, and
+// `secrets` on the kernel alone — so `EXPECTED_CONTEXT_DEPENDS_ON` below is
+// unchanged.
+export const EXPECTED_EDGE_COUNT = 102;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -197,6 +198,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "cost-monitoring",
     "channels",
     "governance",
+    "secrets",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -219,7 +221,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 7 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 8 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

@@ -794,13 +794,34 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               owner-tagged, and `src/client.ts` is still the only file in
     //               the layout that imports the ORM — this tranche added nothing
     //               to it at all.
+    //  1276 -> 1295 +19: WIN-258 TRANCHE 5, `secrets`' canonical store, in that
+    //               SAME one ORM home. NINETEEN files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: ten source (the
+    //               guards, the row readers, the credential store, the envelope
+    //               and evidence store, the variable store, the composite, the
+    //               harness and the two conformance halves) and NINE suites.
+    //               The inline count here read "fifteen ... nine source and six
+    //               suites" on the branch and was wrong there too; it is
+    //               corrected rather than carried, because a file census stated
+    //               in prose beside an asserted one is exactly the drift this
+    //               file exists to catch.
+    //               `packages/contexts/secrets` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` a FOURTH time,
+    //               and this tranche is where it decided the SHAPE rather than
+    //               only the home: `secrets` owns four rows in the same
+    //               database, and its two ports could not be spread into
+    //               `PostgresTenancyAdapter` at all — `SecretsRepository` and
+    //               `ToolsRepository` both declare `appendAudit` — so they are
+    //               named properties on the one adapter rather than a thirteenth
+    //               package with a second client.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 = 1309. No branch's
-    //               own figure is right merged — 1291 for `channels` alone and
-    //               1294 for `governance` alone each under-count the other by
-    //               its whole tranche.
-    assert.equal(result.fileCount, 1309, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18);
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 = 1328. No
+    //               branch's own figure is right merged — 1291, 1294 and 1295
+    //               each under-count the other two by their whole tranche.
+    assert.equal(result.fileCount, 1328, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

@@ -10641,7 +10641,7 @@
         },
         {
           "name": "platos:licenseSource",
-          "value": "unresolved"
+          "value": "registry:version"
         }
       ],
       "hashes": [
@@ -10653,7 +10653,7 @@
       "licenses": [
         {
           "license": {
-            "name": "NOASSERTION"
+            "id": "MIT"
           }
         }
       ]
@@ -15715,7 +15715,7 @@
         },
         {
           "name": "platos:licenseSource",
-          "value": "unresolved"
+          "value": "registry:version"
         }
       ],
       "hashes": [
@@ -15727,7 +15727,7 @@
       "licenses": [
         {
           "license": {
-            "name": "NOASSERTION"
+            "id": "MIT"
           }
         }
       ]
@@ -21175,7 +21175,7 @@
         },
         {
           "name": "platos:licenseSource",
-          "value": "unresolved"
+          "value": "registry:version"
         }
       ],
       "hashes": [
@@ -21187,7 +21187,7 @@
       "licenses": [
         {
           "license": {
-            "name": "NOASSERTION"
+            "id": "MIT"
           }
         }
       ]

@@ -74,6 +74,17 @@
 // transport, and `eval-run-queue.ts` is durable work whose own refusal code
 // exists to stay separable from a store outage.
 //
+// AND SO DO `secrets`' TWO CANONICAL-STORE PORTS (WIN-258 T5) — but as
+// PROPERTIES rather than as spread-in methods, and that is the one exception in
+// this file that was FORCED rather than chosen. `SecretsRepository.appendAudit`
+// and `ToolsRepository.appendAudit` are both top-level members, with different
+// signatures, so `PostgresTenancyAdapter extends ToolsRepository,
+// SecretsRepository` is a TypeScript error — "cannot simultaneously extend" —
+// and a spread would have let whichever composite came last silently win. Named
+// properties are what tranche 3 already does for tenancy's five
+// non-repository ports, and the composition root proves each binding by indexing
+// the property that carries it rather than the adapter itself.
+//
 // AND SO DOES `cost-monitoring`'s `BudgetRepository` (WIN-258 T5). Its six rows
 // are in that same database behind that same client, so by Amendment 15 they
 // are written from this directory too — the FIFTH owner delegated to it. Its
@@ -115,6 +126,10 @@ import type {
   SafetyLedger,
 } from "@platos/context-governance/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
+import type {
+  EnvironmentVariableRepository,
+  SecretsRepository,
+} from "@platos/context-secrets/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -142,6 +157,10 @@ import { createMembershipRepository } from "./membership.js";
 import { createOperatorDirectory, createOperatorSessionRevoker } from "./operator-peers.js";
 import type { OutboxEventStorePort } from "./outbox-store.js";
 import { createOutboxEventStore } from "./outbox-store.js";
+import {
+  createEnvironmentVariableRepository,
+  createSecretsRepository,
+} from "./secrets-repository.js";
 import type { TenancyTransactions, TransactionTimeouts } from "./transaction.js";
 import { createTenancyTransactions } from "./transaction.js";
 import { createToolsRepository } from "./tools-repository.js";
@@ -190,6 +209,22 @@ export interface PostgresTenancyAdapter
   readonly criteria: CriteriaRepository;
   readonly evals: EvalsRepository;
   readonly goldenSets: GoldenSetsRepository;
+
+  /**
+   * WIN-258 T5 — `secrets`' two canonical-store ports.
+   *
+   * PROPERTIES, and for a harder reason than tenancy's five above. Those are
+   * separate ports on a dependency bundle and could have been spread if their
+   * names had been free; these two CANNOT be spread at all, because
+   * `SecretsRepository.appendAudit(draft, transaction)` collides by name and
+   * differs by signature with `ToolsRepository.appendAudit(scope, entry)`, which
+   * this adapter already publishes. The names below are `SecretsDependencies`'
+   * own two slots — `repository` and `variables` — spelled with the owner in
+   * front, because `repository` alone is not a name a directory serving eight
+   * owners can give to one of them.
+   */
+  readonly secrets: SecretsRepository;
+  readonly secretsVariables: EnvironmentVariableRepository;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -231,6 +266,13 @@ export function buildPostgresTenancyAdapter(
     // target that counts a subject's safety events and ratings and then
     // anonymises the first and destroys the second is ONE transaction.
     ...createGovernanceStores(transactions),
+    // WIN-258 T5. Built from the SAME `transactions` as everything else here,
+    // so a `setEnvironmentVariable` that seals a credential, writes an envelope,
+    // points the credential at it, writes the variable row and appends two audit
+    // records is ONE transaction — and the `countReferences` that decides
+    // whether to revoke sees the row the same transaction just wrote.
+    secrets: createSecretsRepository(transactions),
+    secretsVariables: createEnvironmentVariableRepository(transactions),
     async close(): Promise<void> {
       await client.$disconnect();
     },

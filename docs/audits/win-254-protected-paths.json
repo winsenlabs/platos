@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "d826b42ef8759d4b22ef20730ca5aaa0a554eeb1240e2e94e10498667d8afe17"
+      "sha256": "07af3d5a1882da61c01fbcc50cb08d3648683a315eb5b4a862c8e777f86a576b"
     },
     {
       "path": "LICENSE",
@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "0f6ae493bfca7a16d196e452760c16ddb2688c7772f5f9201f976a2fdc2c4b4a"
+      "sha256": "e9b38154d01e9020aeb5db7a3a8db5ecb6e279d1e77a7db1b23cd4c640f8eb66"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "1711cff0dfc029e2ccdc02dc7c3122d13766a146b18d8449ef4a451e2e226433"
+      "sha256": "c086ae5ff06f0ce819ab9e6ce720dfaf5733e62d0cf282dc3bc1fd71d68e5704"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -968,7 +968,7 @@
     {
       "path": "docs/audits/sbom/license-index.json",
       "mode": "100644",
-      "sha256": "eed18190df9f551475f1c8d40f34197d04851a229560b74d2152398ea1bc1d0b"
+      "sha256": "757f2954ccd96a268c3da679f6ba02d15f0537940fe28545382f84c2e0b3b5f4"
     },
     {
       "path": "docs/audits/sbom/license-overlay.json",
@@ -983,7 +983,7 @@
     {
       "path": "docs/audits/sbom/platos-agent.cdx.json",
       "mode": "100644",
-      "sha256": "184fcbe33312b1304c9af9e2057ae5f802a24c291cf49787f4e622341a9320fe"
+      "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8"
     },
     {
       "path": "docs/audits/sbom/platos-webapp.cdx.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "43bd751d619f538169d8d0cecb72919a3aaae7c0cd093639945d667f6b8d78e7"
+      "sha256": "ad4d568cd088f6ae7bdd9e740cc19122a18dfe1d2e31081842399ccd59d29eff"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "62cfb7ffe8a6cd7cfa2439f7969a871ee0b80c60577fd77c88f6105654fc07a4"
+      "sha256": "20859dcd12a57f77203adbef091bc6832a5ff48ad82fa80768e6ea676b1be3ae"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "331f89e0b7863bd9ed2a255bf4ad49cfd369ba109a0f35fa42f7a9337b2834d3"
+      "sha256": "c8ee4b8e711fe5333dd526cc9ac3cfc2ab34be7d9c6fc6c2bab414228717a12f"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "a42c53865a0bd1f5cd69e965bf060a1521d89f7c9f756a0067db30188b48255f"
+      "sha256": "16f4426316835072d3d9030ba1db91be6abc5aa1cb09e23e3d542ec66ef3b6a0"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "45a3358771280d991813d5a3a7a9d40472e42a0e7528eb75eaf3c00298e15268"
+      "sha256": "2532dcdba8ca185afeb391b200ad9ff911c8612e3fe91ba08eae6af083278f30"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3643,7 +3643,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "904080f206d38bec74bd6235e395e1bfffb22a19736c133bb440d77f5c200f60"
+      "sha256": "81fb16546d4ef4e2dd5345c1df69d051be0e180461f32665616c20e347d733db"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "fb0557b2dbc59206f3b6f3162e98fbe631ab829bdee9f67c30762f14c25191b7"
+      "sha256": "3f15ff6d3d28710d9a7ae04518e3bcda8c97d06e0e190182de625e10760ca194"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

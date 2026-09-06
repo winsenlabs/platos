@@ -1584,6 +1584,70 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * that it recorded more than forty — a run that recorded nothing would satisfy
  * every comparison in it.
  *
+ * WIN-258 TRANCHE 5 AGAIN — `secrets`' canonical store, the FOURTH in the same
+ * package. NINE files, 83 cases, and not one of them anywhere else:
+ *
+ *   secrets-rows.test.ts                        18  the three closed unions a
+ *                                                   row is read back through,
+ *                                                   the readers' copying, and
+ *                                                   each of the nine guards on
+ *                                                   BOTH sides of its boundary.
+ *                                                   It runs under the default
+ *                                                   `test` script; the six below
+ *                                                   do not.
+ *   secrets-rules.integration.test.ts           11  the database rules NO port
+ *                                                   method restates: four
+ *                                                   immutability rules, the five
+ *                                                   clauses `enforce_win124_
+ *                                                   credential_kind` re-reads,
+ *                                                   the ON DELETE RESTRICT on an
+ *                                                   ACTIVE envelope, and the one
+ *                                                   place the double and the
+ *                                                   database disagree about what
+ *                                                   a row IS
+ *   secrets-statements.integration.test.ts      10  every read measured twice,
+ *                                                   over one row and over twelve
+ *   secrets-conformance.integration.test.ts      8  the differential against
+ *                                                   `inMemorySecretsStore`
+ *   secrets-constraints.integration.test.ts      8  each vault guard beside the
+ *                                                   migration CHECK it restates
+ *   secrets-transaction.integration.test.ts      7  failure injection, the three
+ *                                                   scope refusals, the ambient
+ *                                                   read and the row lock
+ *   secrets-variable-constraints.integration     7  the variable's three CHECKs
+ *     .test.ts                                      and the two guards standing
+ *                                                   where no CHECK does
+ *   secrets-scope.integration.test.ts            6  the clauses that decide
+ *                                                   WHICH ROW a call reaches:
+ *                                                   the environment clause on
+ *                                                   the row lock, the total
+ *                                                   order under a non-unique
+ *                                                   query, and the purge sweep's
+ *                                                   retention window, cutoff and
+ *                                                   `FOR UPDATE OF version`
+ *   secrets-refusals.integration.test.ts         7  the seven refusals whose
+ *                                                   ONLY witness was a crashed
+ *                                                   hook: every one is a
+ *                                                   `Result` where a naive
+ *                                                   store would RAISE, and the
+ *                                                   conformance suite drives
+ *                                                   them all inside a
+ *                                                   `beforeAll`
+ *
+ * TWO OF THE NINE EXIST BECAUSE OF THE SWEEP, exactly as `cost-idempotency`
+ * did one store over. `secrets-scope` carries six clauses that had no named case
+ * anywhere in the tree -- each was falsifiable only through a transcript that
+ * happened to differ, or not at all. `secrets-refusals` carries seven that the
+ * first sweep scored VACUOUS: each is a `Result` where a naive store would
+ * RAISE, the conformance suite drives all seven inside the `beforeAll` that
+ * builds its transcript, and a raise there made vitest report every case in the
+ * file SKIPPED. A guard whose only witness is a crashed hook is a guard nothing
+ * can see.
+ *
+ * EIGHT OF THE NINE ARE EXCLUDED from the package's default `test` script by
+ * filename and run by the `postgres-tenancy-repository` CI job, exactly as the
+ * other three tranche-5 stores' suites are.
+ *
  * ALL FOUR TRANCHE-5 STORES LAND IN THE SAME PACKAGE, so the four blocks above
  * SUM rather than any one standing alone. No branch's arithmetic is right
  * merged, and side-picking one would under-count the others by their whole
@@ -1647,13 +1711,14 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * differential and moves NO count here, which is why `mutations-channels.json`
  * beside the package is where those guards are held falsifiable.
  *
- * BOTH TRANCHE-5 STORES LAND IN THIS ONE PACKAGE, so its row is the SUM:
- * 39 + 6 + 6 = 51 files and 383 + 72 + 66 = 521 cases. `channels` contributes 6
- * files / 72 cases and `governance` 6 files / 66 cases, and neither branch's own
- * figure — 45/455 or 45/449 — survives the merge. The tree total is 410 + 12 =
- * 422 files and 6299 + 138 = 6437 cases. The adapters term of the three-way
- * identity carries all twelve, because every added file is an adapter's:
- * 58 + 12 = 70, and 349 + 3 + 70 = 422.
+ * ALL THREE OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE, so its row is the
+ * SUM: 20 + 6 + 6 + 7 + 6 + 6 + 9 = 60 files and
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 = 604 cases. `channels` contributes 6 files
+ * / 72 cases, `governance` 6 / 66 and `secrets` 9 / 83, and no branch's own
+ * figure — 45/455, 45/449 or 48/466 — survives the merge. The tree total is
+ * 391 + 40 = 431 files and 6115 + 405 = 6520 cases. The adapters term of the
+ * three-way identity carries all forty, because every added file is an
+ * adapter's: 39 + 40 = 79, and 349 + 3 + 79 = 431.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1664,7 +1729,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 51, cases: 521 },
+  "packages/adapters/postgres-tenancy": { files: 60, cases: 604 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1818,16 +1883,30 @@ export const EXPECTED = Object.freeze({
  * — enumerated file by file in the block beside the postgres-tenancy row, every
  * number there read back from the counter in this file.
  *
+ * 6299 -> 6520: the 221 cases of WIN-258 tranche 5's last three canonical
+ * stores — `channels`' 72, `governance`'s 66 and `secrets`' 83 — each
+ * enumerated file by file in the block beside the postgres-tenancy row.
+ *
  * The cases this census records that `pnpm test:v1-packages` does not execute
  * are the ones whose file name carries `.integration.`, which the package's own
- * `test` script excludes. MEASURED over this tree: 228 cases across 25 files,
- * all of them in `packages/adapters/postgres-tenancy`. Tranche 5 contributes 84
- * of those over nine suites; its remaining 66 (`agents-guards.test.ts`,
- * `agents-rows.test.ts`, `cost-rows.test.ts` and `governance-rows.test.ts`) run
- * in the ordinary package test script, because none of those modules has a
- * database in it.
+ * `test` script excludes. MEASURED over this tree: 422 cases across 49 files,
+ * all of them in `packages/adapters/postgres-tenancy`. This wave contributes 157
+ * of those over 18 suites — `channels`' 47 over 5, `governance`'s 45 over 5 and
+ * `secrets`' 65 over 8 — and its remaining 64 (`channels-rows.test.ts` 25,
+ * `governance-rows.test.ts` 21 and `secrets-rows.test.ts` 18) run in the
+ * ordinary package test script, because none of those three modules has a
+ * database in it: they reach the mapping branches a container suite cannot,
+ * since a container only ever reads rows this binary wrote.
+ *
+ * THIS SENTENCE SAID "183 cases across 20 files" AND THE TREE SAID 265 ACROSS
+ * 31, at the base of this wave and before any of these three stores existed.
+ * Only the `governance` branch moved it, and it moved it by its own contribution
+ * alone; the `channels` and `secrets` branches left the stale figure standing.
+ * It is corrected to the merged measurement rather than carried, because a count
+ * of cases stated in prose beside an asserted one is exactly the drift this file
+ * exists to catch.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6437;
+export const EXPECTED_RUNTIME_TOTAL = 6520;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
