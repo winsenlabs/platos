@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `752ec84b5407d48c60d88ab080e7a85e83f27070df71084c2e45fcb64b728bc1`
+Evidence SHA-256: `12f0478c89690ffde28f30df950ee8d896c689f084f1c9d652dd141cbcdb10fd`
 
 ## Baseline
 
@@ -40,7 +40,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | Workspace | Package | OCI | App/deployable | Union | OCI+dev | Candidate status | Public boundary | Owner decision | Evidence hash |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
 | `apps/agent` | `platos-agent` | yes | yes | yes | yes | retain-oci-image | no | no | `f46413b56e8a40cb…` |
-| `apps/core-api` | `@platos/core-api` | no | yes | yes | no | retain-application-deployable | no | no | `470798445190ff06…` |
+| `apps/core-api` | `@platos/core-api` | no | yes | yes | no | retain-application-deployable | no | no | `d5b9288e1c09c57c…` |
 | `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `72067c5693da8465…` |
 | `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `9e5d8a764017d305…` |
 | `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `897f6bd55ad06925…` |
@@ -68,8 +68,8 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/adapters/notifier-email` | `@platos/adapter-notifier-email` | no | yes | yes | no | retain-application-deployable | no | no | `0d929101abf3979f…` |
 | `packages/adapters/notifier-webhook` | `@platos/adapter-notifier-webhook` | no | yes | yes | no | retain-application-deployable | no | no | `0d6694a6d5542628…` |
 | `packages/adapters/objectstore-minio` | `@platos/adapter-objectstore-minio` | no | yes | yes | no | retain-application-deployable | no | no | `4189ee9b9b09a5c6…` |
-| `packages/adapters/outbox` | `@platos/adapter-outbox` | no | yes | yes | no | retain-application-deployable | no | no | `80a33eadef2dc4ec…` |
-| `packages/adapters/postgres-tenancy` | `@platos/adapter-postgres-tenancy` | no | yes | yes | no | retain-application-deployable | no | no | `553214b9435a7398…` |
+| `packages/adapters/outbox` | `@platos/adapter-outbox` | no | yes | yes | no | retain-application-deployable | no | no | `9b128252d572eb26…` |
+| `packages/adapters/postgres-tenancy` | `@platos/adapter-postgres-tenancy` | no | yes | yes | no | retain-application-deployable | no | no | `73762f5171e2e182…` |
 | `packages/adapters/redis-cache` | `@platos/adapter-redis-cache` | no | yes | yes | no | retain-application-deployable | no | no | `79cb79194841a51c…` |
 | `packages/adapters/redis-ratelimit` | `@platos/adapter-redis-ratelimit` | no | yes | yes | no | retain-application-deployable | no | no | `4e48781b5808cc19…` |
 | `packages/adapters/redis-streams` | `@platos/adapter-redis-streams` | no | yes | yes | no | retain-application-deployable | no | no | `4a7c93e9748f6989…` |
@@ -77,7 +77,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/contexts/channels` | `@platos/context-channels` | no | yes | yes | no | retain-application-deployable | no | no | `8f84152c526c056c…` |
 | `packages/contexts/conversations` | `@platos/context-conversations` | no | yes | yes | no | retain-application-deployable | no | no | `0bea0163eb81e5b4…` |
 | `packages/contexts/cost-monitoring` | `@platos/context-cost-monitoring` | no | yes | yes | no | retain-application-deployable | no | no | `727f8df980f7ceea…` |
-| `packages/contexts/eventing` | `@platos/context-eventing` | no | yes | yes | no | retain-application-deployable | no | no | `e30e53e5a9709d67…` |
+| `packages/contexts/eventing` | `@platos/context-eventing` | no | yes | yes | no | retain-application-deployable | no | no | `97f0715739962e96…` |
 | `packages/contexts/files` | `@platos/context-files` | no | yes | yes | no | retain-application-deployable | no | no | `7afb36bf0b12a363…` |
 | `packages/contexts/governance` | `@platos/context-governance` | no | yes | yes | no | retain-application-deployable | no | no | `cb52e08a46f8bdba…` |
 | `packages/contexts/identity-access` | `@platos/context-identity-access` | no | yes | yes | no | retain-application-deployable | no | no | `873bd9b6c27ccfe5…` |

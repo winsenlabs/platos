@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "752ec84b5407d48c60d88ab080e7a85e83f27070df71084c2e45fcb64b728bc1",
+  "evidenceSha256": "12f0478c89690ffde28f30df950ee8d896c689f084f1c9d652dd141cbcdb10fd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "48fa5ffb0c4738b488db0b1723b94f72959ace324447cee3b1a98c28470dff1e",
+    "aggregateSha256": "fad53ca71ece23c3313a1ff4ddbe81433180cf2f3a229e34f0cccff5c1a37fcb",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4029,7 +4029,7 @@
       },
       {
         "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
-        "sha256": "8a6366e85fdfc75776c2ea790c2c30a36ddf0c65afc1a8cc63eee94c74aa746d"
+        "sha256": "b6697a9dae7b628ea376ecfa5ae6b67272917c56bb1bc48de259247c6d2ee814"
       },
       {
         "path": "docs/audits/history/win-252/prompt-caching-progress.md",
@@ -19485,7 +19485,7 @@
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
-        "sha256": "6c5400225403de783231d519fcf850eb522ff55dc038c1e42756a84a3c628878"
+        "sha256": "28f47280466ee65bec10e7395deb0eda0fa19a28396ff049aa49cf9543d5c8dc"
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
@@ -19537,7 +19537,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "cafc75dc52954aeebfc4a24c939473601ef4b6d0fe51e436037748187cb794b1"
+        "sha256": "a1a7700e71cf24b59022613a900c2daa6f781f1d90073f52f1211e6a47cb936e"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
@@ -24569,7 +24569,7 @@
             {
               "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "kind": "reference",
-              "line": 181
+              "line": 219
             },
             {
               "from": "docs/env-vars.md",
@@ -25213,7 +25213,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "470798445190ff06b5496b95bf7c896e6735478bcc1eb99eca33633a2002d811",
+      "evidenceSha256": "d5b9288e1c09c57c840adfdd7fb8ad39755685c57be8d9454955b1aafd5a8ace",
       "manifestSha256": "19d1741e909b99a363e9e252a817222808317c232c92bbdded81f2448ba1d60c",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -46812,7 +46812,7 @@
             {
               "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "kind": "reference",
-              "line": 233
+              "line": 271
             },
             {
               "from": "packages/adapters/outbox/README.md",
@@ -47192,7 +47192,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "80a33eadef2dc4ec6c7d0a59ebe83a6a366c188d4202b4ac5b7e28c14009b83a",
+      "evidenceSha256": "9b128252d572eb26bf501fa2e5b47278dfe32f579943463f57d9bc5e82e05670",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -47331,6 +47331,11 @@
               "line": 525
             },
             {
+              "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
+              "kind": "reference",
+              "line": 304
+            },
+            {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
               "line": 6
@@ -47347,6 +47352,10 @@
               "docs/adr/M0.3-bounded-contexts.md"
             ],
             [
+              "docs/audits/M2.5-transaction-outbox-clock-retry.md",
+              "docs/audits/M2.5-transaction-outbox-clock-retry.md"
+            ],
+            [
               "docs/v1-ledger-rules.json",
               "docs/v1-ledger-rules.json"
             ],
@@ -47357,6 +47366,7 @@
           ],
           "roots": [
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/audits/M2.5-transaction-outbox-clock-retry.md",
             "docs/v1-ledger-rules.json",
             "packages/adapters/postgres-tenancy/README.md"
           ]
@@ -49044,7 +49054,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "553214b9435a7398e6969115bd7272ed303d6fc0f0108371c0803fea1099f6d5",
+      "evidenceSha256": "73762f5171e2e1820fcc4fb92a13d3f06318d2178184591a89867e04edc80c17",
       "manifestSha256": "f736a95a4330a56db4332704a1cf9abf6ff567e3cb142f99ba950bf90a34fb47",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -54426,7 +54436,7 @@
             {
               "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "kind": "reference",
-              "line": 163
+              "line": 201
             },
             {
               "from": "packages/contexts/eventing/README.md",
@@ -55085,7 +55095,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "e30e53e5a9709d678957e8dd35d01687cc421e56a1300b2b899c2c6309df22ab",
+      "evidenceSha256": "97f0715739962e968419e2935e96fd30a7cfc72d010e59274375d2dfbec0f444",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {

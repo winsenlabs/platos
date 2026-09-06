@@ -858,7 +858,7 @@
     {
       "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
       "mode": "100644",
-      "sha256": "8a6366e85fdfc75776c2ea790c2c30a36ddf0c65afc1a8cc63eee94c74aa746d"
+      "sha256": "b6697a9dae7b628ea376ecfa5ae6b67272917c56bb1bc48de259247c6d2ee814"
     },
     {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "1bbbf1063f1e9895b8c2c188f71796a51f4c415f23b18e0b1104f592c72b6cae"
+      "sha256": "049731be0198562a2e3d553880fb8607bbd1ca5c0f3395fe88d780de7d3a3f07"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "bc6df5e64112252cfc7fa19ecfa20121fb34df15b61eb038afb0c4c2da63fcb1"
+      "sha256": "a5ac48fa635dd73591f1ef4d7d3116a73313beac64209c5347785b26c7b316b1"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1068,7 +1068,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "5e571035f9f5c346fd51eed025e5bebd1f7dd88fc3620ae03b38ace3cf8f57c2"
+      "sha256": "d9df0fd0dc4ad4760bf3c01f901d449be5434a2a071804897b93fc28ca20c993"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3858,7 +3858,7 @@
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "6c5400225403de783231d519fcf850eb522ff55dc038c1e42756a84a3c628878"
+      "sha256": "28f47280466ee65bec10e7395deb0eda0fa19a28396ff049aa49cf9543d5c8dc"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
@@ -3883,7 +3883,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "cafc75dc52954aeebfc4a24c939473601ef4b6d0fe51e436037748187cb794b1"
+      "sha256": "a1a7700e71cf24b59022613a900c2daa6f781f1d90073f52f1211e6a47cb936e"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
