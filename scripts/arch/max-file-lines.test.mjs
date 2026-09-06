@@ -556,17 +556,17 @@ test("the live selectors scan an exact nonzero source census", () => {
   // evidence.
   //
   // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
-  // + 17 + 21 = 1377. All the stores are in the one adapter directory, so no
-  // branch's own figure survives the merge — 1266 for `channels`, 1269 for
+  // + 17 + 21 + 14 = 1391. All the stores are in the one adapter directory, so
+  // no branch's own figure survives the merge — 1266 for `channels`, 1269 for
   // `governance`, 1270 for `secrets`, 1319 for `providers`, 1323 for
-  // `conversations`, 1320 for `skills`, 1324 for `memory`.
-  assert.equal(result.fileCount, 1377);
+  // `conversations`, 1320 for `skills`, 1324 for `memory`, 1330 for `privacy`.
+  assert.equal(result.fileCount, 1391);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -574,13 +574,22 @@ test("the live selectors scan an exact nonzero source census", () => {
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
   // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
   // (secrets) + 16 (providers) + 20 (conversations) + 17 (skills) + 21
-  // (memory) = 291. The contexts, kernel and app rows are untouched, which is
-  // the claim worth making: no tranche-5 store adds a file to a context at all —
-  // each implements a port that already existed rather than widening one.
-  // `secrets`, `providers`, `conversations`, `skills` and `memory` are the
-  // sharpest cases: each had its port entry point widened, in place, and a
-  // widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 291 + 6);
+  // (memory) + 14 (privacy) = 305. The contexts, kernel and app rows are
+  // untouched, which is the claim worth making: no tranche-5 store adds a file to
+  // a context at all — each implements a port that already existed rather than
+  // widening one. `secrets`, `providers`, `conversations`, `skills`, `memory` and
+  // `privacy` are the sharpest cases: each had its port entry point widened, in
+  // place, and a widened file is not a new one.
+  //
+  // `privacy` CONTRIBUTES 14 AND NOT ONE OF THEM IS OVER THE WARNING BAND, which
+  // is worth stating for a store whose six source modules carry the longest
+  // headers in this directory: the §6 budget is EFFECTIVE lines, so a file that
+  // argues for itself at length and then does one thing is exactly what the
+  // budget is for. The six source modules split by WHOSE ROWS they touch and by
+  // WHAT THEY DO — the guards, the row mapping, the refusal adapter, the
+  // operation half, the register half and the composite — and the eight others
+  // are the harness, the shared conformance scenario and the six suites.
+  assert.equal(result.fileCount, 20 + 1060 + 305 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

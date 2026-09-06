@@ -341,16 +341,29 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/adapters/postgres-tenancy",
   ]);
   // And `memory` is the TWELFTH, which took the last of this case's old
-  // undelegated examples with it. The list below still has to contain somebody
-  // or the case stops saying anything, so it names two contexts this wave does
-  // NOT reach: `files`, whose `Artifact` hangs off a `Thread` this directory now
-  // writes, and `privacy`, which erases THROUGH other contexts' ports rather
-  // than owning a store here.
+  // undelegated examples with it.
   assert.deepEqual(ownerDirectories("memory"), [
     "packages/contexts/memory",
     "packages/adapters/postgres-tenancy",
   ]);
-  for (const owner of ["files", "privacy"]) {
+  // `privacy` is the THIRTEENTH, and it is the entry that FALSIFIED half of this
+  // case rather than merely extending it. The note that stood here named
+  // `privacy` as a context that "erases THROUGH other contexts' ports rather than
+  // owning a store here" — which was true of the sweep and false of the receipt.
+  // `ErasureOperation` and `ErasureTombstone` are its OWN rows, ADR M0.3 §1 row
+  // 18, and it is the sole writer of both; the sweep going through the kernel's
+  // `ErasureTarget` is exactly why it needs a store of its own for the record of
+  // what the sweep did.
+  assert.deepEqual(ownerDirectories("privacy"), [
+    "packages/contexts/privacy",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  // The list below still has to contain somebody or the case stops saying
+  // anything, so it names two contexts this wave does NOT reach: `files`, whose
+  // `Artifact` hangs off a `Thread` this directory now writes, and `jobs`, whose
+  // `Job` carries the very `WorkStatus` enum `ErasureOperation` does. Neither
+  // adjacency nor a shared column type is permission.
+  for (const owner of ["files", "jobs"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
 });
@@ -914,15 +927,24 @@ test("the shared directory is not a blanket licence over the whole schema", () =
   // reason. `Artifact` is `files`' (ADR M0.3 §1 row 10), is still undelegated,
   // and — like `Turn` before it — hangs off a `Thread` this directory now writes,
   // so it is the same shape of proof: adjacency in the schema is not permission.
+  //
+  // AND THE `privacy` TRANCHE HAS NOW DONE IT AGAIN, to the name that replaced
+  // `Turn`'s partner. `ErasureOperation` was the second pair here because
+  // `privacy` was undelegated; it is delegated now, so that pair would have gone
+  // red for the right reason and this case would have been asserting the opposite
+  // of what it says. `Job` takes its place: `jobs` (ADR M0.3 §1 row 15) is still
+  // undelegated, and `Job.status` is the very `WorkStatus` enum `ErasureOperation`
+  // is typed with — so where `Artifact` proves adjacency in the schema is not
+  // permission, this proves a shared COLUMN TYPE is not either.
   for (const [delegate, model] of [
-    // WIN-258 T5 moved `Memory` and `Turn` out of these pairs: both are now
-    // written from that directory legally, so leaving either here would have
-    // made the case pass while asserting the opposite of what it says.
-    // `Artifact` is `files`' and `ErasureOperation` is `privacy`', neither of
-    // which has a canonical-store adapter, and both live in the same database
-    // behind the same client.
+    // WIN-258 T5 moved `Memory`, `Turn` and now `ErasureOperation` out of these
+    // pairs: all three are written from that directory legally, so leaving any of
+    // them here would have made the case pass while asserting the opposite of
+    // what it says. `Artifact` is `files`' and `Job` is `jobs`', neither of which
+    // has a canonical-store adapter, and both live in the same database behind
+    // the same client.
     ["artifact", "Artifact"],
-    ["erasureOperation", "ErasureOperation"],
+    ["job", "Job"],
   ]) {
     const result = checkWriteEnforcement(
       fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write(delegate, "create") }),
@@ -1534,11 +1556,45 @@ test("an element-access member that is not a delegate is still not a write", () 
 // write, applied here to a column no port method can.
 //
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 + 6 + 15 = 266. All
+// WIN-258 T5 — THE `privacy` CANONICAL STORE adds SIX, three per table, and the
+// interesting thing about the list is how SHORT it is for a context whose whole
+// job is destruction. Every DELETE an erasure performs is issued by the context
+// that owns the row, through the kernel's `ErasureTarget`; this store writes only
+// the record of what those deletes did, and the barrier that keeps the subject
+// from coming back. Each line was read back from the enforcer rather than counted
+// by eye:
+//
+//   src/privacy-operations.ts   erasureOperation.createManyAndReturn (the row
+//                               `request-erasure.ts` opens), .updateManyAndReturn
+//                               (one pass's progress, identity columns absent
+//                               from `data` by construction) and the .updateMany
+//                               whose WHERE carries the free-lease predicate —
+//                               the compare-and-set the port requires to be ONE
+//                               statement                                       3
+//   src/privacy-tombstones.ts   erasureTombstone.createMany (seal), .updateMany
+//                               (extend) and .deleteMany (the retention sweep).
+//                               THREE and not four: the port's insert-then-extend
+//                               rule forbids a delete-then-insert, so there is no
+//                               delete on the seal path at all and the only
+//                               DELETE here cannot match a live row            3
+//                                                                        total = 6
+//
+// ITS SUITES CONTRIBUTE ZERO, and the reason is the same one every tranche above
+// gives with one addition. `privacy-constraints.integration.test.ts` plants rows
+// this store REFUSES to write — a `stores` whose JSON root is an object, a
+// `status` outside the enum — through `prisma db execute`, the ORM's own CLI,
+// which is runtime and out of this scanner's scope by construction; writing them
+// through this package's delegate would be writing them through the guard under
+// test. And `privacy-harness.ts` needs exactly ONE peer row, `Organization`,
+// which it obtains by CALLING the tenancy repository already in this directory —
+// so that statement is counted once, at its own source, among the 12.
+//
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 + 6 + 15 + 6 = 272. All
 // of tranche 5's stores landed in the ONE directory, so this pin is the SUM of
-// every enumeration above and no single branch's own figure — 215, 228, 204 or
-// 213 — survives the merge.
-const LIVE_TREE_WRITE_COUNT = 266;
+// every enumeration above and no single branch's own figure — 215, 228, 204,
+// 213 or 272's own +6 — survives the merge.
+const LIVE_TREE_WRITE_COUNT = 272;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1844,6 +1900,106 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
       "packages/adapters/postgres-tenancy",
     ]);
   }
+});
+
+test("only privacy's own two directories may write its two rows, and a third goes RED", () => {
+  // WIN-258 T5. The delegation this tranche adds is a PERMISSION, and a
+  // permission is only worth anything if the thing it does not permit goes red.
+  // BOTH rows are checked rather than a representative one, because the grant is
+  // per row and a map entry lost for a single model would otherwise sit here
+  // unnoticed behind a green case for the other.
+  //
+  // THE TRESPASSER IS `conversations`, DELIBERATELY, and it is the sharpest
+  // choice available. That context implements the kernel `ErasureTarget` this
+  // context's pass invokes, is delegated to the SAME adapter directory, and runs
+  // its own deletes inside the very `TransactionScope` this store's
+  // `updateProgress` is written under. Every ingredient for "it is right there,
+  // just write the receipt yourself" is present — and the gate refuses it,
+  // because the receipt is `privacy`'s row and being invited into somebody's
+  // transaction is not ownership of their table.
+  for (const [delegate, model] of [
+    ["erasureOperation", "ErasureOperation"],
+    ["erasureTombstone", "ErasureTombstone"],
+  ]) {
+    const root = fixture({
+      // A context that is NOT privacy, writing privacy's row through the ORM.
+      "packages/contexts/conversations/application/steal.ts":
+        `export async function run(db: any) {\n  await db.${delegate}.create({ data: {} });\n}\n`,
+      // And an ADAPTER that is not the delegate, writing the same row raw.
+      "packages/adapters/outbox/src/steal.ts":
+        `export async function run(db: any) {\n` +
+        `  await db.$executeRaw\`insert into "public"."${model}" (id) values ('x')\`;\n` +
+        `}\n`,
+    });
+    const result = checkWriteEnforcement(root);
+    assert.deepEqual(result.unattributable, []);
+    assert.equal(result.violations.length, 2, `${model} must be refused from BOTH trespassers`);
+    for (const violation of result.violations) {
+      assert.equal(violation.model, model);
+      // The refusal has to say WHERE the write may live, and both permitted
+      // directories are named — the context and its one delegate.
+      assert.deepEqual(violation.permitted, [
+        "packages/contexts/privacy",
+        "packages/adapters/postgres-tenancy",
+      ]);
+      assert.match(violation.message, /privacy is its sole writer/);
+    }
+    // And it has to name the directory that actually wrote it, or a reader
+    // cannot find the offending line.
+    assert.deepEqual(
+      result.violations.map((violation) => violation.actual).sort(),
+      ["packages/adapters/outbox", "packages/contexts/conversations"],
+    );
+  }
+});
+
+test("the SAME privacy writes from the delegate directory are permitted, and the grant is TWO rows wide", () => {
+  // The control for the case above. Same two rows, same two forms — a delegate
+  // call and a raw statement — moved into the one directory the map grants, and
+  // now there is no violation at all. Without this the RED case could be passing
+  // because the harness refuses everything rather than because the delegation is
+  // narrow and real.
+  const root = fixture({
+    "packages/adapters/postgres-tenancy/src/steal.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.erasureOperation.create({ data: {} });\n` +
+      `  await db.$executeRaw\`insert into "public"."ErasureTombstone" (id) values ('x')\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.writeCount, 2, "both writes must be SEEN, or the green is vacuous");
+
+  // And the grant is exactly TWO rows wide, not a licence over the schema.
+  // Pinned as a SET rather than a count, because a count is satisfied by any two
+  // rows and the point of the entry is WHICH two.
+  assert.equal(CANONICAL_STORE_ADAPTERS.privacy, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("privacy"), [
+    "packages/contexts/privacy",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  const privacyRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "privacy")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(privacyRows, ["ErasureOperation", "ErasureTombstone"]);
+  // The NEGATIVE that keeps this from reading as "the directory may write
+  // anything a sweep touches". An erasure DELETES `Memory`, `Turn` and
+  // `MessageAttachment`, and every one of those deletes is issued by the context
+  // that owns the row through the kernel's `ErasureTarget`. `files` is the owner
+  // this wave does not reach, so a write to `MessageAttachment` from either of
+  // privacy's two directories is still refused.
+  assert.equal(CANONICAL_STORE_ADAPTERS.files, undefined);
+  const refused = checkWriteEnforcement(
+    fixture({
+      "packages/contexts/privacy/application/steal.ts":
+        `export async function run(db: any) {\n  await db.messageAttachment.deleteMany({});\n}\n`,
+    }),
+  );
+  assert.equal(refused.violations.length, 1);
+  assert.equal(refused.violations[0].model, "MessageAttachment");
+  assert.deepEqual(refused.violations[0].permitted, ["packages/contexts/files"]);
 });
 
 test("a THIRD directory writing a `tools` row is refused, and the refusal names it", () => {

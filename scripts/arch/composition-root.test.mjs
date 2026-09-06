@@ -266,7 +266,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 37 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 38 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -346,9 +346,9 @@ test("the binding-table parser reads all THIRTY-NINE bindings, across twelve dir
   // and identity-access's — and WIN-258 M2.3 then gave tenancy's five
   // NON-REPOSITORY ports slots on the same directory that already satisfied
   // them, and WIN-258 T5 then added `providers`' one, `conversations`' four,
-  // `skills`' one and `memory`'s two.
-  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 = 27.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 27);
+  // `skills`' one, `memory`'s two and `privacy`'s one.
+  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 = 28.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 28);
   assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 12);
 });
 
@@ -425,7 +425,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 37 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 38 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

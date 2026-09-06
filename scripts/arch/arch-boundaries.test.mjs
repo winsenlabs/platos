@@ -910,13 +910,33 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               so four statements are raw SQL — in the same one home,
     //               attributed by the TABLE they name, and `src/client.ts` is
     //               still the only file in the layout that imports the ORM.
+    // + 14 (WIN-258 T5) — `privacy`'s canonical store, the THIRTEENTH owner:
+    //               SIX modules of source (the guards, the row mapping, the
+    //               refusal adapter, the operation half, the register half and
+    //               the composite), the harness, the shared conformance scenario
+    //               and SIX suites.
+    //               THE SIX SOURCE MODULES ARE THE §6 BUDGET SPENT ON A SEAM,
+    //               not a store spread thin: the split is by WHOSE ROWS a module
+    //               touches and by WHAT IT DOES, and the two halves are separate
+    //               because their FAILURES are — `refusePrivacy` answers
+    //               `PRIVACY_OPERATION_STORE_UNAVAILABLE` and `refuseRegister`
+    //               answers `PRIVACY_ERASURE_REGISTER_UNAVAILABLE`, and
+    //               `guard-subject-write.ts` REFUSES A WRITE on the second.
+    //               `packages/contexts/privacy` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME, and
+    //               this tranche does not strain it at all: every statement is a
+    //               delegate call, there is no raw SQL anywhere in the store, and
+    //               `src/client.ts` is still the only file in the layout that
+    //               imports the ORM.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
     //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 +
-    //               21 = 1402. No branch's own figure is right merged — 1344,
-    //               1348, 1345 and 1349 each under-count the others by their
-    //               whole tranche.
-    assert.equal(result.fileCount, 1402, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21);
+    //               21 + 14 = 1416. No branch's own figure is right merged —
+    //               1344, 1348, 1345, 1349 and 1355 each under-count the others
+    //               by their whole tranche.
+    assert.equal(result.fileCount, 1416, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
