@@ -60,7 +60,7 @@ test("build:v1 emits every project and clean:v1 removes every dist tree", () => 
 test("cleanup rejects an incomplete root project reference set", () => {
   const root = fixture();
   mutateJson(join(root, "tsconfig.json"), (config) => config.references.pop());
-  assert.throws(() => cleanV1(root), /exactly 32 V1 project references/u);
+  assert.throws(() => cleanV1(root), /exactly 33 V1 project references/u);
   assertAllSentinelsRemain(root);
 });
 
@@ -70,7 +70,7 @@ test("cleanup rejects direct retargeting to a non-V1 project before deletion", (
   mkdirSync(client, { recursive: true });
   writeFileSync(join(client, "tsconfig.json"), '{"compilerOptions":{"outDir":"dist"}}\n');
   mutateJson(join(root, "tsconfig.json"), (config) => { config.references[18].path = "./packages/platos-client"; });
-  assert.throws(() => cleanV1(root), /exact ordered 32-project V1 target set/u);
+  assert.throws(() => cleanV1(root), /exact ordered 33-project V1 target set/u);
   assertAllSentinelsRemain(root);
 });
 

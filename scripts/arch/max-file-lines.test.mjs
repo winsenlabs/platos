@@ -671,19 +671,33 @@ test("the live selectors scan an exact nonzero source census", () => {
   // branches reported a ZERO delta here, so this gate was in none of their
   // lists; the merged scan reads back 1452 + 16 = 1468.
   //
+  // WIN-259 (M2.4) 1468 -> 1483. FIFTEEN files: TEN in the new
+  // `packages/adapters/keyring-envelope` (six source, four suites), ONE in
+  // `packages/adapters/postgres-tenancy`, TWO in `packages/contexts/providers`
+  // and TWO in `packages/contexts/secrets`. 10 + 1 + 2 + 2 = 15.
+  //
+  // NONE OF THE FIFTEEN IS IN THE WARNING BAND, and the largest is the sweep's
+  // suite at 233 effective lines. That is worth stating for a tranche whose
+  // files carry the longest headers in the tree — the wire-vector fixture is
+  // 120 lines of which 47 are comment — because effective lines exclude
+  // comments and a reader comparing raw counts will find them very different.
+  //
   // NONE OF THE SEVEN IS IN THE WARNING BAND EITHER, and the largest is the
   // conversations suite at 350 effective lines. That is worth stating because
   // this tranche's files are the most heavily COMMENTED in the directory —
   // every pin carries the measurement it came from — and effective lines
   // exclude comments, so a reader comparing raw line counts with this figure
   // will find them very different and should.
-  assert.equal(result.fileCount, 1468);
+  assert.equal(result.fileCount, 1483);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 +
+      // WIN-259 (M2.4): keyring-envelope 10, postgres-tenancy 1, providers 2,
+      // secrets 2.
+      10 + 1 + 2 + 2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -712,7 +726,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // nowhere else: the plan dimension implements no port, so neither the kernel
   // nor the contexts term moves. 366 + 7 = 373, and the merged tranche's other
   // nine land in that same term: 366 + 16 = 382.
-  assert.equal(result.fileCount, 20 + 1060 + 382 + 6);
+  //
+  // WIN-259 (M2.4) MOVES BOTH THE ADAPTERS AND THE CONTEXTS TERM, which no
+  // tranche-5 store did. Adapters 382 -> 393: ten for the thirteenth directory
+  // and one for the postgres row. Contexts 1060 -> 1064: `providers` gains the
+  // eviction helper and its suite, `secrets` the sweep and its suite. The
+  // contexts term moves because this issue adds USE CASES rather than only
+  // implementing ports that already existed. Kernel and apps are untouched.
+  assert.equal(result.fileCount, 20 + 1064 + 393 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

@@ -1042,8 +1042,24 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `scripts/arch/env-access.mjs` read the same number back from
     //               their own scans of the same five roots, so the three can
     //               DISAGREE and be caught.
-    assert.equal(result.fileCount, 1503, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1);
+    //
+    // WIN-259 (M2.4) +15, ON TOP OF WIN-260'S 1503: 1503 + 15 = 1518. TEN in the
+    //               new `packages/adapters/keyring-envelope` (six source, four
+    //               suites), ONE in `packages/adapters/postgres-tenancy`, TWO in
+    //               `packages/contexts/providers` and TWO in
+    //               `packages/contexts/secrets`. This scan's roots are
+    //               packages/kernel, packages/contexts, packages/adapters,
+    //               apps/core-api and apps/mcp-stdio, so the thirteenth adapter
+    //               directory is inside it from the moment it exists and
+    //               `unknown-context-directory` polices it per FILE. The two
+    //               dimensions touch DISJOINT directories, which is why they
+    //               compose by addition rather than needing a re-count.
+    assert.equal(result.fileCount, 1518, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
+      // WIN-259 (M2.4): keyring-envelope 10, postgres-tenancy 1, providers 2,
+      // secrets 2. Written as four terms so a file deleted from one while
+      // another added cannot reach the same total.
+      10 + 1 + 2 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
