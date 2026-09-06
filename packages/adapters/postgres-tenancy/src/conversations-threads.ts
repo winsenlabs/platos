@@ -361,8 +361,10 @@ export function createThreadRepository(transactions: TenancyTransactions): Threa
         // supplies a value, and this method has none to supply. Taking a
         // compaction lock is not a user-visible change to a conversation, and
         // `Thread_environmentId_endUserId_updatedAt_idx` is the index a user's
-        // thread list is ordered by — so a background sweep that touched the
-        // column would silently reorder every list it passed over. This
+        // thread list is ordered by — and since WIN-258 T7,
+        // `Thread_environmentId_updatedAt_id_idx` is the one an OPERATOR's list
+        // is ordered by, so a background sweep that touched the column would
+        // silently reorder every list it passed over, on either surface. This
         // statement names the two columns it means to write and no others, and
         // `conversations-conformance.integration.test.ts` caught the bump the
         // first time round.
