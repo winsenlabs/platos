@@ -187,11 +187,15 @@ describe("four rules freeze a column the row may not change", () => {
     ).rejects.toThrow();
     // The row is still exactly what was appended, which is the property "an
     // unauditable mutation does not happen" ultimately rests on.
+    // `createdAt` is asserted too, and that is not decoration: the column
+    // defaults to `CURRENT_TIMESTAMP`, so a store that dropped the draft's
+    // instant would stamp the wall clock and every audit row would be
+    // un-correlatable with the mutation it evidences.
     const row = await harness.base.client.credentialAudit.findUnique({
       where: { id: auditId },
-      select: { outcome: true, action: true },
+      select: { outcome: true, action: true, createdAt: true },
     });
-    expect(row).toEqual({ outcome: "SUCCESS", action: "CREATE" });
+    expect(row).toEqual({ outcome: "SUCCESS", action: "CREATE", createdAt: AT });
   });
 
   test("EnvironmentVariable_owner_immutable refuses a re-key", async () => {

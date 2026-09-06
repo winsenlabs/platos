@@ -1591,8 +1591,23 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   secrets-variable-constraints.integration     7  the variable's three CHECKs
  *     .test.ts                                      and the two guards standing
  *                                                   where no CHECK does
+ *   secrets-scope.integration.test.ts            5  the clauses that decide
+ *                                                   WHICH ROW a call reaches:
+ *                                                   the environment clause on
+ *                                                   the row lock, the total
+ *                                                   order under a non-unique
+ *                                                   query, and the purge sweep's
+ *                                                   retention window, cutoff and
+ *                                                   `FOR UPDATE OF version`
  *
- * SIX OF THE SEVEN ARE EXCLUDED from the package's default `test` script by
+ * THE EIGHTH FILE EXISTS BECAUSE OF THE SWEEP, exactly as `cost-idempotency`
+ * did one store over. Six of the store's clauses had no named case anywhere in
+ * the tree -- each was falsifiable only through a transcript that happened to
+ * differ, or not at all -- so they are five named cases in a file of their own
+ * rather than five more observations in a conformance run that could not see
+ * them.
+ *
+ * SEVEN OF THE EIGHT ARE EXCLUDED from the package's default `test` script by
  * filename and run by the `postgres-tenancy-repository` CI job, exactly as the
  * other three tranche-5 stores' suites are.
  *
@@ -1601,12 +1616,12 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * merged, and side-picking one would under-count the others by their whole
  * tranche:
  *
- *   packages/adapters/postgres-tenancy   20 -> 46 files,  199 -> 452 cases
+ *   packages/adapters/postgres-tenancy   20 -> 47 files,  199 -> 457 cases
  *
- * 20 + 6 + 6 + 7 + 7 = 46 files and 199 + 59 + 60 + 65 + 69 = 452 cases. The
- * tree total is 391 + 26 = 417 files and 6115 + 253 = 6368 cases. The adapters
- * term of the three-way identity carries all twenty-six, because every added
- * file is an adapter's: 46 + 19 = 65, and 349 + 3 + 65 = 417.
+ * 20 + 6 + 6 + 7 + 8 = 47 files and 199 + 59 + 60 + 65 + 74 = 457 cases. The
+ * tree total is 391 + 27 = 418 files and 6115 + 258 = 6373 cases. The adapters
+ * term of the three-way identity carries all twenty-seven, because every added
+ * file is an adapter's: 47 + 19 = 66, and 349 + 3 + 66 = 418.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1617,7 +1632,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 46, cases: 452 },
+  "packages/adapters/postgres-tenancy": { files: 47, cases: 457 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1779,13 +1794,13 @@ export const EXPECTED = Object.freeze({
  * `agents-rows.test.ts`) run in the ordinary package test script, because
  * neither module has a database in it.
  *
- * 6299 -> 6368: the 69 `secrets` cases of WIN-258 tranche 5, enumerated file by
- * file in the block beside the postgres-tenancy row. 51 of the 69 are in the six
- * suites the package's default `test` script excludes by filename; the other 18
- * (`secrets-rows.test.ts`) run in it, because the row readers and the nine write
- * guards are pure and need no database at all.
+ * 6299 -> 6373: the 74 `secrets` cases of WIN-258 tranche 5, enumerated file by
+ * file in the block beside the postgres-tenancy row. 56 of the 74 are in the
+ * seven suites the package's default `test` script excludes by filename; the
+ * other 18 (`secrets-rows.test.ts`) run in it, because the row readers and the
+ * nine write guards are pure and need no database at all.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6368;
+export const EXPECTED_RUNTIME_TOTAL = 6373;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
