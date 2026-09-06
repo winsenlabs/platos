@@ -97,6 +97,25 @@ function quoted(value: string): string {
   return `'${value.replaceAll("'", "''")}'`;
 }
 
+/**
+ * Assert that the database — not a guard — refused the write, and say which rule.
+ *
+ * *** THE PRISMA CLI DOES NOT SURFACE THE SQLSTATE. Measured on this container:
+ * `db execute` prints `Error: ERROR: new row for relation "Macro" violates check
+ * constraint "Macro_steps_json_root"` and the DETAIL line, and NOTHING else — no
+ * `23514` anywhere in stdout or stderr. That is the opposite of the lesson the
+ * driver taught the earlier tranches, where the rule's message was gone by the
+ * time the adapter saw the error and only the SQLSTATE survived. Out of band it
+ * is the NAME that survives, so the name is what is matched on — and because
+ * every `_json_root` constraint is named for its own column, two refusals still
+ * cannot be mistaken for one another.
+ */
+function refusedBy(refusal: { readonly ok: boolean; readonly output: string }, constraint: string) {
+  expect(refusal.ok).toBe(false);
+  expect(refusal.output).toContain("violates check constraint");
+  expect(refusal.output).toContain(constraint);
+}
+
 /** Rewrite one row's JSON column out of band, keyed on its primary key. */
 function setJson(model: string, column: string, id: string, json: string) {
   return outOfBand(
@@ -215,44 +234,40 @@ describe("the interior a CHECK does not reach, written out of band", () => {
 describe("the roots a CHECK does reach: the DATABASE does the refusing", () => {
   test("Macro.steps cannot hold a scalar root", async () => {
     const macro = await harness.seedMacro({ name: "t7-root-steps" });
-    const refusal = setJson("Macro", "steps", macro.macroId, '"not an array"');
-    expect(refusal.ok).toBe(false);
-    // 23514 AND the constraint's own name. Matching the message alone would pass
-    // on any failed statement, including one that failed on a misspelled table.
-    expect(refusal.output).toContain("23514");
-    expect(refusal.output).toContain("Macro_steps_json_root");
+    refusedBy(setJson("Macro", "steps", macro.macroId, '"not an array"'), "Macro_steps_json_root");
   });
 
   test("Macro.paramSchema cannot hold an array root", async () => {
     const macro = await harness.seedMacro({ name: "t7-root-schema" });
-    const refusal = setJson("Macro", "paramSchema", macro.macroId, "[1,2]");
-    expect(refusal.ok).toBe(false);
-    expect(refusal.output).toContain("Macro_paramSchema_json_root");
+    refusedBy(setJson("Macro", "paramSchema", macro.macroId, "[1,2]"), "Macro_paramSchema_json_root");
   });
 
   test("AgentCluster.metadata cannot hold a number root", async () => {
     const cluster = await harness.seedCluster({ slug: "t7-root-cluster" });
-    const refusal = setJson("AgentCluster", "metadata", cluster.clusterId, "3");
-    expect(refusal.ok).toBe(false);
-    expect(refusal.output).toContain("AgentCluster_metadata_json_root");
+    refusedBy(
+      setJson("AgentCluster", "metadata", cluster.clusterId, "3"),
+      "AgentCluster_metadata_json_root",
+    );
   });
 
   test("PostmanTemplate.sessionContext cannot hold an array root", async () => {
     const template = await harness.seedTemplate({ name: "t7-root-template", agent });
-    const refusal = setJson("PostmanTemplate", "sessionContext", template.templateId, "[]");
-    expect(refusal.ok).toBe(false);
-    expect(refusal.output).toContain("PostmanTemplate_sessionContext_json_root");
+    refusedBy(
+      setJson("PostmanTemplate", "sessionContext", template.templateId, "[]"),
+      "PostmanTemplate_sessionContext_json_root",
+    );
   });
 
   test("Event.payload cannot be INSERTED with an array root", () => {
     // The kernel outbox's column, refused on the way IN rather than on an update,
-    // because the drain's own reader is the one this evidence stands behind.
-    const refusal = outOfBand(
-      `INSERT INTO "Event" ("id", "environmentId", "eventType", "subjectId", "payload", "createdAt")
-       VALUES (gen_random_uuid(), ${quoted(HOME_ENVIRONMENT)}, 't7.probe', NULL, '[]'::jsonb, now());`,
+    // because the drain's own reader is what this evidence stands behind.
+    refusedBy(
+      outOfBand(
+        `INSERT INTO "Event" ("id", "environmentId", "eventType", "subjectId", "payload", "createdAt")
+         VALUES (gen_random_uuid(), ${quoted(HOME_ENVIRONMENT)}, 't7.probe', NULL, '[]'::jsonb, now());`,
+      ),
+      "Event_payload_json_root",
     );
-    expect(refusal.ok).toBe(false);
-    expect(refusal.output).toContain("Event_payload_json_root");
   });
 
   test("the refusals are the CHECKs and not the columns: a valid root is accepted", async () => {
