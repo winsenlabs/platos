@@ -15,8 +15,10 @@ import {
   DATABASE_URL_INVALID,
   FOREIGN_KEY_VIOLATION_CODE,
   isForeignKeyViolation,
+  isRecordNotFound,
   isUniqueViolation,
   POOL_SETTING_INVALID,
+  RECORD_NOT_FOUND_CODE,
   UNIQUE_VIOLATION_CODE,
 } from "./client.js";
 
@@ -156,10 +158,28 @@ describe("driver error classification", () => {
     expect(isForeignKeyViolation({ code: UNIQUE_VIOLATION_CODE })).toBe(false);
   });
 
+  test("recognises the record-not-found code and nothing else", () => {
+    // WIN-258 T7. This one carries more weight than its two neighbours: it is
+    // what `secrets-variables.ts` reads "somebody else got there first" from, so
+    // a classification that answered by MESSAGE would turn every other P-coded
+    // failure whose text happens to say "not found" into a version conflict.
+    expect(isRecordNotFound({ code: RECORD_NOT_FOUND_CODE })).toBe(true);
+    expect(isRecordNotFound({ code: UNIQUE_VIOLATION_CODE })).toBe(false);
+    expect(isRecordNotFound({ code: FOREIGN_KEY_VIOLATION_CODE })).toBe(false);
+    expect(isRecordNotFound(new Error("An operation failed because it depends on one or more records that were required but not found."))).toBe(
+      false,
+    );
+  });
+
+  test("the three driver codes are distinct, so one cannot be read as another", () => {
+    expect(new Set([UNIQUE_VIOLATION_CODE, FOREIGN_KEY_VIOLATION_CODE, RECORD_NOT_FOUND_CODE]).size).toBe(3);
+  });
+
   test("survives every shape that is not an object with a string code", () => {
     for (const value of [null, undefined, 7, "P2002", { code: 2002 }, []]) {
       expect(isUniqueViolation(value)).toBe(false);
       expect(isForeignKeyViolation(value)).toBe(false);
+      expect(isRecordNotFound(value)).toBe(false);
     }
   });
 });
