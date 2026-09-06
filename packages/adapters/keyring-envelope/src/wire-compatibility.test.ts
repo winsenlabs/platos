@@ -142,6 +142,41 @@ describe("format 1 wire compatibility with the extraction source", () => {
     expect(opened.value.reveal()).toBe(vector.plaintext);
   });
 
+  // FOUND BY A SURVIVING MUTANT. Changing `cipher.update(plaintext, "utf8")` to
+  // `"latin1"` on the SEAL side survived every case above, because the three
+  // non-ASCII bytes in the tree were only ever OPENED — vector three is a fixture
+  // this adapter reads and never writes, and every plaintext it seals was ASCII,
+  // where the two encodings agree byte for byte. So the write side's encoding was
+  // untested, and a mis-encoded seal is silent: it round-trips inside a process
+  // that makes the same mistake twice and produces mojibake the day anything else
+  // reads the row.
+  it("seals and re-opens multi-byte UTF-8, a newline and a tab", async () => {
+    const vector = WIRE_VECTORS[2] as WireVector;
+    const { ring, handle } = handleFor(vector);
+    const cipher = createEnvelopeCipher(ring);
+    const binding = bindingOf(vector);
+
+    const sealed = await cipher.seal({
+      key: handle,
+      binding,
+      plaintext: { reveal: () => vector.plaintext, toJSON: () => "x", toString: () => "x" },
+    });
+    expect(sealed.ok).toBe(true);
+    if (!sealed.ok) return;
+
+    // The ciphertext is as long as the UTF-8 ENCODING, not as long as the string.
+    // GCM is a stream cipher, so `ciphertext.length` is exactly the byte count —
+    // which is what says the seal encoded 8 characters of `éàü` as more than 8
+    // bytes rather than truncating each to one.
+    expect(sealed.value.ciphertext).toHaveLength(Buffer.byteLength(vector.plaintext, "utf8"));
+    expect(sealed.value.ciphertext.length).toBeGreaterThan(vector.plaintext.length);
+
+    const opened = await cipher.open({ key: handle, binding, envelope: sealed.value });
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
   it("draws a fresh salt and nonce for every seal", async () => {
     const vector = WIRE_VECTORS[0] as WireVector;
     const { ring, handle } = handleFor(vector);

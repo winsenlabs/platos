@@ -40,6 +40,7 @@ const SAMPLES = [
   errors.generationAborted("caller signalled abort"),
   errors.messageNotRepresentable("system", "image"),
   errors.passBudgetInvalid(0),
+  errors.probeCacheNotEvicted("openai", 300),
 ];
 
 describe("the catalogue", () => {
