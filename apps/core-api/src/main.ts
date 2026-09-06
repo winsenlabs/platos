@@ -1,10 +1,18 @@
 // The process entry point.
 //
-// This is the ONE file entitled to assume it is a process: to read the ambient
-// environment, install signal handlers and choose an exit code. Everything it
-// calls is a function over explicit inputs, which is why the same code paths run
-// under the test runner without a signal, a port collision or a `process.exit`
-// taking the runner down with it.
+// This is the ONE file entitled to assume it is a process: to install signal
+// handlers and choose an exit code. Everything it calls is a function over
+// explicit inputs, which is why the same code paths run under the test runner
+// without a signal, a port collision or a `process.exit` taking the runner down
+// with it.
+//
+// IT NO LONGER READS THE ENVIRONMENT ITSELF (WIN-260). It used to, and the
+// banner used to say so; `config/environment.ts` now holds the one environment
+// read in V1 feature code, and `scripts/arch/env-access.mjs` fails the build on
+// any other. The read moved to the configuration contract's edge because that is
+// where the schema saying what a valid environment looks like already lives, and
+// because a gate whose single documented exception is a configuration module is
+// a gate a reader can check. `main()` calls it and passes the snapshot onward.
 //
 // EXIT CODES ARE PART OF THE CONTRACT. An orchestrator distinguishes "this will
 // never work, stop restarting me" from "something broke, try again", and a
@@ -20,11 +28,14 @@ import "reflect-metadata";
 
 import { pathToFileURL } from "node:url";
 
-import { loadCoreApiConfiguration, renderStartupFailure } from "./config/load.js";
+import { readProcessEnvironment } from "./config/environment.js";
+import { renderStartupFailure } from "./config/load.js";
+import { loadPlatformConfiguration } from "./config/platform.js";
 import { createProcessDefaults, startCoreApi } from "./runtime/lifecycle.js";
 
 export { composeApplication, type AppModule } from "./app.module.js";
 export { startCoreApi, type RunningCoreApi } from "./runtime/lifecycle.js";
+export { loadPlatformConfiguration, type PlatformConfiguration } from "./config/platform.js";
 
 export const EXIT_OK = 0;
 export const EXIT_FAULT = 1;
@@ -39,7 +50,11 @@ export interface MainIo {
 }
 
 export async function runProcess(io: MainIo): Promise<number> {
-  const outcome = loadCoreApiConfiguration(io.env);
+  // ALL SIX SECTIONS, BEFORE ANYTHING IS CONSTRUCTED. WIN-260 widened this from
+  // the core section to the whole platform contract, so a malformed store URL or
+  // a durable endpoint with no key is refused here rather than at first use. The
+  // diagnostic names every bad variable across every section in one pass.
+  const outcome = loadPlatformConfiguration(io.env);
   if (!outcome.ok) {
     // Fail closed: nothing has been constructed, no port has been bound, and the
     // diagnostic carries no secret value (config/load.ts owns that guarantee).
@@ -47,7 +62,10 @@ export async function runProcess(io: MainIo): Promise<number> {
     return EXIT_CONFIGURATION;
   }
 
-  const configuration = outcome.value;
+  // `startCoreApi` takes the CORE section. The other five are validated above and
+  // are what the composition root will hand each adapter when it constructs one;
+  // today it constructs none, and `app.module.ts` says so where that is decided.
+  const configuration = outcome.value.core;
   let running;
   try {
     running = await startCoreApi({ configuration });
@@ -78,7 +96,7 @@ export async function runProcess(io: MainIo): Promise<number> {
 
 async function main(): Promise<void> {
   const code = await runProcess({
-    env: process.env,
+    env: readProcessEnvironment(),
     writeError: (text) => process.stderr.write(text),
   });
   // Explicit rather than letting the loop empty: a stray unref'd timer or an

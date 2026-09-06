@@ -14,6 +14,7 @@ import { pathToFileURL } from "node:url";
 
 import type { ToolsContract } from "@platos/context-tools";
 
+import { readProcessEnvironment } from "./environment.js";
 import {
   EXIT_CONFIGURATION,
   EXIT_FAULT,
@@ -107,7 +108,7 @@ async function main(): Promise<void> {
   }
   let code = EXIT_FAULT;
   try {
-    code = await runStdio({ env: process.env, io, input: process.stdin });
+    code = await runStdio({ env: readProcessEnvironment(), io, input: process.stdin });
   } catch (error) {
     io.writeError(`mcp-stdio faulted: ${error instanceof Error ? error.message : "unknown error"}\n`);
   }
