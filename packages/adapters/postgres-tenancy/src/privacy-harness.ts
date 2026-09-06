@@ -4,13 +4,13 @@
 //
 // ONE PEER ROW. `ErasureOperation.organizationId` and
 // `ErasureTombstone.organizationId` are the ONLY foreign keys either table
-// carries, and no `enforce_domain_ancestry` trigger fires on either. Compare
-// `memory-harness.ts`, whose one table demands an environment under a project
-// under an organization plus an end user plus an agent plus a cluster plus a
-// binding. This context's whole design is that its rows point at nobody: the
-// receipt documents a person's destruction WITHOUT recording who they were, so
-// there is no subject row for it to hang off, and every other identifier on it is
-// a salted digest that references nothing.
+// carries, and the `enforce_domain_ancestry` database RULE fires on neither.
+// Compare `memory-harness.ts`, whose one table demands an environment under a
+// project under an organization plus an end user plus an agent plus a cluster
+// plus a binding. This context's whole design is that its rows point at nobody:
+// the receipt documents a person's destruction WITHOUT recording who they were,
+// so there is no subject row for it to hang off, and every other identifier on
+// it is a salted digest that references nothing.
 //
 // AND THE ORGANIZATION GOES THROUGH THE PORT. `Organization` is `tenancy`'s row
 // and `tenancy`'s canonical store is this same directory (ADR M0.3 §15), so a
@@ -27,11 +27,11 @@
 // CLI, which is runtime and therefore outside the sole-writer scanner's scope by
 // construction.
 //
-// `nextRetryAt` IS SPELLED `nextAttemptAt` IN EVERY SQL STRING BELOW, and that
-// is not a typo to be tidied. The schema carries `@map("nextAttemptAt")`, so the
-// Prisma field and the column have different names — the one place in this
-// context where a hand-written statement and a delegate call cannot use the same
-// word.
+// THE PHYSICAL COLUMN BEHIND `nextRetryAt` IS NAMED DIFFERENTLY, and a
+// hand-written statement has to use the physical name where a delegate call uses
+// the Prisma field. It is the one place in this context where the two spellings
+// diverge; `schema.prisma`'s `@map` on that field is the authority, and nothing
+// in this file or its suites writes that column by hand.
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";

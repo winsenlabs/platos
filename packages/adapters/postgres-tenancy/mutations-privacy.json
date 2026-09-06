@@ -53,6 +53,29 @@
     "gate sweep without rebuilding reproduces exactly the condition that made",
     "tranche 1's first sweep report 22 vacuous kills."
   ],
+  "result": [
+    "34 entries, 34 KILLED, 0 VACUOUS, and the 2 declared survivors survived.",
+    "Baseline 76 executed cases, green. Run on the Mac mini against a real",
+    "PostgreSQL in a container, at 78f9b24c.",
+    "",
+    "THE FIRST SWEEP FOUND ONE GENUINELY UNFALSIFIABLE GUARD, which is the whole",
+    "reason a sweep is worth running. M-P14 deletes the stored-scope LEVEL check",
+    "and the case that stood for it stayed GREEN — because its witness was",
+    "`{ level: \"entity\", organizationId }` with no `projectId`, so the NEXT clause",
+    "refused it under the SAME code and the case could not tell which clause had",
+    "fired. A guard another guard's refusal covers is a guard nothing is holding.",
+    "`privacy-rows.test.ts`'s 25th case plants a level outside the three with EVERY",
+    "id present, so only the level check can refuse it, and M-P14 now dies.",
+    "",
+    "AND IT FOUND FOUR MUTATIONS THAT WERE TYPE-INVALID RATHER THAN SURVIVABLE.",
+    "The driver scored them BUILD-FAIL — nothing ran, so neither a kill nor a",
+    "survival, which is the honest classification and not a pass. `readWorkStatus`",
+    "and `readJsonArray` return narrowed types their guards produce, so deleting",
+    "the guard alone does not compile; a bare `throw error;` makes the conflict",
+    "mapping unreachable; and `[].values()` infers `never`. Each is restated above",
+    "as an edit the compiler accepts that removes the same check, and all four then",
+    "died. A mutation the compiler refuses is a mutation that has not been scored."
+  ],
   "mutations": [
     {
       "name": "M-P01 guards: the @db.Uuid check on every identifier",

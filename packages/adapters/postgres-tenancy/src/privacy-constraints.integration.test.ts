@@ -480,9 +480,9 @@ describe("what the schema will NOT protect, reported rather than claimed", () =>
     ).resolves.toBe(true);
   });
 
-  test("no ancestry trigger fires on either table, which is why the fixture needs one peer row", async () => {
-    // `enforce_domain_ancestry` fires on forty-odd tables and on NEITHER of
-    // these. That is a fact about this context's design rather than an omission:
+  test("no ancestry RULE fires on either table, which is why the fixture needs one peer row", async () => {
+    // The `enforce_domain_ancestry` database rule fires on forty-odd tables and on
+    // NEITHER of these. That is a fact about this context's design rather than an omission:
     // the receipt documents a person's destruction WITHOUT recording who they
     // were, so there is no subject row for it to hang off and no environment for
     // an ancestry rule to resolve. Compare `memory-harness.ts`, whose one table

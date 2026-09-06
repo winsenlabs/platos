@@ -217,7 +217,7 @@ export function guardOperationProgress(progress: {
   }
   requireNullableInstant("ErasureOperation.startedAt", progress.startedAt);
   requireNullableInstant("ErasureOperation.completedAt", progress.completedAt);
-  requireNullableInstant("ErasureOperation.nextAttemptAt", progress.nextRetryAt);
+  requireNullableInstant("ErasureOperation.nextRetryAt", progress.nextRetryAt);
   requireNullableInstant("ErasureOperation.leaseExpiresAt", progress.leaseExpiresAt);
   requireLeasePair(progress.leaseToken, progress.leaseExpiresAt);
 }
