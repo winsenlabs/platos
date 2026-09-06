@@ -29,6 +29,12 @@ const FACTORIES: readonly (readonly [string, () => { code: string }])[] = [
   ["MEMORY_EXTRACTION_JUDGE_UNAVAILABLE", () => errors.extractionJudgeUnavailable("no key")],
   ["MEMORY_EXTRACTION_ENVELOPE_INVALID", () => errors.extractionEnvelopeInvalid("prose")],
   ["MEMORY_CACHE_UNAVAILABLE", () => errors.cacheUnavailable("down")],
+  // WIN-260 (M2.5). The two refusals the `Cache` port asks an implementation to
+  // make and that nothing enforced while the port had no implementation: a write
+  // whose TTL is not a positive whole number of seconds, and a namespace sweep
+  // whose prefix is blank.
+  ["MEMORY_CACHE_TTL_INVALID", () => errors.cacheTtlInvalid(0)],
+  ["MEMORY_CACHE_NAMESPACE_INVALID", () => errors.cacheNamespaceInvalid()],
   ["MEMORY_REPOSITORY_UNAVAILABLE", () => errors.repositoryUnavailable("down")],
 ];
 

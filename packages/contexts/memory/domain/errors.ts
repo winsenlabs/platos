@@ -50,6 +50,8 @@ export const MEMORY_ERROR_CODES = [
   "MEMORY_EXTRACTION_JUDGE_UNAVAILABLE",
   "MEMORY_EXTRACTION_ENVELOPE_INVALID",
   "MEMORY_CACHE_UNAVAILABLE",
+  "MEMORY_CACHE_TTL_INVALID",
+  "MEMORY_CACHE_NAMESPACE_INVALID",
   "MEMORY_REPOSITORY_UNAVAILABLE",
 ] as const;
 
@@ -262,6 +264,42 @@ export function cacheUnavailable(reason: string): DomainError {
     retryAfterSeconds: 5,
     details: { reason },
   });
+}
+
+/**
+ * A cache entry whose TTL is not a positive whole number of seconds.
+ *
+ * WIN-260 (M2.5). The `Cache` port's second property is that "every write
+ * carries its TTL... there is no `set` without one and no server-side default",
+ * and until the port had an implementation nothing enforced it. Redis refuses a
+ * non-positive `EX` with a driver error that names no key, so without this the
+ * refusal would reach a caller as MEMORY_CACHE_UNAVAILABLE — a caller defect
+ * reported as an outage, and a caller that retried would retry forever.
+ */
+export function cacheTtlInvalid(ttlSeconds: number): DomainError {
+  return domainError(
+    "MEMORY_CACHE_TTL_INVALID",
+    "invalid_input",
+    "a cache entry TTL must be a positive whole number of seconds",
+    { details: { ttlSeconds } },
+  );
+}
+
+/**
+ * `deleteNamespace` was given a blank prefix.
+ *
+ * WIN-260 (M2.5). The port says outright that an implementation "MUST NOT expose
+ * a general pattern match: `deleteNamespace(\"\")` would be a flush of the whole
+ * keyspace". Its own code, because the refusal is a rule about what the port
+ * means rather than about what Redis does — a second adapter would have to make
+ * the same refusal, and it must make it under the same name.
+ */
+export function cacheNamespaceInvalid(): DomainError {
+  return domainError(
+    "MEMORY_CACHE_NAMESPACE_INVALID",
+    "invalid_input",
+    "a namespace prefix must be non-empty; a blank one would clear the whole keyspace",
+  );
 }
 
 export function repositoryUnavailable(reason: string): DomainError {

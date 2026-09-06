@@ -1119,6 +1119,9 @@ importers:
       '@platos/context-tools':
         specifier: workspace:*
         version: link:../../contexts/tools
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
       '@platos/tenancy-database':
         specifier: workspace:*
         version: link:../../../internal-packages/tenancy-database
@@ -1129,9 +1132,19 @@ importers:
 
   packages/adapters/redis-cache:
     dependencies:
+      '@platos/context-jobs':
+        specifier: workspace:*
+        version: link:../../contexts/jobs
       '@platos/context-memory':
         specifier: workspace:*
         version: link:../../contexts/memory
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
+    devDependencies:
+      '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
 
   packages/adapters/redis-ratelimit:
     dependencies:

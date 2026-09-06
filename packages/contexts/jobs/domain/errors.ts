@@ -102,6 +102,9 @@ export const JOBS_ERROR_CODES = [
   "JOBS_APPROVAL_SUSPENSION_UNAVAILABLE",
   "JOBS_REPOSITORY_UNAVAILABLE",
   "JOBS_ERASURE_PLAN_FOREIGN",
+  "JOBS_IDEMPOTENCY_RECORD_ABSENT",
+  "JOBS_IDEMPOTENCY_RECORD_MALFORMED",
+  "JOBS_IDEMPOTENCY_REPLAY_CODE_UNPROMISED",
 ] as const;
 
 export type JobsMintedErrorCode = (typeof JOBS_ERROR_CODES)[number];
@@ -146,6 +149,47 @@ export function idempotencyConflict(): DomainError {
 /** Live status 409. The same body is still running under this request id. */
 export function idempotencyInProgress(): DomainError {
   return domainError("IDEMPOTENCY_IN_PROGRESS", "conflict", "an identical request is still in progress");
+}
+
+// --- WIN-260: the three unreadable-reservation refusals ---------------------
+//
+// All three are `conflict`, and that is deliberate: a reservation exists under
+// this request id and cannot be honoured, so retrying the SAME id will keep
+// getting the same answer until it expires. The STATUS being shared is fine; the
+// CODE being shared was not. Until WIN-260 all three left through
+// `idempotencyConflict()`, which also carries the genuine "same id, different
+// body" — four incidents, one code, indistinguishable in a log and to a caller.
+
+/** The key was held a moment ago and the record was gone when it was read. */
+export function idempotencyRecordAbsent(): DomainError {
+  return domainError(
+    "JOBS_IDEMPOTENCY_RECORD_ABSENT",
+    "conflict",
+    "the reservation for this request id was held but had gone by the time it was read",
+  );
+}
+
+/** The record was present and is not a reservation this version can read. */
+export function idempotencyRecordMalformed(): DomainError {
+  return domainError(
+    "JOBS_IDEMPOTENCY_RECORD_MALFORMED",
+    "conflict",
+    "the reservation for this request id did not decode to a reservation",
+  );
+}
+
+/**
+ * The record decodes and holds a cached failure whose code is outside the closed
+ * set. Refused rather than replayed: M0.4 §2 makes the execution codes a contract
+ * and handing back one that is not in it would put an unrecognisable code on the
+ * wire under a contract that says the set is closed.
+ */
+export function idempotencyReplayCodeUnpromised(): DomainError {
+  return domainError(
+    "JOBS_IDEMPOTENCY_REPLAY_CODE_UNPROMISED",
+    "conflict",
+    "the cached failure for this request id names a code outside the promised set",
+  );
 }
 
 /** Live status 503. The reservation store could not be reached — fail CLOSED. */

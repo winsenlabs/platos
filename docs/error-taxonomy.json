@@ -1,0 +1,3073 @@
+{
+  "version": 1,
+  "purpose": "WIN-260 (M2.5). The canonical failure taxonomy: every SCREAMING_SNAKE code any of the 17 bounded contexts mints, the ErrorCategory it carries, and the HTTP status a transport answers with. M0.4 section 2 makes a code immutable within a major and the kernel's vo/error.ts says the code-to-status table belongs to WIN-260; this is that table. It is DATA rather than a derivation so that scripts/error-taxonomy.mjs can join it to three things it does not control - the 17 contexts' mint sites, apps/core-api/src/transports/error-status.ts, and the kernel's own ErrorCategory union - and fail when any two disagree.",
+  "procedure": "Adding a code: mint it in the owning context, run `pnpm generate:error-taxonomy`, then CHOOSE its status. The generator writes a new code with status null on purpose - a generator that invented the status would make rule E9 unfalsifiable. Removing a code: delete the mint site and regenerate; a stale entry fails E2. Changing a status: change apps/core-api/src/transports/error-status.ts and regenerate, so the two files move together.",
+  "rules": {
+    "E1": "every minted code has an entry here",
+    "E2": "every entry here names a code some context mints",
+    "E3": "the category here matches the category at the mint site",
+    "E4": "the status here matches what apps/core-api/src/transports/error-status.ts resolves",
+    "E5": "that module's category table covers the kernel ErrorCategory union exactly",
+    "E6": "every function that raises one code twice with identical arguments is registered in uniformGuards, with the reason the answers must be indistinguishable",
+    "E7": "every uniformGuards entry still describes a live guard",
+    "E8": "every STATUS_OVERRIDES entry names a code some context mints",
+    "E9": "every entry carries a status, and one its category permits",
+    "E10": "every entry records the contexts that mint the code"
+  },
+  "uniformity": "A repeated raise is not by itself a defect. `admitBudget` refuses six different fields under COST_BUDGET_INVALID and attaches a distinct FieldViolation to each, so the guards are distinguishable at runtime even though the code is shared. What is a defect is a repeated raise with IDENTICAL arguments, because nothing then separates the two answers - that is how four facts hid behind one IDEMPOTENCY_CONFLICT in jobs, and how two defects hid behind one code in privacy and in identity-access. Some identical repeats are nevertheless REQUIRED: identity-access answers one INVALID_MFA_CODE for every way a second factor can fail, precisely so a caller cannot learn which guess got closer. Those are the entries below, each with the reason.",
+  "codes": {
+    "ACCESS_KEY_ROTATION_SUPERSEDED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "AGENTS_AGENT_ALREADY_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_AGENT_METADATA_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_AGENT_NOT_BOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_AGENT_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_CANARY_ABSENT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_CLUSTER_ALREADY_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_CLUSTER_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_MACRO_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_MACRO_NOT_EDITABLE": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_MACRO_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_MACRO_RECORDING_UNKNOWN": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_PROVIDER_KEY_UNAVAILABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_ROUTE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_ROUTE_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_SKILL_NOT_LOADED": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_TEMPLATE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_TEMPLATE_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_VERSION_INVALID": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "AGENTS_VERSION_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "agents"
+      ]
+    },
+    "BOOTSTRAP_GRANT_UNAVAILABLE": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "CHANNELS_ADAPTER_REJECTED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_ADAPTER_UNAUTHORIZED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_ADAPTER_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_APP_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_CONNECTION_DISABLED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_CONNECTION_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_ERASURE_PLAN_FOREIGN": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_EVENT_DUPLICATE": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_EVENT_LEASE_LOST": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_EVENT_NOT_CLAIMABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_EVENT_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_EVENT_PAYLOAD_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_INSTALLATION_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_INSTALLATION_REVOKED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_REFRESH_LOST": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_REFRESH_NOT_CLAIMABLE": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_REFRESH_REPAIR_REQUIRED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_ROUTING_AGENT_UNKNOWN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_ROUTING_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_ROUTING_UNRESOLVED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_THREAD_KEY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_THREAD_LINK_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CONVERSATIONS_AGENT_NOT_VISIBLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_AGENT_VERSION_NOT_VISIBLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_ATTACHMENT_COUNT_EXCEEDED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_ATTACHMENT_FOREIGN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_ATTACHMENT_MEDIA_TYPE_REFUSED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_ATTACHMENT_TOO_LARGE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_ATTACHMENT_TURN_TOO_LARGE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_BUDGET_EXHAUSTED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_COMPACTION_CURSOR_REGRESSED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_COMPACTION_IN_PROGRESS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_COMPACTION_LOCK_HELD": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_COMPACTION_SUMMARY_TOO_LONG": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_ERASURE_PLAN_FOREIGN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_FORK_CEILING_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_FORK_DEPTH_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_FORK_TURN_FOREIGN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_GENERATION_FAILED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_OUTPUT_SCHEMA_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_OUTPUT_UNPARSABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_PAGE_REQUEST_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_POSTMAN_ALREADY_SETTLED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_POSTMAN_FINGERPRINT_MISMATCH": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_POSTMAN_HANDLE_EXPIRED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_POSTMAN_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_POSTMAN_REQUEST_REPLAYED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_QUEUE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_SESSION_CONTEXT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_SESSION_CONTEXT_TOO_LARGE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_STEP_ALREADY_SETTLED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_STEP_CEILING_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_STEP_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_STEP_RATE_MISSING": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_STEP_SEQUENCE_TAKEN": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_STEP_USAGE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_SUB_AGENTS_DISABLED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_SUB_AGENT_CYCLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_SUB_AGENT_DEPTH_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_SUB_AGENT_FAN_OUT_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_THREAD_ARCHIVED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_THREAD_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_THREAD_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_THREAD_TAGS_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_THREAD_TITLE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TOOL_CATALOGUE_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TOOL_NOT_OFFERED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURNS_DISABLED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_ABORTED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_ALREADY_SETTLED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_CEILING_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_IDEMPOTENCY_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_INPUT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_INPUT_TOO_LARGE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "CONVERSATIONS_TURN_SEQUENCE_TAKEN": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "conversations"
+      ]
+    },
+    "COST_ALERT_CHANNEL_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_ALERT_CHANNEL_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_ALERT_CHANNEL_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_ALERT_CHANNEL_UNCHANGED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_ALERT_TOPIC_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_BUDGET_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_BUDGET_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_BUDGET_TARGET_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_DELIVERY_FAILED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_DELIVERY_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_DELIVERY_UNAVAILABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_LEDGER_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_SPEND_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_THRESHOLD_EVENT_UNAVAILABLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_THRESHOLD_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "COST_WINDOW_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "cost-monitoring"
+      ]
+    },
+    "CREDENTIAL_EXPIRED": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "CREDENTIAL_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "CREDENTIAL_NAME_TAKEN": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "CREDENTIAL_REVOKED": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "CREDENTIAL_UNAVAILABLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "ENVELOPE_FORMAT_UNWRITABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "ENVIRONMENT_VARIABLE_KEY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "ENVIRONMENT_VARIABLE_UNAVAILABLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "ENVIRONMENT_VARIABLE_VALUE_REQUIRED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "ENVIRONMENT_VARIABLE_VALUE_TOO_LONG": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "ENVIRONMENT_VARIABLE_VERSION_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "EVENTING_ERASURE_PLAN_FOREIGN": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_QUEUE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_DESTINATION_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_DESTINATION_REJECTED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_DISABLED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_FILTERS_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_NAME_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_NAME_TAKEN": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_RULE_PATTERN_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "EVENTING_SCREEN_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "eventing"
+      ]
+    },
+    "FILES_ARTIFACT_CONTENT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ARTIFACT_CONTENT_TOO_LARGE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ARTIFACT_KEY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ARTIFACT_KIND_IMMUTABLE": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ARTIFACT_REVISION_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ARTIFACT_REVISION_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ATTACHMENT_BINDING_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ATTACHMENT_METADATA_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ATTACHMENT_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ATTACHMENT_QUOTA_EXCEEDED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ATTACHMENT_RETENTION_ELAPSED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ATTACHMENT_TOO_LARGE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_BLOB_DESTRUCTION_FAILED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_ERASURE_PLAN_FOREIGN": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_OBJECT_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_OBJECT_PRECONDITION_FAILED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_OBJECT_STORE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_PRESIGNED_GRANT_ELAPSED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_PRESIGN_WINDOW_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FILES_STORAGE_KEY_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "files"
+      ]
+    },
+    "FORBIDDEN_SCOPE": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "GOVERNANCE_AGENT_NOT_VISIBLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_CRITERION_ALREADY_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_CRITERION_INACTIVE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_CRITERION_NAME_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_CRITERION_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_CRITERION_PROMPT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_CRITERION_RUBRIC_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_CRITERION_SCALE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_ERASURE_PLAN_FOREIGN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_EVALS_DISABLED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_EVAL_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_EVAL_SELF_JUDGED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_GOLDEN_SET_ALREADY_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_GOLDEN_SET_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_GOLDEN_SET_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_GOLDEN_SET_TOO_MANY_CRITERIA": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_GOLDEN_SET_TOO_MANY_PAIRS": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_GOLDEN_SET_TOO_MANY_THREADS": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_JUDGE_MODEL_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_JUDGE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_LEDGER_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_PAGE_REQUEST_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_QUEUE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_RATING_ACTOR_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_RATING_COMMENT_TOO_LONG": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_RATING_TARGET_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_RATING_VALUE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_SAFETY_ACTION_UNKNOWN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_SAFETY_DETECTOR_UNKNOWN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_SAFETY_RULE_MALFORMED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_SAFETY_SEVERITY_UNKNOWN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_TRANSCRIPT_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "IDEMPOTENCY_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "IDEMPOTENCY_IN_PROGRESS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "IDEMPOTENCY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "IDENTITY_STORE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "IMPERSONATION_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVALID_ACCESS_KEY_MATERIAL": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVALID_END_USER_FILTER": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVALID_GRANT": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVALID_KEY_RING": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "INVALID_MFA_CODE": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVALID_PURGE_REQUEST": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "INVALID_REQUEST": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "INVALID_RETENTION_REQUEST": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "INVALID_SECRET_MATERIAL": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "INVALID_SESSION_COOKIE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVITATION_CONSUMED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVITATION_EMAIL_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "INVITATION_INVALID": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "JOBS_APPROVAL_ALREADY_RESOLVED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_APPROVAL_EDIT_MISSING": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_APPROVAL_ELAPSED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_APPROVAL_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_APPROVAL_SUSPENSION_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_ERASURE_PLAN_FOREIGN": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_IDEMPOTENCY_RECORD_ABSENT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_IDEMPOTENCY_RECORD_MALFORMED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_IDEMPOTENCY_REPLAY_CODE_UNPROMISED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_INVOCATION_TYPE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_JOB_ALREADY_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_JOB_DEFINITION_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_JOB_KEY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_JOB_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOBS_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOB_EXECUTION_FAILED": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOB_NOT_AUTHORIZED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOB_NOT_FOUND_OR_INACTIVE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOB_NOT_REGISTERED": {
+      "category": "precondition_failed",
+      "status": 422,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOB_RESULT_REJECTED": {
+      "category": "invalid_input",
+      "status": 422,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOB_SERVICE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "JOB_TIMEOUT": {
+      "category": "unavailable",
+      "status": 504,
+      "contexts": [
+        "jobs"
+      ]
+    },
+    "MEMORY_AGENT_AMBIGUOUS": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_AGENT_SCOPE_DENIED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_BULK_LIMIT_EXCEEDED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_CACHE_NAMESPACE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_CACHE_TTL_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_CACHE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_EMBEDDING_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_END_USER_CONTEXT_REQUIRED": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_ENTITY_KEY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_ENTITY_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_ENTITY_OWNERSHIP_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_EXTRACTION_ENVELOPE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_EXTRACTION_JUDGE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_INVALID_CONFIDENCE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_INVALID_CONTENT": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_INVALID_KIND": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_INVALID_METADATA": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_INVALID_SOURCE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_INVALID_VISIBILITY": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_PROVENANCE_INCOMPLETE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_QUERY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_RELATIONSHIP_ENDPOINTS_SPLIT": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_RELATIONSHIP_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MEMORY_UNTRUSTED_SOURCE": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "memory"
+      ]
+    },
+    "MFA_REQUIRED": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "MISSING_PERMISSION": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "OBSERVABILITY_AUDIT_ACTION_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_AUDIT_SUBJECT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_DRAIN_BUDGET_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_ENVELOPE_MALFORMED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_ENVELOPE_VERSION_UNSUPPORTED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_ERASURE_PLAN_FOREIGN": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_ERASURE_RESIDUE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_ERASURE_SUBJECT_UNADDRESSABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_ERASURE_UNVERIFIED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_PROJECTION_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_QUEUE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_SINK_DISABLED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_SINK_MISCONFIGURED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_SINK_REJECTED_BATCH": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_SINK_SCHEMA_MISSING": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OBSERVABILITY_SINK_UNREACHABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "observability"
+      ]
+    },
+    "OWNER_INVARIANT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "PRIVACY_ALIAS_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_ERASURE_REGISTER_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_IDEMPOTENCY_KEY_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_LEASE_HELD": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_LEGAL_HOLD_IN_FORCE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_LEGAL_HOLD_REGISTER_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_OPERATION_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_OPERATION_STORE_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_RECEIPT_WOULD_LEAK_SUBJECT": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_RETRY_BUDGET_EXHAUSTED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_RETRY_NOT_PERMITTED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_SUBJECT_DIRECTORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_SUBJECT_ERASED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_SUBJECT_MISMATCH": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_SUBJECT_NOT_RESOLVED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_TARGET_NOT_WIRED": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PRIVACY_TARGET_REJECTED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "privacy"
+      ]
+    },
+    "PROVIDERS_CACHE_BUDGET_EXCEEDED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_CONFIGURATION_UNAVAILABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_CREDENTIAL_UNAVAILABLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_GENERATION_ABORTED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_KEY_ALREADY_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_KEY_METADATA_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_KEY_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_KEY_PINNED_BY_AGENTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_MEDIA_TYPE_MISSING": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_MESSAGE_NOT_REPRESENTABLE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_MODEL_KEY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_MODEL_PRICING_UNAVAILABLE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_MODEL_RATE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_MODEL_SESSION_EXPIRED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_MODEL_STRING_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_OUTPUT_SCHEMA_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_PASS_BUDGET_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_PRICE_REVISION_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_PROMPT_CONTENT_EMPTY": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_PROMPT_EMPTY": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_PROVIDER_CREDENTIAL_UNAVAILABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_PROVIDER_REQUEST_FAILED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_RATE_CARD_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_RETRY_POLICY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_SERVICE_ACCOUNT_INVALID": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_STEP_BUDGET_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_STRUCTURED_OUTPUT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_TOKEN_USAGE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_TOOL_CALL_DUPLICATED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_TOOL_EXECUTOR_FAILED": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_TOOL_NAME_DUPLICATED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_TOOL_RESULT_UNMATCHED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "PROVIDERS_UNKNOWN_PROVIDER": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "providers"
+      ]
+    },
+    "RATE_LIMITED": {
+      "category": "rate_limited",
+      "status": 429,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "SECRET_VERSION_ALREADY_EXISTS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "secrets"
+      ]
+    },
+    "SESSION_EXPIRED": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "SESSION_REVOKED": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "SKILLS_ENVIRONMENT_KEYS_MISSING": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_ERASURE_PLAN_FOREIGN": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_MANIFEST_FIELD_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_MANIFEST_FIELD_MISSING": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_MANIFEST_FRONTMATTER_MISSING": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_MANIFEST_ID_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_MANIFEST_YAML_INDENT": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_MANIFEST_YAML_MISSING_COLON": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_OFFICIAL_SKILL_IMMUTABLE": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SANDBOX_REFUSED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SANDBOX_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SKILL_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SKILL_NOT_INSTALLED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SOURCE_FETCH_FAILED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SOURCE_PROTOCOL_UNSUPPORTED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SOURCE_TOO_LARGE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "SKILLS_SOURCE_URL_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "skills"
+      ]
+    },
+    "TENANCY_ACCESS_KEY_GENERATION_SUPERSEDED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_ARCHIVED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_AUTHORIZATION_FORGED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_CROSS_TENANT_MEMBERSHIP": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_ENVIRONMENT_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVALID_NAME": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVALID_SLUG": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVITATION_ALREADY_ACTIVE": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVITATION_CONSUMED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVITATION_EMAIL_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_INVITATION_INVALID": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_LAST_OWNER": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_MEMBERSHIP_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_PROJECT_CREATE_FORBIDDEN": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_SLUG_TAKEN": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TENANCY_UNKNOWN_OPERATOR": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "tenancy"
+      ]
+    },
+    "TOKEN_REPLAYED": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "TOOLS_APPROVAL_REQUIRED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_ARGUMENTS_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_CALL_SEQUENCE_CONFLICT": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_CALL_TRANSITION_INVALID": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_CREDENTIAL_UNAVAILABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_DECLARATION_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_DISPATCH_FAILED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_DISPATCH_RATE_LIMITED": {
+      "category": "rate_limited",
+      "status": 429,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_DUPLICATE_TOOL_NAME": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_END_USER_REQUIRED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_ENTITY_NOT_DISPATCHABLE": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_ENTITY_NOT_IN_SCOPE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_ENVIRONMENT_NOT_IN_SCOPE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_EXPOSURE_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_MCP_DISABLED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_MCP_TRANSPORT_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_PERMISSION_BLOCKED": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_POLICY_EFFECT_UNSUPPORTED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_POLICY_PATTERN_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_REPOSITORY_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_RESIDUAL_TEMPLATE": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_ROUTE_AMBIGUOUS": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_ROUTE_NOT_IN_SCOPE": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_SCOPE_MISMATCH": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_TOOL_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "UNAUTHENTICATED": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "UNKNOWN_CLIENT": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    }
+  },
+  "uniformGuards": [
+    {
+      "file": "packages/contexts/agents/application/macros.ts",
+      "function": "requireVisible",
+      "code": "AGENTS_MACRO_NOT_FOUND",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Absent and visible-but-not-yours answer identically on purpose. Telling them apart would make the endpoint an existence oracle for another actor's macro ids; the file's own header says collapsing them 'would either leak or mislead'."
+    },
+    {
+      "file": "packages/contexts/agents/application/macros.ts",
+      "function": "updateMacro",
+      "code": "AGENTS_MACRO_NOT_FOUND",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "The same existence-oracle defence as requireVisible(), repeated on the write path: the row is missing, or it is there and this actor may not see it. Distinguishing them would let a caller enumerate macro ids it has no access to."
+    },
+    {
+      "file": "packages/contexts/channels/domain/installation.ts",
+      "function": "reclaimStaleRefresh",
+      "code": "CHANNELS_REFRESH_NOT_CLAIMABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "'Not refreshing at all' and 'refreshing but not yet stale' are one instruction to the caller \u2014 do not reclaim this lease \u2014 and the error already carries refreshState in details, which is the field that separates them for an operator."
+    },
+    {
+      "file": "packages/contexts/cost-monitoring/application/configure-budget.ts",
+      "function": "removeBudget",
+      "code": "COST_BUDGET_NOT_FOUND",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "A cap that vanished between the read and the conditional write was already gone. The extraction source returns false there and the surface renders the same 404, so the write-race is deliberately spelled as the error the read path would have produced."
+    },
+    {
+      "file": "packages/contexts/cost-monitoring/application/deliver-crossing.ts",
+      "function": "deliverCrossing",
+      "code": "COST_THRESHOLD_EVENT_UNAVAILABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "A crossing with no event row and a crossing whose budget row is gone are the same fact to a delivery worker: this crossing can no longer be described. Naming the missing budget separately would disclose that a budget id existed."
+    },
+    {
+      "file": "packages/contexts/cost-monitoring/domain/budget.ts",
+      "function": "admitThresholds",
+      "code": "COST_THRESHOLD_INVALID",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Both raises interpolate the offending value into the message and pass it in details, so the two guards \u2014 not an integer, and out of range \u2014 are distinguishable in the payload even though the constructor call is identical."
+    },
+    {
+      "file": "packages/contexts/eventing/domain/destination.ts",
+      "function": "parseDestination",
+      "code": "EVENTING_RULE_DESTINATION_INVALID",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "The opening shape guard and the default branch both mean 'this is not one of the four delivery types', and both quote the same list of four. They are the same fact reached from two directions."
+    },
+    {
+      "file": "packages/contexts/files/domain/artifact-revision.ts",
+      "function": "selectRevision",
+      "code": "FILES_ARTIFACT_REVISION_NOT_FOUND",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "'No revision' and 'a revision that is not the one asked for' are one answer: the requested revision does not exist. The requested number is in details, which is what an operator reads."
+    },
+    {
+      "file": "packages/contexts/governance/application/rate-turn.ts",
+      "function": "resolveTarget",
+      "code": "GOVERNANCE_RATING_TARGET_NOT_FOUND",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "The turn is missing, or it belongs to another end user. Separating them would let one end user probe another's turn ids by the difference in the reply."
+    },
+    {
+      "file": "packages/contexts/governance/application/run-judge.ts",
+      "function": "loadTranscript",
+      "code": "GOVERNANCE_TRANSCRIPT_NOT_FOUND",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "The thread is missing, or it belongs to another agent. The same cross-tenant probing defence as resolveTarget(): a distinct code would confirm the thread exists."
+    },
+    {
+      "file": "packages/contexts/governance/domain/criterion.ts",
+      "function": "admitScale",
+      "code": "GOVERNANCE_CRITERION_SCALE_INVALID",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Both raises carry the offending minimum and maximum, so a non-integer scale and an inverted one are told apart by the values in the error rather than by the code."
+    },
+    {
+      "file": "packages/contexts/governance/domain/rating.ts",
+      "function": "admitRatingValue",
+      "code": "GOVERNANCE_RATING_VALUE_INVALID",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "A rating is +1 or -1. 'Not an integer' and 'an integer that is not one of the two' are one fact \u2014 this is not a rating \u2014 and the offending value travels in the error."
+    },
+    {
+      "file": "packages/contexts/governance/domain/safety-observation.ts",
+      "function": "parseRuleIdentity",
+      "code": "GOVERNANCE_SAFETY_RULE_MALFORMED",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Too few segments and an empty segment are both 'this rule identity does not parse', and both carry the whole rule string, which is what a producer needs to fix it."
+    },
+    {
+      "file": "packages/contexts/identity-access/application/enrol-totp.ts",
+      "function": "confirmTotpEnrolment",
+      "code": "INVALID_MFA_CODE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "REQUIRED to be uniform. 'There is no pending enrolment' and 'those six digits are wrong' must be one answer, or the reply tells an attacker whether an enrolment is in flight for this account."
+    },
+    {
+      "file": "packages/contexts/identity-access/application/impersonation.ts",
+      "function": "startImpersonation",
+      "code": "IMPERSONATION_FORBIDDEN",
+      "sites": 3,
+      "shapes": 1,
+      "reason": "REQUIRED to be uniform. Already impersonating, not a platform operator, and 'no such target or the target is disabled' must be indistinguishable, or the reply becomes an account-existence and account-state oracle for anyone holding an operator session."
+    },
+    {
+      "file": "packages/contexts/identity-access/application/impersonation.ts",
+      "function": "stopImpersonation",
+      "code": "IMPERSONATION_FORBIDDEN",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "REQUIRED to be uniform, for the same reason as startImpersonation(): every way a stop can be refused answers identically so the refusal discloses nothing about the session it was aimed at."
+    },
+    {
+      "file": "packages/contexts/identity-access/application/verify-mfa.ts",
+      "function": "proveSecondFactor",
+      "code": "INVALID_MFA_CODE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "REQUIRED to be uniform. A wrong recovery code and no second factor supplied at all answer identically; the catalogue's own note is that distinguishing the ways a second factor fails 'tells a caller which guess got closer'."
+    },
+    {
+      "file": "packages/contexts/identity-access/application/verify-mfa.ts",
+      "function": "proveTotpCode",
+      "code": "INVALID_MFA_CODE",
+      "sites": 3,
+      "shapes": 1,
+      "reason": "REQUIRED to be uniform. No enrolled secret, wrong digits, and a counter another request advanced first are one answer by design \u2014 the last is a replay, and naming it would confirm that the code presented was otherwise correct."
+    },
+    {
+      "file": "packages/contexts/memory/domain/scope.ts",
+      "function": "resolveWriteBinding",
+      "code": "MEMORY_AGENT_SCOPE_DENIED",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Both raises name the requested agent and say it is not bound here; they are the same denial reached with and without an acting agent. The message and the agent id in the error are what an operator reads."
+    },
+    {
+      "file": "packages/contexts/providers/application/price-model-usage.ts",
+      "function": "resolveModelPrice",
+      "code": "PROVIDERS_MODEL_PRICING_UNAVAILABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "'The model string yields no lookup key' and 'no rate card matches any key at this instant' are one fact to a caller pricing a turn: this model cannot be priced now. Both carry the model."
+    },
+    {
+      "file": "packages/contexts/secrets/application/envelope-operations.ts",
+      "function": "openSecret",
+      "code": "TOOLS_CREDENTIAL_UNAVAILABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "REQUIRED to be uniform. The root key is reported absent by the ring, or the handle for it cannot be taken. Both are 'root_key_absent' deliberately: a caller must not learn from a reply which key versions the ring is holding."
+    },
+    {
+      "file": "packages/contexts/secrets/application/in-memory-crypto.ts",
+      "function": "inMemoryAeadCipher",
+      "code": "TOOLS_CREDENTIAL_UNAVAILABLE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "The seal and open halves of one in-memory cipher both refuse a missing root key version, identically, because the real adapter has one answer for it. Two codes here would be two codes the vendor cipher cannot produce."
+    },
+    {
+      "file": "packages/contexts/secrets/application/in-memory-store.ts",
+      "function": "inMemorySecretsStore",
+      "code": "TOOLS_CREDENTIAL_UNAVAILABLE",
+      "sites": 3,
+      "shapes": 1,
+      "reason": "An in-memory stand-in for the store: three methods report 'credential_not_found' for a row that is not in its map. The real repository answers one code for a missing row and the double must not be finer than the thing it stands in for."
+    },
+    {
+      "file": "packages/contexts/skills/application/run-skill-tool.ts",
+      "function": "requireUsableBinding",
+      "code": "SKILLS_SKILL_NOT_INSTALLED",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Not installed and installed-but-disabled are one answer on the RUN path: the skill is not runnable here. The install surface is where the two are separated, because there the difference is actionable."
+    },
+    {
+      "file": "packages/contexts/tenancy/application/tenancy-service.ts",
+      "function": "createTenancyService",
+      "code": "TENANCY_NOT_FOUND",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Two closures in one factory \u2014 resolveEnvironmentScope and describeTenant \u2014 each refuse an unknown environment. They are two readings of one fact, not two guards in one decision; the scan sees one function because the closures share the factory body."
+    },
+    {
+      "file": "packages/contexts/tenancy/domain/authorization.ts",
+      "function": "decideEnvironmentAccess",
+      "code": "TENANCY_ENVIRONMENT_FORBIDDEN",
+      "sites": 5,
+      "shapes": 2,
+      "reason": "REQUIRED to be uniform. Every gate answers one code so that probing cannot enumerate environments, organizations or roles; which gate refused travels in details.gate, which the catalogue marks log-only. Five raises in two groups: three under 'organization-membership' and two under 'project-membership'."
+    },
+    {
+      "file": "packages/contexts/tenancy/domain/invitation.ts",
+      "function": "decideInvitationAcceptance",
+      "code": "TENANCY_INVITATION_EMAIL_MISMATCH",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "REQUIRED to be uniform. The invitation is for another address, or the account signing in has no address that matches. Separating them would say which of the two the caller got wrong about an invitation it does not own."
+    }
+  ]
+}

@@ -28,10 +28,19 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 //   docs/audits/win-284-differential-coverage.md
 // Both fall inside the existing `docs/**` selection rather than widening it.
 //
+// WIN-260 (M2.5) adds TWO, no removals and no content substitutions:
+//   docs/error-taxonomy.json                         (the code->status contract)
+//   docs/win-260-mutation-ledger.json                (the mutation sweep)
+// Both fall inside the existing `docs/**` selection rather than widening it, so
+// 788 + 2 = 790. `scripts/error-taxonomy.mjs` and its suite are deliberately NOT
+// added: the selection protects the evidence a gate reads, not the gate, and the
+// exact-path list is where a governance script earns protection one decision at
+// a time.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4";
+export const EXPECTED_PATH_SET_SHA256 = "872dcdfd043a6b438826e277011b88f0033297e48df585b92fcf54808237ba5b";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

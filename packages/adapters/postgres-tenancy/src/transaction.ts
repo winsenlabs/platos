@@ -29,6 +29,8 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import type { CorrelationSource } from "@platos/kernel";
+
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
 import type {
   TransactionId,
@@ -67,6 +69,24 @@ interface TransactionFrame {
   readonly transactionId: TransactionId;
   readonly client: TenancyTransactionClient;
 }
+
+/**
+ * The PostgreSQL setting every transaction stamps with the request in flight.
+ *
+ * A CUSTOMISED OPTION, not a column: `set_config('platos.request_id', …, true)`
+ * is transaction-local, so it is rolled back with the transaction it describes
+ * and cannot leak onto the next unit of work that borrows the same pooled
+ * connection. That last property is why this is not `application_name`, which is
+ * per-SESSION and would outlive the transaction on a pooled connection — a
+ * request's identifier still attached to the connection while an unrelated
+ * request used it is worse than no identifier at all.
+ *
+ * Reachable from inside the transaction as
+ * `current_setting('platos.request_id', true)`, which is how
+ * `correlation.integration.test.ts` reads it back off PostgreSQL rather than off
+ * this process's own memory.
+ */
+export const REQUEST_ID_SETTING = "platos.request_id";
 
 /** How long a transaction may hold its connection, and how long it waits for one. */
 export interface TransactionTimeouts {
@@ -125,6 +145,7 @@ export interface TenancyTransactions {
 export function createTenancyTransactions(
   client: TenancyDatabaseClient,
   timeouts: TransactionTimeouts = {},
+  correlation: CorrelationSource | null = null,
 ): TenancyTransactions {
   const ambient = new AsyncLocalStorage<TransactionFrame>();
   const open = new Map<string, TenancyTransactionClient>();
@@ -147,6 +168,22 @@ export function createTenancyTransactions(
       try {
         return await client.$transaction(async (transactionClient) => {
           open.set(transactionId, transactionClient);
+          // WIN-260. FIRST statement of every unit of work, before any business
+          // write, so a statement that fails still ran under the correlation of
+          // the request that issued it — the failing ones are the ones anybody
+          // goes looking for. The SQL is written out here rather than composed
+          // from `REQUEST_ID_SETTING` because `scripts/arch/sole-writer.mjs`
+          // reads raw statements as literals and refuses one it cannot read as
+          // `raw-sql-not-static`; the constant is exported for the suites, and
+          // `correlation.integration.test.ts` proves the two agree by asking
+          // PostgreSQL for the setting the constant names.
+          const reference = correlation?.current() ?? null;
+          if (reference !== null) {
+            await transactionClient.$queryRawUnsafe(
+              "SELECT set_config('platos.request_id', $1, true)",
+              reference.requestId,
+            );
+          }
           return await ambient.run({ transactionId, client: transactionClient }, () =>
             work({ transactionId }),
           );

@@ -2,7 +2,7 @@
   "name": "@platos/adapter-redis-cache",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the memory Cache port.",
+  "description": "Implements the memory Cache port and the jobs IdempotencyStore port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,9 +15,15 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'"
   },
   "dependencies": {
-    "@platos/context-memory": "workspace:*"
+    "@platos/context-memory": "workspace:*",
+    "@platos/context-jobs": "workspace:*",
+    "ioredis": "^5.6.1"
+  },
+  "devDependencies": {
+    "@testcontainers/redis": "^10.28.0"
   }
 }

@@ -1,0 +1,221 @@
+{
+  "$schema-note": "WIN-260 (M2.5). Every guard this dimension added, and the exact edit that must break it. Same shape as the per-adapter `mutations-*.json` ledgers under packages/adapters/*: `from` is the committed text, `to` is the mutant, `suites` are the files that must be run, and `kills` names the CASE that has to fail. An entry whose mutant leaves every suite green is a guard that is not a guard.",
+  "purpose": "ONE file rather than five, and that is the departure from the per-package convention. WIN-260's guards span three adapter directories (redis-cache, postgres-tenancy, outbox), two contexts (jobs, memory), the kernel and a gate script, because the dimension is a cross-cutting one: a request identifier that reaches the store, a code that maps to a status, and a reservation that survives a race. A sweep split five ways could not be re-run as one thing, and the whole value of a ledger is that somebody else can re-run it.",
+  "procedure": "For each entry: apply `to` in place of `from`, run `pnpm build:v1` (cross-package imports resolve through dist, so a mutation in a context is invisible to an adapter suite until the solution is rebuilt), run every file in `suites`, and record which named case failed. Revert. The container suites run ON THE MAC MINI under colima; nothing here starts a daemon on a laptop. A mutant the COMPILER refuses is not a kill for this purpose: it proves the types hold, not that a suite catches a behaviour change, so three entries were rewritten into mutants that compile. Recorded result on the Mac mini at 25568a20 (and the three rewrites re-run separately): 15 entries, 15 killed by a named case, 0 declared unfalsifiable.",
+  "mutations": [
+    {
+      "name": "M-260-01 reserve: the claim loses its NX",
+      "file": "packages/adapters/redis-cache/src/client.ts",
+      "from": "      return (await client.set(key, value, \"EX\", ttlSeconds, \"NX\")) === \"OK\";",
+      "to": "      return (await client.set(key, value, \"EX\", ttlSeconds)) === \"OK\";",
+      "note": "The whole reserve-once property, deleted by two characters. It still compiles, and it still passes every in-memory test in the tree \u2014 which is why `client.ts` names the command by intent rather than by spelling, and why the racing suite exists.",
+      "suites": [
+        "packages/adapters/redis-cache/src/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "two identical requests racing: exactly ONE reserves, and the loser sees the winner",
+        "EIGHT identical requests racing: exactly ONE reserves",
+        "the racing losers all replay the SAME result, and the work ran ONCE"
+      ]
+    },
+    {
+      "name": "M-260-02 settle: XX becomes an unconditional write",
+      "file": "packages/adapters/redis-cache/src/idempotency-store.ts",
+      "from": "        const written = await connection.overwrite(reservationKey(key), encode(reservation), ttlSeconds);",
+      "to": "        await connection.write(reservationKey(key), encode(reservation), ttlSeconds);\n        const written = true;",
+      "note": "A settle that recreates an expired key lets a request replay long after its window closed. Only a real server can refute this: the key has to actually expire.",
+      "suites": [
+        "packages/adapters/redis-cache/src/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "settle does NOT resurrect a reservation the server has already expired"
+      ]
+    },
+    {
+      "name": "M-260-03 reserve: the loser is told nothing was there",
+      "file": "packages/adapters/redis-cache/src/idempotency-store.ts",
+      "from": "      return ok({ kind: \"held\", held: decode(held) });",
+      "to": "      return ok({ kind: \"held\", held: unreadableRecord(\"absent\") });",
+      "note": "The port's reason for carrying the incumbent at all: without it the loser of a race has to re-run the job to find out what happened.",
+      "suites": [
+        "packages/adapters/redis-cache/src/idempotency.integration.test.ts",
+        "packages/adapters/redis-cache/src/idempotency-store.test.ts"
+      ],
+      "kills": [
+        "two identical requests racing: exactly ONE reserves, and the loser sees the winner",
+        "a completed reservation replays its result to a later, separate connection",
+        "reads the incumbent when it LOSES, and reports it as readable"
+      ]
+    },
+    {
+      "name": "M-260-04 the keyspace loses the environment",
+      "file": "packages/adapters/redis-cache/src/idempotency-store.ts",
+      "from": "  return `platos:jobs:idem:${key.environmentId}:${key.requestId}`;",
+      "to": "  return `platos:jobs:idem:${key.requestId}`;",
+      "note": "One tenant's retry replaying another tenant's result is the worst outcome this port can produce, and it is one interpolation away.",
+      "suites": [
+        "packages/adapters/redis-cache/src/idempotency.integration.test.ts",
+        "packages/adapters/redis-cache/src/idempotency-store.test.ts"
+      ],
+      "kills": [
+        "two environments do not collide on one request id",
+        "puts the environment IN the key, so two environments cannot collide"
+      ]
+    },
+    {
+      "name": "M-260-05 a read failure is reported as an absent record",
+      "file": "packages/adapters/redis-cache/src/idempotency-store.ts",
+      "from": "        return err(reservationUnavailable(reasonOf(error)));\n      }\n      return ok({ kind: \"held\", held: decode(held) });",
+      "to": "        return ok({ kind: \"held\", held: unreadableRecord(\"absent\") });\n      }\n      return ok({ kind: \"held\", held: decode(held) });",
+      "note": "`absent` is a positive answer from a working store; an unreadable incumbent is no answer at all. Merging them tells a caller a conflict nobody established.",
+      "suites": [
+        "packages/adapters/redis-cache/src/idempotency-store.test.ts"
+      ],
+      "kills": [
+        "FAILS CLOSED when the claim is refused and the incumbent cannot be read"
+      ]
+    },
+    {
+      "name": "M-260-06 the unpromised-code guard is removed",
+      "file": "packages/contexts/jobs/domain/idempotency.ts",
+      "from": "      if (!isJobExecutionErrorCode(code)) return unreadableRecord(\"unpromised-code\");\n      return readableRecord(failedReservation(branded, code));",
+      "to": "      return readableRecord(failedReservation(branded, code as JobExecutionErrorCode));",
+      "note": "The READ side of the promise `execute-job.ts::settle` makes on the write side. Settle refuses to CACHE an unpromised code; without this, a record written by a peer on another contract version is replayed onto the wire under a contract that says the set is closed. The mutant CASTS rather than deletes, because deleting the guard alone does not compile \u2014 and a mutant the compiler refuses proves the types work, not that the suites do.",
+      "suites": [
+        "packages/contexts/jobs/domain/idempotency.test.ts",
+        "packages/adapters/redis-cache/src/idempotency-store.test.ts",
+        "packages/adapters/redis-cache/src/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "REFUSES a cached failure whose code this major never promised",
+        "reports UNPROMISED-CODE for a cached failure this major never promised",
+        "a record whose failure code this major never promised is REFUSED, not replayed"
+      ]
+    },
+    {
+      "name": "M-260-07 the four replay refusals collapse back into one code",
+      "file": "packages/contexts/jobs/domain/idempotency.ts",
+      "from": "      case \"absent\":\n        return err(idempotencyRecordAbsent());\n      case \"malformed\":\n        return err(idempotencyRecordMalformed());\n      case \"unpromised-code\":\n        return err(idempotencyReplayCodeUnpromised());",
+      "to": "      case \"absent\":\n        return err(idempotencyConflict());\n      case \"malformed\":\n        return err(idempotencyConflict());\n      case \"unpromised-code\":\n        return err(idempotencyConflict());",
+      "note": "The defect this issue was pointed at, reinstated exactly. It is the state the branch inherited: four facts, one IDEMPOTENCY_CONFLICT, indistinguishable in a log and to a caller.",
+      "suites": [
+        "packages/contexts/jobs/domain/idempotency.test.ts",
+        "packages/contexts/jobs/application/execute-job.test.ts",
+        "scripts/error-taxonomy.test.mjs"
+      ],
+      "kills": [
+        "gives each unreadable reason its OWN code, distinct from a real conflict",
+        "tells the three unreadable reservations apart, and apart from a real CONFLICT",
+        "E6 \u2014 two identical raises in one function are refused unless registered"
+      ]
+    },
+    {
+      "name": "M-260-08 the cache TTL guard is removed",
+      "file": "packages/adapters/redis-cache/src/cache.ts",
+      "from": "      if (!Number.isInteger(entry.ttlSeconds) || entry.ttlSeconds <= 0) {\n        return err(cacheTtlInvalid(entry.ttlSeconds));\n      }",
+      "to": "      // guard removed",
+      "note": "The port's second property. Without the guard the refusal arrives from the driver as MEMORY_CACHE_UNAVAILABLE \u2014 a caller defect reported as an outage, which a caller would retry forever.",
+      "suites": [
+        "packages/adapters/redis-cache/src/cache.test.ts"
+      ],
+      "kills": [
+        "REFUSES a non-positive or fractional TTL before any command is sent"
+      ]
+    },
+    {
+      "name": "M-260-09 the blank-namespace guard is removed",
+      "file": "packages/adapters/redis-cache/src/cache.ts",
+      "from": "      if (prefix.length === 0) return err(cacheNamespaceInvalid());",
+      "to": "      // guard removed",
+      "note": "The port says a blank prefix \"would be a flush of the whole keyspace\". With the guard gone the pattern becomes `*` and the sweep clears every other owner's namespace on a shared server.",
+      "suites": [
+        "packages/adapters/redis-cache/src/cache.test.ts"
+      ],
+      "kills": [
+        "REFUSES a blank prefix before any command is sent"
+      ]
+    },
+    {
+      "name": "M-260-10 the namespace glob is no longer escaped",
+      "file": "packages/adapters/redis-cache/src/cache.ts",
+      "from": "  return prefix.replace(/[[\\]?*\\\\^]/gu, (character) => `\\\\${character}`);",
+      "to": "  return prefix;",
+      "note": "A namespace containing `*` or `[` would then match more keys than it names, in the one bulk destructive operation in this directory.",
+      "suites": [
+        "packages/adapters/redis-cache/src/cache.test.ts"
+      ],
+      "kills": [
+        "escapes glob metacharacters, so a prefix names only itself"
+      ]
+    },
+    {
+      "name": "M-260-11 the transaction stops stamping the request identifier",
+      "file": "packages/adapters/postgres-tenancy/src/transaction.ts",
+      "from": "          const reference = correlation?.current() ?? null;\n          if (reference !== null) {\n            await transactionClient.$queryRawUnsafe(\n              \"SELECT set_config('platos.request_id', $1, true)\",\n              reference.requestId,\n            );\n          }\n",
+      "to": "",
+      "note": "The state the branch inherited: a request identifier minted at the process edge that reaches nothing. The mutant deletes the whole stamp rather than nulling the reference, because the narrowed `null` does not compile and a compiler refusal is not a suite catching a behaviour change. Only PostgreSQL can refute this one: the assertion is what the SERVER reports.",
+      "suites": [
+        "packages/adapters/postgres-tenancy/src/correlation.integration.test.ts"
+      ],
+      "kills": [
+        "POSTGRESQL reports the identifier the edge decided on, inside the transaction",
+        "the option PostgreSQL answers for is the one the exported constant names",
+        "a row written under a correlation is DURABLE, and the setting is not"
+      ]
+    },
+    {
+      "name": "M-260-12 the setting becomes session-scoped instead of transaction-local",
+      "file": "packages/adapters/postgres-tenancy/src/transaction.ts",
+      "from": "              \"SELECT set_config('platos.request_id', $1, true)\",",
+      "to": "              \"SELECT set_config('platos.request_id', $1, false)\",",
+      "note": "The reason this is not `application_name`. A per-session value stays attached to a pooled connection, so the NEXT request to borrow it is labelled with the previous request's identifier \u2014 worse than no label, because it is wrong rather than missing.",
+      "suites": [
+        "packages/adapters/postgres-tenancy/src/correlation.integration.test.ts"
+      ],
+      "kills": [
+        "the identifier is TRANSACTION-local, so it cannot leak onto the next request"
+      ]
+    },
+    {
+      "name": "M-260-13 the outbox stops stamping a draft that named no request",
+      "file": "packages/adapters/outbox/src/adapter.ts",
+      "from": "    if (draft.requestId !== null) return draft;\n    const reference = correlation?.current() ?? null;\n    if (reference === null) return draft;\n    return { ...draft, requestId: reference.requestId };",
+      "to": "    return draft;",
+      "note": "Every one of the eight drafts the tree appends supplies `requestId: null`, so without the stamp the envelope's correlation field is populated by nothing, ever. The mutant returns the draft untouched \u2014 the state before this issue \u2014 rather than nulling the reference, which does not compile.",
+      "suites": [
+        "packages/adapters/outbox/src/adapter.test.ts"
+      ],
+      "kills": [
+        "stamps the request in flight onto a draft that named none",
+        "the stamped id survives the drain, so a consumer inherits it"
+      ]
+    },
+    {
+      "name": "M-260-14 the outbox overwrites a request the producer named",
+      "file": "packages/adapters/outbox/src/adapter.ts",
+      "from": "    if (draft.requestId !== null) return draft;\n    const reference = correlation?.current() ?? null;",
+      "to": "    const reference = correlation?.current() ?? null;",
+      "note": "An event appended while replaying work on behalf of an EARLIER request belongs to that request. An overwrite relabels history with whatever happens to be in flight.",
+      "suites": [
+        "packages/adapters/outbox/src/adapter.test.ts"
+      ],
+      "kills": [
+        "does NOT overwrite a request the producer named"
+      ]
+    },
+    {
+      "name": "M-260-15 the taxonomy stops refusing a code with no mapping",
+      "file": "scripts/error-taxonomy.mjs",
+      "from": "    if (entry === undefined) {\n      problems.push(",
+      "to": "    if (false) {\n      problems.push(",
+      "note": "E9 and E1 are the two halves of \"a gate that refuses an error code with no mapping\". This removes E1; a code minted in any of the seventeen contexts then reaches the wire with no status behind it, and the gate says ok.",
+      "suites": [
+        "scripts/error-taxonomy.test.mjs"
+      ],
+      "kills": [
+        "E1 \u2014 a minted code with no taxonomy entry is refused",
+        "the rule list and the fixture agree on which rules exist"
+      ]
+    }
+  ]
+}

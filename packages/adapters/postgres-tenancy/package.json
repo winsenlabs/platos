@@ -36,6 +36,7 @@
     "@platos/context-jobs": "workspace:*",
     "@platos/context-observability": "workspace:*",
     "@platos/context-eventing": "workspace:*",
+    "@platos/kernel": "workspace:*",
     "@platos/tenancy-database": "workspace:*"
   },
   "devDependencies": {

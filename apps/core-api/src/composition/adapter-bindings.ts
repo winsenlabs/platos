@@ -89,6 +89,7 @@ import type {
 } from "@platos/context-conversations/application/ports/index.js";
 import type {
   ApprovalsRepository,
+  IdempotencyStore,
   JobsRepository,
 } from "@platos/context-jobs/application/ports/index.js";
 
@@ -400,7 +401,8 @@ interface PortSatisfaction {
   >;
   readonly "objectstore-minio:ObjectStore": Satisfies<ObjectstoreMinioAdapter, ObjectStore>;
   readonly "redis-ratelimit:RateLimiter": Satisfies<RedisRatelimitAdapter, RateLimiter>;
-  readonly "redis-cache:Cache": Satisfies<RedisCacheAdapter, Cache>;
+  readonly "redis-cache:Cache": Satisfies<RedisCacheAdapter["cache"], Cache>;
+  readonly "redis-cache:IdempotencyStore": Satisfies<RedisCacheAdapter["idempotency"], IdempotencyStore>;
   readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
   readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
   readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
@@ -448,6 +450,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "objectstore-minio:ObjectStore": true,
   "redis-ratelimit:RateLimiter": true,
   "redis-cache:Cache": true,
+  "redis-cache:IdempotencyStore": true,
   "redis-streams:EventBus": true,
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
@@ -793,7 +796,18 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     owner: "eventing",
   }),
   Object.freeze({ adapter: "redis-ratelimit", port: "RateLimiter", owner: "identity-access" }),
+  // WIN-260 (M2.5). The SECOND binding on this directory, and the FIRST time the
+  // §15 amendment has been applied outside `postgres-tenancy`. `Cache` and
+  // `IdempotencyStore` sit behind ONE Redis connection, so they are one
+  // directory; a thirteenth would have been a second client for one server.
+  //
+  // The claim the `jobs` rows above make is now discharged. They say
+  // `IdempotencyStore` is "a reserve-once keyspace — an atomic claim-or-report,
+  // a TTL the store enforces, and an update that must not resurrect an expired
+  // key — none of which PostgreSQL has, and all of which `redis-cache` below
+  // does". Until this row, "does" was a promise about a placeholder.
   Object.freeze({ adapter: "redis-cache", port: "Cache", owner: "memory" }),
+  Object.freeze({ adapter: "redis-cache", port: "IdempotencyStore", owner: "jobs" }),
   Object.freeze({ adapter: "redis-streams", port: "EventBus", owner: "kernel" }),
   Object.freeze({ adapter: "model-router-providers", port: "ModelRouter", owner: "providers" }),
   Object.freeze({ adapter: "channel-slack", port: "ChannelAdapter", owner: "channels" }),
@@ -804,7 +818,7 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-FOUR rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-FIVE rows across
  * twelve directories: a caller iterating this list to construct or close
  * adapters would otherwise build `postgres-tenancy` THIRTY-THREE times and
  * open thirty-three pools over the one database.

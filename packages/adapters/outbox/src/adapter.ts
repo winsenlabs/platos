@@ -27,6 +27,7 @@
 
 import type {
   Clock,
+  CorrelationSource,
   DomainEventDraft,
   EventId,
   JsonValue,
@@ -79,6 +80,22 @@ export interface OutboxAdapterOptions {
   readonly clock: Clock;
   /** Defaults to the platform CSPRNG. Injectable so a suite can pin the tail. */
   readonly randomBytes?: RandomBytes;
+  /**
+   * Where the request identifier comes from when the producer did not name one.
+   *
+   * WIN-260 (M2.5). `DomainEvent.requestId` has always been in the envelope and
+   * every one of the eight drafts the tree appends supplied `null`, because no
+   * use case takes a `RequestScope` and none of them should: ADR M0.3 §2 gives a
+   * use case what it DECIDES with, and no context decides anything with a
+   * correlation id. So the envelope's correlation was a field that existed and
+   * was never populated, which is worse than not having it — a drain reading
+   * `requestId: null` cannot tell "this event belongs to no request" from
+   * "nobody remembered".
+   *
+   * Optional, and absent means the previous behaviour exactly: whatever the
+   * producer named, including null.
+   */
+  readonly correlation?: CorrelationSource;
 }
 
 /** Build the adapter over an already-wired store. */
@@ -87,6 +104,26 @@ export function buildOutboxAdapter(options: OutboxAdapterOptions): OutboxAdapter
     options.randomBytes ?? defaultRandomBytes,
   );
   const { store, clock } = options;
+  const correlation = options.correlation ?? null;
+
+  /**
+   * Stamp the request in flight onto a draft that named none.
+   *
+   * A DRAFT THAT NAMED ONE KEEPS IT, and that is the whole reason this is a
+   * fallback rather than an overwrite. An event appended while REPLAYING work on
+   * behalf of an earlier request belongs to that earlier request, and a stamp
+   * that overwrote it would relabel history with whatever happened to be in
+   * flight — which is exactly the drift a correlation identifier exists to make
+   * impossible.
+   */
+  const correlated = <Payload extends JsonValue>(
+    draft: DomainEventDraft<Payload>,
+  ): DomainEventDraft<Payload> => {
+    if (draft.requestId !== null) return draft;
+    const reference = correlation?.current() ?? null;
+    if (reference === null) return draft;
+    return { ...draft, requestId: reference.requestId };
+  };
 
   return {
     adapterName: "outbox",
@@ -98,7 +135,7 @@ export function buildOutboxAdapter(options: OutboxAdapterOptions): OutboxAdapter
       // The envelope is built BEFORE the identifier so a refused draft never
       // consumes a counter slot: a minted-and-discarded identifier leaves a gap
       // that looks, to anyone reading ordered identifiers, like a lost event.
-      const envelope = encodeEnvelope(event);
+      const envelope = encodeEnvelope(correlated(event));
       const environmentId = environmentOf(event.scope);
       const minted = minter.mint(clock.now());
       await store.insertOutboxEvent(

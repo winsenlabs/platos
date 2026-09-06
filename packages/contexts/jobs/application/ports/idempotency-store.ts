@@ -10,13 +10,23 @@
 // separately would be a second round trip and a second chance for the key to
 // expire in between. So the result carries it.
 //
+// WIN-260: THE LOSER'S VIEW IS NOT `Reservation | null`. It was, and `null`
+// carried three different facts at once — the record had gone, the record was
+// there and was rubbish, and the record was a reservation whose cached failure
+// code this major never promised. An adapter had no way to say which, and the
+// domain had no way to report which, so all three arrived as
+// `IDEMPOTENCY_CONFLICT` alongside the genuine "same id, different body". The
+// port now carries `HeldReservation`, and `readReservation` in the domain is the
+// decoder every adapter runs to produce one, so the three reasons are decided in
+// one place rather than three.
+//
 // `settle` IS AN UPDATE-IF-PRESENT. The live call is `SET ... XX`: it must not
 // resurrect a reservation that has expired, because a resurrected `completed`
 // record would let a request replay long after its window closed.
 
 import type { Result } from "@platos/kernel";
 
-import type { ExecutionRequestId, Reservation } from "../../domain/index.js";
+import type { ExecutionRequestId, HeldReservation, Reservation } from "../../domain/index.js";
 
 export interface IdempotencyKey {
   readonly environmentId: string;
@@ -25,8 +35,8 @@ export interface IdempotencyKey {
 
 export type ReservationOutcome =
   | { readonly kind: "reserved" }
-  /** Someone else holds the key. `existing` is null when it was unreadable. */
-  | { readonly kind: "held"; readonly existing: Reservation | null };
+  /** Someone else holds the key; `held` says what was found under it. */
+  | { readonly kind: "held"; readonly held: HeldReservation };
 
 export interface IdempotencyStore {
   /** Atomically claim `key` for `reservation`, or report the holder. */
