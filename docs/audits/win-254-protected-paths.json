@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "7810af3799b24ff2e2a7678473fb6248379c2aadf8d042899761d1c5931a71bc"
+      "sha256": "1375aab8e105df1bc82451fed71dca7975af58966a60a3c89bb3fcb1717721bc"
     },
     {
       "path": "LICENSE",
@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "023e0cbdb1311a6d786013f7abee3ba9bef1cc2c48a097fbd7f63da9af422702"
+      "sha256": "2e2671c69185eff538ddf41f2d6006035880ecfeed90e71d0273db8697bc3e34"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "133030bea8c3724690837e6dcdf337e031cc53a8fcedcfac7cce57ca06774ee0"
+      "sha256": "37e757de04da137fed1c6044dc13e93046a8f50856d139feecfcaf5067d4ea0f"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "dd0e0677960dde8691a94250efb8206c054765b5b7e44ec57bcb39568c4c185f"
+      "sha256": "1323a7c350c45cc1cc48d5b1ccb2990fafdbd8c81cceb0d4b13d9f6569aef786"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "1a16f44ff4b1c0a4df8320b3c3eb7b68f312c166e25c3cdcb46c171665077578"
+      "sha256": "e81a1a94a1c4e39aac150c62991798193849549f858aa43fe854e7e39ecd88ce"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3643,7 +3643,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "27b5ef36ca3a6c6c95d34f3ca3bf4c271536cf3b05b935a4a78f0dfc337e938c"
+      "sha256": "952b4c52c180e9e70ea325267f7d69e358a402694a39c2449a0b8cad068fafdf"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "9d8ffb4d7124a232dfc48d786393763e390fc41282289c2969a89a55032e6ac1"
+      "sha256": "9c022ce93e22e03372a201e3a92ca9d1758577f5aa7a007f8d2c8b9d33a9ead1"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
