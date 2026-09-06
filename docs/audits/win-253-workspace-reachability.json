@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "157bc9809de90c26150117ef8734d6460ed59c43e75782292d20fa677f10a147",
+  "evidenceSha256": "38507748be7a21b96bb3eb8d90a4f1b9061020aa61e168da84583bb63f4a844b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3d716928fc25c63a5a20199445176e249989bd74f2251c276260f677cb0f6f9b",
+    "aggregateSha256": "734523eace0733549823b30738049290aff94daee7dfa8fdc2d67c6313d254fe",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "361561d7eb1abf130fe7a32bb52fe23ed2a92fa387be61264ba95345f3b65204"
+        "sha256": "2532dcdba8ca185afeb391b200ad9ff911c8612e3fe91ba08eae6af083278f30"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -18613,7 +18613,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "c93e75df1eaba1602568c954a1cb04fdc89f1a7e619eae3e5171c39e95faede2"
+        "sha256": "3f15ff6d3d28710d9a7ae04518e3bcda8c97d06e0e190182de625e10760ca194"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -35871,7 +35871,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1106
+              "line": 1115
             }
           ],
           "reversePaths": [
@@ -35896,7 +35896,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "cc52761a7a5096c55be4d8a9066c7b74fedd700cd4b14c753fb6598ee5b65e63",
+      "evidenceSha256": "d498e455c6d56e0531e36ddb149b9ec57b7c4e64c8f30f19428a6a1b177ed130",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -37027,7 +37027,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1105
+              "line": 1114
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -37252,7 +37252,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f2668ec8f4af7dfbbcd119e6d5a3586b8f942941a797ad9be9b44d7d0f6dd73c",
+      "evidenceSha256": "7805de77b7a124060c8283ff54335d68fc8fedeb15d5c0dee5f973ce6a304dc4",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -61113,6 +61113,11 @@
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
               "line": 312
+            },
+            {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 1050
             }
           ],
           "reversePaths": [
@@ -61239,6 +61244,10 @@
             [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
+            ],
+            [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
             ]
           ],
           "roots": [
@@ -61272,7 +61281,8 @@
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
-            "scripts/arch/v1-project-graph.test.mjs"
+            "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/v1-ledger.test.mjs"
           ]
         }
       },
@@ -61647,7 +61657,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "0836746af2109428265b274ce3bc5534ff54eabfebe15a1beab12dfd23cd0d52",
+      "evidenceSha256": "a86e80c856ecf1835382eb0fa1898b85f6f0ed40a6362e3e8b1a2ad3cbf055fb",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
