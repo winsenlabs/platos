@@ -1539,7 +1539,7 @@
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "d53f4401d4c8ad934677e9ae4421ee19a30cefaefe6f43414f5ecc0220e9d38f",
+      "sha256": "6d7b10a20c001b9ba2538b1f8e3edb444333d08dc2861e85e31328bff5972793",
       "binds": "current-repository-truth"
     },
     {
