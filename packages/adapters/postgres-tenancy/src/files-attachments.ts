@@ -318,6 +318,12 @@ export function createAttachmentStore(transactions: TenancyTransactions): Attach
         requireInstant("asOf", asOf);
         requireInt32("limit", limit, 0);
         if (limit === 0) return ok([]);
+        // ONE PREDICATE AND NOT TWO. `expiresAt IS NOT NULL` was here and is
+        // gone: a comparison against SQL NULL is NULL, so a row retained
+        // indefinitely is excluded by `<=` already. A redundant clause is not a
+        // guard — nothing can falsify it — and one standing beside a real guard
+        // makes the real one look like a pair.
+        //
         // UNSCOPED BY DESIGN. The retention sweep is an installation-wide job:
         // the port takes no scope, and a row whose environment was deleted
         // between the write and the sweep still has a blob to destroy. The
@@ -326,8 +332,7 @@ export function createAttachmentStore(transactions: TenancyTransactions): Attach
         // read with guessed ones.
         const rows = await transactions.reader().$queryRawUnsafe<readonly AttachmentRow[]>(
           `SELECT ${ATTACHMENT_PROJECTION}
-           WHERE attachment."expiresAt" IS NOT NULL
-             AND attachment."expiresAt" <= $1
+           WHERE attachment."expiresAt" <= $1
            ORDER BY attachment."createdAt" ASC, attachment."id" ASC
            LIMIT $2::int`,
           asOf,
