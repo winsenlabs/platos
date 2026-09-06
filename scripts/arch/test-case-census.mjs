@@ -2274,6 +2274,35 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * The tree total is 490 + 6 = 496 files and 7226 + 83 = 7309 cases. The adapters
  * term of the three-way identity carries all six, because every added file is an
  * adapter's: 138 + 6 = 144, and 349 + 3 + 144 = 496.
+ * WIN-258 TRANCHE 7 adds ONE file to this package, and the count is small for a
+ * reason worth stating rather than apologising for.
+ *
+ *   upgrade-rollout.integration.test.ts        6  the store half of the
+ *                                                 expand/contract rollout
+ *                                                 acceptance
+ *
+ * THE TRANCHE IS MOSTLY NOT COUNTED HERE, and that is correct. Its other two
+ * suites — `upgrade-guards.test.ts` and
+ * `upgrade-expand-contract.integration.test.ts`, 26 and 9 cases — live in
+ * `internal-packages/tenancy-database`, which is not a V1 package and has no
+ * term in this census. They belong there because they rebuild the OLD releases'
+ * Prisma clients from frozen schemas, and ADR M0.3 §4 puts the ORM in one home:
+ * a suite that rebuilt a client from inside `packages/` would be a second place
+ * the vendor is named, which `tenancy-prisma-only` refuses. The CI step that
+ * runs the forward rehearsal runs all three, so nothing here is unrun.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 6. Four of the six are READS —
+ * of a tenancy tree, an attachment, a policy and a thread written by a release
+ * that predates three of the columns the stores now scope by — so they grow by
+ * asserting more about the same rows rather than by adding cases. The guards
+ * behind them are held falsifiable in
+ * `packages/adapters/postgres-tenancy/mutations-upgrade-rollout.json`, whose
+ * eighteen entries were all killed by a named case and whose one unreachable
+ * branch is DECLARED there instead of counted.
+ *
+ * The tree total is 466 + 1 = 467 files and 6945 + 6 = 6951 cases. The adapters
+ * term of the three-way identity carries the file: 114 + 1 = 115, and
+ * 349 + 3 + 115 = 467.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2284,7 +2313,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 131, cases: 1477 },
+  "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2544,7 +2573,15 @@ export const EXPECTED = Object.freeze({
  * are the ones whose file name carries `.integration.`; all three new suites do,
  * so that measured figure moves by 26 and `client.test.ts`'s nine stay runnable.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7393;
+ * 7226 -> 7232: the 6 cases of WIN-258 tranche 7's store-level rollout
+ * rehearsal. All six carry `.integration.` in the name, so `pnpm
+ * test:v1-packages` executes none of them — the file is one container and two
+ * rebuilt old clients — and the cases this census records but that script does
+ * not run go up by exactly six. The tranche's other 35 cases are not in this
+ * total at all: they live in `internal-packages/tenancy-database`, which has no
+ * row in this census, for the reason the postgres-tenancy block gives.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7399;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

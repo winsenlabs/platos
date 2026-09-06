@@ -918,12 +918,34 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and transaction-boundaries. All three are `packages.adapters.test`, all
     // three land in `packages` and in no other area, and the tranche adds no
     // source file at all: every code change it makes is an edit in place.
-    // MERGED: `packages` 1378 + 5 (the JSON-column census) + 8 (the plan suites
-    // and their kit) + 3 (the concurrency, pooling and transaction-boundary
-    // suites) = 1394; `internal-packages` 0 + 1 (the thread listing index).
-    // No branch's own figure -- 1383, 1386 or 1381 -- is right merged.
-    packages: 1394,
-    "internal-packages": 1,
+    // + 3 (WIN-258 TRANCHE 7, the expand/contract rollout rehearsal's STORE half,
+    // in that same adapter directory: `upgrade-rollout-harness.ts`,
+    // `upgrade-rollout.integration.test.ts` and `mutations-upgrade-rollout.json`
+    // on the `packages.adapters.config` rule that already carries six guard
+    // ledgers) = 1381.
+    // 0 -> 8. WIN-258 TRANCHE 7 is the FIRST slice of this issue to add files
+    // outside `packages`, and the reason is a boundary rather than a preference:
+    // it rebuilds the OLD releases' Prisma clients from frozen schemas, and ADR
+    // M0.3 §4 puts the ORM in one home, so the rebuild cannot live under
+    // `packages/` without becoming a second place the vendor is named.
+    //
+    //   2 frozen release schemas under prisma/upgrade-baselines/ — origin/main
+    //     HEAD at 89c12b8a and c25432c5, whose genesis migration IS the frozen
+    //     baseline SQL already beside it — on the same fixture rule that file
+    //     already uses
+    //   4 source modules: the rebuild, the catalogue reader, the ordered-set and
+    //     baseline bootstrap, and the legacy fixture the two suites share
+    //   2 suites: the binary-level rehearsal and the guard suite for the
+    //     rehearsal's own refusals
+    // MERGED, AND THIS IS THE FIGURE THAT STANDS. `packages` 1378 + 5 (the
+    // JSON-column census) + 8 (the plan suites and their kit) + 3 (the
+    // concurrency, pooling and transaction-boundary suites) + 3 (the rollout
+    // rehearsal's store half) = 1397. `internal-packages` 0 + 1 (the thread
+    // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
+    // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
+    // again -- is right here, and neither is any pair of them.
+    packages: 1397,
+    "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1172,7 +1194,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1471);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1482);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1206,7 +1228,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and that tranche's concurrency, pooling and transaction-boundary suites
     // +3); this one re-derives it by summing the per-area counts independently,
     // so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1471
+    // and that tranche's rollout rehearsal +11 across TWO areas, 3 in
+    // `packages` and 8 in `internal-packages`); this one re-derives it by
+    // summing the per-area counts independently, so the two can DISAGREE and
+    // be caught.
+    rulesDocument.baseline.totalFiles + 1482
   );
 });
 

@@ -1,0 +1,338 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 7 — the migration package, the",
+    "generated client location, and the expand/contract rollout rehearsal. One",
+    "entry per guard, each carrying the file it lives in, the EXACT text that",
+    "implements it (`from`), the edit that removes it (`to`), and the NAMED cases",
+    "that were seen to go red (`kills`).",
+    "",
+    "PATHS ARE REPOSITORY-RELATIVE, not package-relative as in the six ledgers",
+    "beside it. This tranche's guards straddle two packages: the rehearsal's own",
+    "machinery lives in `internal-packages/tenancy-database`, because that is the",
+    "ONE Prisma home and the only place entitled to rebuild an old release's",
+    "client, while the store half lives here. The ledger is filed here because",
+    "this is where the mutation ledgers are hashed and counted, and a seventh",
+    "file in a directory that already has six is easier to find than a first file",
+    "in a directory that has none.",
+    "",
+    "WHAT THIS TRANCHE'S GUARDS ARE, AND WHY THEY NEEDED WORK TO BE FALSIFIABLE.",
+    "Most of them validate INPUTS that are correct in this repository — the",
+    "migration set is well-ordered, the frozen schemas hash to their pins — so",
+    "their refusal branches were unreachable as first written. `orderedMigrations`",
+    "now takes an injectable root and the two digest checks are pure functions,",
+    "so every refusal has a case that builds the broken input it exists for.",
+    "One branch stayed unreachable and is DECLARED rather than counted."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST, and with a non-zero executed-case count. A",
+    "run that fails to load is indistinguishable from a kill, and tranche 1's",
+    "first sweep reported twenty-two kills that were all of that kind.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file — the",
+    "driver requires the `from` to occur EXACTLY ONCE, so a stale entry is an",
+    "error and not a silent no-op — run the named suites against a real",
+    "PostgreSQL container on the Mac mini, and confirm a NAMED case in `kills`",
+    "is among the failures. Then revert and confirm green again.",
+    "",
+    "TWELVE OF THE SIXTEEN NEED NO DATABASE, and that is a property of this",
+    "tranche rather than a weakness: the migration-set and frozen-schema guards",
+    "are decisions about FILES, and a container would add nothing to them. The",
+    "four that do need one are M-T7-11 through M-T7-16's database entries, where",
+    "the thing being measured is what PostgreSQL did to a legacy database.",
+    "",
+    "THE DRIVER IS AD HOC, as in the six tranches before this one. Each entry",
+    "below was applied, run and reverted individually."
+  ],
+  "mutations": [
+    {
+      "name": "M-T7-01 the bootstrap records the repository's genesis checksum, not the legacy one",
+      "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+      "from": "  executeSql(\n    `UPDATE \"_prisma_migrations\" SET \"checksum\" = '${BASELINE_SQL_SHA256}' ` +\n      `WHERE \"migration_name\" = '${GENESIS_MIGRATION}';`,\n    databaseUrl,\n  );",
+      "to": "",
+      "note": "The migration runner is HAPPY either way, which is why this needed an assertion of its own rather than a reliance on `migrate deploy` refusing. Without the patch the database claims a genesis no installation ever had.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts"
+      ],
+      "kills": [
+        "the ordered migration set is total and gap-free, and the database applied exactly it"
+      ]
+    },
+    {
+      "name": "M-T7-02 the migration set may hold two directories on one stamp",
+      "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+      "from": "  if (duplicates.length > 0) {",
+      "to": "  if (false) {",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the ordered migration set > refuses a set whose stamps collide, because the filesystem then decides"
+      ],
+      "note": "THE SWEEP CHANGED THE CODE for this one: it SURVIVED the first pass, because a set with two directories on one stamp also fails the order comparison two lines later and the two guards answered the same code. Five distinct codes were minted so each case can tell its guard from the one behind it."
+    },
+    {
+      "name": "M-T7-03 a directory that is not a stamp and a label is admitted",
+      "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+      "from": "      if (matched === null) {",
+      "to": "      if (matched === undefined) {",
+      "note": "A nullish off-by-one rather than a deletion: `exec` answers null, never undefined, so the branch is skipped and the stamp read from it is read off null.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the ordered migration set > refuses a directory that is not a stamp and a snake_case label"
+      ]
+    },
+    {
+      "name": "M-T7-04 a stray file beside the migration directories is ignored",
+      "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+      "from": "  if (unexpected.length > 0) {",
+      "to": "  if (false) {",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the ordered migration set > refuses a stray file beside the migration directories"
+      ]
+    },
+    {
+      "name": "M-T7-05 the set need not begin at the genesis migration",
+      "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+      "from": "  if (migrations[0]?.name !== GENESIS_MIGRATION) {",
+      "to": "  if (false) {",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the ordered migration set > refuses a set that does not begin at the genesis migration"
+      ]
+    },
+    {
+      "name": "M-T7-06 the frozen baseline SQL is applied whatever it now says",
+      "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+      "from": "  if (digest !== BASELINE_SQL_SHA256) {",
+      "to": "  if (false) {",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the frozen release schemas > refuses a frozen baseline SQL that no longer hashes to its pin"
+      ]
+    },
+    {
+      "name": "M-T7-07 a frozen release schema is rebuilt whatever it now says",
+      "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
+      "from": "  if (digest !== release.schemaSha256) {",
+      "to": "  if (false) {",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the frozen release schemas > refuses a schema that no longer hashes to its pin"
+      ]
+    },
+    {
+      "name": "M-T7-08 a schema with no generator output line is generated unchanged",
+      "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
+      "from": "  if (!OUTPUT_LINE.test(source)) {",
+      "to": "  if (false) {",
+      "note": "The guard that stops a rebuild writing over the LIVE client. Both frozen schemas name the live output path, so a silent no-match would generate an old release's datamodel into the directory the rest of the package imports.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the frozen release schemas > refuses a schema with no generator output line to redirect"
+      ]
+    },
+    {
+      "name": "M-T7-09 the renamed column is taken from a difference of any size",
+      "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
+      "from": "  if (only.length !== 1) {",
+      "to": "  if (false) {",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "addressing a renamed column without spelling it > refuses when the two datamodels differ by more than one stored field",
+        "addressing a renamed column without spelling it > refuses when they differ by none, because then there is nothing to rehearse"
+      ]
+    },
+    {
+      "name": "M-T7-10 a relation field counts as a stored column",
+      "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
+      "from": "  return model.fields.filter((field) => field.kind === \"scalar\" || field.kind === \"enum\");",
+      "to": "  return model.fields.filter((field) => field.kind !== \"unused\");",
+      "note": "A relation is not a column, so counting one would make the whole-table column sweep compare a name PostgreSQL has never heard of.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "addressing a renamed column without spelling it > counts scalar and enum fields and nothing else"
+      ]
+    },
+    {
+      "name": "M-T7-11 a delegate the rebuilt client does not expose is handed back anyway",
+      "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
+      "from": "  if (delegate === undefined || delegate === null) {",
+      "to": "  if (false) {",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "addressing a renamed column without spelling it > refuses a delegate the rebuilt client does not expose"
+      ]
+    },
+    {
+      "name": "M-T7-12 the catalogue difference never reports a column that went",
+      "file": "internal-packages/tenancy-database/src/upgrade-catalogue.ts",
+      "from": "    if (!afterByKey.has(id)) removed.push(item);",
+      "to": "    if (afterByKey.has(id)) removed.push(item);",
+      "note": "The renamed column is the ONLY thing this half of the difference reports, and it is the sharpest contract-phase operation in the set.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts"
+      ],
+      "kills": [
+        "the measured catalogue difference holds no operation outside the declared set"
+      ]
+    },
+    {
+      "name": "M-T7-13 a mandatory column with a DEFAULT counts as narrowing",
+      "file": "internal-packages/tenancy-database/src/upgrade-catalogue.ts",
+      "from": "  return !column.isNullable && column.columnDefault === null;",
+      "to": "  return !column.isNullable;",
+      "note": "The whole expand/contract distinction for an added column. NOT NULL WITH a default is invisible to a writer that never names it; without one it is a refusal.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts"
+      ],
+      "kills": [
+        "the measured catalogue difference holds no operation outside the declared set"
+      ]
+    },
+    {
+      "name": "M-T7-14 the legacy attachment is left unbound to a turn",
+      "file": "internal-packages/tenancy-database/src/upgrade-fixture.ts",
+      "from": "      endUserId: ids.endUser,\n      turnId: ids.turn,\n      kind: \"document\",",
+      "to": "      endUserId: ids.endUser,\n      kind: \"document\",",
+      "note": "Proves the fixture is what satisfies the m4 ownership preflight, and therefore that the rehearsal is running the REAL backfill rather than a migration that found nothing to do. THE SWEEP CHANGED THE SUITE for this one: the refusal originally reached `beforeAll`, which executed zero cases and read as VACUOUS rather than as a kill, so the upgrade's own refusal is now captured into a variable a named case asserts.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts"
+      ],
+      "kills": [
+        "the ordered migration set is total and gap-free, and the database applied exactly it"
+      ]
+    },
+    {
+      "name": "M-T7-15 the store rehearsal starts from an empty database, not a legacy one",
+      "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
+      "from": "  applyFrozenBaseline(databaseUrl);\n  const legacyClient = legacyRelease.connect(databaseUrl);\n  await seedAsLegacyBinary(legacyClient, retryCounter);\n  await legacyClient.$disconnect();\n\n",
+      "to": "",
+      "note": "The single edit that would turn the store half back into the clean-install rehearsal every other harness in the directory already runs.",
+      "suites": [
+        "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+      ],
+      "kills": [
+        "the V1 stores read the tenancy tree a legacy release wrote"
+      ]
+    },
+    {
+      "name": "M-T7-16 the rollout partner is the legacy release rather than the binary being replaced",
+      "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
+      "from": "  const rolloutPartner = oracleHead.connect(databaseUrl);",
+      "to": "  const rolloutPartner = legacyRelease.connect(databaseUrl);",
+      "note": "Two old binaries are open in this tranche and confusing them would make the backward direction claim the wrong thing.",
+      "suites": [
+        "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+      ],
+      "kills": [
+        "the binary being replaced reads back what the V1 stores wrote"
+      ]
+    },
+    {
+      "name": "M-T7-17 the live client gains a second output location",
+      "file": "internal-packages/tenancy-database/prisma/end-user.prisma",
+      "from": "  output        = \"../generated/end-user\"",
+      "to": "  output        = \"../generated/control\"",
+      "note": "The generated client's location is what WIN-258's scope asks to settle. Two schemas pointed at ONE directory would have the second generate silently replace the first, and every module importing the barrel would get whichever ran last.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the generated client's one location > each live schema names exactly one output, and the two do not collide"
+      ]
+    },
+    {
+      "name": "M-T7-18 the migration image ships one named migration instead of the directory",
+      "file": "internal-packages/tenancy-database/Dockerfile.migrations",
+      "from": "COPY internal-packages/tenancy-database/prisma ./prisma",
+      "to": "COPY internal-packages/tenancy-database/prisma/migrations/00000000000000_initial ./prisma",
+      "note": "An image that enumerated migrations would ship a set that silently lost the next one added. Copying the directory is what makes the image's ordered set the repository's by construction.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the migration package and its image > the image copies the whole migration directory, so its set cannot drift from this one"
+      ]
+    }
+  ],
+  "declared-unfalsifiable": [
+    {
+      "name": "D-T7-01 the lexicographic and numeric orders of the migration stamps agree",
+      "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
+      "guard": "for (let index = 1; index < stamps.length; index += 1) { ... if (!(Number(current) > Number(previous))) throw ... }",
+      "why": [
+        "UNREACHABLE BY CONSTRUCTION, and left in place anyway. The migration name",
+        "rule admits only names whose stamp is EXACTLY fourteen digits, and",
+        "equal-length digit strings order the same way lexicographically and",
+        "numerically. So no set the name rule accepts can reach this branch, and no",
+        "mutation of it can be killed. Removing it would be the tidier answer and is",
+        "the wrong one: the branch is the tripwire for the day the width rule is",
+        "relaxed, which is the only way the two orders could ever part.",
+        "",
+        "It is recorded HERE rather than counted as a kill because a ledger that",
+        "counted it would be claiming a sweep result it did not have. The PROPERTY",
+        "is checked by a named case — `orders by name and by number identically,",
+        "which is why the order is total` — which asserts the agreement and the",
+        "fixed width on the set that actually ships."
+      ]
+    }
+  ],
+  "result": [
+    "EIGHTEEN ENTRIES, EIGHTEEN KILLS, NONE VACUOUS, plus ONE DECLARED",
+    "UNFALSIFIABLE. Each kill is a NAMED case in its entry's `kills` list, seen",
+    "red on the Mac mini at branch head against real PostgreSQL where the entry",
+    "needed one. Every suite set was proved green and non-empty before anything",
+    "was mutated: the guard suite, the binary-level rehearsal and the store-level",
+    "one, with no run classified vacuous.",
+    "",
+    "THE SWEEP FOUND TWO DEFECTS IN THE EVIDENCE, and both are recorded at the",
+    "entries they belong to rather than only here.",
+    "",
+    "  M-T7-02 SURVIVED the first pass. Every malformed migration set answered",
+    "  ONE refusal code, and a set with two directories on one stamp also fails",
+    "  the order comparison two lines further down -- so the case aimed at the",
+    "  stamp guard could not tell it from the guard that caught the input on its",
+    "  way past. Five distinct codes were minted and the case now names its own.",
+    "",
+    "  M-T7-14 read VACUOUS. Its refusal reached `beforeAll`, which executed no",
+    "  cases at all, and a run that executes nothing is indistinguishable from a",
+    "  kill. The upgrade's own refusal is now captured into a variable that a",
+    "  named case asserts, so the ordered set failing is a failure with a name.",
+    "",
+    "SIX GUARDS COULD NOT BE KILLED AS FIRST WRITTEN, which is worth saying",
+    "plainly. They validate INPUTS that are correct in this repository -- the",
+    "migration set is well ordered, the frozen artefacts hash to their pins -- so",
+    "no case could hand them the broken input their branches exist for.",
+    "`orderedMigrations` grew an injectable root and the two digest checks became",
+    "pure functions for that reason alone.",
+    "",
+    "M-T7-01 IS STILL THE ONE TO LOOK AT. The bootstrap patches the genesis row's",
+    "checksum to the LEGACY release's, and `prisma migrate deploy` is perfectly",
+    "happy without that patch -- it compares the recorded checksum against this",
+    "repository's own file, which is what an unpatched row already holds. The",
+    "guard was invisible to every case until one asserted that the row carries the",
+    "frozen baseline's digest AND that the two digests differ. Without it the",
+    "rehearsal would have run against a database in a state no installation has",
+    "ever been in, and reported a clean result."
+  ]
+}
