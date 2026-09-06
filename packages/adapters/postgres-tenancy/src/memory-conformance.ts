@@ -90,8 +90,8 @@ export interface MemoryConformanceIds {
   readonly turnId: string;
   readonly secondTurnId: string;
   readonly ratingId: string;
-  /** Three memory ids the scenario writes, in the order it writes them. */
-  readonly memoryIds: readonly [string, string, string];
+  /** Four memory ids the scenario writes, in the order it writes them. */
+  readonly memoryIds: readonly [string, string, string, string];
   /** Three entity ids and one edge id, for the graph half. */
   readonly entityIds: readonly [string, string, string];
   readonly relationshipId: string;
@@ -180,7 +180,7 @@ export async function runMemoryConformance(
     asMemoryIdentifier<AgentId>(ids.agentId),
     asMemoryIdentifier<AgentId>(ids.peerAgentId),
   ];
-  const [manualId, extractedId, profileId] = ids.memoryIds;
+  const [manualId, extractedId, profileId, outsiderId] = ids.memoryIds;
 
   function draft(memoryId: string, overrides: Partial<Memory>): Memory {
     const createdAt = at();
@@ -303,6 +303,27 @@ export async function runMemoryConformance(
     ),
   );
   observed["insertProfile"] = summaryOf(profile);
+
+  // A FOURTH ROW, OWNED BY AN AGENT IN NO CLUSTER, AND IT IS THE ONE THE AGENT
+  // SCOPE IS MEASURED WITH. Every step below that names `clusterAgents` must
+  // leave it out — including `searchMemories`, whose `WHERE` is written in SQL
+  // rather than composed by the client and whose agent clause therefore had no
+  // observation at all until this row existed (`mutations-memory.json` M-M34).
+  // It carries a vector for exactly that reason: a row with none is excluded by
+  // a different clause and would have measured that one instead.
+  const outsider = await run((transaction) =>
+    stores.memory.insertMemory(
+      {
+        memory: draft(outsiderId, {
+          content: "known only to the unclustered agent",
+          ownership: { agentId: asMemoryIdentifier<AgentId>(ids.outsideAgentId), clusterId: null },
+        }),
+        embedding: { action: "set", vector: unitVector(5) },
+      },
+      transaction,
+    ),
+  );
+  observed["insertOutsideCluster"] = summaryOf(outsider);
 
   // --- the point reads ------------------------------------------------------
 

@@ -207,7 +207,7 @@
       "from": "        if (write.embedding.action !== \"keep\") {",
       "to": "        if (true) {",
       "note": "`keep` means the content did not change, so recomputing the vector would spend a model call to store the same numbers — and `vector` is null on that branch, so sending the statement CLEARS the column instead. The row silently stops being a search candidate.",
-      "suites": ["src/memory-rules.integration.test.ts", "src/memory-statements.integration.test.ts"],
+      "suites": ["src/memory-vectors.integration.test.ts", "src/memory-statements.integration.test.ts"],
       "kills": [
         "the three-case embedding directive, against the column itself `keep` on an update leaves the stored vector standing",
         "the writes an update with `keep` is ONE statement and with `set` it is two"
@@ -410,7 +410,7 @@
       "file": "src/memory-vectors.ts",
       "from": "       AND \"endUserId\" = ${bindings.endUserId}::uuid\n       AND \"agentId\" = ANY(string_to_array(${bindings.agentCsv}, ',')::uuid[])\n       AND \"embedding\" IS NOT NULL\n       AND (${bindings.kind}::text IS NULL",
       "to": "       AND \"endUserId\" = ${bindings.endUserId}::uuid\n       AND \"embedding\" IS NOT NULL\n       AND (${bindings.kind}::text IS NULL",
-      "note": "The one read whose `WHERE` is written in SQL rather than composed by the client, and therefore the one a reviewer is least likely to check against the port's scoping rule.",
+      "note": "The one read whose `WHERE` is written in SQL rather than composed by the client, and therefore the one a reviewer is least likely to check against the port's scoping rule. IT SURVIVED THE SECOND SWEEP because every row in the scenario belonged to an agent the search was scoped to; `insertOutsideCluster` is the row that makes the clause observable, and it carries a vector so that a DIFFERENT clause is not what excludes it.",
       "suites": ["src/memory-conformance.integration.test.ts"],
       "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
     },
@@ -420,7 +420,7 @@
       "from": "     WHERE \"id\" = ${memoryId}::uuid AND \"environmentId\" = ${environmentId}::uuid`;\n}\n\nexport async function writeEntityEmbedding(",
       "to": "     WHERE \"id\" = ${memoryId}::uuid`;\n}\n\nexport async function writeEntityEmbedding(",
       "note": "A raw UPDATE keyed on a bare primary key is installation-wide. It is a WRITE and `MUTATING_SQL_STATEMENT` attributes it to `memory` by the table it names, but nothing in the gate says which ROWS of that table it may reach. NO CALL THROUGH EITHER PORT CAN EXERCISE IT — the store takes the id and the environment off the same aggregate — so the case that kills it calls the statement directly, which is the honest alternative to arguing an equivalent mutant.",
-      "suites": ["src/memory-rules.integration.test.ts"],
+      "suites": ["src/memory-vectors.integration.test.ts"],
       "kills": ["the three-case embedding directive, against the column itself the vector write is SCOPED, so a mismatched environment reaches no row"]
     },
     {

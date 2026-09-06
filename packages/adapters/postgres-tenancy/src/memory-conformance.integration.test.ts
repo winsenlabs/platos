@@ -59,7 +59,12 @@ beforeAll(async () => {
     turnId: chain.turnId,
     secondTurnId: chain.secondTurnId,
     ratingId: chain.ratingId,
-    memoryIds: [harness.base.freshId("0040"), harness.base.freshId("0041"), harness.base.freshId("0042")],
+    memoryIds: [
+      harness.base.freshId("0040"),
+      harness.base.freshId("0041"),
+      harness.base.freshId("0042"),
+      harness.base.freshId("0047"),
+    ],
     entityIds: [harness.base.freshId("0043"), harness.base.freshId("0044"), harness.base.freshId("0045")],
     relationshipId: harness.base.freshId("0046"),
     // A uuid of the right SHAPE that names no row, so every miss is a miss
