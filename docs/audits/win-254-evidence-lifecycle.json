@@ -1404,7 +1404,7 @@
       "path": "docs/audits/sbom/licence-resolution.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "11201695bda81a732b9c34eec730835af383792e7be0427eeb3021b596494b6d",
+      "sha256": "4aab9409a4c498935f10d95315eb8710185ae8ff8b6241ad0314f7650ff4f27f",
       "binds": "current-repository-truth"
     },
     {
@@ -1511,14 +1511,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "121c93baa4ea1f50196a4f058645ecdb0e9c1ef4523867db801d7f99e838a16c",
+      "sha256": "6d41a10e2c84e26c933559c003d97867adb5d435183a869f954535727bfb674e",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "0e8c8e315b93b58a73007b81af744bba6b5b0cc89926cb8061ab3ba2aee13c2a",
+      "sha256": "60ef7522575ac545a92498ff22ffa661f59616b72678121102686d56df128319",
       "binds": "current-repository-truth"
     },
     {

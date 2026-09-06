@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6775bcf40a6ecc3e424db06f696c3a206e0b0f67b1e6b18b6a3839aa5fe5abdc",
+  "evidenceSha256": "ee99daeff0f7df3891e9931bcd88279ee7d55526477ffdc3e1f20872fde56e7c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d52bf4ef2215fc764ca1c0edeba94fe986b291d15977c4f1edfde62b7212aaa4",
+    "aggregateSha256": "a710e3e79b76ba3032a4bc63955dd82ff6059b65251f0503bc149bff43dc6ee2",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4053,7 +4053,7 @@
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
-        "sha256": "11201695bda81a732b9c34eec730835af383792e7be0427eeb3021b596494b6d"
+        "sha256": "4aab9409a4c498935f10d95315eb8710185ae8ff8b6241ad0314f7650ff4f27f"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.md",
@@ -18477,7 +18477,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "73a43907b5519243d2208b2b5cf56642e3ee366bfb467902608286cc160177c5"
+        "sha256": "1712b61009f39a27afde940a726fcf4b8e079eccc92fe9dceeef783e5a6b1a9d"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
