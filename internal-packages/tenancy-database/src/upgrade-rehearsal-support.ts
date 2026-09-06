@@ -141,6 +141,28 @@ export function orderedMigrations(root: string = migrationsRoot): readonly Order
   return migrations;
 }
 
+/**
+ * Check the frozen baseline SQL and hand back the statements to apply.
+ *
+ * PURE, AND EXPORTED, for the same reason `verifyFrozenSchema` is: a digest
+ * check whose only input is the file it guards has no branch anything can be
+ * seen to take. The pinned digest is ALSO the checksum a legacy installation
+ * recorded for its genesis migration, which is why the value is one constant and
+ * not two — a rehearsal that applied one file and claimed another's checksum
+ * would put the database into a state no installation was ever in.
+ */
+export function verifyFrozenBaseline(sql: string): string {
+  const digest = createHash("sha256").update(sql).digest("hex");
+  if (digest !== BASELINE_SQL_SHA256) {
+    throw new MigrationSetError(
+      MIGRATION_BASELINE_DRIFT,
+      `the frozen upgrade baseline hashes to ${digest}, not the pinned ${BASELINE_SQL_SHA256}; ` +
+        "it is the genesis migration of c25432c5 verbatim and may not be edited",
+    );
+  }
+  return sql;
+}
+
 function runPrisma(args: readonly string[], databaseUrl: string): string {
   try {
     return execFileSync(prismaBinary, [...args, "--schema", schemaPath], {
@@ -182,14 +204,7 @@ function executeSql(sql: string, databaseUrl: string): void {
  * instead would hide precisely the drift the rehearsal is for.
  */
 export function applyFrozenBaseline(databaseUrl: string): void {
-  const sql = readFileSync(BASELINE_SQL_PATH, "utf8");
-  const digest = createHash("sha256").update(sql).digest("hex");
-  if (digest !== BASELINE_SQL_SHA256) {
-    throw new MigrationSetError(
-      MIGRATION_BASELINE_DRIFT,
-      `${BASELINE_SQL_PATH} hashes to ${digest}, not the pinned ${BASELINE_SQL_SHA256}`,
-    );
-  }
+  const sql = verifyFrozenBaseline(readFileSync(BASELINE_SQL_PATH, "utf8"));
   executeSql(sql, databaseUrl);
   runPrisma(["migrate", "resolve", "--applied", GENESIS_MIGRATION], databaseUrl);
   executeSql(

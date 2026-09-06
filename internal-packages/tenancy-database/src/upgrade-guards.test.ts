@@ -14,7 +14,7 @@
 // as a migration. One case asserting "the real set is fine" would cover none.
 
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
@@ -32,10 +32,13 @@ import {
   verifyFrozenSchema,
 } from "./upgrade-baseline-clients";
 import {
+  BASELINE_SQL_PATH,
   GENESIS_MIGRATION,
+  MIGRATION_BASELINE_DRIFT,
   MIGRATION_ORDER_BROKEN,
   MigrationSetError,
   orderedMigrations,
+  verifyFrozenBaseline,
 } from "./upgrade-rehearsal-support";
 
 const roots: string[] = [];
@@ -157,6 +160,17 @@ describe("the frozen release schemas", () => {
 
   test("refuses a release nobody froze", () => {
     expect(UPGRADE_BASELINE_RELEASES["no-such-release"]).toBeUndefined();
+  });
+
+  test("refuses a frozen baseline SQL that no longer hashes to its pin", () => {
+    expect(refusalCode(() => verifyFrozenBaseline("-- edited\n"))).toBe(MIGRATION_BASELINE_DRIFT);
+  });
+
+  test("accepts the frozen baseline the repository ships, unchanged", () => {
+    const shipped = readFileSync(BASELINE_SQL_PATH, "utf8");
+    expect(verifyFrozenBaseline(shipped)).toBe(shipped);
+    // NON-VACUITY. An empty file would satisfy an identity check.
+    expect(shipped.length).toBeGreaterThan(100_000);
   });
 });
 

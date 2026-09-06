@@ -55,6 +55,7 @@ import { LEGACY_RETRY_COUNT, ROLLOUT_IDS, seedAsLegacyBinary } from "./upgrade-f
 import {
   applyFrozenBaseline,
   applyOrderedMigrations,
+  BASELINE_SQL_SHA256,
   orderedMigrations,
 } from "./upgrade-rehearsal-support";
 
@@ -202,8 +203,18 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
     );
     expect(applied.map((row) => row.name)).toEqual(ordered.map((migration) => migration.name));
 
-    // The genesis row carries the LEGACY checksum, because the legacy release
-    // provisioned this database. Every later row carries this repository's own.
+    // THE GENESIS ROW CARRIES THE LEGACY CHECKSUM, and asserting that is what
+    // keeps this a rehearsal of the legacy upgrade path rather than of a clean
+    // install. The two values are DIFFERENT — the frozen baseline is an earlier
+    // release's genesis, not this repository's — so a bootstrap that recorded
+    // the repository's own checksum would put the database into a state no
+    // installation has ever been in, and `migrate deploy` would still be happy.
+    expect(applied[0]?.name).toBe(ordered[0]?.name);
+    expect(applied[0]?.checksum).toBe(BASELINE_SQL_SHA256);
+    expect(applied[0]?.checksum).not.toBe(ordered[0]?.sha256);
+
+    // Every later row carries this repository's own checksum, because this
+    // repository is what applied them.
     for (const migration of ordered.slice(1)) {
       const row = applied.find((candidate) => candidate.name === migration.name);
       expect({ name: migration.name, checksum: row?.checksum }).toEqual({
