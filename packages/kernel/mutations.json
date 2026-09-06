@@ -1,0 +1,255 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for @platos/kernel's WIN-260 (M2.5) additions: the",
+    "transaction-outcome contract in src/ports/unit-of-work.ts and the bounded",
+    "retry policy in src/vo/retry.ts. One entry per invariant, each carrying the",
+    "file it lives in, the EXACT text that implements it (`from`), the edit that",
+    "removes it (`to`), and the NAMED cases that were seen to go red (`kills`).",
+    "",
+    "A guard nothing can turn red is a guard that is not there.",
+    "",
+    "THE KERNEL HAD NO LEDGER BEFORE THIS. Its three original suites cover value",
+    "objects whose guards are their own assertions; the two modules added here",
+    "are the first kernel code with BEHAVIOUR \u2014 a rollback and a bound \u2014 and",
+    "behaviour is what a mutation ledger is for.",
+    "",
+    "This lives here rather than in README.md because that file is emitted by",
+    "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
+    "scripts/arch/gen-v1-skeleton.mjs --check`."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. An earlier tranche reported 22 kills and every",
+    "one was VACUOUS: the package's dist/ had been cleaned, so every suite failed",
+    "to LOAD and would have 'died' against no mutation at all. The driver runs",
+    "each suite set UNMUTATED and refuses to sweep unless it is green, and",
+    "classifies a module-load failure with no named failing case as VACUOUS.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file, run",
+    "`pnpm --filter @platos/kernel exec vitest run <suites>`, and confirm a NAMED",
+    "case goes red. Then revert and confirm green.",
+    "",
+    "K01 IS SWEPT TWICE, and the second sweep is the one that matters. The",
+    "kernel's own suite drives `runResult` against a double this dimension wrote.",
+    "`packages/contexts/cost-monitoring/application/detect-crossings.test.ts`",
+    "drives it through a use case, against a double an EARLIER tranche wrote, in",
+    "a suite this dimension did not touch \u2014 so the second kill is by a case this",
+    "dimension does not control. It needs `pnpm --filter @platos/kernel exec tsc",
+    "-b` between the mutation and the run, because a context resolves the kernel",
+    "through dist/ and a sweep without the rebuild would be vacuous in the other",
+    "direction: green against a mutation that never reached the code."
+  ],
+  "mutations": [
+    {
+      "name": "K01 runResult RESOLVES an error Result instead of aborting \u2014 the cost-monitoring defect, restored",
+      "file": "src/ports/unit-of-work.ts",
+      "from": "      if (outcome.ok) return outcome.value;\n      throw Object.freeze({ brand: TRANSACTION_ABORT_BRAND, error: outcome.error });",
+      "to": "      if (outcome.ok) return outcome.value;\n      return outcome.error as never;",
+      "suites": [
+        "src/ports/unit-of-work.test.ts"
+      ],
+      "kills": [
+        "the cost-monitoring shape: an error Result must not commit > rolls back everything the work wrote before it failed",
+        "the cost-monitoring shape: an error Result must not commit > counts the rollback rather than a quiet resolve",
+        "the cost-monitoring shape: an error Result must not commit > returns the SAME error value, so a caller can match on its code",
+        "the cost-monitoring shape: an error Result must not commit > rolls back a partial write even when the failure arrives last",
+        "the cost-monitoring shape: an error Result must not commit > leaves an earlier committed transaction alone",
+        "the joined frame, whose guarantee is the weaker one > hands the inner error back as a value without opening a second transaction",
+        "the joined frame, whose guarantee is the weaker one > discards everything when the outer frame propagates the inner error"
+      ],
+      "also-killed-by": {
+        "package": "@platos/context-cost-monitoring",
+        "rebuild": "pnpm --filter @platos/kernel exec tsc -b",
+        "suites": [
+          "application/detect-crossings.test.ts"
+        ],
+        "kills": [
+          "the crossing writes and its fan-out are ONE transaction > commits NEITHER write when the fan-out fails",
+          "the crossing writes and its fan-out are ONE transaction > lets the retry succeed once the fan-out recovers, because nothing was stranded"
+        ]
+      }
+    },
+    {
+      "name": "K02 isTransactionAbort accepts any object carrying the brand, code or not",
+      "file": "src/ports/unit-of-work.ts",
+      "from": "  const carried = candidate.error as { code?: unknown } | null | undefined;\n  return typeof carried === \"object\" && carried !== null && typeof carried.code === \"string\";",
+      "to": "  return true;",
+      "suites": [
+        "src/ports/unit-of-work.test.ts"
+      ],
+      "kills": [
+        "a thrown defect is not a business failure > does not swallow an object that merely carries the brand string",
+        "isTransactionAbort discriminates exactly > refuses an object whose error is null",
+        "isTransactionAbort discriminates exactly > refuses an object whose error has no code",
+        "isTransactionAbort discriminates exactly > refuses an object whose code is not a string"
+      ]
+    },
+    {
+      "name": "K03 isTransactionAbort ignores the brand, so any error-shaped throw becomes a business failure",
+      "file": "src/ports/unit-of-work.ts",
+      "from": "  if (candidate.brand !== TRANSACTION_ABORT_BRAND) return false;",
+      "to": "  if (candidate.brand === undefined && false) return false;",
+      "suites": [
+        "src/ports/unit-of-work.test.ts"
+      ],
+      "kills": [
+        "isTransactionAbort discriminates exactly > refuses an object with no brand",
+        "isTransactionAbort discriminates exactly > refuses an object with the wrong brand"
+      ]
+    },
+    {
+      "name": "K04 runResult rethrows its own abort, turning every business failure into a 500",
+      "file": "src/ports/unit-of-work.ts",
+      "from": "    if (isTransactionAbort(cause)) return err(cause.error);\n    throw cause;",
+      "to": "    throw cause;",
+      "suites": [
+        "src/ports/unit-of-work.test.ts"
+      ],
+      "kills": [
+        "the cost-monitoring shape: an error Result must not commit > rolls back everything the work wrote before it failed",
+        "the cost-monitoring shape: an error Result must not commit > counts the rollback rather than a quiet resolve",
+        "the cost-monitoring shape: an error Result must not commit > returns the SAME error value, so a caller can match on its code",
+        "the cost-monitoring shape: an error Result must not commit > rolls back a partial write even when the failure arrives last",
+        "the cost-monitoring shape: an error Result must not commit > leaves an earlier committed transaction alone",
+        "the joined frame, whose guarantee is the weaker one > hands the inner error back as a value without opening a second transaction",
+        "the joined frame, whose guarantee is the weaker one > commits the outer transaction when the outer frame swallows the inner error",
+        "the joined frame, whose guarantee is the weaker one > discards everything when the outer frame propagates the inner error"
+      ]
+    },
+    {
+      "name": "K05 the brand becomes a per-copy symbol, which fails OPEN across two resolved kernels",
+      "file": "src/ports/unit-of-work.ts",
+      "from": "export const TRANSACTION_ABORT_BRAND = \"platos.kernel.unit-of-work.abort\";",
+      "to": "export const TRANSACTION_ABORT_BRAND = \"platos.kernel.unit-of-work.abort.v2\";",
+      "suites": [
+        "src/ports/unit-of-work.test.ts"
+      ],
+      "kills": [
+        "isTransactionAbort discriminates exactly > names the brand in Platos terms so two copies of this module agree"
+      ]
+    },
+    {
+      "name": "K06 backoff loses its ceiling, so a long outage schedules a retry past the retention window",
+      "file": "src/vo/retry.ts",
+      "from": "  return Math.min(Math.round(grown), policy.ceilingMs);",
+      "to": "  return Math.round(grown);",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "backoff grows and then stops growing > never exceeds the ceiling anywhere in a sweep that overflows growth",
+        "backoff grows and then stops growing > actually REACHES the ceiling, so the clamp is doing work",
+        "the bound is stated as arithmetic, not as a promise > dominates the real sum of every wait a policy can schedule, jitter included"
+      ]
+    },
+    {
+      "name": "K07 the give-up comparison becomes >, so a policy sends one more time than its budget",
+      "file": "src/vo/retry.ts",
+      "from": "  if (retryCount >= policy.maxSends) return { kind: \"give-up\", retryCount, reason: \"budget_spent\" };",
+      "to": "  if (retryCount > policy.maxSends) return { kind: \"give-up\", retryCount, reason: \"budget_spent\" };",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "decideRetry spends a bounded budget > gives up at the budget, not one send later",
+        "decideRetry spends a bounded budget > gives up immediately for a policy that allows one send",
+        "decideRetry spends a bounded budget > gives up for every failed count at or beyond the budget",
+        "decideRetry spends a bounded budget > yields exactly maxSends - 1 retries before giving up"
+      ]
+    },
+    {
+      "name": "K08 the growth exponent is off by one, silently halving every existing backoff",
+      "file": "src/vo/retry.ts",
+      "from": "  const grown = policy.baseDelayMs * policy.multiplier ** retryCount;",
+      "to": "  const grown = policy.baseDelayMs * policy.multiplier ** (retryCount - 1);",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "backoff grows and then stops growing > charges one factor of growth on the FIRST retry",
+        "backoff grows and then stops growing > doubles on the second",
+        "backoff grows and then stops growing > actually REACHES the ceiling, so the clamp is doing work",
+        "backoff grows and then stops growing > returns a whole number of milliseconds for a fractional multiplier"
+      ]
+    },
+    {
+      "name": "K09 a ceiling below the first wait is accepted, so the ceiling contradicts the base",
+      "file": "src/vo/retry.ts",
+      "from": "  if (!isWholeAtLeast(draft.ceilingMs, 0) || draft.ceilingMs < draft.baseDelayMs) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "defineRetryPolicy refuses five different mistakes with five codes > refuses a ceiling below the first wait",
+        "defineRetryPolicy refuses five different mistakes with five codes > refuses a fractional ceiling"
+      ]
+    },
+    {
+      "name": "K10 growth below one is accepted, so the wait SHRINKS as the failure persists",
+      "file": "src/vo/retry.ts",
+      "from": "  if (!Number.isFinite(draft.multiplier) || draft.multiplier < 1) {",
+      "to": "  if (false) {",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "defineRetryPolicy refuses five different mistakes with five codes > refuses growth below one",
+        "defineRetryPolicy refuses five different mistakes with five codes > refuses growth that is not finite",
+        "defineRetryPolicy refuses five different mistakes with five codes > names the offending field on every refusal"
+      ]
+    },
+    {
+      "name": "K11 jitter ADDS time, so a jittered schedule exceeds the bound the policy states",
+      "file": "src/vo/retry.ts",
+      "from": "  const floor = delayMs * (1 - policy.jitterFraction);\n  return Math.round(floor + (delayMs - floor) * clamped);",
+      "to": "  const ceiling = delayMs * (1 + policy.jitterFraction);\n  return Math.round(delayMs + (ceiling - delayMs) * clamped);",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "jitter only ever subtracts > puts the top of the band at the un-jittered wait",
+        "jitter only ever subtracts > puts the bottom of the band at (1 - jitterFraction) of the wait",
+        "jitter only ever subtracts > stays inside the band for every draw across a sweep",
+        "jitter only ever subtracts > clamps a draw outside [0, 1] rather than refusing to schedule"
+      ]
+    },
+    {
+      "name": "K12 a bad random draw is refused rather than clamped, losing the message",
+      "file": "src/vo/retry.ts",
+      "from": "  const clamped = Number.isFinite(spread) ? Math.min(Math.max(spread, 0), 1) : 0;",
+      "to": "  const clamped = spread;",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "jitter only ever subtracts > clamps a draw outside [0, 1] rather than refusing to schedule"
+      ]
+    },
+    {
+      "name": "K13 the stated bound understates the schedule by one whole ceiling",
+      "file": "src/vo/retry.ts",
+      "from": "  return Math.max(policy.maxSends - 1, 0) * policy.ceilingMs;",
+      "to": "  return Math.max(policy.maxSends - 2, 0) * policy.ceilingMs;",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "the bound is stated as arithmetic, not as a promise > is (maxSends - 1) ceilings",
+        "the bound is stated as arithmetic, not as a promise > dominates the real sum of every wait a policy can schedule, jitter included"
+      ]
+    },
+    {
+      "name": "K14 the policy is returned unfrozen, so a caller can mutate a validated schedule",
+      "file": "src/vo/retry.ts",
+      "from": "  return ok(\n    Object.freeze({\n      maxSends: draft.maxSends,",
+      "to": "  return ok(\n    ({\n      maxSends: draft.maxSends,",
+      "suites": [
+        "src/vo/retry.test.ts"
+      ],
+      "kills": [
+        "defineRetryPolicy refuses five different mistakes with five codes > freezes the policy it returns"
+      ]
+    }
+  ]
+}
