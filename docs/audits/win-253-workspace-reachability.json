@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6b8b74135f30c2652553678e8de67d0eb8aae872c9d75406d882e6d130289ef0",
+  "evidenceSha256": "944ac7b2d1a538d820146f4d5153ea0b8a624ff384f2806c1cf07059da9e4233",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d0a6a0e425a71941ab02f4f5c54d4d44240481242d7a49c28a66d78c62bd9fa5",
+    "aggregateSha256": "7a784cdbb0b8bca62599f56d1b6bedb64a2129f713cdc0afc68f50684e2f0651",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4029,7 +4029,7 @@
       },
       {
         "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
-        "sha256": "b6697a9dae7b628ea376ecfa5ae6b67272917c56bb1bc48de259247c6d2ee814"
+        "sha256": "536e7c893703595dff85d2eb56062f0857bf27903d86584ea3f53f92b6e6ec68"
       },
       {
         "path": "docs/audits/history/win-252/prompt-caching-progress.md",
@@ -18225,7 +18225,7 @@
       },
       {
         "path": "packages/kernel/mutations.json",
-        "sha256": "790c2d00aad7ce052f9fe886f31f03a7279ee10f6905eb35ac35888092b78ce8"
+        "sha256": "a60a9e5ef25e62d43af07f1bcc5fb45af98f6b8cdc661a8b8ace12bbf705fef2"
       },
       {
         "path": "packages/kernel/package.json",
@@ -18277,7 +18277,7 @@
       },
       {
         "path": "packages/kernel/src/ports/unit-of-work.ts",
-        "sha256": "640b040d48c06a54cca5ab566384749d7f1f09783d9163b62c9c29cb7bef46b9"
+        "sha256": "801cdab4bf7aa2320fbf196c1222fb87edbe09db934a43a1a800171392c1c873"
       },
       {
         "path": "packages/kernel/src/vo/domain-event.ts",
@@ -19369,11 +19369,11 @@
       },
       {
         "path": "scripts/arch/transaction-outcome.mjs",
-        "sha256": "eea1c122987ae128fb40159bdf538375fbd10ee21a95b5dcbe7f580f3c59d9e9"
+        "sha256": "77eb6216e85e6178f5690de5383dd61737b2513a2711e448f371579a466263d2"
       },
       {
         "path": "scripts/arch/transaction-outcome.test.mjs",
-        "sha256": "eb81de6159a19a594f18ea0561845f727f49564f3ca73407fbb398fb8de39a33"
+        "sha256": "a952bccf04b1fc07800fd3f570a0b046ef422391c5526d112489386096043f1e"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -47333,7 +47333,7 @@
             {
               "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "kind": "reference",
-              "line": 304
+              "line": 325
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -49054,7 +49054,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "73762f5171e2e1820fcc4fb92a13d3f06318d2178184591a89867e04edc80c17",
+      "evidenceSha256": "c5dab05484b1c4e7464b2393d22f07ab7af835ee981ab3c0f18d7263a19a6464",
       "manifestSha256": "f736a95a4330a56db4332704a1cf9abf6ff567e3cb142f99ba950bf90a34fb47",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {

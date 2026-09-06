@@ -1237,7 +1237,7 @@
       "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "b6697a9dae7b628ea376ecfa5ae6b67272917c56bb1bc48de259247c6d2ee814",
+      "sha256": "536e7c893703595dff85d2eb56062f0857bf27903d86584ea3f53f92b6e6ec68",
       "sourceSnapshot": "repository report captured for its named milestone or research baseline",
       "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
       "date": "2026-08-30"
@@ -1521,14 +1521,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "198bfc910160f63eb17e2bf9624cf244fbbce58ab7356029a6542ffcfc9072da",
+      "sha256": "921dd1b0d96ebdac2bd236c818375e9adea7a1305c54616fcbc45436aad4762a",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c35efb5f75fea7b00c0d092079cd15848302ab5a7f727358007a66eb30148b57",
+      "sha256": "a0e319cbb967671daab2f0880100d9cec97dee78480313250bca107ce1d4b847",
       "binds": "current-repository-truth"
     },
     {
@@ -1563,7 +1563,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "ef2a77695892718925d48f8efedc8ff564725cd558f63d3f5b9abed5accee6e6",
+      "sha256": "17387f82050d78bd26fa2e9e0750a2f6c6490b39a52223ac61d9310b940583ff",
       "binds": "current-repository-truth"
     },
     {
