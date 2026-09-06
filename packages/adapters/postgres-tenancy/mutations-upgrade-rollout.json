@@ -247,6 +247,32 @@
       "kills": [
         "the binary being replaced reads back what the V1 stores wrote"
       ]
+    },
+    {
+      "name": "M-T7-17 the live client gains a second output location",
+      "file": "internal-packages/tenancy-database/prisma/end-user.prisma",
+      "from": "  output        = \"../generated/end-user\"",
+      "to": "  output        = \"../generated/control\"",
+      "note": "The generated client's location is what WIN-258's scope asks to settle. Two schemas pointed at ONE directory would have the second generate silently replace the first, and every module importing the barrel would get whichever ran last.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the generated client's one location > each live schema names exactly one output, and the two do not collide"
+      ]
+    },
+    {
+      "name": "M-T7-18 the migration image ships one named migration instead of the directory",
+      "file": "internal-packages/tenancy-database/Dockerfile.migrations",
+      "from": "COPY internal-packages/tenancy-database/prisma ./prisma",
+      "to": "COPY internal-packages/tenancy-database/prisma/migrations/00000000000000_initial ./prisma",
+      "note": "An image that enumerated migrations would ship a set that silently lost the next one added. Copying the directory is what makes the image's ordered set the repository's by construction.",
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
+      "kills": [
+        "the migration package and its image > the image copies the whole migration directory, so its set cannot drift from this one"
+      ]
     }
   ],
   "declared-unfalsifiable": [
@@ -272,27 +298,41 @@
     }
   ],
   "result": [
-    "SIXTEEN ENTRIES, SIXTEEN KILLS, NONE VACUOUS, plus ONE DECLARED",
+    "EIGHTEEN ENTRIES, EIGHTEEN KILLS, NONE VACUOUS, plus ONE DECLARED",
     "UNFALSIFIABLE. Each kill is a NAMED case in its entry's `kills` list, seen",
     "red on the Mac mini at branch head against real PostgreSQL where the entry",
-    "needed one. All three suites were proved green and non-empty before anything",
-    "was mutated: 17 executed cases in the guard suite, 9 in the binary-level",
-    "rehearsal and 6 in the store-level one.",
+    "needed one. Every suite set was proved green and non-empty before anything",
+    "was mutated: the guard suite, the binary-level rehearsal and the store-level",
+    "one, with no run classified vacuous.",
     "",
-    "WHAT THE SWEEP CHANGED ABOUT THE WORK, rather than only confirming it. Six",
-    "of these guards could not be killed as first written, because their inputs",
-    "were the repository's own correct files and no case could hand them a broken",
-    "one. `orderedMigrations` grew an injectable root and the two digest checks",
-    "became pure functions for that reason alone. A guard nobody can turn red is",
-    "not evidence, and finding six of them in one tranche is worth saying plainly.",
+    "THE SWEEP FOUND TWO DEFECTS IN THE EVIDENCE, and both are recorded at the",
+    "entries they belong to rather than only here.",
     "",
-    "M-T7-01 IS THE ONE TO LOOK AT. The bootstrap patches the genesis row's",
+    "  M-T7-02 SURVIVED the first pass. Every malformed migration set answered",
+    "  ONE refusal code, and a set with two directories on one stamp also fails",
+    "  the order comparison two lines further down -- so the case aimed at the",
+    "  stamp guard could not tell it from the guard that caught the input on its",
+    "  way past. Five distinct codes were minted and the case now names its own.",
+    "",
+    "  M-T7-14 read VACUOUS. Its refusal reached `beforeAll`, which executed no",
+    "  cases at all, and a run that executes nothing is indistinguishable from a",
+    "  kill. The upgrade's own refusal is now captured into a variable that a",
+    "  named case asserts, so the ordered set failing is a failure with a name.",
+    "",
+    "SIX GUARDS COULD NOT BE KILLED AS FIRST WRITTEN, which is worth saying",
+    "plainly. They validate INPUTS that are correct in this repository -- the",
+    "migration set is well ordered, the frozen artefacts hash to their pins -- so",
+    "no case could hand them the broken input their branches exist for.",
+    "`orderedMigrations` grew an injectable root and the two digest checks became",
+    "pure functions for that reason alone.",
+    "",
+    "M-T7-01 IS STILL THE ONE TO LOOK AT. The bootstrap patches the genesis row's",
     "checksum to the LEGACY release's, and `prisma migrate deploy` is perfectly",
-    "happy without that patch — it compares the recorded checksum against this",
-    "repository's own file, which is what an unpatched row already holds. So the",
-    "guard was invisible to every case until one asserted the row carries the",
+    "happy without that patch -- it compares the recorded checksum against this",
+    "repository's own file, which is what an unpatched row already holds. The",
+    "guard was invisible to every case until one asserted that the row carries the",
     "frozen baseline's digest AND that the two digests differ. Without it the",
-    "rehearsal would have been running against a database in a state no",
-    "installation has ever been in, and reporting a clean result."
+    "rehearsal would have run against a database in a state no installation has",
+    "ever been in, and reported a clean result."
   ]
 }

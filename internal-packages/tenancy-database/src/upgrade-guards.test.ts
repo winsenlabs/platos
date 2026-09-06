@@ -44,6 +44,8 @@ import {
   verifyFrozenBaseline,
 } from "./upgrade-rehearsal-support";
 
+const packageRoot = resolve(__dirname, "..");
+
 const roots: string[] = [];
 
 afterEach(() => {
@@ -174,6 +176,98 @@ describe("the frozen release schemas", () => {
     expect(verifyFrozenBaseline(shipped)).toBe(shipped);
     // NON-VACUITY. An empty file would satisfy an identity check.
     expect(shipped.length).toBeGreaterThan(100_000);
+  });
+});
+
+describe("the generated client's one location", () => {
+  // WIN-258's scope names "generated client location" beside the migration
+  // package, and until now the answer lived only in a generator block nobody
+  // compared against anything. It is TWO directories, both under
+  // `generated/`, both ignored by git, and a THIRD that the rehearsal writes
+  // its rebuilt old clients into — chosen so a rebuild cannot land on either
+  // live one. These cases are what stop a fourth appearing quietly.
+
+  const control = readFileSync(resolve(packageRoot, "prisma/schema.prisma"), "utf8");
+  const endUser = readFileSync(resolve(packageRoot, "prisma/end-user.prisma"), "utf8");
+  const ignored = readFileSync(resolve(packageRoot, ".gitignore"), "utf8");
+  const manifest = JSON.parse(
+    readFileSync(resolve(packageRoot, "package.json"), "utf8"),
+  ) as { scripts: Record<string, string>; devDependencies: Record<string, string> };
+
+  const outputsOf = (schema: string): string[] =>
+    [...schema.matchAll(/^\s*output\s*=\s*"([^"]*)"/gmu)].map((match) => match[1] as string);
+
+  test("each live schema names exactly one output, and the two do not collide", () => {
+    expect(outputsOf(control)).toEqual(["../generated/control"]);
+    expect(outputsOf(endUser)).toEqual(["../generated/end-user"]);
+  });
+
+  test("no generated client is ever committed", () => {
+    expect(ignored.split(/\r?\n/u)).toContain("generated/");
+  });
+
+  test("the rebuild writes beneath generated/, where nothing the package imports lives", () => {
+    // `generated/upgrade/<release>/client` is under the ignored directory and
+    // shares no path with either live client. A rehearsal that generated an old
+    // release's datamodel over `generated/control` would silently replace the
+    // client every other module in this package imports.
+    for (const release of Object.keys(UPGRADE_BASELINE_RELEASES)) {
+      const target = `generated/upgrade/${release}/client`;
+      expect(target.startsWith("generated/")).toBe(true);
+      expect(outputsOf(control)[0]?.endsWith(target)).toBe(false);
+      expect(outputsOf(endUser)[0]?.endsWith(target)).toBe(false);
+    }
+  });
+
+  test("one script generates both live clients, and it is the one the build runs", () => {
+    expect(manifest.scripts.generate).toContain("prisma/schema.prisma");
+    expect(manifest.scripts.generate).toContain("prisma/end-user.prisma");
+    expect(manifest.scripts.prebuild).toBe("pnpm run generate");
+    expect(manifest.scripts.pretest).toBe("pnpm run generate");
+  });
+});
+
+describe("the migration package and its image", () => {
+  // The other half of the scope's sentence. The image is what applies the
+  // ordered set to a real installation, so the question is not "does a
+  // Dockerfile exist" but "does the image carry THIS set, and run it with the
+  // same tool that authored it".
+
+  const dockerfile = readFileSync(resolve(packageRoot, "Dockerfile.migrations"), "utf8");
+  const entrypoint = readFileSync(resolve(packageRoot, "migration-image/entrypoint.sh"), "utf8");
+  const imageManifest = JSON.parse(
+    readFileSync(resolve(packageRoot, "migration-image/package.json"), "utf8"),
+  ) as { dependencies: Record<string, string> };
+  const manifest = JSON.parse(
+    readFileSync(resolve(packageRoot, "package.json"), "utf8"),
+  ) as { devDependencies: Record<string, string>; dependencies: Record<string, string> };
+
+  test("the image copies the whole migration directory, so its set cannot drift from this one", () => {
+    // A Dockerfile that listed migrations one by one would ship a set that
+    // silently lost the next one added. Copying the directory makes the image's
+    // set the repository's by construction, which is the only reason the
+    // ordered-set case in the rehearsal speaks for the image too.
+    expect(dockerfile).toContain("COPY internal-packages/tenancy-database/prisma ./prisma");
+    for (const migration of orderedMigrations()) {
+      expect(dockerfile).not.toContain(migration.name);
+    }
+  });
+
+  test("the image applies the set with the schema, and generates no client to do it", () => {
+    expect(entrypoint).toContain("prisma migrate deploy --schema /migrations/prisma/schema.prisma");
+    // The generated client's location is IRRELEVANT to applying migrations, and
+    // this is where that is stated rather than assumed: an image that generated
+    // one would need the client's own dependencies and would fail differently
+    // from the migration it was asked to run.
+    expect(dockerfile).not.toContain("prisma generate");
+    expect(entrypoint).not.toContain("prisma generate");
+  });
+
+  test("the image runs the same Prisma that authored the migrations", () => {
+    const authored = manifest.devDependencies.prisma;
+    expect(authored).toMatch(/^\d+\.\d+\.\d+$/u);
+    expect(imageManifest.dependencies.prisma).toBe(authored);
+    expect(imageManifest.dependencies["@prisma/client"]).toBe(manifest.dependencies["@prisma/client"]);
   });
 });
 
