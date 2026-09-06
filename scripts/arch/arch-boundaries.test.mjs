@@ -1019,9 +1019,21 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               clause on the DELETE are all edits in place — so this delta
     //               is exactly the tranche's suite count and nothing else, and
     //               `packages/contexts/secrets` gains no file either.
-    // MERGED: 1477 + 7 + 3 = 1487. Neither 1484 nor 1480 is right here.
-    assert.equal(result.fileCount, 1487, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3);
+    // AND FOUR MORE FROM THE JSON-COLUMN DIMENSION and TWO from the rollout
+    //               rehearsal's store half, NEITHER OF WHICH MOVED THIS PIN ON
+    //               ITS OWN BRANCH. `json-columns.ts`, its two suites and
+    //               `outbox-store.test.ts` are four files under
+    //               `packages/adapters/postgres-tenancy/src`, and
+    //               `upgrade-rollout-harness.ts` with
+    //               `upgrade-rollout.integration.test.ts` are two more; this
+    //               scan counts every one of them. Both dimensions reported a
+    //               ZERO delta here, so this gate was not in either one's list
+    //               and the merge is where it is first told the truth.
+    // MERGED: 1477 + 7 + 3 + 4 + 2 = 1493, read back from the scan itself. No
+    //               dimension's own figure — 1484, 1480, or the 1477 the other
+    //               two left untouched — is right here.
+    assert.equal(result.fileCount, 1493, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
