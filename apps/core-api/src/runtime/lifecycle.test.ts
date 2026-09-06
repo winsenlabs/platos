@@ -71,6 +71,12 @@ function fullySupplied(): SuppliedAdapters {
     "postgres-tenancy", "outbox", "durable-runtime", "clickhouse-observability",
     "objectstore-minio", "redis-ratelimit", "redis-cache", "redis-streams",
     "model-router-providers", "channel-slack", "notifier-email", "notifier-webhook",
+    // WIN-259 (M2.4). The thirteenth directory. It is listed HERE, by name,
+    // rather than derived from `ADAPTER_NAMES`, and that is the point of the
+    // list: readiness turning green has to require a slot somebody deliberately
+    // filled, so a directory added without being wired leaves this test red
+    // instead of quietly passing.
+    "keyring-envelope",
   ];
   return Object.fromEntries(names.map((name) => [name, adapterDouble(name)])) as SuppliedAdapters;
 }
@@ -100,7 +106,7 @@ describe("the process starts and serves", () => {
     expect(messages).toContain("process.starting");
     expect(messages).toContain("process.started");
     const started = harness.lines().find((line) => line["message"] === "process.started");
-    expect(started).toMatchObject({ bindings: "0/44 adapter bindings satisfied", unsatisfied: 44 });
+    expect(started).toMatchObject({ bindings: "0/47 adapter bindings satisfied", unsatisfied: 47 });
   });
 });
 
@@ -134,7 +140,7 @@ describe("readiness tells the truth about what is wired", () => {
       headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
     });
     const body = (await response.json()) as { detail: { unsatisfiedBindings: string[]; declaredBindings: number } };
-    expect(body.detail.declaredBindings).toBe(44);
+    expect(body.detail.declaredBindings).toBe(47);
     // Named per BINDING (ADR M0.3 §15), so an operator reading a 503 learns
     // WHICH port is unserved rather than only which package is absent.
     expect(body.detail.unsatisfiedBindings).toContain("postgres-tenancy:TenancyRepository");
