@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "1c69dfdc5e32a346f124709277c66cce8c5deaf45f6698d107a7f70d780f9b8e",
+  "evidenceSha256": "a3799dd5af924e2afa5d6bdf0b0246da443637aa11d89010810086efc2bb8582",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "cb4aa15916dd224e5c9f4385825ef238cf52d5cec3a45dd20974123e03ddbec7",
+    "aggregateSha256": "d490c5fd4f0525658c0c438b2303fdea8cec3d17743cc49027a10715bd0a5176",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6053,7 +6053,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "1f43b33ca3489b204947e6f2c00b6e06aecdeca39145d168cf77b9c938946993"
+        "sha256": "0660cf049a07a117db4e04ec2b356ed4d15185d3a435dd98b97e9537e3f44931"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -12417,7 +12417,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-rules.integration.test.ts",
-        "sha256": "316108351def8f1bcbc644425b8bfeedbcf6349c1fbcf11c6443bc19e75c7b83"
+        "sha256": "abf93edc0b2364d1c8faa4552261824cffbac856d397eaeb7c21a17224d35bbf"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-scope.integration.test.ts",
@@ -12434,6 +12434,10 @@
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-variable-constraints.integration.test.ts",
         "sha256": "8ed3786d2151e6719394c931ae61679c01fc72514eab43508bc1d9e10529b4cd"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
+        "sha256": "0870c3e8edf09c65a0859fb13c5d4484c6889a04b959fa282e0eb9aeb5b80ae9"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-variables.ts",
@@ -19265,7 +19269,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "c60a804547974edd7981dc54ad098fe48b2d5eae9d53fd449a08ee5ff08a20f0"
+        "sha256": "4a9fa7e490948877310b74043ce51f0df689c43e906575aa80c3d4f0d1227a04"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -19293,7 +19297,7 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "5e9ee1bf578941196d6abba3bd4fd1dcc1f51f261261f3cf2ca91ae856ec4f0b"
+        "sha256": "5ac6889996a5a5521114bf03fab1fb66561485df2d23c07520b582b0b3aa6cbd"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
@@ -19533,7 +19537,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "a8beb0ba7b3ae76502b460b097b606935556dfed63aa1fc9b7b17d3eac6b34bd"
+        "sha256": "18f6e223c4f22415f61e870873982be93815f6df0290a58b78708402cdbe0069"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -36871,7 +36875,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1298
+              "line": 1304
             }
           ],
           "reversePaths": [
@@ -36896,7 +36900,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "357c5798e64508fbd5cdb610d75965012bcec04e2c13f303e21eac652409277b",
+      "evidenceSha256": "68b8fd2d6c4250180f21b267226a2c0d3b52447cb1bcd1cca1673f298940088c",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -38027,7 +38031,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1297
+              "line": 1303
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -38252,7 +38256,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "e2929b365d9f2ca62686dcbe5c4034540bb41dd3e722ac6d93c3e5b6e1e2ae35",
+      "evidenceSha256": "9d6a0755d8ddba4c151c61f3fe36b820eaeea2754feddc4a489b077ef2f2236a",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -47972,6 +47976,11 @@
               "line": 1
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/src/skills-conformance.integration.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -48586,6 +48595,10 @@
               "packages/adapters/postgres-tenancy/src/secrets-variable-constraints.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts"
+            ],
+            [
               "packages/adapters/postgres-tenancy/src/skills-conformance.integration.test.ts",
               "packages/adapters/postgres-tenancy/src/skills-conformance.integration.test.ts"
             ],
@@ -48806,6 +48819,7 @@
             "packages/adapters/postgres-tenancy/src/secrets-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/secrets-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/secrets-variable-constraints.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/skills-conformance.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/skills-constraints.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/skills-rows.test.ts",
@@ -48888,7 +48902,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "560e0973fb655e2b8bc8e7bdef459fcab47747bb5903254353ec5164c4ee1994",
+      "evidenceSha256": "cae62c78820565986f2a42229c2c5cd4cf74e9569d67a5573cbd2ad8b82746d6",
       "manifestSha256": "f736a95a4330a56db4332704a1cf9abf6ff567e3cb142f99ba950bf90a34fb47",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -55689,7 +55703,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1169
+              "line": 1175
             }
           ],
           "reversePaths": [
@@ -56036,7 +56050,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "bdb16296d6126b4cd4967d84dbdf066ecd9dc9f60adfb47b0453b254ad984ecd",
+      "evidenceSha256": "d9a7b4c4d10e8332b2647921e4c2d14afce092588711afc902cee8f894f46664",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -60077,7 +60091,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1168
+              "line": 1174
             }
           ],
           "reversePaths": [
@@ -60335,7 +60349,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "0c45c4b02527ad7410e2c3734b56a6aa020925b96af401368e0f9723caff87e4",
+      "evidenceSha256": "1e88269cdf51954d312f8822945b585e4361d40920b1bb3982a33caa7cc945d0",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -65951,6 +65965,11 @@
               "line": 27
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
+              "kind": "reference",
+              "line": 24
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/src/transaction-boundaries.integration.test.ts",
               "kind": "reference",
               "line": 54
@@ -66066,6 +66085,11 @@
               "line": 81
             },
             {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 682
+            },
+            {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
               "line": 345
@@ -66122,6 +66146,10 @@
             [
               "packages/adapters/postgres-tenancy/src/secrets-variable-constraints.integration.test.ts",
               "packages/adapters/postgres-tenancy/src/secrets-variable-constraints.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/transaction-boundaries.integration.test.ts",
@@ -66216,6 +66244,10 @@
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
             [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
               "scripts/arch/sole-writer.test.mjs",
               "scripts/arch/sole-writer.test.mjs"
             ],
@@ -66242,6 +66274,7 @@
             "packages/adapters/postgres-tenancy/src/secrets-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/secrets-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/secrets-variable-constraints.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/transaction-boundaries.integration.test.ts",
             "packages/contexts/providers/application/authorization.test.ts",
             "packages/contexts/secrets/application/create-credential.test.ts",
@@ -66265,6 +66298,7 @@
             "packages/contexts/secrets/package.json",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
@@ -66643,7 +66677,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e407128e7f763bd6376037cfc47493a836d9038e07f57b594e7d7bf3d5b30a87",
+      "evidenceSha256": "8ec90560b99f8e23bb0453799d413e01f088259503799741e59b084c1031d71e",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -71261,7 +71295,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1030
+              "line": 1036
             }
           ],
           "reversePaths": [
@@ -71570,7 +71604,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "b424c14a2ca8655e90332f9f1fe71d1a8c814f9a3d5062b7c6d54e89829a9bf5",
+      "evidenceSha256": "1015ab7f5cc5c5ce889059deaf2b896ed711c3cc08f110ecfd6097ecfc92d751",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {

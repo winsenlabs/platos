@@ -3473,7 +3473,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "1f43b33ca3489b204947e6f2c00b6e06aecdeca39145d168cf77b9c938946993"
+      "sha256": "0660cf049a07a117db4e04ec2b356ed4d15185d3a435dd98b97e9537e3f44931"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3908,7 +3908,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "a8beb0ba7b3ae76502b460b097b606935556dfed63aa1fc9b7b17d3eac6b34bd"
+      "sha256": "18f6e223c4f22415f61e870873982be93815f6df0290a58b78708402cdbe0069"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
