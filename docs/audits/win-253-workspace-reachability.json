@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "a3799dd5af924e2afa5d6bdf0b0246da443637aa11d89010810086efc2bb8582",
+  "evidenceSha256": "b14b3d3d940c31cc77f659af0094960b265fce05a541b48209f04242e45ef4c7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d490c5fd4f0525658c0c438b2303fdea8cec3d17743cc49027a10715bd0a5176",
+    "aggregateSha256": "82fbd27b603bbd02df4e745f3827a35838f8184c9b0eabf1ade090fac50231ba",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -12437,7 +12437,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.test.ts",
-        "sha256": "0870c3e8edf09c65a0859fb13c5d4484c6889a04b959fa282e0eb9aeb5b80ae9"
+        "sha256": "bb557926ab17d0c44d24522af895e22a22619490955e0bd924934db4aae2e9b7"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-variables.ts",
