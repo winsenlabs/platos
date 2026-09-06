@@ -48,7 +48,10 @@ import type {
   ScaffoldingRepository,
 } from "@platos/context-agents/application/ports/index.js";
 import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
-import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
+import type {
+  ObservabilityRepository,
+  ObservabilitySink,
+} from "@platos/context-observability/application/ports/index.js";
 import type {
   Cache,
   KnowledgeGraphRepository,
@@ -308,6 +311,20 @@ interface PortSatisfaction {
     PostgresTenancyAdapter["memoryGraph"],
     KnowledgeGraphRepository
   >;
+
+  // WIN-258 T5. `observability`'s one canonical-store port, proven through the
+  // PROPERTY that carries it. Indexed like `skills`', `secrets`' and `memory`'s
+  // rather than through the adapter as a whole, because the adapter's slot is
+  // named for its OWNER — `ObservabilityDependencies` calls the slot
+  // `repository`, which is not a name a directory serving thirteen owners can
+  // give to one of them — and indexing the property makes the obligation the
+  // true one: that `PostgresTenancyAdapter["observability"]` IS an
+  // `ObservabilityRepository`. The day the adapter renames or re-types it,
+  // `pnpm build:v1` fails here.
+  readonly "postgres-tenancy:ObservabilityRepository": Satisfies<
+    PostgresTenancyAdapter["observability"],
+    ObservabilityRepository
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -352,6 +369,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:SkillsRepository": true,
   "postgres-tenancy:MemoryRepository": true,
   "postgres-tenancy:KnowledgeGraphRepository": true,
+  "postgres-tenancy:ObservabilityRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -603,6 +621,30 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "KnowledgeGraphRepository",
     owner: "memory",
   }),
+  // WIN-258 T5 (ADR M0.3 §15). The TWENTY-EIGHTH binding of the same directory,
+  // and the THIRTEENTH owner of the one PostgreSQL client. Appended for the
+  // reason `memory`'s pair was: every block above counts its ordinals from the
+  // end of the block before it, so a row inserted in the middle would silently
+  // make four comments wrong.
+  //
+  // ONE row for a context ADR M0.3 §1 row 12 credits with FIVE tables, and the
+  // arithmetic is the interesting part rather than a shortfall. Four of those
+  // five are the analytical projections, which are not Prisma rows at all and
+  // are bound below to `clickhouse-observability`; `AdminAudit` is the one that
+  // is, and this is it.
+  //
+  // The context's two remaining driven ports get no row here and that is a claim
+  // rather than an omission. `ProjectionOutbox` settles `ObservabilityOutbox`,
+  // whose only writer is the kernel outbox adapter (§1's closing note, §7
+  // decision 8) — this context decides the outcome and does not write the row.
+  // `ErasedSubjectRegister` and `SubjectLocatorSource` read `privacy`'s
+  // tombstones and `conversations`' threads, and their own headers say the
+  // composition root resolves them by asking those owners.
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "ObservabilityRepository",
+    owner: "observability",
+  }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
@@ -619,10 +661,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-eight rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-nine rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` TWENTY-SEVEN times and
- * open twenty-seven pools over the one database.
+ * adapters would otherwise build `postgres-tenancy` TWENTY-EIGHT times and
+ * open twenty-eight pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),

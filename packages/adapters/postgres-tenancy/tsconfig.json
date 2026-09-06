@@ -51,6 +51,9 @@
     },
     {
       "path": "../../contexts/memory"
+    },
+    {
+      "path": "../../contexts/observability"
     }
   ]
 }

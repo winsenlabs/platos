@@ -575,6 +575,43 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // this entry the one package permitted to write the row would be issuing a
   // statement the gate refuses.
   memory: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The THIRTEENTH context to resolve to this directory, on the same
+  // sentence every entry above stands on: one PostgreSQL database is one client
+  // is one adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the ONE row `observability` owns — `AdminAudit`.
+  // Nothing else, and this owner's "nothing else" is unusually wide, because ADR
+  // §1 row 12 gives the context four analytical tables as well and NOT ONE of
+  // them is a Prisma row: the note on `AdminAudit` in `OWNER` above says so, and
+  // they are reached through `ObservabilitySink` in a different store with a
+  // different failure model. `checkSoleWriter` asks per WRITE whether the file's
+  // directory is one of `ownerDirectories(OWNER[model])`, so a write to `Event`
+  // or to `ObservabilityOutbox` from this package is still judged against the
+  // `<kernel-outbox-adapter>` pseudo-owner and not against this entry — which
+  // matters more here than anywhere else in this map, since `observability` is
+  // the context that DRAINS both of those rows and is deliberately not their
+  // writer (§1's closing note, §7 decision 8).
+  //
+  // IT IS WHAT MAKES AN AUDIT ROW COMMIT WITH THE ACTION IT RECORDS. Every write
+  // on `ObservabilityRepository` takes the caller's `TransactionScope`, and
+  // `record-admin-action.ts` puts the append inside the admin action's own unit
+  // of work. Those two writes are one transaction only because they resolve to
+  // the same directory and therefore the same client and the same ambient frame;
+  // a fourteenth adapter package holding this one repository would have had its
+  // own pool, and an audit trail that can disagree with what actually happened is
+  // worse than no audit trail, because it is believed.
+  //
+  // AND IT IS THE FIRST ENTRY THAT DOES NOT MAKE ITS PORT FULLY IMPLEMENTABLE.
+  // `00000000000000_initial/migration.sql` installs `reject_admin_audit_mutation()`
+  // on UPDATE, DELETE and TRUNCATE of `AdminAudit` and withdraws all three
+  // privileges from PUBLIC, so `ObservabilityRepository.clearAdminAuditActor` —
+  // an UPDATE returning rows changed — can return zero or refuse and nothing
+  // else. The grant below is still exactly right: the write this directory is
+  // permitted to issue is the write the port declares, and it is the DATABASE,
+  // not this map, that declines it.
+  observability: "packages/adapters/postgres-tenancy",
 });
 
 /**

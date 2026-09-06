@@ -101,7 +101,7 @@ describe("the declared binding table", () => {
     // asserted, and the gap between the two counts is asserted too, so a change
     // that collapsed them back into one count fails.
     //
-    // 12 directories + 26 extra ports on the one shared directory = 38 bindings.
+    // 12 directories + 27 extra ports on the one shared directory = 39 bindings.
     // The directory count does NOT move when a third through TWELFTH owner is
     // delegated to it, nor when WIN-258 M2.3 gives tenancy's five
     // NON-REPOSITORY ports slots on the directory that already satisfied them.
@@ -116,13 +116,17 @@ describe("the declared binding table", () => {
     // The eleventh is `skills`, whose ONE port covers its three tables: a
     // catalogue entry, a project's adoption of one and an environment's binding
     // of that adoption are one aggregate with one uniqueness key.
-    expect(ADAPTER_BINDINGS).toHaveLength(38);
-    expect(DECLARED_BINDING_COUNT).toBe(38);
+    expect(ADAPTER_BINDINGS).toHaveLength(39);
+    expect(DECLARED_BINDING_COUNT).toBe(39);
     // The twelfth is `memory`, whose TWO ports — `MemoryRepository` and
     // `KnowledgeGraphRepository` — are both proven through the PROPERTY that
     // carries them, because `KnowledgeGraphRepository.findEntity(subject,
     // agentIds, entityId)` and `TenancyRepository.findEntity(entityId)` are one
-    // name with two signatures and no interface can extend both.
+    // name with two signatures and no interface can extend both. The THIRTEENTH
+    // is `observability`, whose ONE port covers its ONE Prisma row: ADR M0.3 §1
+    // row 12 credits it with five tables and four of them are the analytical
+    // projections, which are not Prisma rows and are bound to
+    // `clickhouse-observability` instead.
     expect(ADAPTER_NAMES).toHaveLength(12);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
@@ -155,6 +159,7 @@ describe("the declared binding table", () => {
       "OperatorDirectory",
       "MemoryRepository",
       "KnowledgeGraphRepository",
+      "ObservabilityRepository",
     ]);
     expect(sharedDirectory.map((binding) => binding.owner)).toEqual([
       "tenancy",
@@ -184,10 +189,11 @@ describe("the declared binding table", () => {
       "tenancy",
       "memory",
       "memory",
+      "observability",
     ]);
   });
 
-  it("names each adapter DIRECTORY exactly once, even though one has TWENTY-SEVEN bindings", () => {
+  it("names each adapter DIRECTORY exactly once, even though one has TWENTY-EIGHT bindings", () => {
     // `ADAPTER_NAMES` is what an install iterates to CONSTRUCT adapters. A
     // duplicate there would open a second pool over the one database.
     expect(new Set(ADAPTER_NAMES).size).toBe(ADAPTER_NAMES.length);
@@ -219,9 +225,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(38);
+    expect(report.unsatisfied).toHaveLength(39);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/38 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/39 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -278,7 +284,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(38);
+    expect(app.bindings.unsatisfied).toHaveLength(39);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
