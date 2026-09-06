@@ -165,7 +165,7 @@ describe("MessageAttachment_binding_one_way: a binding is a transcript fact", ()
 });
 
 describe("MessageAttachment_owner_immutable: four columns that may never move", () => {
-  test("a raw UPDATE of endUserId is refused by the rule, naming the column", () => {
+  test("a raw UPDATE of endUserId is refused, and ANCESTRY is what refuses it first", () => {
     const id = freshId();
     expect(
       plant(
@@ -175,11 +175,41 @@ describe("MessageAttachment_owner_immutable: four columns that may never move", 
                  '${chain.threadId}','document','application/pdf',10,'k','2026-06-01T09:00:00Z');`,
       ),
     ).toBe("<accepted>");
+    // FOUND BY THE FIRST INTEGRATION RUN, and it is a fact about the schema
+    // rather than about this store. PostgreSQL fires BEFORE triggers in
+    // ALPHABETICAL order by name, so `MessageAttachment_ancestry` runs before
+    // `MessageAttachment_owner_immutable` — and the thread pins the environment,
+    // the subject AND the agent, so every move of any of those three breaks the
+    // chain and is refused by the ancestry rule before the immutability rule is
+    // reached. The immutability rule is not what stops this move.
     expect(
       plant(
         `UPDATE "MessageAttachment" SET "endUserId" = '${chain.secondEndUserId}' WHERE "id" = '${id}';`,
       ),
-    ).toMatch(/ownership\/authorization key endUserId is immutable/u);
+    ).toMatch(/MessageAttachment crosses its canonical owner ancestry/u);
+  }, 120_000);
+
+  test("the ONE owner move the ancestry rule permits is the one that reaches the rule", () => {
+    const id = freshId();
+    expect(
+      plant(
+        `INSERT INTO "MessageAttachment" ("id","environmentId","endUserId","agentId","threadId",
+           "kind","mimeType","bytes","storageKey","createdAt")
+         VALUES ('${id}','${chain.environmentId}','${chain.endUserId}','${chain.agentId}',
+                 '${chain.threadId}','document','application/pdf',10,'k','2026-06-01T09:00:00Z');`,
+      ),
+    ).toBe("<accepted>");
+    // `thirdThread` is a SIBLING thread: same environment, same agent, same end
+    // user. The ancestry rule has nothing to object to — every clause it checks
+    // still holds — so this is the one owner change in the table that gets past
+    // it, and `MessageAttachment_owner_immutable` is what refuses it, naming the
+    // column. Without this case that rule would be unreachable and its entry in
+    // the ledger would be a claim nothing could falsify.
+    expect(
+      plant(
+        `UPDATE "MessageAttachment" SET "threadId" = '${chain.thirdThreadId}' WHERE "id" = '${id}';`,
+      ),
+    ).toMatch(/ownership\/authorization key threadId is immutable/u);
   }, 120_000);
 
   test("through the port a moved owner is NOT FOUND, because the owner is in the WHERE", async () => {

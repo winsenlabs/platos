@@ -71,6 +71,19 @@ export interface FilesChain {
   readonly threadId: string;
   /** The second subject's thread. Same environment, same agent, other owner. */
   readonly secondThreadId: string;
+  /**
+   * A THIRD thread with the SAME environment, agent AND end user.
+   *
+   * It exists for one case and could not be replaced by either of the other two.
+   * `MessageAttachment_owner_immutable` and `MessageAttachment_ancestry` are both
+   * BEFORE UPDATE triggers, and PostgreSQL fires BEFORE triggers in ALPHABETICAL
+   * order by name — so `_ancestry` runs first and refuses every owner move that
+   * breaks the chain, which is every move to a thread of a different subject or a
+   * different agent. The only owner change that survives the ancestry rule and
+   * reaches the immutability rule is a move to a SIBLING thread of the same
+   * subject on the same agent, and this is that thread.
+   */
+  readonly thirdThreadId: string;
   readonly turnId: string;
   /** A SECOND turn of the SAME thread. The binding-conflict witness. */
   readonly secondTurnId: string;
@@ -188,6 +201,7 @@ export async function startFilesHarness(): Promise<FilesHarness> {
       const secondEndUserId = base.freshId("0037");
       const threadId = base.freshId("0038");
       const secondThreadId = base.freshId("0039");
+      const thirdThreadId = base.freshId("003c");
       const turnId = base.freshId("003a");
       const secondTurnId = base.freshId("003b");
       applyPeerRows(
@@ -204,6 +218,7 @@ export async function startFilesHarness(): Promise<FilesHarness> {
            VALUES ('${secondEndUserId}', '${organizationId}', 'another subject', ${STAMP}, ${STAMP});`,
           threadSql(threadId, environmentId, agentId, endUserId),
           threadSql(secondThreadId, environmentId, agentId, secondEndUserId),
+          threadSql(thirdThreadId, environmentId, agentId, endUserId),
           turnSql(turnId, threadId, agentVersionId, 1),
           turnSql(secondTurnId, threadId, agentVersionId, 2),
         ].join("\n"),
@@ -227,6 +242,7 @@ export async function startFilesHarness(): Promise<FilesHarness> {
         secondEndUserId,
         threadId,
         secondThreadId,
+        thirdThreadId,
         turnId,
         secondTurnId,
         environment,

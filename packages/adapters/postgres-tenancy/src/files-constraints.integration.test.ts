@@ -83,7 +83,7 @@ describe("the four INTEGER columns are 32-bit and the domain's numbers are not",
        VALUES ('${freshId()}','${chain.environmentId}','${chain.endUserId}','${chain.agentId}',
                '${chain.threadId}','document','application/pdf',3000000000,'k','2026-06-01T09:00:00Z');`,
     );
-    expect(planted).toMatch(/out of range for type integer/iu);
+    expect(planted).toMatch(/integer out of range/iu);
   }, 120_000);
 
   test("a negative bytes is refused on WRITE, ACCEPTED by the column, and refused on READ", async () => {
@@ -115,12 +115,17 @@ describe("the four INTEGER columns are 32-bit and the domain's numbers are not",
     expect(refusalReason(read)).toContain("bytes=-7");
 
     // AND THE QUOTA READ REFUSES RATHER THAN SUBTRACTING IT. `sumAttachmentBytes`
-    // does not map rows, so it cannot see the row at all — which is the honest
-    // limit of this guard and is recorded here rather than claimed away.
+    // maps no row, so it cannot reach `readAttachmentRow` at all — what it has
+    // instead is the SUM, and `readTotalBytes` refuses a negative one. THE HONEST
+    // LIMIT IS RECORDED RATHER THAN CLAIMED AWAY: this catches the total going
+    // negative, not the row. One negative row among larger positive ones sums
+    // above zero and is invisible here, which is exactly why the WRITE guard is
+    // the one that has to hold, and why the READ guard on the row is what stops a
+    // wrong number reaching a caller that maps it.
     const summed = await harness.repository.sumAttachmentBytes(
       organizationScopeOf(chain.organizationId),
     );
-    expect(summed.ok).toBe(true);
+    expect(refusalCode(summed)).toBe("files.row.unreadable_total_bytes");
 
     harness.applyPeerRows(`DELETE FROM "MessageAttachment" WHERE "id" = '${plantedId}';`);
   }, 120_000);
