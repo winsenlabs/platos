@@ -159,21 +159,33 @@ test("§15: the shared directory may write BOTH owners' rows and NOTHING else", 
   assert.deepEqual(result.violations, []);
   assert.equal(result.writeCount, 2, "both writes must be SEEN, not merely un-flagged");
 
-  // A third owner's row from the same directory is still refused. "Many owners
-  // per directory" is not "any row from that directory".
+  // THE OLD WITNESS IS GONE AND SAYING SO IS THE POINT. This case used to name a
+  // canonical row the shared directory could NOT write — `Memory`, then
+  // `Artifact`, then `Job` — and every tranche delegated the owner that name
+  // belonged to. This wave delegated the last five, so all ninety-three owned
+  // rows are writable from here and a name left in place would make the case
+  // green while asserting its opposite.
   //
-  // WIN-258 T5 moved this example from `Memory` to `Artifact` and then, when
-  // `files` became the THIRTEENTH delegated owner, from `Artifact` to `Job`.
-  // Each move is the case defending itself: a delegated row would make it go
-  // green while asserting nothing. `jobs` owns `Job` and has no entry in
-  // `CANONICAL_STORE_ADAPTERS`, which is the property this case is about.
-  const refused = fixture({
-    "packages/adapters/postgres-tenancy/src/c.ts": write("job", "deleteMany"),
-  });
-  const violations = checkWriteEnforcement(refused).violations;
-  assert.equal(violations.length, 1);
-  assert.equal(violations[0].model, "Job");
-  assert.match(violations[0].message, /jobs is its sole writer/u);
+  // WHAT "NOTHING ELSE" NOW MEANS, AND STILL HAS TEETH: not any row from any
+  // directory, and not any table at all. A THIRD directory writing `Job` is
+  // refused with `jobs` named as its sole writer, and a table no owner claims is
+  // UNATTRIBUTABLE from this directory rather than permitted — which is what
+  // stops a new table being written from here before it has an owner.
+  const elsewhere = checkWriteEnforcement(
+    fixture({ "packages/adapters/redis-cache/src/c.ts": write("job", "deleteMany") }),
+  );
+  assert.equal(elsewhere.violations.length, 1);
+  assert.equal(elsewhere.violations[0].model, "Job");
+  assert.match(elsewhere.violations[0].message, /jobs is its sole writer/u);
+
+  const unowned = checkWriteEnforcement(
+    fixture({
+      "packages/adapters/postgres-tenancy/src/d.ts": 'db.$executeRaw`DELETE FROM "WorkflowRun"`;',
+    }),
+  );
+  assert.deepEqual(unowned.violations, []);
+  assert.equal(unowned.unattributable.length, 1, "an unowned table must not be silently permitted here");
+  assert.equal(unowned.unattributable[0].reason, "raw-sql-unknown-table");
 });
 
 test("WIN-258 T5: an `agents` row written from any OTHER directory FAILS", () => {
@@ -211,21 +223,19 @@ test("WIN-258 T5: an `agents` row written from any OTHER directory FAILS", () =>
   // own: `Memory` is `memory`'s, and is refused from here however the write is
   // spelled.
   //
-  // WIN-258 T5 MOVED THIS EXAMPLE, and the move is itself the finding.
-  // `EnvironmentSkill` used to stand here, because `skills` had no entry in
-  // `CANONICAL_STORE_ADAPTERS` and this directory therefore could not write it.
-  // It now does, and it resolves to the SAME directory — so a write to
-  // `EnvironmentSkill` from a file named `agents-y.ts` is legal, because the
-  // gate judges the DIRECTORY and both owners resolve to this one. That is the
-  // exact consequence Amendment 15 chose and it is stated rather than papered
-  // over: what still holds is that ownership is carried by the TAG on the row,
-  // so a row NO owner has delegated here is still refused, and a write from any
-  // third directory is still refused. `Job` is the witness for the first and the
-  // case below is the witness for the second — it was `Artifact` until `files`
-  // was delegated, and the substitution is the case keeping its meaning rather
-  // than a repair.
+  // WIN-258 T5 MOVED THIS EXAMPLE TWICE AND THEN RETIRED IT, and the retirement
+  // is itself the finding. `EnvironmentSkill` used to stand here, because
+  // `skills` had no entry in `CANONICAL_STORE_ADAPTERS` and this directory
+  // therefore could not write it; then `Artifact`, then `Job`. All three are
+  // delegated to this SAME directory now, so each of those writes is legal and
+  // the gate judges the DIRECTORY. That is the exact consequence Amendment 15
+  // chose and it is stated rather than papered over.
+  //
+  // WHAT STILL HOLDS is that ownership is carried by the TAG on the row: the
+  // same write from a THIRD directory is refused, and the refusal names the
+  // owner rather than the folder the file happens to sit in.
   const refused = fixture({
-    "packages/adapters/postgres-tenancy/src/agents-y.ts": write("job", "create"),
+    "packages/adapters/notifier-webhook/src/agents-y.ts": write("job", "create"),
   });
   const violations = checkWriteEnforcement(refused).violations;
   assert.equal(violations.length, 1);
@@ -744,17 +754,18 @@ test("only memory's own two directories may write its three rows", () => {
     );
   }
 
-  // And the widening did not licence the directory over rows `memory` does not
-  // own. This tranche's branch used `Thread` here; merged, `conversations` is
-  // delegated to this same directory and a write to `Thread` from it is legal.
-  // The witness was then `Artifact` until `files` was delegated too, and is now
-  // `AgentApproval` — `jobs`' row (§1 row 12), which `MemoryRepository` never
-  // touches and which no owner has delegated here. A WRITE to it from here is
-  // still refused, which is what makes "reads are unrestricted" a bounded
-  // statement rather than an open door.
+  // And the widening did not licence a CONTEXT over rows it does not own, which
+  // is where the boundary now sits. The branch used `Thread` here, then
+  // `Artifact`, then `AgentApproval`, and this wave delegated the last of them —
+  // so from the shared DIRECTORY every owned row is legal and the witness had to
+  // move to a directory rather than to another row. `packages/contexts/memory`
+  // is that directory: it may write its own three rows and `AgentApproval` is
+  // `jobs`' (§1 row 15), which `MemoryRepository` never touches. A WRITE to it
+  // from there is refused, which is what makes "reads are unrestricted" a
+  // bounded statement rather than an open door.
   const readOnlyPeers = checkWriteEnforcement(
     fixture({
-      "packages/adapters/postgres-tenancy/src/memory-y.ts": write("agentApproval", "update"),
+      "packages/contexts/memory/application/memory-y.ts": write("agentApproval", "update"),
     }),
   );
   assert.equal(readOnlyPeers.violations.length, 1);
@@ -875,16 +886,17 @@ test("only observability's own two directories may write `AdminAudit`", () => {
     assert.equal(drained.violations[0].expected, "packages/adapters/outbox");
   }
 
-  // And the widening did not licence the directory over rows `observability`
-  // does not own. `ErasureOperation` is `privacy`'s (§1 row 18) — the context
-  // that ORCHESTRATES the erasure this store's unlink is part of, and the one
-  // whose rows a careless implementation of `clearAdminAuditActor` would reach
-  // for. No owner has delegated it here, so a WRITE to it from this directory is
-  // still refused, which is what makes "reads are unrestricted" a bounded
-  // statement rather than an open door.
+  // And the widening did not licence a CONTEXT over rows it does not own.
+  // `ErasureOperation` is `privacy`'s (§1 row 18) — the context that
+  // ORCHESTRATES the erasure this store's unlink is part of, and the one whose
+  // rows a careless implementation of `clearAdminAuditActor` would reach for.
+  // This wave delegated `privacy` to the SAME directory this store sits in, so
+  // the witness is `packages/contexts/observability` rather than that directory:
+  // a WRITE to `ErasureOperation` from there is refused, which is what makes
+  // "reads are unrestricted" a bounded statement rather than an open door.
   const readOnlyPeers = checkWriteEnforcement(
     fixture({
-      "packages/adapters/postgres-tenancy/src/observability-y.ts": write("erasureOperation", "update"),
+      "packages/contexts/observability/application/observability-y.ts": write("erasureOperation", "update"),
     }),
   );
   assert.equal(readOnlyPeers.violations.length, 1);
@@ -1076,60 +1088,62 @@ test("only providers' own two directories may write its four rows", () => {
 });
 
 test("the shared directory is not a blanket licence over the whole schema", () => {
-  // The converse of the case above, and the one that would catch a delegation
-  // written as "this directory may write anything". `AgentApproval` and
-  // `ErasureOperation` live in the same PostgreSQL database, behind the same
-  // client, in reach of the same file — and are refused from the directory that
-  // legally writes 112 rows.
+  // THIS WAVE EMPTIED THE OLD FORM OF THIS CASE, and replacing it is the point
+  // rather than a repair. Every revision before this one named two CANONICAL
+  // ROWS the shared directory could not write and watched them refused —
+  // `Memory`, then `Turn`, then `Artifact`, then `ErasureOperation`, then
+  // `AgentApproval` — and each tranche delegated the owner that name belonged
+  // to. There is no name left: all seventeen contexts and the kernel outbox
+  // resolve to this directory now, so every one of the ninety-three owned rows
+  // is legally writable from it, and a pair named here would make the case pass
+  // while asserting the opposite of what its title says.
   //
-  // WIN-258 T5 REPLACED `Turn` HERE WITH `Artifact`, and the substitution is the
-  // point rather than a repair. `Turn` was the second name in this case because
-  // it was undelegated; this tranche delegates `conversations`, so `Turn` became
-  // writable from that directory and the case would have gone red for the RIGHT
-  // reason. `Artifact` is `files`' (ADR M0.3 §1 row 10), is still undelegated,
-  // and — like `Turn` before it — hangs off a `Thread` this directory now writes,
-  // so it is the same shape of proof: adjacency in the schema is not permission.
-  //
-  // AND THE `privacy` TRANCHE HAS NOW DONE IT AGAIN, to the name that replaced
-  // `Turn`'s partner. `ErasureOperation` was the second pair here because
-  // `privacy` was undelegated; it is delegated now, so that pair would have gone
-  // red for the right reason and this case would have been asserting the opposite
-  // of what it says. `Job` takes its place: `jobs` (ADR M0.3 §1 row 15) is still
-  // undelegated, and `Job.status` is the very `WorkStatus` enum `ErasureOperation`
-  // is typed with — so where `Artifact` proves adjacency in the schema is not
-  // permission, this proves a shared COLUMN TYPE is not either.
+  // WHAT REPLACES IT IS THE HALF THAT STILL HAS TEETH: the licence is over the
+  // OWNED ROWS OF ONE SCHEMA, not over whatever a file in this directory can
+  // reach. A statement naming a table the canonical set does not carry is
+  // UNATTRIBUTABLE from here — the gate fails on it rather than permitting it —
+  // which is what stops a table being written from this directory before it has
+  // an owner at all, and `durable-runtime`'s vendor schema is exactly such a
+  // table (ADR M0.3 §7 decision 10 encapsulates that database whole).
+  const stranger = checkWriteEnforcement(
+    fixture({
+      "packages/adapters/postgres-tenancy/src/x.ts":
+        'db.$executeRaw`UPDATE "WorkflowRun" SET "x" = 1`;',
+    }),
+  );
+  assert.deepEqual(stranger.violations, []);
+  assert.equal(stranger.unattributable.length, 1, "an unowned table must not be silently permitted here");
+  assert.equal(stranger.unattributable[0].reason, "raw-sql-unknown-table");
+  assert.equal(stranger.unattributable[0].actual, "packages/adapters/postgres-tenancy");
+
+  // AND THE GRANT IS STILL PER OWNER RATHER THAN PER DIRECTORY, which is the
+  // property the old form was really testing. `AgentApproval` is `jobs`' and
+  // `ErasureOperation` is `privacy`'; both are delegated to the shared directory
+  // and to NO OTHER adapter, so a sibling adapter writing either is refused with
+  // the two permitted directories named. `redis-cache` is the pointed choice:
+  // `ADAPTER_BINDINGS` gives it a port whose owner is `memory`, and holding a
+  // port is not holding another owner's rows.
   for (const [delegate, model] of [
-    // WIN-258 T5 moved `Memory`, `Turn` and now `ErasureOperation` out of these
-    // pairs: all three are written from that directory legally, so leaving any of
-    // them here would have made the case pass while asserting the opposite of
-    // what it says. `Artifact` is `files`' and `Job` is `jobs`', neither of which
-    // has a canonical-store adapter, and both live in the same database behind
-    // the same client.
-    ["artifact", "Artifact"],
-    ["job", "Job"],
-  // WIN-258 T5 REPLACED `Turn` HERE WITH `Artifact` AND THEN `Artifact` WITH
-  // `AgentApproval`, and each substitution is the point rather than a repair.
-  // `Turn` was the second name because it was undelegated; that tranche
-  // delegated `conversations`. `Artifact` replaced it and this tranche delegates
-  // `files`. `AgentApproval` is `jobs`' (ADR M0.3 §1 row 12), is still
-  // undelegated, and — like both before it — hangs off a `Thread` this directory
-  // now writes, so it is the same shape of proof: adjacency in the schema is not
-  // permission.
-  for (const [delegate, model] of [
-    // Every delegated row has now left these pairs, which is exactly what a case
-    // about the boundary should look like as the boundary moves: leaving one
-    // here would make the case pass while asserting the opposite of what it
-    // says. `AgentApproval` is `jobs`' and `ErasureOperation` is `privacy`',
-    // neither of which has a canonical-store adapter, and both live in the same
-    // database behind the same client.
     ["agentApproval", "AgentApproval"],
     ["erasureOperation", "ErasureOperation"],
   ]) {
-    const result = checkWriteEnforcement(
-      fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write(delegate, "create") }),
+    const trespass = checkWriteEnforcement(
+      fixture({ "packages/adapters/redis-cache/src/x.ts": write(delegate, "create") }),
     );
-    assert.equal(result.violations.length, 1, `${model} must be refused from the shared directory`);
-    assert.equal(result.violations[0].model, model);
+    assert.equal(trespass.violations.length, 1, `${model} must be refused from an adapter that is not its store`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.deepEqual(trespass.violations[0].permitted, [
+      `packages/contexts/${OWNER[model]}`,
+      "packages/adapters/postgres-tenancy",
+    ]);
+    // And the SAME write from the delegate directory is permitted, so the
+    // refusal above is about the directory and not about the row.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write(delegate, "create") }),
+      ).violations,
+      [],
+    );
   }
 });
 
@@ -1944,13 +1958,22 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   // owner with no entry here still has exactly one permitted directory — which
   // is what stops the shared directory from becoming a blanket licence.
   //
-  // `jobs` carries that negative now that `files` has been delegated too.
-  // It is not a decorative example: `packages/adapters/postgres-tenancy` holds
-  // repositories for THIRTEEN owners, and `Job` is a row in the very same
-  // PostgreSQL database, reachable through the very same client, whose write
-  // from this directory is still refused.
-  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, undefined);
-  assert.deepEqual(ownerDirectories("jobs"), ["packages/contexts/jobs"]);
+  // NO OWNER CARRIES THAT NEGATIVE ANY MORE, and stating it is better than
+  // faking it. `jobs` stood here after `files` was delegated; this wave
+  // delegates `jobs` too, and with it the last five, so every owner in the map
+  // has a store and the "one permitted directory" arm is unreachable from the
+  // map. The arm itself is still there and is proven on a name the map does not
+  // carry, in the `ownerDirectories` case above; what is asserted here is the
+  // positive that replaced it — the grant is per OWNER, so `redis-ratelimit`
+  // being identity-access's and `notifier-email` being cost-monitoring's still
+  // buys neither of them a row.
+  assert.equal(CANONICAL_STORE_ADAPTERS["redis-ratelimit"], undefined);
+  assert.equal(CANONICAL_STORE_ADAPTERS["notifier-email"], undefined);
+  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("jobs"), [
+    "packages/contexts/jobs",
+    "packages/adapters/postgres-tenancy",
+  ]);
   // WIN-258 T5: `agents` is delegated to the SAME directory a fourth time, and
   // the grant is exactly the SEVEN rows ADR M0.3 §1 row 5 gives it.
   assert.deepEqual(ownerDirectories("agents"), [
@@ -2014,8 +2037,7 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     "ProviderKey",
   ]);
   // WIN-258 T5: `skills` is the ELEVENTH owner delegated to that directory, and
-  // the grant is exactly the THREE rows ADR M0.3 §1 row 6 gives it. delegated to that directory, and the
-  // grant is exactly the THREE rows ADR M0.3 §1 row 6 gives it.
+  // the grant is exactly the THREE rows ADR M0.3 §1 row 6 gives it.
   //
   // THIS ASSERTION USED TO SAY THE OPPOSITE, and the flip is worth naming. Until
   // this tranche `skills` had no entry, which is why the `agents` note above
@@ -2030,25 +2052,44 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     "packages/adapters/postgres-tenancy",
   ]);
   assert.equal(CANONICAL_STORE_ADAPTERS.skills, "packages/adapters/postgres-tenancy");
-  // WIN-258 T5. The THIRTEENTH owner delegated to the SAME directory, over the
-  // ONE Prisma row ADR M0.3 §1 row 12 gives it. `files` stays absent, which is
-  // what keeps this a per-owner grant rather than a blanket one.
+  // WIN-258 T5. The SIXTEENTH owner delegated to the SAME directory, over the
+  // ONE Prisma row ADR M0.3 §1 row 12 gives it. `files` was the absent name that
+  // kept this a per-owner grant rather than a blanket one; this wave delegates it
+  // too, so what is asserted here is the grant's WIDTH instead — one Prisma row,
+  // not the five §1 credits the context with, because four of those are the
+  // analytical projections `clickhouse-observability` holds.
   assert.equal(CANONICAL_STORE_ADAPTERS.observability, "packages/adapters/postgres-tenancy");
-  assert.equal(CANONICAL_STORE_ADAPTERS.files, undefined);
+  assert.equal(CANONICAL_STORE_ADAPTERS.files, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(
+    Object.entries(OWNER)
+      .filter(([, owner]) => owner === "observability")
+      .map(([model]) => model)
+      .sort(),
+    ["AdminAudit"],
+  );
   const skillRows = Object.entries(OWNER)
     .filter(([, owner]) => owner === "skills")
     .map(([model]) => model)
     .sort();
   assert.deepEqual(skillRows, ["EnvironmentSkill", "ProjectSkill", "Skill"]);
-  // And `jobs` is NOT delegated, which is the negative that still holds after
-  // this wave. It USED to be `skills` in the `providers` half of this case,
-  // `providers` in the `skills` half and then `files` in both, and each was
-  // right alone and wrong once the next tranche landed — this wave grants all
-  // three. `jobs` owns `Job` and `AgentApproval`, has no entry in
-  // `CANONICAL_STORE_ADAPTERS`, and is what keeps this case a boundary rather
-  // than a list of everything that landed.
-  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, undefined);
-  assert.deepEqual(ownerDirectories("jobs"), ["packages/contexts/jobs"]);
+  // AND THE UNDELEGATED NEGATIVE HAS RUN OUT OF NAMES, which is what completing
+  // §1 means. It was `skills` in the `providers` half of this case, `providers`
+  // in the `skills` half, then `files`, then `jobs` — each right alone and wrong
+  // once the next tranche landed. This wave grants the last five, so the boundary
+  // is stated the only way that is still true: the grant is exactly the rows the
+  // owner owns, read from `OWNER` rather than from the count.
+  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("jobs"), [
+    "packages/contexts/jobs",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.deepEqual(
+    Object.entries(OWNER)
+      .filter(([, owner]) => owner === "jobs")
+      .map(([model]) => model)
+      .sort(),
+    ["AgentApproval", "Job"],
+  );
   // WIN-258 T5: `channels` is delegated to the SAME directory a fifth time, and
   // the grant is exactly the SIX rows ADR M0.3 §1 row 9 gives it.
   assert.deepEqual(ownerDirectories("channels"), [
@@ -2097,14 +2138,15 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     .map(([model]) => model)
     .sort();
   assert.deepEqual(filesRows, ["Artifact", "MessageAttachment"]);
-  // AND THE UNDELEGATED NEGATIVE MOVES ON AGAIN, to `jobs`. It carried
-  // `conversations`' turn and then `files`', and the shape of the proof has not
-  // changed: `AgentApproval` hangs off a `Thread` this directory writes, `Job`
-  // is a row in the very same PostgreSQL database reachable through the very
-  // same client, and a write to either from here is still refused. Adjacency in
-  // the schema is not permission.
-  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, undefined);
-  assert.deepEqual(ownerDirectories("jobs"), ["packages/contexts/jobs"]);
+  // AND THE UNDELEGATED NEGATIVE HAS NO NAME LEFT TO MOVE TO. It carried
+  // `conversations`' turn, then `files`', then `jobs`', and this wave delegates
+  // the last of them — so the proof changes shape rather than witness: the grant
+  // is per OWNER, and `jobs` gets exactly the two rows `OWNER` tags `jobs`.
+  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("jobs"), [
+    "packages/contexts/jobs",
+    "packages/adapters/postgres-tenancy",
+  ]);
 
   // WIN-258 T4: the outbox pseudo-owner is delegated to that SAME directory.
   // Its primary directory is an ADAPTER rather than a context — the one owner in
@@ -2311,6 +2353,53 @@ test("the SAME privacy writes from the delegate directory are permitted, and the
       `export async function run(db: any) {\n` +
       `  await db.erasureOperation.create({ data: {} });\n` +
       `  await db.$executeRaw\`insert into "public"."ErasureTombstone" (id) values ('x')\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.writeCount, 2, "both writes must be SEEN, or the green is vacuous");
+
+  // And the grant is exactly TWO rows wide, not a licence over the schema.
+  // Pinned as a SET rather than a count, because a count is satisfied by any two
+  // rows and the point of the entry is WHICH two.
+  assert.equal(CANONICAL_STORE_ADAPTERS.privacy, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("privacy"), [
+    "packages/contexts/privacy",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  const privacyRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "privacy")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(privacyRows, ["ErasureOperation", "ErasureTombstone"]);
+  // The NEGATIVE that keeps this from reading as "the directory may write
+  // anything a sweep touches". An erasure DELETES `Memory`, `Turn` and
+  // `MessageAttachment`, and every one of those deletes is issued by the context
+  // that owns the row through the kernel's `ErasureTarget`.
+  //
+  // THE WITNESS MOVED WHEN THIS WAVE LANDED `files`. The privacy branch asserted
+  // `CANONICAL_STORE_ADAPTERS.files === undefined` and refused the write on a
+  // ONE-directory grant; `files` is delegated now, so that assertion is false and
+  // carrying it would have made this case green while stating the opposite. What
+  // is still true — and is the property the case was really about — is that
+  // `privacy`'s OWN context directory may not write another owner's row, however
+  // central that row is to the sweep it runs.
+  assert.equal(CANONICAL_STORE_ADAPTERS.files, "packages/adapters/postgres-tenancy");
+  const refused = checkWriteEnforcement(
+    fixture({
+      "packages/contexts/privacy/application/steal.ts":
+        `export async function run(db: any) {\n  await db.messageAttachment.deleteMany({});\n}\n`,
+    }),
+  );
+  assert.equal(refused.violations.length, 1);
+  assert.equal(refused.violations[0].model, "MessageAttachment");
+  assert.deepEqual(refused.violations[0].permitted, [
+    "packages/contexts/files",
+    "packages/adapters/postgres-tenancy",
+  ]);
+});
+
 test("§15: `jobs` is delegated to that same directory, and the grant is TWO rows wide", () => {
   // The THIRTEENTH owner. `Job` and `AgentApproval` are in the one PostgreSQL
   // database behind the one client, so ADR M0.3 §15 puts them in this directory
@@ -2403,35 +2492,36 @@ test("the SAME `jobs` writes from the delegate directory are permitted", () => {
   assert.equal(result.writeCount, 2, "both writes must be SEEN, or the green is vacuous");
 
   // And the grant is exactly TWO rows wide, not a licence over the schema.
-  // Pinned as a SET rather than a count, because a count is satisfied by any two
-  // rows and the point of the entry is WHICH two.
-  assert.equal(CANONICAL_STORE_ADAPTERS.privacy, "packages/adapters/postgres-tenancy");
-  assert.deepEqual(ownerDirectories("privacy"), [
-    "packages/contexts/privacy",
+  // Pinned as a SET rather than a count, because a count is satisfied by any
+  // two rows and the point of the entry is WHICH two.
+  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("jobs"), [
+    "packages/contexts/jobs",
     "packages/adapters/postgres-tenancy",
   ]);
-  const privacyRows = Object.entries(OWNER)
-    .filter(([, owner]) => owner === "privacy")
+  const jobsRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "jobs")
     .map(([model]) => model)
     .sort();
-  assert.deepEqual(privacyRows, ["ErasureOperation", "ErasureTombstone"]);
+  assert.deepEqual(jobsRows, ["AgentApproval", "Job"]);
   // The NEGATIVE that keeps this from reading as "the directory may write
-  // anything a sweep touches". An erasure DELETES `Memory`, `Turn` and
-  // `MessageAttachment`, and every one of those deletes is issued by the context
-  // that owns the row through the kernel's `ErasureTarget`. `files` is the owner
-  // this wave does not reach, so a write to `MessageAttachment` from either of
-  // privacy's two directories is still refused.
-  assert.equal(CANONICAL_STORE_ADAPTERS.files, undefined);
+  // anything an approval hangs off". `enforce_domain_ancestry` re-reads
+  // `Agent`, `Thread` and `Turn` from inside this store's own INSERT, and all
+  // three belong to other owners — so a write to one of them from
+  // `packages/contexts/jobs` is refused with that owner's two directories
+  // named. The tag decides, not the folder.
   const refused = checkWriteEnforcement(
     fixture({
-      "packages/contexts/privacy/application/steal.ts":
-        `export async function run(db: any) {\n  await db.messageAttachment.deleteMany({});\n}\n`,
+      "packages/contexts/jobs/application/steal.ts":
+        `export async function run(db: any) {\n  await db.thread.deleteMany({});\n}\n`,
     }),
   );
   assert.equal(refused.violations.length, 1);
-  assert.equal(refused.violations[0].model, "MessageAttachment");
-  assert.deepEqual(refused.violations[0].permitted, ["packages/contexts/files"]);
-  assert.equal(result.writeCount, 2);
+  assert.equal(refused.violations[0].model, "Thread");
+  assert.deepEqual(refused.violations[0].permitted, [
+    "packages/contexts/conversations",
+    "packages/adapters/postgres-tenancy",
+  ]);
 });
 
 test("a THIRD directory writing a `tools` row is refused, and the refusal names it", () => {

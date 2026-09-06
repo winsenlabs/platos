@@ -485,7 +485,7 @@ jobs:
         run: pnpm --filter "@platos/context-jobs..." build
 
       - name: Build the files context and its dependencies
-        # WIN-258 T5. The THIRTEENTH owner of this directory. Two of its entry
+        # WIN-258 T5. The FIFTEENTH owner of this directory. Two of its entry
         # points have to exist in dist/: `application/ports/index.js` for
         # `FilesRepository` and the twenty-six values and types its signatures
         # name, and `application/testing/index.js` for `InMemoryFilesRepository`,
@@ -496,7 +496,7 @@ jobs:
         run: pnpm --filter "@platos/context-files..." build
 
       - name: Build the observability context (WIN-258 T5)
-        # WIN-258 T5. The THIRTEENTH owner delegated to this directory. Its suites
+        # WIN-258 T5. The SIXTEENTH owner delegated to this directory. Its suites
         # resolve that context through TWO published subpaths, both of which are
         # dist/: `application/ports/index.js` for `ObservabilityRepository` and
         # the domain values its signatures name, and
@@ -507,6 +507,18 @@ jobs:
         # to LOAD, which is the vacuity the mutation ledger beside this package
         # refuses to score.
         run: pnpm --filter "@platos/context-observability..." build
+
+      - name: Build the eventing context (WIN-258 T5)
+        # WIN-258 T5. The SEVENTEENTH and LAST owner delegated to this directory,
+        # which completes ADR M0.3 §1. Its suites resolve that context through TWO
+        # published subpaths, both of which are dist/:
+        # `application/ports/index.js` for `NotificationRuleRepository` and the
+        # domain values its signatures name, and `application/testing/index.js`
+        # for `InMemoryNotificationRuleRepository`, which the conformance
+        # differential is measured against. Without this step the six suites do
+        # not fail an assertion — they fail to LOAD, which is the vacuity the
+        # mutation ledger beside this package refuses to score.
+        run: pnpm --filter "@platos/context-eventing..." build
 
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
