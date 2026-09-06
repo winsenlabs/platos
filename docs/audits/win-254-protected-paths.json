@@ -1068,7 +1068,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "940b5cb8ad644de80d8be3a752b90580006412363ee4e3bdf66a0cf2315d4468"
+      "sha256": "55e28c1110bcee1f43a8791da739b98a64a208c4d392aed2a75d5ad1582f23d9"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3858,12 +3858,12 @@
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "ad32339d928779598aaefaaa57b3b7cc73a968a5e1f1bd5d7d4adcc6a18bed8e"
+      "sha256": "886a329c16813dbe33647c88fe7198720c6f9184aa5c3a609cef7bc0d00ebbb1"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
       "mode": "100644",
-      "sha256": "ff182354cbf4be65cbd9113099ed31b46574cdda926e740d39d948de1e54d12f"
+      "sha256": "c54577c7fd9be823106fc94ba2a96794c347abad817da83fea3c9760ba30e3f2"
     },
     {
       "path": "scripts/lib/advisory-dispositions.mjs",
