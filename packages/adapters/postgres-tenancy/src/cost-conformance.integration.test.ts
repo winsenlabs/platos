@@ -30,6 +30,8 @@ import type {
   EnvironmentScope,
   TransactionScope,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
 
 import type { CostConformanceEnvironment, CostConformanceIds, CostObservation } from "./cost-conformance.js";
 import { runCostConformance } from "./cost-conformance.js";
@@ -106,8 +108,8 @@ function adapterEnvironment(): CostConformanceEnvironment {
     repository,
     scope,
     ids,
-    run: <Value>(work: (transaction: TransactionScope) => Promise<Value>) =>
-      harness.base.adapter.unitOfWork.run(work),
+    run: <Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>) =>
+      harness.base.adapter.unitOfWork.run<Value>(work),
     // A NO-OP against the real store. `listPendingCrossings` re-derives the
     // organization and the project by joining the tenant chain, which is what
     // the port requires of it and what a map cannot do.

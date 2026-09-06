@@ -34,6 +34,7 @@ import type {
 } from "@platos/context-memory/application/ports/index.js";
 import { asMemoryIdentifier } from "@platos/context-memory/application/ports/index.js";
 import type { PrismaClient } from "@platos/tenancy-database";
+import { runResult } from "@platos/kernel";
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { edgeDraft, entityDraft, memoryDraft, startMemoryHarness } from "./memory-harness.js";
@@ -287,7 +288,7 @@ describe("the three refusals", () => {
     expect(escaped).not.toBeNull();
 
     await expect(
-      harness.base.adapter.unitOfWork.run(async () =>
+      runResult(harness.base.adapter.unitOfWork, async () =>
         harness.stores.memoryGraph.insertEntity(
           entityDraft(chain, id("0062"), AT, { entityKey: asMemoryIdentifier<EntityKey>("oslo"), label: "Oslo" }),
           escaped as unknown as TransactionScope,
@@ -353,7 +354,7 @@ describe("the ambient frame", () => {
     // connection, and without it `remember.ts` could not read back the row it
     // had just written to decide whether to merge.
     const memoryId = id("0064");
-    const seenInside = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const seenInside = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       await harness.stores.memory.insertMemory(
         { memory: memoryDraft(chain, memoryId, AT), embedding: { action: "keep" } },
         transaction,
@@ -393,7 +394,7 @@ describe("the ambient frame", () => {
     // correct. It resolves through `atomic()`, which JOINS an open transaction
     // rather than opening a second one — so a rollback takes the stamp with it.
     const memoryId = id("0066");
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.memory.insertMemory(
         { memory: memoryDraft(chain, memoryId, AT), embedding: { action: "keep" } },
         transaction,

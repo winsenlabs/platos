@@ -45,6 +45,7 @@ import type {
   Result,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import { AT, LATER, startSecretsHarness, variableIdOf } from "./secrets-harness.js";
@@ -88,7 +89,7 @@ const settle = (milliseconds: number): Promise<void> =>
 /** Seed one PLAIN variable at version 1 and answer its row id. */
 async function seed(key: string, value: string): Promise<string> {
   const id = fresh();
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.variables.upsert(
       {
         id: variableIdOf(id),
@@ -199,7 +200,7 @@ describe("the fence, across two real concurrent transactions", () => {
     const winnerWrote = gate();
     const winnerMayCommit = gate();
 
-    const winner = harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const winner = runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const answer = await write(key, "winner", 1, transaction);
       trace.push(`winner:${answer.ok ? "ok" : answer.error.code}`);
       winnerWrote.open();
@@ -212,7 +213,7 @@ describe("the fence, across two real concurrent transactions", () => {
 
     await winnerWrote.wait;
     let loserSettled = false;
-    const loser = harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const loser = runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       // The SAME version the winner read. This is a caller that read the row
       // before the winner wrote it and is only now getting to its write.
       const answer = await write(key, "loser", 1, transaction);
@@ -258,7 +259,7 @@ describe("the fence, across two real concurrent transactions", () => {
     const key = `ROLLBACK_${fresh().slice(-4)}`;
     const companion = `COMPANION_${fresh().slice(-4)}`;
     await seed(key, "one");
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       write(key, "moved-on", 1, transaction),
     );
 
@@ -268,8 +269,8 @@ describe("the fence, across two real concurrent transactions", () => {
       }
     }
 
-    const outcome = await harness.base.adapter.unitOfWork
-      .run(async (transaction) => {
+    const outcome = await runResult(
+      harness.base.adapter.unitOfWork, async (transaction) => {
         // Work that succeeds, first — a row this transaction owns outright.
         const earlier = await write(companion, "written-first", null, transaction);
         expect(earlier).toMatchObject({ ok: true });
@@ -303,7 +304,7 @@ describe("the fence, across two real concurrent transactions", () => {
     const winnerWrote = gate();
     const winnerMayCommit = gate();
 
-    const winner = harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const winner = runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const answer = await write(key, "winner", null, transaction);
       winnerWrote.open();
       await winnerMayCommit.wait;
@@ -312,7 +313,7 @@ describe("the fence, across two real concurrent transactions", () => {
     await winnerWrote.wait;
 
     let loserSettled = false;
-    const loser = harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const loser = runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const answer = await write(key, "loser", null, transaction);
       loserSettled = true;
       return answer;
@@ -341,7 +342,7 @@ describe("the negative controls: the fence is per row, and lets current writers 
   test("a writer whose version IS current is applied", async () => {
     const key = `CURRENT_${fresh().slice(-4)}`;
     await seed(key, "one");
-    const answer = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const answer = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       write(key, "two", 1, transaction),
     );
     expect(answer).toMatchObject({ ok: true, value: { value: "two", version: 2 } });
@@ -355,7 +356,7 @@ describe("the negative controls: the fence is per row, and lets current writers 
     const leftWrote = gate();
     const leftMayCommit = gate();
 
-    const first = harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const first = runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const answer = await write(left, "left-two", 1, transaction);
       leftWrote.open();
       await leftMayCommit.wait;
@@ -364,7 +365,7 @@ describe("the negative controls: the fence is per row, and lets current writers 
     await leftWrote.wait;
 
     let secondSettled = false;
-    const second = harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const second = runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const answer = await write(right, "right-two", 1, transaction);
       secondSettled = true;
       return answer;

@@ -25,6 +25,7 @@ import type {
   ThresholdEventId,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { AT, conformanceBudget, conformanceChannel } from "./cost-conformance.js";
 import type { CostHarness } from "./cost-harness.js";
@@ -317,7 +318,7 @@ describe("the writes that must be one statement, and the ones that must be two",
       delivery(large, uuid(), channelId, 1_000 + index),
     );
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertDeliveries(rows, transaction),
       ),
     );
@@ -327,7 +328,7 @@ describe("the writes that must be one statement, and the ones that must be two",
 
   test("a channel and its configuration are TWO, and always two", async () => {
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertAlertChannel(
           conformanceChannel(small.scope, uuid(), { name: "measured" }),
           transaction,

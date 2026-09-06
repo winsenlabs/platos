@@ -40,6 +40,8 @@ import type {
   TransactionScope,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 import { runAlertConformance } from "./cost-conformance-alerts.js";
 
@@ -79,7 +81,7 @@ export interface CostConformanceEnvironment {
   readonly scope: EnvironmentScope;
   readonly ids: CostConformanceIds;
   /** Open one transaction. The fake's double, or the adapter's unit of work. */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
   /**
    * Make this environment resolvable by the installation-wide sweep.
    *
@@ -180,18 +182,18 @@ async function runBudgets(
   const userCap = conformanceBudget(scope, ids.userCapId, "user");
 
   observed.listBudgetsEmpty = await repository.listBudgets(scope);
-  observed.insertScopeCap = await environment.run((transaction) =>
+  observed.insertScopeCap = await runResult(environment, (transaction) =>
     repository.insertBudget(scopeCap, transaction),
   );
   // ALONE in its transaction. Nothing is written by it, and on a store that let
   // the unique index raise, nothing after it could be written either.
-  observed.insertScopeCapAgain = await environment.run((transaction) =>
+  observed.insertScopeCapAgain = await runResult(environment, (transaction) =>
     repository.insertBudget(scopeCap, transaction),
   );
-  observed.insertAgentCap = await environment.run((transaction) =>
+  observed.insertAgentCap = await runResult(environment, (transaction) =>
     repository.insertBudget(agentCap, transaction),
   );
-  observed.insertUserCap = await environment.run((transaction) =>
+  observed.insertUserCap = await runResult(environment, (transaction) =>
     repository.insertBudget(userCap, transaction),
   );
 
@@ -204,24 +206,24 @@ async function runBudgets(
   observed.secondPage = await repository.pageBudgets(scope, { limit: 2, offset: 2 });
 
   const raised: Budget = { ...scopeCap, limitCents: 250_000, updatedAt: LATER };
-  observed.updateScopeCap = await environment.run((transaction) =>
+  observed.updateScopeCap = await runResult(environment, (transaction) =>
     repository.updateBudget(raised, transaction),
   );
   observed.findRaisedCap = await repository.findBudget(scope, asCostIdentifier(ids.scopeCapId));
-  observed.updateMissingCap = await environment.run((transaction) =>
+  observed.updateMissingCap = await runResult(environment, (transaction) =>
     repository.updateBudget(
       conformanceBudget(scope, ids.missingCapId, "scope"),
       transaction,
     ),
   );
 
-  observed.retireUserCap = await environment.run((transaction) =>
+  observed.retireUserCap = await runResult(environment, (transaction) =>
     repository.retireBudget(scope, asCostIdentifier(ids.userCapId), LATER, transaction),
   );
   // The SECOND retire answers false. A store that tombstoned by `enabled` alone
   // would answer true forever, and the caller reads this as "was there a cap to
   // retire" rather than as "is one retired now".
-  observed.retireUserCapAgain = await environment.run((transaction) =>
+  observed.retireUserCapAgain = await runResult(environment, (transaction) =>
     repository.retireBudget(scope, asCostIdentifier(ids.userCapId), LATER, transaction),
   );
   observed.listBudgetsAfterRetire = await repository.listBudgets(scope);
@@ -235,19 +237,19 @@ async function runCrossings(
   const { repository, scope, ids } = environment;
   const first = crossing(scope, ids.firstCrossingId, ids.scopeCapId, 50);
 
-  observed.insertCrossing = await environment.run((transaction) =>
+  observed.insertCrossing = await runResult(environment, (transaction) =>
     repository.insertThresholdEvent(first, transaction),
   );
   // A DIFFERENT identifier for the SAME cap, window and threshold. `null`, not
   // an error: it is how "alert exactly once" is realised, and it is the outcome
   // two evaluators racing on one crossing normally produce.
-  observed.insertCrossingDuplicate = await environment.run((transaction) =>
+  observed.insertCrossingDuplicate = await runResult(environment, (transaction) =>
     repository.insertThresholdEvent(
       { ...first, eventId: asCostIdentifier(ids.duplicateCrossingId) },
       transaction,
     ),
   );
-  observed.insertSecondCrossing = await environment.run((transaction) =>
+  observed.insertSecondCrossing = await runResult(environment, (transaction) =>
     repository.insertThresholdEvent(
       crossing(scope, ids.secondCrossingId, ids.scopeCapId, 80),
       transaction,

@@ -32,6 +32,7 @@ import type {
   SubjectKeyHash,
   TombstoneDraft,
 } from "@platos/context-privacy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { PrivacyHarness, PrivacyTenant } from "./privacy-harness.js";
 import { operationDraft, outcomeDraft, REQUESTED_AT, startPrivacyHarness } from "./privacy-harness.js";
@@ -97,14 +98,14 @@ beforeAll(async () => {
   large = await harness.freshTenant();
 
   smallOperationId = harness.base.freshId("00b0");
-  await harness.run((transaction) =>
+  await runResult(harness, (transaction) =>
     harness.repository.insertOperation(
       operationDraft(small, smallOperationId, { nextRetryAt: REQUESTED_AT }),
       transaction,
     ),
   );
   smallAliases = ["a-s-1", "a-s-2", "a-s-3"].map((alias) => `${alias}-${smallOperationId.slice(-8)}`);
-  await harness.run((transaction) =>
+  await runResult(harness, (transaction) =>
     harness.repository.sealTombstones(
       draftsFor(small, smallAliases, smallOperationId),
       smallAliases.map(() => id<ErasureTombstoneId>(harness.base.freshId("00b1"))),
@@ -115,7 +116,7 @@ beforeAll(async () => {
   largeOperationId = harness.base.freshId("00b2");
   for (let index = 0; index < OPERATIONS; index += 1) {
     const operationId = index === 0 ? largeOperationId : harness.base.freshId("00b3");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(large, operationId, {
           idempotencyKey: id<IdempotencyKey>(`key-${operationId}`),
@@ -133,7 +134,7 @@ beforeAll(async () => {
     { length: HEAVY },
     (_unused, index) => `a-l-${String(index)}-${largeOperationId.slice(-8)}`,
   );
-  await harness.run((transaction) =>
+  await runResult(harness, (transaction) =>
     harness.repository.sealTombstones(
       draftsFor(large, largeAliases, largeOperationId),
       largeAliases.map(() => id<ErasureTombstoneId>(harness.base.freshId("00b4"))),
@@ -186,7 +187,7 @@ test("a seal is THREE statements, for three aliases and for thirty", async () =>
   // rather than the first seal, because a first seal has nothing to extend and
   // would hide the third statement.
   const three = await measure(() =>
-    harness.run((transaction) =>
+    runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         draftsFor(small, [...smallAliases, `a-s-new-${smallOperationId.slice(-8)}`], smallOperationId),
         [...smallAliases, "x"].map(() => id<ErasureTombstoneId>(harness.base.freshId("00b5"))),
@@ -195,7 +196,7 @@ test("a seal is THREE statements, for three aliases and for thirty", async () =>
     ),
   );
   const thirty = await measure(() =>
-    harness.run((transaction) =>
+    runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         draftsFor(large, [...largeAliases, `a-l-new-${largeOperationId.slice(-8)}`], largeOperationId),
         [...largeAliases, "x"].map(() => id<ErasureTombstoneId>(harness.base.freshId("00b6"))),
@@ -215,7 +216,7 @@ test("a seal with NOTHING to extend is TWO statements, and one with nothing to i
   // there.
   const fresh = `a-s-only-${harness.base.freshId("00b7").slice(-8)}`;
   const insertOnly = await measure(() =>
-    harness.run((transaction) =>
+    runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         draftsFor(small, [fresh], smallOperationId),
         [id<ErasureTombstoneId>(harness.base.freshId("00b8"))],
@@ -224,7 +225,7 @@ test("a seal with NOTHING to extend is TWO statements, and one with nothing to i
     ),
   );
   const extendOnly = await measure(() =>
-    harness.run((transaction) =>
+    runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         draftsFor(small, [fresh], smallOperationId),
         [id<ErasureTombstoneId>(harness.base.freshId("00b9"))],
@@ -283,7 +284,7 @@ test("every point method is ONE statement, and the lease's LOSING path is two", 
   ).toBe(1);
   expect(
     await measure(() =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.insertOperation(
           operationDraft(small, harness.base.freshId("00ba")),
           transaction,
@@ -293,7 +294,7 @@ test("every point method is ONE statement, and the lease's LOSING path is two", 
   ).toBe(1);
   expect(
     await measure(() =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.updateProgress(
           small.organizationId,
           id<ErasureOperationId>(smallOperationId),
@@ -318,7 +319,7 @@ test("every point method is ONE statement, and the lease's LOSING path is two", 
   // port requires: "the check and the claim must be one operation or two resumes
   // racing both see a free lease".
   const won = await measure(() =>
-    harness.run((transaction) =>
+    runResult(harness, (transaction) =>
       harness.repository.claimLease(
         small.organizationId,
         id<ErasureOperationId>(smallOperationId),
@@ -333,7 +334,7 @@ test("every point method is ONE statement, and the lease's LOSING path is two", 
   // facts — held, or not here — and the port answers them differently. Only the
   // loser pays for the second statement.
   const lost = await measure(() =>
-    harness.run((transaction) =>
+    runResult(harness, (transaction) =>
       harness.repository.claimLease(
         small.organizationId,
         id<ErasureOperationId>(smallOperationId),
@@ -348,10 +349,10 @@ test("every point method is ONE statement, and the lease's LOSING path is two", 
 
 test("the retention sweep is ONE statement, whatever it deletes", async () => {
   const nothing = await measure(() =>
-    harness.run((transaction) => harness.repository.purgeExpiredTombstones(REQUESTED_AT, transaction)),
+    runResult(harness, (transaction) => harness.repository.purgeExpiredTombstones(REQUESTED_AT, transaction)),
   );
   const everything = await measure(() =>
-    harness.run((transaction) =>
+    runResult(harness, (transaction) =>
       harness.repository.purgeExpiredTombstones(new Date("2027-01-01T00:00:00.000Z"), transaction),
     ),
   );
@@ -366,7 +367,7 @@ test("the probe filter would not have swallowed a single statement this store se
   // checked against the same anchored patterns the filter uses.
   await settle();
   harness.resetStatements();
-  await harness.run((transaction) =>
+  await runResult(harness, (transaction) =>
     harness.repository.insertOperation(operationDraft(small, harness.base.freshId("00bb")), transaction),
   );
   await harness.repository.findActiveTombstones(

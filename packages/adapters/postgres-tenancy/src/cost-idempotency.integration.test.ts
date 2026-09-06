@@ -40,6 +40,7 @@ import type {
   EnvironmentScope,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { AT, LATER, conformanceBudget, conformanceChannel } from "./cost-conformance.js";
 import type { CostHarness } from "./cost-harness.js";
@@ -103,7 +104,7 @@ describe("the writes that must not happen twice", () => {
   test("a cap whose identifier is taken is a REFUSAL, not a raise", async () => {
     const capId = "ff000000-0e01-4000-8000-000000000001";
     const nextId = "ff000000-0e07-4000-8000-000000000001";
-    const first = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const first = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertBudget(conformanceBudget(scope, capId, "scope"), transaction),
     );
     expect(first.ok).toBe(true);
@@ -182,7 +183,7 @@ describe("the writes that must not happen twice", () => {
 
     // Settled. `settleDelivery` is the synchronous path and names no claim, which
     // is why a `TEST` delivery can reach SUCCEEDED without a second claim.
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.settleDelivery(
         delivery(channelId, deliveryId, {
           status: "SUCCEEDED",
@@ -247,7 +248,7 @@ describe("the writes that must not happen twice", () => {
     // A dispatcher whose lease expired: the row was re-claimed, so the generation
     // it remembers is one behind. `finaliseDelivery`'s predicate names the token,
     // the generation AND the retry number, so this matches zero rows.
-    const stale = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const stale = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.finaliseDelivery(
         delivery(channelId, deliveryId, {
           status: "FAILED",
@@ -276,7 +277,7 @@ describe("the writes that must not happen twice", () => {
     ).toBe(0);
 
     // And the SAME call with the generation it actually holds writes both.
-    const fresh = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const fresh = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.finaliseDelivery(
         delivery(channelId, deliveryId, {
           status: "FAILED",

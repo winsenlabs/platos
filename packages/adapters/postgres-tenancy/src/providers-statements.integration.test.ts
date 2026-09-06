@@ -42,6 +42,7 @@ import {
   asProvidersIdentifier,
   rateFromDecimalString,
 } from "@platos/context-providers/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { ProvidersHarness } from "./providers-harness.js";
 import { startProvidersHarness } from "./providers-harness.js";
@@ -160,7 +161,7 @@ async function seed(keys: number, models: number): Promise<Fixture> {
     const credentialId = await harness.seedCredential(scope, { provider: "anthropic", name });
     const id = uuid();
     keyIds.push(id);
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertProviderKey(
         key(scope, id, credentialId, `label-${index}`, name, index === 0),
         transaction,
@@ -172,7 +173,7 @@ async function seed(keys: number, models: number): Promise<Fixture> {
   for (let index = 0; index < models; index += 1) {
     const modelKey = asProvidersIdentifier<ModelKey>(`anthropic:measured-${sequence}-${index}`);
     modelKeys.push(modelKey);
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertModel(
         modelKey,
         {
@@ -197,7 +198,7 @@ async function seed(keys: number, models: number): Promise<Fixture> {
       new Date("2026-01-01T00:00:00.000Z"),
       new Date("2026-02-01T00:00:00.000Z"),
     ]) {
-      const card = await harness.base.adapter.unitOfWork.run((transaction) =>
+      const card = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertPrice(
           written.value.modelId,
           {
@@ -381,7 +382,7 @@ describe("the writes, and what the savepoint costs them", () => {
       name,
     });
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertProviderKey(
           key(small.scope, uuid(), credentialId, "measured insert", name, false),
           transaction,
@@ -405,7 +406,7 @@ describe("the writes, and what the savepoint costs them", () => {
       : undefined;
     expect(clashing).toBeDefined();
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertProviderKey(
           key(
             small.scope,
@@ -438,7 +439,7 @@ describe("the writes, and what the savepoint costs them", () => {
       name,
     });
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertProviderKey(
           // The credential exists and carries `name`; the KEY names a different
           // reference, which is exactly what the rule compares.

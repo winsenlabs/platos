@@ -58,6 +58,7 @@ import type {
   TransactionScope,
 } from "@platos/context-privacy/application/ports/index.js";
 import { organizationScope } from "@platos/context-privacy/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
 
 /** The uuids both stores are handed, so neither mints one. */
 export interface PrivacyConformanceIds {
@@ -172,7 +173,7 @@ function operationShape(operation: PersistedErasureOperation | null): unknown {
 export async function runPrivacyConformance(
   store: PrivacyRepository,
   ids: PrivacyConformanceIds,
-  open: <Value>(work: (transaction: TransactionScope) => Promise<Value>) => Promise<Value>,
+  open: <Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>) => Promise<Value>,
 ): Promise<Record<string, PrivacyObservation | unknown>> {
   const observations: Record<string, unknown> = {};
   const [first, second, due, missing] = ids.operationIds;

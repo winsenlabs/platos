@@ -45,6 +45,7 @@ import {
   parseRuleFilter,
   parseRuleName,
 } from "@platos/context-eventing/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import {
@@ -141,11 +142,11 @@ describe("a unit of work commits whole or not at all", () => {
     // either.
     const first = ruleFor(tenant.scope, "clash-first");
     const seed = ruleFor(tenant.scope, "clash-taken");
-    const seeded = await harness.run((t) => harness.repository.insertRule(seed, t));
+    const seeded = await runResult(harness, (t) => harness.repository.insertRule(seed, t));
     expect(seeded.ok).toBe(true);
 
     const clashing: NotificationRule = { ...ruleFor(tenant.scope, "clash-taken") };
-    const outcome = await harness.run(async (transaction) => {
+    const outcome = await runResult(harness, async (transaction) => {
       const written = await harness.repository.insertRule(first, transaction);
       expect(written.ok).toBe(true);
       return harness.repository.insertRule(clashing, transaction);
@@ -169,7 +170,7 @@ describe("a unit of work commits whole or not at all", () => {
       ...ruleFor(tenant.scope, "guard-doomed"),
       ruleId: asIdentifier<NotificationRuleId>("not-a-uuid"),
     };
-    const outcome = await harness.run(async (transaction) => {
+    const outcome = await runResult(harness, async (transaction) => {
       const refused = await harness.repository.insertRule(doomed, transaction);
       expect(refused.ok).toBe(false);
       return harness.repository.insertRule(good, transaction);
@@ -184,7 +185,7 @@ describe("a unit of work commits whole or not at all", () => {
     // transaction, so a failure in a LATER target must take this one's scrub
     // back. Here the later step throws and the earlier delete is undone.
     const doomed = ruleFor(tenant.scope, "atomic-delete");
-    const seeded = await harness.run((t) => harness.repository.insertRule(doomed, t));
+    const seeded = await runResult(harness, (t) => harness.repository.insertRule(doomed, t));
     expect(seeded.ok).toBe(true);
     expect(await seenByObserver("atomic-delete")).toBe(1);
 
@@ -206,7 +207,7 @@ describe("a unit of work commits whole or not at all", () => {
     // routes `$executeRaw`, not an axiom, and it is the claim the whole erasure
     // path rests on.
     const rule = ruleFor(tenant.scope, "raw-rollback");
-    const seeded = await harness.run((t) => harness.repository.insertRule(rule, t));
+    const seeded = await runResult(harness, (t) => harness.repository.insertRule(rule, t));
     expect(seeded.ok).toBe(true);
 
     await harness
@@ -251,8 +252,8 @@ describe("the three scope refusals are three distinct codes", () => {
       return undefined;
     });
     const rule = ruleFor(tenant.scope, "stale-token");
-    const raised = await harness
-      .run(async () => {
+    const raised = await runResult(
+      harness, async () => {
         if (stale === null) throw new Error("the fixture must capture a token");
         return harness.repository.insertRule(rule, stale);
       })

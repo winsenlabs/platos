@@ -57,6 +57,7 @@ import {
   type Turn,
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { ConversationsHarness, PeerChain } from "./conversations-harness.js";
 import {
@@ -402,8 +403,9 @@ describe("the three transaction-scope refusals, each with its own code", () => {
     const stale = await harness.base.adapter.unitOfWork.run(
       async (transaction: TransactionScope) => transaction,
     );
-    const refused = await harness.base.adapter.unitOfWork
-      .run(async () =>
+    const refused = await runResult(
+      harness.base.adapter.unitOfWork,
+      async () =>
         harness.stores.conversationsErasure.deleteThreadsForEndUser(
           asConversationsIdentifier<EndUserId>(chain.endUserId),
           scope.organizationId,
@@ -482,7 +484,7 @@ describe("the sequence allocation is serialised by a real row lock", () => {
       release = resolve;
     });
 
-    const first = harness.base.adapter.unitOfWork.run(async () => {
+    const first = runResult(harness.base.adapter.unitOfWork, async () => {
       const allocated = await harness.stores.threads.allocateTurnSequence(scope, thread);
       order.push("first-allocated");
       // The turn is inserted INSIDE the same transaction, so the second
@@ -495,7 +497,7 @@ describe("the sequence allocation is serialised by a real row lock", () => {
 
     // Let the first allocator take the lock before the second one asks.
     await new Promise((resolve) => setTimeout(resolve, 250));
-    const second = harness.base.adapter.unitOfWork.run(async () => {
+    const second = runResult(harness.base.adapter.unitOfWork, async () => {
       const allocated = await harness.stores.threads.allocateTurnSequence(scope, thread);
       order.push("second-allocated");
       return allocated;

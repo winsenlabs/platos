@@ -32,6 +32,7 @@ import type {
   TombstoneDraft,
   TransactionScope,
 } from "@platos/context-privacy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import type { PrivacyHarness, PrivacyTenant } from "./privacy-harness.js";
@@ -216,7 +217,7 @@ describe("a seal and a receipt commit together, or neither does", () => {
     // pass would keep every retry out until it expired, and the operation would
     // sit unswept with nothing failing anywhere.
     const operationId = harness.base.freshId("0076");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(operationDraft(tenant, operationId), transaction),
     );
     await expect(
@@ -249,7 +250,7 @@ describe("a seal and a receipt commit together, or neither does", () => {
     // could not restore.
     const operationId = harness.base.freshId("0077");
     const alias = `a-purge-${operationId.slice(-12)}`;
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [{ ...sealDraft(alias, operationId), expiresAt: new Date(REQUESTED_AT.getTime() + 1) }],
         [id<ErasureTombstoneId>(harness.base.freshId("0078"))],
@@ -295,8 +296,9 @@ describe("the three scope refusals, each with its own code", () => {
     // Re-used from INSIDE a new transaction, so a frame is open and the token is
     // the thing that is wrong. Without the new transaction this would be
     // `not_open` and the two refusals would be indistinguishable.
-    const raised = await harness
-      .run(async () =>
+    const raised = await runResult(
+      harness.base.adapter.unitOfWork,
+      async () =>
         harness.repository.sealTombstones(
           [sealDraft(`a-stale-${harness.base.freshId("0080").slice(-12)}`, harness.base.freshId("0081"))],
           [id<ErasureTombstoneId>(harness.base.freshId("0082"))],

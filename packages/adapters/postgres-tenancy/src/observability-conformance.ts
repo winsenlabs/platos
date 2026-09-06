@@ -46,6 +46,8 @@ import type {
   TransactionScope,
 } from "@platos/context-observability/application/ports/index.js";
 import { asIdentifier } from "@platos/context-observability/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 /** Every identifier the scenario needs. All uuids; both stores use the same. */
 export interface ObservabilityConformanceIds {
@@ -63,7 +65,7 @@ export interface ObservabilityConformanceEnvironment {
   readonly foreignScope: EnvironmentScope;
   readonly ids: ObservabilityConformanceIds;
   /** Open one transaction. The double's stand-in, or the adapter's unit of work. */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 export type ObservabilityObservation = Record<string, unknown>;
@@ -163,7 +165,7 @@ export async function runObservabilityConformance(
   const observed: ObservabilityObservation = {};
 
   // ------------------------------------------------------------- the writes
-  const first = await environment.run((transaction) =>
+  const first = await runResult(environment, (transaction) =>
     repository.recordAdminAudit(record(scope, ids.first), transaction),
   );
   observed["record.first"] = auditOutcome(first, projectRecord);
@@ -172,7 +174,7 @@ export async function runObservabilityConformance(
   // present. `before` and `after` are the two columns the migration guards with
   // an object-root CHECK, and a record carrying both is the only one that
   // measures both.
-  const second = await environment.run((transaction) =>
+  const second = await runResult(environment, (transaction) =>
     repository.recordAdminAudit(
       record(scope, ids.second, {
         action: "agent.update",
@@ -191,7 +193,7 @@ export async function runObservabilityConformance(
   // A SCHEDULED sweep: no operator at all. `domain/admin-audit.ts` rule 1 says an
   // absent actor is recorded as absent and never backfilled, and the column is
   // nullable so both stores can hold it.
-  const third = await environment.run((transaction) =>
+  const third = await runResult(environment, (transaction) =>
     repository.recordAdminAudit(
       record(scope, ids.third, {
         actorUserId: null,
@@ -211,7 +213,7 @@ export async function runObservabilityConformance(
 
   // One row in the SECOND tenant, by the same operator. Everything below that
   // says "this organization" is measured against it.
-  const foreign = await environment.run((transaction) =>
+  const foreign = await runResult(environment, (transaction) =>
     repository.recordAdminAudit(
       record(foreignScope, ids.foreign, {
         action: "agent.delete",
@@ -317,7 +319,7 @@ export async function runObservabilityConformance(
   // sides — the exact boundary of what the port can honour against a real
   // database.
   observed["unlink.noRows"] = auditOutcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.clearAdminAuditActor(
         { organizationId: scope.organizationId, actorUserId: OTHER_OPERATOR },
         transaction,

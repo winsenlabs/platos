@@ -35,6 +35,9 @@ import type {
   TurnId,
 } from "@platos/context-memory/application/ports/index.js";
 import { asMemoryIdentifier } from "@platos/context-memory/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { edgeDraft, entityDraft, memoryDraft, startMemoryHarness } from "./memory-harness.js";
@@ -83,8 +86,8 @@ async function refusalOf(work: Promise<{ readonly ok: boolean }>): Promise<strin
  * "no context passes a vendor transaction handle across a port" holding, and it
  * is why one transaction can span nine owners' rows.
  */
-function write<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+function write<Value>(work: (transaction: TransactionScope) => Promise<Result<Value>>): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 describe("column types the doubles do not have", () => {
@@ -302,7 +305,7 @@ describe("enforce_domain_ancestry — the rules a store cannot pre-check", () =>
     // domains, and the schema will not let an edge straddle them.
     const clustered = id("007a");
     const standalone = id("007b");
-    await write(async (transaction) => {
+    await harness.base.adapter.unitOfWork.run(async (transaction) => {
       await harness.stores.memoryGraph.insertEntity(
         entityDraft(chain, clustered, AT, { entityKey: asMemoryIdentifier<EntityKey>("split-a") }),
         transaction,
@@ -392,7 +395,7 @@ describe("tenant isolation", () => {
   test("an erasure names one subject and destroys nothing of another's", async () => {
     const mine = id("007e");
     const theirs = id("007f");
-    await write(async (transaction) => {
+    await harness.base.adapter.unitOfWork.run(async (transaction) => {
       await harness.stores.memory.insertMemory(
         { memory: memoryDraft(chain, mine, AT, { content: "mine" }), embedding: { action: "keep" } },
         transaction,

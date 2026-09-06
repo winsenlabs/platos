@@ -19,6 +19,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { AttachmentId, ContentHash } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   artifactFixture,
@@ -66,7 +67,7 @@ function plant(sql: string): string {
 
 describe("the four INTEGER columns are 32-bit and the domain's numbers are not", () => {
   test("bytes above the integer ceiling is refused before a statement, and by the column", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { bytes: 3_000_000_000 }),
         transaction,
@@ -87,7 +88,7 @@ describe("the four INTEGER columns are 32-bit and the domain's numbers are not",
   }, 120_000);
 
   test("a negative bytes is refused on WRITE, ACCEPTED by the column, and refused on READ", async () => {
-    const negative = await harness.run((transaction) =>
+    const negative = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { bytes: -1 }),
         transaction,
@@ -131,7 +132,7 @@ describe("the four INTEGER columns are 32-bit and the domain's numbers are not",
   }, 120_000);
 
   test("a fractional bytes is refused: the column is an integer and a number is not", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { bytes: 10.5 }),
         transaction,
@@ -141,7 +142,7 @@ describe("the four INTEGER columns are 32-bit and the domain's numbers are not",
   }, 120_000);
 
   test("a negative media dimension is refused on the same guard with its own field", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { width: -1 }),
         transaction,
@@ -152,7 +153,7 @@ describe("the four INTEGER columns are 32-bit and the domain's numbers are not",
   }, 120_000);
 
   test("revision 0 is refused on WRITE, ACCEPTED by the column, and refused on READ", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), { revision: 0, artifactKey: "zero.rev" }),
         transaction,
@@ -193,7 +194,7 @@ describe("the four INTEGER columns are 32-bit and the domain's numbers are not",
 
 describe("a text column cannot hold U+0000 and every free-form column is exposed to it", () => {
   test("an original name carrying NUL is refused before a statement", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { originalName: "in\u0000voice.pdf" }),
         transaction,
@@ -203,7 +204,7 @@ describe("a text column cannot hold U+0000 and every free-form column is exposed
   }, 120_000);
 
   test("artifact content carrying NUL is refused, and PostgreSQL refuses the same bytes", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), {
           content: "before\u0000after",
@@ -228,7 +229,7 @@ describe("a text column cannot hold U+0000 and every free-form column is exposed
 
 describe("Artifact_metadata_json_root is a CHECK and the double has no opinion at all", () => {
   test("a JSON array metadata is refused before a statement, and by the CHECK", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), {
           artifactKey: "array.meta",
@@ -251,7 +252,7 @@ describe("Artifact_metadata_json_root is a CHECK and the double has no opinion a
 
   test("a null metadata is the SQL NULL and reads back as null, not as the JSON scalar", async () => {
     const key = "null.meta";
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), { artifactKey: key, metadata: null }),
         transaction,
@@ -265,7 +266,7 @@ describe("Artifact_metadata_json_root is a CHECK and the double has no opinion a
 
 describe("Artifact.createdBy is a plain TEXT and it is what an erasure matches on", () => {
   test("an empty principal is refused on write and on the erasure read", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), { artifactKey: "empty.author", createdBy: "" }),
         transaction,
@@ -297,7 +298,7 @@ describe("Artifact.createdBy is a plain TEXT and it is what an erasure matches o
 
 describe("every @db.Uuid column, and the identifiers the context's own doubles mint", () => {
   test("the shapes SequenceIdGenerator produces are refused by every write and read", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, "id-0001"),
         transaction,
@@ -319,7 +320,7 @@ describe("every @db.Uuid column, and the identifiers the context's own doubles m
   }, 120_000);
 
   test("an invalid Date is refused before the driver can report a parameter with no column", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { createdAt: new Date("not a date") }),
         transaction,
@@ -332,7 +333,7 @@ describe("every @db.Uuid column, and the identifiers the context's own doubles m
 describe("the primary key, which the double's Map.set does not have", () => {
   test("a second insert at one id is refused rather than overwriting the first", async () => {
     const id = freshId();
-    const first = await harness.run((transaction) =>
+    const first = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, id, { bytes: 1 }),
         transaction,
@@ -340,7 +341,7 @@ describe("the primary key, which the double's Map.set does not have", () => {
     );
     expect(first.ok).toBe(true);
 
-    const second = await harness.run((transaction) =>
+    const second = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, id, { bytes: 2 }),
         transaction,
@@ -362,7 +363,7 @@ describe("the dedupe probe carries no unique index and no index at all", () => {
     const hash = asIdentifier<ContentHash>("sha256:shared-by-two");
     const older = freshId();
     const newer = freshId();
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, older, {
           contentHash: hash,
@@ -371,7 +372,7 @@ describe("the dedupe probe carries no unique index and no index at all", () => {
         transaction,
       ),
     );
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, newer, {
           contentHash: hash,
@@ -393,7 +394,7 @@ describe("the dedupe probe carries no unique index and no index at all", () => {
 
   test("the probe never crosses an environment even when the bytes are identical", async () => {
     const hash = asIdentifier<ContentHash>("sha256:same-bytes-two-tenants");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { contentHash: hash }),
         transaction,

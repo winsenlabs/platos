@@ -18,6 +18,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { TransactionId, TransactionScope } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { domainError, err, runResult } from "@platos/kernel";
 
 import type { OutboxInsertRow } from "./outbox-store.js";
 import { ENVIRONMENT_UNKNOWN, EVENT_ID_TAKEN } from "./outbox-store.js";
@@ -136,9 +137,9 @@ describe("the transaction boundary, proved by failure injection", () => {
     expect(await durableIds()).not.toContain(event.eventId);
   });
 
-  test("a THROWN refusal rolls back; a RETURNED error value COMMITS", async () => {
+  test("a THROWN refusal rolls back, and so does a RETURNED error Result", async () => {
     const discarded = row();
-    const kept = row();
+    const refused = row();
 
     await expect(
       harness.adapter.unitOfWork.run(async (transaction) => {
@@ -148,16 +149,20 @@ describe("the transaction boundary, proved by failure injection", () => {
     ).rejects.toThrow("the use case refused after appending");
     expect(await durableIds()).not.toContain(discarded.eventId);
 
-    const returned = await harness.adapter.unitOfWork.run(async (transaction) => {
-      await harness.adapter.insertOutboxEvent(kept, transaction);
-      return { ok: false as const, error: "refused" };
+    // THIS CASE USED TO ASSERT THE OPPOSITE, against a real database, and it was
+    // RIGHT to: `run` commits when its callback resolves, and an error `Result`
+    // resolves. WIN-260 (M2.5) made that unwritable — `run` no longer accepts a
+    // `Result`-valued callback at all — and `runResult` is the sanctioned way to
+    // end a unit of work with a failure. The event is the certificate that the
+    // state change happened, so an outbox is where the old behaviour cost the
+    // most; this is the same property measured the same way, in the direction
+    // that is now true.
+    const returned = await runResult(harness.adapter.unitOfWork, async (transaction) => {
+      await harness.adapter.insertOutboxEvent(refused, transaction);
+      return err(domainError("OUTBOX_REFUSED_AFTER_APPENDING", "conflict", "the use case refused after appending"));
     });
     expect(returned.ok).toBe(false);
-    // The `cost-monitoring` trap, recorded as evidence rather than as prose. A
-    // resolved promise COMMITS, so a use case that must not emit its event has
-    // to THROW. An outbox is where this costs the most: the event is the
-    // certificate that the state change happened.
-    expect(await durableIds()).toContain(kept.eventId);
+    expect(await durableIds()).not.toContain(refused.eventId);
   });
 
   test("nesting JOINS the outer transaction, so an inner append dies with the outer", async () => {

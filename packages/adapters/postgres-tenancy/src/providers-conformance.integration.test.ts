@@ -32,6 +32,8 @@ import type {
   ProvidersRepository,
   TransactionScope,
 } from "@platos/context-providers/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
 
 import type {
   ProvidersConformanceEnvironment,
@@ -142,8 +144,8 @@ function adapterEnvironment(): ProvidersConformanceEnvironment {
     scope,
     foreignScope,
     ids,
-    run: <Value>(work: (transaction: TransactionScope) => Promise<Value>) =>
-      harness.base.adapter.unitOfWork.run(work),
+    run: <Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>) =>
+      harness.base.adapter.unitOfWork.run<Value>(work),
   };
 }
 

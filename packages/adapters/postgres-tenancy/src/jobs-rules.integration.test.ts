@@ -40,6 +40,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { EnvironmentScope, JobId, Result } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier } from "@platos/context-jobs/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { ApprovalPeers, JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";
@@ -91,7 +92,7 @@ function refusal(result: Result<unknown>): string {
  * second rule to satisfy.
  */
 async function plantJob(id: string, columns: Record<string, string>): Promise<void> {
-  const created = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const created = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.jobs.insertJob(
       scope,
       {

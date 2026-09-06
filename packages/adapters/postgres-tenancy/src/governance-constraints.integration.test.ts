@@ -32,6 +32,7 @@ import {
   InMemoryRatingsRepository,
   InMemorySafetyLedger,
 } from "@platos/context-governance/application/testing/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   CRITERION_SCALE_NOT_REPRESENTABLE,
@@ -118,7 +119,7 @@ describe("MessageRating_rating_check is the constraint the migration ENDS with",
     // Neither constraint is expressible in a Prisma attribute, so
     // `schema.prisma` shows neither and a reader who stopped at the first would
     // have got this backwards in both directions.
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.ratings.upsert(
         scope,
         {
@@ -139,7 +140,7 @@ describe("MessageRating_rating_check is the constraint the migration ENDS with",
 
   test("and BOTH thumbs are stored, so the refusal is the VALUE and not the path", async () => {
     for (const rating of [1, -1] as const) {
-      const accepted = await harness.base.adapter.unitOfWork.run((transaction) =>
+      const accepted = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.ratings.upsert(
           scope,
           {
@@ -155,7 +156,7 @@ describe("MessageRating_rating_check is the constraint the migration ENDS with",
         ),
       );
       expect(accepted.ok && accepted.value.rating).toBe(rating);
-      await harness.base.adapter.unitOfWork.run((transaction) =>
+      await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.ratings.remove(
           scope,
           asGovernanceIdentifier<TurnId>(ids.turnId),
@@ -167,7 +168,7 @@ describe("MessageRating_rating_check is the constraint the migration ENDS with",
   });
 
   test("a revision of zero is refused by its own code", async () => {
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.ratings.upsert(
         scope,
         {
@@ -195,7 +196,7 @@ describe("@db.Uuid on every key, which the doubles mint around", () => {
     const stored = await fake.append(scope, conformanceSafetyEvent(ids), null);
     expect(stored.ok && stored.value.safetyEventId).toBe("safety-0001");
 
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.safety.append(
         scope,
         // `agent-1` is the shape `application/testing/fixtures.ts` mints.
@@ -215,7 +216,7 @@ describe("@db.Uuid on every key, which the doubles mint around", () => {
     );
     expect(stored.ok && stored.value.agentEvalId).toBe("eval-0001");
 
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.evals.append(
         scope,
         conformanceEval(ids, asGovernanceIdentifier<EvalCriterionId>("criterion-0001")),
@@ -226,7 +227,7 @@ describe("@db.Uuid on every key, which the doubles mint around", () => {
   });
 
   test("and a golden set's agent is checked too", async () => {
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.goldenSets.create(
         scope,
         conformanceGoldenSet(ids, { agentId: asGovernanceIdentifier<AgentId>("agent-1") }),
@@ -240,7 +241,7 @@ describe("@db.Uuid on every key, which the doubles mint around", () => {
 
 describe("the column types the doubles cannot see", () => {
   test("`AgentEval.score` is a double that would hold NaN, so NaN is refused", async () => {
-    const criterion = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const criterion = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.criteria.create(
         scope,
         conformanceCriterion({ name: `scale-${Date.now()}` }),
@@ -251,7 +252,7 @@ describe("the column types the doubles cannot see", () => {
     expect(criterion.ok).toBe(true);
     const criterionId = criterion.ok ? criterion.value.evalCriterionId : ids.absentId;
 
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.evals.append(
         scope,
         conformanceEval(ids, asGovernanceIdentifier<EvalCriterionId>(criterionId), {
@@ -264,7 +265,7 @@ describe("the column types the doubles cannot see", () => {
 
     // `Decimal(18, 6)` ROUNDS a longer fraction rather than refusing it, so a
     // cost written and read back would silently differ. Refused instead.
-    const rounded = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const rounded = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.evals.append(
         scope,
         conformanceEval(ids, asGovernanceIdentifier<EvalCriterionId>(criterionId), {
@@ -276,7 +277,7 @@ describe("the column types the doubles cannot see", () => {
     expect(reasonOf(rounded)).toContain(EVAL_COST_NOT_REPRESENTABLE);
 
     // `Int` is int4, and JavaScript hands the driver a number that may be 2^53.
-    const overflowed = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const overflowed = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.evals.append(
         scope,
         conformanceEval(ids, asGovernanceIdentifier<EvalCriterionId>(criterionId), {
@@ -300,7 +301,7 @@ describe("the column types the doubles cannot see", () => {
   });
 
   test("a criterion scale outside int4 is refused before the statement", async () => {
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.criteria.create(
         scope,
         conformanceCriterion({ name: `wide-${Date.now()}`, scoreScaleMax: 2 ** 40 }),
@@ -314,7 +315,7 @@ describe("the column types the doubles cannot see", () => {
 
 describe("the safety metadata envelope is the adapter's, and a producer may not forge one", () => {
   test("a producer's metadata carrying the reserved marker is refused", async () => {
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.safety.append(
         scope,
         conformanceSafetyEvent(ids, {
@@ -328,7 +329,7 @@ describe("the safety metadata envelope is the adapter's, and a producer may not 
   });
 
   test("a NESTED marker is a detector attribute and reads back unchanged", async () => {
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.safety.append(
         scope,
         conformanceSafetyEvent(ids, {
@@ -352,7 +353,7 @@ test("a refusal leaves the caller's transaction usable, which a raised CHECK wou
   // PostgreSQL rather than from TypeScript, this second write would fail with
   // 25P02 and the caller would have no way to tell a bad value from an outage.
   const name = `after-refusal-${Date.now()}`;
-  const created = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+  const created = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
     const refused = await harness.stores.ratings.upsert(
       scope,
       {
@@ -381,7 +382,7 @@ test("a thread this environment does not own is refused by the DATABASE, not by 
   // NOT pre-check — four joins it would have to duplicate, racily — so it
   // arrives as a driver error and is mapped to a `Result` rather than thrown.
   const foreign = await harness.foreignChain();
-  const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, {

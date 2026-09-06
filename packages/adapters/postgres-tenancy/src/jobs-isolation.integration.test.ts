@@ -34,6 +34,7 @@ import type {
   TurnId,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, environmentScope } from "@platos/context-jobs/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { ApprovalPeers, JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";
@@ -104,7 +105,7 @@ function approvalIn(id: string, overrides: Partial<Approval> = {}): Approval {
 }
 
 function insertJob(job: Job, where: EnvironmentScope = scope): Promise<Result<Job>> {
-  return harness.base.adapter.unitOfWork.run((transaction) =>
+  return runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.jobs.insertJob(where, job, transaction),
   );
 }
@@ -113,7 +114,7 @@ function insertApproval(
   approval: Approval,
   where: EnvironmentScope = scope,
 ): Promise<Result<Approval>> {
-  return harness.base.adapter.unitOfWork.run((transaction) =>
+  return runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.approvals.insertApproval(where, approval, transaction),
   );
 }
@@ -262,7 +263,7 @@ describe("a WRITE is keyed by its scope too, not only a read", () => {
     expect((await insertJob(job, foreign.scope)).ok).toBe(true);
     expect((await insertApproval(approval, foreign.scope)).ok).toBe(true);
 
-    const updated = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const updated = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.jobs.updateJob(scope, { ...job, displayName: "stolen" }, transaction),
     );
     expect(updated.ok).toBe(false);
@@ -270,12 +271,12 @@ describe("a WRITE is keyed by its scope too, not only a read", () => {
       await harness.stores.jobs.markStarted(scope, asIdentifier<JobId>(jobId), AT),
     ).toEqual({ ok: true, value: false });
     expect(
-      await harness.base.adapter.unitOfWork.run((transaction) =>
+      await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.jobs.deleteJob(scope, asIdentifier<JobId>(jobId), transaction),
       ),
     ).toEqual({ ok: true, value: false });
     expect(
-      await harness.base.adapter.unitOfWork.run((transaction) =>
+      await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.approvals.resolve(
           scope,
           {
@@ -295,7 +296,7 @@ describe("a WRITE is keyed by its scope too, not only a read", () => {
       ),
     ).toEqual({ ok: true, value: false });
     expect(
-      await harness.base.adapter.unitOfWork.run((transaction) =>
+      await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.approvals.markConsumed(scope, approval.approvalId, null, AT, transaction),
       ),
     ).toEqual({ ok: true, value: false });
@@ -334,7 +335,7 @@ describe("the dedupe lookup is THREE predicates, and each one is load-bearing", 
       expect((await insertApproval(approval, where)).ok).toBe(true);
     }
     const decidedAt = new Date(AT.getTime() + 180_000);
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.resolve(
         where,
         {
@@ -411,7 +412,7 @@ describe("the listing's date window, and the platform-wide enumeration", () => {
     ]);
     for (const approval of [first, second]) {
       const at = new Date(AT.getTime() + 5000);
-      await harness.base.adapter.unitOfWork.run((transaction) =>
+      await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.approvals.resolve(
           where,
           {
@@ -457,7 +458,7 @@ describe("the erasure is narrowed by its tenant scope, not only by its subject",
     );
     // AND THE ERASURE DESTROYS ONLY WHAT IT COUNTED: the other environment's row
     // is untouched, which is the property a plan and its receipt rest on.
-    const erased = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const erased = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.erase({ scope: here, principalId: subject }, transaction),
     );
     expect(erased).toEqual({ ok: true, value: 2 });

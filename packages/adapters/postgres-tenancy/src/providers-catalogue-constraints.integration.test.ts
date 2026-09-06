@@ -32,6 +32,7 @@ import {
   asProvidersIdentifier,
   rateFromDecimalString,
 } from "@platos/context-providers/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { MODEL_INTEGER_OUT_OF_RANGE, RATE_OUT_OF_DOMAIN, RATE_PROVENANCE_MISSING } from "./providers-guards.js";
 import type { ProvidersHarness } from "./providers-harness.js";
@@ -113,7 +114,7 @@ describe("ModelPrice_rate_check", () => {
   let modelId: string;
 
   beforeAll(async () => {
-    const model = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const model = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertModel(
         asProvidersIdentifier<ModelKey>("anthropic:constraint-model"),
         facts("constraint-model"),
@@ -126,7 +127,7 @@ describe("ModelPrice_rate_check", () => {
 
   test("the guard refuses a KNOWN rate that names no source", async () => {
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertPrice(
           asProvidersIdentifier<ModelId>(modelId),
           card(new Date("2026-01-01T00:00:00.000Z"), {
@@ -168,7 +169,7 @@ describe("ModelPrice_rate_check", () => {
     // for an unavailable rate would be STRICTER than the database — the drift
     // a constraints suite written only as "the guard refuses what the CHECK
     // refuses" cannot see.
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertPrice(
         asProvidersIdentifier<ModelId>(modelId),
         card(new Date("2026-02-01T00:00:00.000Z"), {
@@ -182,7 +183,7 @@ describe("ModelPrice_rate_check", () => {
 
   test("the guard refuses a rate outside the Decimal(24, 12) domain", async () => {
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertPrice(
           asProvidersIdentifier<ModelId>(modelId),
           card(new Date("2026-03-01T00:00:00.000Z"), {
@@ -247,7 +248,7 @@ describe("Model's SECOND identity, which the port does not model", () => {
     // happily because its map is keyed by `key` alone. An alias published beside
     // its target is exactly this shape.
     const shared = facts("shared-name");
-    const first = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const first = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertModel(
         asProvidersIdentifier<ModelKey>("anthropic:shared-name"),
         shared,
@@ -255,7 +256,7 @@ describe("Model's SECOND identity, which the port does not model", () => {
       ),
     );
     expect(first.ok).toBe(true);
-    const second = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const second = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertModel(
         asProvidersIdentifier<ModelKey>("anthropic:shared-name-alias"),
         shared,
@@ -272,7 +273,7 @@ describe("Model's SECOND identity, which the port does not model", () => {
   });
 
   test("a card for a model that does not exist is refused by the foreign key", async () => {
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertPrice(
         asProvidersIdentifier<ModelId>(uuid("00ff")),
         card(new Date("2026-05-01T00:00:00.000Z")),
@@ -289,7 +290,7 @@ describe("Model's SECOND identity, which the port does not model", () => {
 describe("Model's two INTEGER columns", () => {
   test("the guard refuses a context window the column cannot hold", async () => {
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.upsertModel(
           asProvidersIdentifier<ModelKey>("anthropic:too-wide"),
           // A catalogue that published a context window in BYTES.
@@ -324,7 +325,7 @@ describe("isHidden is an operator's decision and not a catalogue fact", () => {
     // every other case in every other suite would still be green because nothing
     // else ever sets the column.
     const key = asProvidersIdentifier<ModelKey>("anthropic:hidden-model");
-    const first = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const first = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertModel(key, facts("hidden-model"), transaction),
     );
     expect(first).toMatchObject({ ok: true, value: { isHidden: false } });
@@ -333,7 +334,7 @@ describe("isHidden is an operator's decision and not a catalogue fact", () => {
     await harness.base.client.$executeRawUnsafe(
       `UPDATE "Model" SET "isHidden" = true WHERE "key" = 'anthropic:hidden-model'`,
     );
-    const again = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const again = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertModel(
         key,
         { ...facts("hidden-model"), contextWindow: 2000 },

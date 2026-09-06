@@ -42,6 +42,7 @@ import type {
   TransactionScope,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier, catalogueScope } from "@platos/context-skills/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { conformanceDraft, conformanceIdentity } from "./skills-conformance.js";
 import {
@@ -90,7 +91,7 @@ async function seedInstalled(slug: string): Promise<{
   readonly projectSkillId: string;
   readonly environmentSkillId: string;
 }> {
-  const skill = await harness.run((transaction) =>
+  const skill = await runResult(harness, (transaction) =>
     harness.repository.upsertSkill(conformanceDraft(tenant.scope, slug, "1.0.0"), transaction),
   );
   if (!skill.ok) throw new Error(`the fixture must register ${slug}`);
@@ -176,7 +177,7 @@ describe("the six constraints that exist ONLY in the migrations are really insta
     // only on INSERT would let a re-install move a row across a tenant boundary,
     // and no INSERT-shaped case anywhere would notice.
     const owned = await seedInstalled("acme.onupdate");
-    const foreignSkill = await harness.run((transaction) =>
+    const foreignSkill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(
         conformanceDraft(foreign.scope, "foreign.onupdate", "1.0.0"),
         transaction,
@@ -186,7 +187,7 @@ describe("the six constraints that exist ONLY in the migrations are really insta
     // un-adopted: `@@unique([projectId, skillId])` would refuse a re-point onto
     // a pair the project already holds, and the refusal would look like the
     // ancestry rule while being the index.
-    const sibling = await harness.run((transaction) =>
+    const sibling = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(
         conformanceDraft(tenant.scope, "acme.onupdate-free", "1.0.0"),
         transaction,
@@ -221,7 +222,7 @@ describe("the six constraints that exist ONLY in the migrations are really insta
 
 describe("ProjectSkill_ancestry: a project may not adopt another organization's skill", () => {
   test("the double creates the adoption and PostgreSQL refuses it", async () => {
-    const foreignSkill = await harness.run((transaction) =>
+    const foreignSkill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(
         conformanceDraft(foreign.scope, "foreign.tool", "1.0.0"),
         transaction,
@@ -238,24 +239,22 @@ describe("ProjectSkill_ancestry: a project may not adopt another organization's 
     expect(accepted.ok).toBe(true);
 
     // POSTGRESQL REFUSES, through a database rule that is not in `schema.prisma`.
-    const refused = await harness
-      .run((transaction) =>
-        harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
-      )
-      .catch((error: unknown) => ({ ok: false as const, thrown: error }));
+    const refused = await runResult(harness, (transaction) =>
+      harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
+    ).catch((error: unknown) => ({ ok: false as const, thrown: error }));
     expect(refused.ok).toBe(false);
   });
 });
 
 describe("EnvironmentSkill_ancestry: a binding may not cross a project", () => {
   test("the double binds a sibling project's adoption and PostgreSQL refuses it", async () => {
-    const skill = await harness.run((transaction) =>
+    const skill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.cross", "1.0.0"), transaction),
     );
     expect(skill.ok).toBe(true);
     const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
 
-    const adoption = await harness.run((transaction) =>
+    const adoption = await runResult(harness, (transaction) =>
       harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
     );
     expect(adoption.ok).toBe(true);
@@ -267,11 +266,9 @@ describe("EnvironmentSkill_ancestry: a binding may not cross a project", () => {
     const fake = new InMemorySkillsRepository(uuidStamps());
     expect((await fake.upsertEnvironmentInstallation(tenant.sibling, project, FAKE_TXN)).ok).toBe(true);
 
-    const refused = await harness
-      .run((transaction) =>
-        harness.repository.upsertEnvironmentInstallation(tenant.sibling, project, transaction),
-      )
-      .catch((error: unknown) => ({ ok: false as const, thrown: error }));
+    const refused = await runResult(harness, (transaction) =>
+      harness.repository.upsertEnvironmentInstallation(tenant.sibling, project, transaction),
+    ).catch((error: unknown) => ({ ok: false as const, thrown: error }));
     expect(refused.ok).toBe(false);
   });
 });
@@ -290,7 +287,7 @@ describe("the shapes the schema will not hold, refused BEFORE a statement is sen
     const fake = new InMemorySkillsRepository(uuidStamps());
     expect((await fake.upsertSkill(conformanceDraft(bogus, "acme.bogus", "1.0.0"), FAKE_TXN)).ok).toBe(true);
 
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(bogus, "acme.bogus", "1.0.0"), transaction),
     );
     expect(refused.ok).toBe(false);
@@ -304,7 +301,7 @@ describe("the shapes the schema will not hold, refused BEFORE a statement is sen
       projectId: asIdentifier(tenant.organizationId),
       environmentId: asIdentifier(tenant.environmentId),
     });
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.upsertProjectInstallation(
         forged,
         asIdentifier<SkillId>("cccccccc-0001-4000-8000-000000000001"),
@@ -323,7 +320,7 @@ describe("the shapes the schema will not hold, refused BEFORE a statement is sen
     const fake = new InMemorySkillsRepository(uuidStamps());
     expect((await fake.upsertSkill(draft, FAKE_TXN)).ok).toBe(true);
 
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(draft, transaction),
     );
     expect(refused.ok).toBe(false);
@@ -339,7 +336,7 @@ describe("the shapes the schema will not hold, refused BEFORE a statement is sen
     const fake = new InMemorySkillsRepository(uuidStamps());
     expect((await fake.upsertSkill(draft, FAKE_TXN)).ok).toBe(true);
 
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(draft, transaction),
     );
     expect(refused.ok).toBe(false);
@@ -354,7 +351,7 @@ describe("the shapes the schema will not hold, refused BEFORE a statement is sen
     const fake = new InMemorySkillsRepository(uuidStamps());
     expect((await fake.upsertSkill(draft, FAKE_TXN)).ok).toBe(true);
 
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(draft, transaction),
     );
     expect(refused.ok).toBe(false);
@@ -389,7 +386,7 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
     // unguarded `updateManyAndReturn({ where: { id } })` sends the string to
     // `uuid_in`. The double answers `repositoryUnavailable("no such skill …")`
     // for the same input.
-    const written = await harness.run(async (transaction) => {
+    const written = await runResult(harness, async (transaction) => {
       const refused = await harness.repository.patchSkill(
         asIdentifier<SkillId>("acme.search"),
         { name: "x" },
@@ -412,11 +409,11 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
     // rows against each other when they are WRITTEN and have nothing to say
     // about a scope assembled later, which is why the read joins through
     // `ProjectSkill.project` rather than trusting the environment id alone.
-    const skill = await harness.run((transaction) =>
+    const skill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.forged", "1.0.0"), transaction),
     );
     const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
-    const binding = await harness.run(async (transaction) => {
+    const binding = await runResult(harness, async (transaction) => {
       const project = await harness.repository.upsertProjectInstallation(
         tenant.scope,
         skillId,
@@ -460,11 +457,11 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
     // content." Nothing in the conformance scenario installs one skill in TWO
     // environments, so the environment clause of the DELETE survived the first
     // mutation sweep with nothing red — which is what this case is for.
-    const skill = await harness.run((transaction) =>
+    const skill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.twoenvs", "1.0.0"), transaction),
     );
     const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
-    const adoption = await harness.run((transaction) =>
+    const adoption = await runResult(harness, (transaction) =>
       harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
     );
     if (!adoption.ok) throw new Error("the adoption is the fixture");
@@ -472,13 +469,13 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
     // the shape the second row's key makes possible and the reason it is keyed
     // by the project row rather than by the skill.
     for (const scope of [tenant.scope, tenant.staging]) {
-      const bound = await harness.run((transaction) =>
+      const bound = await runResult(harness, (transaction) =>
         harness.repository.upsertEnvironmentInstallation(scope, adoption.value, transaction),
       );
       expect(bound.ok).toBe(true);
     }
 
-    const removed = await harness.run((transaction) =>
+    const removed = await runResult(harness, (transaction) =>
       harness.repository.deleteEnvironmentInstallation(tenant.scope, skillId, transaction),
     );
     expect(removed).toEqual({ ok: true, value: true });
@@ -501,7 +498,7 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
     // The write-path half of the uuid guard on the delete, and the expensive
     // one: a DELETE whose predicate raises takes the caller's transaction with
     // it. The read-path cases above cost only an answer.
-    const written = await harness.run(async (transaction) => {
+    const written = await runResult(harness, async (transaction) => {
       const removed = await harness.repository.deleteEnvironmentInstallation(
         tenant.scope,
         asIdentifier<SkillId>("acme.search"),
@@ -522,7 +519,7 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
     // the installation that happened to carry the same principal string.
     const author = "subject-shared";
     for (const scope of [tenant.scope, foreign.scope]) {
-      const written = await harness.run((transaction) =>
+      const written = await runResult(harness, (transaction) =>
         harness.repository.upsertSkill(
           conformanceDraft(scope, "acme.shared", "1.0.0", { manifest: { author } }),
           transaction,
@@ -530,7 +527,7 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
       );
       expect(written.ok).toBe(true);
     }
-    const erased = await harness.run((transaction) =>
+    const erased = await runResult(harness, (transaction) =>
       harness.repository.anonymizeAuthoredSkills(
         {
           scope: { level: "organization", organizationId: asIdentifier(tenant.organizationId) },
@@ -557,7 +554,7 @@ describe("a refusal leaves the caller's transaction usable", () => {
     // The property every guard in `skills-guards.ts` exists to preserve. If any
     // of them let the database raise instead, the second write below would meet
     // 25P02 and this case would go red without anything else changing.
-    const written = await harness.run(async (transaction) => {
+    const written = await runResult(harness, async (transaction) => {
       const refused = await harness.repository.upsertSkill(
         { ...conformanceDraft(tenant.scope, "acme.after", "1.0.0"), manifest: [] as unknown as SkillManifest },
         transaction,

@@ -35,6 +35,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { AttachmentId, TransactionScope } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import {
@@ -95,8 +96,8 @@ describe("an artifact revision and an attachment are one transaction or neither"
     // suite adds. The attachment names this tenant's environment and ANOTHER
     // tenant's thread, and `MessageAttachment_ancestry` refuses it. Nothing about
     // the failure is simulated.
-    const outcome = await harness
-      .run(async (transaction) => {
+    const outcome = await runResult(
+      harness, async (transaction) => {
         const revision = await harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, artifactId, { artifactKey: "atomic.witness" }),
           transaction,
@@ -122,7 +123,7 @@ describe("an artifact revision and an attachment are one transaction or neither"
 
   test("a GUARD refusal is a value: the earlier write in the same unit of work COMMITS", async () => {
     const attachmentId = freshId();
-    const outcome = await harness.run(async (transaction) => {
+    const outcome = await runResult(harness, async (transaction) => {
       const written = await harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, attachmentId, { contentHash: "sha256:guard-witness" }),
         transaction,
@@ -145,7 +146,7 @@ describe("an artifact revision and an attachment are one transaction or neither"
 
   test("the append-only CONFLICT is a value too, and the transaction stays usable", async () => {
     const key = "conflict.witness";
-    const first = await harness.run((transaction) =>
+    const first = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), { artifactKey: key }),
         transaction,
@@ -154,7 +155,7 @@ describe("an artifact revision and an attachment are one transaction or neither"
     expect(first.ok).toBe(true);
 
     const attachmentId = freshId();
-    const outcome = await harness.run(async (transaction) => {
+    const outcome = await runResult(harness, async (transaction) => {
       const conflicted = await harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), { artifactKey: key, content: "rewritten" }),
         transaction,
@@ -185,7 +186,7 @@ describe("an artifact revision and an attachment are one transaction or neither"
     const attachmentId = freshId();
     const artifactKey = "erasure.witness";
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, freshId(), { artifactKey, createdBy: "user_doomed" }),
           transaction,
@@ -193,7 +194,7 @@ describe("an artifact revision and an attachment are one transaction or neither"
       )).ok,
     ).toBe(true);
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertAttachment(
           attachmentFixture(chain.attachment, attachmentId),
           transaction,
@@ -204,8 +205,8 @@ describe("an artifact revision and an attachment are one transaction or neither"
     // The erasure deletes the revisions and then meets a failure. THE FAILURE IS
     // A REAL ONE: the second half writes an attachment against another tenant's
     // thread, which `MessageAttachment_ancestry` refuses.
-    await harness
-      .run(async (transaction) => {
+    await runResult(
+      harness, async (transaction) => {
         const removed = await harness.repository.deleteArtifactRevisionsForSubject(
           erasureSelectorOf(chain.organizationId, null, "user_doomed"),
           transaction,

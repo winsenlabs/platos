@@ -37,6 +37,7 @@ import {
   parseRuleFilter,
   parseRuleName,
 } from "@platos/context-eventing/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   startEventingHarness,
@@ -103,7 +104,7 @@ test("`@db.Uuid` — the rule id the context's OWN generator mints is refused", 
   const rule = ruleFor(tenant.scope, "uuid-guard", {
     ruleId: asIdentifier<NotificationRuleId>("id-0001"),
   });
-  const reason = await reasonOf(harness.run((t) => harness.repository.insertRule(rule, t)));
+  const reason = await reasonOf(runResult(harness, (t) => harness.repository.insertRule(rule, t)));
   expect(reason).toBe(
     'eventing.write.identifier_not_uuid: rule.ruleId must be a uuid; received "id-0001"',
   );
@@ -137,7 +138,7 @@ test("`@db.Uuid` — the scope triple the context's OWN fixture mints is refused
   // reported first because it is the first the join needs.
   const fake = environmentScope(asIdentifier("org-1"), asIdentifier("proj-1"), asIdentifier("env-1"));
   const rule = ruleFor(fake, "scope-guard");
-  const reason = await reasonOf(harness.run((t) => harness.repository.insertRule(rule, t)));
+  const reason = await reasonOf(runResult(harness, (t) => harness.repository.insertRule(rule, t)));
   expect(reason).toBe(
     'eventing.write.identifier_not_uuid: scope.organizationId must be a uuid; received "org-1"',
   );
@@ -167,7 +168,7 @@ test("a NUL byte in the name is refused, and the driver would have refused it to
 
   const rule = ruleFor(tenant.scope, "nul-placeholder");
   const withNul: NotificationRule = { ...rule, name: parsed.ok ? parsed.value : rule.name };
-  const reason = await reasonOf(harness.run((t) => harness.repository.insertRule(withNul, t)));
+  const reason = await reasonOf(runResult(harness, (t) => harness.repository.insertRule(withNul, t)));
   expect(reason).toBe(
     "eventing.write.text_has_nul: rule.name carries U+0000, which no PostgreSQL text or jsonb value can hold",
   );
@@ -202,7 +203,7 @@ test("a NUL byte inside the delivery JSON is refused, and it is a DIFFERENT colu
     ...rule,
     destination: destination.ok ? destination.value : rule.destination,
   };
-  const reason = await reasonOf(harness.run((t) => harness.repository.insertRule(withNul, t)));
+  const reason = await reasonOf(runResult(harness, (t) => harness.repository.insertRule(withNul, t)));
   expect(reason).toBe(
     "eventing.write.text_has_nul: delivery.url carries U+0000, which no PostgreSQL text or jsonb value can hold",
   );
@@ -210,7 +211,7 @@ test("a NUL byte inside the delivery JSON is refused, and it is a DIFFERENT colu
 
 test("an Invalid Date is refused before it reaches a `timestamp(3)` column", async () => {
   const rule = ruleFor(tenant.scope, "instant-guard", { updatedAt: new Date(Number.NaN) });
-  const reason = await reasonOf(harness.run((t) => harness.repository.insertRule(rule, t)));
+  const reason = await reasonOf(runResult(harness, (t) => harness.repository.insertRule(rule, t)));
   expect(reason).toBe(
     "eventing.write.instant_not_storable: rule.updatedAt is not a finite instant a timestamp(3) column can hold",
   );
@@ -249,7 +250,7 @@ test("`NotificationRule_environmentId_fkey` is reported under its OWN reason cod
     asIdentifier("ffffffff-9999-4000-8000-999999999999"),
   );
   const rule = ruleFor(absent, "fk-guard");
-  const reason = await reasonOf(harness.run((t) => harness.repository.insertRule(rule, t)));
+  const reason = await reasonOf(runResult(harness, (t) => harness.repository.insertRule(rule, t)));
   expect(reason).toBe(
     "eventing.write.environment_unknown: insertRule names an environment that does not exist",
   );
@@ -261,7 +262,7 @@ test("a refused write LEAVES THE TRANSACTION USABLE, which is what the guards ar
   // write anything else — and a multi-context erasure is exactly a caller with
   // more to write.
   const good = ruleFor(tenant.scope, "survivor");
-  const written = await harness.run(async (transaction) => {
+  const written = await runResult(harness, async (transaction) => {
     const refused = await harness.repository.insertRule(
       ruleFor(tenant.scope, "doomed", { ruleId: asIdentifier<NotificationRuleId>("not-a-uuid") }),
       transaction,
@@ -300,11 +301,11 @@ test("`updateRule` addressed with ANOTHER environment's scope updates nothing", 
   // describes as an update, and it is the shape that would let a caller write
   // into somebody else's environment.
   const rule = ruleFor(tenant.scope, "cross-scope-update");
-  const written = await harness.run((t) => harness.repository.insertRule(rule, t));
+  const written = await runResult(harness, (t) => harness.repository.insertRule(rule, t));
   expect(written.ok).toBe(true);
 
   const misScoped: NotificationRule = { ...rule, scope: tenant.sibling, enabled: false };
-  const refused = await harness.run((t) => harness.repository.updateRule(misScoped, t));
+  const refused = await runResult(harness, (t) => harness.repository.updateRule(misScoped, t));
   expect(refused.ok).toBe(false);
   expect(refused.ok ? "" : refused.error.code).toBe("EVENTING_RULE_NOT_FOUND");
 
@@ -344,7 +345,7 @@ test("the REPLACEMENT an erasure writes is guarded like any other text", async (
   // multi-context transaction the erasure is running in, which is the one place
   // in this store where a refusal costs somebody else's work.
   const reason = await reasonOf(
-    harness.run((t) =>
+    runResult(harness, (t) =>
       harness.repository.anonymizeRulesForSubject(
         { scope: tenant.scope, principalId: "operator-a" },
         `erased${NUL}`,

@@ -32,6 +32,8 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import {
@@ -64,9 +66,9 @@ function fresh(): string {
 }
 
 function inTransaction<Value>(
-  work: (transaction: TransactionScope) => Promise<Value>,
-): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+  work: (transaction: TransactionScope) => Promise<Result<Value>>,
+): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 const settle = (milliseconds: number): Promise<void> =>
@@ -96,7 +98,7 @@ async function retiredEnvelope(
 ): Promise<{ readonly credentialId: string; readonly versionId: string }> {
   const credentialId = fresh();
   const versionId = fresh();
-  await inTransaction(async (transaction) => {
+  await harness.base.adapter.unitOfWork.run(async (transaction) => {
     await harness.repository.insertCredential(
       credentialDraft({ id: credentialId, environmentId: where, kind: "ENTITY_SECRET", name }),
       transaction,
@@ -171,7 +173,7 @@ describe("the clauses that decide which credential a call reaches", () => {
     // which is the opposite of what this asserts.
     const older = fresh();
     const newer = fresh();
-    await inTransaction(async (transaction) => {
+    await harness.base.adapter.unitOfWork.run(async (transaction) => {
       await harness.repository.insertCredential(
         credentialDraft({
           id: newer,
@@ -263,7 +265,7 @@ describe("the purge sweep's eligibility clauses", () => {
     // against a fixture where the active envelope was simply never retired.
     const credentialId = fresh();
     const versionId = fresh();
-    await inTransaction(async (transaction) => {
+    await harness.base.adapter.unitOfWork.run(async (transaction) => {
       await harness.repository.insertCredential(
         credentialDraft({
           id: credentialId,
@@ -314,7 +316,7 @@ describe("the purge sweep's eligibility clauses", () => {
     const held = gate();
     const swept = gate();
 
-    const first = inTransaction(async (transaction) => {
+    const first = harness.base.adapter.unitOfWork.run(async (transaction) => {
       await harness.repository.listPurgeCandidates(CUTOFF, 50, transaction);
       trace.push("first-swept");
       swept.open();
@@ -323,7 +325,7 @@ describe("the purge sweep's eligibility clauses", () => {
     });
 
     await swept.wait;
-    const second = inTransaction(async (transaction) => {
+    const second = harness.base.adapter.unitOfWork.run(async (transaction) => {
       trace.push("second-queued");
       await harness.repository.listPurgeCandidates(CUTOFF, 50, transaction);
       trace.push("second-swept");

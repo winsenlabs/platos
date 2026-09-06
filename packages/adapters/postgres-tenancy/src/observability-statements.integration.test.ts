@@ -35,6 +35,9 @@ import {
   asIdentifier,
   type PrincipalId,
 } from "@platos/context-observability/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { AuditScope, ObservabilityHarness } from "./observability-harness.js";
 import { auditRecord, AUDIT_AT, startObservabilityHarness } from "./observability-harness.js";
@@ -80,8 +83,8 @@ async function measure(work: () => Promise<unknown>): Promise<Measurement> {
   return { counted: queries().length, total: harness.base.statements().length };
 }
 
-function write<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+function write<Value>(work: (transaction: TransactionScope) => Promise<Result<Value>>): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 /** `rows` audit records in a fresh tenant, all by the same actor. */

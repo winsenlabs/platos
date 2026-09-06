@@ -32,6 +32,8 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
 
 import type {
   SecretsConformanceEnvironment,
@@ -96,7 +98,7 @@ function fakeEnvironment(): SecretsConformanceEnvironment {
     variables: store,
     environmentId,
     ids,
-    run: <Value>(work: (transaction: TransactionScope) => Promise<Value>) => unitOfWork.run(work),
+    run: <Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>) => unitOfWork.run<Value>(work),
   };
 }
 
@@ -106,8 +108,8 @@ function adapterEnvironment(): SecretsConformanceEnvironment {
     variables: harness.variables,
     environmentId,
     ids,
-    run: <Value>(work: (transaction: TransactionScope) => Promise<Value>) =>
-      harness.base.adapter.unitOfWork.run(work),
+    run: <Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>) =>
+      harness.base.adapter.unitOfWork.run<Value>(work),
   };
 }
 

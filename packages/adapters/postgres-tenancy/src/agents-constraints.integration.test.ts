@@ -21,6 +21,7 @@ import type {
   ProjectId,
 } from "@platos/context-agents/application/ports/index.js";
 import { DEFAULT_AGENTS_POLICY } from "@platos/context-agents/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   CANARY_PERCENT_OUT_OF_RANGE,
@@ -96,7 +97,7 @@ describe("constraints only the migrations carry", () => {
       agentBindingId: bindingIdOf(harness.freshId("0301")),
       canaryPercent: 101,
     };
-    const real = await harness.adapter.unitOfWork.run((transaction) =>
+    const real = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.insertBinding(overshoot, transaction),
     );
     expect(reasonOf(real)).toBe(`AGENTS_REPOSITORY_UNAVAILABLE:${CANARY_PERCENT_OUT_OF_RANGE}`);
@@ -115,7 +116,7 @@ describe("constraints only the migrations carry", () => {
       agentId: neighbour.agent.agentId,
       activeVersionId: neighbour.version.agentVersionId,
     };
-    const real = await harness.adapter.unitOfWork.run((transaction) =>
+    const real = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.insertBinding(crossed, transaction),
     );
     expect(reasonOf(real)).toBe(`AGENTS_REPOSITORY_UNAVAILABLE:${CROSSES_OWNER_ANCESTRY}`);
@@ -127,7 +128,7 @@ describe("constraints only the migrations carry", () => {
       canaryVersionId: neighbour.version.agentVersionId,
       canaryPercent: 10,
     };
-    const real = await harness.adapter.unitOfWork.run((transaction) =>
+    const real = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.updateBinding(foreignCanary, transaction),
     );
     expect(reasonOf(real)).toBe(`AGENTS_REPOSITORY_UNAVAILABLE:${CROSSES_OWNER_ANCESTRY}`);
@@ -146,7 +147,7 @@ describe("constraints only the migrations carry", () => {
       environmentId: PEER_ENVIRONMENT,
     });
     const crossed: AgentBinding = { ...home.binding, clusterId: elsewhere.clusterId };
-    const real = await harness.adapter.unitOfWork.run((transaction) =>
+    const real = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.updateBinding(crossed, transaction),
     );
     expect(reasonOf(real)).toBe(`AGENTS_REPOSITORY_UNAVAILABLE:${CROSSES_OWNER_ANCESTRY}`);
@@ -154,7 +155,7 @@ describe("constraints only the migrations carry", () => {
 
   test("Agent_owner_immutable refuses a save that moves an agent between projects", async () => {
     const moved = { ...home.agent, projectId: FOREIGN_PROJECT as never as ProjectId };
-    const real = await harness.adapter.unitOfWork.run((transaction) =>
+    const real = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.updateAgent(moved, transaction),
     );
     expect(reasonOf(real)).toBe(`AGENTS_REPOSITORY_UNAVAILABLE:${OWNER_KEY_IMMUTABLE}`);
@@ -171,14 +172,14 @@ describe("constraints only the migrations carry", () => {
   test("AgentCluster_owner_immutable refuses a save that moves a cluster between environments", async () => {
     const cluster = await harness.seedCluster({ slug: "immutable-owner" });
     const moved: AgentCluster = { ...cluster, environmentId: PEER_ENVIRONMENT as never };
-    const real = await harness.adapter.unitOfWork.run((transaction) =>
+    const real = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.updateCluster(moved, transaction),
     );
     expect(reasonOf(real)).toBe(`AGENTS_REPOSITORY_UNAVAILABLE:${OWNER_KEY_IMMUTABLE}`);
   });
 
   test("enforce_domain_ancestry refuses a template for an agent in another project", async () => {
-    const real = await harness.adapter.unitOfWork.run((transaction) =>
+    const real = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.scaffolding.insertTemplate(
         {
           templateId: clusterIdOf(harness.freshId("0303")) as never,
@@ -200,7 +201,7 @@ describe("constraints only the migrations carry", () => {
 
   test("Macro is unique per environment and name, which the double does not know", async () => {
     await harness.seedMacro({ name: "unique-macro" });
-    const again = harness.adapter.unitOfWork.run((transaction) =>
+    const again = runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.scaffolding.insertMacro(
         {
           macroId: clusterIdOf(harness.freshId("0304")) as never,
@@ -222,7 +223,7 @@ describe("constraints only the migrations carry", () => {
 
   test("PostmanTemplate is unique per environment, agent and name", async () => {
     await harness.seedTemplate({ name: "unique-template", agent: home });
-    const again = await harness.adapter.unitOfWork.run((transaction) =>
+    const again = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.scaffolding.insertTemplate(
         {
           templateId: clusterIdOf(harness.freshId("0305")) as never,
@@ -246,7 +247,7 @@ describe("constraints only the migrations carry", () => {
     // A skill offered in a PEER environment of the SAME project is ACCEPTED.
     // That is the rule as written, it is not what the port's name suggests, and
     // it is recorded here as an observation rather than asserted as intent.
-    const accepted = await harness.adapter.unitOfWork.run((transaction) =>
+    const accepted = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.replaceLoadout(
         home.version.agentVersionId,
         [{ environmentSkillId: skillIdOf(PEER_SKILL), enabled: true, config: {} }],
@@ -256,7 +257,7 @@ describe("constraints only the migrations carry", () => {
     expect(accepted.ok).toBe(true);
 
     // A skill in another PROJECT's environment is refused.
-    const refusedLoadout = await harness.adapter.unitOfWork.run((transaction) =>
+    const refusedLoadout = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.replaceLoadout(
         home.version.agentVersionId,
         [{ environmentSkillId: skillIdOf(FOREIGN_SKILL), enabled: true, config: {} }],
@@ -267,7 +268,7 @@ describe("constraints only the migrations carry", () => {
 
     // An `EnvironmentSkill` that does not exist at all reaches the ancestry rule
     // BEFORE the foreign key, so it is the same refusal rather than a FK one.
-    const unknown = await harness.adapter.unitOfWork.run((transaction) =>
+    const unknown = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.replaceLoadout(
         home.version.agentVersionId,
         [
@@ -283,7 +284,7 @@ describe("constraints only the migrations carry", () => {
     expect(reasonOf(unknown)).toBe(`AGENTS_REPOSITORY_UNAVAILABLE:${CROSSES_OWNER_ANCESTRY}`);
 
     // Put the loadout back so no later case inherits this one's state.
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.replaceLoadout(
         home.version.agentVersionId,
         [{ environmentSkillId: skillIdOf(FIRST_SKILL), enabled: true, config: {} }],

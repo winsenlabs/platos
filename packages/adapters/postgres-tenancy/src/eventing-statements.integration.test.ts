@@ -40,6 +40,7 @@ import {
   parseRuleFilter,
   parseRuleName,
 } from "@platos/context-eventing/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   startEventingHarness,
@@ -113,7 +114,7 @@ async function measure(work: () => Promise<unknown>): Promise<number> {
 
 async function seed(tenant: EventingTenant, name: string): Promise<NotificationRule> {
   const rule = ruleFor(tenant.scope, name);
-  const written = await harness.run((transaction) => harness.repository.insertRule(rule, transaction));
+  const written = await runResult(harness, (transaction) => harness.repository.insertRule(rule, transaction));
   if (!written.ok) throw new Error(`the fixture must register: ${name}`);
   return rule;
 }
@@ -181,7 +182,7 @@ async function measureAll(): Promise<Record<string, Pair>> {
       }),
     ),
     anonymizeVacuousSubject: await both((tenant) =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.anonymizeRulesForSubject(
           { scope: organizationOf(tenant), principalId: null },
           "erased:subject-removed",
@@ -190,17 +191,17 @@ async function measureAll(): Promise<Record<string, Pair>> {
       ),
     ),
     insertRule: await both((tenant) =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.insertRule(ruleFor(tenant.scope, `measured-${freshRuleId()}`), transaction),
       ),
     ),
     updateRule: await both((tenant, rule) =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.updateRule({ ...rule, enabled: rule.enabled }, transaction),
       ),
     ),
     anonymizeAtOrganization: await both((tenant) =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.anonymizeRulesForSubject(
           { scope: organizationOf(tenant), principalId: "nobody-at-all" },
           "erased:subject-removed",
@@ -209,7 +210,7 @@ async function measureAll(): Promise<Record<string, Pair>> {
       ),
     ),
     deleteRule: await both((tenant) =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.deleteRule(
           tenant.scope,
           asIdentifier<NotificationRuleId>("cdcdcdcd-9999-4000-8000-999999999999"),

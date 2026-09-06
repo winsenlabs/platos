@@ -38,6 +38,9 @@ import type {
   TurnId,
 } from "@platos/context-memory/application/ports/index.js";
 import { asMemoryIdentifier } from "@platos/context-memory/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { edgeDraft, entityDraft, memoryDraft, startMemoryHarness } from "./memory-harness.js";
@@ -84,8 +87,8 @@ async function measure(work: () => Promise<unknown>): Promise<Measurement> {
   return { counted: queries().length, total: harness.base.statements().length };
 }
 
-function write<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+function write<Value>(work: (transaction: TransactionScope) => Promise<Result<Value>>): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 /** `rows` memories and `rows` entities for one fresh subject. */
@@ -98,7 +101,7 @@ async function seedFixture(rows: number): Promise<Fixture> {
     const entityId = harness.base.freshId("00e1");
     memoryIds.push(memoryId);
     entityIds.push(entityId);
-    await write(async (transaction) => {
+    await harness.base.adapter.unitOfWork.run(async (transaction) => {
       await harness.stores.memory.insertMemory(
         {
           memory: memoryDraft(chain, memoryId, new Date(AT.getTime() + index * 1000), {

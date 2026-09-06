@@ -34,6 +34,7 @@ import type {
   CredentialKind,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { runLifecycleConformance } from "./secrets-conformance-lifecycle.js";
 import { runVariableConformance } from "./secrets-conformance-variables.js";
@@ -216,7 +217,7 @@ export async function runSecretsConformance(
   // ---- the two refusals, each alone in its transaction --------------------
   record(
     "insertAlphaAgain",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertCredential(
         credentialDraft({
           id: ids.missingCredentialId,
@@ -230,7 +231,7 @@ export async function runSecretsConformance(
   );
   record(
     "insertDuplicateVersion",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertSecretVersion(
         versionDraft({
           id: ids.missingVersionId,

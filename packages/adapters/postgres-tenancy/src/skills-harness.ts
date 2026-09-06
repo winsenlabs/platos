@@ -50,6 +50,8 @@ import type {
   Slug,
 } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier as asTenancyIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
 
 import type { TenancyHarness } from "./harness.js";
 import { AT, startTenancyHarness } from "./harness.js";
@@ -81,7 +83,11 @@ export interface SkillsHarness {
   /** Rows this store refuses to write, applied by the ORM's own CLI. */
   applyRows(sql: string): void;
   /** Open one transaction over the adapter's own ambient frame. */
-  run<Value>(work: (transaction: import("@platos/context-skills/application/ports/index.js").TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(
+    work: (
+      transaction: import("@platos/context-skills/application/ports/index.js").TransactionScope,
+    ) => Promise<NotResult<Value>>,
+  ): Promise<Value>;
   statements(): readonly string[];
   resetStatements(): void;
   stop(): Promise<void>;

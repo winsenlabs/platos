@@ -46,6 +46,7 @@ import {
   type Turn,
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { ConversationsHarness, PeerChain } from "./conversations-harness.js";
 import { startConversationsHarness } from "./conversations-harness.js";
@@ -392,7 +393,7 @@ describe("the sequence allocation's LOCK is measured, not discarded", () => {
     // projection is `id AS "lockedThreadId"`, so it is counted, and the assertion
     // below names it.
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run(() =>
+      runResult(harness.base.adapter.unitOfWork, () =>
         harness.stores.threads.allocateTurnSequence(scope, small.threadId),
       ),
     );

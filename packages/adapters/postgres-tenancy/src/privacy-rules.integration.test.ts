@@ -25,6 +25,7 @@ import type {
   SubjectKeyHash,
   TombstoneDraft,
 } from "@platos/context-privacy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import type { PrivacyHarness, PrivacyTenant } from "./privacy-harness.js";
@@ -91,7 +92,7 @@ describe("a lease may be taken by exactly one of two passes racing it", () => {
     // transactions on two connections, and the loser blocks on the winner's row
     // lock until it commits — which is exactly the mechanism the port asks for.
     const operationId = harness.base.freshId("00c0");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(operationDraft(tenant, operationId), transaction),
     );
 
@@ -118,7 +119,7 @@ describe("a lease may be taken by exactly one of two passes racing it", () => {
     // The SECOND claim, from a genuinely separate transaction, issued while the
     // first still holds the row lock. It blocks; then the first commits and the
     // second's `where` re-evaluates against the row the first wrote.
-    const secondClaim = harness.run((transaction) =>
+    const secondClaim = runResult(harness, (transaction) =>
       harness.repository.claimLease(
         tenant.organizationId,
         id<ErasureOperationId>(operationId),
@@ -149,10 +150,10 @@ describe("a lease may be taken by exactly one of two passes racing it", () => {
     // lease held for one extra tick, and the boundary would be untestable at an
     // exact instant. This is that instant.
     const operationId = harness.base.freshId("00c1");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(operationDraft(tenant, operationId), transaction),
     );
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.claimLease(
         tenant.organizationId,
         id<ErasureOperationId>(operationId),
@@ -161,7 +162,7 @@ describe("a lease may be taken by exactly one of two passes racing it", () => {
         transaction,
       ),
     );
-    const oneTickEarly = await harness.run((transaction) =>
+    const oneTickEarly = await runResult(harness, (transaction) =>
       harness.repository.claimLease(
         tenant.organizationId,
         id<ErasureOperationId>(operationId),
@@ -170,7 +171,7 @@ describe("a lease may be taken by exactly one of two passes racing it", () => {
         transaction,
       ),
     );
-    const atExpiry = await harness.run((transaction) =>
+    const atExpiry = await runResult(harness, (transaction) =>
       harness.repository.claimLease(
         tenant.organizationId,
         id<ErasureOperationId>(operationId),
@@ -192,7 +193,7 @@ describe("insert-then-extend, and the barrier that never opens", () => {
     // only way to state it here is that no DELETE is issued at all.
     const operationId = harness.base.freshId("00c2");
     const alias = `a-reseal-${operationId.slice(-12)}`;
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [sealDraft(tenant, alias, operationId)],
         [id<ErasureTombstoneId>(harness.base.freshId("00c3"))],
@@ -202,7 +203,7 @@ describe("insert-then-extend, and the barrier that never opens", () => {
 
     await new Promise((resolve) => setTimeout(resolve, 25));
     harness.resetStatements();
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [sealDraft(tenant, alias, operationId, new Date("2026-07-01T09:00:00.000Z"))],
         [id<ErasureTombstoneId>(harness.base.freshId("00c4"))],
@@ -224,7 +225,7 @@ describe("insert-then-extend, and the barrier that never opens", () => {
     // the barrier exists to refuse.
     const operationId = harness.base.freshId("00c5");
     const alias = `a-throughout-${operationId.slice(-12)}`;
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [sealDraft(tenant, alias, operationId)],
         [id<ErasureTombstoneId>(harness.base.freshId("00c6"))],
@@ -262,7 +263,7 @@ describe("insert-then-extend, and the barrier that never opens", () => {
     const operationId = harness.base.freshId("00c8");
     const tombstoneId = harness.base.freshId("00c9");
     const alias = `a-extended-${operationId.slice(-12)}`;
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [sealDraft(tenant, alias, operationId)],
         [id<ErasureTombstoneId>(tombstoneId)],
@@ -270,7 +271,7 @@ describe("insert-then-extend, and the barrier that never opens", () => {
       ),
     );
     const later = new Date("2026-07-01T09:00:00.000Z");
-    const again = await harness.run((transaction) =>
+    const again = await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [sealDraft(tenant, alias, operationId, later)],
         [id<ErasureTombstoneId>(harness.base.freshId("00ca"))],
@@ -299,7 +300,7 @@ describe("read-time expiry holds whether or not anything sweeps", () => {
     // when it is still in the table". The second half is what the observer proves.
     const operationId = harness.base.freshId("00cb");
     const alias = `a-lapsed-${operationId.slice(-12)}`;
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [sealDraft(tenant, alias, operationId, new Date(REQUESTED_AT.getTime() + 1000))],
         [id<ErasureTombstoneId>(harness.base.freshId("00cc"))],
@@ -329,7 +330,7 @@ describe("read-time expiry holds whether or not anything sweeps", () => {
     const lapsed = `a-purge-lapsed-${operationId.slice(-12)}`;
     const live = `a-purge-live-${operationId.slice(-12)}`;
     const boundary = new Date(REQUESTED_AT.getTime() + 1000);
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.sealTombstones(
         [
           sealDraft(tenant, lapsed, operationId, boundary),
@@ -349,7 +350,7 @@ describe("read-time expiry holds whether or not anything sweeps", () => {
     );
     expect(readAtBoundary.ok && readAtBoundary.value.map((row) => String(row.aliasHash))).toEqual([live]);
 
-    const purged = await harness.run((transaction) =>
+    const purged = await runResult(harness, (transaction) =>
       harness.repository.purgeExpiredTombstones(boundary, transaction),
     );
     expect(purged.ok && purged.value).toBeGreaterThanOrEqual(1);
@@ -369,7 +370,7 @@ describe("read-time expiry holds whether or not anything sweeps", () => {
 describe("every read is organization-scoped, and one deliberately is not", () => {
   test("an operation id that exists in another tenant reads as null, not as a row", async () => {
     const operationId = harness.base.freshId("00d0");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(operationDraft(tenant, operationId), transaction),
     );
     const crossed = await harness.repository.findOperation(
@@ -389,7 +390,7 @@ describe("every read is organization-scoped, and one deliberately is not", () =>
     // organization-scoped reads both returning zero would pass this assertion for
     // the wrong reason — because the digest matched nothing anywhere — which is
     // exactly the vacuity a cross-tenant case is most prone to.
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(tenant, harness.base.freshId("00d2")),
         transaction,
@@ -412,10 +413,10 @@ describe("every read is organization-scoped, and one deliberately is not", () =>
     // zero rows — and the store has to say so rather than return the caller's own
     // aggregate as though it had been written.
     const operationId = harness.base.freshId("00d1");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(operationDraft(tenant, operationId), transaction),
     );
-    const crossed = await harness.run((transaction) =>
+    const crossed = await runResult(harness, (transaction) =>
       harness.repository.updateProgress(
         foreign.organizationId,
         id<ErasureOperationId>(operationId),
@@ -453,7 +454,7 @@ describe("every read is organization-scoped, and one deliberately is not", () =>
     // BOTH. A page that held one would be indistinguishable from a page that was
     // scoped, and a page that held none would make the case vacuous.
     for (const where of [tenant, foreign]) {
-      await harness.run((transaction) =>
+      await runResult(harness, (transaction) =>
         harness.repository.insertOperation(
           operationDraft(where, harness.base.freshId("00d3"), { nextRetryAt: REQUESTED_AT }),
           transaction,

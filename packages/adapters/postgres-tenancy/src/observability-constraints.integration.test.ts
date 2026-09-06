@@ -41,6 +41,9 @@ import {
   asIdentifier,
   type PrincipalId,
 } from "@platos/context-observability/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { AuditScope, ObservabilityHarness } from "./observability-harness.js";
 import { auditRecord, AUDIT_AT, startObservabilityHarness } from "./observability-harness.js";
@@ -80,8 +83,8 @@ function reasonOf(result: { readonly ok: boolean }): string {
   return String(error.details["reason"] ?? "");
 }
 
-function write<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+function write<Value>(work: (transaction: TransactionScope) => Promise<Result<Value>>): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 const OPERATOR = asIdentifier<PrincipalId>("55555555-5555-4555-8555-555555555555");
@@ -161,7 +164,7 @@ test("the refusal leaves the caller's transaction UNUSABLE, which is what proves
     ),
   );
 
-  const outcome = await write(async (transaction) => {
+  const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
     const unlink = await harness.stores.observability.clearAdminAuditActor(
       { organizationId: home.organizationId, actorUserId: actor },
       transaction,
@@ -358,7 +361,7 @@ test("a non-uuid ENVIRONMENT id is refused by a GUARD too, so the ancestry read 
     environmentId: "environment-1" as unknown as EnvironmentScope["environmentId"],
   };
   const survivor = id("0050");
-  const outcome = await write(async (transaction) => {
+  const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
     const refused = await harness.stores.observability.recordAdminAudit(
       auditRecord(malformed, id("0051")),
       transaction,
@@ -397,7 +400,7 @@ test("a listing scoped to the wrong project returns NOTHING rather than another 
 
 test("a non-uuid id is refused by a GUARD, and the same transaction stays writable", async () => {
   const survivor = id("0048");
-  const outcome = await write(async (transaction) => {
+  const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
     const refused = await harness.stores.observability.recordAdminAudit(
       auditRecord(home.scope, "audit-1"),
       transaction,

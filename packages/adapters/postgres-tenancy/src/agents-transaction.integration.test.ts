@@ -22,6 +22,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { Agent, AgentVersion } from "@platos/context-agents/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { agentIdOf, agentSlugOf, HOME_PROJECT, scopeOf, HOME_ENVIRONMENT, startAgentsHarness, versionIdOf, type AgentsHarness, type SeededAgent } from "./agents-harness.js";
 import { TRANSACTION_NOT_OPEN, TRANSACTION_SCOPE_FOREIGN, TRANSACTION_SCOPE_UNKNOWN } from "./transaction.js";
@@ -83,7 +84,7 @@ describe("the transaction boundary", () => {
     // is rethrown and the transaction is rolled back by `UnitOfWork.run`.
     const orphan: AgentVersion = { ...host.version, agentVersionId: versionIdOf(harness.freshId("0402")), agentId: agentIdOf("aa000000-0000-4000-8000-0000000000fe"), versionNumber: 7 };
     await expect(
-      harness.adapter.unitOfWork.run(async (transaction) => {
+      runResult(harness.adapter.unitOfWork, async (transaction) => {
         const first = await harness.repository.insertAgent(survivor, transaction);
         expect(first.ok).toBe(true);
         return harness.repository.insertVersion(orphan, transaction);
@@ -94,7 +95,7 @@ describe("the transaction boundary", () => {
 
   test("a RETURNED refusal commits what came before it, and the savepoint is why", async () => {
     const survivor = agentNamed(harness, "survives-the-refusal");
-    const outcome = await harness.adapter.unitOfWork.run(async (transaction) => {
+    const outcome = await runResult(harness.adapter.unitOfWork, async (transaction) => {
       const first = await harness.repository.insertAgent(survivor, transaction);
       expect(first.ok).toBe(true);
       // A slug already taken. The store answers `err`, the callback RESOLVES,
@@ -165,7 +166,7 @@ describe("the transaction boundary", () => {
       stale = transaction as never;
     });
     await expect(
-      harness.adapter.unitOfWork.run(async () =>
+      runResult(harness.adapter.unitOfWork, async () =>
         harness.repository.insertAgent(agentNamed(harness, "stale-token"), stale),
       ),
     ).rejects.toMatchObject({ code: TRANSACTION_SCOPE_UNKNOWN });
@@ -210,7 +211,7 @@ describe("the transaction boundary", () => {
       stale = transaction as never;
     });
     await expect(
-      harness.adapter.unitOfWork.run(async () =>
+      runResult(harness.adapter.unitOfWork, async () =>
         harness.repository.countBindings(host.agent.agentId, stale),
       ),
     ).rejects.toMatchObject({ code: TRANSACTION_SCOPE_UNKNOWN });
@@ -269,7 +270,7 @@ describe("the transaction boundary", () => {
     // on every save except this one, with every other case in this file still
     // green.
     const bare = agentNamed(harness, "no-versions-yet");
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAgent(bare, transaction),
     );
 
@@ -302,10 +303,10 @@ describe("the transaction boundary", () => {
     // row's identity. A binding whose row has gone matches nothing, and the
     // store answers `binding_moved_underneath` rather than inserting it again.
     const removed = await harness.seedAgent({ slug: "binding-gone" });
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.deleteBinding(HOME, removed.binding, transaction),
     );
-    const moved = await harness.adapter.unitOfWork.run((transaction) =>
+    const moved = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.updateBinding({ ...removed.binding, canaryPercent: 5 }, transaction),
     );
     expect(moved.ok).toBe(false);
@@ -314,7 +315,7 @@ describe("the transaction boundary", () => {
 
   test("a committed agent is visible from a connection this pool never touched", async () => {
     const durable = agentNamed(harness, "durable");
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAgent(durable, transaction),
     );
     expect(await agentCount("durable")).toBe(1);

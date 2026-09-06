@@ -39,6 +39,7 @@ import type {
   ThresholdEventId,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { AT, LATER, conformanceBudget, conformanceChannel } from "./cost-conformance.js";
 import type { CostHarness } from "./cost-harness.js";
@@ -77,7 +78,7 @@ describe("a cap's ancestry is re-checked on every UPDATE, not only on INSERT", (
 
     // The valid cap first, so the refusal below is about the AGENT and not
     // about anything else on the row.
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertBudget(
         {
           ...conformanceBudget(scope, capId, "agent"),
@@ -97,7 +98,7 @@ describe("a cap's ancestry is re-checked on every UPDATE, not only on INSERT", (
     // `Environment` on `projectId`, so this is refused even though the agent
     // exists and the environment exists.
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertBudget(
           {
             ...conformanceBudget(scope, "ff000000-0002-4000-8000-000000000001", "agent"),
@@ -249,7 +250,7 @@ describe("two of the six rows cannot be corrected at all", () => {
 describe("a channel's owner columns, its credential, and its tombstone", () => {
   test("a channel's kind cannot be changed once it is written", async () => {
     const channelId = "ff000000-0007-4000-8000-000000000001";
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAlertChannel(conformanceChannel(scope, channelId), transaction),
     );
     // `AlertChannel_owner_immutable` freezes `environmentId` and `type`. The
@@ -271,7 +272,7 @@ describe("a channel's owner columns, its credential, and its tombstone", () => {
     const wrongKind = await harness.seedCredential(scope, { kind: "ENTITY_SECRET" });
     for (const [index, credential] of [revoked, unstored, wrongKind].entries()) {
       await expect(
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertAlertChannel(
             webhookChannel(`ff000000-0008-4000-800${index}-000000000001`, credential),
             transaction,
@@ -282,7 +283,7 @@ describe("a channel's owner columns, its credential, and its tombstone", () => {
     // And a live one is accepted, so the three refusals above are about the
     // credential's STATE rather than about the webhook shape.
     const live = await harness.seedCredential(scope);
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAlertChannel(
         webhookChannel("ff000000-0009-4000-8000-000000000001", live),
         transaction,
@@ -294,7 +295,7 @@ describe("a channel's owner columns, its credential, and its tombstone", () => {
   test("a tombstoned channel is invisible, and this port cannot tombstone one", async () => {
     const channelId = "ff000000-000a-4000-8000-000000000001";
     const live = await harness.seedCredential(scope);
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAlertChannel(webhookChannel(channelId, live), transaction),
     );
     expect(await harness.repository.countChannelsUsingCredential(scope, live)).toEqual({
@@ -328,7 +329,7 @@ describe("a channel's owner columns, its credential, and its tombstone", () => {
     // rather than about the reads alone. WIN-258 T5's mutation sweep added this
     // half: removing that term from the predicate left every assertion above
     // green, because until now nothing here wrote to a tombstoned channel.
-    const edited = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const edited = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.updateAlertChannel(
         { ...webhookChannel(channelId, live), name: "edited back into service" },
         transaction,
@@ -344,7 +345,7 @@ describe("a channel's owner columns, its credential, and its tombstone", () => {
 describe("cross-scope denial is decided by the tenant chain, not by an id", () => {
   test("a cap is invisible to a scope whose organization does not own it", async () => {
     const capId = "ff000000-000b-4000-8000-000000000001";
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertBudget(conformanceBudget(scope, capId, "scope"), transaction),
     );
     // The environment id is RIGHT and the organization and project are another
@@ -363,14 +364,14 @@ describe("cross-scope denial is decided by the tenant chain, not by an id", () =
 
   test("a cap cannot be moved between environments by updating it", async () => {
     const capId = "ff000000-000c-4000-8000-000000000001";
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertBudget(conformanceBudget(scope, capId, "scope"), transaction),
     );
     // `Budget` is the ONE row of the six with no `reject_canonical_owner_change`
     // rule, so nothing in the database stops an `update` keyed on `id` alone
     // from moving it. The predicate is what stops it, and a caller presenting
     // another environment gets the same answer an unknown identifier gets.
-    const moved = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const moved = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.updateBudget(
         { ...conformanceBudget(neighbour, capId, "scope"), limitCents: 900_000 },
         transaction,

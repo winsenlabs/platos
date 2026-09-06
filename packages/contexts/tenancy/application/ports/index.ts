@@ -27,13 +27,15 @@ export type { OperatorDirectory, OperatorAccount } from "./operator-directory.js
 
 // --- what an implementation of the ports above needs in order to build a record
 
-export { asIdentifier } from "@platos/kernel";
+export { asIdentifier, runResult } from "@platos/kernel";
 export type {
   Branded,
   EntityId,
   EnvironmentId,
+  NotResult,
   OrganizationId,
   ProjectId,
+  Result,
   TransactionId,
   TransactionScope,
   UnitOfWork,

@@ -238,7 +238,7 @@ export function createThreadRepository(transactions: TenancyTransactions): Threa
     async saveThread(scope: EnvironmentScope, thread: Thread): Promise<Result<Thread>> {
       return refuse(async () => {
         guardThreadWrite(thread);
-        return transactions.atomic(async (client) => {
+        return transactions.atomicResult(async (client) => {
           // `updateMany` rather than `update`, because the SCOPE has to be in the
           // WHERE and a unique-`where` update cannot carry a second predicate. A
           // thread in another environment matches nothing and writes nothing,
@@ -315,7 +315,7 @@ export function createThreadRepository(transactions: TenancyTransactions): Threa
       threadId: ThreadId,
     ): Promise<Result<number>> {
       return refuse(async () => {
-        return transactions.atomic(async (client) => {
+        return transactions.atomicResult(async (client) => {
           // THE LOCK. `FOR UPDATE` on the thread row serialises every other
           // allocator for this thread until the caller's transaction ends. The
           // projection is `id AS "lockedThreadId"` and never `1`; see the header.

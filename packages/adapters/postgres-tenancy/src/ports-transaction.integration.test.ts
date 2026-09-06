@@ -36,6 +36,7 @@ import type {
   UserId,
 } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier, OrganizationRole } from "@platos/context-tenancy/application/ports/index.js";
+import { domainError, err, runResult } from "@platos/kernel";
 
 import { digestOf, emailOf, envId, orgId } from "./harness.js";
 import { startPortsHarness, type PortsHarness } from "./ports-harness.js";
@@ -230,20 +231,26 @@ describe("transaction boundaries, proven by failure injection", () => {
     expect(await harness.ports.accessKeyRevocation.read(environment)).toBe(before);
   }, 60_000);
 
-  test("a returned error Result COMMITS — the cost-monitoring trap, stated as a fact", async () => {
-    // THIS IS THE TRAP, ASSERTED IN THE DIRECTION THAT SURPRISES PEOPLE. Only a
-    // REJECTION rolls back. A use case that bumps the counter and then decides to
-    // refuse has ALREADY written, and returning `err` resolves the promise, which
-    // commits. Every use case in tenancy that must not commit therefore throws,
-    // and this case is the evidence for why that rule exists rather than a
-    // preference.
+  test("a returned error Result ROLLS BACK — the cost-monitoring trap, closed", async () => {
+    // THIS CASE USED TO ASSERT THE OPPOSITE, and it was right to. Only a
+    // REJECTION rolled back; a use case that bumped the counter and then decided
+    // to refuse had ALREADY written, and returning `err` resolved the promise,
+    // which committed. Every use case in tenancy that must not commit therefore
+    // had to THROW, and this case was the evidence for why that rule existed.
+    //
+    // WIN-260 (M2.5) removed the rule by removing the trap: `UnitOfWork.run` no
+    // longer ACCEPTS a `Result`-valued callback — the shape does not compile —
+    // and `runResult` rolls back on `err`. The counter is what makes that a fact
+    // rather than a claim: it is read back over the pool, after the transaction,
+    // and it is still what it was before the bump.
     const environment = envId(await harness.seedEnvironment(organizationId, "err-commits-prod"));
-    const outcome = await harness.adapter.unitOfWork.run(async (transaction) => {
+    const before = await harness.ports.accessKeyRevocation.read(environment);
+    const outcome = await runResult(harness.adapter.unitOfWork, async (transaction) => {
       await harness.ports.accessKeyRevocation.bump(environment, transaction);
-      return { ok: false as const, code: "REFUSED_AFTER_WRITING" };
+      return err(domainError("REFUSED_AFTER_WRITING", "conflict", "the use case refused after bumping"));
     });
-    expect(outcome.code).toBe("REFUSED_AFTER_WRITING");
-    expect(await harness.ports.accessKeyRevocation.read(environment)).toBe(1);
+    expect(outcome.ok).toBe(false);
+    expect(await harness.ports.accessKeyRevocation.read(environment)).toBe(before);
   }, 60_000);
 });
 

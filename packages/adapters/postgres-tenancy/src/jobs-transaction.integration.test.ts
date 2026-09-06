@@ -50,6 +50,7 @@ import type {
 import { asIdentifier, environmentScope } from "@platos/context-jobs/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier as asTenancyIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import type { ApprovalPeers, JobsHarness } from "./jobs-harness.js";
@@ -191,7 +192,7 @@ describe("a write the DATABASE refuses takes everything written before it with i
     // throw, and the property is the one that matters — a decision that could
     // not be acted on is not left recorded.
     const rowId = harness.base.freshId("0605");
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.insertApproval(scope, approvalIn(rowId), transaction),
     );
     const decidedAt = new Date("2026-05-01T10:00:00.000Z");

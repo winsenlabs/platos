@@ -23,6 +23,7 @@ import type {
   SkillId,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier } from "@platos/context-skills/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   CONFORMANCE_ANONYMISED,
@@ -122,7 +123,7 @@ export async function runSkillsInstallConformance(
   labels.name(ids.missingEnvironmentSkillId, "missing:environmentSkill");
 
   // ----------------------------------------------------------- the install
-  const project = await environment.run((transaction) =>
+  const project = await runResult(environment, (transaction) =>
     repository.upsertProjectInstallation(scope, customSkillId, transaction),
   );
   const projectRow = project.ok ? project.value : null;
@@ -135,7 +136,7 @@ export async function runSkillsInstallConformance(
   const binding =
     projectRow === null
       ? null
-      : await environment.run((transaction) =>
+      : await runResult(environment, (transaction) =>
           repository.upsertEnvironmentInstallation(scope, projectRow, transaction),
         );
   const environmentSkillId =
@@ -179,7 +180,7 @@ export async function runSkillsInstallConformance(
   );
 
   // BOTH UPSERTS RE-ENABLE AND NEITHER MINTS A SECOND ROW.
-  const projectRepeat = await environment.run((transaction) =>
+  const projectRepeat = await runResult(environment, (transaction) =>
     repository.upsertProjectInstallation(scope, customSkillId, transaction),
   );
   observed["upsertProjectInstallation.repeat"] = outcome(projectRepeat, (row) => ({
@@ -189,7 +190,7 @@ export async function runSkillsInstallConformance(
   const bindingRepeat =
     projectRow === null
       ? null
-      : await environment.run((transaction) =>
+      : await runResult(environment, (transaction) =>
           repository.upsertEnvironmentInstallation(scope, projectRow, transaction),
         );
   observed["upsertEnvironmentInstallation.repeat"] =
@@ -295,7 +296,7 @@ export async function runSkillsInstallConformance(
 
   // --------------------------------------------------------------- patching
   observed["patchSkill.applied"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.patchSkill(
         customSkillId,
         { name: "patched", tags: ["patched"] },
@@ -305,11 +306,11 @@ export async function runSkillsInstallConformance(
     (entry: CatalogueEntry) => ({ name: entry.name, description: entry.description, tags: [...entry.tags] }),
   );
   observed["patchSkill.empty"] = outcome(
-    await environment.run((transaction) => repository.patchSkill(customSkillId, {}, transaction)),
+    await runResult(environment, (transaction) => repository.patchSkill(customSkillId, {}, transaction)),
     (entry: CatalogueEntry) => ({ name: entry.name, tags: [...entry.tags] }),
   );
   observed["patchSkill.unknown"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.patchSkill(asIdentifier<SkillId>(ids.missingSkillId), { name: "x" }, transaction),
     ),
     (entry: CatalogueEntry) => entry.name,
@@ -317,13 +318,13 @@ export async function runSkillsInstallConformance(
 
   // ------------------------------------------------------------ uninstalling
   observed["deleteEnvironmentInstallation.first"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteEnvironmentInstallation(scope, customSkillId, transaction),
     ),
     (removed) => removed,
   );
   observed["deleteEnvironmentInstallation.repeat"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteEnvironmentInstallation(scope, customSkillId, transaction),
     ),
     (removed) => removed,
@@ -336,7 +337,7 @@ export async function runSkillsInstallConformance(
   // ROW THAT WAS ALREADY THERE. Without this the delete could have cascaded and
   // every other observation would still match.
   observed["upsertProjectInstallation.afterUninstall"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.upsertProjectInstallation(scope, customSkillId, transaction),
     ),
     (row) => ({ enabled: row.enabled, sameRow: row.projectSkillId === projectSkillId }),
@@ -350,7 +351,7 @@ export async function runSkillsInstallConformance(
   // null check would answer zero anyway — the guard would be unfalsifiable and
   // the case below would be theatre.
   observed["upsertSkill.unauthored"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.upsertSkill(
         conformanceDraft(scope, "acme.anon", "1.0.0", {
           isOfficial: true,
@@ -399,7 +400,7 @@ export async function runSkillsInstallConformance(
   );
 
   observed["anonymizeAuthoredSkills.applied"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.anonymizeAuthoredSkills(
         {
           scope: { level: "organization", organizationId: scope.environment.organizationId },
@@ -432,7 +433,7 @@ export async function runSkillsInstallConformance(
     (count) => count,
   );
   observed["anonymizeAuthoredSkills.repeat"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.anonymizeAuthoredSkills(
         {
           scope: { level: "organization", organizationId: scope.environment.organizationId },
@@ -453,7 +454,7 @@ export async function runSkillsInstallConformance(
   // And an unrelated draft still registers over the anonymised row, so the
   // erasure did not leave the identity unusable.
   observed["upsertSkill.afterErasure"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.upsertSkill(
         conformanceDraft(scope, slugs.official, "3.0.0", { isOfficial: true }),
         transaction,

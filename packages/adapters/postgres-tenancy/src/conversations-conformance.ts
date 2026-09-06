@@ -78,6 +78,7 @@ import {
   type Turn,
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
 
 import { runErasureConformance } from "./conversations-conformance-erasure.js";
 import {
@@ -117,7 +118,7 @@ export interface ConversationsConformanceEnvironment {
   readonly scope: EnvironmentScope;
   readonly ids: ConversationsConformanceIds;
   /** Open one transaction. The double's stand-in, or the adapter's unit of work. */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 export type ConversationsObservation = Record<string, unknown>;

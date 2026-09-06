@@ -35,6 +35,7 @@ import type {
   TurnId,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, environmentScope } from "@platos/context-jobs/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";
@@ -147,13 +148,13 @@ async function jobHolding(tag: string, assignment: string): Promise<boolean> {
 }
 
 function insertJob(job: Job, where: EnvironmentScope = scope): Promise<Result<Job>> {
-  return harness.base.adapter.unitOfWork.run((transaction) =>
+  return runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.jobs.insertJob(where, job, transaction),
   );
 }
 
 function insertApproval(approval: Approval, where: EnvironmentScope = scope): Promise<Result<Approval>> {
-  return harness.base.adapter.unitOfWork.run((transaction) =>
+  return runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.approvals.insertApproval(where, approval, transaction),
   );
 }
@@ -225,7 +226,7 @@ describe("AgentApproval_resolution_json_root, and the envelope that survives it"
     const approval = approvalIn(rowId);
     expect((await insertApproval(approval)).ok).toBe(true);
     const consumedAt = new Date("2026-05-01T10:00:00.000Z");
-    const marked = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const marked = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.markConsumed(
         scope,
         approval.approvalId,
@@ -250,7 +251,7 @@ describe("AgentApproval_resolution_json_root, and the envelope that survives it"
     const rowId = harness.base.freshId("0709");
     const approval = approvalIn(rowId);
     expect((await insertApproval(approval)).ok).toBe(true);
-    const marked = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const marked = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.markConsumed(
         scope,
         approval.approvalId,
@@ -270,7 +271,7 @@ describe("AgentApproval_resolution_json_root, and the envelope that survives it"
     const approval = approvalIn(rowId);
     expect((await insertApproval(approval)).ok).toBe(true);
     const nested = { detail: { [APPROVAL_OUTCOME_MARKER]: 7 } } as JsonValue;
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.markConsumed(scope, approval.approvalId, nested, AT, transaction),
     );
     const read = await harness.stores.approvals.findByApprovalId(scope, approval.approvalId);
@@ -332,7 +333,7 @@ describe("the two refusals the port's own contract could not carry", () => {
     const rowId = harness.base.freshId("0710");
     const approval = approvalIn(rowId);
     expect((await insertApproval(approval)).ok).toBe(true);
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.resolve(
         scope,
         {
@@ -352,7 +353,7 @@ describe("the two refusals the port's own contract could not carry", () => {
     );
     expect(refusal(refused)).toBe(APPROVAL_EDIT_NOT_STORABLE);
     // AND THE CONTROL: the same decision with a real edited value is accepted.
-    const accepted = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const accepted = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.approvals.resolve(
         scope,
         {

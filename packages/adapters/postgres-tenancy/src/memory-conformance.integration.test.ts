@@ -27,6 +27,7 @@ import {
   InMemoryKnowledgeGraphRepository,
   InMemoryMemoryRepository,
 } from "@platos/context-memory/application/testing/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { startMemoryHarness } from "./memory-harness.js";
@@ -124,7 +125,7 @@ test("the in-memory doubles and the PostgreSQL stores answer the scenario identi
   const real: MemoryObservation = await runMemoryConformance({
     stores: harness.stores,
     ids,
-    run: (work) => harness.base.adapter.unitOfWork.run(work),
+    run: (work) => runResult(harness.base.adapter.unitOfWork, work),
     unitVector,
   });
 

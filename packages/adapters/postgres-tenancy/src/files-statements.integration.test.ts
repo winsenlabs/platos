@@ -28,6 +28,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 
 import type { AttachmentId, ContentHash } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   artifactFixture,
@@ -90,7 +91,7 @@ async function seed(chain: FilesChain, rows: number): Promise<string[]> {
   for (let index = 0; index < rows; index += 1) {
     const id = freshId();
     ids.push(id);
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, id, {
           bytes: 10 + index,
@@ -101,7 +102,7 @@ async function seed(chain: FilesChain, rows: number): Promise<string[]> {
         transaction,
       ),
     );
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), {
           artifactKey: SUBJECT_KEY,
@@ -232,7 +233,7 @@ test("every write is a fixed count: the ancestry re-assertion plus one statement
   const inserted = freshId();
   expect(
     await measure(() =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.insertAttachment(
           attachmentFixture(small.attachment, inserted),
           transaction,
@@ -245,7 +246,7 @@ test("every write is a fixed count: the ancestry re-assertion plus one statement
   // ancestry is proved by the row it matches rather than by a second statement.
   expect(
     await measure(() =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.updateAttachmentBinding(
           attachmentFixture(small.attachment, inserted, { turnId: small.turnId }),
           transaction,
@@ -256,7 +257,7 @@ test("every write is a fixed count: the ancestry re-assertion plus one statement
 
   expect(
     await measure(() =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(small.thread, freshId(), { artifactKey: "statements.witness" }),
           transaction,
@@ -267,7 +268,7 @@ test("every write is a fixed count: the ancestry re-assertion plus one statement
 
   expect(
     await measure(() =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.deleteAttachment(
           small.thread,
           asIdentifier<AttachmentId>(inserted),
@@ -315,7 +316,7 @@ test("the erasure is ONE statement per question, and the row loop is the CONTRAC
   // containment and the delete that acts on it cannot disagree.
   expect(
     await measure(() =>
-      harness.run((transaction) =>
+      runResult(harness, (transaction) =>
         harness.repository.deleteArtifactRevisionsForSubject(largeSelector, transaction),
       ),
     ),
@@ -329,7 +330,7 @@ test("the erasure is ONE statement per question, and the row loop is the CONTRAC
       const listed = await harness.repository.listAttachmentsForSubject(selector);
       if (!listed.ok) throw new Error("the listing is the fixture");
       for (const attachment of listed.value) {
-        await harness.run((transaction) =>
+        await runResult(harness, (transaction) =>
           harness.repository.deleteAttachment(chain.thread, attachment.attachmentId, transaction),
         );
       }

@@ -48,6 +48,8 @@ import type {
   TransactionScope,
 } from "@platos/context-providers/application/ports/index.js";
 import { asProvidersIdentifier } from "@platos/context-providers/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 import { runCatalogueConformance } from "./providers-conformance-catalogue.js";
 
@@ -73,7 +75,7 @@ export interface ProvidersConformanceEnvironment {
   /** A DIFFERENT environment, so a cross-tenant read has something to miss. */
   readonly foreignScope: EnvironmentScope;
   readonly ids: ProvidersConformanceIds;
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 export type ProvidersObservation = Readonly<Record<string, unknown>>;
@@ -232,23 +234,23 @@ export async function runProvidersConformance(
 
   record(
     "insertOpenaiBackup",
-    await environment.run((transaction) => repository.insertProviderKey(openaiBackup, transaction)),
+    await runResult(environment, (transaction) => repository.insertProviderKey(openaiBackup, transaction)),
   );
   record(
     "insertAnthropicSecondary",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertProviderKey(anthropicSecondary, transaction),
     ),
   );
   record(
     "insertAnthropicTertiary",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertProviderKey(anthropicTertiary, transaction),
     ),
   );
   record(
     "insertAnthropicPrimary",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertProviderKey(anthropicPrimary, transaction),
     ),
   );
@@ -256,7 +258,7 @@ export async function runProvidersConformance(
   // The label index, refused. A DIFFERENT id and the SAME (provider, label).
   record(
     "insertDuplicateLabel",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertProviderKey(
         {
           ...anthropicSecondary,
@@ -273,7 +275,7 @@ export async function runProvidersConformance(
   // `WHERE "isDefault" = TRUE` — and it is why the refusal is spelled the same.
   record(
     "insertSecondDefault",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertProviderKey(
         {
           ...anthropicSecondary,
@@ -375,7 +377,7 @@ export async function runProvidersConformance(
   // both land or neither.
   record(
     "rotateDefault",
-    await environment.run(async (transaction) => {
+    await runResult(environment, async (transaction) => {
       const demoted = await repository.updateProviderKey(
         { ...anthropicPrimary, isDefault: false, updatedAt: USED_AT },
         transaction,
@@ -424,7 +426,7 @@ export async function runProvidersConformance(
 
   record(
     "deleteMissing",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteProviderKey(
         scope,
         asProvidersIdentifier<ProviderKeyId>(ids.missingKeyId),
@@ -436,7 +438,7 @@ export async function runProvidersConformance(
   // still there afterwards — which `listAfterDelete` shows.
   record(
     "deleteAcrossTenants",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteProviderKey(
         foreignScope,
         asProvidersIdentifier<ProviderKeyId>(ids.anthropicTertiaryId),
@@ -446,7 +448,7 @@ export async function runProvidersConformance(
   );
   record(
     "deleteUnpinned",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteProviderKey(
         scope,
         asProvidersIdentifier<ProviderKeyId>(ids.anthropicTertiaryId),
@@ -462,13 +464,13 @@ export async function runProvidersConformance(
   const anthropicLink = link(scope, ids.anthropicLinkId, ANTHROPIC, true, START, START);
   record(
     "adoptAnthropic",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.upsertProviderLink(anthropicLink, transaction),
     ),
   );
   record(
     "adoptOpenai",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.upsertProviderLink(
         link(scope, ids.openaiLinkId, OPENAI, true, START, START),
         transaction,
@@ -482,7 +484,7 @@ export async function runProvidersConformance(
   // two stores would then disagree about which row this is.
   record(
     "pauseAnthropic",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.upsertProviderLink(
         { ...anthropicLink, enabled: false, updatedAt: USED_AT },
         transaction,
@@ -500,19 +502,19 @@ export async function runProvidersConformance(
   );
   record(
     "unadoptOpenai",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteProviderLink(scope, OPENAI, transaction),
     ),
   );
   record(
     "unadoptAgain",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteProviderLink(scope, OPENAI, transaction),
     ),
   );
   record(
     "unadoptAcrossTenants",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.deleteProviderLink(foreignScope, ANTHROPIC, transaction),
     ),
   );

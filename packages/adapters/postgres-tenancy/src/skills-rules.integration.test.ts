@@ -44,6 +44,7 @@ import type {
   TransactionScope,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier } from "@platos/context-skills/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { conformanceDraft, conformanceIdentity } from "./skills-conformance.js";
 import {
@@ -249,7 +250,7 @@ describe("Skill.manifest is JSONB behind one CHECK on its ROOT and nothing else"
     const manifest = read.ok ? (read.value as CatalogueEntry).manifest : null;
     expect((manifest as unknown as Record<string, unknown>)["future_field"]).toBe("kept");
 
-    const rewritten = await harness.run((transaction) =>
+    const rewritten = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(
         {
           ...conformanceDraft(tenant.scope, "legacy.newerfield", "1.0.0"),
@@ -293,15 +294,15 @@ describe("the write paths whose input the port itself cannot produce", () => {
     // the input is to plant it — which is exactly why an adapter can drop
     // `enabled: true` from the update clause and every suite that goes through
     // the port stays green.
-    const skill = await harness.run((transaction) =>
+    const skill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.disabled", "1.0.0"), transaction),
     );
     const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
-    const project = await harness.run((transaction) =>
+    const project = await runResult(harness, (transaction) =>
       harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
     );
     if (!project.ok) throw new Error("the adoption is the fixture");
-    const binding = await harness.run((transaction) =>
+    const binding = await runResult(harness, (transaction) =>
       harness.repository.upsertEnvironmentInstallation(tenant.scope, project.value, transaction),
     );
     expect(binding.ok).toBe(true);
@@ -320,11 +321,11 @@ describe("the write paths whose input the port itself cannot produce", () => {
         : null,
     ).toEqual([false, false]);
 
-    const readopted = await harness.run((transaction) =>
+    const readopted = await runResult(harness, (transaction) =>
       harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
     );
     expect(readopted.ok && readopted.value.enabled).toBe(true);
-    const rebound = await harness.run((transaction) =>
+    const rebound = await runResult(harness, (transaction) =>
       harness.repository.upsertEnvironmentInstallation(
         tenant.scope,
         readopted.ok ? readopted.value : project.value,
@@ -348,7 +349,7 @@ describe("the write paths whose input the port itself cannot produce", () => {
     const before = await readPlanted(id);
     expect(before.ok && before.value !== null ? before.value.manifest.author : "?").toBeNull();
 
-    const erased = await harness.run((transaction) =>
+    const erased = await runResult(harness, (transaction) =>
       harness.repository.anonymizeAuthoredSkills(
         {
           scope: { level: "organization", organizationId: asIdentifier(tenant.organizationId) },
@@ -392,7 +393,7 @@ describe("the two divergences between this store and the double, PINNED and repo
     // case-INSENSITIVE, so a slug may carry upper case too.
     const slug = "acme.collate";
     for (const version of ["1.0.0a", "1.0.0A"]) {
-      const written = await harness.run((transaction) =>
+      const written = await runResult(harness, (transaction) =>
         harness.repository.upsertSkill(
           conformanceDraft(tenant.scope, slug, version, { isOfficial: true }),
           transaction,
@@ -437,7 +438,7 @@ describe("the two divergences between this store and the double, PINNED and repo
     // `webXsearch` is matched by `ILIKE '%web_search%'` and is not matched by
     // `"webXsearch".includes("web_search")`.
     const decoy = "acme.webxsearch";
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(
         conformanceDraft(tenant.scope, decoy, "1.0.0", {
           isOfficial: true,

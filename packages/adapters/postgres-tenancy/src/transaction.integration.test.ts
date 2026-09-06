@@ -21,6 +21,7 @@ import type {
   TransactionScope,
 } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { domainError, err, runResult } from "@platos/kernel";
 
 import type { TenancyHarness } from "./harness.js";
 import { AT, orgId, slugOf, startTenancyHarness } from "./harness.js";
@@ -134,7 +135,7 @@ describe("transaction boundaries, proven by failure injection", () => {
     expect(await harness.adapter.loadOrganization(second)).toBeNull();
   });
 
-  test("a REJECTION rolls back; a RETURNED error value commits, which is the kernel contract", async () => {
+  test("a REJECTION rolls back, and so does a RETURNED error Result — the kernel contract", async () => {
     const discarded = orgId(harness.freshId("0001"));
     const kept = orgId(harness.freshId("0001"));
 
@@ -146,14 +147,18 @@ describe("transaction boundaries, proven by failure injection", () => {
     ).rejects.toThrow("the use case refused after writing");
     expect(await harness.adapter.loadOrganization(discarded)).toBeNull();
 
-    const returned = await harness.adapter.unitOfWork.run(async (transaction) => {
+    const returned = await runResult(harness.adapter.unitOfWork, async (transaction) => {
       await harness.adapter.saveOrganization(organization(kept, "returned-error"), transaction);
-      return { ok: false as const };
+      return err(domainError("REFUSED_AFTER_WRITING", "conflict", "the use case refused after writing"));
     });
     expect(returned.ok).toBe(false);
-    // The cost-monitoring trap, recorded as evidence rather than as prose: a
-    // resolved promise COMMITS, so a use case that must not commit has to throw.
-    expect(await harness.adapter.loadOrganization(kept)).not.toBeNull();
+    // The cost-monitoring trap, CLOSED, and recorded here as evidence rather
+    // than as prose. This case used to assert the opposite against a real
+    // database — a resolved promise committed, so a use case that must not
+    // commit had to throw. WIN-260 (M2.5) made the returning shape unwritable at
+    // the type level and `runResult` aborts on `err`, so the two halves of this
+    // case now answer the same way for the same reason.
+    expect(await harness.adapter.loadOrganization(kept)).toBeNull();
   });
 
   test("nesting JOINS the outer transaction rather than opening a second one", async () => {

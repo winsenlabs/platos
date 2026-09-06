@@ -34,6 +34,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { AttachmentId } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier, boundTo } from "@platos/context-files/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   artifactFixture,
@@ -80,7 +81,7 @@ function plant(sql: string): string {
 
 describe("MessageAttachment_ancestry: the row must name ONE consistent chain", () => {
   test("a thread belonging to another tenant is refused by the RULE, not by a guard", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         // The environment, end user and agent are this tenant's; only the thread
         // is not. Every id is a real uuid, so no shape guard can catch it and the
@@ -96,7 +97,7 @@ describe("MessageAttachment_ancestry: the row must name ONE consistent chain", (
   }, 120_000);
 
   test("a thread of the SAME environment whose subject is a different end user is refused", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         // `secondThread` is in this environment, on this agent, and belongs to
         // the OTHER subject. The organization clause passes and the project
@@ -111,7 +112,7 @@ describe("MessageAttachment_ancestry: the row must name ONE consistent chain", (
   }, 120_000);
 
   test("a turn of another tenant's thread is refused even though the turn exists", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { turnId: foreign.turnId }),
         transaction,
@@ -126,18 +127,18 @@ describe("MessageAttachment_binding_one_way: a binding is a transcript fact", ()
     const id = freshId();
     const created = attachmentFixture(chain.attachment, id);
     expect(
-      (await harness.run((transaction) => harness.repository.insertAttachment(created, transaction))).ok,
+      (await runResult(harness, (transaction) => harness.repository.insertAttachment(created, transaction))).ok,
     ).toBe(true);
 
     const bound = { ...created, binding: boundTo(asIdentifier(chain.turnId)) };
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.updateAttachmentBinding(bound, transaction),
       )).ok,
     ).toBe(true);
 
     const moved = { ...created, binding: boundTo(asIdentifier(chain.secondTurnId)) };
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.updateAttachmentBinding(moved, transaction),
     );
     expect(callerCode(refused)).toBe("FILES_REPOSITORY_UNAVAILABLE");
@@ -153,11 +154,11 @@ describe("MessageAttachment_binding_one_way: a binding is a transcript fact", ()
     const id = freshId();
     const created = attachmentFixture(chain.attachment, id, { turnId: chain.turnId });
     expect(
-      (await harness.run((transaction) => harness.repository.insertAttachment(created, transaction))).ok,
+      (await runResult(harness, (transaction) => harness.repository.insertAttachment(created, transaction))).ok,
     ).toBe(true);
 
     const unbound = attachmentFixture(chain.attachment, id, { turnId: null });
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.updateAttachmentBinding(unbound, transaction),
     );
     expect(refusalReason(refused)).toContain("turn binding is one-way and immutable");
@@ -216,7 +217,7 @@ describe("MessageAttachment_owner_immutable: four columns that may never move", 
     const id = freshId();
     const created = attachmentFixture(chain.attachment, id);
     expect(
-      (await harness.run((transaction) => harness.repository.insertAttachment(created, transaction))).ok,
+      (await runResult(harness, (transaction) => harness.repository.insertAttachment(created, transaction))).ok,
     ).toBe(true);
 
     const moved = {
@@ -227,7 +228,7 @@ describe("MessageAttachment_owner_immutable: four columns that may never move", 
       },
       binding: boundTo(asIdentifier(chain.turnId)),
     };
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.updateAttachmentBinding(moved, transaction),
     );
     // NOT `repository_unavailable`. The store never sends the move at all, so the
@@ -238,7 +239,7 @@ describe("MessageAttachment_owner_immutable: four columns that may never move", 
 
   test("an update of a row that does not exist is NOT FOUND, where the double upserts", async () => {
     const absent = attachmentFixture(chain.attachment, freshId(), { turnId: chain.turnId });
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.updateAttachmentBinding(absent, transaction),
     );
     expect(callerCode(refused)).toBe("FILES_ATTACHMENT_NOT_FOUND");
@@ -254,7 +255,7 @@ describe("MessageAttachment_owner_immutable: four columns that may never move", 
 
 describe("Artifact_ancestry: the thread and the producing turn are both checked", () => {
   test("a thread in another environment is refused", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), {
           scope: { environment: chain.environment, threadId: foreign.thread.threadId },
@@ -267,7 +268,7 @@ describe("Artifact_ancestry: the thread and the producing turn are both checked"
   }, 120_000);
 
   test("a producing turn that is not a turn of this thread is refused", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), {
           artifactKey: "cross.turn",
@@ -286,7 +287,7 @@ describe("the scope claim no database rule checks", () => {
       ...chain.attachment,
       environment: { ...chain.environment, organizationId: orgIdOf(foreign.organizationId) },
     };
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(forged, freshId(), { scope: forged }),
         transaction,
@@ -297,7 +298,7 @@ describe("the scope claim no database rule checks", () => {
 
   test("a forged project is refused on an artifact write on the same guard", async () => {
     const forged = { ...chain.environment, projectId: projIdOf(foreign.projectId) };
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), {
           scope: { environment: forged, threadId: chain.thread.threadId },
@@ -317,7 +318,7 @@ describe("the scope claim no database rule checks", () => {
         environmentId: envIdOf("aaaaaaaa-9999-4000-8000-999999999999"),
       },
     };
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(unknown, freshId(), { scope: unknown }),
         transaction,
@@ -329,7 +330,7 @@ describe("the scope claim no database rule checks", () => {
   test("a delete under a forged scope is refused before a row is removed", async () => {
     const id = freshId();
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertAttachment(
           attachmentFixture(chain.attachment, id),
           transaction,
@@ -341,7 +342,7 @@ describe("the scope claim no database rule checks", () => {
       environment: { ...chain.environment, organizationId: orgIdOf(foreign.organizationId) },
       threadId: chain.thread.threadId,
     };
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.deleteAttachment(forgedThread, asIdentifier<AttachmentId>(id), transaction),
     );
     expect(refusalCode(refused)).toBe("files.write.scope_ancestry_forged");
@@ -363,7 +364,7 @@ describe("what happens to these two rows when the turn that produced them goes a
     );
     const attachmentId = freshId();
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertAttachment(
           attachmentFixture(chain.attachment, attachmentId, { turnId }),
           transaction,
@@ -372,7 +373,7 @@ describe("what happens to these two rows when the turn that produced them goes a
     ).toBe(true);
     const artifactId = freshId();
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, artifactId, {
             artifactKey: "cascade.witness",

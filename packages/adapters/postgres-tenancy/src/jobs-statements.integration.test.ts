@@ -46,6 +46,7 @@ import type {
   JobKey,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, organizationScope } from "@platos/context-jobs/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";
@@ -217,14 +218,14 @@ describe("the Job store's writes are one statement each", () => {
   test("insertJob, updateJob, markStarted and deleteJob are ONE apiece", async () => {
     const id = harness.base.freshId("0803");
     const insert = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.jobs.insertJob(small.scope, jobIn(id), transaction),
       ),
     );
     expect(insert.counted).toBe(1);
 
     const update = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.jobs.updateJob(
           small.scope,
           jobIn(id, { displayName: "renamed" }),
@@ -244,7 +245,7 @@ describe("the Job store's writes are one statement each", () => {
     expect(started.total).toBeGreaterThan(started.counted);
 
     const removed = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.jobs.deleteJob(small.scope, asIdentifier<JobId>(id), transaction),
       ),
     );
@@ -361,7 +362,7 @@ describe("the Approval store's writes", () => {
     const rowId = harness.base.freshId("0805");
     const approval = approvalIn(rowId, 0);
     const inserted = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.approvals.insertApproval(small.scope, approval, transaction),
       ),
     );
@@ -371,7 +372,7 @@ describe("the Approval store's writes", () => {
     // lives inside the `arguments` envelope beside the caller's own arguments,
     // and this method is handed the business id rather than the approval.
     const consumed = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.approvals.markConsumed(
           small.scope,
           approval.approvalId,
@@ -387,7 +388,7 @@ describe("the Approval store's writes", () => {
     // approval: the live implementation reads the row first to recover the
     // metadata it has to write back, and this one rebuilds it from the argument.
     const resolved = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.approvals.resolve(
           small.scope,
           {
@@ -412,7 +413,7 @@ describe("the Approval store's writes", () => {
   test("erase destroys a whole subject in ONE statement, at either scope level", async () => {
     const doomed = await seedFixture(6, "0806");
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.approvals.erase(
           { scope: organizationScope(doomed.scope.organizationId), principalId: "subject-a" },
           transaction,

@@ -192,7 +192,7 @@ export function createPostmanRepository(transactions: TenancyTransactions): Post
     ): Promise<Result<PostmanExecution>> {
       return refuse(async () => {
         guardExecutionWrite(execution);
-        return transactions.atomic(async (client) => {
+        return transactions.atomicResult(async (client) => {
           const updated = await client.postmanExecution.updateMany({
             where: { id: execution.executionId, ...scopedWhere(scope) },
             // EIGHT COLUMNS, and they are exactly the ones the rule leaves

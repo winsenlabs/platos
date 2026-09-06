@@ -23,6 +23,7 @@ import type {
   ThresholdEvent,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   BUDGET_LIMIT_OUT_OF_RANGE,
@@ -97,7 +98,7 @@ describe("identifiers, limits and thresholds on a cap", () => {
     const cap = conformanceBudget(scope, "budget-1", "scope");
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertBudget(cap, transaction),
         ),
       ),
@@ -113,7 +114,7 @@ describe("identifiers, limits and thresholds on a cap", () => {
     });
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertBudget(huge, transaction),
         ),
       ),
@@ -134,7 +135,7 @@ describe("identifiers, limits and thresholds on a cap", () => {
     });
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertBudget(zero, transaction),
         ),
       ),
@@ -196,7 +197,7 @@ describe("a crossing's values, and the amount its column cannot carry", () => {
 
   beforeAll(async () => {
     capId = "dd000000-0006-4000-8000-000000000001";
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertBudget(conformanceBudget(scope, capId, "scope"), transaction),
     );
   });
@@ -214,7 +215,7 @@ describe("a crossing's values, and the amount its column cannot carry", () => {
     };
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertThresholdEvent(crossing, transaction),
         ),
       ),
@@ -248,7 +249,7 @@ describe("a crossing's values, and the amount its column cannot carry", () => {
     };
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertThresholdEvent(unrepresentable, transaction),
         ),
       ),
@@ -285,7 +286,7 @@ describe("a channel's name, topics and deduplication shape", () => {
   test("a blank name is refused by the guard and by AlertChannel_name_check", async () => {
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertAlertChannel(
             conformanceChannel(scope, "dd000000-0009-4000-8000-000000000001", { name: "   " }),
             transaction,
@@ -308,7 +309,7 @@ describe("a channel's name, topics and deduplication shape", () => {
   test("the topics column's own DEFAULT violates the check that guards it", async () => {
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertAlertChannel(
             conformanceChannel(scope, "dd000000-000a-4000-8000-000000000001", { topics: [] }),
             transaction,
@@ -334,7 +335,7 @@ describe("a channel's name, topics and deduplication shape", () => {
   test("a channel with no key may not claim an operator supplied one", async () => {
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertAlertChannel(
             conformanceChannel(scope, "dd000000-000b-4000-8000-000000000001", {
               deduplicationKey: null,
@@ -363,7 +364,7 @@ describe("a delivery's kind, its state, and its send record", () => {
 
   beforeAll(async () => {
     channelId = "dd000000-000c-4000-8000-000000000001";
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAlertChannel(conformanceChannel(scope, channelId), transaction),
     );
   });
@@ -412,7 +413,7 @@ describe("a delivery's kind, its state, and its send record", () => {
   test("a BUDGET delivery belonging to no crossing is refused both ways", async () => {
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertDelivery(
             domainDelivery("dd000000-000d-4000-8000-000000000001", {}),
             transaction,
@@ -440,7 +441,7 @@ describe("a delivery's kind, its state, and its send record", () => {
     // and a token produces exactly this row. The double writes it.
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.insertDelivery(
             domainDelivery("dd000000-000e-4000-8000-000000000001", {
               kind: "TEST",
@@ -480,7 +481,7 @@ describe("a delivery's kind, its state, and its send record", () => {
     });
     expect(
       await refusalOf(() =>
-        harness.base.adapter.unitOfWork.run((transaction) =>
+        runResult(harness.base.adapter.unitOfWork, (transaction) =>
           harness.repository.settleDelivery(
             settled,
             {

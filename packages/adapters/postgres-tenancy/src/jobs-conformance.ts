@@ -74,6 +74,8 @@ import type {
   TurnId,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier } from "@platos/context-jobs/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 import { runApprovalConformance } from "./jobs-conformance-approvals.js";
 import type { JobsStores } from "./jobs-repository.js";
@@ -96,7 +98,7 @@ export interface JobsConformanceEnvironment {
   readonly scope: EnvironmentScope;
   readonly ids: JobsConformanceIds;
   /** Open one transaction. The doubles' stand-in, or the adapter's unit of work. */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 export type JobsObservation = Record<string, unknown>;
@@ -232,15 +234,15 @@ export async function runJobsConformance(
   const nightly = conformanceJob(ids, 0, clock());
 
   observed["jobs.insert.scheduled"] = outcome(
-    await environment.run((transaction) => stores.jobs.insertJob(scope, scheduled, transaction)),
+    await runResult(environment, (transaction) => stores.jobs.insertJob(scope, scheduled, transaction)),
     projectJob,
   );
   observed["jobs.insert.unnamed"] = outcome(
-    await environment.run((transaction) => stores.jobs.insertJob(scope, unnamed, transaction)),
+    await runResult(environment, (transaction) => stores.jobs.insertJob(scope, unnamed, transaction)),
     projectJob,
   );
   observed["jobs.insert.nightly"] = outcome(
-    await environment.run((transaction) => stores.jobs.insertJob(scope, nightly, transaction)),
+    await runResult(environment, (transaction) => stores.jobs.insertJob(scope, nightly, transaction)),
     projectJob,
   );
 
@@ -249,7 +251,7 @@ export async function runJobsConformance(
   // the same reason — the double's own string is what this store's zero-count
   // branch reports, deliberately, because the port has one error to return.
   observed["jobs.insert.duplicateKey"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.jobs.insertJob(
         scope,
         conformanceJob(ids, 0, clock(), {
@@ -282,7 +284,7 @@ export async function runJobsConformance(
 
   const renamed: Job = { ...nightly, displayName: "Nightly rollup (v2)", updatedAt: clock() };
   observed["jobs.update.rename"] = outcome(
-    await environment.run((transaction) => stores.jobs.updateJob(scope, renamed, transaction)),
+    await runResult(environment, (transaction) => stores.jobs.updateJob(scope, renamed, transaction)),
     projectJob,
   );
   observed["jobs.update.readBack"] = outcome(
@@ -290,7 +292,7 @@ export async function runJobsConformance(
     maybeJob,
   );
   observed["jobs.update.absent"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.jobs.updateJob(
         scope,
         { ...nightly, jobId: absentJobId, jobKey: null },
@@ -321,13 +323,13 @@ export async function runJobsConformance(
   );
 
   observed["jobs.delete.first"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.jobs.deleteJob(scope, unnamed.jobId, transaction),
     ),
     (removed) => removed,
   );
   observed["jobs.delete.again"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.jobs.deleteJob(scope, unnamed.jobId, transaction),
     ),
     (removed) => removed,

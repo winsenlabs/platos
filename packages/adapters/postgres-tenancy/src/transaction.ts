@@ -29,8 +29,10 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { asIdentifier, runResult } from "@platos/context-tenancy/application/ports/index.js";
 import type {
+  NotResult,
+  Result,
   TransactionId,
   TransactionScope,
   UnitOfWork,
@@ -119,7 +121,25 @@ export interface TenancyTransactions {
    * two — which is the whole reason the two contexts' repositories share a
    * directory (ADR M0.3 §15).
    */
-  atomic<Value>(work: (client: TenancyTransactionClient) => Promise<Value>): Promise<Value>;
+  atomic<Value>(work: (client: TenancyTransactionClient) => Promise<NotResult<Value>>): Promise<Value>;
+  /**
+   * `atomic` for work whose answer is a `Result`. An `err` ROLLS BACK.
+   *
+   * WIN-260 (M2.5). `atomic` is a generic pass-through to `UnitOfWork.run`, and
+   * a pass-through LAUNDERS a refusal unless it carries it. `run` now refuses a
+   * `Result`-valued callback outright — a resolved callback COMMITS, which is
+   * the defect `cost-monitoring` shipped — and without the `NotResult` above,
+   * every caller of `atomic` would have had a way around that refusal that no
+   * gate looks at. Three of this package's stores were using exactly that way.
+   *
+   * So the pair here mirrors the kernel's exactly: `atomic` refuses a `Result`,
+   * and this is the one sanctioned way to end an `atomic` with a failure. It is
+   * `runResult` over the same joined transaction, so the guarantee is the
+   * kernel's and not a fourth local re-invention of it.
+   */
+  atomicResult<Value>(
+    work: (client: TenancyTransactionClient) => Promise<Result<Value>>,
+  ): Promise<Result<Value>>;
 }
 
 export function createTenancyTransactions(
@@ -201,12 +221,24 @@ export function createTenancyTransactions(
     },
 
     async atomic<Value>(
-      work: (transactionClient: TenancyTransactionClient) => Promise<Value>,
+      work: (transactionClient: TenancyTransactionClient) => Promise<NotResult<Value>>,
     ): Promise<Value> {
       // Named through `transactions` rather than `this`, because every store in
       // this package destructures the object it is handed and a `this`-bound
       // method would lose its receiver on the way in.
-      return unitOfWork.run(async (scope) => work(transactions.writer(scope)));
+      //
+      // NO CAST IS NEEDED HERE and that is the point of carrying the constraint
+      // rather than dropping it: `work` already answers `Promise<NotResult<Value>>`,
+      // which is exactly what `run<Value>` now takes. A pass-through that keeps
+      // the refusal type-checks without an escape; only one that DROPS it needs
+      // one.
+      return unitOfWork.run<Value>(async (scope) => work(transactions.writer(scope)));
+    },
+
+    async atomicResult<Value>(
+      work: (transactionClient: TenancyTransactionClient) => Promise<Result<Value>>,
+    ): Promise<Result<Value>> {
+      return runResult(unitOfWork, async (scope) => work(transactions.writer(scope)));
     },
   };
 

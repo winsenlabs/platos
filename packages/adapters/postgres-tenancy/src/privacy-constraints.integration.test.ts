@@ -28,6 +28,7 @@ import type {
   TombstoneDraft,
 } from "@platos/context-privacy/application/ports/index.js";
 import { organizationScope } from "@platos/context-privacy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { PrivacyHarness, PrivacyTenant } from "./privacy-harness.js";
 import { operationDraft, REQUESTED_AT, startPrivacyHarness } from "./privacy-harness.js";
@@ -187,7 +188,7 @@ describe("the unique index on (organizationId, idempotencyKey)", () => {
     // read on it would answer 25P02 rather than the id.
     const winner = harness.base.freshId("0097");
     const key = `key-shared-${winner.slice(-12)}`;
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(tenant, winner, { idempotencyKey: id<IdempotencyKey>(key) }),
         transaction,
@@ -195,7 +196,7 @@ describe("the unique index on (organizationId, idempotencyKey)", () => {
     );
 
     const loser = harness.base.freshId("0098");
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(tenant, loser, {
           idempotencyKey: id<IdempotencyKey>(key),
@@ -232,10 +233,10 @@ describe("the unique index on (organizationId, idempotencyKey)", () => {
     // `PRIVACY_IDEMPOTENCY_KEY_CONFLICT` for it would tell them their key names a
     // different person when it does not.
     const operationId = harness.base.freshId("0099");
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.insertOperation(operationDraft(tenant, operationId), transaction),
     );
-    const refused = await harness.run((transaction) =>
+    const refused = await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(tenant, operationId, {
           idempotencyKey: id<IdempotencyKey>(`key-fresh-${operationId.slice(-12)}`),
@@ -257,13 +258,13 @@ describe("the unique index on (organizationId, idempotencyKey)", () => {
     // on a global uniqueness the schema does not have.
     const other = await harness.freshTenant();
     const key = `key-cross-${harness.base.freshId("009a").slice(-12)}`;
-    const first = await harness.run((transaction) =>
+    const first = await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(tenant, harness.base.freshId("009b"), { idempotencyKey: id<IdempotencyKey>(key) }),
         transaction,
       ),
     );
-    const second = await harness.run((transaction) =>
+    const second = await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(other, harness.base.freshId("009c"), { idempotencyKey: id<IdempotencyKey>(key) }),
         transaction,
@@ -442,7 +443,7 @@ describe("what the schema will NOT protect, reported rather than claimed", () =>
     // schema: `subjectKeyHash`, `idempotencyKey` and `aliasHash` are all plain
     // `TEXT` with no CHECK, no length and no shape. A store that reported these
     // columns as protected would be claiming a guarantee that does not exist.
-    const stored = await harness.run((transaction) =>
+    const stored = await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(tenant, harness.base.freshId("00ab"), {
           subjectKeyHash: id("alice@example.com"),
@@ -487,7 +488,7 @@ describe("what the schema will NOT protect, reported rather than claimed", () =>
     // were, so there is no subject row for it to hang off and no environment for
     // an ancestry rule to resolve. Compare `memory-harness.ts`, whose one table
     // needs seven peer rows.
-    const scoped = await harness.run((transaction) =>
+    const scoped = await runResult(harness, (transaction) =>
       harness.repository.insertOperation(
         operationDraft(tenant, harness.base.freshId("00ad"), {
           // A scope naming a project and an environment that DO NOT EXIST. It is

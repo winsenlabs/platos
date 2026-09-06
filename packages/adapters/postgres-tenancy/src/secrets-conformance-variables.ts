@@ -32,6 +32,7 @@ import type {
   SecretsRepository,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
 
 import { AT, LATER, credentialIdOf, variableIdOf } from "./secrets-harness.js";
 import type { SecretsConformanceIds } from "./secrets-conformance.js";
@@ -44,7 +45,7 @@ export interface SecretsConformanceEnvironment {
   readonly variables: EnvironmentVariableRepository;
   readonly environmentId: EnvironmentId;
   readonly ids: SecretsConformanceIds;
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 export type RecordStep = (step: string, value: unknown) => void;

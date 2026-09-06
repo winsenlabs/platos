@@ -46,6 +46,7 @@ import {
   asProvidersIdentifier,
   rateFromDecimalString,
 } from "@platos/context-providers/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { MintedIds, ProvidersConformanceEnvironment } from "./providers-conformance.js";
 
@@ -154,7 +155,7 @@ export async function runCatalogueConformance(
 
   record("modelBeforeInsert", await repository.findModelByKey(FIRST_KEY));
 
-  const first = await environment.run((transaction) =>
+  const first = await runResult(environment, (transaction) =>
     repository.upsertModel(FIRST_KEY, facts("anthropic", "claude-haiku-4-5-20251001", OBSERVED), transaction),
   );
   if (first.ok) minted.register(first.value.modelId);
@@ -165,7 +166,7 @@ export async function runCatalogueConformance(
   // THE SECOND PASS. Facts changed and `sourceUpdatedAt` moved; the identity
   // must not. The normaliser preserves exactly that: a store that minted a
   // fresh id here reports `minted#2` where the other reports `minted#1`.
-  const again = await environment.run((transaction) =>
+  const again = await runResult(environment, (transaction) =>
     repository.upsertModel(
       FIRST_KEY,
       { ...facts("anthropic", "claude-haiku-4-5-20251001", VERIFIED_AT), contextWindow: 500_000 },
@@ -175,7 +176,7 @@ export async function runCatalogueConformance(
   if (again.ok) minted.register(again.value.modelId);
   record("upsertModelAgain", again);
 
-  const second = await environment.run((transaction) =>
+  const second = await runResult(environment, (transaction) =>
     repository.upsertModel(SECOND_KEY, facts("openai", "gpt-5-mini", OBSERVED), transaction),
   );
   if (second.ok) minted.register(second.value.modelId);
@@ -186,7 +187,7 @@ export async function runCatalogueConformance(
 
   record("latestPriceBeforeAnyCard", await repository.findLatestPrice(modelId));
 
-  const firstCard = await environment.run((transaction) =>
+  const firstCard = await runResult(environment, (transaction) =>
     repository.insertPrice(modelId, FIRST_CARD, transaction),
   );
   if (firstCard.ok) minted.register(firstCard.value.modelPriceId);
@@ -197,7 +198,7 @@ export async function runCatalogueConformance(
   // `latestPriceAfterClash` shows.
   record(
     "insertDuplicateInstant",
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       repository.insertPrice(
         modelId,
         { ...SECOND_CARD, effectiveFrom: FIRST_EFFECTIVE },
@@ -207,14 +208,14 @@ export async function runCatalogueConformance(
   );
   record("latestPriceAfterClash", await repository.findLatestPrice(modelId));
 
-  const laterCard = await environment.run((transaction) =>
+  const laterCard = await runResult(environment, (transaction) =>
     repository.insertPrice(modelId, SECOND_CARD, transaction),
   );
   if (laterCard.ok) minted.register(laterCard.value.modelPriceId);
   record("insertLaterCard", laterCard);
   record("latestPrice", await repository.findLatestPrice(modelId));
 
-  const otherCard = await environment.run((transaction) =>
+  const otherCard = await runResult(environment, (transaction) =>
     repository.insertPrice(secondModelId, FIRST_CARD, transaction),
   );
   if (otherCard.ok) minted.register(otherCard.value.modelPriceId);

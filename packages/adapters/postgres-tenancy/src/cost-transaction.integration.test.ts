@@ -29,6 +29,7 @@ import type {
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import { AT, LATER, conformanceBudget, conformanceChannel } from "./cost-conformance.js";
@@ -86,7 +87,7 @@ describe("a channel and its configuration are one transaction or neither", () =>
     // `enforce_win124_credential_kind` demands a live `CHANNEL_SECRET` with an
     // active secret version. Nothing about the failure is simulated.
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertAlertChannel(channel, transaction),
       ),
     ).rejects.toThrow();
@@ -103,7 +104,7 @@ describe("a channel and its configuration are one transaction or neither", () =>
     // The negative control. Without it the case above would pass against a store
     // that never wrote anything at all.
     const channelId = "ee000000-0002-4000-8000-000000000001";
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAlertChannel(conformanceChannel(scope, channelId), transaction),
     );
     expect(await observer.alertChannel.count({ where: { id: channelId } })).toBe(1);
@@ -251,7 +252,7 @@ describe("a finalisation and its send record are one transaction or neither", ()
     expect(reclaimed.ok && reclaimed.value !== null).toBe(true);
     const current = await observer.alertDelivery.findUniqueOrThrow({ where: { id: deliveryId } });
     expect(current.retryCount).toBe(2);
-    const settled = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const settled = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.finaliseDelivery(
         {
           deliveryId: asCostIdentifier(deliveryId),
@@ -322,7 +323,7 @@ describe("the three transaction-scope refusals, on this context's writes", () =>
     });
     let refusal = "<no refusal>";
     try {
-      await harness.base.adapter.unitOfWork.run(() =>
+      await runResult(harness.base.adapter.unitOfWork, () =>
         harness.repository.insertBudget(
           conformanceBudget(scope, "ee000000-0009-4000-8000-000000000001", "scope"),
           stale,

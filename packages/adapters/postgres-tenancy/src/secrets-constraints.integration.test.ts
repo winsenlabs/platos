@@ -30,6 +30,8 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import {
   AUDIT_ORDINAL_OUT_OF_RANGE,
@@ -123,9 +125,9 @@ async function refusalOf(work: () => Promise<unknown>): Promise<string> {
 }
 
 function inTransaction<Value>(
-  work: (transaction: TransactionScope) => Promise<Value>,
-): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+  work: (transaction: TransactionScope) => Promise<Result<Value>>,
+): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 /** An envelope row written straight to the client, past every guard. */

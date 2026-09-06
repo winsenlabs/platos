@@ -58,6 +58,7 @@ import type {
   Result,
 } from "@platos/context-secrets/application/ports/index.js";
 import { err } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
@@ -129,7 +130,7 @@ async function seenByAnother(scope: EnvironmentId, key: string): Promise<string 
 describe("a returned error Result commits, and the bridge is what stops it", () => {
   test("UnitOfWork.run COMMITS work whose callback RESOLVED with a failure", async () => {
     const key = `RESOLVED_ERR_${fresh().slice(-4)}`;
-    const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const outcome = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const written = await write(environmentId, key, "committed-anyway", transaction);
       expect(written).toMatchObject({ ok: true });
       // A LATER STEP FAILS, and says so the way a use case says so — by
@@ -189,7 +190,7 @@ describe("failure injection: the second write fails and NEITHER row survives", (
     const absentCredential = fresh();
 
     await expect(
-      harness.base.adapter.unitOfWork.run(async (transaction) => {
+      runResult(harness.base.adapter.unitOfWork, async (transaction) => {
         const written = await write(environmentId, first, "written-first", transaction);
         expect(written).toMatchObject({ ok: true });
         return harness.variables.upsert(
@@ -220,7 +221,7 @@ describe("a caught constraint violation leaves the transaction unusable", () => 
   test("the statement after a caught SQLSTATE 23505 is refused with 25P02", async () => {
     const key = `POISON_${fresh().slice(-4)}`;
     const casualty = `POISON_CASUALTY_${fresh().slice(-4)}`;
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       write(environmentId, key, "held", transaction),
     );
 
@@ -316,11 +317,11 @@ describe("a caught constraint violation leaves the transaction unusable", () => 
     // the work that follows commits.
     const key = `NO_POISON_${fresh().slice(-4)}`;
     const survivor = `SURVIVOR_${fresh().slice(-4)}`;
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       write(environmentId, key, "held", transaction),
     );
 
-    const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const outcome = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const refused = await write(environmentId, key, "duplicate", transaction);
       expect(refused).toMatchObject({
         ok: false,
@@ -339,7 +340,7 @@ describe("a caught constraint violation leaves the transaction unusable", () => 
 describe("tenant isolation holds INSIDE the ambient transaction frame", () => {
   test("a scoped read in tenant A's transaction cannot reach tenant B's row by key", async () => {
     const key = `TENANT_B_${fresh().slice(-4)}`;
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       write(otherEnvironmentId, key, "belongs-to-b", transaction),
     );
 
@@ -370,13 +371,13 @@ describe("tenant isolation holds INSIDE the ambient transaction frame", () => {
     // tree looked the id up in scope first. Every READ on this port named the
     // environment; this WRITE did not.
     const key = `CROSS_DELETE_${fresh().slice(-4)}`;
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       write(otherEnvironmentId, key, "belongs-to-b", transaction),
     );
     expect(written.ok).toBe(true);
     const victimId = written.ok ? written.value.id : variableIdOf(fresh());
 
-    const removed = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const removed = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       // Tenant A's scope, tenant B's id — the exact pair a leaked identifier
       // gives an attacker.
       harness.variables.remove(environmentId, victimId, transaction),
@@ -389,7 +390,7 @@ describe("tenant isolation holds INSIDE the ambient transaction frame", () => {
 
     // AND THE NEGATIVE CONTROL: the owner deletes it, so the `false` above is a
     // scope decision and not a delete that never worked at all.
-    const byOwner = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const byOwner = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.variables.remove(otherEnvironmentId, victimId, transaction),
     );
     expect(byOwner).toEqual({ ok: true, value: true });

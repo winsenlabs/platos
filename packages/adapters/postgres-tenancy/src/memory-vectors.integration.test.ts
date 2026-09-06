@@ -43,6 +43,9 @@ import type {
   TransactionScope,
 } from "@platos/context-memory/application/ports/index.js";
 import { asMemoryIdentifier } from "@platos/context-memory/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { entityDraft, memoryDraft, startMemoryHarness } from "./memory-harness.js";
@@ -67,8 +70,8 @@ function id(kind: string): string {
   return harness.base.freshId(kind);
 }
 
-function write<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+function write<Value>(work: (transaction: TransactionScope) => Promise<Result<Value>>): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 describe("*** a port contract the database proves unhonourable ***", () => {

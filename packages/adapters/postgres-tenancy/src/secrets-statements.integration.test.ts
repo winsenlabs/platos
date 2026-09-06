@@ -32,6 +32,8 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import {
@@ -96,9 +98,9 @@ async function measure(work: () => Promise<unknown>): Promise<Measurement> {
 }
 
 function inTransaction<Value>(
-  work: (transaction: TransactionScope) => Promise<Value>,
-): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+  work: (transaction: TransactionScope) => Promise<Result<Value>>,
+): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 /** `count` credentials, each with an active envelope, plus one retired version. */
@@ -106,7 +108,7 @@ async function seed(count: number): Promise<Fixture> {
   const environmentId = await harness.freshEnvironment();
   const credentialIds: string[] = [];
   const retiredVersionId = fresh();
-  await inTransaction(async (transaction) => {
+  await harness.base.adapter.unitOfWork.run(async (transaction) => {
     for (let index = 0; index < count; index += 1) {
       const credentialId = fresh();
       const versionId = fresh();

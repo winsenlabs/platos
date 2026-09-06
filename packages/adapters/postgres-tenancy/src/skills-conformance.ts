@@ -53,6 +53,8 @@ import {
   asIdentifier,
   skillIdentity,
 } from "@platos/context-skills/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 import { runSkillsInstallConformance } from "./skills-conformance-installs.js";
 
@@ -75,7 +77,7 @@ export interface SkillsConformanceEnvironment {
   readonly foreign: CatalogueScope;
   readonly ids: SkillsConformanceIds;
   /** Open one transaction. The fake's stand-in, or the adapter's unit of work. */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 /** The author every scenario skill declares, and the subject of its erasure. */
@@ -221,14 +223,14 @@ export async function runSkillsConformance(
   const observed: SkillsObservation = {};
 
   // ------------------------------------------------------------- catalogue
-  const first = await environment.run((transaction) =>
+  const first = await runResult(environment, (transaction) =>
     repository.upsertSkill(conformanceDraft(scope, CUSTOM, "1.0.0"), transaction),
   );
   observed["upsertSkill.first"] = outcome(first, describeEntry);
   const firstId = first.ok ? first.value.skillId : null;
   const firstCreatedAt = first.ok ? first.value.createdAt.getTime() : null;
 
-  const repeat = await environment.run((transaction) =>
+  const repeat = await runResult(environment, (transaction) =>
     repository.upsertSkill(
       conformanceDraft(scope, CUSTOM, "1.0.0", {
         manifest: { name: "renamed on re-registration", tags: ["search", "renamed"] },
@@ -277,7 +279,7 @@ export async function runSkillsConformance(
     (value) => value,
   );
 
-  const official = await environment.run((transaction) =>
+  const official = await runResult(environment, (transaction) =>
     repository.upsertSkill(
       conformanceDraft(scope, OFFICIAL, "1.0.0", { isOfficial: true }),
       transaction,
@@ -313,7 +315,7 @@ export async function runSkillsConformance(
 
   // A SLUG NAMES A FAMILY, and the port says the highest version wins. Two rows
   // of one slug, both official so both visible without an install.
-  await environment.run((transaction) =>
+  await runResult(environment, (transaction) =>
     repository.upsertSkill(
       conformanceDraft(scope, OFFICIAL, "2.0.0", { isOfficial: true }),
       transaction,

@@ -35,6 +35,9 @@ import type {
 } from "@platos/context-observability/application/ports/index.js";
 import { asIdentifier } from "@platos/context-observability/application/ports/index.js";
 import type { PrismaClient } from "@platos/tenancy-database";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { AuditScope, ObservabilityHarness } from "./observability-harness.js";
 import { auditRecord, startObservabilityHarness } from "./observability-harness.js";
@@ -70,8 +73,8 @@ async function survives(auditId: string): Promise<boolean> {
   return (await observer.adminAudit.count({ where: { id: auditId } })) === 1;
 }
 
-function write<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+function write<Value>(work: (transaction: TransactionScope) => Promise<Result<Value>>): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 describe("failure injection", () => {
@@ -157,7 +160,7 @@ describe("failure injection", () => {
       harness.stores.observability.recordAdminAudit(auditRecord(home.scope, clashing), transaction),
     );
 
-    const rolled = await write(async (transaction) => {
+    const rolled = await harness.base.adapter.unitOfWork.run(async (transaction) => {
       const written = await harness.stores.observability.recordAdminAudit(
         auditRecord(home.scope, survivor),
         transaction,
@@ -191,7 +194,7 @@ describe("failure injection", () => {
     // two together say exactly where the responsibility sits, and neither could
     // have been written from the port's signatures.
     const committed = id("0065");
-    const outcome = await write(async (transaction) => {
+    const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
       const written = await harness.stores.observability.recordAdminAudit(
         auditRecord(home.scope, committed),
         transaction,
@@ -221,11 +224,11 @@ describe("the three scope refusals, from the store the ports declare", () => {
 
   test("a write with a FINISHED transaction's token is refused with scope_unknown", async () => {
     let stale: TransactionScope | null = null;
-    await write(async (transaction) => {
+    await harness.base.adapter.unitOfWork.run(async (transaction) => {
       stale = transaction;
     });
     const finished = stale as unknown as TransactionScope;
-    await write(async () => {
+    await harness.base.adapter.unitOfWork.run(async () => {
       await expect(
         harness.stores.observability.recordAdminAudit(auditRecord(home.scope, id("0067")), finished),
       ).rejects.toMatchObject({ code: TRANSACTION_SCOPE_UNKNOWN });
@@ -247,7 +250,7 @@ describe("the three scope refusals, from the store the ports declare", () => {
     });
     let scopeA: TransactionScope | null = null;
 
-    const transactionA = write(async (scope) => {
+    const transactionA = harness.base.adapter.unitOfWork.run(async (scope) => {
       scopeA = scope;
       if (announceA !== null) announceA();
       await holdA;
@@ -256,7 +259,7 @@ describe("the three scope refusals, from the store the ports declare", () => {
     const foreignToken = scopeA as unknown as TransactionScope;
 
     let refusal: unknown = null;
-    await write(async () => {
+    await harness.base.adapter.unitOfWork.run(async () => {
       try {
         await harness.stores.observability.recordAdminAudit(
           auditRecord(home.scope, id("0068")),

@@ -50,6 +50,7 @@ import type {
   ThreadScope,
 } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier as asFilesIdentifier } from "@platos/context-files/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   attachmentFixture,
@@ -225,7 +226,7 @@ test("the binary being replaced reads back what the V1 stores wrote", async () =
     expiresAt: null,
   });
   value(
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.adapter.insertAttachment(attachment, transaction),
     ),
   );

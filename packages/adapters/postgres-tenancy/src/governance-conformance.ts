@@ -75,6 +75,8 @@ import type {
   TurnId,
 } from "@platos/context-governance/application/ports/index.js";
 import { asGovernanceIdentifier } from "@platos/context-governance/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 import { runEvalConformance } from "./governance-conformance-evals.js";
 import type { GovernanceStores } from "./governance-repository.js";
@@ -97,7 +99,7 @@ export interface GovernanceConformanceEnvironment {
   readonly scope: EnvironmentScope;
   readonly ids: GovernanceConformanceIds;
   /** Open one transaction. The doubles' stand-in, or the adapter's unit of work. */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 export type GovernanceObservation = Record<string, unknown>;
@@ -244,7 +246,7 @@ export async function runGovernanceConformance(
   const agentId = asGovernanceIdentifier<AgentId>(ids.agentId);
 
   // ---------------------------------------------------------------- safety
-  const firstAppend = await environment.run((transaction) =>
+  const firstAppend = await runResult(environment, (transaction) =>
     stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, {
@@ -275,7 +277,7 @@ export async function runGovernanceConformance(
   }));
   const firstEventId = firstAppend.ok ? firstAppend.value.safetyEventId : null;
 
-  await environment.run((transaction) =>
+  await runResult(environment, (transaction) =>
     stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, {
@@ -289,7 +291,7 @@ export async function runGovernanceConformance(
       transaction,
     ),
   );
-  await environment.run((transaction) =>
+  await runResult(environment, (transaction) =>
     stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, {
@@ -404,7 +406,7 @@ export async function runGovernanceConformance(
   );
 
   observed["safety.anonymize"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.safety.anonymizeSubject({ scope, principalId: "subject-a" }, transaction),
     ),
     (count) => count,
@@ -446,7 +448,7 @@ export async function runGovernanceConformance(
 
   // --------------------------------------------------------------- ratings
   observed["ratings.upsert.create"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.ratings.upsert(
         scope,
         {
@@ -468,7 +470,7 @@ export async function runGovernanceConformance(
     (rating) => (rating === null ? null : { rating: rating.rating, revision: rating.revision }),
   );
   observed["ratings.upsert.flip"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.ratings.upsert(
         scope,
         {
@@ -490,7 +492,7 @@ export async function runGovernanceConformance(
     // the FIRST constraint in the same migration file would have refused. Half
     // the domain's value space is exercised here and nowhere else in this
     // scenario.
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.ratings.upsert(
         scope,
         {
@@ -524,13 +526,13 @@ export async function runGovernanceConformance(
     (count) => count,
   );
   observed["ratings.remove.hit"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.ratings.remove(scope, turnId, endUserId, transaction),
     ),
     (removed) => removed,
   );
   observed["ratings.remove.miss"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.ratings.remove(scope, secondTurnId, endUserId, transaction),
     ),
     (removed) => removed,

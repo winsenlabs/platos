@@ -49,6 +49,7 @@ import type {
 import { asProvidersIdentifier } from "@platos/context-providers/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import type { ProvidersHarness } from "./providers-harness.js";
@@ -125,7 +126,7 @@ beforeAll(async () => {
     datasources: { db: { url: harness.base.databaseUrl } },
   }) as TenancyDatabaseClient;
   // The incumbent default, written before anything under test runs.
-  await harness.base.adapter.unitOfWork.run((transaction) =>
+  await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.repository.insertProviderKey(
       key(INCUMBENT, incumbentCredential, "incumbent", "ANTHROPIC_INCUMBENT", true),
       transaction,
@@ -146,7 +147,7 @@ describe("a demotion and a promotion are one transaction or neither", () => {
     // rejected promise is a defect, not an outcome" leaves room for, and which
     // is exactly how a defect in a caller reaches this boundary.
     await expect(
-      harness.base.adapter.unitOfWork.run(async (transaction) => {
+      runResult(harness.base.adapter.unitOfWork, async (transaction) => {
         const demoted = await harness.repository.updateProviderKey(
           key(INCUMBENT, incumbentCredential, "incumbent", "ANTHROPIC_INCUMBENT", false, {
             updatedAt: LATER,
@@ -175,7 +176,7 @@ describe("a demotion and a promotion are one transaction or neither", () => {
   test("and a rotation that is not interfered with COMMITS both rows", async () => {
     // THE NEGATIVE CONTROL. Without it the case above would pass against a store
     // that never wrote anything at all.
-    const rotated = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const rotated = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const demoted = await harness.repository.updateProviderKey(
         key(INCUMBENT, incumbentCredential, "incumbent", "ANTHROPIC_INCUMBENT", false, {
           updatedAt: LATER,
@@ -214,7 +215,7 @@ describe("a RETURNED error Result commits what came before it", () => {
       provider: "anthropic",
       name: "ANTHROPIC_THIRD",
     });
-    const outcome = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const outcome = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const written = await harness.repository.insertProviderKey(
         key(uuid("0003"), third, "third", "ANTHROPIC_THIRD", false),
         transaction,
@@ -293,7 +294,7 @@ describe("the three transaction-scope refusals, on this context's writes", () =>
     });
     let refusal = "<no refusal>";
     try {
-      await harness.base.adapter.unitOfWork.run(() =>
+      await runResult(harness.base.adapter.unitOfWork, () =>
         harness.repository.insertProviderKey(
           key(uuid("0006"), incumbentCredential, "stale", "ANTHROPIC_INCUMBENT", false),
           stale,

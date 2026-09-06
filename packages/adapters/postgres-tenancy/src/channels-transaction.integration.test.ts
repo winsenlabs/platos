@@ -38,6 +38,7 @@ import type {
 import { asIdentifier, environmentScope } from "@platos/context-channels/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier as asTenancyIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import { CONFORMANCE_AT } from "./channels-conformance.js";
@@ -225,10 +226,10 @@ describe("a refusal the STORE minted resolves, and a resolved callback COMMITS",
     const connectionId = harness.base.freshId("050a");
     const thread = await harness.seedThread(scope);
     const other = await harness.seedThread(scope);
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.saveConnection(connectionIn(scope, connectionId), transaction),
     );
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertThreadLink(
         {
           linkId: asIdentifier(harness.base.freshId("050b")),

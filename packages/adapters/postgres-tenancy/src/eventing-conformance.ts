@@ -63,6 +63,8 @@ import {
   parseRuleFilter,
   parseRuleName,
 } from "@platos/context-eventing/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 export type EventingObservation = Record<string, unknown>;
 
@@ -90,7 +92,7 @@ export interface EventingConformanceEnvironment {
   readonly foreign: EnvironmentScope;
   readonly ids: EventingConformanceIds;
   /** Open one transaction. The fake's stand-in, or the adapter's unit of work. */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 /** The operator every scenario rule is registered by, and the erasure subject. */
@@ -253,23 +255,23 @@ export async function runEventingConformance(
     createdBy: CONFORMANCE_BYSTANDER,
   });
 
-  record("insertAlpha", observe(await environment.run((t) => repository.insertRule(alpha, t))));
-  record("insertBeta", observe(await environment.run((t) => repository.insertRule(beta, t))));
+  record("insertAlpha", observe(await runResult(environment, (t) => repository.insertRule(alpha, t))));
+  record("insertBeta", observe(await runResult(environment, (t) => repository.insertRule(beta, t))));
   record(
     "insertSiblingSameName",
-    observe(await environment.run((t) => repository.insertRule(siblingAlpha, t))),
+    observe(await runResult(environment, (t) => repository.insertRule(siblingAlpha, t))),
   );
   record(
     "insertCousinSameName",
-    observe(await environment.run((t) => repository.insertRule(cousinAlpha, t))),
+    observe(await runResult(environment, (t) => repository.insertRule(cousinAlpha, t))),
   );
   record(
     "insertForeignSameName",
-    observe(await environment.run((t) => repository.insertRule(foreignAlpha, t))),
+    observe(await runResult(environment, (t) => repository.insertRule(foreignAlpha, t))),
   );
   record(
     "insertBystanderRule",
-    observe(await environment.run((t) => repository.insertRule(bystanderRule, t))),
+    observe(await runResult(environment, (t) => repository.insertRule(bystanderRule, t))),
   );
 
   // ALONE IN ITS TRANSACTION. The unique index refuses it, and a refused
@@ -277,7 +279,7 @@ export async function runEventingConformance(
   const duplicate = ruleAt(ids.duplicateRuleId, scope, "alpha", 90);
   record(
     "insertDuplicateName",
-    observe(await environment.run((t) => repository.insertRule(duplicate, t))),
+    observe(await runResult(environment, (t) => repository.insertRule(duplicate, t))),
   );
 
   record("findAlpha", observe(await repository.findRule(scope, alpha.ruleId)));
@@ -303,7 +305,7 @@ export async function runEventingConformance(
     enabled: false,
     updatedAt: instant(120),
   };
-  record("updateBeta", observe(await environment.run((t) => repository.updateRule(editedBeta, t))));
+  record("updateBeta", observe(await runResult(environment, (t) => repository.updateRule(editedBeta, t))));
   record("findBetaAfterUpdate", observe(await repository.findRule(scope, beta.ruleId)));
   record("listEnabled", observeUnorderedList(await repository.listEnabledRules(scope)));
 
@@ -311,22 +313,22 @@ export async function runEventingConformance(
   const collidingBeta: NotificationRule = { ...editedBeta, name: nameOf("alpha") };
   record(
     "updateOntoTakenName",
-    observe(await environment.run((t) => repository.updateRule(collidingBeta, t))),
+    observe(await runResult(environment, (t) => repository.updateRule(collidingBeta, t))),
   );
 
   // THE COUNTS ARE TAKEN AFTER THE DELETES, so the plan a caller would build is
   // the plan for the tree as it then stands rather than for one two writes ago.
   record(
     "deleteInWrongScope",
-    observeFlag(await environment.run((t) => repository.deleteRule(sibling, alpha.ruleId, t))),
+    observeFlag(await runResult(environment, (t) => repository.deleteRule(sibling, alpha.ruleId, t))),
   );
   record(
     "deleteAlpha",
-    observeFlag(await environment.run((t) => repository.deleteRule(scope, alpha.ruleId, t))),
+    observeFlag(await runResult(environment, (t) => repository.deleteRule(scope, alpha.ruleId, t))),
   );
   record(
     "deleteAlphaAgain",
-    observeFlag(await environment.run((t) => repository.deleteRule(scope, alpha.ruleId, t))),
+    observeFlag(await runResult(environment, (t) => repository.deleteRule(scope, alpha.ruleId, t))),
   );
   record("findAlphaAfterDelete", observe(await repository.findRule(scope, alpha.ruleId)));
 
@@ -367,7 +369,7 @@ export async function runEventingConformance(
   record(
     "anonymizeVacuousSubject",
     observeCount(
-      await environment.run((t) =>
+      await runResult(environment, (t) =>
         repository.anonymizeRulesForSubject(selectorFor(organization, null), CONFORMANCE_ERASED, t),
       ),
     ),
@@ -375,7 +377,7 @@ export async function runEventingConformance(
   record(
     "anonymizeAtEnvironment",
     observeCount(
-      await environment.run((t) =>
+      await runResult(environment, (t) =>
         repository.anonymizeRulesForSubject(
           selectorFor(scope, CONFORMANCE_OPERATOR),
           CONFORMANCE_ERASED,
@@ -390,7 +392,7 @@ export async function runEventingConformance(
   record(
     "anonymizeAtProject",
     observeCount(
-      await environment.run((t) =>
+      await runResult(environment, (t) =>
         repository.anonymizeRulesForSubject(
           selectorFor(project, CONFORMANCE_OPERATOR),
           CONFORMANCE_ERASED,
@@ -405,7 +407,7 @@ export async function runEventingConformance(
   record(
     "anonymizeAtOrganization",
     observeCount(
-      await environment.run((t) =>
+      await runResult(environment, (t) =>
         repository.anonymizeRulesForSubject(
           selectorFor(organization, CONFORMANCE_OPERATOR),
           CONFORMANCE_ERASED,

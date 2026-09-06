@@ -55,6 +55,8 @@ import type {
   TurnId,
 } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier, boundTo, PENDING_BINDING } from "@platos/context-files/application/ports/index.js";
+import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/kernel";
 
 /** One tenant, as the scenario addresses it. */
 export interface FilesConformanceChain {
@@ -76,7 +78,7 @@ export interface FilesConformanceEnvironment {
   readonly chain: FilesConformanceChain;
   readonly foreign: FilesConformanceChain;
   readonly ids: FilesConformanceIds;
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 export type FilesObservation = Record<string, unknown>;
@@ -192,11 +194,11 @@ export async function runFilesConformance(
     expiresMinutes: 10,
   });
 
-  record("insertAttachment.first", await environment.run((t) => repository.insertAttachment(first, t)));
-  record("insertAttachment.second", await environment.run((t) => repository.insertAttachment(second, t)));
+  record("insertAttachment.first", await runResult(environment, (t) => repository.insertAttachment(first, t)));
+  record("insertAttachment.second", await runResult(environment, (t) => repository.insertAttachment(second, t)));
   record(
     "insertAttachment.foreign",
-    await environment.run((t) => repository.insertAttachment(foreignAttachment, t)),
+    await runResult(environment, (t) => repository.insertAttachment(foreignAttachment, t)),
   );
 
   record("findAttachment.first", await repository.findAttachment(chain.thread, first.attachmentId));
@@ -265,12 +267,12 @@ export async function runFilesConformance(
   };
   record(
     "updateAttachmentBinding.bind",
-    await environment.run((t) => repository.updateAttachmentBinding(bound, t)),
+    await runResult(environment, (t) => repository.updateAttachmentBinding(bound, t)),
   );
   record("findAttachment.afterBind", await repository.findAttachment(chain.thread, first.attachmentId));
   record(
     "updateAttachmentBinding.idempotent",
-    await environment.run((t) => repository.updateAttachmentBinding(bound, t)),
+    await runResult(environment, (t) => repository.updateAttachmentBinding(bound, t)),
   );
   record(
     "listElapsedAttachments.afterBind",
@@ -279,15 +281,15 @@ export async function runFilesConformance(
 
   record(
     "deleteAttachment.crossTenant",
-    await environment.run((t) => repository.deleteAttachment(foreign.thread, second.attachmentId, t)),
+    await runResult(environment, (t) => repository.deleteAttachment(foreign.thread, second.attachmentId, t)),
   );
   record(
     "deleteAttachment.second",
-    await environment.run((t) => repository.deleteAttachment(chain.thread, second.attachmentId, t)),
+    await runResult(environment, (t) => repository.deleteAttachment(chain.thread, second.attachmentId, t)),
   );
   record(
     "deleteAttachment.again",
-    await environment.run((t) => repository.deleteAttachment(chain.thread, second.attachmentId, t)),
+    await runResult(environment, (t) => repository.deleteAttachment(chain.thread, second.attachmentId, t)),
   );
   record("sumAttachmentBytes.afterDelete", await repository.sumAttachmentBytes(chain.organization));
 
@@ -303,7 +305,7 @@ export async function runFilesConformance(
 
   record(
     "insertArtifactRevision.one",
-    await environment.run((t) => repository.insertArtifactRevision(revisionOne, t)),
+    await runResult(environment, (t) => repository.insertArtifactRevision(revisionOne, t)),
   );
   record(
     "findLatestArtifactRevision.afterOne",
@@ -319,7 +321,7 @@ export async function runFilesConformance(
   );
   record(
     "insertArtifactRevision.two",
-    await environment.run((t) => repository.insertArtifactRevision(revisionTwo, t)),
+    await runResult(environment, (t) => repository.insertArtifactRevision(revisionTwo, t)),
   );
   record(
     "findLatestArtifactRevision.afterTwo",
@@ -330,7 +332,7 @@ export async function runFilesConformance(
   // the claim against the index that actually holds it.
   record(
     "insertArtifactRevision.conflict",
-    await environment.run((t) =>
+    await runResult(environment, (t) =>
       repository.insertArtifactRevision({ ...revisionTwo, content: "rewritten" }, t),
     ),
   );
@@ -340,7 +342,7 @@ export async function runFilesConformance(
   );
   record(
     "insertArtifactRevision.foreignThread",
-    await environment.run((t) => repository.insertArtifactRevision(foreignRevision, t)),
+    await runResult(environment, (t) => repository.insertArtifactRevision(foreignRevision, t)),
   );
   record(
     "findLatestArtifactRevision.crossTenant",
@@ -401,7 +403,7 @@ export async function runFilesConformance(
   );
   record(
     "deleteArtifactRevisionsForSubject.noPrincipal",
-    await environment.run((t) =>
+    await runResult(environment, (t) =>
       repository.deleteArtifactRevisionsForSubject(
         { ...organizationSelector, principalId: null },
         t,
@@ -410,7 +412,7 @@ export async function runFilesConformance(
   );
   record(
     "deleteArtifactRevisionsForSubject.organization",
-    await environment.run((t) =>
+    await runResult(environment, (t) =>
       repository.deleteArtifactRevisionsForSubject(organizationSelector, t),
     ),
   );
@@ -430,7 +432,7 @@ export async function runFilesConformance(
   );
   record(
     "deleteArtifactRevisionsForSubject.again",
-    await environment.run((t) =>
+    await runResult(environment, (t) =>
       repository.deleteArtifactRevisionsForSubject(organizationSelector, t),
     ),
   );

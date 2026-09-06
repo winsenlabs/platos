@@ -34,6 +34,7 @@ import type {
   TransactionScope,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier } from "@platos/context-skills/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 import type { TenancyDatabaseClient } from "./client.js";
 import { conformanceDraft, conformanceIdentity } from "./skills-conformance.js";
 import { startSkillsHarness, type SkillsHarness, type SkillsTenant } from "./skills-harness.js";
@@ -74,7 +75,7 @@ function codeOf(error: unknown): string {
 
 describe("an install is a project adoption and an environment binding, or neither", () => {
   test("the binding fails on ancestry and the adoption does not survive it", async () => {
-    const skill = await harness.run((transaction) =>
+    const skill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.atomic", "1.0.0"), transaction),
     );
     expect(skill.ok).toBe(true);
@@ -86,8 +87,7 @@ describe("an install is a project adoption and an environment binding, or neithe
     // the same organization, and `EnvironmentSkill_ancestry` demands that the
     // environment and the project adoption share a project. Nothing about the
     // failure is simulated.
-    await harness
-      .run(async (transaction) => {
+    await runResult(harness, async (transaction) => {
         const project = await harness.repository.upsertProjectInstallation(
           tenant.scope,
           skillId,
@@ -124,11 +124,11 @@ describe("an install is a project adoption and an environment binding, or neithe
   test("and the same two writes COMMIT together when nothing fails", async () => {
     // The negative control. Without it the case above would pass against a store
     // that never wrote anything at all.
-    const skill = await harness.run((transaction) =>
+    const skill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.commits", "1.0.0"), transaction),
     );
     const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
-    await harness.run(async (transaction) => {
+    await runResult(harness, async (transaction) => {
       const project = await harness.repository.upsertProjectInstallation(
         tenant.scope,
         skillId,
@@ -154,13 +154,12 @@ describe("an install is a project adoption and an environment binding, or neithe
 
 describe("a catalogue write and an adoption are one transaction or neither", () => {
   test("the adoption fails on a foreign skill and the catalogue row does not survive", async () => {
-    const foreignSkill = await harness.run((transaction) =>
+    const foreignSkill = await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(conformanceDraft(foreign.scope, "foreign.atomic", "1.0.0"), transaction),
     );
     const foreignSkillId = foreignSkill.ok ? foreignSkill.value.skillId : asIdentifier<SkillId>("x");
 
-    await harness
-      .run(async (transaction) => {
+    await runResult(harness, async (transaction) => {
         const registered = await harness.repository.upsertSkill(
           conformanceDraft(tenant.scope, "acme.stranded", "1.0.0"),
           transaction,

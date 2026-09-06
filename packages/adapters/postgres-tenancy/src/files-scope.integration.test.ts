@@ -17,6 +17,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { AttachmentId, ContentHash } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   artifactFixture,
@@ -48,7 +49,7 @@ beforeAll(async () => {
   chain = await harness.freshChain();
   foreign = await harness.freshChain();
   subject = asIdentifier<AttachmentId>(freshId());
-  const written = await harness.run((transaction) =>
+  const written = await runResult(harness, (transaction) =>
     harness.repository.insertAttachment(
       attachmentFixture(chain.attachment, subject, { contentHash: "sha256:scope-subject" }),
       transaction,
@@ -169,14 +170,14 @@ describe("the delete carries the thread clause as well as the ancestry re-assert
   test("a delete addressed at a SIBLING thread of the right environment removes nothing", async () => {
     const id = freshId();
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertAttachment(attachmentFixture(chain.attachment, id), transaction),
       )).ok,
     ).toBe(true);
 
     // The environment, project and organization are all correct; only the thread
     // is a sibling. Nothing else in the tree can be what refuses this.
-    const removed = await harness.run((transaction) =>
+    const removed = await runResult(harness, (transaction) =>
       harness.repository.deleteAttachment(
         chain.secondThread,
         asIdentifier<AttachmentId>(id),
@@ -284,7 +285,7 @@ describe("requireTenantScopeShape checks exactly the ids the LEVEL carries", () 
 
 describe("the shapes the domain's own optional fields can carry", () => {
   test("a non-uuid turn binding is refused on the nullable half of the uuid guard", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { turnId: "turn-1" }),
         transaction,
@@ -295,7 +296,7 @@ describe("the shapes the domain's own optional fields can carry", () => {
   }, 120_000);
 
   test("an invalid expiry is refused on the nullable half of the instant guard", async () => {
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, freshId(), { expiresAt: new Date("not a date") }),
         transaction,
@@ -307,7 +308,7 @@ describe("the shapes the domain's own optional fields can carry", () => {
 
   test("a null expiry is retained indefinitely rather than refused", async () => {
     const id = freshId();
-    const written = await harness.run((transaction) =>
+    const written = await runResult(harness, (transaction) =>
       harness.repository.insertAttachment(
         attachmentFixture(chain.attachment, id, { expiresAt: null }),
         transaction,
@@ -351,7 +352,7 @@ describe("the artifact reads carry the same four clauses as the attachment reads
   test("the latest revision is not visible from a foreign PROJECT of the right environment", async () => {
     const key = "scope.artifact";
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, freshId(), { artifactKey: key }),
           transaction,
@@ -416,7 +417,7 @@ describe("the erasure predicate narrows on all three levels, each falsifiable al
   test("the subject clause holds: another subject's rows in the same organization are not the subject's", async () => {
     const other = freshId();
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertAttachment(
           attachmentFixture(chain.secondAttachment, other),
           transaction,
@@ -450,7 +451,7 @@ describe("the erasure predicate narrows on all three levels, each falsifiable al
     const mine = "user_scope_mine";
     const theirs = "user_scope_theirs";
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, freshId(), { artifactKey: "mine.key", createdBy: mine }),
           transaction,
@@ -458,7 +459,7 @@ describe("the erasure predicate narrows on all three levels, each falsifiable al
       )).ok,
     ).toBe(true);
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, freshId(), { artifactKey: "theirs.key", createdBy: theirs }),
           transaction,
@@ -473,7 +474,7 @@ describe("the erasure predicate narrows on all three levels, each falsifiable al
     });
     expect(counted).toEqual({ ok: true, value: 1 });
 
-    const removed = await harness.run((transaction) =>
+    const removed = await runResult(harness, (transaction) =>
       harness.repository.deleteArtifactRevisionsForSubject(
         {
           scope: organizationScopeOf(chain.organizationId),
@@ -504,7 +505,7 @@ describe("one thread may hold two artifacts and one environment two threads", ()
     // answered correctly. Two keys in one thread at different revisions is the
     // only shape that separates them.
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, freshId(), { artifactKey: "key.alpha", revision: 1 }),
           transaction,
@@ -513,7 +514,7 @@ describe("one thread may hold two artifacts and one environment two threads", ()
     ).toBe(true);
     for (const revision of [1, 2, 3]) {
       expect(
-        (await harness.run((transaction) =>
+        (await runResult(harness, (transaction) =>
           harness.repository.insertArtifactRevision(
             artifactFixture(chain.thread, freshId(), { artifactKey: "key.beta", revision }),
             transaction,
@@ -538,7 +539,7 @@ describe("one thread may hold two artifacts and one environment two threads", ()
     // thread clause.
     const key = "shared.between.threads";
     expect(
-      (await harness.run((transaction) =>
+      (await runResult(harness, (transaction) =>
         harness.repository.insertArtifactRevision(
           artifactFixture(chain.thread, freshId(), { artifactKey: key, revision: 1 }),
           transaction,
@@ -547,7 +548,7 @@ describe("one thread may hold two artifacts and one environment two threads", ()
     ).toBe(true);
     for (const revision of [1, 2]) {
       expect(
-        (await harness.run((transaction) =>
+        (await runResult(harness, (transaction) =>
           harness.repository.insertArtifactRevision(
             artifactFixture(chain.secondThread, freshId(), { artifactKey: key, revision }),
             transaction,

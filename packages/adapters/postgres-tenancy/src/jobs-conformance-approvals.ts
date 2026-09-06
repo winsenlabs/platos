@@ -26,6 +26,7 @@ import type {
   RequestDigest,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, organizationScope } from "@platos/context-jobs/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type {
   ApprovalConformanceIds,
@@ -145,7 +146,7 @@ export async function runApprovalConformance(
     ["cancellation", cancellation],
   ] as const) {
     observed[`approvals.insert.${name}`] = outcome(
-      await environment.run((transaction) => store.insertApproval(scope, approval, transaction)),
+      await runResult(environment, (transaction) => store.insertApproval(scope, approval, transaction)),
       projectApproval,
     );
   }
@@ -224,12 +225,12 @@ export async function runApprovalConformance(
     },
   };
   observed["approvals.resolve.first"] = outcome(
-    await environment.run((transaction) => store.resolve(scope, decided, transaction)),
+    await runResult(environment, (transaction) => store.resolve(scope, decided, transaction)),
     (moved) => moved,
   );
   const rivalAt = clock();
   observed["approvals.resolve.second"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       store.resolve(
         scope,
         {
@@ -263,7 +264,7 @@ export async function runApprovalConformance(
   // refuses at the column and which therefore has to ride inside one.
   const consumedAt = clock();
   observed["approvals.markConsumed.object"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       store.markConsumed(
         scope,
         firstMcp.approvalId,
@@ -280,7 +281,7 @@ export async function runApprovalConformance(
   );
   const arrayConsumedAt = clock();
   observed["approvals.markConsumed.array"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       store.markConsumed(
         scope,
         secondMcp.approvalId,
@@ -296,7 +297,7 @@ export async function runApprovalConformance(
     maybeApproval,
   );
   observed["approvals.markConsumed.absent"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       store.markConsumed(scope, ids.absentApprovalId, null, clock(), transaction),
     ),
     (marked) => marked,
@@ -340,13 +341,13 @@ export async function runApprovalConformance(
   );
 
   observed["approvals.erase.mcpRequester"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       store.erase({ scope, principalId: MCP_REQUESTER }, transaction),
     ),
     (erased) => erased,
   );
   observed["approvals.erase.noSubject"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       store.erase({ scope, principalId: null }, transaction),
     ),
     (erased) => erased,

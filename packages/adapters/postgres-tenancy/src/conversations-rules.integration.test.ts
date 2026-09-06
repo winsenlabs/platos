@@ -28,6 +28,7 @@ import {
   type ThreadId,
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   executionOf,
@@ -133,7 +134,7 @@ describe("the erasure is scoped to ONE organization, and the double is not", () 
     if (!census.ok) return;
     expect(census.value.threadCount).toBe(0);
 
-    const deleted = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const deleted = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.conversationsErasure.deleteThreadsForEndUser(
         asConversationsIdentifier<EndUserId>(foreign.endUserId),
         scope.organizationId,
@@ -247,7 +248,7 @@ describe("Thread_forkedUpToTurnId_fkey blocks a LOOP and not a single statement"
   });
 
   test("the store's SINGLE delete removes the whole lineage", async () => {
-    const deleted = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const deleted = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.conversationsErasure.deleteThreadsForEndUser(
         asConversationsIdentifier<EndUserId>(chain.endUserId),
         scope.organizationId,

@@ -99,10 +99,19 @@ export interface ChannelsWorld {
   readonly absentId: string;
 }
 
-/** How the scenario opens a transaction, whichever store it is driving. */
+/**
+ * How the scenario opens a transaction, whichever store it is driving.
+ *
+ * WIN-260 (M2.5): this is `runResult`'s shape, not `run`'s, and the change is
+ * not cosmetic. Every step below hands it a repository call, and a repository
+ * call answers with a `Result` — which `UnitOfWork.run` now REFUSES, because a
+ * callback that resolves with an error COMMITS. Declaring the runner over
+ * `Result` is what makes each caller supply `runResult` and each failing step
+ * roll back.
+ */
 export type RunInTransaction = <Value>(
-  work: (transaction: TransactionScope) => Promise<Value>,
-) => Promise<Value>;
+  work: (transaction: TransactionScope) => Promise<Result<Value>>,
+) => Promise<Result<Value>>;
 
 function connectionOf(world: ChannelsWorld, overrides: Partial<ChannelConnection> = {}): ChannelConnection {
   return {

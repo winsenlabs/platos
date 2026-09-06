@@ -43,6 +43,7 @@ import {
   asProvidersIdentifier,
   byListingOrder,
 } from "@platos/context-providers/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { ProvidersHarness } from "./providers-harness.js";
 import { startProvidersHarness } from "./providers-harness.js";
@@ -81,7 +82,7 @@ async function seedKey(
     createdAt: AT,
     updatedAt: AT,
   };
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.repository.insertProviderKey(key, transaction),
   );
   if (!written.ok) throw new Error(`the fixture key ${label} could not be written`);
@@ -107,7 +108,7 @@ describe("reject_executable_provider_key_delete", () => {
     const counted = await harness.repository.countAgentVersionsPinning(scope, key.providerKeyId);
     expect(counted).toEqual({ ok: true, value: 2 });
 
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
     );
     // THE COUNT TRAVELS WITH THE ERROR, and it is READ rather than invented. The
@@ -136,7 +137,7 @@ describe("reject_executable_provider_key_delete", () => {
       ok: true,
       value: 1,
     });
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
     );
     expect(refused).toMatchObject({
@@ -159,7 +160,7 @@ describe("reject_executable_provider_key_delete", () => {
       ok: true,
       value: 1,
     });
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
     );
     expect(refused).toMatchObject({
@@ -188,7 +189,7 @@ describe("reject_executable_provider_key_delete", () => {
       ok: true,
       value: 0,
     });
-    const removed = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const removed = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
     );
     expect(removed).toEqual({ ok: true, value: true });
@@ -268,7 +269,7 @@ describe("EnvironmentProvider, where the double and the database part company", 
     // both fail.
     const inserted = ["openai", "anthropic", "google-vertex"];
     for (const [index, provider] of inserted.entries()) {
-      await harness.base.adapter.unitOfWork.run((transaction) =>
+      await runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.upsertProviderLink(
           {
             environmentProviderId: asProvidersIdentifier(uuid(`002${index}`)),
@@ -310,10 +311,10 @@ describe("EnvironmentProvider, where the double and the database part company", 
       linkedAt: AT,
       updatedAt: AT,
     };
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertProviderLink(original, transaction),
     );
-    const readopted = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const readopted = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.upsertProviderLink(
         {
           ...original,
@@ -379,7 +380,7 @@ describe("the scope predicate is the whole ancestry, not the environment id", ()
       ok: true,
       value: [],
     });
-    const removed = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const removed = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.deleteProviderKey(forged, key.providerKeyId, transaction),
     );
     expect(removed).toEqual({ ok: true, value: false });

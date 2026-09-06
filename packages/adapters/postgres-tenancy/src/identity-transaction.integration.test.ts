@@ -32,6 +32,7 @@ import type {
   UserId,
 } from "@platos/context-identity-access/application/ports/index.js";
 import { asIdentifier } from "@platos/context-identity-access/application/ports/index.js";
+import { domainError, err, runResult } from "@platos/kernel";
 
 import { AT, digest, EXPIRES, LATER } from "./identity-conformance.js";
 import type { IdentityHarness, SeededTenant } from "./identity-harness.js";
@@ -212,9 +213,9 @@ describe("failure injection: neither row survives", () => {
     ).toBe(0);
   }, 120_000);
 
-  test("a RETURNED error Result COMMITS — the cost-monitoring trap, as evidence", async () => {
+  test("a RETURNED error Result ROLLS BACK — the cost-monitoring trap, closed", async () => {
     const sessionId = harness.freshId("0307");
-    const result = await harness.adapter.unitOfWork.run(async () => {
+    const result = await runResult(harness.adapter.unitOfWork, async () => {
       await harness.repository.operatorSessions.save({
         sessionId: asIdentifier<OperatorSessionId>(sessionId),
         tokenHash: digest("22"),
@@ -228,12 +229,17 @@ describe("failure injection: neither row survives", () => {
         lastSeenAt: null,
         createdAt: AT,
       });
-      // A use case that decided the request was unauthorized and RETURNED. The
-      // callback resolved, so the transaction commits and the row is live.
-      return { ok: false, error: "unauthenticated" } as const;
+      // A use case that decided the request was unauthorized and RETURNED. This
+      // case used to assert that the callback RESOLVED, so the transaction
+      // committed and the session row was left live — a session written for a
+      // request that was refused. WIN-260 (M2.5) made the shape unwritable:
+      // `run` no longer takes a `Result`-valued callback, and `runResult` aborts
+      // on `err`. Counted over the client, after the transaction, the row is
+      // gone.
+      return err(domainError("UNAUTHENTICATED", "unauthenticated", "the request was not authenticated"));
     });
     expect(result.ok).toBe(false);
-    expect(await harness.client.operatorSession.count({ where: { id: sessionId } })).toBe(1);
+    expect(await harness.client.operatorSession.count({ where: { id: sessionId } })).toBe(0);
   }, 120_000);
 
   test("a rotation that fails after its first write leaves no orphan key", async () => {

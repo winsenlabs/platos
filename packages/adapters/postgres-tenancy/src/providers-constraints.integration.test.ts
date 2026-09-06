@@ -43,6 +43,7 @@ import {
   asProvidersIdentifier,
   rateFromDecimalString,
 } from "@platos/context-providers/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   IDENTIFIER_NOT_UUID,
@@ -125,7 +126,7 @@ afterAll(async () => {
 describe("the uuid guard and the uuid columns behind it", () => {
   test("the guard refuses a value that is not a uuid", async () => {
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertProviderKey(
           key({ providerKeyId: asProvidersIdentifier<ProviderKeyId>("not-a-uuid") }),
           transaction,
@@ -156,7 +157,7 @@ describe("ProviderKey_credential_provider_integrity", () => {
       provider: "openai",
       name: "OPENAI_ELSEWHERE",
     });
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertProviderKey(
         key({
           providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0002")),
@@ -181,7 +182,7 @@ describe("ProviderKey_credential_provider_integrity", () => {
     // `Credential.name`. A key that named the right credential id and the wrong
     // reference name would otherwise resolve to a credential the operator never
     // pointed it at.
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertProviderKey(
         key({
           providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0003")),
@@ -201,7 +202,7 @@ describe("ProviderKey_credential_provider_integrity", () => {
     // The savepoint, proven from the outside: a write made AFTER a refusal in
     // the same transaction lands. Without `ROLLBACK TO SAVEPOINT` the refusal
     // would have aborted the transaction and this second write would fail.
-    const written = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const written = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const refused = await harness.repository.insertProviderKey(
         key({
           providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0004")),
@@ -230,7 +231,7 @@ describe("ProviderKey_credential_provider_integrity", () => {
 
 describe("ProviderKey_one_default_per_environment_provider", () => {
   test("the partial index refuses a second default even from a raw statement", async () => {
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertProviderKey(
         key({
           providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0006")),
@@ -255,7 +256,7 @@ describe("ProviderKey_one_default_per_environment_provider", () => {
     // `WHERE "isDefault" = TRUE` clause would refuse this too, and the store's
     // whole reason for existing — several keys per provider per environment —
     // would be gone.
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertProviderKey(
         key({
           providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0008")),
@@ -287,7 +288,7 @@ describe("ProviderKey_owner_immutable", () => {
     // provider key" — the same answer an id that does not exist gets, which is
     // the answer a foreign id deserves.
     const elsewhere = await harness.freshScope();
-    const moved = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const moved = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.updateProviderKey(
         key({
           providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0006")),
@@ -315,8 +316,9 @@ describe("WHICH unique index refused, established by reading", () => {
     // It is a read rather than a driver error because only two of this table's
     // three unique indexes are in `schema.prisma`: the client can map those two
     // back to field names and has no model of the partial one at all.
-    return harness.base.adapter.unitOfWork
-      .run((transaction) =>
+    return runResult(
+      harness.base.adapter.unitOfWork,
+      (transaction) =>
         harness.repository.insertProviderKey(
           key({
             // The id `the partial index refuses a second default` already wrote.
@@ -343,7 +345,7 @@ describe("WHICH unique index refused, established by reading", () => {
     // EXCLUDE the row being updated, or it finds the row's own label and reports
     // a conflict with itself — the right refusal for the wrong reason, and one an
     // operator would act on by renaming.
-    const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.updateProviderKey(
         key({
           providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0008")),
@@ -363,7 +365,7 @@ describe("WHICH unique index refused, established by reading", () => {
 describe("the instant and page-window guards", () => {
   test("an Invalid Date is refused before it reaches the driver", async () => {
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertProviderKey(
           key({
             providerKeyId: asProvidersIdentifier<ProviderKeyId>(uuid("0013")),

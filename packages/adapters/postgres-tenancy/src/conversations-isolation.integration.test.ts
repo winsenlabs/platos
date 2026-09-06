@@ -30,6 +30,7 @@ import {
   type ThreadId,
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   AT,
@@ -111,7 +112,7 @@ describe("PostmanExecution's forensic attribution is immutable", () => {
   });
 
   test("what the store DOES sever is the simulated end user, and it counts the rows", async () => {
-    const stripped = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const stripped = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.conversationsErasure.anonymizeExecutionsForActor(
         chain.actorUserId,
         scope.organizationId,

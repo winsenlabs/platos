@@ -359,7 +359,7 @@ export function createTurnRepository(transactions: TenancyTransactions): TurnRep
     async createTurn(scope: EnvironmentScope, turn: Turn): Promise<Result<Turn>> {
       return refuse(async () => {
         guardTurnWrite(turn);
-        return transactions.atomic(async (client) => {
+        return transactions.atomicResult(async (client) => {
           const written = await refusable(
             client,
             () =>
@@ -414,7 +414,7 @@ export function createTurnRepository(transactions: TenancyTransactions): TurnRep
         // store a total its own rows do not add up to, and no read would ever
         // notice — this store answers `Turn.cost` from the steps.
         const rolled = rollUpTurnCost(settlement.steps);
-        return transactions.atomic(async (client) => {
+        return transactions.atomicResult(async (client) => {
           // SCOPED, and `updateMany` rather than `update` because the scope is a
           // relation filter through `Thread` and a unique-`where` update cannot
           // carry one. A turn in another environment matches nothing and writes

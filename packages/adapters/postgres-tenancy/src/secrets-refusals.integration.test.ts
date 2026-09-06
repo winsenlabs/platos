@@ -30,6 +30,8 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
+import type { Result } from "@platos/kernel";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import {
@@ -56,9 +58,9 @@ function fresh(): string {
 }
 
 function inTransaction<Value>(
-  work: (transaction: TransactionScope) => Promise<Value>,
-): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+  work: (transaction: TransactionScope) => Promise<Result<Value>>,
+): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 beforeAll(async () => {
@@ -66,7 +68,7 @@ beforeAll(async () => {
   environmentId = await harness.freshEnvironment();
   takenCredentialId = fresh();
   takenVersionId = fresh();
-  await inTransaction(async (transaction) => {
+  await harness.base.adapter.unitOfWork.run(async (transaction) => {
     await harness.repository.insertCredential(
       credentialDraft({
         id: takenCredentialId,

@@ -42,6 +42,7 @@ import type {
 import { asGovernanceIdentifier } from "@platos/context-governance/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import {
@@ -98,7 +99,7 @@ function codeOf(error: unknown): string {
 
 /** One rating for the seeded turn, so the erasure pair has something to erase. */
 async function seedRating(turnId: string): Promise<void> {
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.ratings.upsert(
       scope,
       {
@@ -118,7 +119,7 @@ async function seedRating(turnId: string): Promise<void> {
 
 test("a DATABASE refusal on the second write takes the first with it", async () => {
   const subject = `subject-${harness.base.freshId("0020")}`;
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, { principalId: subject }),
@@ -169,7 +170,7 @@ test("a GUARD refusal does NOT, and a caller that RETURNS it commits the first w
   // something a store can fix: the port returns a `Result` and a `Result` is not
   // an exception. It is pinned so a use case author knows the rule.
   const subject = `subject-${harness.base.freshId("0021")}`;
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, { principalId: subject }),
@@ -213,7 +214,7 @@ test("a GUARD refusal does NOT, and a caller that RETURNS it commits the first w
 test("and THROWING the same refusal rolls both halves back", async () => {
   // The other half of the pair above, and the rule a use case has to follow.
   const subject = `subject-${harness.base.freshId("0022")}`;
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, { principalId: subject }),
@@ -259,7 +260,7 @@ test("the erasure pair COMMITS together when nothing fails", async () => {
   // that never wrote anything at all.
   const subject = `subject-${harness.base.freshId("0023")}`;
   await seedRating(ids.secondTurnId);
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, { principalId: subject }),
@@ -320,12 +321,12 @@ test("an APPEND carrying a scope is held to the same three refusals", async () =
   // branches, which would silently accept a finished or a foreign token.
   const stale = await harness.base.adapter.unitOfWork.run(async (transaction) => transaction);
   await expect(
-    harness.base.adapter.unitOfWork.run(() =>
+    runResult(harness.base.adapter.unitOfWork, () =>
       harness.stores.safety.append(scope, conformanceSafetyEvent(ids), stale),
     ),
   ).rejects.toThrow();
-  const refusal = await harness.base.adapter.unitOfWork
-    .run(() => harness.stores.safety.append(scope, conformanceSafetyEvent(ids), stale))
+  const refusal = await runResult(
+    harness.base.adapter.unitOfWork, () => harness.stores.safety.append(scope, conformanceSafetyEvent(ids), stale))
     .then(() => "<no refusal>", (error: unknown) => codeOf(error));
   // The token names a transaction that has already committed, so it is UNKNOWN
   // rather than foreign and rather than absent.

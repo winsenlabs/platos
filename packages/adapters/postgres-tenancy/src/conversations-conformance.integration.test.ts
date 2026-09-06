@@ -28,6 +28,8 @@ import {
   InMemoryConversations,
   TestUnitOfWork,
 } from "@platos/context-conversations/application/testing/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
 
 import type {
   ConversationsConformanceIds,
@@ -98,8 +100,8 @@ test("the fake and the real store answer the same scenario identically", async (
     stores: harness.stores,
     scope,
     ids,
-    run: <Value>(work: (transaction: TransactionScope) => Promise<Value>) =>
-      harness.base.adapter.unitOfWork.run(work),
+    run: <Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>) =>
+      harness.base.adapter.unitOfWork.run<Value>(work),
   });
 
   // KEY BY KEY, so a divergence names the step rather than dumping two objects.

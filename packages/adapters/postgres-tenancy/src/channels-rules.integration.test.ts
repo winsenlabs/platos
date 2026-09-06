@@ -36,6 +36,7 @@ import type {
   TurnId,
 } from "@platos/context-channels/application/ports/index.js";
 import { asIdentifier, connectionOwner, environmentScope } from "@platos/context-channels/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { CONFORMANCE_AT } from "./channels-conformance.js";
 import type { ChannelsHarness, SeededThread } from "./channels-harness.js";
@@ -63,7 +64,7 @@ beforeAll(async () => {
   turnId = await harness.seedTurn(thread);
   secondTurnId = await harness.seedTurn(thread);
   appId = asIdentifier<ChannelAppId>(harness.base.freshId("0401"));
-  await harness.base.adapter.unitOfWork.run((transaction) =>
+  await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.repository.saveApp(
       {
         appId,

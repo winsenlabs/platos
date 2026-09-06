@@ -40,6 +40,7 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   TRANSACTION_NOT_OPEN,
@@ -107,7 +108,7 @@ describe("failure injection over a real transaction", () => {
   test("a thrown failure leaves NEITHER row behind", async () => {
     const credentialId = fresh();
     await expect(
-      harness.base.adapter.unitOfWork.run(async (transaction) => {
+      runResult(harness.base.adapter.unitOfWork, async (transaction) => {
         const created = await harness.repository.insertCredential(
           credentialDraft({
             id: credentialId,
@@ -145,7 +146,7 @@ describe("failure injection over a real transaction", () => {
     // own `inTransaction` is what makes that unreachable, and it is a different
     // file in a different package.
     const credentialId = fresh();
-    const refused = await harness.base.adapter.unitOfWork.run(async (transaction) => {
+    const refused = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       await harness.repository.insertCredential(
         credentialDraft({
           id: credentialId,
@@ -206,7 +207,7 @@ describe("the three transaction-scope refusals, told apart", () => {
       stale = transaction;
     });
     await expect(
-      harness.base.adapter.unitOfWork.run((transaction) => {
+      runResult(harness.base.adapter.unitOfWork, (transaction) => {
         expect(transaction).not.toEqual(stale);
         return harness.variables.upsert(
           {
@@ -236,7 +237,7 @@ describe("the three transaction-scope refusals, told apart", () => {
       await held.wait;
     });
     await opened.wait;
-    const refusal = harness.base.adapter.unitOfWork.run(() =>
+    const refusal = runResult(harness.base.adapter.unitOfWork, () =>
       harness.repository.appendAudit(
         auditDraft({
           id: fresh(),

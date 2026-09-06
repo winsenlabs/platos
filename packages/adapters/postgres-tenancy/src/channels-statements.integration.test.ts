@@ -44,6 +44,7 @@ import type {
   ThreadId,
 } from "@platos/context-channels/application/ports/index.js";
 import { asIdentifier, connectionOwner } from "@platos/context-channels/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { CONFORMANCE_AT } from "./channels-conformance.js";
 import type { ChannelsHarness } from "./channels-harness.js";
@@ -381,7 +382,7 @@ describe("every read costs the same over a small environment and a large one", (
 describe("the writes whose statement count is the contract", () => {
   test("a connection is its ancestry check and one upsert", async () => {
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.saveConnection(
           connectionOf(small, harness.base.freshId("060d")),
           transaction,
@@ -398,7 +399,7 @@ describe("the writes whose statement count is the contract", () => {
 
   test("an admission is ONE statement and the unique is what makes it idempotent", async () => {
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertEvent(
           eventOf(small, harness.base.freshId("060e"), `Ev-${harness.base.freshId("060f").slice(-8)}`, 99),
           transaction,
@@ -412,7 +413,7 @@ describe("the writes whose statement count is the contract", () => {
 
   test("a link is its probe and its insert, and a conflict is the probe alone", async () => {
     const fresh = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertThreadLink(
           {
             linkId: asIdentifier<ChannelThreadId>(harness.base.freshId("0610")),
@@ -427,7 +428,7 @@ describe("the writes whose statement count is the contract", () => {
     );
     expect(fresh.counted).toBe(2);
     const conflicting = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.repository.insertThreadLink(
           {
             linkId: asIdentifier<ChannelThreadId>(harness.base.freshId("0611")),

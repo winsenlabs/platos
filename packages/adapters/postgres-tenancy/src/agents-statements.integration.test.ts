@@ -22,6 +22,9 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
+import { runResult } from "@platos/kernel";
+import type { TransactionScope } from "@platos/kernel";
+
 import { HOME_ENVIRONMENT, scopeOf, startAgentsHarness, type AgentsHarness, type SeededAgent } from "./agents-harness.js";
 
 let harness: AgentsHarness;
@@ -85,7 +88,7 @@ beforeAll(async () => {
 
   const cluster = await harness.seedCluster({ slug: "statements-cluster" });
   const canary = await harness.seedVersion(rich, 2, "canary");
-  await harness.adapter.unitOfWork.run((transaction) =>
+  await runResult(harness.adapter.unitOfWork, (transaction) =>
     harness.repository.updateBinding(
       {
         ...rich.binding,
@@ -188,7 +191,7 @@ describe("statement counts", () => {
     // One, and not zero. The lock is a `SELECT … FOR UPDATE OF` and is counted
     // here rather than filtered away as a probe — see the note on `queries`.
     const counted = await measure(() =>
-      harness.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.adapter.unitOfWork, (transaction) =>
         harness.repository.observedVersionNumbers(deep.agent.agentId, transaction),
       ),
     );
@@ -199,7 +202,7 @@ describe("statement counts", () => {
 
   test("a refusable write is three statements, and the savepoint is two of them", async () => {
     const counted = await measure(() =>
-      harness.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.adapter.unitOfWork, (transaction) =>
         harness.repository.insertCluster(
           {
             clusterId: harness.freshId("0501") as never,
@@ -223,7 +226,7 @@ describe("statement counts", () => {
 
   test("a loadout is written in four statements and read in one", async () => {
     const written = await measure(() =>
-      harness.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.adapter.unitOfWork, (transaction) =>
         harness.repository.replaceLoadout(plain.version.agentVersionId, [], transaction),
       ),
     );

@@ -21,6 +21,7 @@ import type {
   TurnId,
 } from "@platos/context-governance/application/ports/index.js";
 import { asGovernanceIdentifier } from "@platos/context-governance/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   ACTOR,
@@ -43,7 +44,7 @@ export async function runEvalConformance(
   const secondTurnId = asGovernanceIdentifier<TurnId>(ids.secondTurnId);
 
   // -------------------------------------------------------------- criteria
-  const created = await environment.run((transaction) =>
+  const created = await runResult(environment, (transaction) =>
     stores.criteria.create(scope, conformanceCriterion(), ACTOR, transaction),
   );
   observed["criteria.create"] = outcome(created, (criterion) => ({
@@ -55,14 +56,14 @@ export async function runEvalConformance(
     scoreScaleMax: criterion.scoreScaleMax,
   }));
   observed["criteria.create.duplicate"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.criteria.create(scope, conformanceCriterion(), ACTOR, transaction),
     ),
     (criterion) => criterion.name,
   );
   const criterionId = created.ok ? created.value.evalCriterionId : asGovernanceIdentifier<EvalCriterionId>(ids.absentId);
 
-  await environment.run((transaction) =>
+  await runResult(environment, (transaction) =>
     stores.criteria.create(
       scope,
       conformanceCriterion({ name: "grounding", agentId }),
@@ -131,7 +132,7 @@ export async function runEvalConformance(
 
   if (created.ok) {
     observed["criteria.update"] = outcome(
-      await environment.run((transaction) =>
+      await runResult(environment, (transaction) =>
         stores.criteria.update(
           scope,
           { ...created.value, name: "helpfulness v2", isActive: false },
@@ -152,7 +153,7 @@ export async function runEvalConformance(
       // The name is one ANOTHER criterion in this environment already holds, so
       // the row is both out of scope AND clashing. Which refusal comes back is
       // the ORDER the checks run in, and the double checks scope first.
-      await environment.run((transaction) =>
+      await runResult(environment, (transaction) =>
         stores.criteria.update(
           scope,
           {
@@ -168,7 +169,7 @@ export async function runEvalConformance(
   }
 
   // ----------------------------------------------------------------- evals
-  const appended = await environment.run((transaction) =>
+  const appended = await runResult(environment, (transaction) =>
     stores.evals.append(scope, conformanceEval(ids, criterionId, { rawResponseTruncated: true }), transaction),
   );
   observed["evals.append"] = outcome(appended, (row) => ({
@@ -185,7 +186,7 @@ export async function runEvalConformance(
   }));
   const evalId = appended.ok ? appended.value.agentEvalId : null;
 
-  await environment.run((transaction) =>
+  await runResult(environment, (transaction) =>
     stores.evals.append(
       scope,
       conformanceEval(ids, criterionId, {
@@ -284,7 +285,7 @@ export async function runEvalConformance(
   );
 
   // ------------------------------------------------------------ goldenSets
-  const set = await environment.run((transaction) =>
+  const set = await runResult(environment, (transaction) =>
     stores.goldenSets.create(scope, conformanceGoldenSet(ids), ACTOR, transaction),
   );
   observed["goldenSets.create"] = outcome(set, (row) => ({
@@ -295,7 +296,7 @@ export async function runEvalConformance(
     createdBy: row.createdBy,
   }));
   observed["goldenSets.create.duplicate"] = outcome(
-    await environment.run((transaction) =>
+    await runResult(environment, (transaction) =>
       stores.goldenSets.create(scope, conformanceGoldenSet(ids), ACTOR, transaction),
     ),
     (row) => row.name,
@@ -310,7 +311,7 @@ export async function runEvalConformance(
   );
   if (set.ok) {
     observed["goldenSets.update"] = outcome(
-      await environment.run((transaction) =>
+      await runResult(environment, (transaction) =>
         stores.goldenSets.update(
           scope,
           { ...set.value, description: "trimmed to five", criterionIds: [criterionId] },
@@ -324,7 +325,7 @@ export async function runEvalConformance(
       (row) => (row === null ? null : { description: row.description, criterionIds: row.criterionIds.length }),
     );
     observed["goldenSets.update.outOfScope"] = outcome(
-      await environment.run((transaction) =>
+      await runResult(environment, (transaction) =>
         stores.goldenSets.update(
           scope,
           { ...set.value, goldenSetId: asGovernanceIdentifier(ids.absentId) },
@@ -334,13 +335,13 @@ export async function runEvalConformance(
       (row) => row.name,
     );
     observed["goldenSets.remove.hit"] = outcome(
-      await environment.run((transaction) =>
+      await runResult(environment, (transaction) =>
         stores.goldenSets.remove(scope, set.value.goldenSetId, transaction),
       ),
       (removed) => removed,
     );
     observed["goldenSets.remove.miss"] = outcome(
-      await environment.run((transaction) =>
+      await runResult(environment, (transaction) =>
         stores.goldenSets.remove(scope, set.value.goldenSetId, transaction),
       ),
       (removed) => removed,
@@ -352,11 +353,11 @@ export async function runEvalConformance(
   // decision and the double is obliged to model it; this is where the two are
   // asked whether they agree that a measurement does not outlive the question.
   observed["criteria.remove"] = outcome(
-    await environment.run((transaction) => stores.criteria.remove(scope, criterionId, transaction)),
+    await runResult(environment, (transaction) => stores.criteria.remove(scope, criterionId, transaction)),
     (removed) => removed,
   );
   observed["criteria.remove.again"] = outcome(
-    await environment.run((transaction) => stores.criteria.remove(scope, criterionId, transaction)),
+    await runResult(environment, (transaction) => stores.criteria.remove(scope, criterionId, transaction)),
     (removed) => removed,
   );
   observed["evals.page.afterCascade"] = outcome(

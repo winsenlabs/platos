@@ -18,6 +18,8 @@ import {
   ImmediateUnitOfWork,
   InMemoryObservabilityRepository,
 } from "@platos/context-observability/application/testing/index.js";
+import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/kernel";
 
 import type { AuditScope, ObservabilityHarness } from "./observability-harness.js";
 import { startObservabilityHarness } from "./observability-harness.js";
@@ -68,8 +70,8 @@ test("the fake and the real store answer the same scenario identically", async (
     scope: home.scope,
     foreignScope: foreign.scope,
     ids,
-    run: <Value>(work: (transaction: TransactionScope) => Promise<Value>) =>
-      harness.base.adapter.unitOfWork.run(work),
+    run: <Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>) =>
+      harness.base.adapter.unitOfWork.run<Value>(work),
   });
 
   // KEY BY KEY, so a divergence names the step rather than dumping two objects.

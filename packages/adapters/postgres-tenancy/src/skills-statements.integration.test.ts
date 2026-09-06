@@ -34,6 +34,7 @@ import type {
   SkillId,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier } from "@platos/context-skills/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import { conformanceDraft, conformanceIdentity } from "./skills-conformance.js";
 import { startSkillsHarness, type SkillsHarness, type SkillsTenant } from "./skills-harness.js";
@@ -88,7 +89,7 @@ async function seed(
   slug: string,
   install: boolean,
 ): Promise<{ skillId: SkillId; bindingId: EnvironmentSkillId | null }> {
-  const written = await harness.run((transaction) =>
+  const written = await runResult(harness, (transaction) =>
     harness.repository.upsertSkill(
       conformanceDraft(tenant.scope, slug, "1.0.0", { isOfficial: true }),
       transaction,
@@ -146,7 +147,7 @@ beforeAll(async () => {
   // Twenty rows authored by the erasure subject in the large tenant, and one in
   // the small, so the anonymisation's cost can be measured against both.
   for (let index = 0; index < HEAVY; index += 1) {
-    await harness.run((transaction) =>
+    await runResult(harness, (transaction) =>
       harness.repository.upsertSkill(
         conformanceDraft(large.scope, `acme.authored${String(index).padStart(2, "0")}`, "1.0.0", {
           isOfficial: true,
@@ -156,7 +157,7 @@ beforeAll(async () => {
       ),
     );
   }
-  await harness.run((transaction) =>
+  await runResult(harness, (transaction) =>
     harness.repository.upsertSkill(
       conformanceDraft(small.scope, "acme.authored", "1.0.0", {
         isOfficial: true,
@@ -277,7 +278,7 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
     },
     upsertSkillInserting: {
       small: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.upsertSkill(
             conformanceDraft(small.scope, "acme.measured", "1.0.0"),
             transaction,
@@ -285,7 +286,7 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
         ),
       ),
       large: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.upsertSkill(
             conformanceDraft(large.scope, "acme.measured", "1.0.0"),
             transaction,
@@ -295,7 +296,7 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
     },
     upsertSkillUpdating: {
       small: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.upsertSkill(
             conformanceDraft(small.scope, "acme.measured", "1.0.0"),
             transaction,
@@ -303,7 +304,7 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
         ),
       ),
       large: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.upsertSkill(
             conformanceDraft(large.scope, "acme.measured", "1.0.0"),
             transaction,
@@ -313,31 +314,31 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
     },
     patchSkill: {
       small: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.patchSkill(smallSkillId, { name: "measured" }, transaction),
         ),
       ),
       large: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.patchSkill(largeSkillId, { name: "measured" }, transaction),
         ),
       ),
     },
     upsertProjectInstallation: {
       small: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.upsertProjectInstallation(small.scope, smallSkillId, transaction),
         ),
       ),
       large: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.upsertProjectInstallation(large.scope, largeSkillId, transaction),
         ),
       ),
     },
     deleteEnvironmentInstallation: {
       small: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.deleteEnvironmentInstallation(
             small.scope,
             asIdentifier<SkillId>("cccccccc-0001-4000-8000-000000000001"),
@@ -346,7 +347,7 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
         ),
       ),
       large: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.deleteEnvironmentInstallation(
             large.scope,
             asIdentifier<SkillId>("cccccccc-0001-4000-8000-000000000001"),
@@ -359,7 +360,7 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
     // manifest half were an update per row.
     anonymizeAuthoredSkills: {
       small: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.anonymizeAuthoredSkills(
             { scope: organizationOf(small), principalId: AUTHOR },
             transaction,
@@ -367,7 +368,7 @@ async function measureAll(): Promise<Record<string, { small: number; large: numb
         ),
       ),
       large: await measure(() =>
-        harness.run((transaction) =>
+        runResult(harness, (transaction) =>
           harness.repository.anonymizeAuthoredSkills(
             { scope: organizationOf(large), principalId: AUTHOR },
             transaction,

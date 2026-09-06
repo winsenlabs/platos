@@ -34,6 +34,7 @@ import type {
   TurnId,
 } from "@platos/context-governance/application/ports/index.js";
 import { asGovernanceIdentifier } from "@platos/context-governance/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import {
   conformanceCriterion,
@@ -103,7 +104,7 @@ async function seedFixture(events: number, evals: number): Promise<Fixture> {
     secondTurnId: chain.secondTurnId,
     absentId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
   };
-  const created = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const created = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.criteria.create(
       scope,
       conformanceCriterion({ name: `pinned-${events}` }),
@@ -287,7 +288,7 @@ describe("the writes are a fixed number too", () => {
   test("`upsert` is TWO on both paths, so the count is a pin and not a path", async () => {
     // The CREATE path: a scoped update that matches nothing, then the insert.
     const created = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.ratings.upsert(
           small.scope,
           {
@@ -305,7 +306,7 @@ describe("the writes are a fixed number too", () => {
     );
     // The FLIP path: the same scoped update, matching, then the read back.
     const flipped = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.ratings.upsert(
           small.scope,
           {
@@ -327,7 +328,7 @@ describe("the writes are a fixed number too", () => {
   test("`anonymizeSubject` is ONE update, however many rows it rewrites", async () => {
     // Two rows in the small fixture, forty in the large, one statement in both.
     const smallResult = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.safety.anonymizeSubject(
           { scope: small.scope, principalId: "subject-a" },
           transaction,
@@ -335,7 +336,7 @@ describe("the writes are a fixed number too", () => {
       ),
     );
     const largeResult = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.safety.anonymizeSubject(
           { scope: large.scope, principalId: "subject-a" },
           transaction,
@@ -350,7 +351,7 @@ describe("the writes are a fixed number too", () => {
     expect(found.ok && found.value).not.toBeNull();
     if (!found.ok || found.value === null) return;
     const measured = await measure(() =>
-      harness.base.adapter.unitOfWork.run((transaction) =>
+      runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.criteria.update(
           small.scope,
           { ...found.value!, description: "measured" },

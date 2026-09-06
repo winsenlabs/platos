@@ -24,6 +24,7 @@ import type {
   ThresholdEventId,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { CostConformanceEnvironment, CostObservation } from "./cost-conformance.js";
 import { AFTER_LEASE, AT, LATER, LEASE_UNTIL, conformanceChannel } from "./cost-conformance.js";
@@ -127,16 +128,16 @@ async function runChannels(
     enabled: null,
     limit: 10,
   });
-  observed.insertEmailChannel = await environment.run((transaction) =>
+  observed.insertEmailChannel = await runResult(environment, (transaction) =>
     repository.insertAlertChannel(email, transaction),
   );
-  observed.insertSlackChannel = await environment.run((transaction) =>
+  observed.insertSlackChannel = await runResult(environment, (transaction) =>
     repository.insertAlertChannel(slack, transaction),
   );
   // The SAME operator-supplied deduplication key on a different channel. The
   // index that refuses it is not partial, which is why `retireChannel` clears
   // the key rather than leaving it on a tombstoned row.
-  observed.insertClashingChannel = await environment.run((transaction) =>
+  observed.insertClashingChannel = await runResult(environment, (transaction) =>
     repository.insertAlertChannel(
       conformanceChannel(scope, ids.clashingChannelId, {
         name: "second mailbox",
@@ -180,14 +181,14 @@ async function runChannels(
   // Switched off, and the count drops. That is the whole reason the delete path
   // asks before it tells the vault to revoke: a second channel still switched on
   // would be broken by the revoke, and a switched-off one would not.
-  observed.disableSlackChannel = await environment.run((transaction) =>
+  observed.disableSlackChannel = await runResult(environment, (transaction) =>
     repository.updateAlertChannel({ ...slack, enabled: false, updatedAt: AFTER_LEASE }, transaction),
   );
   observed.countCredentialHoldersAfterDisable = await repository.countChannelsUsingCredential(
     scope,
     ids.credentialId,
   );
-  observed.enableSlackChannel = await environment.run((transaction) =>
+  observed.enableSlackChannel = await runResult(environment, (transaction) =>
     repository.updateAlertChannel({ ...slack, updatedAt: AFTER_LEASE }, transaction),
   );
   observed.countCredentialHoldersRestored = await repository.countChannelsUsingCredential(
@@ -210,7 +211,7 @@ async function runChannels(
     scope,
     "not-a-uuid",
   );
-  observed.updateMissingChannel = await environment.run((transaction) =>
+  observed.updateMissingChannel = await runResult(environment, (transaction) =>
     repository.updateAlertChannel(
       conformanceChannel(scope, ids.missingChannelId),
       transaction,
@@ -246,13 +247,13 @@ async function runDeliveries(
     LATER,
   );
 
-  observed.fanOut = await environment.run((transaction) =>
+  observed.fanOut = await runResult(environment, (transaction) =>
     repository.insertDeliveries([first, second], transaction),
   );
   // A RE-fan-out of the same crossing writes nothing for the row that exists and
   // one for the row that does not. The skip is the store's uniqueness rule, not
   // a read the caller did first.
-  observed.refanOut = await environment.run((transaction) =>
+  observed.refanOut = await runResult(environment, (transaction) =>
     repository.insertDeliveries([first, third], transaction),
   );
   observed.deliveriesForCrossing = await repository.listDeliveriesForEvent(
@@ -303,7 +304,7 @@ async function runClaims(
   const record = sendRecord(scope.environmentId, ids.firstDeliveryId, holder.retryCount, LATER);
 
   // A STALE token. Nothing is written: not the row, and not the send record.
-  observed.finaliseStale = await environment.run((transaction) =>
+  observed.finaliseStale = await runResult(environment, (transaction) =>
     repository.finaliseDelivery(
       done,
       record,
@@ -311,7 +312,7 @@ async function runClaims(
       transaction,
     ),
   );
-  observed.finaliseFirst = await environment.run((transaction) =>
+  observed.finaliseFirst = await runResult(environment, (transaction) =>
     repository.finaliseDelivery(
       done,
       record,
@@ -375,13 +376,13 @@ async function runProbe(
     LATER,
     LATER,
   );
-  observed.insertProbe = await environment.run((transaction) =>
+  observed.insertProbe = await runResult(environment, (transaction) =>
     repository.insertDelivery(probe, transaction),
   );
   // NOBODY claimed it — the port calls this "a synchronous test send" and the
   // domain refuses it for a `BUDGET` row, because a fan-out has concurrent
   // dispatchers this predicate could not tell apart.
-  observed.settleProbe = await environment.run((transaction) =>
+  observed.settleProbe = await runResult(environment, (transaction) =>
     repository.settleDelivery(
       settled({ ...probe, retryCount: 1 }, AFTER_LEASE),
       sendRecord(scope.environmentId, ids.probeDeliveryId, 1, AFTER_LEASE),

@@ -26,6 +26,7 @@ import type {
 } from "@platos/context-governance/application/ports/index.js";
 import { asGovernanceIdentifier } from "@platos/context-governance/application/ports/index.js";
 import { InMemoryGoldenSetsRepository } from "@platos/context-governance/application/testing/index.js";
+import { runResult } from "@platos/kernel";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import {
@@ -83,7 +84,7 @@ function reasonOf(result: { readonly ok: boolean }): string {
 }
 
 async function freshCriterion(name: string): Promise<EvalCriterionId> {
-  const created = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const created = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.criteria.create(scope, conformanceCriterion({ name }), actor, transaction),
   );
   if (!created.ok) throw new Error(`fixture criterion ${name} was refused`);
@@ -92,7 +93,7 @@ async function freshCriterion(name: string): Promise<EvalCriterionId> {
 
 test("deleting a criterion destroys every eval taken against it, and the database does it", async () => {
   const criterionId = await freshCriterion(`cascade-${Date.now()}`);
-  const appended = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const appended = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.evals.append(scope, conformanceEval(ids, criterionId), transaction),
   );
   expect(appended.ok).toBe(true);
@@ -100,7 +101,7 @@ test("deleting a criterion destroys every eval taken against it, and the databas
 
   expect(await observer.agentEval.count({ where: { criterionId } })).toBe(1);
 
-  await harness.base.adapter.unitOfWork.run((transaction) =>
+  await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.criteria.remove(scope, criterionId, transaction),
   );
 
@@ -119,7 +120,7 @@ test("`rawResponseTruncated` is echoed on write and FALSE on every read: no colu
   // migration; until then this is what the store does and this case is what says
   // so out loud.
   const criterionId = await freshCriterion(`truncated-${Date.now()}`);
-  const appended = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const appended = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.evals.append(
       scope,
       conformanceEval(ids, criterionId, { rawResponseTruncated: true, rawResponse: "cut" }),
@@ -182,7 +183,7 @@ describe("the safety metadata envelope, against rows an older binary wrote", () 
 });
 
 test("anonymising OVERWRITES and never deletes, seen from a connection that did not write it", async () => {
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.append(
       scope,
       conformanceSafetyEvent(ids, {
@@ -196,7 +197,7 @@ test("anonymising OVERWRITES and never deletes, seen from a connection that did 
   expect(written.ok).toBe(true);
   if (!written.ok) return;
 
-  const erased = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const erased = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.safety.anonymizeSubject({ scope, principalId: "subject-erased" }, transaction),
   );
   expect(erased.ok && erased.value).toBe(1);
@@ -236,15 +237,15 @@ test("a golden-set RENAME onto a taken name: the double allows it, the index doe
   expect(fakePage.ok && fakePage.value.items.filter((row) => row.name === "alpha").length).toBe(2);
 
   // THE REAL STORE. Two sets, then the same rename.
-  const realFirst = await harness.base.adapter.unitOfWork.run((t) =>
+  const realFirst = await runResult(harness.base.adapter.unitOfWork, (t) =>
     harness.stores.goldenSets.create(scope, conformanceGoldenSet(ids, { name: "alpha" }), actor, t),
   );
-  const realSecond = await harness.base.adapter.unitOfWork.run((t) =>
+  const realSecond = await runResult(harness.base.adapter.unitOfWork, (t) =>
     harness.stores.goldenSets.create(scope, conformanceGoldenSet(ids, { name: "beta" }), actor, t),
   );
   expect(realFirst.ok && realSecond.ok).toBe(true);
   if (!realSecond.ok) return;
-  const refused = await harness.base.adapter.unitOfWork.run((t) =>
+  const refused = await runResult(harness.base.adapter.unitOfWork, (t) =>
     harness.stores.goldenSets.update(scope, { ...realSecond.value, name: "alpha" }, t),
   );
   expect(refused.ok).toBe(false);
@@ -265,7 +266,7 @@ test("`MessageRating_ancestry` fires on UPDATE, so a flip onto a foreign version
   const turnId = asGovernanceIdentifier<TurnId>(ids.secondTurnId);
   const endUserId = asGovernanceIdentifier<EndUserId>(ids.endUserId);
 
-  const created = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const created = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.ratings.upsert(
       scope,
       {
@@ -282,7 +283,7 @@ test("`MessageRating_ancestry` fires on UPDATE, so a flip onto a foreign version
   );
   expect(created.ok).toBe(true);
 
-  const refused = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const refused = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.ratings.upsert(
       scope,
       {
@@ -370,7 +371,7 @@ test("an erasure destroys ONE subject's ratings and leaves every other subject's
     [chainA.turnId, chainA.endUserId],
     [otherTurn, other],
   ] as const) {
-    const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.ratings.upsert(
         chainA.scope,
         {
@@ -388,7 +389,7 @@ test("an erasure destroys ONE subject's ratings and leaves every other subject's
     expect(written.ok).toBe(true);
   }
 
-  const erased = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const erased = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.ratings.eraseSubject(
       { scope: chainA.scope, endUserId: asGovernanceIdentifier<EndUserId>(chainA.endUserId) },
       transaction,
@@ -403,7 +404,7 @@ test("an erasure destroys ONE subject's ratings and leaves every other subject's
 
   // And a NULL subject erases nothing at all, which the port requires and which
   // an implementation that dropped the predicate would get exactly backwards.
-  const none = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const none = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.stores.ratings.eraseSubject({ scope: chainA.scope, endUserId: null }, transaction),
   );
   expect(none.ok && none.value).toBe(0);
@@ -426,7 +427,7 @@ describe("every read and every write is narrowed to ONE environment", () => {
       turnId: foreign.turnId,
     };
 
-    const criterion = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const criterion = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.criteria.create(
         foreign.scope,
         conformanceCriterion({ name: `foreign-${Date.now()}` }),
@@ -437,7 +438,7 @@ describe("every read and every write is narrowed to ONE environment", () => {
     expect(criterion.ok).toBe(true);
     if (!criterion.ok) return;
 
-    const set = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const set = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.goldenSets.create(
         foreign.scope,
         conformanceGoldenSet(foreignIds),
@@ -448,7 +449,7 @@ describe("every read and every write is narrowed to ONE environment", () => {
     expect(set.ok).toBe(true);
     if (!set.ok) return;
 
-    const rating = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const rating = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.ratings.upsert(
         foreign.scope,
         {
@@ -465,7 +466,7 @@ describe("every read and every write is narrowed to ONE environment", () => {
     );
     expect(rating.ok).toBe(true);
 
-    const event = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const event = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.safety.append(foreign.scope, conformanceSafetyEvent(foreignIds), transaction),
     );
     expect(event.ok).toBe(true);
@@ -491,7 +492,7 @@ describe("every read and every write is narrowed to ONE environment", () => {
     expect(ratingFromHere.ok && ratingFromHere.value).toBeNull();
 
     // WRITES from this scope must touch nothing over there.
-    const flip = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const flip = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.ratings.upsert(
         scope,
         {
@@ -518,15 +519,15 @@ describe("every read and every write is narrowed to ONE environment", () => {
     });
     expect(untouched).toEqual({ comment: "from another tenant", revision: 1 });
 
-    const removedCriterion = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const removedCriterion = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.criteria.remove(scope, criterion.value.evalCriterionId, transaction),
     );
     expect(removedCriterion.ok && removedCriterion.value).toBe(false);
-    const removedSet = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const removedSet = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.goldenSets.remove(scope, set.value.goldenSetId, transaction),
     );
     expect(removedSet.ok && removedSet.value).toBe(false);
-    const renamed = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const renamed = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.stores.goldenSets.update(scope, { ...set.value, name: "renamed" }, transaction),
     );
     expect(renamed.ok).toBe(false);
