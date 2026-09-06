@@ -1397,7 +1397,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "36135d9f589786f87beaca099483b5300f540a1f375b1b83298d8edad0bd810a",
+      "sha256": "6fb3c72fadbf36e53d2383c672e99846881ed4e548bb3bb0c25d8306d27b8969",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1553,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "5b4eaafddddafd6df96bddfcb392785d2984c7750f5ee574d0ae8643546b1606",
+      "sha256": "49b87bc571bd4aa403ddb54a25bc46f0bf016c606b898c7334b1c869c36039af",
       "binds": "current-repository-truth"
     },
     {

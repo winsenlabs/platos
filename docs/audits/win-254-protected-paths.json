@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "36135d9f589786f87beaca099483b5300f540a1f375b1b83298d8edad0bd810a"
+      "sha256": "6fb3c72fadbf36e53d2383c672e99846881ed4e548bb3bb0c25d8306d27b8969"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "5b4eaafddddafd6df96bddfcb392785d2984c7750f5ee574d0ae8643546b1606"
+      "sha256": "49b87bc571bd4aa403ddb54a25bc46f0bf016c606b898c7334b1c869c36039af"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "e81a1a94a1c4e39aac150c62991798193849549f858aa43fe854e7e39ecd88ce"
+      "sha256": "023a0ac5eebfdd233ef94c4bcf588105a5636a22429953349aac353b5ca98386"
     },
     {
       "path": "docs/v3-openapi.yaml",
