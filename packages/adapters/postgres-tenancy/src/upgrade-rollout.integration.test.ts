@@ -27,13 +27,29 @@
 
 import { afterAll, beforeAll, expect, test } from "vitest";
 
-import type { Result } from "@platos/kernel";
-import { environmentScope } from "@platos/kernel";
+// `environmentScope` comes from `channels`, and `channels-harness.ts` beside
+// this file takes it from the same place: `files` and `tools` re-export the
+// kernel TYPE their signatures name but not the constructor, and adding
+// `@platos/kernel` to this package's manifest for one function would add a
+// workspace edge `scripts/arch/v1-project-graph.mjs` counts.
+import { environmentScope } from "@platos/context-channels/application/ports/index.js";
 
-import type { EntityToolPolicy, EntityToolPolicyId } from "@platos/context-tools/domain/index.js";
-import { asIdentifier as asToolsIdentifier } from "@platos/context-tools/domain/index.js";
-import type { ActorId, ToolId, ToolName } from "@platos/context-tools/domain/index.js";
-import type { AttachmentScope, ThreadScope } from "@platos/context-files/domain/index.js";
+import type {
+  ActorId,
+  EntityToolPolicy,
+  EntityToolPolicyId,
+  Result,
+  ToolId,
+  ToolName,
+} from "@platos/context-tools/application/ports/index.js";
+import { asToolsIdentifier } from "@platos/context-tools/application/ports/index.js";
+import type {
+  AgentId,
+  AttachmentId,
+  AttachmentScope,
+  ThreadScope,
+} from "@platos/context-files/application/ports/index.js";
+import { asIdentifier as asFilesIdentifier } from "@platos/context-files/application/ports/index.js";
 
 import {
   attachmentFixture,
@@ -75,7 +91,10 @@ beforeAll(async () => {
   attachmentScopeOfLegacy = {
     environment: scope,
     threadId: threadIdOf(ids.thread),
-    owner: { endUserId: endUserIdOf(ids.endUser), agentId: endUserIdOf(ids.agent) },
+    owner: {
+      endUserId: endUserIdOf(ids.endUser),
+      agentId: asFilesIdentifier<AgentId>(ids.agent),
+    },
   };
 }, 900_000);
 
@@ -113,7 +132,7 @@ test("the V1 stores read ownership no legacy writer ever supplied", async () => 
   // m4 backfill, and the store's own read is what proves the backfill derived
   // the OWNER the store expects rather than merely a non-null value.
   const attachment = value(
-    await harness.adapter.findAttachment(thread, attachmentIdOf(ids.attachment)),
+    await harness.adapter.findAttachment(thread, asFilesIdentifier<AttachmentId>(ids.attachment)),
   );
   expect(attachment).not.toBeNull();
   expect({
@@ -314,10 +333,6 @@ test("the binary being replaced reads a tenancy tree the V1 stores minted", asyn
 function value<Value>(result: Result<Value>): Value {
   if (!result.ok) throw new Error(`the rehearsal requires this to succeed: ${result.error.code}`);
   return result.value;
-}
-
-function attachmentIdOf(value_: string): Parameters<RolloutHarness["adapter"]["findAttachment"]>[1] {
-  return value_ as unknown as Parameters<RolloutHarness["adapter"]["findAttachment"]>[1];
 }
 
 /** Every column name the rollout partner's client selects for a model. */
