@@ -48,7 +48,11 @@ import type {
 } from "@platos/context-agents/application/ports/index.js";
 import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
-import type { Cache } from "@platos/context-memory/application/ports/index.js";
+import type {
+  Cache,
+  KnowledgeGraphRepository,
+  MemoryRepository,
+} from "@platos/context-memory/application/ports/index.js";
 import type { ModelRouter } from "@platos/context-providers/application/ports/index.js";
 import type {
   ChannelAdapter,
@@ -222,6 +226,26 @@ interface PortSatisfaction {
     PostgresTenancyAdapter["secretsVariables"],
     EnvironmentVariableRepository
   >;
+  // WIN-258 T5. `memory`'s two canonical-store ports, proven through the
+  // PROPERTY that carries each one — and, like `secrets`' pair above, FORCED
+  // rather than stylistic. `KnowledgeGraphRepository.findEntity(subject,
+  // agentIds, entityId)` and `TenancyRepository.findEntity(entityId)` are both
+  // top-level members with one name and two signatures, so
+  // `PostgresTenancyAdapter` cannot extend both ports and
+  // `Satisfies<PostgresTenancyAdapter, KnowledgeGraphRepository>` would resolve
+  // to `never` and fail a binding that holds. `MemoryRepository` is indexed the
+  // same way for the same reason: the two arrive together under
+  // `MemoryDependencies`' own slot names, and a root that took one from a
+  // property and the other from the adapter would be describing one store two
+  // ways.
+  readonly "postgres-tenancy:MemoryRepository": Satisfies<
+    PostgresTenancyAdapter["memory"],
+    MemoryRepository
+  >;
+  readonly "postgres-tenancy:KnowledgeGraphRepository": Satisfies<
+    PostgresTenancyAdapter["memoryGraph"],
+    KnowledgeGraphRepository
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -258,6 +282,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:OperatorDirectory": true,
   "postgres-tenancy:SecretsRepository": true,
   "postgres-tenancy:EnvironmentVariableRepository": true,
+  "postgres-tenancy:MemoryRepository": true,
+  "postgres-tenancy:KnowledgeGraphRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -426,6 +452,35 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   }),
   Object.freeze({ adapter: "postgres-tenancy", port: "InvitationTokenIssuer", owner: "tenancy" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "OperatorDirectory", owner: "tenancy" }),
+  // WIN-258 T5 (ADR M0.3 §15). The TWENTIETH and TWENTY-FIRST bindings of the
+  // same directory, and the NINTH owner of the one PostgreSQL client.
+  //
+  // THEY SIT AFTER TENANCY'S FIVE RATHER THAN BESIDE `secrets`' PAIR, and that
+  // is a decision rather than an accident. Every block above counts its own
+  // ordinals from the end of the block before it, so inserting two rows in the
+  // middle would silently make three comments wrong; appending keeps every
+  // ordinal above true. They also belong here on their own merits: like the five
+  // they follow, and unlike the seven composites at the top, each of these is a
+  // single named PROPERTY on the adapter rather than a spread-in composite.
+  //
+  // They are TWO rows and not one because `memory` publishes two ports over
+  // three rows, and the split is the one its own port file argues for: the
+  // memory store is on the write path of every remembered fact and the graph is
+  // on the write path of extraction and the read path of fused retrieval, "so an
+  // installation can stand one of them up against a different technology without
+  // the other's methods coming along".
+  //
+  // The context's other four ports get no row here, and that is a claim rather
+  // than an omission: `Cache` is bound below to `redis-cache`, which ADR M0.3
+  // §13 names while assigning the PORT to this context; `EmbeddingModel` and
+  // `ExtractionJudge` are priced provider calls; and `ContentDigest` is a
+  // synchronous host hash with no failure channel and no row.
+  Object.freeze({ adapter: "postgres-tenancy", port: "MemoryRepository", owner: "memory" }),
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "KnowledgeGraphRepository",
+    owner: "memory",
+  }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
@@ -442,10 +497,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirty rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-two rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` NINETEEN times and open
- * nineteen pools over the one database.
+ * adapters would otherwise build `postgres-tenancy` TWENTY-ONE times and open
+ * twenty-one pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),
