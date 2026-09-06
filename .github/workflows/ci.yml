@@ -455,6 +455,21 @@ jobs:
         # step the six suites do not fail an assertion — they fail to LOAD, which
         # is the vacuity the mutation driver beside this package refuses to score.
         run: pnpm --filter "@platos/context-memory..." build
+      - name: Build the privacy context
+        # WIN-258 T5. The THIRTEENTH owner delegated to this directory. Its suites
+        # resolve that context through TWO published subpaths, both of which are
+        # dist/: `application/ports/index.js` for `PrivacyRepository` and the
+        # domain values its signatures name — republished by this tranche, because
+        # before it the port was nameable and `PersistedErasureOperation`,
+        # `ErasureTombstone` and `TombstoneDraft` were not — and
+        # `application/testing/index.js` for `InMemoryPrivacyRepository`, which the
+        # conformance differential is measured against. THAT SECOND SUBPATH IS NEW
+        # IN THIS TRANCHE: the double existed and the export map did not, so the
+        # only package entitled to implement the port had no way to import the
+        # double it must agree with. Without this step the five suites do not fail
+        # an assertion — they fail to LOAD, which is the vacuity the mutation
+        # ledger beside this package refuses to score.
+        run: pnpm --filter "@platos/context-privacy..." build
 
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
@@ -484,6 +499,15 @@ jobs:
         # eight owners' harnesses had to seed by hand because it had no entry in
         # `CANONICAL_STORE_ADAPTERS`. Those fixtures are unchanged and stay
         # unchanged: the entry moves no owner TAG.
+        #
+        # AND THE `privacy` CANONICAL STORE — the two rows of §1 row 18, and the
+        # THIRTEENTH owner. Its suites are the first here that prove a rule about
+        # CONCURRENCY rather than about a value: `claimLease` is a compare-and-set
+        # whose loser is decided by a row lock, and the in-memory double is a
+        # single-threaded map that cannot lose a race at all. They are also the
+        # first that prove a rule by the ABSENCE of a statement — the barrier's
+        # insert-then-extend must never send a DELETE, because the instant it
+        # would open is the width of the destructive pass.
         #
         # They FAIL when Docker is absent rather than skipping.
         run: pnpm test:postgres-tenancy:integration

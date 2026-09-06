@@ -438,3 +438,65 @@ export {
   UNREADABLE_MEMORY_METADATA,
   UnreadableMemoryRow,
 } from "./memory-rows.js";
+
+// WIN-258 T5 — `privacy`'s one canonical-store port. The factory leaves the
+// package for the reason `createCostMonitoringRepository` does: a composition
+// root that wanted this repository WITHOUT tenancy's — the retention sweep that
+// purges elapsed tombstones, say — has to be able to build one over the same
+// transactions rather than over a second client, and it takes the transactions
+// rather than a client so there is no second `AsyncLocalStorage` frame to build.
+//
+// THE REFUSAL CODES LEAVE IT BECAUSE THEY ARE DECISIONS, and on this port the
+// argument is sharper than anywhere else in this file. `privacy/domain/errors.ts`
+// publishes SEVENTEEN codes, and two of them — `PRIVACY_OPERATION_STORE_UNAVAILABLE`
+// and `PRIVACY_ERASURE_REGISTER_UNAVAILABLE` — are the only ones a store may
+// answer with. That pair is deliberately coarse for a CALLER: the barrier refuses
+// the write either way. It is useless for an OPERATOR, who needs to tell a
+// malformed identifier from an inverted retention window from a row an older
+// binary wrote, so the eleven write-shape refusals and the four unreadable-row
+// refusals are named here and carried out of band.
+//
+// `OPERATION_ID_TAKEN` IS THE ONE THAT IS NOT A SHAPE. It separates a caller who
+// minted an operation id twice from a genuine idempotency-key race, and the two
+// are told apart by a probe on the POOL after the caller's transaction is already
+// aborted. A composition root that could not distinguish them would report "your
+// key names a different subject" for a repeated uuid.
+//
+// ELEVEN OF THE FIFTEEN ARE PREFIXED AT THE SOURCE RATHER THAN ALIASED AT THIS
+// DOOR, and that is the lesson four tranches of aliasing taught.
+// `IDENTIFIER_NOT_UUID` was minted bare by `cost-monitoring`, then aliased by
+// `channels`, by `secrets` and by `skills`; `INSTANT_NOT_REPRESENTABLE` three
+// times over. Four aliases of one name are four chances to export the wrong one,
+// so `privacy-guards.ts` mints `PRIVACY_IDENTIFIER_NOT_UUID` and
+// `PRIVACY_INSTANT_NOT_REPRESENTABLE` under this context's own prefix and there
+// is nothing to arbitrate here at all.
+//
+// ONE IS STILL ALIASED, AND THE COLLISION IS THE INTERESTING ONE.
+// `conversations` publishes `UNKNOWN_WORK_STATUS` under its owner's prefix
+// precisely because `WorkStatus` is shared by `Thread`, `Turn`,
+// `PostmanExecution`, `Job` AND `ErasureOperation` — and `ErasureOperation` is
+// this row. The two codes are different strings for the same enum on different
+// tables, so this one takes the same treatment its sibling already argued for.
+export { createPrivacyRepository } from "./privacy-repository.js";
+export { OPERATION_ID_TAKEN } from "./privacy-operations.js";
+export {
+  PRIVACY_IDENTIFIER_NOT_UUID,
+  PRIVACY_INSTANT_NOT_REPRESENTABLE,
+  PRIVACY_LEASE_INCOHERENT,
+  PRIVACY_OUTCOMES_NOT_ARRAY,
+  PRIVACY_PAGE_LIMIT_INVALID,
+  PRIVACY_RETRY_COUNT_INVALID,
+  PRIVACY_SCOPES_NOT_ARRAY,
+  PRIVACY_SEAL_IDS_MISSING,
+  PRIVACY_SEAL_SPANS_TENANTS,
+  PRIVACY_TOMBSTONE_WINDOW_INVERTED,
+  PRIVACY_WORK_STATUS_UNKNOWN,
+  PrivacyWriteRefused,
+} from "./privacy-guards.js";
+export {
+  UNKNOWN_WORK_STATUS as PRIVACY_UNKNOWN_WORK_STATUS,
+  UNREADABLE_JSON_ARRAY,
+  UNREADABLE_TARGET_OUTCOME,
+  UNREADABLE_TENANT_SCOPE,
+  UnreadablePrivacyRow,
+} from "./privacy-rows.js";
