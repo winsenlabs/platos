@@ -35,6 +35,9 @@
       "path": "../../contexts/channels"
     },
     {
+      "path": "../../contexts/files"
+    },
+    {
       "path": "../../contexts/governance"
     },
     {

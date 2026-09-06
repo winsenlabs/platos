@@ -103,7 +103,18 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // per port. `memory` depends on `tenancy` and `providers` and nothing in the
 // 17-context DAG depends on `memory`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // again unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 106;
+// 106 -> 107 (WIN-258 T5, a THIRTEENTH owner). The directory gained one more
+// owner edge, to `packages/contexts/files`, carrying that context's single
+// canonical-store port over `MessageAttachment` and `Artifact`. It is the one
+// owner edge in this wave whose acyclicity needed CHECKING rather than
+// asserting: `skills` depends on `files` and `skills` is already an owner of the
+// same directory, so a cycle would need `files` to depend on `skills` — and the
+// ADR M0.3 §1 DAG has `files` depending on `tenancy` alone, which is why
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged. `files` becomes the only
+// context reached from TWO adapter directories: this one for its rows and
+// `objectstore-minio` for the `ObjectStore` port it also owns. Two directories,
+// two edges — not one directory with two.
+export const EXPECTED_EDGE_COUNT = 107;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -234,6 +245,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "conversations",
     "skills",
     "memory",
+    "files",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -256,7 +268,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 12 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 13 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.
