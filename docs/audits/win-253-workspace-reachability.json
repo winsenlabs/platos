@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e75f63a6f1290e9f4010cc3816c031d6c2a88398f7f8ba1019e22fa67eaaddc1",
+  "evidenceSha256": "ab949c0ae8ecffd78333e90a409d281192faf4bcb6b827e1f15e54b127e354ff",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "48df1d2b680583c57ee056d1d539b077c974934a3f9e38d78378f09015e0d892",
+    "aggregateSha256": "f7668802f80e2a5a054ce8ced774e22b27f8ea01b973a8bf73a0d3edd2fa2afa",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "7a0da6ec27ba10041f3cd7983726d3c760a950b8396cfbfdec352eb3656fc494"
+        "sha256": "649b26ccb7897cf4068e0fa2be7b63ca5d605ad174c17fc3929865b9af4b2d11"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -19102,10 +19102,6 @@
       {
         "path": "scripts/start-prometheus.sh",
         "sha256": "3a649b12b6c76d1b0c7ebb8f3b3d26765ad01b1bfd0267169d66ee4dd1a8c29e"
-      },
-      {
-        "path": "scripts/tmp-regen.sh",
-        "sha256": "8ed6e0cf9e4adaae709115ea52953b7329dbd96fecd29ed3e2b1b5199d29d93c"
       },
       {
         "path": "scripts/unpack-worker.js",
