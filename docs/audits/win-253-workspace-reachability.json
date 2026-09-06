@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "8b6bdfd2b7d47a06445893bbaafb546f8dfc545edb055d69ed623a93f27eef9f",
+  "evidenceSha256": "5222add68928b859cec6d189b490f32430a8c0905c001abc379b37691d0e56e7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "cd8672112f851f044f6843eccb883742f8f64cdd7ff4bb6e4c42f87b6dc8f839",
+    "aggregateSha256": "1ea6e728f315e6068ec8c6427613037aee9798bc58f48d204dfcc2b0bf740f3e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11489,7 +11489,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/conversations-threads.ts",
-        "sha256": "a828e12342d759cd1205784ba402ad8354d8ded645869a636238e54bcf6085b3"
+        "sha256": "257a07b2fd6cb7bb9c4d79dc800aad0058dfbe4c7f1e5848d7a0b2b047b0f402"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/conversations-transaction.integration.test.ts",
