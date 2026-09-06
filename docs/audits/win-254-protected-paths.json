@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "9166e03a941beba60dd424b3436cde02e72524d368df4897e2d4fe1d26a21f6a"
+      "sha256": "36d6514b618baf62e358a037879d5ed284054d86521b74877bb201ef1e163fb8"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "e6feb8a8d94d8025ed20b76294dd2b49f615aef53bd64d4729f5eab8202ae9ce"
+      "sha256": "af939e0d850d8375f3b514edb15c6c883617fc225cc12a72055dd43380f749bb"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "0be71bd94d98730a8dac709789d771bce5accf9211c9f9ac4b301f6eb4364934"
+      "sha256": "f74533d95ce24c8dc757144c48d8804663762900a8447a8c53b0146d5ff144e3"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "6539586f32566cfe3a996a4e625c5891c2a52b06f9f56e8f66339c81deba6382"
+      "sha256": "a21d7c60b2171014987b727d605b624e0dfd1b92246c514071d12c1eaaac42fa"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
