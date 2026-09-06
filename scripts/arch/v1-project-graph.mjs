@@ -9,7 +9,11 @@ import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 
-export const EXPECTED_PROJECT_COUNT = 32;
+// WIN-259 (M2.4) 32 -> 33. `packages/adapters/keyring-envelope`, the
+// thirteenth adapter directory. This expectation is derived independently of
+// `scripts/arch/gen-v1-skeleton.mjs` and is maintained separately on purpose,
+// so the two agreeing is evidence rather than a tautology.
+export const EXPECTED_PROJECT_COUNT = 33;
 // 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
 // `packages/kernel`.
 //
@@ -155,7 +159,28 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // it, so nothing in the 17-context DAG depends on `eventing` at all: it emits
 // `NotificationRequested` and performs no delivery. `EXPECTED_CONTEXT_DEPENDS_ON`
 // below is unchanged, and an adapter is a leaf of that DAG either way.
-export const EXPECTED_EDGE_COUNT = 111;
+//
+// WIN-259 (M2.4) 111 -> 113. TWO edges, from ONE new project:
+// `packages/adapters/keyring-envelope` -> `packages/contexts/secrets` is the
+// owner edge, and `apps/core-api` -> `packages/adapters/keyring-envelope` is
+// the composition-root edge every adapter gets. 111 + 2 = 113.
+//
+// THREE BINDINGS, ONE EDGE. `secrets` publishes `KeyRing`, `AeadCipher` and
+// `Hasher` as three separate ports and this directory satisfies all three, but
+// a project reference is per PACKAGE: the same shape the seventeen owner rows
+// of `postgres-tenancy` have, where `agents`' two canonical-store ports and
+// `governance`' five are one edge apiece.
+//
+// NO CYCLE IS POSSIBLE. ADR M0.3 §1 gives `secrets` the KERNEL ALONE as a
+// dependency -- the strictest allow-list in the table -- so it names no adapter
+// and cannot name this one, and `apps/core-api` is the sink of the whole graph.
+//
+// THE FIRST FAILING RUN OF THIS GATE READ 112, NOT 113, AND THAT IS WORTH
+// RECORDING. Before `keyring-envelope` was added to `EXPECTED_ADAPTER_OWNERS`
+// the discovered graph had no vertex for it, so its own owner edge was not
+// walked and only the composition root's was counted. Reading the pin off that
+// first number would have set it one short of what the tree actually has.
+export const EXPECTED_EDGE_COUNT = 113;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -304,6 +329,15 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "channel-slack": ["channels"],
   "notifier-email": ["cost-monitoring"],
   "notifier-webhook": ["cost-monitoring"],
+  // WIN-259 (M2.4). ONE owner and THREE bindings: `secrets` publishes
+  // `KeyRing`, `AeadCipher` and `Hasher` separately, and this map is keyed by
+  // OWNER rather than by port — an adapter reaching one context through three
+  // ports is one edge, because a project reference is per package.
+  //
+  // It gets no row in `EXPECTED_MULTI_OWNER_ADAPTERS` for exactly that reason,
+  // and the omission is the claim: the one directory entitled to more than one
+  // OWNER is still `postgres-tenancy`, at seventeen.
+  "keyring-envelope": ["secrets"],
 };
 
 /**
