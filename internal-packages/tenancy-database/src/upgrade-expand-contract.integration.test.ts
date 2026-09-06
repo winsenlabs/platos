@@ -269,29 +269,53 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
       }
     }
     expect(failures).toEqual([]);
-    // NON-VACUITY. A datamodel this sweep found empty would pass silently.
-    expect(oracleHead.models.length).toBeGreaterThan(100);
+    // NON-VACUITY, AS AN EXACT COUNT. The datamodel is byte-frozen and hash
+    // pinned, so its model count is a constant: a sweep over a datamodel that
+    // came back short is a sweep that measured something else.
+    expect(oracleHead.models.length).toBe(92);
   }, 600_000);
 
-  test("every physical column the rollout partner names survived, with its shape", () => {
-    const byKey = new Map(
+  test("no column the rollout partner names was altered under it, and none went", () => {
+    const migratedByKey = new Map(
       migrated.columns.map((column) => [`${column.table}.${column.column}`, column]),
     );
+    const baselineByKey = new Map(
+      baseline.columns.map((column) => [`${column.table}.${column.column}`, column]),
+    );
     const missing: string[] = [];
-    const loosened: string[] = [];
+    const altered: string[] = [];
+    let compared = 0;
     for (const model of oracleHead.models) {
       const table = model.dbName ?? model.name;
       for (const field of storedFields(model)) {
         const key = `${table}.${columnOf(field)}`;
-        const column = byKey.get(key);
-        if (column === undefined) missing.push(key);
-        else if (column.isNullable && field.isRequired && !field.hasDefaultValue) {
-          loosened.push(`${key} is nullable under a field the old client requires`);
+        const after = migratedByKey.get(key);
+        if (after === undefined) {
+          missing.push(key);
+          continue;
+        }
+        compared += 1;
+        // A column that ALSO existed at the baseline has to be byte-identical
+        // in shape. Comparing the old client's own notion of "required" against
+        // the database would measure a client convention instead: Prisma models
+        // every list field as required while PostgreSQL leaves the array column
+        // nullable, which is true of nine columns here and is not a migration.
+        const before = baselineByKey.get(key);
+        if (before === undefined) continue;
+        if (
+          before.dataType !== after.dataType ||
+          before.udtName !== after.udtName ||
+          before.isNullable !== after.isNullable ||
+          before.columnDefault !== after.columnDefault
+        ) {
+          altered.push(key);
         }
       }
     }
     expect(missing).toEqual([]);
-    expect(loosened).toEqual([]);
+    expect(altered).toEqual([]);
+    // NON-VACUITY. A datamodel whose fields resolved to nothing would pass.
+    expect(compared).toBeGreaterThan(700);
   });
 
   test("the legacy binary's SELECT is refused on exactly the renamed column's table", async () => {
@@ -309,8 +333,15 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
     expect(failures[0]?.message).toContain(columnOf(renamedColumn));
   }, 600_000);
 
-  test("the legacy binary's INSERT is refused wherever the upgrade made a column mandatory", async () => {
-    await expect(
+  test("the legacy binary's INSERT is refused, by the guard the database actually reaches", async () => {
+    // WHICH GUARD REFUSES IS THE MEASUREMENT. The declared operations say these
+    // two columns became mandatory, and a case that only asserted "the write
+    // fails" would pass on any refusal at all — a foreign key, a unique index, a
+    // typo. Both SQLSTATEs are captured and pinned, and the two are DIFFERENT,
+    // which is the finding: `MessageAttachment` never reaches its NOT NULL
+    // because a row-level ancestry rule installed by the same migration runs
+    // first and refuses with a domain message of its own.
+    const attachment = await refusal(() =>
       delegateOf(legacyClient, "MessageAttachment").create({
         data: {
           id: refusedIds.attachment,
@@ -323,9 +354,11 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
           storageKey: "legacy-writer-after-upgrade",
         },
       }),
-    ).rejects.toThrow(/agentId|threadId|null value|not-null/i);
+    );
+    expect(attachment.sqlstate).toBe("23514");
+    expect(attachment.message).toContain("MessageAttachment crosses its canonical owner ancestry");
 
-    await expect(
+    const policy = await refusal(() =>
       delegateOf(legacyClient, "EntityToolPolicy").create({
         data: {
           id: refusedIds.policy,
@@ -336,7 +369,22 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
           addedBy: "legacy-writer-after-upgrade",
         },
       }),
-    ).rejects.toThrow(/environmentId|null value|not-null/i);
+    );
+    expect(policy.sqlstate).toBe("23502");
+    expect(policy.message).toContain("environmentId");
+
+    // Neither row landed. A refusal that had already written would be a
+    // different defect from the one this case is about.
+    const survivors = await v1.$queryRawUnsafe<Array<{ attachments: bigint; policies: bigint }>>(
+      'SELECT (SELECT count(*) FROM "MessageAttachment" WHERE "id" = $1::uuid)::bigint AS attachments, ' +
+        '(SELECT count(*) FROM "EntityToolPolicy" WHERE "id" = $2::uuid)::bigint AS policies',
+      refusedIds.attachment,
+      refusedIds.policy,
+    );
+    expect({
+      attachments: Number(survivors[0]?.attachments),
+      policies: Number(survivors[0]?.policies),
+    }).toEqual({ attachments: 0, policies: 0 });
   });
 
   test("the legacy binary's vocabulary is fenced, and the rows it wrote were rewritten", async () => {
@@ -419,6 +467,31 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
 
 function describeError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * The SQLSTATE a write was refused with, and the message that came with it.
+ *
+ * MATCHED ON SQLSTATE, NOT ON PROSE. An earlier tranche learned this the hard
+ * way: the client remaps some of these to its own codes and drops the rule's own
+ * message on the way, so a case that recognised a refusal by its wording
+ * recognised nothing. The raw code travels in the client's error text, which is
+ * the only place both survive together.
+ */
+async function refusal(
+  write: () => Promise<unknown>,
+): Promise<{ sqlstate: string; message: string }> {
+  try {
+    await write();
+  } catch (error: unknown) {
+    const message = describeError(error);
+    const matched = /code:\s*"(\d{5})"/u.exec(message);
+    if (matched === null) {
+      throw new Error(`refusal carried no SQLSTATE; the client said: ${message}`);
+    }
+    return { sqlstate: matched[1] as string, message };
+  }
+  throw new Error("the write was accepted; this case exists because it must not be");
 }
 
 /** What the V1 binary writes into the SAME database, after the upgrade. */
