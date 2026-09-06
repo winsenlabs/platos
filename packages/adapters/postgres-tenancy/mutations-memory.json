@@ -1,0 +1,485 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `memory`'s canonical store, the",
+    "NINTH owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM. One",
+    "entry per guard: per scope predicate, per shape check that stands where a",
+    "migration-only CHECK stands, per vocabulary check that keeps a row an older",
+    "binary wrote readable, per clause of the one filter translation four reads",
+    "share, and per statement the port's contract says must be one statement.",
+    "Each carries the file it lives in, the EXACT text that implements it",
+    "(`from`), the edit that removes it (`to`), and the NAMED cases that were seen",
+    "to go red (`kills`).",
+    "",
+    "IT IS A TENTH FILE beside mutations.json, mutations-identity.json,",
+    "mutations-ports.json, mutations-outbox.json, mutations-tools.json,",
+    "mutations-agents.json, mutations-cost.json, mutations-channels.json,",
+    "mutations-governance.json and mutations-secrets.json rather than an extension",
+    "of any of them, for the reason the fourth was: ten tranches are ten separate",
+    "claims about ten separate port surfaces, and a reader checking one should not",
+    "have to read past the other nine. All are hashed by the same",
+    "packages.adapters.config rule and counted together by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. Two of its guards protect columns the",
+    "GENERATED CLIENT CANNOT NAME AT ALL. `Memory.embedding` and",
+    "`MemoryEntity.embedding` are `Unsupported(\"vector(1536)\")`, so nothing",
+    "between a caller's array and pgvector's parser knows how long the column is,",
+    "and nothing type-checks the statement that carries it. And FOUR more protect",
+    "the `WHERE` of a read: a scope predicate deleted from a `findMany` is a",
+    "silent widening that returns MORE rows and fails no type, which is the one",
+    "shape a suite written by the same author as the store is least likely to",
+    "notice."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to",
+    "sweep unless it is green with a non-zero executed case count, and classifies",
+    "a run with no executed cases as VACUOUS rather than as a kill.",
+    "",
+    "THE INTEGRATION SUITES RUN ON A REAL POSTGRESQL, in a container, on the",
+    "machine that has a daemon. `memory-rows.test.ts` is the only suite here that",
+    "runs without one, and it is the one that reaches the mapping branches a",
+    "container suite cannot: a container only ever reads rows THIS binary wrote,",
+    "so the unknown-vocabulary branches are unreachable from it except through the",
+    "one row the constraints suite plants as raw SQL.",
+    "",
+    "EVERY `from` IS A UNIQUE SUBSTRING OF ITS FILE and is applied literally, so a",
+    "sweep that silently matched nothing is impossible: the driver refuses an",
+    "entry whose `from` occurs zero times or more than once.",
+    "",
+    "RESULT, 2026-09-06, against PostgreSQL 16 (pgvector/pgvector:pg16) in a",
+    "container, on the THIRD sweep: 40 entries, 40 KILLED, 0 SURVIVED, 0 VACUOUS.",
+    "Every baseline suite set was green with a non-zero executed case count before",
+    "its mutation was applied, and every `from` matched its file exactly once.",
+    "",
+    "THE FIRST TWO SWEEPS ARE PART OF THE RESULT AND ARE RECORDED HERE RATHER",
+    "THAN DISCARDED. Sweep one: 34 killed, 5 survived, 1 anchor that matched",
+    "twice. Sweep two, after six new cases and one new observation: 38 killed, 2",
+    "survived — M-M34 because every row in the scenario still belonged to an agent",
+    "the search was scoped to, and M-M35 because the ledger pointed at the suite",
+    "its case had just been moved OUT of. Sweep three: 40 killed.",
+    "",
+    "THE FIRST SWEEP FOUND FIVE SURVIVORS AND ONE UNUSABLE ANCHOR, AND THEY ARE",
+    "WHY SIX CASES AND TWO OBSERVATIONS EXIST.",
+    "",
+    "M-M13 survived because NO READ ON EITHER PORT RETURNS AN EMBEDDING, so a",
+    "store that cleared the column on every update looked identical from every",
+    "suite; the three cases in `the three-case embedding directive` ask the column",
+    "directly instead. M-M16 survived because only one row ever carried the probe",
+    "hash, so dropping `sourceThreadId` from a four-column probe changed no",
+    "answer. M-M17 survived because the scenario only ever probed a profile as the",
+    "agent that WROTE it, for whom the cluster spelling and the agent spelling",
+    "resolve the same row — `findProfileRowFromPeer` is the observation that",
+    "separates them. M-M18 survived because every id it was given belonged to the",
+    "environment it was given. M-M35 survived because NO CALL THROUGH EITHER PORT",
+    "CAN EXERCISE IT: the store takes the row id and the environment off the same",
+    "aggregate, so a mismatched pair is unreachable — the case that closes it",
+    "calls the statement directly rather than arguing an equivalent mutant.",
+    "",
+    "M-M34 THEN SURVIVED THE SECOND SWEEP WITH A WORKING ANCHOR, and that is the",
+    "sharper half of it: every row the scenario wrote belonged to an agent the",
+    "search was scoped to, so deleting the agent clause from the ONE read whose",
+    "`WHERE` is written in SQL changed no answer. `insertOutsideCluster` is a",
+    "fourth row owned by the agent in no cluster, and it carries a vector so that",
+    "a DIFFERENT clause is not what excludes it.",
+    "",
+    "AND M-M34'S ANCHOR MATCHED TWICE ON THE FIRST SWEEP. `selectMemoryCandidates` and",
+    "`selectEntityCandidates` carry byte-identical agent-scope and",
+    "`embedding IS NOT NULL` clauses, so the driver refused the entry rather than",
+    "mutating a statement the entry does not name. The anchor now reaches one line",
+    "further and is unique. That refusal is the driver doing its job: an entry",
+    "that silently mutated the wrong statement would have been scored against the",
+    "wrong guard."
+  ],
+  "mutations": [
+    {
+      "name": "M-M01 guards: the @db.Uuid check on every identifier",
+      "file": "src/memory-guards.ts",
+      "from": "export function requireUuid(label: string, value: string): string {\n  if (!UUID.test(value)) {",
+      "to": "export function requireUuid(label: string, value: string): string {\n  if (false) {",
+      "note": "`memoryFixture()` mints `mem-1`, `entityFixture()` `ent-1` and `relationshipFixture()` `rel-1`, and every use-case suite in the context passes with them. Without this guard each reaches PostgreSQL, raises 22P02 INSIDE the caller's transaction and aborts it.",
+      "suites": ["src/memory-rows.test.ts", "src/memory-constraints.integration.test.ts"],
+      "kills": [
+        "requireStorableMemory refuses the id the context's own fixtures mint",
+        "column types the doubles do not have `mem-1` — the id the context's own fixture mints — is refused for a @db.Uuid column"
+      ]
+    },
+    {
+      "name": "M-M02 guards: the content hash is 64 LOWER-CASE hex digits",
+      "file": "src/memory-guards.ts",
+      "from": "  if (hash !== null && !SHA256_HEX.test(hash)) {",
+      "to": "  if (false) {",
+      "note": "`Memory_extraction_provenance_check` spells the regex in BOTH branches. `ContentDigest` promises determinism and says nothing about case, so an upper-case digest is a value the port permits and the column refuses.",
+      "suites": ["src/memory-rows.test.ts", "src/memory-constraints.integration.test.ts"],
+      "kills": [
+        "requireStorableMemory refuses an upper-case digest, which is a different string to PostgreSQL",
+        "Memory_extraction_provenance_check an UPPER-CASE digest is refused: the CHECK is `~ '^[0-9a-f]{64}$'`"
+      ]
+    },
+    {
+      "name": "M-M03 guards: the EXTRACTED branch of the provenance CHECK",
+      "file": "src/memory-guards.ts",
+      "from": "    if (sourceThreadId === null || sourceTurnIds.length === 0 || hash === null) {",
+      "to": "    if (false) {",
+      "note": "THE ONE THE DOMAIN ITSELF CAN VIOLATE. `admitProvenance` refuses turns without a thread and nothing else, so a thread and an extractor with NO turns returns `ok`, is stored by the double, and satisfies neither branch of the CHECK.",
+      "suites": ["src/memory-rows.test.ts", "src/memory-constraints.integration.test.ts"],
+      "kills": [
+        "requireStorableMemory refuses a thread and an extractor with NO turns, which the domain admits",
+        "Memory_extraction_provenance_check a thread and an extractor with NO turns — which the domain ADMITS — is refused"
+      ]
+    },
+    {
+      "name": "M-M04 guards: the DIRECT branch of the provenance CHECK",
+      "file": "src/memory-guards.ts",
+      "from": "  if (sourceTurnIds.length > 0) {\n    throw new MemoryWriteRefused(\n      MEMORY_PROVENANCE_CONTRACT,\n      \"a memory with no extractor version may not claim source turns\",",
+      "to": "  if (false) {\n    throw new MemoryWriteRefused(\n      MEMORY_PROVENANCE_CONTRACT,\n      \"a memory with no extractor version may not claim source turns\",",
+      "note": "The CHECK is two branches and a row must satisfy one WHOLE branch. Turns claimed with no extractor is the second half, and it is a separate refusal from the first.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["requireStorableMemory refuses turns claimed with no extractor, which is the OTHER branch"]
+    },
+    {
+      "name": "M-M05 guards: Memory_confidence_check",
+      "file": "src/memory-guards.ts",
+      "from": "  if (!Number.isFinite(value) || value < 0 || value > 1) {",
+      "to": "  if (false) {",
+      "note": "`boundedConfidence` clamps on the paths that call it, and `Memory.confidence` is a plain nullable number that nothing clamps on the way into `insertMemory`. `Float` is double precision, which stores NaN happily; the CHECK refuses it because `NaN BETWEEN 0 AND 1` is false.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["requireStorableMemory tells the two confidence constraints apart"]
+    },
+    {
+      "name": "M-M06 guards: the entity key fits the two partial unique indexes",
+      "file": "src/memory-guards.ts",
+      "from": "  if (entity.entityKey.length > MAX_ENTITY_KEY_LENGTH) {",
+      "to": "  if (false) {",
+      "note": "`MAX_ENTITY_KEY_LENGTH` is the domain's cap and `stableSlug` applies it; a key arriving through a transport boundary with the assertion already spent does not pass through either.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["requireStorableEntity and requireStorableRelationship refuse an entity key longer than the partial unique indexes carry"]
+    },
+    {
+      "name": "M-M07 guards: a NaN weight, which double precision would have stored",
+      "file": "src/memory-guards.ts",
+      "from": "export function requireStorableWeight(value: number | null): number | null {\n  if (value === null) return null;\n  if (!Number.isFinite(value)) {",
+      "to": "export function requireStorableWeight(value: number | null): number | null {\n  if (value === null) return null;\n  if (false) {",
+      "note": "`MemoryRelationship.weight` carries NO CHECK at all, so a NaN is stored and every mean taken over the column afterwards is NaN with no error anywhere.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["requireStorableEntity and requireStorableRelationship refuse a NaN weight, which double precision would have stored"]
+    },
+    {
+      "name": "M-M08 guards: the three *_metadata_json_root CHECKs",
+      "file": "src/memory-guards.ts",
+      "from": "  if (typeof metadata !== \"object\" || Array.isArray(metadata)) {",
+      "to": "  if (false) {",
+      "note": "`MemoryMetadata` is typed object-or-null, so this stands for the value that arrives through a transport boundary with the type assertion already spent. All three tables carry the CHECK.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["requireStorableMemory refuses metadata whose root is an array"]
+    },
+    {
+      "name": "M-M09 guards: Memory_source_check",
+      "file": "src/memory-guards.ts",
+      "from": "  if (!isMemorySource(memory.source)) {",
+      "to": "  if (false) {",
+      "note": "The 2026-08-24 migration normalised twelve legacy spellings into four and then installed the CHECK. A store that wrote `turn` would be writing a value that migration deliberately removed.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["requireStorableMemory refuses a source outside the CHECK and a profile key in an unstored spelling"]
+    },
+    {
+      "name": "M-M10 guards: the profile key is stored in the spelling normalizeProfileKey produces",
+      "file": "src/memory-guards.ts",
+      "from": "  if (memory.profileKey !== null && normalizeProfileKey(memory.profileKey) !== memory.profileKey) {",
+      "to": "  if (false) {",
+      "note": "`normalizeProfileKey` lower-cases in an EXPLICIT locale for a reason the domain states. A key stored in another spelling is a row `findProfileRow` will never match again — and there is no unique index to catch it, because the migration deliberately does not create one.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["requireStorableMemory refuses a source outside the CHECK and a profile key in an unstored spelling"]
+    },
+    {
+      "name": "M-M11 guards: the vector(1536) dimension",
+      "file": "src/memory-guards.ts",
+      "from": "  if (vector.length !== EMBEDDING_DIMENSIONS) {",
+      "to": "  if (false) {",
+      "note": "The column is `Unsupported` in the schema, so the generated client carries no type for it and NOTHING between a caller's array and pgvector's parser knows how long it is. `InMemoryEmbeddingModel.returnWidth(3)` produces exactly such a vector.",
+      "suites": ["src/memory-rows.test.ts", "src/memory-constraints.integration.test.ts"],
+      "kills": [
+        "toVectorLiteral refuses the three-component vector the context's embedding double produces",
+        "column types the doubles do not have a three-component vector is refused for a vector(1536) column, and the ROW is not written either"
+      ]
+    },
+    {
+      "name": "M-M12 guards: pgvector refuses NaN and Infinity",
+      "file": "src/memory-guards.ts",
+      "from": "    if (!Number.isFinite(component)) {",
+      "to": "    if (false) {",
+      "note": "A separate refusal from the dimension one, under its own code, because they are separate mistakes: a model that returned the wrong width and a model that returned a NaN are different incidents.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["toVectorLiteral refuses NaN and Infinity, which double precision stores and pgvector does not"]
+    },
+    {
+      "name": "M-M13 store: `keep` sends NO vector statement",
+      "file": "src/memory-store.ts",
+      "from": "        if (write.embedding.action !== \"keep\") {",
+      "to": "        if (true) {",
+      "note": "`keep` means the content did not change, so recomputing the vector would spend a model call to store the same numbers — and `vector` is null on that branch, so sending the statement CLEARS the column instead. The row silently stops being a search candidate.",
+      "suites": ["src/memory-vectors.integration.test.ts", "src/memory-statements.integration.test.ts"],
+      "kills": [
+        "the three-case embedding directive, against the column itself `keep` on an update leaves the stored vector standing",
+        "the writes an update with `keep` is ONE statement and with `set` it is two"
+      ]
+    },
+    {
+      "name": "M-M14 store: the agent scope on findMemory",
+      "file": "src/memory-store.ts",
+      "from": "          where: { id: memoryId, ...subjectWhere(subject), agentId: { in: [...agentIds] } },",
+      "to": "          where: { id: memoryId, ...subjectWhere(subject) },",
+      "note": "The port's own header: an implementation MUST return null, not a row from an agent outside the caller's cluster. Deleting the clause returns MORE rows and fails no type.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M15 store: the subject scope on findMemory",
+      "file": "src/memory-store.ts",
+      "from": "        const row = await transactions.reader().memory.findFirst({\n          where: { id: memoryId, ...subjectWhere(subject), agentId: { in: [...agentIds] } },",
+      "to": "        const row = await transactions.reader().memory.findFirst({\n          where: { id: memoryId, agentId: { in: [...agentIds] } },",
+      "note": "A memory id is installation-wide. Without the subject clause a caller holding an id from a support ticket reads another tenant's row.",
+      "suites": ["src/memory-constraints.integration.test.ts"],
+      "kills": ["tenant isolation a memory in another tenant is invisible to every read on this port"]
+    },
+    {
+      "name": "M-M16 store: the source-thread clause on the content-identity probe",
+      "file": "src/memory-store.ts",
+      "from": "          where: { ...subjectWhere(subject), sourceThreadId, contentHash },",
+      "to": "          where: { ...subjectWhere(subject), contentHash },",
+      "note": "The unique is over FOUR columns and the thread is one of them. A probe that ignored it would report a collision the index does not hold, and `mergeRepeatedExtraction` would fold a fact extracted from a conversation into a row written by hand.",
+      "suites": ["src/memory-rules.integration.test.ts"],
+      "kills": ["two more places the doubles and the database disagree the content-identity probe distinguishes a threaded row from an unthreaded one"]
+    },
+    {
+      "name": "M-M17 store: the ownership branch on findProfileRow",
+      "file": "src/memory-store.ts",
+      "from": "        const owner =\n          ownership.clusterId === null\n            ? { clusterId: null, agentId: ownership.agentId }\n            : { clusterId: ownership.clusterId };",
+      "to": "        const owner = { agentId: ownership.agentId };",
+      "note": "A clustered profile is one row for the whole cluster and a standalone one is one row per agent. Collapsing the two makes a peer agent's profile invisible and an unclustered agent's profile findable from the cluster. IT SURVIVED THE FIRST SWEEP because the scenario only ever probed as the WRITING agent, for whom both spellings answer the same row; `findProfileRowFromPeer` is the observation that separates them.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M18 store: the environment scope on touchAccessed",
+      "file": "src/memory-store.ts",
+      "from": "             WHERE \"environmentId\" = ${environment.environmentId}::uuid\n               AND \"id\" = ANY(string_to_array(${csv}, ',')::uuid[])`,",
+      "to": "             WHERE \"id\" = ANY(string_to_array(${csv}, ',')::uuid[])`,",
+      "note": "A raw statement whose only predicate is a list of ids is installation-wide. It is also the one write on this port that takes no `TransactionScope`, so a caller has no scope object to have checked it against.",
+      "suites": ["src/memory-constraints.integration.test.ts"],
+      "kills": ["tenant isolation `touchAccessed` names an environment, and an id from another one is not stamped"]
+    },
+    {
+      "name": "M-M19 store: the agent scope on deleteMemories",
+      "file": "src/memory-store.ts",
+      "from": "            agentId: { in: [...agentIds] },\n            id: { in: [...memoryIds] },",
+      "to": "            id: { in: [...memoryIds] },",
+      "note": "A delete that ignores the resolved agents lets one agent destroy a peer's memories with an id it read from a listing it was entitled to see.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M20 store: the vector statement on an insert that carries one",
+      "file": "src/memory-store.ts",
+      "from": "        if (vector !== null) {\n          await writeMemoryEmbedding(",
+      "to": "        if (false) {\n          await writeMemoryEmbedding(",
+      "note": "The column the client cannot name. Without the second statement every memory is written WITHOUT its embedding and is never a search candidate — and no read on this port returns the column, so nothing else could notice.",
+      "suites": ["src/memory-conformance.integration.test.ts", "src/memory-statements.integration.test.ts"],
+      "kills": [
+        "the in-memory doubles and the PostgreSQL stores answer the scenario identically",
+        "the writes an insert WITHOUT a vector is one statement; WITH one it is exactly two"
+      ]
+    },
+    {
+      "name": "M-M21 rows: the kind column is validated, not cast",
+      "file": "src/memory-rows.ts",
+      "from": "  if (!isMemoryKind(value)) throw new UnreadableMemoryRow(UNKNOWN_MEMORY_KIND, \"Memory.kind\", value);",
+      "to": "  if (false) throw new UnreadableMemoryRow(UNKNOWN_MEMORY_KIND, \"Memory.kind\", value);",
+      "note": "`kind` is a plain `String` column with NO CHECK — the closed set lives only in `domain/taxonomy.ts`. A cast puts a value outside `MemoryKind` into recall, where `isAtomKind` and the working-set projection both branch on it.",
+      "suites": ["src/memory-rows.test.ts", "src/memory-constraints.integration.test.ts"],
+      "kills": [
+        "toMemory refuses a kind, a source and a visibility this binary has not heard of, each with its own code",
+        "an expand/contract read a `kind` written by an OLDER binary is refused as an unreadable row, not cast past"
+      ]
+    },
+    {
+      "name": "M-M22 rows: the source column is validated, under its OWN code",
+      "file": "src/memory-rows.ts",
+      "from": "  if (!isMemorySource(value)) throw new UnreadableMemoryRow(UNKNOWN_MEMORY_SOURCE, \"Memory.source\", value);",
+      "to": "  if (false) throw new UnreadableMemoryRow(UNKNOWN_MEMORY_SOURCE, \"Memory.source\", value);",
+      "note": "Three vocabulary columns, three codes. A binary that could not tell a wrong source from a wrong kind would report one incident for two different schema drifts — and `excludeRag` is a filter over exactly this column.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["toMemory refuses a kind, a source and a visibility this binary has not heard of, each with its own code"]
+    },
+    {
+      "name": "M-M23 rows: the visibility column is validated, under its own code",
+      "file": "src/memory-rows.ts",
+      "from": "  if (!isMemoryVisibility(value)) {\n    throw new UnreadableMemoryRow(UNKNOWN_MEMORY_VISIBILITY, \"Memory.visibility\", value);",
+      "to": "  if (false) {\n    throw new UnreadableMemoryRow(UNKNOWN_MEMORY_VISIBILITY, \"Memory.visibility\", value);",
+      "note": "The migration rewrote a legacy `subject` spelling in place. A cast would make `isRecallable` decide on a value `agentVisibleFor` has never heard of, which answers false for everything that is not exactly `agent_visible`.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["toMemory refuses a kind, a source and a visibility this binary has not heard of, each with its own code"]
+    },
+    {
+      "name": "M-M24 rows: a stored metadata root that is not an object is refused on READ",
+      "file": "src/memory-rows.ts",
+      "from": "  if (typeof value !== \"object\" || Array.isArray(value)) {\n    throw new UnreadableMemoryRow(UNREADABLE_MEMORY_METADATA, column, String(value));",
+      "to": "  if (false) {\n    throw new UnreadableMemoryRow(UNREADABLE_MEMORY_METADATA, column, String(value));",
+      "note": "The three CHECKs make such a row unstorable, so one holding an array was written by something that bypassed the database. Reading it as `MemoryMetadata` puts a value the type says cannot exist into an aggregate.",
+      "suites": ["src/memory-rows.test.ts"],
+      "kills": ["toMemory refuses a metadata root that is not an object, and reads one that is"]
+    },
+    {
+      "name": "M-M25 rows: agentVisible is DERIVED from visibility",
+      "file": "src/memory-rows.ts",
+      "from": "    agentVisible: agentVisibleFor(memory.visibility),",
+      "to": "    agentVisible: true,",
+      "note": "`Memory_visibility_check` is a constraint over the PAIR. Writing the boolean independently makes a private row unstorable — and would make a hidden one agent-visible if the CHECK were ever dropped.",
+      "suites": ["src/memory-constraints.integration.test.ts"],
+      "kills": ["Memory_visibility_check — the PAIR constraint a private row stores agentVisible = FALSE, because the store derives it"]
+    },
+    {
+      "name": "M-M26 listing: the kind clause of the one filter translation",
+      "file": "src/memory-listing.ts",
+      "from": "  if (filter.kind !== null) conditions.push({ kind: filter.kind });",
+      "to": "  if (false) conditions.push({ kind: filter.kind });",
+      "note": "Four reads share this translation, so a clause deleted here widens all four at once. That is the whole reason it is one function rather than four `where` objects.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M27 listing: the visibility clause",
+      "file": "src/memory-listing.ts",
+      "from": "  if (filter.visibilities.length > 0) conditions.push({ visibility: { in: [...filter.visibilities] } });",
+      "to": "  if (false) conditions.push({ visibility: { in: [...filter.visibilities] } });",
+      "note": "`RUNTIME_RECALL_FILTER` is agent-visible only, and the domain is explicit that a caller who named no visibilities gets runtime recall rather than everything. Deleting the clause hands a turn the subject's PRIVATE memories.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M28 listing: the archive state, both directions",
+      "file": "src/memory-listing.ts",
+      "from": "  if (filter.archiveState === \"active\") conditions.push({ archivedAt: null });",
+      "to": "  if (false) conditions.push({ archivedAt: null });",
+      "note": "Three states and the union is not a boolean: a memory can be archived AND quarantined, and `matchesArchiveState` is the domain's own predicate. An operator's archive is reversible and must stay out of recall while it lasts.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M29 listing: excludeQuarantined",
+      "file": "src/memory-listing.ts",
+      "from": "  if (filter.excludeQuarantined) conditions.push({ quarantinedAt: null });",
+      "to": "  if (false) conditions.push({ quarantinedAt: null });",
+      "note": "Quarantine is the one lifecycle state a caller cannot set by hand: `domain/confidence.ts` sets and clears it from the CURRENT ratings. A recall that ignored it would re-serve a memory the subject's own thumbs-down withdrew.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M30 listing: the agent scope every set read shares",
+      "file": "src/memory-listing.ts",
+      "from": "    agentId: { in: [...filter.agentIds] },\n    AND: conditions,",
+      "to": "    AND: conditions,",
+      "note": "The same widening as M-M14, applied to four reads at once instead of one. `MemoryFilter`'s own comment: every field narrows; none widens.",
+      "suites": ["src/memory-conformance.integration.test.ts", "src/memory-constraints.integration.test.ts"],
+      "kills": [
+        "the in-memory doubles and the PostgreSQL stores answer the scenario identically",
+        "tenant isolation a memory in another tenant is invisible to every read on this port"
+      ]
+    },
+    {
+      "name": "M-M31 listing: the export cursor",
+      "file": "src/memory-listing.ts",
+      "from": "          where: afterId === null ? where : { ...where, id: { gt: afterId } },",
+      "to": "          where,",
+      "note": "A keyset page that ignores its cursor returns the FIRST page forever, so an export of a large subject silently loops on the first N rows and reports itself complete when the caller stops asking.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M32 listing: the total on a page is a COUNT, not the page length",
+      "file": "src/memory-listing.ts",
+      "from": "        const total = await reader.memory.count({ where });",
+      "to": "        const total = rows.length;",
+      "note": "The operator surface pages at 100. A total equal to the page length says there is nothing on page two, whatever is there.",
+      "suites": ["src/memory-conformance.integration.test.ts", "src/memory-statements.integration.test.ts"],
+      "kills": [
+        "the in-memory doubles and the PostgreSQL stores answer the scenario identically",
+        "the set reads `pageMemories` is exactly TWO — a page and its total, and never a third"
+      ]
+    },
+    {
+      "name": "M-M33 vectors: a row with no embedding is not a search candidate",
+      "file": "src/memory-vectors.ts",
+      "from": "       AND \"embedding\" IS NOT NULL\n       AND (${bindings.kind}::text IS NULL OR \"kind\" = ${bindings.kind}::text)",
+      "to": "       AND (${bindings.kind}::text IS NULL OR \"kind\" = ${bindings.kind}::text)",
+      "note": "A profile is stored WITHOUT an embedding on purpose — it is read by key from the turn-start injector and is never a semantic-search candidate. Without the clause it is returned with a NULL distance, which sorts FIRST.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M34 vectors: the agent scope inside the raw search",
+      "file": "src/memory-vectors.ts",
+      "from": "       AND \"endUserId\" = ${bindings.endUserId}::uuid\n       AND \"agentId\" = ANY(string_to_array(${bindings.agentCsv}, ',')::uuid[])\n       AND \"embedding\" IS NOT NULL\n       AND (${bindings.kind}::text IS NULL",
+      "to": "       AND \"endUserId\" = ${bindings.endUserId}::uuid\n       AND \"embedding\" IS NOT NULL\n       AND (${bindings.kind}::text IS NULL",
+      "note": "The one read whose `WHERE` is written in SQL rather than composed by the client, and therefore the one a reviewer is least likely to check against the port's scoping rule. IT SURVIVED THE SECOND SWEEP because every row in the scenario belonged to an agent the search was scoped to; `insertOutsideCluster` is the row that makes the clause observable, and it carries a vector so that a DIFFERENT clause is not what excludes it.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M35 vectors: the environment scope on the vector write",
+      "file": "src/memory-vectors.ts",
+      "from": "     WHERE \"id\" = ${memoryId}::uuid AND \"environmentId\" = ${environmentId}::uuid`;\n}\n\nexport async function writeEntityEmbedding(",
+      "to": "     WHERE \"id\" = ${memoryId}::uuid`;\n}\n\nexport async function writeEntityEmbedding(",
+      "note": "A raw UPDATE keyed on a bare primary key is installation-wide. It is a WRITE and `MUTATING_SQL_STATEMENT` attributes it to `memory` by the table it names, but nothing in the gate says which ROWS of that table it may reach. NO CALL THROUGH EITHER PORT CAN EXERCISE IT — the store takes the id and the environment off the same aggregate — so the case that kills it calls the statement directly, which is the honest alternative to arguing an equivalent mutant.",
+      "suites": ["src/memory-vectors.integration.test.ts"],
+      "kills": ["the three-case embedding directive, against the column itself the vector write is SCOPED, so a mismatched environment reaches no row"]
+    },
+    {
+      "name": "M-M36 entities: the clustered branch of the upsert probe",
+      "file": "src/memory-entities.ts",
+      "from": "        const branches =\n          ownership.clusterId === null\n            ? [standaloneWhere]\n            : [{ clusterId: ownership.clusterId }, standaloneWhere];",
+      "to": "        const branches = [standaloneWhere];",
+      "note": "The two PARTIAL unique indexes are two identity domains. A probe that only ever asks the standalone one reports no candidate for a clustered node, and `planEntityUpsert` then INSERTS a duplicate the cluster index refuses.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M37 entities: listEntitiesByIds answers in the CALLER's order",
+      "file": "src/memory-entities.ts",
+      "from": "        const ordered: MemoryEntity[] = [];\n        for (const entityId of entityIds) {\n          const entity = byId.get(entityId);\n          if (entity !== undefined) ordered.push(entity);\n        }\n        return ok(ordered);",
+      "to": "        return ok([...byId.values()]);",
+      "note": "`domain/traversal.ts` expands a frontier by handing this method the ids it just collected and walking the answer. In the table's own order the walk's shape depends on the physical order of the rows.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M38 entities: clusterId is in the update payload, so a promotion is reachable",
+      "file": "src/memory-entities.ts",
+      "from": "          data: { clusterId: entity.ownership.clusterId, ...entityWriteData(entity) },",
+      "to": "          data: entityWriteData(entity),",
+      "note": "`promoteEntity` in the domain is the one ownership move `enforce_memory_entity_owner_transition` permits. Dropping the column makes the store answer `ok` for a promotion that did not happen — the worst of the three possible behaviours, because the caller believes it.",
+      "suites": ["src/memory-rules.integration.test.ts"],
+      "kills": ["enforce_memory_entity_owner_transition a standalone node PROMOTES into the cluster its agent is actually bound to"]
+    },
+    {
+      "name": "M-M39 relationships: an edge is incident in EITHER direction",
+      "file": "src/memory-relationships.ts",
+      "from": "            OR: [{ fromEntityId: { in: endpoints } }, { toEntityId: { in: endpoints } }],",
+      "to": "            fromEntityId: { in: endpoints },",
+      "note": "The port asks for every edge with an endpoint in the frontier, in EITHER direction, and it is the one primitive traversal has. Following only the out-edges makes the graph directed to a domain that treats it as undirected.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    },
+    {
+      "name": "M-M40 erasure: a subject-less selector destroys NOTHING",
+      "file": "src/memory-erasure.ts",
+      "from": "  if (selector.endUserId === null) return null;",
+      "to": "  if (false) return null;",
+      "note": "`MemoryErasureSelector.endUserId` is nullable — 'null when the subject is not an end user'. A null that reached the `WHERE` would make it an environment alone: every memory of every person in it. This is the fail-CLOSED direction, and it is measured in both.",
+      "suites": ["src/memory-conformance.integration.test.ts"],
+      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+    }
+  ]
+}

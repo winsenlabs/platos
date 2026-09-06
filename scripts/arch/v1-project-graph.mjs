@@ -73,8 +73,8 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `secrets` on the kernel alone — so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // unchanged.
 //
-// 102 -> 105 (WIN-258 T5, a NINTH, a TENTH and an ELEVENTH owner). The directory
-// gained three more owner edges. The first is to `packages/contexts/providers`,
+// 102 -> 106 (WIN-258 T5, a NINTH, a TENTH, an ELEVENTH and a TWELFTH owner).
+// The directory gained four more owner edges. The first is to `packages/contexts/providers`,
 // whose four canonical rows — `ProviderKey`, `EnvironmentProvider`, `Model` and
 // `ModelPrice` — are in that same PostgreSQL database: ONE edge carrying ONE
 // binding, because `providers` publishes a single canonical-store port over all
@@ -95,7 +95,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `files` and `agents` depends on `skills`, all of which the 17-context DAG
 // already carries, and an adapter is a leaf of that DAG. The 17-context graph is
 // unchanged by all three.
-export const EXPECTED_EDGE_COUNT = 105;
+//
+// AND a TWELFTH owner edge, to `packages/contexts/memory`, whose three canonical rows — `Memory`,
+// `MemoryEntity` and `MemoryRelationship` — are in that same PostgreSQL
+// database. It is ONE edge carrying TWO bindings, `MemoryRepository` and
+// `KnowledgeGraphRepository`, because a project reference is per PACKAGE and not
+// per port. `memory` depends on `tenancy` and `providers` and nothing in the
+// 17-context DAG depends on `memory`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is
+// again unchanged and no cycle is possible.
+export const EXPECTED_EDGE_COUNT = 106;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -202,9 +210,9 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // owner string until WIN-258 T2, which is the same shape as a one-element list
 // and a NARROWER statement than the layout now makes: `postgres-tenancy` holds
 // the repositories of EVERY context whose canonical rows live in the one
-// PostgreSQL database it has the client for — two at T2, and six since tranche 5
-// bound `tools`, `agents`, `cost-monitoring` and `governance`, and the shape has
-// not had to change to say so.
+// PostgreSQL database it has the client for — two at T2, and NINE since tranche
+// 5 bound `tools`, `agents`, `cost-monitoring`, `channels`, `governance`,
+// `secrets` and `memory`, and the shape has not had to change to say so.
 //
 // The widening is exactly "one or more", not "any". The list is still compared
 // as an EXACT, ORDERED expectation against the tsconfig references and manifest
@@ -225,6 +233,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "providers",
     "conversations",
     "skills",
+    "memory",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -247,7 +256,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 11 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 12 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

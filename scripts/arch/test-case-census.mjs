@@ -1931,14 +1931,91 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * package is where those guards are held falsifiable.
  *
  *
+ *
+ *
+ *
+ * WIN-258 TRANCHE 5 — THE `memory` CANONICAL STORE (M2.3) adds 7 files and 89
+ * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
+ *
+ *   memory-rows.test.ts                       24  the row mapping and the write
+ *                                                 guards without a database:
+ *                                                 which stored column is
+ *                                                 trusted, which is refused,
+ *                                                 and which value the CONTEXT
+ *                                                 itself produces that the
+ *                                                 schema will not hold
+ *   memory-conformance.integration.test.ts     2  the shared scenario against
+ *                                                 the two in-memory doubles and
+ *                                                 against PostgreSQL, compared
+ *                                                 step by step, plus a
+ *                                                 non-vacuity case that pins
+ *                                                 its shape
+ *   memory-constraints.integration.test.ts    18  what the MIGRATIONS refuse and
+ *                                                 `schema.prisma` does not say,
+ *                                                 each stood beside the raw
+ *                                                 statement the guard was
+ *                                                 written from
+ *   memory-rules.integration.test.ts          10  the four row rules, the two
+ *                                                 cascades, ONE of the two port
+ *                                                 contracts the real database
+ *                                                 proves unhonourable, and the
+ *                                                 two places the context's own
+ *                                                 doubles are WRONG rather than
+ *                                                 different
+ *   memory-vectors.integration.test.ts         5  the two `vector(1536)` columns
+ *                                                 the generated client cannot
+ *                                                 name: what `set`, `keep` and
+ *                                                 `clear` do to one, and the
+ *                                                 OTHER unhonourable contract —
+ *                                                 a search reading a column no
+ *                                                 method on its port can write
+ *   memory-transaction.integration.test.ts    12  failure injection from a
+ *                                                 SECOND connection, a returned
+ *                                                 error `Result` that COMMITS,
+ *                                                 the three scope refusals and
+ *                                                 the ambient read frame
+ *   memory-statements.integration.test.ts     18  measured statement counts,
+ *                                                 every pin taken over two rows
+ *                                                 and over twenty
+ *
+ * 24 + 2 + 18 + 10 + 12 + 18 + 5 = 89, over 7 files, and every one of the seven
+ * numbers is READ BACK from the counter in this file rather than tallied by
+ * hand. Six of the seven need a real PostgreSQL and are run by the
+ * `postgres-tenancy-repository` CI job; `memory-rows.test.ts` is not, because
+ * neither the mapping nor the guards have a database in them — and it is the
+ * only one of the seven that can reach a stored `kind` this binary cannot read,
+ * since a container only ever reads rows this binary wrote.
+ *
+ * THE SEVENTH FILE EXISTS BECAUSE A MUTATION SURVIVED AND THE BUDGET THEN BIT.
+ * `mutations-memory.json` M-M13 clears the vector on every update and survived
+ * FIVE suites, because no read on either port returns an embedding; the three
+ * cases that close it ask the column directly. Appending them to the rules suite
+ * took it to 500 effective lines — the ADR M0.3 §6 ERROR threshold exactly — and
+ * the seam the budget was pointing at is real: that file is about what the
+ * SCHEMA decides for a row, and this one about the one thing in this store the
+ * schema declares and the client cannot express.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite, for the
+ * reason every tranche before it gives: it is ONE scenario of sixty-odd
+ * observations compared verbatim, so adding an observation strengthens the
+ * differential and moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-memory.json` is where those
+ * guards are held falsifiable instead.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 60 -> 67 FILES and 604 -> 693 CASES, and the
+ * tree total 431 -> 438 files and 6520 -> 6609 cases. The adapters term of the
+ * three-way identity carries all seven, because every added file is an
+ * adapter's: 79 + 7 = 86, and 349 + 3 + 86 = 438.
+ *
  * ALL FOUR OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE TOO, so its row is
- * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 = 81 files and
- * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 = 840 cases. `providers`
- * contributes 7 files / 77 cases, `conversations` 8 / 97 and `skills` 6 / 62,
- * and no branch's own figure — 67/681, 68/701 or 66/666 — survives the merge.
- * The tree total is 431 + 21 = 452 files and 6520 + 236 = 6756 cases. The
- * adapters term of the three-way identity carries all twenty-one, because every
- * added file is an adapter's: 79 + 21 = 100, and 349 + 3 + 100 = 452.
+ * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 + 7 = 88 files
+ * and 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 + 89 = 929 cases.
+ * `providers` contributes 7 files / 77 cases, `conversations` 8 / 97, `skills`
+ * 6 / 62 and `memory` 7 / 89, and no branch's own figure — 67/681, 68/701,
+ * 66/666 or 67/693 — survives the merge. The tree total is 431 + 28 = 459 files
+ * and 6520 + 325 = 6845 cases. The adapters term of the three-way identity
+ * carries all twenty-eight, because every added file is an adapter's:
+ * 79 + 28 = 107, and 349 + 3 + 107 = 459.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1949,7 +2026,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 81, cases: 840 },
+  "packages/adapters/postgres-tenancy": { files: 88, cases: 929 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2135,7 +2212,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6756;
+export const EXPECTED_RUNTIME_TOTAL = 6845;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

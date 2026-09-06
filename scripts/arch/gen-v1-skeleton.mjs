@@ -179,6 +179,29 @@ export const ADAPTERS = [
       { port: "EnvironmentAccessKeyRevocationCounter", owner: "tenancy" },
       { port: "InvitationTokenIssuer", owner: "tenancy" },
       { port: "OperatorDirectory", owner: "tenancy" },
+      // WIN-258 T5 adds the NINTH owner. `memory` owns three canonical rows in
+      // that same database — `Memory`, `MemoryEntity` and `MemoryRelationship` —
+      // and publishes TWO canonical-store ports over them, because
+      // `knowledge-graph-repository.ts` keeps the graph in its own vocabulary on
+      // purpose: one store is on the write path of every remembered fact and the
+      // other on the write path of extraction and the read path of fused
+      // retrieval.
+      //
+      // BOTH ARE SATISFIED BY PROPERTIES rather than by spread-in methods, and
+      // like `secrets`' pair that was FORCED. `KnowledgeGraphRepository` and
+      // `TenancyRepository` both declare a top-level `findEntity`, with
+      // different signatures, so one interface cannot extend both — the
+      // composition root therefore proves these two as
+      // `PostgresTenancyAdapter["memory"]` and
+      // `PostgresTenancyAdapter["memoryGraph"]`.
+      //
+      // The context's four OTHER ports get no binding on this directory. `Cache`
+      // is bound to `redis-cache` below — ADR M0.3 §13 assigns the PORT here and
+      // puts Redis behind that adapter — while `EmbeddingModel` and
+      // `ExtractionJudge` are priced provider calls and `ContentDigest` is a
+      // synchronous host hash with no failure channel and no row.
+      { port: "MemoryRepository", owner: "memory" },
+      { port: "KnowledgeGraphRepository", owner: "memory" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -282,7 +305,7 @@ export function adapterOwnerPackages(adapter) {
 // separately: another owner is a row on an existing directory, not a thirteenth
 // package holding a second PostgreSQL client.
 //
-// 30 -> 35 (WIN-258 T5, twice). `providers` adds ONE canonical-store binding,
+// 30 -> 38 (WIN-258 T5, four times). `providers` adds ONE canonical-store binding,
 // `ProvidersRepository`, over the four rows of ADR M0.3 §1 row 4; it is the
 // NINTH owner of the one PostgreSQL client and the only one of tranche 5's
 // stores whose port needed no property at all, because its eighteen method names
@@ -300,8 +323,21 @@ export function adapterOwnerPackages(adapter) {
 // two are; `ConversationsDependencies` simply names four SLOTS, and a root has to
 // hand each port over under its own name. EXPECTED_ADAPTER_COUNT is unmoved
 // again, and for the tenth time that is the point of pinning the two separately.
+//
+// AND `memory` adds TWO canonical-store bindings,
+// `MemoryRepository` and `KnowledgeGraphRepository`, and is the TWELFTH owner of
+// the one PostgreSQL client. It publishes two ports because the memory store is
+// on the write path of every remembered fact and the graph is on the write path
+// of extraction and the read path of fused retrieval, and its own port file asks
+// for the split so an installation can stand one of them up against a different
+// technology. BOTH are PROPERTIES rather than spread-in methods, and that was
+// forced the way `secrets`' pair was: `KnowledgeGraphRepository` and
+// `TenancyRepository` both declare a top-level `findEntity` of a different
+// signature, so one interface cannot extend both. EXPECTED_ADAPTER_COUNT is
+// deliberately unmoved a TWELFTH time, which is the point of pinning the two
+// separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 36;
+export const EXPECTED_BINDING_COUNT = 38;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -381,7 +417,7 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
 //
-// 102 -> 105 (WIN-258 T5, a NINTH, a TENTH and an ELEVENTH owner).
+// 102 -> 106 (WIN-258 T5, a NINTH, a TENTH, an ELEVENTH and a TWELFTH owner).
 // `packages/adapters/postgres-tenancy` -> `packages/contexts/providers`, for that
 // context's `ProvidersRepository` over the four rows of §1 row 4: ONE edge
 // carrying ONE binding, because `providers` publishes a single canonical-store
@@ -403,7 +439,16 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `files` and `agents` depends on `skills`, all of which the DAG already
 // carries, and an adapter is a leaf of it. The 17-context DAG is untouched by
 // all three.
-export const EXPECTED_EDGE_COUNT = 105;
+//
+// AND `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/memory`. A TWELFTH owner edge, carrying that context's TWO
+// canonical-store ports — one edge, two bindings, because a project reference is
+// per PACKAGE and not per port. It cannot create a cycle: contexts are leaves
+// relative to adapters, `memory` depends on `tenancy` and `providers`, and
+// nothing in the 17-context DAG depends on `memory`. The independent expectation
+// in scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
+export const EXPECTED_EDGE_COUNT = 106;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -550,6 +595,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/governance", // WIN-258 T5 — its FIVE doubles are the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/providers", // WIN-258 T5 — measured against InMemoryProvidersRepository by packages/adapters/postgres-tenancy
   "packages/contexts/conversations", // WIN-258 T5 — InMemoryConversations satisfies all FOUR of its ports and is the differential
+  "packages/contexts/memory", // WIN-258 T5 — InMemoryMemoryRepository and InMemoryKnowledgeGraphRepository are the differential packages/adapters/postgres-tenancy is measured against
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
@@ -840,7 +886,13 @@ function countWord(count) {
     [
       "ZERO", "ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT",
       "NINE", "TEN", "ELEVEN", "TWELVE", "THIRTEEN", "FOURTEEN", "FIFTEEN",
+      // WIN-258 T5 extended it again, and the fallback proved it needed to be:
+      // `memory`'s two canonical stores took the shared directory to TWENTY-ONE,
+      // one past the end of the list, and the README regenerated as "Implements
+      // 21 owner-supplied ports" — the digit-in-a-sentence-of-words drift this
+      // helper exists to remove, arriving exactly as the note above predicts.
       "SIXTEEN", "SEVENTEEN", "EIGHTEEN", "NINETEEN", "TWENTY",
+      "TWENTY-ONE", "TWENTY-TWO", "TWENTY-THREE", "TWENTY-FOUR", "TWENTY-FIVE",
     ][count] ?? String(count)
   );
 }

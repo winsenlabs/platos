@@ -48,6 +48,9 @@
     },
     {
       "path": "../../contexts/skills"
+    },
+    {
+      "path": "../../contexts/memory"
     }
   ]
 }
