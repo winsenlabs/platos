@@ -35,7 +35,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { AttachmentId, TransactionScope } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
-import { runResult } from "@platos/context-files/application/ports/index.js";
+import { ok, runResult } from "@platos/context-files/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import {
@@ -121,27 +121,54 @@ describe("an artifact revision and an attachment are one transaction or neither"
     expect(await observer.messageAttachment.count({ where: { id: attachmentId } })).toBe(0);
   }, 120_000);
 
-  test("a GUARD refusal is a value: the earlier write in the same unit of work COMMITS", async () => {
-    const attachmentId = freshId();
+  test("a GUARD refusal is a value: RETURNING it rolls back, READING it does not", async () => {
+    // THIS CASE USED TO END "AND THE ATTACHMENT IS THERE", and it called that
+    // the CONTRACT: the caller was told no in a value it can act on, with its
+    // own transaction intact. Half of that is unchanged and half of it moved.
+    //
+    // WHAT MOVED: returning the refusal from the unit of work now ROLLS BACK.
+    // WIN-260 (M2.5) made "resolve with an error" unwritable — `run` refuses a
+    // `Result`-valued callback — so a callback that answers with a refusal is
+    // saying the frame failed, and the frame is discarded.
+    //
+    // WHAT DID NOT: the guards still refuse BEFORE a statement is sent, so the
+    // transaction is never poisoned, and a caller that reads the refusal and
+    // carries on still commits the work it already did. That is the whole
+    // reason the guards refuse where they do, and it is the second half below.
+    const rolledBack = freshId();
     const outcome = await runResult(harness, async (transaction) => {
       const written = await harness.repository.insertAttachment(
-        attachmentFixture(chain.attachment, attachmentId, { contentHash: "sha256:guard-witness" }),
+        attachmentFixture(chain.attachment, rolledBack, { contentHash: "sha256:guard-witness" }),
         transaction,
       );
       expect(written.ok).toBe(true);
-      // Refused BEFORE a statement is sent, so the transaction is untouched.
       return harness.repository.insertArtifactRevision(
         artifactFixture(chain.thread, freshId(), { artifactKey: "guarded", revision: 0 }),
         transaction,
       );
     });
     expect(refusalCode(outcome)).toBe("files.write.integer_out_of_range");
+    expect(await observer.messageAttachment.count({ where: { id: rolledBack } })).toBe(0);
 
-    // AND THE ATTACHMENT IS THERE, seen from outside. This is the shape that
-    // shipped in `cost-monitoring` as a defect and is the CONTRACT here: the
-    // caller was told no in a value it can act on, with its own transaction
-    // intact, which is the whole reason the guards refuse before the statement.
-    expect(await observer.messageAttachment.count({ where: { id: attachmentId } })).toBe(1);
+    const kept = freshId();
+    let seen: string | null = null;
+    const handled = await runResult(harness, async (transaction) => {
+      const written = await harness.repository.insertAttachment(
+        attachmentFixture(chain.attachment, kept, { contentHash: "sha256:handled-witness" }),
+        transaction,
+      );
+      expect(written.ok).toBe(true);
+      const refusal = await harness.repository.insertArtifactRevision(
+        artifactFixture(chain.thread, freshId(), { artifactKey: "handled", revision: 0 }),
+        transaction,
+      );
+      seen = refusalCode(refusal);
+      return ok(null);
+    });
+    expect(handled.ok).toBe(true);
+    expect(seen).toBe("files.write.integer_out_of_range");
+    // SEEN FROM OUTSIDE, on a connection this transaction never used.
+    expect(await observer.messageAttachment.count({ where: { id: kept } })).toBe(1);
   }, 120_000);
 
   test("the append-only CONFLICT is a value too, and the transaction stays usable", async () => {

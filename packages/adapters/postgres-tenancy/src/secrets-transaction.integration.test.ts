@@ -40,7 +40,7 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
-import { runResult } from "@platos/context-secrets/application/ports/index.js";
+import { ok, runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import {
   TRANSACTION_NOT_OPEN,
@@ -139,12 +139,15 @@ describe("failure injection over a real transaction", () => {
     expect(await observer.credentialCount(credentialId)).toBe(0);
   });
 
-  test("a RETURNED refusal commits the write beside it", async () => {
-    // THE `cost-monitoring` TRAP, pinned rather than assumed away. Nothing in
-    // this store rolls a transaction back on a `Result` — a `Result` is a value
-    // — so a use case that ignored one would commit half its work. The vault's
-    // own `inTransaction` is what makes that unreachable, and it is a different
-    // file in a different package.
+  test("a RETURNED refusal rolls back the write beside it; a HANDLED one does not", async () => {
+    // THIS CASE USED TO BE CALLED "a RETURNED refusal commits the write beside
+    // it", and it pinned the `cost-monitoring` trap as a fact: nothing in this
+    // store rolled a transaction back on a `Result`, because a `Result` is a
+    // value. The vault's own `inTransaction` was what made that unreachable, in
+    // a different file in a different package — which is exactly the local
+    // escape WIN-260 (M2.5) replaced. `inTransaction` is now one line of
+    // delegation to the kernel's `runResult`, and `UnitOfWork.run` refuses a
+    // `Result`-valued callback outright.
     const credentialId = fresh();
     const refused = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       await harness.repository.insertCredential(
@@ -164,7 +167,34 @@ describe("failure injection over a real transaction", () => {
       );
     });
     expect(refused).toMatchObject({ ok: false, error: { code: "CREDENTIAL_UNAVAILABLE" } });
-    expect(await observer.credentialCount(credentialId)).toBe(1);
+    // FROM THE OTHER CONNECTION, and the number moved from 1 to 0 when the
+    // contract did. A vault is where this matters most: the old answer left a
+    // credential row behind for an operation the caller was told had failed.
+    expect(await observer.credentialCount(credentialId)).toBe(0);
+
+    // AND THE HALF THAT DID NOT CHANGE. A caller that READS the refusal and
+    // carries on still commits the work it already did — the store never
+    // raised, so the transaction was never poisoned, and that property is what
+    // the guards refusing before the statement exist to give.
+    const kept = fresh();
+    let seen: string | null = null;
+    const handled = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
+      await harness.repository.insertCredential(
+        credentialDraft({ id: kept, environmentId, kind: "ENTITY_SECRET", name: "KEPT_ON_PURPOSE" }),
+        transaction,
+      );
+      const refusal = await harness.repository.setActiveSecretVersion(
+        credentialIdOf(fresh()),
+        null,
+        LATER,
+        transaction,
+      );
+      seen = refusal.ok ? null : refusal.error.code;
+      return ok(null);
+    });
+    expect(handled.ok).toBe(true);
+    expect(seen).toBe("CREDENTIAL_UNAVAILABLE");
+    expect(await observer.credentialCount(kept)).toBe(1);
   });
 });
 

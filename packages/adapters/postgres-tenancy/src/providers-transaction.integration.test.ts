@@ -49,7 +49,7 @@ import type {
 import { asProvidersIdentifier } from "@platos/context-providers/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
-import { runResult } from "@platos/context-providers/application/ports/index.js";
+import { ok, runResult } from "@platos/context-providers/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import type { ProvidersHarness } from "./providers-harness.js";
@@ -198,24 +198,34 @@ describe("a demotion and a promotion are one transaction or neither", () => {
   });
 });
 
-describe("a RETURNED error Result commits what came before it", () => {
-  test("the earlier write survives a refusal the store reports as a value", async () => {
-    // THIS IS NOT A DEFECT AND IT IS NOT AN ACCIDENT. `UnitOfWork.run` commits
-    // when its callback RESOLVES, and a refusal this store recognises is a
-    // resolved `Result` rather than a rejection. Without the savepoint in
-    // `providers-guards.ts` the earlier write would NOT have survived — the
-    // refusal would have aborted the transaction and the COMMIT would have been
-    // executed as a ROLLBACK with no error — so what this case measures is that
-    // the commit is HONEST rather than empty.
+describe("a RETURNED error Result rolls back; a refusal READ and carried past does not", () => {
+  test("returning it discards the earlier write, and reading it keeps the write", async () => {
+    // THIS CASE USED TO BE CALLED "a RETURNED error Result commits what came
+    // before it", and it was true: `UnitOfWork.run` committed when its callback
+    // RESOLVED, and a refusal this store recognises is a resolved `Result`
+    // rather than a rejection. WIN-260 (M2.5) made that unwritable — `run`
+    // refuses a `Result`-valued callback and `runResult` aborts on `err`.
     //
-    // Which of the two a caller wants is the caller's decision and this adapter
-    // does not make it. What it removes is the outcome where the answer depends
-    // on whether the store happened to raise.
+    // THE PROPERTY THIS CASE EXISTS FOR IS UNCHANGED AND IS THE SECOND HALF.
+    // Without the savepoint in `providers-guards.ts` the earlier write could not
+    // survive under ANY spelling: the refusal would abort the transaction and
+    // the COMMIT would execute as a ROLLBACK with no error. The savepoint is
+    // what keeps the transaction usable after a refused statement, and a use
+    // case that READS a refusal and carries on still commits the work it
+    // already did.
+    //
+    // Which of the two a caller wants is still the caller's decision. What
+    // changed is that the decision is now VISIBLE: returning the refusal means
+    // "this frame failed", and handling it means "I dealt with it". Before, both
+    // spellings committed and the difference could not be read off the call
+    // site.
     const third = await harness.seedCredential(scope, {
       provider: "anthropic",
       name: "ANTHROPIC_THIRD",
     });
-    const outcome = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
+
+    // HALF ONE — RETURNED. The frame failed, so nothing it wrote lands.
+    const returned = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
       const written = await harness.repository.insertProviderKey(
         key(uuid("0003"), third, "third", "ANTHROPIC_THIRD", false),
         transaction,
@@ -227,9 +237,31 @@ describe("a RETURNED error Result commits what came before it", () => {
         transaction,
       );
     });
-    expect(outcome).toMatchObject({ ok: false, error: { code: "PROVIDERS_KEY_ALREADY_EXISTS" } });
-    expect(await observer.providerKey.count({ where: { id: uuid("0003") } })).toBe(1);
+    expect(returned).toMatchObject({ ok: false, error: { code: "PROVIDERS_KEY_ALREADY_EXISTS" } });
+    expect(await observer.providerKey.count({ where: { id: uuid("0003") } })).toBe(0);
     expect(await observer.providerKey.count({ where: { id: uuid("0004") } })).toBe(0);
+
+    // HALF TWO — READ AND CARRIED PAST, which is what the savepoint buys. The
+    // same two writes, the same refusal, and the caller answers `ok` because it
+    // handled it. The first row is committed and an ONLOOKER connection sees it.
+    let seen: string | null = null;
+    const handled = await runResult(harness.base.adapter.unitOfWork, async (transaction) => {
+      const written = await harness.repository.insertProviderKey(
+        key(uuid("0005"), third, "fifth", "ANTHROPIC_THIRD", false),
+        transaction,
+      );
+      expect(written.ok).toBe(true);
+      const refused = await harness.repository.insertProviderKey(
+        key(uuid("0006"), third, "fifth", "ANTHROPIC_THIRD", false),
+        transaction,
+      );
+      seen = refused.ok ? null : refused.error.code;
+      return ok(null);
+    });
+    expect(handled.ok).toBe(true);
+    expect(seen).toBe("PROVIDERS_KEY_ALREADY_EXISTS");
+    expect(await observer.providerKey.count({ where: { id: uuid("0005") } })).toBe(1);
+    expect(await observer.providerKey.count({ where: { id: uuid("0006") } })).toBe(0);
   });
 });
 
