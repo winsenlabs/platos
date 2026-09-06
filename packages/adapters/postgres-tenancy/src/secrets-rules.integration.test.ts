@@ -198,6 +198,69 @@ describe("four rules freeze a column the row may not change", () => {
     expect(row).toEqual({ outcome: "SUCCESS", action: "CREATE", createdAt: AT });
   });
 
+  // WIN-259 (M2.4). `DENIED` has been in `CREDENTIAL_AUDIT_OUTCOMES` since
+  // `secrets` was written and nothing ever wrote one, so until this branch NO
+  // ROW WITH THAT VALUE HAD EVER REACHED PostgreSQL. The in-memory double stores
+  // whatever string it is handed, which is exactly the shape of the failure this
+  // project has recorded before: the doubles mint values the database refuses,
+  // and every use-case suite passes.
+  //
+  // Two things only a real database answers here. `outcome` is TEXT NOT NULL
+  // with NO CHECK — read from the MIGRATION, since `schema.prisma` shows the
+  // type and not the absence — so the value lands; and the row satisfies the
+  // COMPOSITE foreign key `(credentialId, environmentId)`, which is the one a
+  // denial path could plausibly break by resolving a credential in the wrong
+  // environment.
+  test("a DENIED outcome reaches PostgreSQL, and commits in a transaction of its OWN", async () => {
+    const { credentialId } = await live(environmentId, "PROBED");
+    const auditId = fresh();
+    // A SEPARATE unit of work, which is the whole point: the read this row is
+    // evidence of failed, so a row written inside that read's transaction would
+    // roll back with it. Committing here and staying committed is the property.
+    await inTransaction((transaction) =>
+      harness.repository.appendAudit(
+        auditDraft({
+          id: auditId,
+          environmentId,
+          credentialId,
+          action: "READ",
+          outcome: "DENIED",
+          secretRevision: 1,
+          fromRootKeyVersion: 1,
+          toRootKeyVersion: 1,
+        }),
+        transaction,
+      ),
+    );
+    const row = await harness.base.client.credentialAudit.findUnique({
+      where: { id: auditId },
+      select: {
+        outcome: true,
+        action: true,
+        credentialId: true,
+        environmentId: true,
+        secretRevision: true,
+        fromRootKeyVersion: true,
+      },
+    });
+    expect(row).toEqual({
+      outcome: "DENIED",
+      action: "READ",
+      credentialId,
+      environmentId,
+      secretRevision: 1,
+      fromRootKeyVersion: 1,
+    });
+    // And it is immutable on the same terms as every other audit row, so the
+    // evidence of a probe cannot be edited into evidence of a success.
+    await expect(
+      harness.base.client.credentialAudit.update({
+        where: { id: auditId },
+        data: { outcome: "SUCCESS" },
+      }),
+    ).rejects.toThrow();
+  });
+
   test("EnvironmentVariable_owner_immutable refuses a re-key", async () => {
     const variableId = fresh();
     await inTransaction((transaction) =>
@@ -338,181 +401,5 @@ describe("the active envelope cannot be destroyed, two different ways", () => {
       ),
     );
     expect(audited).toEqual({ ok: true, value: undefined });
-  });
-});
-
-describe("both stores key an upsert on [environmentId, key], and the fence says so", () => {
-  // WIN-258 T5 wrote this block to record a DIVERGENCE: the adapter keyed on the
-  // compound unique the database carries and the double keyed on `input.id`, so
-  // a caller handing a fresh id for an existing key got one updated row here and
-  // TWO rows in memory. WIN-258 T7 closes it, because a fence cannot be tested
-  // against a double that has no row to be stale about — so the claim this block
-  // makes is now the opposite one, and it is made against BOTH stores at once.
-  test("a FRESH id for an existing key updates the row that is there, on both stores", async () => {
-    const firstId = fresh();
-    const secondId = fresh();
-    await inTransaction((transaction) =>
-      harness.variables.upsert(
-        {
-          id: variableIdOf(firstId),
-          environmentId,
-          key: "DIVERGENT",
-          kind: "PLAIN",
-          value: "one",
-          credentialId: null,
-          lastUpdatedBy: null,
-          at: AT,
-          expectedVersion: null,
-        },
-        transaction,
-      ),
-    );
-    const second = await inTransaction((transaction) =>
-      harness.variables.upsert(
-        {
-          id: variableIdOf(secondId),
-          environmentId,
-          key: "DIVERGENT",
-          kind: "PLAIN",
-          value: "two",
-          credentialId: null,
-          lastUpdatedBy: null,
-          at: LATER,
-          // The version the caller read, not the id it invented.
-          expectedVersion: 1,
-        },
-        transaction,
-      ),
-    );
-    // The store keys on `[environmentId, key]`, which is what the database is
-    // unique on, so the second call UPDATES the first row and the id it was
-    // handed is not the id it answers with.
-    expect(second).toMatchObject({ ok: true, value: { id: firstId, value: "two", version: 2 } });
-    const rows = await harness.base.client.environmentVariable.findMany({
-      where: { environmentId, key: "DIVERGENT" },
-      select: { id: true },
-    });
-    expect(rows).toEqual([{ id: firstId }]);
-
-    // THE DOUBLE, ASKED THE SAME TWO QUESTIONS. It now answers `firstId` too and
-    // holds ONE row, which is the state `EnvironmentVariable_environmentId_key_key`
-    // makes the only reachable one.
-    const fake = inMemorySecretsStore();
-    const scope = { transactionId: "fake" } as never;
-    await fake.upsert(
-      {
-        id: variableIdOf(firstId),
-        environmentId,
-        key: "DIVERGENT",
-        kind: "PLAIN",
-        value: "one",
-        credentialId: null,
-        lastUpdatedBy: null,
-        at: AT,
-        expectedVersion: null,
-      },
-      scope,
-    );
-    const fakeSecond = await fake.upsert(
-      {
-        id: variableIdOf(secondId),
-        environmentId,
-        key: "DIVERGENT",
-        kind: "PLAIN",
-        value: "two",
-        credentialId: null,
-        lastUpdatedBy: null,
-        at: LATER,
-        expectedVersion: 1,
-      },
-      scope,
-    );
-    expect(fakeSecond).toMatchObject({ ok: true, value: { id: firstId, version: 2 } });
-    expect(fake.allVariables()).toHaveLength(1);
-  });
-
-  test("a write that thinks the key is FREE is refused once the row exists, on both stores", async () => {
-    const held = fresh();
-    await inTransaction((transaction) =>
-      harness.variables.upsert(
-        {
-          id: variableIdOf(held),
-          environmentId,
-          key: "TAKEN",
-          kind: "PLAIN",
-          value: "one",
-          credentialId: null,
-          lastUpdatedBy: null,
-          at: AT,
-          expectedVersion: null,
-        },
-        transaction,
-      ),
-    );
-    // `expectedVersion: null` says "I read no row for this key". A row is there,
-    // so the caller read a state that no longer holds — the same lost update as a
-    // stale version, wearing the shape of an insert.
-    const refused = await inTransaction((transaction) =>
-      harness.variables.upsert(
-        {
-          id: variableIdOf(fresh()),
-          environmentId,
-          key: "TAKEN",
-          kind: "PLAIN",
-          value: "two",
-          credentialId: null,
-          lastUpdatedBy: null,
-          at: LATER,
-          expectedVersion: null,
-        },
-        transaction,
-      ),
-    );
-    expect(refused).toMatchObject({
-      ok: false,
-      error: { code: "ENVIRONMENT_VARIABLE_VERSION_CONFLICT" },
-    });
-    // NOTHING WAS WRITTEN, and the row that was there is untouched.
-    const rows = await harness.base.client.environmentVariable.findMany({
-      where: { environmentId, key: "TAKEN" },
-      select: { id: true, value: true, version: true },
-    });
-    expect(rows).toEqual([{ id: held, value: "one", version: 1 }]);
-
-    const fake = inMemorySecretsStore();
-    const scope = { transactionId: "fake" } as never;
-    await fake.upsert(
-      {
-        id: variableIdOf(held),
-        environmentId,
-        key: "TAKEN",
-        kind: "PLAIN",
-        value: "one",
-        credentialId: null,
-        lastUpdatedBy: null,
-        at: AT,
-        expectedVersion: null,
-      },
-      scope,
-    );
-    const fakeRefused = await fake.upsert(
-      {
-        id: variableIdOf(fresh()),
-        environmentId,
-        key: "TAKEN",
-        kind: "PLAIN",
-        value: "two",
-        credentialId: null,
-        lastUpdatedBy: null,
-        at: LATER,
-        expectedVersion: null,
-      },
-      scope,
-    );
-    expect(fakeRefused).toMatchObject({
-      ok: false,
-      error: { code: "ENVIRONMENT_VARIABLE_VERSION_CONFLICT" },
-    });
-    expect(fake.allVariables()).toHaveLength(1);
   });
 });

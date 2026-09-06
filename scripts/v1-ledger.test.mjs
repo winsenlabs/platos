@@ -980,7 +980,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // file rather than a sixth area because it is DATA beside the context it
     // documents, claimed by the packages.contexts.config rule exactly as the
     // eight adapter guard ledgers are claimed by packages.adapters.config.
-    packages: 1402,
+    // WIN-259 (M2.4) SPLIT 1402 -> 1403:
+    // packages/adapters/postgres-tenancy/src/secrets-variable-fence.
+    // integration.test.ts, the `describe` WIN-258 T7's own line-budget entry
+    // told the next author to move whole once a further case took
+    // secrets-rules.integration.test.ts past 460. It is a MOVE that shows as an
+    // addition, because the source file keeps its path.
+    packages: 1403,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1243,7 +1249,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 14,
     "root-infra": 45,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1504);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1505);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1294,7 +1300,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // across apps-core-api (+1), packages (+4), docs-content (+1) and
     // root-infra (+2); this one re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1504
+    rulesDocument.baseline.totalFiles + 1505
   );
 });
 

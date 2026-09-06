@@ -677,13 +677,21 @@ test("the live selectors scan an exact nonzero source census", () => {
   // every pin carries the measurement it came from — and effective lines
   // exclude comments, so a reader comparing raw line counts with this figure
   // will find them very different and should.
-  assert.equal(result.fileCount, 1468);
+  // WIN-259 (M2.4) 1468 -> 1473, +5 files under the four selectors:
+  // packages/kernel/src/vo/redaction.ts and its suite (the redactor the Logger
+  // port always described), packages/contexts/secrets/application/
+  // write-only-inputs.test.ts and denied-read-audit.test.ts, and
+  // packages/adapters/postgres-tenancy/src/secrets-variable-fence.
+  // integration.test.ts (the split this file's own band entry pre-registered).
+  // 2 + 2 + 1 = 5. apps/core-api/src/runtime/log-redaction.test.ts is NOT among
+  // them: the fourth selector is `apps/core-api/src/transports/**` only.
+  assert.equal(result.fileCount, 1473);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 2 + 2 + 1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -712,7 +720,16 @@ test("the live selectors scan an exact nonzero source census", () => {
   // nowhere else: the plan dimension implements no port, so neither the kernel
   // nor the contexts term moves. 366 + 7 = 373, and the merged tranche's other
   // nine land in that same term: 366 + 16 = 382.
-  assert.equal(result.fileCount, 20 + 1060 + 382 + 6);
+  //
+  // WIN-259 (M2.4) LANDS IN THREE OF THE FOUR TERMS, which is the one thing
+  // about its delta worth stating: the KERNEL term moves for the first time
+  // since the skeleton (20 -> 22, `src/vo/redaction.ts` and its suite), the
+  // CONTEXTS term takes the two write-only and denied-audit suites in `secrets`
+  // (1060 -> 1062), and the ADAPTERS term takes the fence split this file's own
+  // band entry pre-registered (382 -> 383). The APPS term does not move: its
+  // selector is `apps/core-api/src/transports/**` and the redaction suite lives
+  // under `src/runtime/`. 22 + 1062 + 383 + 6 = 1473.
+  assert.equal(result.fileCount, 22 + 1062 + 383 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -880,19 +897,20 @@ test("the live selectors scan an exact nonzero source census", () => {
       effectiveLines: 421,
       severity: "warning",
     },
-    {
-      // WIN-258 TRANCHE 7's FENCE PUT THIS FILE IN THE BAND. It was 353
-      // effective lines before the concurrency and pooling dimension added the
-      // `EnvironmentVariable` version fence's cases to it — the loser refused,
-      // the insert race, and the rotation that rolls back with the losing write
-      // — and 439 after. It is named here rather than split because the seam is
-      // not obvious: every case in it is one store's RULES, and the fence is a
-      // rule of exactly that store. A further case takes it past 460 and the
-      // split to make then is the fence's own `describe`, moved whole.
-      path: "packages/adapters/postgres-tenancy/src/secrets-rules.integration.test.ts",
-      effectiveLines: 439,
-      severity: "warning",
-    },
+    // WIN-258 TRANCHE 7's FENCE PUT `secrets-rules.integration.test.ts` IN THE
+    // BAND AND WIN-259 (M2.4) TOOK IT BACK OUT, by making the split that entry
+    // pre-registered. Its note read: "A further case takes it past 460 and the
+    // split to make then is the fence's own `describe`, moved whole." The
+    // further case is a DENIED audit outcome reaching PostgreSQL for the first
+    // time, which took the file to 483; the `describe` was moved whole and
+    // unedited into `secrets-variable-fence.integration.test.ts`.
+    //
+    // 328 + 182 = 510 against a pre-split 483, and the 27-line difference is the
+    // second file's own header and preamble — the imports, the harness lifecycle
+    // and the id sequence a standalone suite has to carry. Neither file is in
+    // the band any more, so NEITHER HAS A ROW HERE, and the non-vacuity
+    // assertion below is what keeps that from being a silent deletion: the band
+    // list is exact, so a file leaving it has to leave the count too.
     {
       // WIN-258 T5. `skills`' constraints suite, and a finding rather than a
       // twelfth file, which is a decision rather than an omission.

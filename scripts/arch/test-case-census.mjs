@@ -2332,7 +2332,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
+  "packages/adapters/postgres-tenancy": { files: 133, cases: 1484 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2687,7 +2687,34 @@ export const EXPECTED = Object.freeze({
  * "Test Files 18 passed (18) / Tests 186 passed (186)" -- and the new file on
  * its own prints 11.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7439;
+/*
+ * WIN-259 (M2.4) ON REAL POSTGRESQL, +1 case and +1 FILE in
+ * `packages/adapters/postgres-tenancy`: 1483 -> 1484 cases, 132 -> 133 files,
+ * and 7439 -> 7440.
+ *
+ * THE CASE IS `a DENIED outcome reaches PostgreSQL, and commits in a
+ * transaction of its OWN`, in `secrets-rules.integration.test.ts`. It exists
+ * because until this branch NO ROW WITH THAT OUTCOME HAD EVER REACHED THE
+ * DATABASE: the value was declared in `CREDENTIAL_AUDIT_OUTCOMES` and never
+ * produced, and the in-memory double stores whatever string it is handed. That
+ * is the shape of the failure this project has already recorded — the doubles
+ * mint values the canonical store refuses, and every use-case suite passes.
+ * Read from the MIGRATION rather than from `schema.prisma`: `outcome` is TEXT
+ * NOT NULL with no CHECK, which is a fact about an ABSENCE that the generated
+ * types cannot show.
+ *
+ * THE FILE IS `secrets-variable-fence.integration.test.ts`, AND IT ADDS NO
+ * CASE. It is the split scripts/arch/max-file-lines.test.mjs pre-registered in
+ * WIN-258 T7's own band entry — "A further case takes it past 460 and the split
+ * to make then is the fence's own `describe`, moved whole" — carried out
+ * verbatim. The `describe` moved unedited, so the case delta is 1 (the DENIED
+ * case) and not 1 plus the fence's four.
+ *
+ * Neither is executed by `pnpm test:v1-packages`: both carry `.integration.` in
+ * the name, so this census records them and that script runs neither. They run
+ * on the Mac mini under `pnpm test:postgres-tenancy:integration`.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7440;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
