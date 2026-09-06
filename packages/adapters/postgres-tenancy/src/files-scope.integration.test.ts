@@ -72,7 +72,24 @@ describe("findAttachment: four clauses, four cases, one wrong id each", () => {
     expect(read).toEqual({ ok: true, value: null });
   }, 120_000);
 
-  test("the right thread under another ENVIRONMENT does not", async () => {
+  test("the right thread under a SIBLING environment of the same project does not", async () => {
+    // FOUND BY THE MUTATION SWEEP. This case used to name `foreign.environment`,
+    // which differs in all THREE ids — so the project and organization clauses
+    // answered it and a store that had dropped its ENVIRONMENT clause passed.
+    // The sibling environment shares this tenant's organization and project and
+    // differs in nothing else, so the environment clause is the only thing left
+    // that can produce the miss.
+    const read = await harness.repository.findAttachment(
+      {
+        environment: { ...chain.environment, environmentId: envIdOf(chain.secondEnvironmentId) },
+        threadId: chain.thread.threadId,
+      },
+      subject,
+    );
+    expect(read).toEqual({ ok: true, value: null });
+  }, 120_000);
+
+  test("and a wholly foreign environment does not either", async () => {
     const read = await harness.repository.findAttachment(
       { environment: foreign.environment, threadId: chain.thread.threadId },
       subject,
@@ -118,6 +135,17 @@ describe("the batch read and the dedupe probe carry the same four clauses", () =
       [subject],
     );
     expect(read).toEqual({ ok: true, value: [] });
+  }, 120_000);
+
+  test("the probe under a SIBLING environment of the same project finds nothing", async () => {
+    // The same correction the attachment read needed, for the same reason: the
+    // sibling environment differs from this tenant's in the environment id and
+    // in nothing else.
+    const read = await harness.repository.findAttachmentByContentHash(
+      { ...chain.environment, environmentId: envIdOf(chain.secondEnvironmentId) },
+      asIdentifier<ContentHash>("sha256:scope-subject"),
+    );
+    expect(read).toEqual({ ok: true, value: null });
   }, 120_000);
 
   test("the probe under a foreign PROJECT of the right environment finds nothing", async () => {
@@ -404,6 +432,18 @@ describe("the erasure predicate narrows on all three levels, each falsifiable al
     expect(listed.ok).toBe(true);
     expect(listed.ok && listed.value.some((row) => row.attachmentId === other)).toBe(false);
     expect(listed.ok && listed.value.some((row) => row.attachmentId === subject)).toBe(true);
+
+    // AND THE COUNT AGREES WITH THE LISTING, which is the assertion the mutation
+    // sweep showed was missing: the two statements carry the same clause and are
+    // written separately, so the count could have lost its subject filter while
+    // the listing kept one and every case still passed. The plan's row count and
+    // the rows the receipt destroys have to be the same set.
+    const counted = await harness.repository.countAttachmentsForSubject({
+      scope: organizationScopeOf(chain.organizationId),
+      endUserId: chain.endUserId,
+      principalId: null,
+    });
+    expect(counted).toEqual({ ok: true, value: listed.ok ? listed.value.length : -1 });
   }, 120_000);
 
   test("the principal clause holds: another author's revisions are counted out and left alone", async () => {
@@ -454,5 +494,81 @@ describe("the erasure predicate narrows on all three levels, each falsifiable al
         principalId: theirs,
       }),
     ).toEqual({ ok: true, value: 1 });
+  }, 120_000);
+});
+
+describe("one thread may hold two artifacts and one environment two threads", () => {
+  test("the latest read is keyed by the ARTIFACT KEY, not by the thread's highest revision", async () => {
+    // FOUND BY THE MUTATION SWEEP. Every earlier case read a key that was the
+    // only one in its thread, so a store that had dropped its key clause
+    // answered correctly. Two keys in one thread at different revisions is the
+    // only shape that separates them.
+    expect(
+      (await harness.run((transaction) =>
+        harness.repository.insertArtifactRevision(
+          artifactFixture(chain.thread, freshId(), { artifactKey: "key.alpha", revision: 1 }),
+          transaction,
+        ),
+      )).ok,
+    ).toBe(true);
+    for (const revision of [1, 2, 3]) {
+      expect(
+        (await harness.run((transaction) =>
+          harness.repository.insertArtifactRevision(
+            artifactFixture(chain.thread, freshId(), { artifactKey: "key.beta", revision }),
+            transaction,
+          ),
+        )).ok,
+      ).toBe(true);
+    }
+
+    const alpha = await harness.repository.findLatestArtifactRevision(
+      chain.thread,
+      asIdentifier("key.alpha"),
+    );
+    expect(alpha.ok && alpha.value?.revision).toBe(1);
+    expect(alpha.ok && alpha.value?.artifactKey).toBe("key.alpha");
+  }, 120_000);
+
+  test("both artifact reads are keyed by the THREAD, not by the environment", async () => {
+    // FOUND BY THE MUTATION SWEEP for the same reason: the differential asks its
+    // cross-thread question of a thread in ANOTHER environment, so the
+    // environment clause answered it. Two threads of the SAME environment
+    // holding the same key at different revisions is the shape that isolates the
+    // thread clause.
+    const key = "shared.between.threads";
+    expect(
+      (await harness.run((transaction) =>
+        harness.repository.insertArtifactRevision(
+          artifactFixture(chain.thread, freshId(), { artifactKey: key, revision: 1 }),
+          transaction,
+        ),
+      )).ok,
+    ).toBe(true);
+    for (const revision of [1, 2]) {
+      expect(
+        (await harness.run((transaction) =>
+          harness.repository.insertArtifactRevision(
+            artifactFixture(chain.secondThread, freshId(), { artifactKey: key, revision }),
+            transaction,
+          ),
+        )).ok,
+      ).toBe(true);
+    }
+
+    const mine = await harness.repository.findLatestArtifactRevision(
+      chain.thread,
+      asIdentifier(key),
+    );
+    expect(mine.ok && mine.value?.revision).toBe(1);
+
+    // And the EXACT read carries the clause too: revision 2 exists in this
+    // environment, in the sibling thread, and is not this thread's.
+    const exact = await harness.repository.findArtifactRevision(
+      chain.thread,
+      asIdentifier(key),
+      2,
+    );
+    expect(exact).toEqual({ ok: true, value: null });
   }, 120_000);
 });

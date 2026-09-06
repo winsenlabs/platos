@@ -250,6 +250,18 @@ export function readArtifactRow(row: ArtifactRow): Result<ArtifactRevision> {
  * total is a decision taken on a number nobody wrote.
  */
 export function readTotalBytes(total: bigint, where: string): Result<number> {
+  // THE TYPE CHECK IS NOT DECORATION AND THE MUTATION SWEEP IS WHY IT IS HERE.
+  // `sum()` over no rows is SQL NULL, and without it a null reaching this
+  // function is compared with `null > 9007199254740991n`, which JavaScript
+  // coerces to `false` — so a missing total answered `Number(null)`, which is
+  // `0`, which is the RIGHT answer by accident. The `COALESCE` in the statement
+  // was therefore a clause nothing could falsify: removing it changed no
+  // observable behaviour. It is falsifiable now, and the accident is closed at
+  // the same time: a SQL NULL arriving where the port promises a number is a
+  // defect, not a zero.
+  if (typeof total !== "bigint") {
+    return unreadable<number>(UNREADABLE_TOTAL_BYTES, `${where}=${String(total)}`);
+  }
   if (total > BigInt(Number.MAX_SAFE_INTEGER) || total < 0n) {
     return unreadable<number>(UNREADABLE_TOTAL_BYTES, `${where}=${total.toString()}`);
   }

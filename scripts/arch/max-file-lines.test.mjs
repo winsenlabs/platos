@@ -560,13 +560,34 @@ test("the live selectors scan an exact nonzero source census", () => {
   // branch's own figure survives the merge — 1266 for `channels`, 1269 for
   // `governance`, 1270 for `secrets`, 1319 for `providers`, 1323 for
   // `conversations`, 1320 for `skills`, 1324 for `memory`.
-  assert.equal(result.fileCount, 1377);
+  //
+  // 1377 -> 1395 (WIN-258 T5, `files`). EIGHTEEN files: ELEVEN source and SEVEN
+  // suites, all in the one adapter directory again, so `packages/contexts/files`
+  // gains none — its port entry point was widened in place.
+  //
+  // THE SPLIT IS THE §6 BUDGET AND IS ALSO THE SEAM. `files-attachments.ts` is
+  // the pointer at a blob and `files-artifacts.ts` the versioned inline
+  // document, and `domain/index.ts` is explicit that the two are deliberately
+  // NOT one union with nullable halves; `files-erasure.ts` spans both because an
+  // erasure is one operation over both; `files-ancestry.ts` is one question both
+  // halves have to ask the database and is a file so it cannot be asked two
+  // ways.
+  //
+  // NO FILE OF THIS TRANCHE IS IN THE WARNING BAND. The longest is
+  // `files-scope.integration.test.ts` at 384, and its length is its subject: one
+  // case per clause of every scoped read, each wrong in exactly ONE id, which is
+  // the only shape that can tell a missing clause from a neighbouring one.
+  // `files-conformance.ts` is 346 and its length IS the scenario; the fixture
+  // BUILDERS the other four suites share are a separate file precisely because a
+  // differential's values have to be identical on both sides and are minted from
+  // a counter it owns.
+  assert.equal(result.fileCount, 1395);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 18
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -577,10 +598,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // (memory) = 291. The contexts, kernel and app rows are untouched, which is
   // the claim worth making: no tranche-5 store adds a file to a context at all —
   // each implements a port that already existed rather than widening one.
-  // `secrets`, `providers`, `conversations`, `skills` and `memory` are the
-  // sharpest cases: each had its port entry point widened, in place, and a
+  // `secrets`, `providers`, `conversations`, `skills`, `memory` and `files` are
+  // the sharpest cases: each had its port entry point widened, in place, and a
   // widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 291 + 6);
+  //
+  // 291 -> 309 with `files`' eighteen, and the contexts row is unmoved for the
+  // sixth time in this wave: `packages/contexts/files/application/ports/index.ts`
+  // grew by a re-export block and by nothing else.
+  assert.equal(result.fileCount, 20 + 1060 + 309 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

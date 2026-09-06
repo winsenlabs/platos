@@ -214,4 +214,14 @@ describe("the organization byte total crosses a bigint boundary the port's type 
   test("a negative total is refused: no set of non-negative rows can sum below zero", () => {
     expect(reasonOf(readTotalBytes(-1n, "where"))).toContain("files.row.unreadable_total_bytes");
   });
+
+  test("a SQL NULL is refused rather than coerced to zero", () => {
+    // `sum()` over no rows is SQL NULL. Without the type check the comparison
+    // `null > 9007199254740991n` coerces to `false` and `Number(null)` is `0` —
+    // the right answer by accident, and an accident that made the `COALESCE` in
+    // the statement a clause no mutation could falsify.
+    const read = readTotalBytes(null as unknown as bigint, "sumAttachmentBytes/x");
+    expect(reasonOf(read)).toContain("files.row.unreadable_total_bytes");
+    expect(reasonOf(read)).toContain("=null");
+  });
 });

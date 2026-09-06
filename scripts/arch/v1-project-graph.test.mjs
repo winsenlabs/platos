@@ -402,7 +402,7 @@ test("the live owner map passes its own check", () => {
   // `memory` is a second converse: it publishes SIX ports and gets ONE edge,
   // because only two of the six are canonical stores — `Cache` is bound to
   // `redis-cache`, and the other three write no row at all.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 12 });
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 13 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
 });
 
@@ -425,7 +425,7 @@ test("§15 refusal: the multi-owner adapter LOSING an edge it was granted fails 
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 12 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 13 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

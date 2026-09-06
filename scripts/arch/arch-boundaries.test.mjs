@@ -915,8 +915,29 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               21 = 1402. No branch's own figure is right merged — 1344,
     //               1348, 1345 and 1349 each under-count the others by their
     //               whole tranche.
-    assert.equal(result.fileCount, 1402, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21);
+    // 1402 -> 1420 (WIN-258 T5, `files`). EIGHTEEN files in the one adapter
+    //               directory: ELEVEN source (the guards, the row mapping, the
+    //               ancestry re-assertion, the refusal adapter, the attachment
+    //               half, the artifact half, the erasure half, the composite,
+    //               the harness, the shared conformance scenario and the fixture
+    //               builders) and SEVEN suites. The `mutations-files.json`
+    //               beside them is not source and is not counted here; the v1
+    //               ledger counts it and its own delta says 19.
+    //               `packages/contexts/files` gains NO file — its port entry
+    //               point was widened in place to publish the names its own
+    //               fifteen signatures use, which is what this census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME.
+    //               This store's reads are raw SQL, for the reason
+    //               `channels-connections.ts` gives — the delegate spelling of a
+    //               three-id scope is three round trips — and its append-only
+    //               INSERT is raw so the conflict can be `ON CONFLICT ... DO
+    //               NOTHING` rather than an aborted transaction. Every one of
+    //               them is in the same one home, attributed by the TABLE it
+    //               names, and `src/client.ts` is still the only file in the
+    //               layout that imports the ORM.
+    assert.equal(result.fileCount, 1420, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 18);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
