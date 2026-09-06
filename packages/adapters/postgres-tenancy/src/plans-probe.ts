@@ -229,8 +229,8 @@ function literalOf(value: unknown): string {
  *
  * WHY NOT JUST BIND THEM AGAIN. Handing the captured values to
  * `$queryRawUnsafe` as parameters was the first form written here, and the real
- * database refused it: `operator does not exist: uuid = text`. Every identifier column in
- * these migrations is `uuid`, the driver's own query log renders those values as
+ * database refused it: `operator does not exist: uuid = text`. Every identifier
+ * column in these migrations is `uuid`, the driver's own query log renders them as
  * JSON STRINGS, and a re-bound string arrives as `text`. The client's normal
  * path knows the column types and casts; a raw re-bind does not, and there is no
  * way to recover the types from the log.
