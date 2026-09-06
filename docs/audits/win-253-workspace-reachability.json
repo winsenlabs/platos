@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "530a98de18fd29774d245369a6fab35646187769d50332cb79b88783082326b6",
+  "evidenceSha256": "0274789db1f910dc7c83a13ca213ad12f6000eaafeeb7eee44c791267630e926",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "bb9e2d79a90d619ca06ca63408759f632bff5bcf5d448d442db4009b55a10a14",
+    "aggregateSha256": "f2e333a4490086fa73dd6a593c39d5d86c8e3253a7c84af22a709a7fd82be886",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "4d4404445a4113b565aefd2cb1f168e65f0910e244e80cf7050be7aba2d9b112"
+        "sha256": "21a3e3aa401a41b7bc442c39f64c79d852646376e741c2732195c5c363418372"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11241,7 +11241,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-plans.json",
-        "sha256": "a6974d0ebbb2d6008fd2c5a71f0928a0de3dc802782c6aa27a7240a6e9b00f85"
+        "sha256": "d18e467038590e3cca3154a6ab564deb2eafc6b5654f80c26f3a380738674061"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-ports.json",
@@ -12134,6 +12134,10 @@
       {
         "path": "packages/adapters/postgres-tenancy/src/plans-cost.integration.test.ts",
         "sha256": "4b0db5036783ceb308979f27890049aa09235e719928ec1fec4554e0619619ec"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts",
+        "sha256": "0182c1bc43b2de9abc3285069f3aa4e03c616738b0555af936c44c8e2e788cf1"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/plans-probe.test.ts",
@@ -19177,11 +19181,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "e94ae086add50ca9aba6990878e0c19cba4948558dbb988cf754aedc6a1fb8ef"
+        "sha256": "65168b5e5c2b1131378fb44a39ba1667982ba2dda4574d324d04e84a09d17d9e"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "c46cb44de82575056e06850a0c6958f67c4bfc957c4a188966e0139f9f2c5510"
+        "sha256": "fac1c2af1182640f6835de0078287b7e60b217ff3b475262436c49e70d76d41b"
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
@@ -19417,7 +19421,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "f3bd9ea34e7c2d107ec8bff972a608412d48ac3fe6bc237dc3483370abc0cc98"
+        "sha256": "6d1eef54976bf4dde5d46b0b2522c3ac73ea1fa5195dc9394a011dd94e0e071a"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -47504,6 +47508,11 @@
               "line": 1
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/src/plans-probe.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -48112,6 +48121,10 @@
               "packages/adapters/postgres-tenancy/src/plans-cost.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts"
+            ],
+            [
               "packages/adapters/postgres-tenancy/src/plans-probe.test.ts",
               "packages/adapters/postgres-tenancy/src/plans-probe.test.ts"
             ],
@@ -48402,6 +48415,7 @@
             "packages/adapters/postgres-tenancy/src/plans-agents.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/plans-conversations.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/plans-cost.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/plans-probe.test.ts",
             "packages/adapters/postgres-tenancy/src/plans-tools.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/ports-conformance.integration.test.ts",
@@ -48510,7 +48524,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "61cb33e9aee7fae650f51bbace4dfed8ee451623eaf598c35172b6080763acd0",
+      "evidenceSha256": "fb9d59ff5e8dd0ae890922bd546b2fbcce55039746c19416c481f0508d1e2cb3",
       "manifestSha256": "f736a95a4330a56db4332704a1cf9abf6ff567e3cb142f99ba950bf90a34fb47",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -59557,6 +59571,11 @@
               "line": 252
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts",
+              "kind": "reference",
+              "line": 40
+            },
+            {
               "from": "packages/contexts/jobs/application/approval-lifecycle.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -59697,6 +59716,10 @@
               "packages/adapters/postgres-tenancy/src/jobs-transaction.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts"
+            ],
+            [
               "packages/contexts/jobs/application/approval-lifecycle.test.ts",
               "packages/contexts/jobs/application/approval-lifecycle.test.ts"
             ],
@@ -59793,6 +59816,7 @@
             "packages/adapters/postgres-tenancy/src/jobs-rules.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/jobs-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/jobs-transaction.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/plans-jobs.integration.test.ts",
             "packages/contexts/jobs/application/approval-lifecycle.test.ts",
             "packages/contexts/jobs/application/execute-job.test.ts",
             "packages/contexts/jobs/application/jobs-erasure-target.test.ts",
@@ -59917,7 +59941,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "fda8b562c14e15d1d7cfc32719c987f14f7cdac751eb8745a064cf0607089c4c",
+      "evidenceSha256": "54056f5fa7048c6eac32e854e05fb3601559f876fd8f0d6dbe9d70f70e844281",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
