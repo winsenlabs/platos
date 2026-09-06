@@ -59,7 +59,28 @@
     "",
     "EVERY `from` IS A UNIQUE SUBSTRING OF ITS FILE and is applied literally, so a",
     "sweep that silently matched nothing is impossible: the driver refuses an",
-    "entry whose `from` occurs zero times or more than once."
+    "entry whose `from` occurs zero times or more than once.",
+    "",
+    "RESULT, 2026-09-06, against PostgreSQL 16 in a container: 46 entries, 46",
+    "KILLED, 0 SURVIVED, 0 VACUOUS. Every baseline suite set was green with a",
+    "non-zero executed case count before its mutation was applied, and every",
+    "`from` matched its file exactly once \u2014 the driver refuses an entry whose",
+    "anchor occurs zero times or more than once, so a sweep that silently changed",
+    "nothing is not a state this can reach.",
+    "",
+    "THE FIRST SWEEP FOUND FOUR SURVIVORS AND THEY ARE WHY FOUR CASES EXIST.",
+    "M-G18 survived because the three scope refusals were measured through",
+    "`criteria.remove` alone, and `append` \u2014 the ONE method here whose transaction",
+    "parameter is NULLABLE \u2014 was the one an implementation could plausibly have",
+    "resolved through `reader()` on both branches. M-G19 survived because the",
+    "cross-environment flip used a rating the CHECK refuses, so the DATABASE was",
+    "refusing the write the missing scope predicate should have. M-G23 survived",
+    "because an erasure that drops its subject predicate returns the right COUNT \u2014",
+    "the rows it destroyed are the rows it counted \u2014 and only somebody ELSE'S vote",
+    "can see it. M-G27 survived because `\"agentId\" in query` and",
+    "`query.agentId === undefined` differ only when the KEY IS PRESENT and the",
+    "value is undefined, a third case the scenario did not ask for. Each is now a",
+    "named case rather than a widened entry."
   ],
   "mutations": [
     {
@@ -72,7 +93,10 @@
         "src/governance-rows.test.ts",
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the three vocabulary columns are validated, not cast an unknown value in each column is refused, under its own code",
+        "the safety metadata envelope, against rows an older binary wrote a detector this binary does not know is REFUSED on read, not cast"
+      ]
     },
     {
       "name": "M-G02 rows: the action column is validated, under its own code",
@@ -83,7 +107,9 @@
       "suites": [
         "src/governance-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the three vocabulary columns are validated, not cast an unknown value in each column is refused, under its own code"
+      ]
     },
     {
       "name": "M-G03 rows: the severity column is validated, under its own code",
@@ -94,7 +120,9 @@
       "suites": [
         "src/governance-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the three vocabulary columns are validated, not cast an unknown value in each column is refused, under its own code"
+      ]
     },
     {
       "name": "M-G04 rows: the metadata envelope DISCRIMINATES, so a legacy row still reads",
@@ -106,7 +134,10 @@
         "src/governance-rows.test.ts",
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the safety metadata envelope an object WITHOUT the marker is a legacy row, whole body as attributes",
+        "the safety metadata envelope, against rows an older binary wrote a bare attribute bag is read as attributes, with no subject and no rule"
+      ]
     },
     {
       "name": "M-G05 rows: the envelope CARRIES the subject the column has no room for",
@@ -117,7 +148,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G06 rows: the truncation flag rides in the envelope too",
@@ -128,7 +161,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G07 rows: a criterion snapshot's numbers are numbers",
@@ -139,7 +174,9 @@
       "suites": [
         "src/governance-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the criterion snapshot is refused rather than defaulted a missing scale bound is refused, because a defaulted one re-renders history"
+      ]
     },
     {
       "name": "M-G08 rows: a Decimal that will not convert is refused, not silently NaN",
@@ -150,7 +187,9 @@
       "suites": [
         "src/governance-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "`AgentEval.costCents` is a driver Decimal, not a number a value that is not a number after conversion is refused, not silently NaN"
+      ]
     },
     {
       "name": "M-G09 rows: an ORGANIZATION scope is a relation filter, not an environment one",
@@ -162,7 +201,10 @@
         "src/governance-rows.test.ts",
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically",
+        "scope narrowing a tenant scope becomes a RELATION filter, resolved in the same statement"
+      ]
     },
     {
       "name": "M-G10 safety: the listing is most-recent-first",
@@ -173,7 +215,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G11 safety: the search runs over the TOOL NAME and never over `detail`",
@@ -184,7 +228,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G12 safety: the search is case-insensitive",
@@ -195,7 +241,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G13 safety: a NULL subject matches NOTHING, without a statement",
@@ -207,7 +255,9 @@
         "src/governance-conformance.integration.test.ts",
         "src/governance-statements.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "reads are a fixed number of statements, whatever the row count a NULL subject is ZERO statements, so an unknown subject cannot be counted wrong"
+      ]
     },
     {
       "name": "M-G14 safety: only rows whose metadata is an ENVELOPE carry a subject",
@@ -218,7 +268,9 @@
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the safety metadata envelope, against rows an older binary wrote a bare attribute bag is read as attributes, with no subject and no rule"
+      ]
     },
     {
       "name": "M-G15 safety: anonymising OVERWRITES and never deletes",
@@ -229,7 +281,9 @@
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "anonymising OVERWRITES and never deletes, seen from a connection that did not write it"
+      ]
     },
     {
       "name": "M-G16 safety: the anonymisation clears the DETAIL as well as the subject",
@@ -240,7 +294,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G17 safety: the two detector families the risk score divides by",
@@ -251,7 +307,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G18 safety: a write carrying a scope goes through `writer`, which refuses three ways",
@@ -262,7 +320,9 @@
       "suites": [
         "src/governance-transaction.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "an APPEND carrying a scope is held to the same three refusals"
+      ]
     },
     {
       "name": "M-G19 ratings: the flip is keyed on the ENVIRONMENT as well as the pair",
@@ -273,7 +333,9 @@
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "every read and every write is narrowed to ONE environment a row in another environment is invisible, unwritable and undeletable"
+      ]
     },
     {
       "name": "M-G20 ratings: the CHECK the migration ENDS with is met before a statement is sent",
@@ -284,7 +346,10 @@
       "suites": [
         "src/governance-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "MessageRating_rating_check is the constraint the migration ENDS with the double stores a five-star `3`, and no database this migration builds can",
+        "a refusal leaves the caller's transaction usable, which a raised CHECK would not"
+      ]
     },
     {
       "name": "M-G21 ratings: the revision is a positive int4",
@@ -295,7 +360,9 @@
       "suites": [
         "src/governance-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "MessageRating_rating_check is the constraint the migration ENDS with a revision of zero is refused by its own code"
+      ]
     },
     {
       "name": "M-G22 ratings: withdrawing a vote that was not there answers FALSE",
@@ -306,7 +373,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G23 ratings: a subject's rows are DESTROYED, and only that subject's",
@@ -317,7 +386,9 @@
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "an erasure destroys ONE subject's ratings and leaves every other subject's"
+      ]
     },
     {
       "name": "M-G24 criteria: the duplicate insert does not RAISE",
@@ -328,7 +399,9 @@
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "a duplicate criterion name is a CODE and leaves the transaction writable"
+      ]
     },
     {
       "name": "M-G25 criteria: a name clash is the port's OWN code, not a store outage",
@@ -339,7 +412,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G26 criteria: the update checks SCOPE before it checks the name",
@@ -350,7 +425,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G27 criteria: an ABSENT agent filter is not a NULL one",
@@ -361,7 +438,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G28 criteria: an agent's listing INCLUDES the shared criteria",
@@ -372,7 +451,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G29 criteria: `activeOnly` narrows the listing",
@@ -383,7 +464,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G30 criteria: the name pre-check is EXACT, not case-folded",
@@ -394,7 +477,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G31 criteria: removing a criterion DELETES it",
@@ -406,7 +491,10 @@
         "src/governance-conformance.integration.test.ts",
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically",
+        "deleting a criterion destroys every eval taken against it, and the database does it"
+      ]
     },
     {
       "name": "M-G32 evals: the append ECHOES the truncation the writer performed",
@@ -417,7 +505,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G33 evals: an EMPTY version list means every version",
@@ -428,7 +518,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G34 evals: the search covers the JUDGE MODEL as well as the rationale",
@@ -439,7 +531,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G35 evals: the baseline sample is ONE version's scores",
@@ -450,7 +544,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G36 evals: the column guards stand where the column types do",
@@ -461,7 +557,10 @@
       "suites": [
         "src/governance-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "@db.Uuid on every key, which the doubles mint around the evals double mints `eval-0001` and every foreign key is checked",
+        "the column types the doubles cannot see `AgentEval.score` is a double that would hold NaN, so NaN is refused"
+      ]
     },
     {
       "name": "M-G37 evals: the listing is most-recent-first",
@@ -472,7 +571,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G38 goldenSets: the duplicate insert does not RAISE either",
@@ -483,7 +584,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G39 goldenSets: a name clash is the port's OWN code",
@@ -494,7 +597,9 @@
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
     },
     {
       "name": "M-G40 goldenSets: the RENAME checks the name the double does not",
@@ -505,7 +610,9 @@
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "a golden-set RENAME onto a taken name: the double allows it, the index does not"
+      ]
     },
     {
       "name": "M-G41 goldenSets: a delete is narrowed to this environment",
@@ -516,7 +623,9 @@
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "every read and every write is narrowed to ONE environment a row in another environment is invisible, unwritable and undeletable"
+      ]
     },
     {
       "name": "M-G42 refusal: the three transaction refusals are RETHROWN, not folded into a Result",
@@ -527,7 +636,10 @@
       "suites": [
         "src/governance-transaction.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "an APPEND carrying a scope is held to the same three refusals",
+        "the three scope refusals are three DISTINCT codes"
+      ]
     },
     {
       "name": "M-G43 criteria: `findMany` resolves the whole label set in ONE statement",
@@ -538,7 +650,9 @@
       "suites": [
         "src/governance-statements.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "reads are a fixed number of statements, whatever the row count `CriteriaRepository.findMany` is one for the whole label set"
+      ]
     },
     {
       "name": "M-G44 safety: `countByAgent` is one GROUP BY, not one read per agent",
@@ -549,7 +663,9 @@
       "suites": [
         "src/governance-statements.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "reads are a fixed number of statements, whatever the row count `SafetyLedger.countByAgent` is one GROUP BY, not one read per agent"
+      ]
     },
     {
       "name": "M-G45 ratings: the upsert is TWO statements, not a read then a decision then a write",
@@ -560,7 +676,9 @@
       "suites": [
         "src/governance-statements.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the writes are a fixed number too `upsert` is TWO on both paths, so the count is a pin and not a path"
+      ]
     },
     {
       "name": "M-G46 ratings: BOTH thumbs are storable, and the guard says which",
@@ -571,7 +689,10 @@
       "suites": [
         "src/governance-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "MessageRating_rating_check is the constraint the migration ENDS with the double stores a five-star `3`, and no database this migration builds can",
+        "a refusal leaves the caller's transaction usable, which a raised CHECK would not"
+      ]
     }
   ]
 }
