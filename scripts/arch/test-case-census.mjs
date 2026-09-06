@@ -2573,6 +2573,8 @@ export const EXPECTED = Object.freeze({
  * are the ones whose file name carries `.integration.`; all three new suites do,
  * so that measured figure moves by 26 and `client.test.ts`'s nine stay runnable.
  */
+
+/*
  * 7226 -> 7232: the 6 cases of WIN-258 tranche 7's store-level rollout
  * rehearsal. All six carry `.integration.` in the name, so `pnpm
  * test:v1-packages` executes none of them — the file is one container and two
