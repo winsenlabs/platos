@@ -605,6 +605,28 @@ test("the live selectors scan an exact nonzero source census", () => {
       severity: "warning",
     },
     {
+      // WIN-258 T5. `skills`' constraints suite, and the ELEVENTH finding rather
+      // than a twelfth file, which is a decision rather than an omission.
+      //
+      // It reached 438 by GAINING CASES THE MUTATION SWEEP ASKED FOR — five
+      // clauses that decide WHICH ROW a call reaches, two of them written
+      // because the first sweep left their guards standing with nothing red —
+      // and every one of them needs a tenant chain built through the port before
+      // it can ask its question. The warning band is where a judgement is made,
+      // not where a split is mandatory, and the same wave's
+      // `governance-rules.integration.test.ts` sits here at 424 for the same
+      // kind of reason.
+      //
+      // THE SEAM IS NAMED SO THE NEXT PERSON DOES NOT HAVE TO FIND IT. The file
+      // has two halves — what SHAPES the canonical schema will hold, and which
+      // ROWS a call is entitled to reach once the shape is fine — and the second
+      // is already its own `describe`. A sixth case in that block takes it past
+      // 500 and the split is that block, moved whole.
+      path: "packages/adapters/postgres-tenancy/src/skills-constraints.integration.test.ts",
+      effectiveLines: 438,
+      severity: "warning",
+    },
+    {
       path: "packages/contexts/jobs/application/approval-lifecycle.test.ts",
       effectiveLines: 465,
       severity: "warning",

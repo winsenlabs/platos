@@ -99,7 +99,7 @@
         "the TEXT[] columns a READ answers the empty list the column DEFAULT names for SQL NULL"
       ],
       "verdict": "KILLED",
-      "executedCases": 34
+      "executedCases": 19
     },
     {
       "name": "M-K03 rows: a TEXT[] element is text, checked rather than assumed",
@@ -309,12 +309,13 @@
         "the shapes the schema will not hold, refused BEFORE a statement is sent an organization id that is not a uuid — the double's own fixture shape",
         "the shapes the schema will not hold, refused BEFORE a statement is sent and a non-uuid row id READS as absent rather than aborting the read",
         "the clauses that decide WHICH ROW a call reaches a patch of a non-uuid id refuses without aborting the caller's transaction",
+        "the clauses that decide WHICH ROW a call reaches a non-uuid skill id does not reach an uninstall STATEMENT",
         "the uuid guard is the canonical hyphenated form and nothing else what it accepts and what it does not",
         "the uuid guard is the canonical hyphenated form and nothing else requireUuid refuses under its own code and names the field",
         "a scope naming one identifier at two levels is refused because the rule reads the stored rows and not the caller's claim"
       ],
       "verdict": "KILLED",
-      "executedCases": 33
+      "executedCases": 36
     },
     {
       "name": "M-K16 guards: a scope naming one identifier at two levels is refused",
@@ -331,7 +332,7 @@
         "a scope naming one identifier at two levels is refused because the rule reads the stored rows and not the caller's claim"
       ],
       "verdict": "KILLED",
-      "executedCases": 33
+      "executedCases": 36
     },
     {
       "name": "M-K17 guards: a JSON-object column refuses an array, a null and a scalar",
@@ -348,7 +349,7 @@
         "the three JSON-root CHECKs, refused before a statement is sent an object column, an array column and a config column"
       ],
       "verdict": "KILLED",
-      "executedCases": 33
+      "executedCases": 36
     },
     {
       "name": "M-K18 guards: a JSON-array column refuses an object",
@@ -365,7 +366,7 @@
         "the three JSON-root CHECKs, refused before a statement is sent an object column, an array column and a config column"
       ],
       "verdict": "KILLED",
-      "executedCases": 33
+      "executedCases": 36
     },
     {
       "name": "M-K19 guards: a TEXT[] write refuses a non-list",
@@ -412,7 +413,7 @@
         "the remaining two write guards an empty segment of the uniqueness key, and an unrepresentable instant"
       ],
       "verdict": "KILLED",
-      "executedCases": 33
+      "executedCases": 36
     },
     {
       "name": "M-K22 guards: an unrepresentable instant is refused",
@@ -564,7 +565,7 @@
         "the shapes the schema will not hold, refused BEFORE a statement is sent and a non-uuid row id READS as absent rather than aborting the read"
       ],
       "verdict": "KILLED",
-      "executedCases": 14
+      "executedCases": 17
     },
     {
       "name": "M-K32 catalogue: a re-registration does not move createdAt",
@@ -624,7 +625,7 @@
         "the clauses that decide WHICH ROW a call reaches a patch of a non-uuid id refuses without aborting the caller's transaction"
       ],
       "verdict": "KILLED",
-      "executedCases": 14
+      "executedCases": 17
     },
     {
       "name": "M-K36 catalogue: the official flag is what hasOfficialSkills asks about",
@@ -699,7 +700,7 @@
         "the shapes the schema will not hold, refused BEFORE a statement is sent a scope naming one identifier at two levels"
       ],
       "verdict": "KILLED",
-      "executedCases": 14
+      "executedCases": 17
     },
     {
       "name": "M-K41 installs: both upserts RE-ENABLE",
@@ -744,7 +745,7 @@
         "the clauses that decide WHICH ROW a call reaches a binding is not resolvable through a scope whose PROJECT is somebody else's"
       ],
       "verdict": "KILLED",
-      "executedCases": 14
+      "executedCases": 17
     },
     {
       "name": "M-K44 installs: a bulk resolve answers in the CALLER'S order and repeats a repeated id",
@@ -774,7 +775,7 @@
         "the shapes the schema will not hold, refused BEFORE a statement is sent and a non-uuid row id READS as absent rather than aborting the read"
       ],
       "verdict": "KILLED",
-      "executedCases": 14
+      "executedCases": 17
     },
     {
       "name": "M-K46 installs: an uninstall answers whether it removed anything",
@@ -800,9 +801,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": [],
-      "verdict": "PENDING-RESWEEP",
-      "executedCases": 2
+      "kills": [
+        "the clauses that decide WHICH ROW a call reaches an uninstall reaches THIS environment's binding and no other"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-K48 installs: a non-uuid skill id does not reach an uninstall statement",
@@ -813,9 +816,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": [],
-      "verdict": "PENDING-RESWEEP",
-      "executedCases": 14
+      "kills": [
+        "the clauses that decide WHICH ROW a call reaches a non-uuid skill id does not reach an uninstall STATEMENT"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-K49 erasure: a project-level selector selects NOTHING",
@@ -860,7 +865,7 @@
         "the clauses that decide WHICH ROW a call reaches an anonymisation is confined to ONE organization"
       ],
       "verdict": "KILLED",
-      "executedCases": 14
+      "executedCases": 17
     },
     {
       "name": "M-K52 erasure: the anonymisation is confined to the SUBJECT",
@@ -941,7 +946,7 @@
         "the shapes the schema will not hold, refused BEFORE a statement is sent an empty version — two thirds of the uniqueness key, with no CHECK behind it"
       ],
       "verdict": "KILLED",
-      "executedCases": 14
+      "executedCases": 17
     },
     {
       "name": "M-K57 stamps: the instant source never repeats",
@@ -975,26 +980,32 @@
     }
   ],
   "sweep": [
-    "MEASURED on a real PostgreSQL, on the machine with a daemon, at",
-    "932d4881 and re-measured for the two entries below at the head that",
-    "carries their named cases.",
+    "MEASURED on a real PostgreSQL, in a container, on the machine that has a",
+    "daemon. THIRD AND FINAL RUN at 332afc65: 58 entries, 58 KILLED, 0 SURVIVED,",
+    "0 VACUOUS, 0 UNAPPLIED. Every `kills` entry below is the FULL NAME of a case",
+    "this driver watched go red, copied from the run rather than predicted.",
     "",
-    "FIRST SWEEP: 58 entries, 56 KILLED, 2 SURVIVED, 0 VACUOUS, 0 UNAPPLIED.",
-    "Every suite set was proved green UNMUTATED with a non-zero executed case",
-    "count before anything was scored, and the driver classifies a run with no",
-    "executed cases as VACUOUS rather than as a kill.",
+    "THE BASELINE IS PROVED FIRST AND THE DRIVER REFUSES TO SCORE WITHOUT IT.",
+    "Each of the six suites was run UNMUTATED and had to exit zero with a",
+    "non-zero executed case count — 19, 15, 17, 2, 2 and 7 — before any mutation",
+    "was applied, and a run with no executed cases is classified VACUOUS rather",
+    "than as a kill. That is the failure tranche 1's first sweep hit, where a",
+    "cleaned `dist` made every suite fail to LOAD and 22 mutations 'died' against",
+    "a tree that would have died against none.",
     "",
-    "THE TWO SURVIVORS WERE BOTH REAL GAPS IN THE SUITES, not weak guards.",
-    "M-K47 (an uninstall reaches only THIS environment's binding) survived",
-    "because nothing installed one skill in two environments; M-K48 (a non-uuid",
-    "skill id does not reach an uninstall statement) survived because no case",
-    "called that method with one. Both now have a named case, and both are",
-    "re-measured in the second sweep.",
+    "THE FIRST RUN WAS NOT ALL GREEN AND THAT IS THE POINT OF RUNNING IT.",
+    "58 entries, 56 KILLED, 2 SURVIVED. Both survivors were gaps in the SUITES",
+    "rather than weak guards: nothing anywhere installed one skill in TWO",
+    "environments, so M-K47's environment clause changed no answer anything asked",
+    "for, and nothing called the uninstall with a non-uuid at all, so M-K48's",
+    "guard was unreachable. Two named cases were written for them and both are",
+    "killed here. FIVE MORE CASES were written before the first sweep for the",
+    "same reason, found while enumerating this ledger.",
     "",
-    "ONE ENTRY'S SUITE LIST WAS WRONG AND IS CORRECTED. M-K02 claimed the",
-    "integration suite as a witness; it is not one, because the client answers",
-    "`[]` for a scalar-list column holding SQL NULL and the reader's arm is",
-    "therefore unreachable from a container. The entry's note records the",
-    "measurement rather than the expectation."
+    "AND ONE ENTRY'S SUITE LIST WAS WRONG AND IS CORRECTED. M-K02 claimed the",
+    "integration suite as a witness for the NULL `TEXT[]` arm. It is not one: the",
+    "generated client answers `[]` for a scalar-list column holding SQL NULL, so",
+    "the reader's arm is unreachable from a container however the row is planted.",
+    "The entry's note records the measurement rather than the expectation."
   ]
 }
