@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "2a6dba7ac25d7a82316fc5994514c8facc1d7c08c70807315518f6ce39c905a0"
+      "sha256": "186f6d5398b9006e8b2e0558f3a46b5093ec69b5ba313805f86b325d04c93b27"
     },
     {
       "path": "LICENSE",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "6d41a10e2c84e26c933559c003d97867adb5d435183a869f954535727bfb674e"
+      "sha256": "9beb3714e1a6afe7d9ebaceb179ffd86257fc80400d34443830e05ae7c18e6c9"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "60ef7522575ac545a92498ff22ffa661f59616b72678121102686d56df128319"
+      "sha256": "be1d2d0e31d2ca2b8bc84a0fbed975698c6f4d8fe82315611d63abc6154b883d"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
