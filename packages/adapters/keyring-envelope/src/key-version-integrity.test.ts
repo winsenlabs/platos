@@ -18,14 +18,15 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  CredentialId,
   EnvelopeBinding,
+  EnvironmentId,
   RootKeyVersion,
   SealedEnvelope,
   SecretMaterial,
   SecretRevision,
 } from "@platos/context-secrets/application/ports/index.js";
 import { asSecretsIdentifier } from "@platos/context-secrets/application/ports/index.js";
-import type { CredentialId } from "@platos/context-secrets/application/ports/index.js";
 
 import { createEnvelopeCipher } from "./envelope-cipher.js";
 import type { RootKeyRingResolver } from "./root-key-ring.js";
@@ -34,7 +35,7 @@ import { createRootKeyRing } from "./root-key-ring.js";
 const KEY_V1 = "11".repeat(32);
 const KEY_V2 = "22".repeat(32);
 
-const ENVIRONMENT = asSecretsIdentifier("env_00000000000000000000000rot");
+const ENVIRONMENT = asSecretsIdentifier<EnvironmentId>("env_00000000000000000000000rot");
 const CREDENTIAL = asSecretsIdentifier<CredentialId>("6b1f0c33-9a2e-4d81-b7c5-0f2e4a6c8d10");
 
 const PLAINTEXT = "sk-live-rotated-under-two-root-keys";
@@ -263,7 +264,7 @@ describe("an envelope is bound to its row and to nothing else", () => {
 
     const opened = await createEnvelopeCipher(resolver).open({
       key: handle.value,
-      binding: { ...binding(1), environmentId: asSecretsIdentifier("env_00000000000000000000000oth") },
+      binding: { ...binding(1), environmentId: asSecretsIdentifier<EnvironmentId>("env_00000000000000000000000oth") },
       envelope,
     });
     expect(opened.ok).toBe(false);
