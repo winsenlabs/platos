@@ -13,6 +13,7 @@
 // the secret" and "use a different secret", which are opposite answers to "is
 // the old material still valid".
 
+import { acceptPlaintext } from "@platos/context-secrets";
 import { asIdentifier, err, ok, type Result } from "@platos/kernel";
 
 import {
@@ -82,7 +83,10 @@ export async function rotateProviderKeySecret(
   const granted = requireAccess(verified.value, "secret:mutate");
   if (!granted.ok) return err(granted.error);
 
-  const material = admitProviderSecret(command.plaintext);
+  const admittedSecret = admitProviderSecret(command.plaintext);
+  if (!admittedSecret.ok) return err(admittedSecret.error);
+  // WIN-259 — see register-provider-key.ts. The bare string ends here.
+  const material = acceptPlaintext(admittedSecret.value);
   if (!material.ok) return err(material.error);
 
   const key = await resolveKey(dependencies, granted.value, command.providerKeyId);

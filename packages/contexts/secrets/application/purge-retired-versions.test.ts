@@ -1,6 +1,8 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { secretMaterial } from "../domain/secret-material.js";
+
 import type { CredentialId } from "../domain/ids.js";
 import { createCredential } from "./create-credential.js";
 import { inMemorySecrets } from "./in-memory-dependencies.js";
@@ -23,7 +25,7 @@ beforeEach(async () => {
     await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     }),
   ).id;
 });
@@ -33,7 +35,7 @@ async function rotate(plaintext: string, readableUntil?: Date): Promise<void> {
     await rotateCredential(context.dependencies, {
       authorization: grants.operator,
       credentialId,
-      plaintext,
+      plaintext: secretMaterial(plaintext),
       ...(readableUntil === undefined ? {} : { readableUntil }),
     }),
   );

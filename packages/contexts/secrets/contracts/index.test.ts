@@ -1,6 +1,8 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { secretMaterial } from "../domain/secret-material.js";
+
 import { inMemoryGrants, inMemorySecrets } from "../application/index.js";
 import type { InMemoryGrants, InMemorySecrets } from "../application/index.js";
 import * as published from "./index.js";
@@ -65,7 +67,7 @@ describe("the whole vault lifecycle through the contract alone", () => {
         authorization: grants.operator,
         name: "OPENAI_API_KEY",
         provider: "openai",
-        plaintext: "sk-live-1",
+        plaintext: secretMaterial("sk-live-1"),
       }),
     );
 
@@ -86,7 +88,7 @@ describe("the whole vault lifecycle through the contract alone", () => {
       await vault.rotateCredential({
         authorization: grants.operator,
         credentialId: created.id,
-        plaintext: "sk-live-2",
+        plaintext: secretMaterial("sk-live-2"),
       }),
     );
     expect(rotated.activeSecretVersion?.secretRevision).toBe(2);
@@ -122,7 +124,7 @@ describe("the whole vault lifecycle through the contract alone", () => {
       await vault.setEnvironmentVariable({
         authorization: grants.operator,
         key: "OPENAI_API_KEY",
-        value: "sk-live-1",
+        value: secretMaterial("sk-live-1"),
         secret: true,
       }),
     );
@@ -147,7 +149,7 @@ describe("the whole vault lifecycle through the contract alone", () => {
     await vault.createCredential({
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     });
     const report = unwrap(await vault.reportRootKeyUsage(grants.rootKeyOperator));
     expect(report).toMatchObject({ activeRootKeyVersion: 1 });

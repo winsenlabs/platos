@@ -1,6 +1,8 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { secretMaterial } from "../domain/secret-material.js";
+
 import { createCredential } from "./create-credential.js";
 import { inMemorySecrets } from "./in-memory-dependencies.js";
 import type { InMemorySecrets } from "./in-memory-dependencies.js";
@@ -21,7 +23,7 @@ beforeEach(async () => {
     await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     }),
   ).id;
 });
@@ -32,7 +34,7 @@ describe("rotation advances the revision and retires what it replaces", () => {
       await rotateCredential(context.dependencies, {
         authorization: grants.operator,
         credentialId,
-        plaintext: "sk-live-2",
+        plaintext: secretMaterial("sk-live-2"),
       }),
     );
     expect(rotated.activeSecretVersion).toMatchObject({ secretRevision: 2, retiredAt: null });
@@ -44,7 +46,7 @@ describe("rotation advances the revision and retires what it replaces", () => {
     await rotateCredential(context.dependencies, {
       authorization: grants.operator,
       credentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
       readableUntil,
     });
     const retired = context.store.allVersions().find((entry) => entry.secretRevision === 1);
@@ -59,7 +61,7 @@ describe("rotation advances the revision and retires what it replaces", () => {
     await rotateCredential(context.dependencies, {
       authorization: grants.operator,
       credentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
     });
     expect(held.reveal()).toBe("sk-live-1");
   });
@@ -69,7 +71,7 @@ describe("rotation advances the revision and retires what it replaces", () => {
     await rotateCredential(context.dependencies, {
       authorization: grants.operator,
       credentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
     });
     const audit = context.store.allAudits().find((row) => row.action === "ROTATE");
     expect(audit).toMatchObject({ secretRevision: 2, fromRootKeyVersion: 1, toRootKeyVersion: 2 });
@@ -81,7 +83,7 @@ describe("rotation advances the revision and retires what it replaces", () => {
       await rotateCredential(context.dependencies, {
         authorization: grants.operator,
         credentialId,
-        plaintext: "sk-live-2",
+        plaintext: secretMaterial("sk-live-2"),
       }),
     );
     expect(rotated.activeSecretVersion?.rootKeyVersion).toBe(3);
@@ -93,7 +95,7 @@ describe("rotation refuses what it must", () => {
     const denied = await rotateCredential(context.dependencies, {
       authorization: grants.readOnlyOperator,
       credentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
     });
     expect(denied.ok).toBe(false);
     expect(context.store.allVersions()).toHaveLength(1);
@@ -103,14 +105,14 @@ describe("rotation refuses what it must", () => {
     const unknown = await rotateCredential(context.dependencies, {
       authorization: grants.operator,
       credentialId: "no-such-credential" as CredentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
     });
     expect(unknown.ok).toBe(false);
 
     const crossTenant = await rotateCredential(context.dependencies, {
       authorization: inMemoryGrants("2").operator,
       credentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
     });
     expect(crossTenant.ok).toBe(false);
   });
@@ -120,7 +122,7 @@ describe("rotation refuses what it must", () => {
     const failed = await rotateCredential(context.dependencies, {
       authorization: grants.operator,
       credentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
     });
     expect(failed.ok).toBe(false);
     expect(context.store.allVersions()).toHaveLength(1);

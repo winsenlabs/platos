@@ -30,6 +30,8 @@ import {
 import type { EnvironmentVariableMetadata } from "../domain/environment-variable.js";
 import { asSecretsIdentifier } from "../domain/ids.js";
 import type { CredentialId, EnvironmentVariableId } from "../domain/ids.js";
+import { requireWriteOnly } from "../domain/secret-material.js";
+import type { SecretMaterial } from "../domain/secret-material.js";
 import { createCredential } from "./create-credential.js";
 import type { SecretsDependencies } from "./dependencies.js";
 import { revokeCredential } from "./revoke-credential.js";
@@ -39,7 +41,17 @@ import { inTransaction } from "./transaction.js";
 export interface SetEnvironmentVariableCommand {
   readonly authorization: EnvironmentAuthorization;
   readonly key: string;
-  readonly value: string;
+  /**
+   * WRITE-ONLY IN TRANSIT, whatever `secret` says.
+   *
+   * A caller does not always know that the value it is setting is a secret —
+   * that misjudgement is precisely how a credential ends up in a PLAIN row —
+   * and by the time `secret` is read the command object already exists and has
+   * already been serialisable. So the value is carried in a self-redacting
+   * holder on the way in for BOTH kinds, and `secret` decides only whether it
+   * is readable afterwards.
+   */
+  readonly value: SecretMaterial;
   readonly secret: boolean;
 }
 
@@ -86,7 +98,9 @@ export async function setEnvironmentVariable(
   if (!granted.ok) return err(granted.error);
   const key = environmentVariableKey(command.key);
   if (!key.ok) return err(key.error);
-  const value = environmentVariableValue(command.value);
+  const material = requireWriteOnly("value", command.value);
+  if (!material.ok) return err(material.error);
+  const value = environmentVariableValue(material.value.reveal());
   if (!value.ok) return err(value.error);
 
   const environmentId = granted.value.environmentId;

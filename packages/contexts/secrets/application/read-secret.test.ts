@@ -1,6 +1,8 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { secretMaterial } from "../domain/secret-material.js";
+
 import { createCredential } from "./create-credential.js";
 import { openSecret } from "./envelope-operations.js";
 import { inMemorySecrets } from "./in-memory-dependencies.js";
@@ -25,7 +27,7 @@ beforeEach(async () => {
     await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: PLAINTEXT,
+      plaintext: secretMaterial(PLAINTEXT),
     }),
   );
   credentialId = created.id;
@@ -120,7 +122,7 @@ describe("a retired envelope is closed to reads", () => {
     await rotateCredential(context.dependencies, {
       authorization: grants.operator,
       credentialId,
-      plaintext: "sk-live-2",
+      plaintext: secretMaterial("sk-live-2"),
     });
     const material = unwrap(
       await readSecret(context.dependencies, { authorization: grants.runtime, credentialId }),

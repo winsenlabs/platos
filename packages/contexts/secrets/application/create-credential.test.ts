@@ -1,6 +1,8 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { secretMaterial } from "../domain/secret-material.js";
+
 import { createCredential } from "./create-credential.js";
 import { inMemorySecrets } from "./in-memory-dependencies.js";
 import type { InMemorySecrets } from "./in-memory-dependencies.js";
@@ -22,7 +24,7 @@ describe("creating a credential", () => {
         authorization: grants.operator,
         name: "OPENAI_API_KEY",
         provider: "openai",
-        plaintext: "sk-live-1",
+        plaintext: secretMaterial("sk-live-1"),
       }),
     );
 
@@ -40,7 +42,7 @@ describe("creating a credential", () => {
     await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     });
     const stored = JSON.stringify([context.store.allCredentials(), context.store.allVersions()]);
     expect(stored).not.toContain("sk-live-1");
@@ -50,7 +52,7 @@ describe("creating a credential", () => {
     await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     });
     const audits = context.store.allAudits();
     expect(audits).toHaveLength(1);
@@ -70,7 +72,7 @@ describe("creating a credential", () => {
       await createCredential(context.dependencies, {
         authorization: grants.operator,
         name: "A_KEY",
-        plaintext: "value",
+        plaintext: secretMaterial("value"),
       }),
     );
     const reference = unwrap(
@@ -78,7 +80,7 @@ describe("creating a credential", () => {
         authorization: grants.operator,
         name: "A_KEY",
         kind: "SECRET_REFERENCE",
-        plaintext: "value",
+        plaintext: secretMaterial("value"),
       }),
     );
     expect(service.kind).toBe("SERVICE_CREDENTIAL");
@@ -91,7 +93,7 @@ describe("creation refuses what it must", () => {
     const denied = await createCredential(context.dependencies, {
       authorization: grants.readOnlyOperator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     });
     expect(denied.ok).toBe(false);
     if (!denied.ok) expect(denied.error.code).toBe("CREDENTIAL_FORBIDDEN");
@@ -102,7 +104,7 @@ describe("creation refuses what it must", () => {
     const denied = await createCredential(context.dependencies, {
       authorization: grants.runtime,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     });
     expect(denied.ok).toBe(false);
   });
@@ -111,7 +113,7 @@ describe("creation refuses what it must", () => {
     const created = await createCredential(context.dependencies, {
       authorization: grants.service,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     });
     expect(created.ok).toBe(true);
   });
@@ -120,7 +122,7 @@ describe("creation refuses what it must", () => {
     const refused = await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "",
+      plaintext: secretMaterial(""),
     });
     expect(refused.ok).toBe(false);
     if (!refused.ok) expect(refused.error.code).toBe("INVALID_SECRET_MATERIAL");
@@ -131,7 +133,7 @@ describe("creation refuses what it must", () => {
     const command = {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     };
     expect((await createCredential(context.dependencies, command)).ok).toBe(true);
     const clash = await createCredential(context.dependencies, command);
@@ -146,7 +148,7 @@ describe("an unauditable creation does not happen", () => {
     const failed = await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     });
 
     expect(failed.ok).toBe(false);
