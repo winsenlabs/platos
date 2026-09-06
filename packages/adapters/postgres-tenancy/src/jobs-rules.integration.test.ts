@@ -1,32 +1,40 @@
-// Rows this store REFUSES to write, planted by the ORM's own CLI and then read.
+// Rows this store REFUSES to write, put there by the ORM's own CLI and read back.
 //
-// WHY THEY CANNOT BE WRITTEN THROUGH THE PORT. Every one below is a value the
+// WHY THEY CANNOT BE WRITTEN THROUGH THE PORT. Every value below is one the
 // guards in `jobs-guards.ts` refuse or a shape the mapping in `jobs-rows.ts`
 // never produces — a `WorkStatus` a `Job` row never takes, an `allowedAgentIds`
 // that is SQL NULL, a registered name that no longer satisfies the key rule, an
-// approval envelope written before the marker existed.
-//
-// THE INVOCATION TYPE IS THE ONE VOCABULARY THIS SUITE CANNOT ASK ABOUT, and
-// that is a vocabulary boundary rather than a gap. Its column carries the
-// pre-cutover vendor name behind an `@map`, `domain/invocation.ts` deliberately
-// does not spell it, and `scripts/vocabulary-boundary.mjs` will not have this
-// package spell it either — so `readInvocationType` is proven in
-// `jobs-rows.test.ts`, where the value can be handed to the reader directly and
-// no column has to be named at all. They are exactly the rows an
-// EXPAND/CONTRACT window puts in the database: written by an older binary, or by
-// a newer one, and read by this one.
+// approval envelope written before the marker existed, a metadata field of the
+// wrong type. They are exactly the rows an EXPAND/CONTRACT window puts in the
+// database: written by an older binary, or by a newer one, and read by this one.
 //
 // `prisma db execute` IS THE RIGHT DOOR FOR THEM. It is the ORM's CLI at
 // runtime, not a client call, so `scripts/arch/sole-writer.mjs` neither sees
 // these statements nor should — and a fixture that reached for `$executeRaw`
 // instead would be this package writing rows it has just declared unwritable.
 //
-// TWO CASES DROP A CONSTRAINT AND PUT IT BACK. `Job_payloadSchema_json_root` has
-// been in the schema since the initial migration, so the only way a row can hold
-// a non-object schema is to have been written while the constraint was absent —
-// which is precisely the window this suite is about. The constraint is restored
-// `NOT VALID`, so the planted row survives for the read and every LATER write is
-// checked exactly as before.
+// THE TWO HALVES REACH IT DIFFERENTLY, AND THE `Job` HALF IS THE INTERESTING
+// ONE. An `AgentApproval` is INSERTed outright: every column an INSERT must name
+// is one this package may spell. A `Job` is created through the PORT and then
+// UPDATED, because a raw INSERT has to name every NOT NULL column and one of
+// `Job`'s carries the pre-cutover vendor name behind an `@map` —
+// `domain/invocation.ts` deliberately does not spell it, and
+// `scripts/vocabulary-boundary.mjs` will not have this package spell it either.
+// The UPDATE names only the columns under test, is still out of band, and is
+// safe to use here because `enforce_domain_ancestry` does not fire on `Job`.
+//
+// THE INVOCATION TYPE IS THEREFORE THE ONE VOCABULARY THIS SUITE CANNOT ASK
+// ABOUT, and that is a vocabulary boundary rather than a gap: planting a row
+// that holds an unknown one would mean naming the column. `readInvocationType`
+// is proven in `jobs-rows.test.ts` instead, where the value goes straight to the
+// reader and no column is named at all.
+//
+// ONE CASE DROPS A CONSTRAINT AND PUTS IT BACK. `Job_payloadSchema_json_root`
+// has been in the schema since the initial migration, so the only way a row can
+// hold a non-object schema is to have been written while the constraint was
+// absent — which is precisely the window this suite is about. The constraint is
+// restored `NOT VALID`, so the planted row survives for the read and every LATER
+// write is checked exactly as before.
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
