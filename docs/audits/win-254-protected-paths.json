@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "a46618e4f3382ece6f10f414c42a3928a032ed07f7b5443270e61bd819bcd69b"
+      "sha256": "ea0df149ed13e91d8095890348e6633e32248e204ef4e1468f732bfe57622b37"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "4e4133de5e3ea80e37b48ce26d8ef03e102967cb7c596a6f869ed98cdcfc6f90"
+      "sha256": "7b74b17d823ed78320af2db939099cc8674ee4153d88e527d92034461fd85ec9"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "75ce9154da8c4a20e23b1a4ba961d32e3ac32138efa9276002269ddc3e3fa3f5"
+      "sha256": "c48a13d0ed2a06feec1ed48150224425b4151789fcf400571ba36a53b6e79fe4"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d"
+      "sha256": "d53f4401d4c8ad934677e9ae4421ee19a30cefaefe6f43414f5ecc0220e9d38f"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "821179761cc79053fea293af34408c00477c43fb31de37410a01fccded66fab3"
+      "sha256": "dd9abfffba074bc628488eb52d7426d5b325ca8f3d02d8a7eeec4e5259c363b6"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3538,7 +3538,7 @@
     {
       "path": "docs/win-260-mutation-ledger.json",
       "mode": "100644",
-      "sha256": "e89f6bc9df07bd7156dd22f77ec420a6823a6bfa9a6052d08cca9d0686ba8574"
+      "sha256": "eb046c02a8836b69912161b4a6417d29d8217a65a58f0b199665fefe64010f9c"
     },
     {
       "path": "docs/writing-agents.md",

@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d747e987992dba454b63ee36aa949800e0e5f9731fa31308e53a69f697301b9b",
+  "evidenceSha256": "b6cc1ec375f3f3f539b66c181bd8d4af33a26cdf8503c5dd01bf7e77daa36021",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3c673273de87612881ac918c75618df9b3f3f925a4f6fbf86a0ef3b627943430",
+    "aggregateSha256": "54819fd851e09eff3d5083bb3db31be55981e3b4bd9f4099c33e97b8f8486245",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4129,7 +4129,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d"
+        "sha256": "d53f4401d4c8ad934677e9ae4421ee19a30cefaefe6f43414f5ecc0220e9d38f"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6109,7 +6109,7 @@
       },
       {
         "path": "docs/win-260-mutation-ledger.json",
-        "sha256": "e89f6bc9df07bd7156dd22f77ec420a6823a6bfa9a6052d08cca9d0686ba8574"
+        "sha256": "eb046c02a8836b69912161b4a6417d29d8217a65a58f0b199665fefe64010f9c"
       },
       {
         "path": "docs/writing-agents.md",
@@ -46700,7 +46700,7 @@
             {
               "from": "docs/win-260-mutation-ledger.json",
               "kind": "reference",
-              "line": 153
+              "line": 181
             },
             {
               "from": "packages/adapters/outbox/README.md",
@@ -47060,7 +47060,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "56b8ec74370ee007834db027a7a6fcb2fa41d9c6ae861c6d8732d45a18ca3ac2",
+      "evidenceSha256": "1393d976d7bb8b9eab7f25d4bfee4fd7007d586ee98bc4ccc18b25ef01c71040",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -47206,7 +47206,7 @@
             {
               "from": "docs/win-260-mutation-ledger.json",
               "kind": "reference",
-              "line": 131
+              "line": 153
             },
             {
               "from": "packages/adapters/postgres-tenancy/README.md",
@@ -48942,7 +48942,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "3065aad990b38a3608885daba855c117e77d47a45bb750273917b5a9dc228a7e",
+      "evidenceSha256": "b2595dad7de2d58d9705b5ed4e35fe4105f8dc4978b7c552fa781811224d8178",
       "manifestSha256": "8b4ac128fa6e660cb1132d155aaa0668fc2e907f366422dbbb922599f2917a71",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -59788,7 +59788,7 @@
             {
               "from": "docs/win-260-mutation-ledger.json",
               "kind": "reference",
-              "line": 70
+              "line": 80
             },
             {
               "from": "packages/contexts/jobs/README.md",
@@ -60601,7 +60601,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "6cd760ac4b00c5badbf0c932fbced68d464c4d3a211367c8802e7c94508d2b72",
+      "evidenceSha256": "72e9806b12f5d50054e74c004b6c0f855ec4770b809af0b203d848e1bbf14a0a",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
