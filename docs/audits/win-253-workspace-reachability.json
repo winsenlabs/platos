@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6a28725ac3451bb7d84d69d8ab2d41790a178251d8c23c109ce0f9d690b42950",
+  "evidenceSha256": "efd16df493994208a925189e863bf890933edc02ce6a7836b98e4fcb83b76f50",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 37,
@@ -111,7 +111,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "0afd78c5917542928474b35b96b13803c42144359c782a3622c0707db39a3c93",
+    "aggregateSha256": "5610d51614f64600e06df15c998c33aa034c788b6c4dc045929764a3b56adf0a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -19263,7 +19263,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "1becaf9a5f5fa4d62c174123f9af5ba7e1773fa677a2710c347b474be5187c2a"
+        "sha256": "5e19da312859cd9b8156dc3904ea8d8149475ffb50e03dd7948d580928b1523d"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -19271,11 +19271,11 @@
       },
       {
         "path": "scripts/arch/clean-v1.mjs",
-        "sha256": "bf02a1a2ca90076490082f74a157a08b4ef4dfe5cee8d698382f29a5006865f4"
+        "sha256": "0439116d8a127e51cb21b2debc53aa3fbb1825feee2910ceee2275825a423e2b"
       },
       {
         "path": "scripts/arch/clean-v1.test.mjs",
-        "sha256": "ef60c14af4d7475cc89f687f9485a16351a7526116dfa4b6b46624e8ebe82e3e"
+        "sha256": "c90c8b0cf19957e11aa3301fe3e50f0d143d3f6c43cf08b519564ea193ba0fcf"
       },
       {
         "path": "scripts/arch/composition-root.mjs",
@@ -19283,7 +19283,7 @@
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "7f7e7b75369f371319d719e864cab02a57a0473426f1d3b242e313733f5ff961"
+        "sha256": "3f6a08287b4e9b684178c055219edb8e81601173529ae99e522504ef7e64c32a"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -19315,7 +19315,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "c60a804547974edd7981dc54ad098fe48b2d5eae9d53fd449a08ee5ff08a20f0"
+        "sha256": "f89fe35adad0079538edb2fcc08f8d85612bd7339ac55e04b6dc00d26aa3693b"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -45181,9 +45181,24 @@
               "line": 47
             },
             {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 1036
+            },
+            {
+              "from": "scripts/arch/composition-root.test.mjs",
+              "kind": "reference",
+              "line": 125
+            },
+            {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
               "line": 87
+            },
+            {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 675
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -45222,8 +45237,20 @@
               "packages/adapters/postgres-tenancy/src/secrets-key-version.integration.test.ts"
             ],
             [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
+              "scripts/arch/composition-root.test.mjs",
+              "scripts/arch/composition-root.test.mjs"
+            ],
+            [
               "scripts/arch/gen-v1-skeleton.test.mjs",
               "scripts/arch/gen-v1-skeleton.test.mjs"
+            ],
+            [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
             ],
             [
               "scripts/arch/test-case-census.test.mjs",
@@ -45241,7 +45268,10 @@
             "packages/adapters/keyring-envelope/src/secret-hasher.test.ts",
             "packages/adapters/keyring-envelope/src/wire-compatibility.test.ts",
             "packages/adapters/postgres-tenancy/src/secrets-key-version.integration.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
+            "scripts/arch/composition-root.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/v1-ledger.test.mjs"
           ]
@@ -45302,7 +45332,7 @@
           "packages/adapters/keyring-envelope"
         ]
       },
-      "evidenceSha256": "a70b973ea665d955a2c649a4e9579508e940961af479005634737bb5762d538e",
+      "evidenceSha256": "c027b80cd07e951ff47a65a292bf96a00591264f7cf06054b28100013fc641be",
       "manifestSha256": "34b81e0cd2c336a8d9a795f6f271938258b50c0f18e5ba23d2b4010f8d2b5009",
       "name": "@platos/adapter-keyring-envelope",
       "ociImageClosure": {
@@ -47329,7 +47359,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 469
+              "line": 488
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -47483,7 +47513,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "6a5f34e01d508789e920e3b1e6b2968d40ef03b27081beeb7b485c26270f127c",
+      "evidenceSha256": "9f56fd1b380a068502bd65f422123d463f42924586084bc44da315a18cf81bbb",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -49656,7 +49686,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 229
+              "line": 243
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -49750,7 +49780,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "cd18686dbc8ed9d2ca43e94fd6fd42a1034e2b2c609cc4b9f5593050b6d4b508",
+      "evidenceSha256": "cd7292925008e90894ceb52b99cbab31ec77c27702463318d14385efe62322e0",
       "manifestSha256": "aac45cec450579897470f8a1710290c96f5cd6139631eb189394fee7c9b41c8c",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -56126,7 +56156,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 191
+              "line": 205
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -56493,7 +56523,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "26e9039abfb2cee26ebe03dcc50394350d56a4da8ee8a5d9e9584c75fd47dd72",
+      "evidenceSha256": "02ed5799f3110a57b0745362c029997a1988d1f91c357ffa20b16817c434d306",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -58978,7 +59008,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 183
+              "line": 197
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -59863,7 +59893,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "6e357ed552d9148857cc71bc797683df5b308c20ecce671b58c0d6c80dba2165",
+      "evidenceSha256": "0e1f3c7e99172d3c12bc26fb58c37bab086b1d09768f256796e8e03dc8c7faf9",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -66613,6 +66643,11 @@
               "line": 81
             },
             {
+              "from": "scripts/arch/max-file-lines.test.mjs",
+              "kind": "reference",
+              "line": 677
+            },
+            {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
               "line": 345
@@ -66775,6 +66810,10 @@
               "scripts/arch/gen-v1-skeleton.test.mjs"
             ],
             [
+              "scripts/arch/max-file-lines.test.mjs",
+              "scripts/arch/max-file-lines.test.mjs"
+            ],
+            [
               "scripts/arch/sole-writer.test.mjs",
               "scripts/arch/sole-writer.test.mjs"
             ],
@@ -66827,6 +66866,7 @@
             "packages/contexts/secrets/package.json",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
+            "scripts/arch/max-file-lines.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
@@ -67227,7 +67267,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d989f7b483c6e9af7dad1e0f9a0a4dbb3ba4ade603184fcb3a8f470ae0511bd6",
+      "evidenceSha256": "cf3c3719e9f2d2676d54c8b828a6e4983849d08c92b11fcd21f5e3e7817527ae",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -70168,7 +70208,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 151
+              "line": 165
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -71033,7 +71073,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "0ac9c590cfea3a49af7909ef12eda5910c64141e595022d5a0fc1cf6f1d97b92",
+      "evidenceSha256": "f5cace923ed6bd934813fbd33975086ab12c03026ccd565f19eb8dd18a197cff",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -82381,7 +82421,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 493
+              "line": 512
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -84328,7 +84368,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "109691d4f635ef032fb5de119b529ba7daa6d38b06b204d927ebeaeca84de6f1",
+      "evidenceSha256": "7376a892b47b253d19e38fd6296ecd6155afc5e09e40fa738cac5a88de05159d",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
