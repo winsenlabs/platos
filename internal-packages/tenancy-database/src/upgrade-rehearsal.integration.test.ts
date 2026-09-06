@@ -95,6 +95,13 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
       { migration_name: upgradeMigrationName },
       { migration_name: accessKeyUpgradeMigrationName },
       { migration_name: "20260828120000_win296_access_key_bootstrap_grant" },
+      // WIN-258 T7. The ordered set gained one member, and this assertion is
+      // the reason to say so here rather than only in the migrations directory:
+      // it names the WHOLE applied set, so an ordered index added by a sibling
+      // dimension is a failure of this case until it is written down.
+      // `Thread_environmentId_updatedAt_id_idx` is what the operator thread
+      // listing's `updatedAt DESC` order was said to have and did not.
+      { migration_name: "20260906120000_win258_thread_listing_index" },
     ]);
 
     const accessKeyFenceColumn = await prisma.$queryRawUnsafe<
