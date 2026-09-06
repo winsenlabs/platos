@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FORTY-FOUR bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
+  it("declares FORTY-SEVEN bindings across ADR M0.3 §4's THIRTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -146,9 +146,31 @@ describe("the declared binding table", () => {
     // ADAPTER rather than through a property, because its nine method names
     // collide with nothing the directory already publishes. With it, every one
     // of ADR M0.3 §1's seventeen contexts has a canonical store.
-    expect(ADAPTER_BINDINGS).toHaveLength(44);
-    expect(DECLARED_BINDING_COUNT).toBe(44);
-    expect(ADAPTER_NAMES).toHaveLength(12);
+    // WIN-259 (M2.4). THE DIRECTORY COUNT MOVES FOR THE FIRST TIME, 12 -> 13,
+    // and the binding count moves with it, 44 -> 47. Every one of the seventeen
+    // grants above left the directory count alone because every one of them was
+    // another OWNER of the rows in the one PostgreSQL database, which §15 says
+    // is a row on an existing directory. `keyring-envelope` is not that:
+    // it holds no rows and no database client, it holds the AES-256 root keys,
+    // and `packages/adapters/postgres-tenancy/src/secrets-repository.ts`
+    // declined all three of its ports in writing on exactly that ground —
+    // "putting it here would move the keys that decrypt every envelope into the
+    // process that holds the database connection, so a single credential leak
+    // would yield both halves. It belongs to a key-management adapter."
+    //
+    // THREE BINDINGS ON ONE NEW DIRECTORY, so the gap between the two counts
+    // widens by two rather than closing. `secrets` publishes `KeyRing`,
+    // `AeadCipher` and `Hasher` separately because they are three capabilities
+    // with three failure modes, and they share a directory because the opaque
+    // `RootKeyHandle` is resolvable only by whoever minted it.
+    expect(ADAPTER_BINDINGS).toHaveLength(47);
+    expect(DECLARED_BINDING_COUNT).toBe(47);
+    expect(ADAPTER_NAMES).toHaveLength(13);
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === "keyring-envelope").map(
+        (binding) => binding.port,
+      ),
+    ).toEqual(["KeyRing", "AeadCipher", "Hasher"]);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
     );
@@ -259,9 +281,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(44);
+    expect(report.unsatisfied).toHaveLength(47);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/44 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/47 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -288,7 +310,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(43);
+    expect(report.unsatisfied).toHaveLength(46);
 
     expect(report.faults).toEqual([]);
   });
@@ -311,14 +333,14 @@ describe("adapter supply validation", () => {
 
   it("rejects an adapter name that is not one of the declared bindings", () => {
     const report = reportAdapterSupply({ "redis-queue": adapterDouble("redis-queue") } as SuppliedAdapters);
-    expect(report.faults[0]).toContain("is not one of the 12 declared adapters");
+    expect(report.faults[0]).toContain("is not one of the 13 declared adapters");
   });
 });
 
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(44);
+    expect(app.bindings.unsatisfied).toHaveLength(47);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -348,7 +370,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(43);
+    expect(app.bindings.unsatisfied).toHaveLength(46);
 
   });
 
