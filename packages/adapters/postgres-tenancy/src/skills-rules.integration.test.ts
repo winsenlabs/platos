@@ -44,7 +44,7 @@ import type {
   TransactionScope,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier } from "@platos/context-skills/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-skills/application/ports/index.js";
 
 import { conformanceDraft, conformanceIdentity } from "./skills-conformance.js";
 import {

@@ -16,7 +16,7 @@ import { afterAll, beforeAll, expect, test } from "vitest";
 
 import type { TransactionScope } from "@platos/context-privacy/application/ports/index.js";
 import { InMemoryPrivacyRepository } from "@platos/context-privacy/application/testing/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-privacy/application/ports/index.js";
 
 import type { PrivacyConformanceIds } from "./privacy-conformance.js";
 import { runPrivacyConformance } from "./privacy-conformance.js";

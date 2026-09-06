@@ -23,7 +23,7 @@ import type {
   SkillId,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier } from "@platos/context-skills/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-skills/application/ports/index.js";
 
 import {
   CONFORMANCE_ANONYMISED,

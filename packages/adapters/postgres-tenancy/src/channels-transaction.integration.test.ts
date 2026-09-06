@@ -38,7 +38,7 @@ import type {
 import { asIdentifier, environmentScope } from "@platos/context-channels/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier as asTenancyIdentifier } from "@platos/context-tenancy/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-channels/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import { CONFORMANCE_AT } from "./channels-conformance.js";

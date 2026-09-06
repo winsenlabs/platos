@@ -54,8 +54,8 @@ export {
 // above: every method on this port returns `Result<T>`, and a package with no
 // way to CONSTRUCT one could not implement a single one of them. Types would not
 // have been enough — these two are values.
-export { err, ok } from "@platos/kernel";
-export type { DomainError, Result } from "@platos/kernel";
+export { err, ok, runResult } from "@platos/kernel";
+export type { DomainError, NotResult, Result } from "@platos/kernel";
 
 // EVERY TYPE THAT APPEARS IN THIS PORT'S OWN SIGNATURES, and the ones an
 // implementation of those signatures has to NAME in order to build the values
@@ -148,6 +148,14 @@ export type {
 // republish theirs: an adapter that reached for `@platos/kernel` directly would
 // be a second import edge into the kernel from a package whose only declared
 // dependency is the context whose port it satisfies.
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
 export type { EnvironmentId, EnvironmentScope, TransactionScope } from "@platos/kernel";
 
 export type {

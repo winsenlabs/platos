@@ -25,8 +25,8 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
-import { runResult } from "@platos/kernel";
-import type { Result } from "@platos/kernel";
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
+import type { Result } from "@platos/context-secrets/application/ports/index.js";
 
 import {
   INSTANT_NOT_REPRESENTABLE,

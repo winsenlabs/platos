@@ -39,7 +39,7 @@ import type {
   ThresholdEventId,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-cost-monitoring/application/ports/index.js";
 
 import { AT, LATER, conformanceBudget, conformanceChannel } from "./cost-conformance.js";
 import type { CostHarness } from "./cost-harness.js";

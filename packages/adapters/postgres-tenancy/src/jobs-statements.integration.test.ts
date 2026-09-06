@@ -46,7 +46,7 @@ import type {
   JobKey,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, organizationScope } from "@platos/context-jobs/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-jobs/application/ports/index.js";
 
 import type { JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";

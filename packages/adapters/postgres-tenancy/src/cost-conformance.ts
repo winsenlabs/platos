@@ -40,8 +40,8 @@ import type {
   TransactionScope,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
-import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-cost-monitoring/application/ports/index.js";
+import { runResult } from "@platos/context-cost-monitoring/application/ports/index.js";
 
 import { runAlertConformance } from "./cost-conformance-alerts.js";
 

@@ -18,7 +18,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { TransactionId, TransactionScope } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
-import { domainError, err, runResult } from "@platos/kernel";
+import { domainError, err, runResult } from "@platos/context-tenancy/application/ports/index.js";
 
 import type { OutboxInsertRow } from "./outbox-store.js";
 import { ENVIRONMENT_UNKNOWN, EVENT_ID_TAKEN } from "./outbox-store.js";

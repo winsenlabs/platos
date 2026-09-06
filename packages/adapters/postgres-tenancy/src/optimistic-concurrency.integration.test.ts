@@ -45,7 +45,7 @@ import type {
   Result,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import { AT, LATER, startSecretsHarness, variableIdOf } from "./secrets-harness.js";

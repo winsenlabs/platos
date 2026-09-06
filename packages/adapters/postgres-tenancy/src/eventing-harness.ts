@@ -60,8 +60,8 @@ import type {
   Slug,
 } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier as asTenancyIdentifier } from "@platos/context-tenancy/application/ports/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/context-eventing/application/ports/index.js";
+import type { NotResult } from "@platos/context-eventing/application/ports/index.js";
 
 import type { TenancyHarness } from "./harness.js";
 import { AT, startTenancyHarness } from "./harness.js";

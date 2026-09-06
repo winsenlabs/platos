@@ -32,8 +32,8 @@ import type {
   ProvidersRepository,
   TransactionScope,
 } from "@platos/context-providers/application/ports/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/context-providers/application/ports/index.js";
+import type { NotResult } from "@platos/context-providers/application/ports/index.js";
 
 import type {
   ProvidersConformanceEnvironment,

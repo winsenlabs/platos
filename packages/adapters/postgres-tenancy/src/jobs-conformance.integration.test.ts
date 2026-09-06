@@ -20,8 +20,8 @@ import {
   InMemoryApprovalsRepository,
   InMemoryJobsRepository,
 } from "@platos/context-jobs/application/testing/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/context-jobs/application/ports/index.js";
+import type { NotResult } from "@platos/context-jobs/application/ports/index.js";
 
 import type { ApprovalPeers, JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";

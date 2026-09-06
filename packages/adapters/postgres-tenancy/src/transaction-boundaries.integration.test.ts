@@ -58,7 +58,7 @@ import type {
   Result,
 } from "@platos/context-secrets/application/ports/index.js";
 import { err } from "@platos/context-secrets/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";

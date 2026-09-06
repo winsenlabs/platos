@@ -21,7 +21,7 @@ import type {
   TransactionScope,
 } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
-import { domainError, err, runResult } from "@platos/kernel";
+import { domainError, err, runResult } from "@platos/context-tenancy/application/ports/index.js";
 
 import type { TenancyHarness } from "./harness.js";
 import { AT, orgId, slugOf, startTenancyHarness } from "./harness.js";

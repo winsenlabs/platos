@@ -23,8 +23,8 @@ import {
   InMemorySafetyLedger,
   InMemoryUnitOfWork,
 } from "@platos/context-governance/application/testing/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/context-governance/application/ports/index.js";
+import type { NotResult } from "@platos/context-governance/application/ports/index.js";
 
 import type { GovernanceHarness, PeerChain } from "./governance-harness.js";
 import { startGovernanceHarness } from "./governance-harness.js";

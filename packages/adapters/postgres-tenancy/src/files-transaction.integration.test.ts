@@ -35,7 +35,7 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { AttachmentId, TransactionScope } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-files/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import {

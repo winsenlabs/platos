@@ -55,8 +55,8 @@ import type {
   TurnId,
 } from "@platos/context-files/application/ports/index.js";
 import { asIdentifier, boundTo, PENDING_BINDING } from "@platos/context-files/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
-import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-files/application/ports/index.js";
+import { runResult } from "@platos/context-files/application/ports/index.js";
 
 /** One tenant, as the scenario addresses it. */
 export interface FilesConformanceChain {

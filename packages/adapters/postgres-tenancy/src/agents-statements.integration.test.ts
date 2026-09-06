@@ -22,8 +22,8 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { runResult } from "@platos/kernel";
-import type { TransactionScope } from "@platos/kernel";
+import { runResult } from "@platos/context-agents/application/ports/index.js";
+import type { TransactionScope } from "@platos/context-agents/application/ports/index.js";
 
 import { HOME_ENVIRONMENT, scopeOf, startAgentsHarness, type AgentsHarness, type SeededAgent } from "./agents-harness.js";
 

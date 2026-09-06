@@ -32,7 +32,7 @@ import type {
   TombstoneDraft,
   TransactionScope,
 } from "@platos/context-privacy/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-privacy/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import type { PrivacyHarness, PrivacyTenant } from "./privacy-harness.js";

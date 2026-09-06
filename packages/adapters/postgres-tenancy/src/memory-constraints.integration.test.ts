@@ -35,9 +35,9 @@ import type {
   TurnId,
 } from "@platos/context-memory/application/ports/index.js";
 import { asMemoryIdentifier } from "@platos/context-memory/application/ports/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
-import type { Result } from "@platos/kernel";
+import { runResult } from "@platos/context-memory/application/ports/index.js";
+import type { NotResult } from "@platos/context-memory/application/ports/index.js";
+import type { Result } from "@platos/context-memory/application/ports/index.js";
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { edgeDraft, entityDraft, memoryDraft, startMemoryHarness } from "./memory-harness.js";

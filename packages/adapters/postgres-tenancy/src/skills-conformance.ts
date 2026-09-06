@@ -53,8 +53,8 @@ import {
   asIdentifier,
   skillIdentity,
 } from "@platos/context-skills/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
-import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-skills/application/ports/index.js";
+import { runResult } from "@platos/context-skills/application/ports/index.js";
 
 import { runSkillsInstallConformance } from "./skills-conformance-installs.js";
 

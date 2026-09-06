@@ -48,8 +48,8 @@ import type {
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
 import type { EnvironmentId, ProjectId, Slug } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier as asTenancyIdentifier } from "@platos/context-tenancy/application/ports/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/context-files/application/ports/index.js";
+import type { NotResult } from "@platos/context-files/application/ports/index.js";
 
 import type { TenancyHarness } from "./harness.js";
 import { AT, startTenancyHarness } from "./harness.js";

@@ -78,7 +78,7 @@ import {
   type Turn,
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-conversations/application/ports/index.js";
 
 import { runErasureConformance } from "./conversations-conformance-erasure.js";
 import {

@@ -42,7 +42,7 @@ import {
   asProvidersIdentifier,
   rateFromDecimalString,
 } from "@platos/context-providers/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-providers/application/ports/index.js";
 
 import type { ProvidersHarness } from "./providers-harness.js";
 import { startProvidersHarness } from "./providers-harness.js";

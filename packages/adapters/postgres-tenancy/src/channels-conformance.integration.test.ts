@@ -26,7 +26,7 @@ import type {
   RefreshClaimId,
 } from "@platos/context-channels/application/ports/index.js";
 import { asIdentifier } from "@platos/context-channels/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-channels/application/ports/index.js";
 
 import type { ChannelsWorld } from "./channels-conformance.js";
 import { runChannelsConformance } from "./channels-conformance.js";

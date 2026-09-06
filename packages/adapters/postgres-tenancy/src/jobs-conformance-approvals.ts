@@ -26,7 +26,7 @@ import type {
   RequestDigest,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, organizationScope } from "@platos/context-jobs/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-jobs/application/ports/index.js";
 
 import type {
   ApprovalConformanceIds,

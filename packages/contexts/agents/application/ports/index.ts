@@ -38,20 +38,16 @@ export * from "./macro-recorder.js";
 // in-memory double, and an adapter that re-derived the packing would be a second
 // definition of where every carried field lives.
 
-export { err, ok } from "@platos/kernel";
-export type {
-  Branded,
-  DomainError,
-  EnvironmentId,
-  EnvironmentScope,
-  JsonValue,
-  OrganizationId,
-  ProjectId,
-  Result,
-  TransactionId,
-  TransactionScope,
-  UnitOfWork,
-} from "@platos/kernel";
+export { err, ok, runResult } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+export type { Branded, DomainError, EnvironmentId, EnvironmentScope, JsonValue, NotResult, OrganizationId, ProjectId, Result, TransactionId, TransactionScope, UnitOfWork } from "@platos/kernel";
 
 export {
   asAgentsIdentifier,

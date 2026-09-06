@@ -32,7 +32,7 @@ import type {
   UserId,
 } from "@platos/context-identity-access/application/ports/index.js";
 import { asIdentifier } from "@platos/context-identity-access/application/ports/index.js";
-import { domainError, err, runResult } from "@platos/kernel";
+import { domainError, err, runResult } from "@platos/context-identity-access/application/ports/index.js";
 
 import { AT, digest, EXPIRES, LATER } from "./identity-conformance.js";
 import type { IdentityHarness, SeededTenant } from "./identity-harness.js";

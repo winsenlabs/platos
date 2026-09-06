@@ -51,8 +51,8 @@ import {
   organizationScope,
   ZERO_COUNTS,
 } from "@platos/context-privacy/application/ports/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/context-privacy/application/ports/index.js";
+import type { NotResult } from "@platos/context-privacy/application/ports/index.js";
 
 import type { TenancyHarness } from "./harness.js";
 import { startTenancyHarness } from "./harness.js";

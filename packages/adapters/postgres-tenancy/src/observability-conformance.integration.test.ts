@@ -18,8 +18,8 @@ import {
   ImmediateUnitOfWork,
   InMemoryObservabilityRepository,
 } from "@platos/context-observability/application/testing/index.js";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
+import { runResult } from "@platos/context-observability/application/ports/index.js";
+import type { NotResult } from "@platos/context-observability/application/ports/index.js";
 
 import type { AuditScope, ObservabilityHarness } from "./observability-harness.js";
 import { startObservabilityHarness } from "./observability-harness.js";

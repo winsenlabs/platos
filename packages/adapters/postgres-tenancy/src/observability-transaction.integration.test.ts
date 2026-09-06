@@ -35,9 +35,9 @@ import type {
 } from "@platos/context-observability/application/ports/index.js";
 import { asIdentifier } from "@platos/context-observability/application/ports/index.js";
 import type { PrismaClient } from "@platos/tenancy-database";
-import { runResult } from "@platos/kernel";
-import type { NotResult } from "@platos/kernel";
-import type { Result } from "@platos/kernel";
+import { runResult } from "@platos/context-observability/application/ports/index.js";
+import type { NotResult } from "@platos/context-observability/application/ports/index.js";
+import type { Result } from "@platos/context-observability/application/ports/index.js";
 
 import type { AuditScope, ObservabilityHarness } from "./observability-harness.js";
 import { auditRecord, startObservabilityHarness } from "./observability-harness.js";

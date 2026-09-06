@@ -27,7 +27,7 @@ import {
   InMemoryKnowledgeGraphRepository,
   InMemoryMemoryRepository,
 } from "@platos/context-memory/application/testing/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-memory/application/ports/index.js";
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { startMemoryHarness } from "./memory-harness.js";

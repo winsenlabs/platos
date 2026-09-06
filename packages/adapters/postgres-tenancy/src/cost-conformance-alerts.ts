@@ -24,7 +24,7 @@ import type {
   ThresholdEventId,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-cost-monitoring/application/ports/index.js";
 
 import type { CostConformanceEnvironment, CostObservation } from "./cost-conformance.js";
 import { AFTER_LEASE, AT, LATER, LEASE_UNTIL, conformanceChannel } from "./cost-conformance.js";

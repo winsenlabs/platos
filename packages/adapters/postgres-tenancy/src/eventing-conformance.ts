@@ -63,8 +63,8 @@ import {
   parseRuleFilter,
   parseRuleName,
 } from "@platos/context-eventing/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
-import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-eventing/application/ports/index.js";
+import { runResult } from "@platos/context-eventing/application/ports/index.js";
 
 export type EventingObservation = Record<string, unknown>;
 

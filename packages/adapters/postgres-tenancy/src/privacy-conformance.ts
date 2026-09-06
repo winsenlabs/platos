@@ -58,7 +58,7 @@ import type {
   TransactionScope,
 } from "@platos/context-privacy/application/ports/index.js";
 import { organizationScope } from "@platos/context-privacy/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-privacy/application/ports/index.js";
 
 /** The uuids both stores are handed, so neither mints one. */
 export interface PrivacyConformanceIds {

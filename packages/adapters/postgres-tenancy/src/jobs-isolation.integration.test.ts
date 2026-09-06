@@ -34,7 +34,7 @@ import type {
   TurnId,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, environmentScope } from "@platos/context-jobs/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-jobs/application/ports/index.js";
 
 import type { ApprovalPeers, JobsHarness } from "./jobs-harness.js";
 import { startJobsHarness } from "./jobs-harness.js";

@@ -34,7 +34,7 @@ import type {
   TransactionScope,
 } from "@platos/context-skills/application/ports/index.js";
 import { asIdentifier } from "@platos/context-skills/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-skills/application/ports/index.js";
 import type { TenancyDatabaseClient } from "./client.js";
 import { conformanceDraft, conformanceIdentity } from "./skills-conformance.js";
 import { startSkillsHarness, type SkillsHarness, type SkillsTenant } from "./skills-harness.js";

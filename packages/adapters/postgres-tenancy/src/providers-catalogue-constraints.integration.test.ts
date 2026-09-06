@@ -32,7 +32,7 @@ import {
   asProvidersIdentifier,
   rateFromDecimalString,
 } from "@platos/context-providers/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-providers/application/ports/index.js";
 
 import { MODEL_INTEGER_OUT_OF_RANGE, RATE_OUT_OF_DOMAIN, RATE_PROVENANCE_MISSING } from "./providers-guards.js";
 import type { ProvidersHarness } from "./providers-harness.js";

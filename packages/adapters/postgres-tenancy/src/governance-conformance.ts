@@ -75,8 +75,8 @@ import type {
   TurnId,
 } from "@platos/context-governance/application/ports/index.js";
 import { asGovernanceIdentifier } from "@platos/context-governance/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
-import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-governance/application/ports/index.js";
+import { runResult } from "@platos/context-governance/application/ports/index.js";
 
 import { runEvalConformance } from "./governance-conformance-evals.js";
 import type { GovernanceStores } from "./governance-repository.js";

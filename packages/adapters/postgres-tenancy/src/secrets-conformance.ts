@@ -34,7 +34,7 @@ import type {
   CredentialKind,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import { runLifecycleConformance } from "./secrets-conformance-lifecycle.js";
 import { runVariableConformance } from "./secrets-conformance-variables.js";

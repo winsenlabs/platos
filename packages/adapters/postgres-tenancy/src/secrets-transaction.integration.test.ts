@@ -40,7 +40,7 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import {
   TRANSACTION_NOT_OPEN,

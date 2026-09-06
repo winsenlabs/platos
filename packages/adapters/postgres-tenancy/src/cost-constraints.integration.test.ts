@@ -23,7 +23,7 @@ import type {
   ThresholdEvent,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-cost-monitoring/application/ports/index.js";
 
 import {
   BUDGET_LIMIT_OUT_OF_RANGE,

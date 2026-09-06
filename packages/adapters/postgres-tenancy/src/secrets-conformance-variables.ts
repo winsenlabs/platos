@@ -32,7 +32,7 @@ import type {
   SecretsRepository,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-secrets/application/ports/index.js";
 
 import { AT, LATER, credentialIdOf, variableIdOf } from "./secrets-harness.js";
 import type { SecretsConformanceIds } from "./secrets-conformance.js";

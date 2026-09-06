@@ -36,7 +36,7 @@ import type {
   TurnId,
 } from "@platos/context-channels/application/ports/index.js";
 import { asIdentifier, connectionOwner, environmentScope } from "@platos/context-channels/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-channels/application/ports/index.js";
 
 import { CONFORMANCE_AT } from "./channels-conformance.js";
 import type { ChannelsHarness, SeededThread } from "./channels-harness.js";

@@ -58,30 +58,21 @@ export * from "./job-handler-runtime.js";
 // reaching for `@platos/kernel` directly would be a second import edge into the
 // kernel from a package whose only declared dependency is the context whose
 // ports it satisfies.
-export type {
-  EnvironmentId,
-  EnvironmentScope,
-  JsonValue,
-  OrganizationId,
-  ProjectId,
-  Result,
-  TenantScope,
-  TransactionScope,
-} from "@platos/kernel";
+export type { EnvironmentId, EnvironmentScope, JsonValue, NotResult, OrganizationId, ProjectId, Result, TenantScope, TransactionScope } from "@platos/kernel";
 // `organizationScope` and `projectScope` travel with `environmentScope` because
 // `JobsErasureSelector.scope` is a `TenantScope`, and a `TenantScope` is a
 // discriminated union whose members carry BRANDED ids: an implementor that
 // wrote the object literal itself would need `OrganizationId` and `ProjectId`
 // by name, which is a wider surface than the three constructors that mint them.
-export {
-  asIdentifier,
-  contains,
-  environmentScope,
-  err,
-  ok,
-  organizationScope,
-  projectScope,
-} from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+export { asIdentifier, contains, environmentScope, err, ok, organizationScope, projectScope, runResult } from "@platos/kernel";
 
 export type {
   AgentId,

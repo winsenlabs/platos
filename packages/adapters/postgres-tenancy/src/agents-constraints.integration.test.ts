@@ -21,7 +21,7 @@ import type {
   ProjectId,
 } from "@platos/context-agents/application/ports/index.js";
 import { DEFAULT_AGENTS_POLICY } from "@platos/context-agents/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-agents/application/ports/index.js";
 
 import {
   CANARY_PERCENT_OUT_OF_RANGE,

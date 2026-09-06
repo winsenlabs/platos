@@ -29,7 +29,7 @@ import type {
 import { asCostIdentifier } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-cost-monitoring/application/ports/index.js";
 
 import type { TenancyDatabaseClient } from "./client.js";
 import { AT, LATER, conformanceBudget, conformanceChannel } from "./cost-conformance.js";

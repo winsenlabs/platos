@@ -63,13 +63,16 @@ export * from "./erased-subject-register.js";
 // method and `EnvironmentScope` in the record, and an adapter that reached for
 // `@platos/kernel` directly would be a second import edge into the kernel from a
 // package whose only declared dependency is the context whose port it satisfies.
-export type {
-  EnvironmentScope,
-  PrincipalId,
-  Result,
-  TransactionScope,
-} from "@platos/kernel";
-export { asIdentifier, environmentScope, err, ok } from "@platos/kernel";
+export type { EnvironmentScope, NotResult, PrincipalId, Result, TransactionScope } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+export { asIdentifier, environmentScope, err, ok, runResult } from "@platos/kernel";
 
 export type {
   AdminAuditId,

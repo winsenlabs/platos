@@ -46,8 +46,8 @@ import type {
   TransactionScope,
 } from "@platos/context-observability/application/ports/index.js";
 import { asIdentifier } from "@platos/context-observability/application/ports/index.js";
-import type { NotResult } from "@platos/kernel";
-import { runResult } from "@platos/kernel";
+import type { NotResult } from "@platos/context-observability/application/ports/index.js";
+import { runResult } from "@platos/context-observability/application/ports/index.js";
 
 /** Every identifier the scenario needs. All uuids; both stores use the same. */
 export interface ObservabilityConformanceIds {

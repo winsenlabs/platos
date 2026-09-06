@@ -22,7 +22,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { Agent, AgentVersion } from "@platos/context-agents/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-agents/application/ports/index.js";
 
 import { agentIdOf, agentSlugOf, HOME_PROJECT, scopeOf, HOME_ENVIRONMENT, startAgentsHarness, versionIdOf, type AgentsHarness, type SeededAgent } from "./agents-harness.js";
 import { TRANSACTION_NOT_OPEN, TRANSACTION_SCOPE_FOREIGN, TRANSACTION_SCOPE_UNKNOWN } from "./transaction.js";

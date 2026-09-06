@@ -32,7 +32,7 @@ import type {
   SubjectKeyHash,
   TombstoneDraft,
 } from "@platos/context-privacy/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-privacy/application/ports/index.js";
 
 import type { PrivacyHarness, PrivacyTenant } from "./privacy-harness.js";
 import { operationDraft, outcomeDraft, REQUESTED_AT, startPrivacyHarness } from "./privacy-harness.js";

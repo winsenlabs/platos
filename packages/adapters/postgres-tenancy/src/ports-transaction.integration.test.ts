@@ -36,7 +36,7 @@ import type {
   UserId,
 } from "@platos/context-tenancy/application/ports/index.js";
 import { asIdentifier, OrganizationRole } from "@platos/context-tenancy/application/ports/index.js";
-import { domainError, err, runResult } from "@platos/kernel";
+import { domainError, err, runResult } from "@platos/context-tenancy/application/ports/index.js";
 
 import { digestOf, emailOf, envId, orgId } from "./harness.js";
 import { startPortsHarness, type PortsHarness } from "./ports-harness.js";

@@ -28,7 +28,7 @@ import {
   type ThreadId,
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
-import { runResult } from "@platos/kernel";
+import { runResult } from "@platos/context-conversations/application/ports/index.js";
 
 import {
   executionOf,
