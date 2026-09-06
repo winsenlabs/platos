@@ -1940,7 +1940,26 @@ test("an element-access member that is not a delegate is still not a write", () 
 // `packages/adapters/postgres-tenancy`, which is the permitted directory for
 // both `EnvironmentVariable` and `Organization`, so the violation list stays
 // empty and it is the COUNT that moved — which is exactly what this pin is for.
-const LIVE_TREE_WRITE_COUNT = 307;
+//
+// WIN-259 (M2.4) adds ONE MORE, and it is the same shape:
+//   src/secrets-rules.integration.test.ts
+//                               ONE raw `update` on `CredentialAudit`, issued
+//                               through the CLIENT and expected to be REFUSED.
+//                               It is the second half of the DENIED-outcome
+//                               case: having proved the row reaches PostgreSQL,
+//                               the case proves it is immutable on the same
+//                               terms as every other audit row, so evidence of
+//                               a probe cannot be edited into evidence of a
+//                               success. A write the database rejects is still
+//                               a write in this scan's terms, which is correct —
+//                               the scan reads the code, not the outcome.       1
+//
+// 307 + 1 = 308. `CredentialAudit` is `secrets`' row and this directory is its
+// permitted writer under ADR M0.3 §15, so again the violation list stays empty
+// and only the COUNT moves. The fence split moved TWO variable writes between
+// two files in the SAME directory, so it contributes ZERO here — a move is not
+// a write.
+const LIVE_TREE_WRITE_COUNT = 308;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
