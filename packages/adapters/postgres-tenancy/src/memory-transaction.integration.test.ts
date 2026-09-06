@@ -165,13 +165,26 @@ describe("failure injection", () => {
     expect(await observer.memoryRelationship.count({ where: { id: doomed } })).toBe(0);
   });
 
-  test("*** A RETURNED ERROR `Result` COMMITS *** — the trap, pinned rather than assumed", async () => {
-    // This is the `cost-monitoring` shape that shipped. `insertRelationship`
-    // refuses by RETURNING `err(...)`; nothing throws; `unitOfWork.run` resolves
-    // and PostgreSQL commits — INCLUDING the memory written before the refusal.
-    // The store is behaving correctly and so is the transaction; the
-    // responsibility is the caller's, and this case is where that is written
-    // down rather than discovered.
+  test("*** A RETURNED ERROR `Result` DOES NOT COMMIT WHEN POSTGRESQL RAISED IT *** — measured, not assumed", async () => {
+    // THE `cost-monitoring` TRAP, MEASURED ON THIS DATABASE, AND THE ANSWER IS
+    // THE OPPOSITE OF THE ONE THIS CASE WAS FIRST WRITTEN TO ASSERT.
+    //
+    // The trap says: a store method that RETURNS an error `Result` does not
+    // throw, so `unitOfWork.run` sees a resolved promise and commits —
+    // including everything written before the refusal. That reasoning is exact
+    // about the JavaScript and silent about PostgreSQL. When the refusal came
+    // from the DATABASE — here, `MemoryRelationship`'s unique on
+    // `(from, to, type)` — the statement has already put the session into
+    // `25P02`, and the `COMMIT` the driver then sends is executed as a
+    // ROLLBACK. So the memory written before it does NOT survive, and the first
+    // run of this suite said so.
+    //
+    // THE TRAP IS THEREFORE REAL ONLY WHEN THE REFUSAL IS A GUARD'S, and the
+    // next case is where that half lives: a guard sends no statement, the
+    // session is never aborted, and the earlier write commits exactly as the
+    // trap describes. The two cases together say where the responsibility sits
+    // — which is more than either says alone, and neither could have been
+    // written from the port's signatures.
     const committed = id("0059");
     const nodeA = id("005a");
     const nodeB = id("005b");
@@ -206,16 +219,23 @@ describe("failure injection", () => {
       return { written, refused };
     });
 
+    // The store reported the refusal as an OUTCOME — no promise rejected, and
+    // the earlier write's own `Result` still says `ok`.
     expect(outcome.written.ok).toBe(true);
     expect(outcome.refused.ok).toBe(false);
-    expect(await survives(committed)).toBe(true);
+    // And the row is gone anyway, because PostgreSQL had already aborted the
+    // session by the time the driver sent `COMMIT`.
+    expect(await survives(committed)).toBe(false);
   });
 
-  test("a GUARD refusal sends no statement at all, so the transaction survives it", async () => {
-    // The converse of the case above, and the reason `memory-guards.ts` refuses
-    // BEFORE sending: a constraint violation aborts the enclosing transaction
-    // with 25P02 and every later statement fails. A guard refusal does not, so a
-    // caller that handles it can carry on writing.
+  test("*** BUT A GUARD REFUSAL COMMITS EVERYTHING BEFORE IT *** — the half of the trap that IS live here", async () => {
+    // The other half, and the one a caller actually has to handle. A guard
+    // refuses BEFORE any statement is sent — which is why `memory-guards.ts`
+    // exists at all, since a constraint violation would abort the enclosing
+    // transaction with 25P02 and make every later write fail. The session is
+    // therefore never aborted, the `COMMIT` is a real commit, and the rows
+    // written before the refusal ARE durable. A use case that returns a guard's
+    // `Result` instead of throwing it keeps a half-finished unit of work.
     const beforeGuard = id("005e");
     const afterGuard = id("005f");
 

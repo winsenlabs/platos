@@ -52,6 +52,16 @@ const BINDING_COLUMNS = { agentId: true, clusterId: true } as const;
 /** The three columns of `Thread` a memory's attribution is taken from. */
 const THREAD_COLUMNS = { agentId: true, clusterId: true, endUserId: true } as const;
 
+/** One `MessageRating` and its two tenant ancestors, flattened by the JOIN. */
+interface RatingAncestryRow {
+  readonly endUserId: string;
+  readonly turnId: string;
+  readonly revision: number;
+  readonly environmentId: string;
+  readonly projectId: string;
+  readonly organizationId: string;
+}
+
 export interface MemoryPlacementReads {
   listAgentBindings(environment: EnvironmentScope): Promise<Result<readonly AgentBinding[]>>;
   findSourceThreadOwnership(
@@ -136,26 +146,39 @@ export function createMemoryPlacementReads(
      *
      * `MessageRating` carries `environmentId` and nothing above it, and
      * `RatingRevision` carries a whole `EnvironmentScope` — so the project and
-     * the organization are JOINED here rather than taken from a caller who did
-     * not supply one. It is ONE statement: the two ancestors travel as a nested
-     * `select`, not as two further round trips.
+     * the organization have to come from somewhere, and the caller supplies no
+     * scope to take them from.
+     *
+     * *** IT IS RAW SQL BECAUSE A NESTED `select` IS THREE STATEMENTS. *** That
+     * was MEASURED, not assumed: the obvious implementation is
+     * `messageRating.findUnique` with `environment: { select: { projectId,
+     * project: { select: { organizationId } } } }`, which reads as one query and
+     * which `memory-statements.integration.test.ts` counted at THREE — Prisma
+     * loads each relation level with its own round trip unless the `relationJoins`
+     * preview feature is on, and it is not. That is an N+1 in the TENANT TREE
+     * rather than in the rows, so it would never have grown with the data and
+     * would never have shown up in a load test; the pin is the only thing that
+     * could have found it. The JOIN below is one statement, and it is a READ, so
+     * ADR M0.3 §5.2 exempts it by name exactly as it exempts a `findUnique`.
      */
     async findRatingRevision(ratingId: string): Promise<Result<RatingRevision | null>> {
       return refuseMemory(async () => {
         requireUuid("ratingId", ratingId);
-        const row = await transactions.reader().messageRating.findUnique({
-          where: { id: ratingId },
-          select: {
-            environmentId: true,
-            endUserId: true,
-            turnId: true,
-            revision: true,
-            environment: { select: { projectId: true, project: { select: { organizationId: true } } } },
-          },
-        });
-        if (row === null) return ok(null);
+        const rows = await transactions.reader().$queryRaw<readonly RatingAncestryRow[]>`
+          SELECT rating."endUserId", rating."turnId", rating."revision",
+                 rating."environmentId", environment."projectId",
+                 project."organizationId"
+            FROM "MessageRating" rating
+            JOIN "Environment" environment ON environment."id" = rating."environmentId"
+            JOIN "Project" project ON project."id" = environment."projectId"
+           WHERE rating."id" = ${ratingId}::uuid`;
+        const row = rows[0];
+        if (row === undefined) return ok(null);
         return ok({
-          environment: readEnvironmentScope(row.environmentId, row.environment),
+          environment: readEnvironmentScope(row.environmentId, {
+            projectId: row.projectId,
+            project: { organizationId: row.organizationId },
+          }),
           endUserId: asMemoryIdentifier<EndUserId>(row.endUserId),
           turnId: asMemoryIdentifier<TurnId>(row.turnId),
           revision: row.revision,
