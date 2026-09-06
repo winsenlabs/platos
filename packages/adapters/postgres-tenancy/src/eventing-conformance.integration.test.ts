@@ -48,16 +48,18 @@ import { startEventingHarness, type EventingHarness } from "./eventing-harness.j
 
 let harness: EventingHarness;
 
-/** Six uuids per run, distinguished by a prefix so a mix-up is legible. */
+/** Eight uuids per run, distinguished by a prefix so a mix-up is legible. */
 function idsFor(run: string): EventingConformanceIds {
   const mint = (slot: string): string => `eeeeeeee-${run}-4000-8000-00000000000${slot}`;
   return {
     alphaRuleId: mint("1"),
     betaRuleId: mint("2"),
     siblingRuleId: mint("3"),
-    foreignRuleId: mint("4"),
-    duplicateRuleId: mint("5"),
-    missingRuleId: mint("6"),
+    cousinRuleId: mint("4"),
+    foreignRuleId: mint("5"),
+    bystanderRuleId: mint("6"),
+    duplicateRuleId: mint("7"),
+    missingRuleId: mint("8"),
   };
 }
 
@@ -69,6 +71,7 @@ async function runAgainstPostgres(run: string): Promise<Record<string, unknown>>
     repository: harness.repository,
     scope: tenant.scope,
     sibling: tenant.sibling,
+    cousin: tenant.cousin,
     foreign: foreign.scope,
     ids: idsFor(run),
     run: (work) => harness.run(work),
@@ -80,6 +83,7 @@ async function runAgainstDouble(
   run: string,
   scope: Parameters<typeof runEventingConformance>[0]["scope"],
   sibling: Parameters<typeof runEventingConformance>[0]["sibling"],
+  cousin: Parameters<typeof runEventingConformance>[0]["cousin"],
   foreign: Parameters<typeof runEventingConformance>[0]["foreign"],
 ): Promise<Record<string, unknown>> {
   const unitOfWork = new ImmediateUnitOfWork();
@@ -87,6 +91,7 @@ async function runAgainstDouble(
     repository: new InMemoryNotificationRuleRepository(),
     scope,
     sibling,
+    cousin,
     foreign,
     ids: idsFor(run),
     run: <Value,>(work: (transaction: TransactionScope) => Promise<Value>) => unitOfWork.run(work),
@@ -104,11 +109,18 @@ afterAll(async () => {
 test("the in-memory double and PostgreSQL answer the SAME scenario identically", async () => {
   const tenant = await harness.freshTenant();
   const foreign = await harness.freshTenant();
-  const expected = await runAgainstDouble("0001", tenant.scope, tenant.sibling, foreign.scope);
+  const expected = await runAgainstDouble(
+    "0001",
+    tenant.scope,
+    tenant.sibling,
+    tenant.cousin,
+    foreign.scope,
+  );
   const actual = await runEventingConformance({
     repository: harness.repository,
     scope: tenant.scope,
     sibling: tenant.sibling,
+    cousin: tenant.cousin,
     foreign: foreign.scope,
     ids: idsFor("0001"),
     run: (work) => harness.run(work),
@@ -141,44 +153,69 @@ test("the scenario is not vacuous: every method of the port changed an answer", 
   expect(observed.deleteInWrongScope).toBe(false);
   expect(observed.deleteAlpha).toBe(true);
   expect(observed.deleteAlphaAgain).toBe(false);
-  expect(observed.countAtEnvironment).toBe(2);
-  expect(observed.countAtProject).toBe(3);
+  // `alpha` is gone by now, so the environment holds `beta` alone; the project
+  // adds the sibling's, and the organization adds the cousin project's.
+  expect(observed.countAtEnvironment).toBe(1);
+  expect(observed.countAtProject).toBe(2);
   expect(observed.countAtOrganization).toBe(3);
-  expect(observed.countBystander).toBe(0);
+  // The bystander's ONE rule, which every sweep below leaves alone.
+  expect(observed.countBystander).toBe(1);
   expect(observed.countVacuousSubject).toBe(0);
   expect(observed.anonymizeVacuousSubject).toBe(0);
-  expect(observed.anonymizeAtOrganization).toBe(2);
+  // The three sweeps take exactly one row each, widening by one level a time.
+  expect(observed.anonymizeAtEnvironment).toBe(1);
+  expect(observed.anonymizeAtProject).toBe(1);
+  expect(observed.anonymizeAtOrganization).toBe(1);
   expect(observed.countAfterErasure).toBe(0);
+  expect(observed.bystanderAfterErasure).toBe(1);
   expect((observed.listNewestFirst as readonly unknown[]).length).toBe(2);
   expect((observed.listEnabled as readonly unknown[]).length).toBe(1);
 }, 600_000);
 
-test("the erasure does NOT move `updatedAt`, and the scrub stops at the organization", async () => {
-  // The claim `eventing-erasure.ts` is written in raw SQL for. It is asserted
-  // HERE as well as inside the differential because the differential would go
-  // green if BOTH stores moved the column — the map would still match. The
-  // instants below are the fixture's own literals, which no `@updatedAt` stamp
-  // can have produced.
+test("the erasure does NOT move `updatedAt`, and each level stops where it should", async () => {
+  // The claim `eventing-erasure.ts` is written in raw SQL for, plus the three
+  // clauses of its containment join. It is asserted HERE as well as inside the
+  // differential because the differential would go green if BOTH stores moved
+  // the column — the map would still match. The instants below are the fixture's
+  // own literals, which no `@updatedAt` stamp can have produced.
   const observed = await runAgainstPostgres("0003");
 
-  const scrubbed = observed.listAfterErasure as readonly Record<string, unknown>[];
+  const scrubbed = observed.listAfterEnvironmentErasure as readonly Record<string, unknown>[];
   expect(scrubbed).toHaveLength(1);
   expect(scrubbed[0]?.createdBy).toBe("erased:subject-removed");
   // `beta` was edited at EPOCH + 120s and never again.
   expect(scrubbed[0]?.updatedAt).toBe("2026-06-01T09:02:00.000Z");
   expect(scrubbed[0]?.createdAt).toBe("2026-06-01T09:01:00.000Z");
 
-  // The sibling environment is INSIDE the erased organization and is scrubbed.
-  const sibling = observed.listSiblingAfterErasure as readonly Record<string, unknown>[];
-  expect(sibling).toHaveLength(1);
-  expect(sibling[0]?.createdBy).toBe("erased:subject-removed");
-  expect(sibling[0]?.updatedAt).toBe("2026-06-01T09:00:30.000Z");
+  // THE ENVIRONMENT CLAUSE. The sibling is in the same PROJECT and was not
+  // named, so its rules are untouched by the environment-level sweep.
+  const siblingBefore = observed.siblingAfterEnvironmentErasure as readonly Record<
+    string,
+    unknown
+  >[];
+  expect(siblingBefore.map((rule) => rule.createdBy).sort()).toEqual(["operator-a", "operator-b"]);
 
-  // The foreign organization is OUTSIDE it and is untouched. Without this the
-  // organization clause of the containment join is unfalsifiable: a statement
-  // with no organization predicate at all would scrub every row in the table and
-  // every other assertion here would still pass.
-  const foreign = observed.listForeignAfterErasure as readonly Record<string, unknown>[];
+  // THE PROJECT CLAUSE. The project-level sweep reaches the sibling and stops at
+  // the cousin, which is a different project of the SAME organization.
+  const siblingAfter = observed.siblingAfterProjectErasure as readonly Record<string, unknown>[];
+  expect(siblingAfter.map((rule) => rule.createdBy).sort()).toEqual([
+    "erased:subject-removed",
+    "operator-b",
+  ]);
+  const cousinBefore = observed.cousinAfterProjectErasure as readonly Record<string, unknown>[];
+  expect(cousinBefore).toHaveLength(1);
+  expect(cousinBefore[0]?.createdBy).toBe("operator-a");
+
+  // THE ORGANIZATION CLAUSE. The organization-level sweep reaches the cousin and
+  // stops at the foreign organization. Without this the clause is unfalsifiable:
+  // a statement with no organization predicate at all would scrub every row in
+  // the table and every assertion above would still pass.
+  const cousinAfter = observed.cousinAfterOrganizationErasure as readonly Record<string, unknown>[];
+  expect(cousinAfter[0]?.createdBy).toBe("erased:subject-removed");
+  const foreign = observed.foreignAfterOrganizationErasure as readonly Record<string, unknown>[];
   expect(foreign).toHaveLength(1);
   expect(foreign[0]?.createdBy).toBe("operator-a");
+
+  // AND THE `createdBy` CLAUSE, which sat inside all three sweeps.
+  expect(observed.bystanderAfterErasure).toBe(1);
 }, 600_000);

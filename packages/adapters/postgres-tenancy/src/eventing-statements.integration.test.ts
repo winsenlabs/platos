@@ -169,6 +169,26 @@ async function measureAll(): Promise<Record<string, Pair>> {
         principalId: OPERATOR,
       }),
     ),
+    // A subject with no principal selects nothing, and BOTH erasure methods
+    // answer zero without sending a statement. Pinned at ZERO rather than left
+    // out: a store that fell through to the query would still answer zero — the
+    // column is NOT NULL, so `createdBy: null` matches no row — and would cost a
+    // round trip per target on every erasure of an end-user or an entity.
+    countVacuousSubject: await both((tenant) =>
+      harness.repository.countRulesForSubject({
+        scope: organizationOf(tenant),
+        principalId: null,
+      }),
+    ),
+    anonymizeVacuousSubject: await both((tenant) =>
+      harness.run((transaction) =>
+        harness.repository.anonymizeRulesForSubject(
+          { scope: organizationOf(tenant), principalId: null },
+          "erased:subject-removed",
+          transaction,
+        ),
+      ),
+    ),
     insertRule: await both((tenant) =>
       harness.run((transaction) =>
         harness.repository.insertRule(ruleFor(tenant.scope, `measured-${freshRuleId()}`), transaction),
@@ -209,6 +229,19 @@ test("every statement count is pinned and NONE of them moves with the number of 
       sameAcrossFixtures: true,
     });
   }
+}, 600_000);
+
+test("the two ZERO pins are the only ones, and every other method sends a statement", async () => {
+  // A zero pin is the one figure this suite can produce by not measuring at all,
+  // so it is stood beside the assertion that nothing ELSE is zero. Without this,
+  // a harness that stopped recording statements would satisfy every pair above
+  // by turning all of them into { small: 0, large: 0 }.
+  const measured = await measureAll();
+  const zeroes = Object.entries(measured)
+    .filter(([, counts]) => counts.small === 0)
+    .map(([method]) => method)
+    .sort();
+  expect(zeroes).toEqual(["anonymizeVacuousSubject", "countVacuousSubject"]);
 }, 600_000);
 
 test("the LARGE fixture really is larger, or the pairs above prove nothing", async () => {
@@ -267,6 +300,8 @@ const PINS: Record<string, Pair> = {
   listEnabledRules: { small: 1, large: 1 },
   countRulesForSubject: { small: 1, large: 1 },
   countRulesAtOrganization: { small: 1, large: 1 },
+  countVacuousSubject: { small: 0, large: 0 },
+  anonymizeVacuousSubject: { small: 0, large: 0 },
   insertRule: { small: 1, large: 1 },
   updateRule: { small: 1, large: 1 },
   anonymizeAtOrganization: { small: 1, large: 1 },

@@ -273,3 +273,86 @@ test("a refused write LEAVES THE TRANSACTION USABLE, which is what the guards ar
   const found = await harness.repository.findRule(tenant.scope, good.ruleId);
   expect(found.ok && found.value !== null).toBe(true);
 }, 300_000);
+
+test("a NUL in a LOOKUP is refused too — the read path binds text as surely as the write", async () => {
+  // `findRuleByName` sends the name as a bind parameter of a SELECT, and a NUL
+  // in a bind parameter is refused by the driver before any row is compared —
+  // inside whatever transaction the caller has open. A store that guarded only
+  // the write path would have kept the 25P02 out of an insert and let a lookup
+  // put it there instead.
+  const reason = await reasonOf(
+    harness.repository.findRuleByName(tenant.scope, `alpha${NUL}` as never),
+  );
+  expect(reason).toBe(
+    "eventing.write.text_has_nul: name carries U+0000, which no PostgreSQL text or jsonb value can hold",
+  );
+}, 300_000);
+
+test("`updateRule` addressed with ANOTHER environment's scope updates nothing", async () => {
+  // *** A DIVERGENCE FROM THE DOUBLE, PINNED RATHER THAN NORMALISED. ***
+  // `InMemoryNotificationRuleRepository.updateRule` writes whatever it is handed
+  // — `this.rules.set(rule.ruleId, rule)` — so a rule object carrying a scope it
+  // does not belong to becomes a row. This store addresses the UPDATE by the id
+  // AND the whole ancestry the rule claims, so a synthesised scope matches no
+  // row and the caller gets EVENTING_RULE_NOT_FOUND. The conformance scenario
+  // therefore never updates through a foreign scope, and the difference lives
+  // here with its reason: an upsert is the wrong shape for a method the port
+  // describes as an update, and it is the shape that would let a caller write
+  // into somebody else's environment.
+  const rule = ruleFor(tenant.scope, "cross-scope-update");
+  const written = await harness.run((t) => harness.repository.insertRule(rule, t));
+  expect(written.ok).toBe(true);
+
+  const misScoped: NotificationRule = { ...rule, scope: tenant.sibling, enabled: false };
+  const refused = await harness.run((t) => harness.repository.updateRule(misScoped, t));
+  expect(refused.ok).toBe(false);
+  expect(refused.ok ? "" : refused.error.code).toBe("EVENTING_RULE_NOT_FOUND");
+
+  // And the row is untouched, which is the half that matters: a scoped update
+  // that refused AFTER writing would be worse than one that wrote.
+  const found = await harness.repository.findRule(tenant.scope, rule.ruleId);
+  expect(found.ok && found.value?.enabled).toBe(true);
+}, 300_000);
+
+test("an ERASURE selector is guarded too, at exactly the ids its level names", async () => {
+  // The erasure half takes a `TenantScope` rather than an `EnvironmentScope`, so
+  // its guard has to stop at the level the selector actually names — checking a
+  // project id an organization selector does not carry would refuse a legal
+  // plan. Both halves are asserted: the malformed organization is refused, and
+  // the well-formed one is not.
+  const refused = await reasonOf(
+    harness.repository.countRulesForSubject({
+      scope: { level: "organization", organizationId: asIdentifier("org-1") },
+      principalId: "operator-a",
+    }),
+  );
+  expect(refused).toBe(
+    'eventing.write.identifier_not_uuid: scope.organizationId must be a uuid; received "org-1"',
+  );
+
+  const allowed = await harness.repository.countRulesForSubject({
+    scope: { level: "organization", organizationId: asIdentifier(tenant.organizationId) },
+    principalId: "operator-a",
+  });
+  expect(allowed.ok).toBe(true);
+}, 300_000);
+
+test("the REPLACEMENT an erasure writes is guarded like any other text", async () => {
+  // `anonymizeRulesForSubject` takes the replacement from its CALLER —
+  // `eventing-erasure-target.ts` passes a fixed sentinel, but the port does not
+  // require one — and it lands in a `TEXT` column. A NUL in it would abort the
+  // multi-context transaction the erasure is running in, which is the one place
+  // in this store where a refusal costs somebody else's work.
+  const reason = await reasonOf(
+    harness.run((t) =>
+      harness.repository.anonymizeRulesForSubject(
+        { scope: tenant.scope, principalId: "operator-a" },
+        `erased${NUL}`,
+        t,
+      ),
+    ),
+  );
+  expect(reason).toBe(
+    "eventing.write.text_has_nul: replacement carries U+0000, which no PostgreSQL text or jsonb value can hold",
+  );
+}, 300_000);

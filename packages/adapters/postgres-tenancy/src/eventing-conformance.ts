@@ -71,7 +71,9 @@ export interface EventingConformanceIds {
   readonly alphaRuleId: string;
   readonly betaRuleId: string;
   readonly siblingRuleId: string;
+  readonly cousinRuleId: string;
   readonly foreignRuleId: string;
+  readonly bystanderRuleId: string;
   readonly duplicateRuleId: string;
   readonly missingRuleId: string;
 }
@@ -82,6 +84,8 @@ export interface EventingConformanceEnvironment {
   readonly scope: EnvironmentScope;
   /** A SECOND environment of the SAME project. */
   readonly sibling: EnvironmentScope;
+  /** An environment of a SECOND PROJECT in the SAME organization. */
+  readonly cousin: EnvironmentScope;
   /** An environment of a whole SECOND organization. */
   readonly foreign: EnvironmentScope;
   readonly ids: EventingConformanceIds;
@@ -212,7 +216,7 @@ function widened(scope: EnvironmentScope): { project: TenantScope; organization:
 export async function runEventingConformance(
   environment: EventingConformanceEnvironment,
 ): Promise<Record<string, unknown>> {
-  const { repository, scope, sibling, foreign, ids } = environment;
+  const { repository, scope, sibling, cousin, foreign, ids } = environment;
   const observed: Record<string, unknown> = {};
   const record = (step: string, value: unknown): void => {
     observed[step] = value;
@@ -231,8 +235,22 @@ export async function runEventingConformance(
   const siblingAlpha = ruleAt(ids.siblingRuleId, sibling, "alpha", 30, {
     delivery: { type: "email", email: "ops@example.test" },
   });
+  // The SAME name again, in a SECOND PROJECT of the SAME organization. It is
+  // what makes a PROJECT-level erasure distinguishable from an
+  // organization-level one: without it every row the organization reaches is
+  // also a row its only project reaches.
+  const cousinAlpha = ruleAt(ids.cousinRuleId, cousin, "alpha", 40, {
+    delivery: { type: "slack", url: "https://hooks.example/cousin" },
+  });
   const foreignAlpha = ruleAt(ids.foreignRuleId, foreign, "alpha", 45, {
     delivery: { type: "pagerduty", integrationKey: "pd-key-1" },
+  });
+  // A rule ANOTHER operator registered, inside the environment the erasure is
+  // about to sweep. Without it the `createdBy` clause of the containment join
+  // changes no answer anything asks for, and an erasure that scrubbed every row
+  // in the environment would pass every other case here.
+  const bystanderRule = ruleAt(ids.bystanderRuleId, sibling, "bystander", 50, {
+    createdBy: CONFORMANCE_BYSTANDER,
   });
 
   record("insertAlpha", observe(await environment.run((t) => repository.insertRule(alpha, t))));
@@ -242,8 +260,16 @@ export async function runEventingConformance(
     observe(await environment.run((t) => repository.insertRule(siblingAlpha, t))),
   );
   record(
+    "insertCousinSameName",
+    observe(await environment.run((t) => repository.insertRule(cousinAlpha, t))),
+  );
+  record(
     "insertForeignSameName",
     observe(await environment.run((t) => repository.insertRule(foreignAlpha, t))),
+  );
+  record(
+    "insertBystanderRule",
+    observe(await environment.run((t) => repository.insertRule(bystanderRule, t))),
   );
 
   // ALONE IN ITS TRANSACTION. The unique index refuses it, and a refused
@@ -288,6 +314,22 @@ export async function runEventingConformance(
     observe(await environment.run((t) => repository.updateRule(collidingBeta, t))),
   );
 
+  // THE COUNTS ARE TAKEN AFTER THE DELETES, so the plan a caller would build is
+  // the plan for the tree as it then stands rather than for one two writes ago.
+  record(
+    "deleteInWrongScope",
+    observeFlag(await environment.run((t) => repository.deleteRule(sibling, alpha.ruleId, t))),
+  );
+  record(
+    "deleteAlpha",
+    observeFlag(await environment.run((t) => repository.deleteRule(scope, alpha.ruleId, t))),
+  );
+  record(
+    "deleteAlphaAgain",
+    observeFlag(await environment.run((t) => repository.deleteRule(scope, alpha.ruleId, t))),
+  );
+  record("findAlphaAfterDelete", observe(await repository.findRule(scope, alpha.ruleId)));
+
   const { project, organization } = widened(scope);
   record(
     "countAtEnvironment",
@@ -305,27 +347,23 @@ export async function runEventingConformance(
   );
   record(
     "countBystander",
-    observeCount(await repository.countRulesForSubject(selectorFor(organization, CONFORMANCE_BYSTANDER))),
+    observeCount(
+      await repository.countRulesForSubject(selectorFor(organization, CONFORMANCE_BYSTANDER)),
+    ),
   );
   record(
     "countVacuousSubject",
     observeCount(await repository.countRulesForSubject(selectorFor(organization, null))),
   );
 
-  record(
-    "deleteInWrongScope",
-    observeFlag(await environment.run((t) => repository.deleteRule(sibling, alpha.ruleId, t))),
-  );
-  record(
-    "deleteAlpha",
-    observeFlag(await environment.run((t) => repository.deleteRule(scope, alpha.ruleId, t))),
-  );
-  record(
-    "deleteAlphaAgain",
-    observeFlag(await environment.run((t) => repository.deleteRule(scope, alpha.ruleId, t))),
-  );
-  record("findAlphaAfterDelete", observe(await repository.findRule(scope, alpha.ruleId)));
-
+  // *** THE ERASURE WIDENS IN THREE STEPS, AND EACH ONE PROVES A CLAUSE. ***
+  // The containment join in `eventing-erasure.ts` binds the project and the
+  // environment as NULL when the level does not name them, so all three levels
+  // are one statement — and a statement that had dropped a clause would scrub
+  // more than it was asked to. Sweeping narrowest-first is what makes each
+  // clause observable on its own: after the environment step the sibling must
+  // still be intact, after the project step the cousin must be, and after the
+  // organization step the foreign one must be.
   record(
     "anonymizeVacuousSubject",
     observeCount(
@@ -334,6 +372,36 @@ export async function runEventingConformance(
       ),
     ),
   );
+  record(
+    "anonymizeAtEnvironment",
+    observeCount(
+      await environment.run((t) =>
+        repository.anonymizeRulesForSubject(
+          selectorFor(scope, CONFORMANCE_OPERATOR),
+          CONFORMANCE_ERASED,
+          t,
+        ),
+      ),
+    ),
+  );
+  record("listAfterEnvironmentErasure", observeList(await repository.listRules(scope)));
+  record("siblingAfterEnvironmentErasure", observeList(await repository.listRules(sibling)));
+
+  record(
+    "anonymizeAtProject",
+    observeCount(
+      await environment.run((t) =>
+        repository.anonymizeRulesForSubject(
+          selectorFor(project, CONFORMANCE_OPERATOR),
+          CONFORMANCE_ERASED,
+          t,
+        ),
+      ),
+    ),
+  );
+  record("siblingAfterProjectErasure", observeList(await repository.listRules(sibling)));
+  record("cousinAfterProjectErasure", observeList(await repository.listRules(cousin)));
+
   record(
     "anonymizeAtOrganization",
     observeCount(
@@ -346,15 +414,20 @@ export async function runEventingConformance(
       ),
     ),
   );
-  // The scrub must reach the sibling environment and STOP at the organization
-  // boundary, and `updatedAt` must not have moved on any of the three.
-  record("listAfterErasure", observeList(await repository.listRules(scope)));
-  record("listSiblingAfterErasure", observeList(await repository.listRules(sibling)));
-  record("listForeignAfterErasure", observeList(await repository.listRules(foreign)));
+  record("cousinAfterOrganizationErasure", observeList(await repository.listRules(cousin)));
+  record("foreignAfterOrganizationErasure", observeList(await repository.listRules(foreign)));
   record(
     "countAfterErasure",
     observeCount(
       await repository.countRulesForSubject(selectorFor(organization, CONFORMANCE_OPERATOR)),
+    ),
+  );
+  // The bystander's rule sat inside every one of the three sweeps and is
+  // untouched, which is the `createdBy` clause stated as an observation.
+  record(
+    "bystanderAfterErasure",
+    observeCount(
+      await repository.countRulesForSubject(selectorFor(organization, CONFORMANCE_BYSTANDER)),
     ),
   );
 
