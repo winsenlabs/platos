@@ -2322,6 +2322,67 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 349 + 3 + 151 = 503. The rollout dimension's other eight files are NOT in
  * that thirteen and cannot be: they are in `internal-packages/tenancy-database`,
  * which has no row here at all. The v1 ledger counts all twenty-eight.
+ *
+ * WIN-259 (M2.4, tejas/secret-lifecycle) MOVES THREE ROWS AND ADDS ONE.
+ *
+ * A NEW ROW, `packages/adapters/keyring-envelope`: 0 -> 4 files, 0 -> 40 cases.
+ * It is the thirteenth adapter directory and the first V1 package added since
+ * this table was drawn — the key-management adapter that
+ * `packages/adapters/postgres-tenancy/src/secrets-repository.ts` named when it
+ * declined `secrets`' `KeyRing`, `AeadCipher` and `Hasher`. Its four suites are
+ * `wire-compatibility` (10), `key-version-integrity` (13), `root-key-ring` (11)
+ * and `secret-hasher` (8) — 10 + 13 + 11 + 8 = 40. NONE of the four needs a
+ * container: real AES-256-GCM needs no daemon, which is why the whole 40 runs on
+ * a laptop while the postgres row below does not.
+ *
+ * ONE OF THE FORTY EXISTS BECAUSE A MUTANT SURVIVED rather than because a rule
+ * asked for it. "seals and re-opens multi-byte UTF-8, a newline and a tab" was
+ * added after `cipher.update(plaintext, "latin1")` survived the first sweep:
+ * every plaintext this adapter SEALED in a test was ASCII, where the two
+ * encodings agree byte for byte, and the only non-ASCII bytes in the tree were
+ * in a fixture it opens and never writes.
+ *
+ * AND THE THREE WIRE-VECTOR CASES ARE THREE `it()`s RATHER THAN A LOOP. They
+ * were a `for (const vector of WIRE_VECTORS)` and this census REFUSED the file —
+ * "it() is declared inside a loop or a non-describe callback" — which is the
+ * gate working: a construct it cannot count is a construct that can silently
+ * lose a case. The shared body moved into a helper and the three cases are named.
+ *
+ *   packages/adapters/postgres-tenancy   132 -> 133 files, 1483 -> 1488 cases
+ *
+ * ONE FILE, FIVE CASES: `secrets-key-version.integration.test.ts`, the
+ * real-PostgreSQL half of the envelope-byte proof. It is excluded from the
+ * default `test` script by filename and run by the `postgres-tenancy-repository`
+ * CI job, like every `*.integration.test.ts` in that directory, and it is counted
+ * here for the same reason they are.
+ *
+ * IT IS A SEPARATE FILE FROM `secrets-conformance.integration.test.ts` BECAUSE
+ * THE PROOF IS IN TWO HALVES THAT MAY NOT MEET. `adapter-is-self-contained`
+ * forbids that directory from importing `@platos/adapter-keyring-envelope` and
+ * `tenancy-prisma-only` forbids the reverse, so the joint claim — real rows AND
+ * real AES-256-GCM in one process — has no legal home. The halves meet on frozen
+ * ciphertexts instead, and a file whose whole subject is those bytes is easier to
+ * keep honest than five cases folded into a conformance transcript.
+ *
+ *   packages/contexts/providers          27 -> 28 files,  375 -> 383 cases
+ *
+ * ONE FILE, EIGHT CASES: `probe-cache-eviction.test.ts`. Seven are new
+ * behaviour — a cache key that moves when the material does, and four write
+ * paths that now refuse when the eviction fails — and the eighth is the
+ * deliberate asymmetry, asserted so it cannot be quietly widened: the two paths
+ * that ADD a key keep discarding the eviction `Result`, because nothing stale is
+ * addressable there.
+ *
+ * NO EXISTING FILE'S CASE COUNT MOVES. `domain/errors.test.ts` gains a SAMPLE
+ * for the new `PROVIDERS_PROBE_CACHE_NOT_EVICTED` code inside an existing case
+ * rather than a case of its own, so the catalogue's "mints every declared code
+ * and nothing else" assertion covers it without a census row moving twice.
+ *
+ * The tree total is 503 + 4 + 1 + 1 = 509 files and 7399 + 40 + 5 + 8 = 7452
+ * cases. The adapters term of the three-way identity carries five of the six new
+ * files — four in `keyring-envelope`, one in `postgres-tenancy` — and the
+ * contexts term carries the sixth: 151 + 5 = 156, 349 + 1 = 350, and
+ * 350 + 3 + 156 = 509.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2332,7 +2393,8 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
+  "packages/adapters/keyring-envelope": { files: 4, cases: 40 },
+  "packages/adapters/postgres-tenancy": { files: 133, cases: 1488 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2348,7 +2410,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
-  "packages/contexts/providers": { files: 27, cases: 375 },
+  "packages/contexts/providers": { files: 28, cases: 383 },
   "packages/contexts/secrets": { files: 16, cases: 162 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
@@ -2625,7 +2687,28 @@ export const EXPECTED = Object.freeze({
  * states independently. The `postgres-tenancy-repository` CI job running 109
  * files / 1054 tests is therefore a check on this split derived without it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7399;
+/*
+ * WIN-259 (M2.4) 7399 -> 7452: +40 in the new `packages/adapters/keyring-envelope`
+ * row, +5 in `packages/adapters/postgres-tenancy` and +8 in
+ * `packages/contexts/providers`. 7399 + 40 + 5 + 8 = 7452.
+ *
+ * THE RUNNABLE/INTEGRATION SPLIT MOVES ON BOTH SIDES, WHICH IS UNUSUAL FOR A
+ * TRANCHE THAT TOUCHES THIS ADAPTER. Forty-eight of the fifty-three are RUNNABLE
+ * by `pnpm test:v1-packages` — the whole keyring-envelope row plus providers'
+ * eight — because real AES-256-GCM needs no daemon and neither does an in-memory
+ * probe cache. Only the remaining five carry `.integration.` in the name, so the
+ * cases this census records that the script does not execute go 1054 -> 1059
+ * over 109 -> 110 files, and the runnable side goes 429 -> 477 for the postgres
+ * row's own split plus the two rows outside it.
+ *
+ * The three-way file identity holds with the same shape:
+ * packages.contexts.test 350 + packages.kernel.test 3 +
+ * packages.adapters.test 156 = 509, which is this census's own totalFiles. The
+ * adapters term moved 151 -> 156, of which FOUR are the new directory's suites
+ * and ONE is the postgres row's; the contexts term moved 349 -> 350 for
+ * providers'. The v1 ledger counts the same six inside its seventeen.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7452;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

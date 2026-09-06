@@ -44,32 +44,67 @@ function handleFor(vector: WireVector) {
   return { ring, handle: handle.value };
 }
 
-describe("format 1 wire compatibility with the extraction source", () => {
-  for (const vector of WIRE_VECTORS) {
-    it(`opens an envelope the extraction source sealed: ${vector.name}`, async () => {
-      const { ring, handle } = handleFor(vector);
-      const opened = await createEnvelopeCipher(ring).open({
-        key: handle,
-        binding: bindingOf(vector),
-        envelope: {
-          salt: hexBytes(vector.saltHex),
-          nonce: hexBytes(vector.nonceHex),
-          ciphertext: hexBytes(vector.ciphertextHex),
-          authTag: hexBytes(vector.authTagHex),
-        },
-      });
+/**
+ * Open one vector, or report why not.
+ *
+ * A HELPER AND NOT A LOOP OVER `it()`, deliberately.
+ * `scripts/arch/test-case-census.mjs` refuses an `it()` declared inside a loop —
+ * "a construct it cannot count is a construct that can silently lose a case" —
+ * so each vector gets its own named case below and the shared body lives here.
+ */
+async function openVector(vector: WireVector) {
+  const { ring, handle } = handleFor(vector);
+  return createEnvelopeCipher(ring).open({
+    key: handle,
+    binding: bindingOf(vector),
+    envelope: {
+      salt: hexBytes(vector.saltHex),
+      nonce: hexBytes(vector.nonceHex),
+      ciphertext: hexBytes(vector.ciphertextHex),
+      authTag: hexBytes(vector.authTagHex),
+    },
+  });
+}
 
-      expect(opened.ok).toBe(true);
-      if (!opened.ok) return;
-      expect(opened.value.reveal()).toBe(vector.plaintext);
-    });
-  }
+function vectorAt(index: number): WireVector {
+  const vector = WIRE_VECTORS[index];
+  if (vector === undefined) throw new Error(`wire vector ${index} is missing`);
+  return vector;
+}
+
+describe("format 1 wire compatibility with the extraction source", () => {
+  it("opens the extraction source's revision 1 envelope under root key version 1", async () => {
+    const vector = vectorAt(0);
+    const opened = await openVector(vector);
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
+  it("opens its revision 7 envelope under root key version 2", async () => {
+    // The SAME key bytes as version 1, at a different revision and version. Both
+    // fields are inside the derived key and the associated data, so this case
+    // fails the moment either stops reaching the binding.
+    const vector = vectorAt(1);
+    const opened = await openVector(vector);
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
+  it("opens its non-ASCII envelope under a third root key", async () => {
+    const vector = vectorAt(2);
+    const opened = await openVector(vector);
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
 
   // The negative control for the three above. Without it, an `open` that ignored
   // its binding entirely would pass every positive case — the associated data
   // would simply never be checked, and no vector could tell.
   it("refuses a vector whose binding names another credential", async () => {
-    const vector = WIRE_VECTORS[0] as WireVector;
+    const vector = vectorAt(0);
     const { ring, handle } = handleFor(vector);
     const opened = await createEnvelopeCipher(ring).open({
       key: handle,
@@ -95,7 +130,7 @@ describe("format 1 wire compatibility with the extraction source", () => {
   // re-encryption that wrote the wrong revision would produce a row nothing can
   // ever open. Vector two is at revision 7; opening it as revision 1 must fail.
   it("refuses a vector whose binding names another revision", async () => {
-    const vector = WIRE_VECTORS[1] as WireVector;
+    const vector = vectorAt(1);
     const { ring, handle } = handleFor(vector);
     const opened = await createEnvelopeCipher(ring).open({
       key: handle,
@@ -116,7 +151,7 @@ describe("format 1 wire compatibility with the extraction source", () => {
   // read side; this proves the write side is the same format rather than a
   // second one that happens to be self-consistent.
   it("seals an envelope this adapter can re-open at the same binding", async () => {
-    const vector = WIRE_VECTORS[0] as WireVector;
+    const vector = vectorAt(0);
     const { ring, handle } = handleFor(vector);
     const cipher = createEnvelopeCipher(ring);
     const binding = bindingOf(vector);
@@ -151,7 +186,7 @@ describe("format 1 wire compatibility with the extraction source", () => {
   // that makes the same mistake twice and produces mojibake the day anything else
   // reads the row.
   it("seals and re-opens multi-byte UTF-8, a newline and a tab", async () => {
-    const vector = WIRE_VECTORS[2] as WireVector;
+    const vector = vectorAt(2);
     const { ring, handle } = handleFor(vector);
     const cipher = createEnvelopeCipher(ring);
     const binding = bindingOf(vector);
@@ -178,7 +213,7 @@ describe("format 1 wire compatibility with the extraction source", () => {
   });
 
   it("draws a fresh salt and nonce for every seal", async () => {
-    const vector = WIRE_VECTORS[0] as WireVector;
+    const vector = vectorAt(0);
     const { ring, handle } = handleFor(vector);
     const cipher = createEnvelopeCipher(ring);
     const binding = bindingOf(vector);
