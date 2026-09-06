@@ -485,6 +485,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `secrets-rules.integration.test.ts` at 353, so the finding list below is
   // unchanged by it.
   //
+  // THAT LAST SENTENCE IS NO LONGER TRUE, AND IS CORRECTED HERE RATHER THAN
+  // CARRIED. WIN-258 tranche 7's concurrency and pooling dimension added the
+  // fenced upsert's cases to that same file and took it from 353 effective
+  // lines to 439 — into the warning band — without moving this pin, because
+  // this gate was in none of that dimension's list. The merge is where it is
+  // first told, and the file is now named in the finding list below.
+  //
   //
   //
   // 1251 -> 1267 (WIN-258 T5): `providers`' canonical store adds SIXTEEN files
@@ -871,6 +878,19 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/adapters/postgres-tenancy/src/providers-conformance.ts",
       effectiveLines: 421,
+      severity: "warning",
+    },
+    {
+      // WIN-258 TRANCHE 7's FENCE PUT THIS FILE IN THE BAND. It was 353
+      // effective lines before the concurrency and pooling dimension added the
+      // `EnvironmentVariable` version fence's cases to it — the loser refused,
+      // the insert race, and the rotation that rolls back with the losing write
+      // — and 439 after. It is named here rather than split because the seam is
+      // not obvious: every case in it is one store's RULES, and the fence is a
+      // rule of exactly that store. A further case takes it past 460 and the
+      // split to make then is the fence's own `describe`, moved whole.
+      path: "packages/adapters/postgres-tenancy/src/secrets-rules.integration.test.ts",
+      effectiveLines: 439,
       severity: "warning",
     },
     {
