@@ -45,6 +45,9 @@
     },
     {
       "path": "../../contexts/conversations"
+    },
+    {
+      "path": "../../contexts/skills"
     }
   ]
 }

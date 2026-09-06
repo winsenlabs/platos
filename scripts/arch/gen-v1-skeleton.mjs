@@ -141,6 +141,19 @@ export const ADAPTERS = [
       { port: "TurnRepository", owner: "conversations" },
       { port: "PostmanRepository", owner: "conversations" },
       { port: "ConversationsErasureStore", owner: "conversations" },
+      // WIN-258 T5 adds the NINTH. `skills` owns three canonical rows in that
+      // same database and publishes ONE canonical-store port over all three,
+      // because a catalogue entry, a project's adoption of it and an
+      // environment's binding of that adoption are one aggregate with one
+      // uniqueness key.
+      //
+      // IT IS SATISFIED BY A PROPERTY rather than by spread-in methods, and like
+      // `secrets`' two that was FORCED. `SkillsRepository.findInstallation` and
+      // `ChannelsRepository.findInstallation` are both top-level members with
+      // different signatures, so one interface cannot extend both — the
+      // composition root therefore proves this one as
+      // `PostgresTenancyAdapter["skills"]`.
+      { port: "SkillsRepository", owner: "skills" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -252,7 +265,7 @@ export function adapterOwnerPackages(adapter) {
 // needs is already there. What they add is JUDGEABILITY — five ports this
 // layout depends on that `reportAdapterSupply` could not previously see.
 //
-// 22 -> 30 (WIN-258 T5, three tranches of this wave landed together).
+// 22 -> 31 (WIN-258 T5, four tranches of this wave landed together).
 // `channels` adds ONE canonical-store binding (`ChannelsRepository`),
 // `governance` FIVE (`SafetyLedger`, `RatingsRepository`, `CriteriaRepository`,
 // `EvalsRepository`, `GoldenSetsRepository`) and `secrets` TWO
@@ -288,7 +301,7 @@ export function adapterOwnerPackages(adapter) {
 // hand each port over under its own name. EXPECTED_ADAPTER_COUNT is unmoved
 // again, and for the tenth time that is the point of pinning the two separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 35;
+export const EXPECTED_BINDING_COUNT = 36;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -351,7 +364,11 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // and nothing depends on it, so the 17-context DAG is again unchanged and no
 // cycle is possible.
 //
-// 99 -> 102 (WIN-258 T5, three tranches of this wave landed together).
+// 99 -> 103 (WIN-258 T5, four tranches of this wave landed together).
+// `packages/adapters/postgres-tenancy` -> `packages/contexts/skills` is the
+// fourth, carrying ONE binding. `skills` depends on `tenancy` and `files` and
+// nothing depends on it from an adapter, so the 17-context DAG is again
+// unchanged and no cycle is possible.
 // `packages/adapters/postgres-tenancy` -> `packages/contexts/channels`, ->
 // `packages/contexts/governance` and -> `packages/contexts/secrets`. THREE owner
 // edges carrying EIGHT bindings — one, five and two — because a project
@@ -364,7 +381,7 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
 //
-// 102 -> 104 (WIN-258 T5, a NINTH and a TENTH owner).
+// 102 -> 105 (WIN-258 T5, a NINTH, a TENTH and an ELEVENTH owner).
 // `packages/adapters/postgres-tenancy` -> `packages/contexts/providers`, for that
 // context's `ProvidersRepository` over the four rows of §1 row 4: ONE edge
 // carrying ONE binding, because `providers` publishes a single canonical-store
@@ -373,16 +390,20 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `packages/adapters/postgres-tenancy` -> `packages/contexts/conversations`: ONE
 // edge carrying FOUR bindings, because a project reference is per PACKAGE and not
 // per port — the same one-edge-many-bindings shape `agents` introduced at two and
-// `governance` at five.
+// `governance` at five. And -> `packages/contexts/skills`: ONE edge carrying
+// ONE binding, on the same rule, because `SkillsRepository` is one port over
+// three tables.
 //
-// NEITHER CAN CREATE A CYCLE, and on the first that needed checking rather than
+// NONE CAN CREATE A CYCLE, and on the first that needed checking rather than
 // asserting: `providers` DEPENDS on `secrets`, which is already an owner of the
 // same directory. A cycle would need `secrets` to depend on `providers`, and the
 // §1 DAG has it depending on the kernel alone — so the two owner edges are
 // parallel rather than circular. `conversations` is the DAG's sink: it depends on
-// eleven contexts and nothing depends on it. The 17-context DAG is untouched by
-// either.
-export const EXPECTED_EDGE_COUNT = 104;
+// eleven contexts and nothing depends on it. `skills` depends on `tenancy` and
+// `files` and `agents` depends on `skills`, all of which the DAG already
+// carries, and an adapter is a leaf of it. The 17-context DAG is untouched by
+// all three.
+export const EXPECTED_EDGE_COUNT = 105;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -482,6 +503,18 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // alternative — a second double living in the adapter — would measure the
   // adapter against a copy of itself.
   "packages/contexts/secrets",
+  // WIN-258 T5 — imported by `packages/adapters/postgres-tenancy` for the third
+  // time and for the same fact about where a context keeps its doubles.
+  // `skills` publishes `InMemorySkillsRepository` from `application/index.js`,
+  // and that double's own header says it "is a REAL implementation of the port's
+  // contract" which "enforces the two properties a Postgres implementation would
+  // enforce with constraints". That is a claim about THIS adapter, so this
+  // adapter is what checks it: ONE conformance scenario, asked of the double and
+  // of PostgreSQL, with the two observation maps compared verbatim. Without this
+  // entry the differential cannot name the double at all, and the only
+  // alternative — a second double living in the adapter — would measure the
+  // adapter against a copy of itself.
+  "packages/contexts/skills",
 ];
 
 // ---------------------------------------------------------------------------

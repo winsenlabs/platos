@@ -875,7 +875,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1258,
+    packages: 1276,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1048,7 +1048,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   in the same directory once more) + 20 (its `secrets` canonical store,
     //   there too) = 1296, + 17 (WIN-258 tranche 5, the `providers` canonical
     //   store, in that SAME one directory) + 21 (its `conversations` canonical
-    //   store, the TENTH owner of that one directory) = 1334.
+    //   store, the TENTH owner of that one directory) + 18 (its `skills`
+    //   canonical store, the ELEVENTH, there again) = 1352.
     //
     // EACH SLICE CARRIES ITS GUARD LEDGER AND IS ONE LARGER THAN ITS `.ts`
     // COUNT. `channels`' 16 are 15 source-and-test files plus
@@ -1059,8 +1060,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // seven suites rather than six because the §6 budget split the constraints
     // proof at 491 effective lines, along the port's own scoping seam. And
     // `conversations`' 21 are 20 — twelve source and eight suites — plus
-    // `mutations-conversations.json`. The existing `packages.adapters.config`
-    // rule already classifies all five, so no ledger rule changed for any of
+    // `mutations-conversations.json`, and `skills`' 18 are 17 — eleven source
+    // and six suites — plus `mutations-skills.json`. The existing
+    // `packages.adapters.config`
+    // rule already classifies all six, so no ledger rule changed for any of
     // them: a guard ledger is DATA beside the package rather than a module in
     // it. None of `packages/contexts/secrets`, `packages/contexts/providers` or
     // `packages/contexts/conversations` gains a file — each had its port entry
@@ -1073,14 +1076,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // where the work was five suites' worth is exactly the kind of thing a
     // ledger states rather than absorbs.
     //
-    // ALL FOUR TRANCHE-5 SLICES ARE ALL `packages`, every file under
+    // ALL FIVE TRANCHE-5 SLICES ARE ALL `packages`, every file under
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1334);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1352);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1102,11 +1105,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across
     // TWO adapter directories, and WIN-258 tranche 5's SIX canonical stores,
     // `tools` +20, `agents` +18, `cost-monitoring` +17, `channels` +16,
-    // `governance` +19, `secrets` +20, `providers` +17 and `conversations` +21,
-    // all in ONE, plus that tranche's second sweep +1); this one re-derives it
-    // by summing the per-area counts independently, so the two can DISAGREE and
-    // be caught.
-    rulesDocument.baseline.totalFiles + 1334
+    // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21 and
+    // `skills` +18, all in ONE, plus that tranche's second sweep +1); this one
+    // re-derives it by summing the per-area counts independently, so the two
+    // can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1352
   );
 });
 

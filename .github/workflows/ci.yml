@@ -434,6 +434,16 @@ jobs:
         # not fail an assertion: they fail to LOAD, which is the vacuity the
         # mutation ledger beside this package refuses to score.
         run: pnpm --filter "@platos/context-conversations..." build
+      - name: Build the skills context
+        # WIN-258 T5. The ELEVENTH owner delegated to this directory, resolved
+        # through TWO published subpaths, both of which are dist/:
+        # `application/ports/index.js` for `SkillsRepository` and the seventeen
+        # domain names its signatures use, and `application/index.js` for
+        # `InMemorySkillsRepository`, which the conformance differential is
+        # measured against. Without this step the six suites do not fail an
+        # assertion — they fail to LOAD, which is the vacuity the mutation driver
+        # beside this package refuses to score.
+        run: pnpm --filter "@platos/context-skills..." build
 
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
@@ -448,7 +458,11 @@ jobs:
         # proofs and the measured statement counts. Tranche 5 also lands the
         # `secrets` canonical store here — the four rows of ADR M0.3 §1 row 3,
         # whose two ports are the first in this directory that could not be
-        # spread into the adapter at all. The suites are selected by
+        # spread into the adapter at all — and the `skills` canonical store, the
+        # three rows of §1 row 6, whose one port is the SECOND that could not,
+        # because `SkillsRepository.findInstallation` and
+        # `ChannelsRepository.findInstallation` collide by name and differ by
+        # signature. The suites are selected by
         # the word `integration` in their filename, so a new one joins this run
         # by being named — there is no list here to forget to update.
         #

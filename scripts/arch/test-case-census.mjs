@@ -1860,14 +1860,85 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * where those guards are held falsifiable — 56 entries, 56 killed.
  *
  *
+ *
+ * WIN-258 TRANCHE 5 ONCE MORE — `skills`' canonical store, the FIFTH in the same
+ * package. SIX files, 62 cases, and not one of them anywhere else:
+ *
+ *   skills-rows.test.ts                        19  the row readers and the eight
+ *                                                  write guards, on BOTH sides of
+ *                                                  each boundary, plus the
+ *                                                  assertion that all thirteen
+ *                                                  refusal codes are distinct, and
+ *                                                  the default stamps measured over
+ *                                                  a thousand readings. It runs
+ *                                                  under the default `test` script;
+ *                                                  the five below do not.
+ *   skills-rules.integration.test.ts           15  rows an OLDER BINARY could have
+ *                                                  written, planted as SQL — a
+ *                                                  NULL `TEXT[]`, an origin
+ *                                                  outside the closed set, a thin
+ *                                                  manifest, a manifest carrying a
+ *                                                  key this release has never
+ *                                                  heard of — and the TWO
+ *                                                  divergences between this store
+ *                                                  and the double, pinned rather
+ *                                                  than hidden, and the two write
+ *                                                  paths whose input the port
+ *                                                  itself cannot produce.
+ *   skills-constraints.integration.test.ts     17  the six migration-only
+ *                                                  constraints read back out of
+ *                                                  `pg_catalog`, then falsified in
+ *                                                  PAIRS: the double accepts, the
+ *                                                  canonical schema refuses — plus
+ *                                                  the FIVE clauses that decide
+ *                                                  WHICH ROW a call reaches, two of
+ *                                                  which exist because the first
+ *                                                  mutation sweep left their guards
+ *                                                  standing with nothing red.
+ *   skills-transaction.integration.test.ts      7  failure injection over a SECOND
+ *                                                  client, and the three scope
+ *                                                  refusals under their three
+ *                                                  distinct codes.
+ *   skills-conformance.integration.test.ts      2  the differential, one case
+ *                                                  driving one scenario twice, and
+ *                                                  its negative control.
+ *   skills-statements.integration.test.ts       2  every count measured over a
+ *                                                  small fixture AND one 20x
+ *                                                  larger, in ONE map, plus the
+ *                                                  probe-filter case that keeps the
+ *                                                  measurement from discarding what
+ *                                                  it measures.
+ *
+ * 19 + 15 + 17 + 7 + 2 + 2 = 62. Five of the six need a real PostgreSQL and are
+ * run by the `postgres-tenancy-repository` CI job.
+ *
+ * NINE OF THE SIXTY-TWO EXIST BECAUSE THE MUTATION LEDGER WAS ENUMERATED FIRST,
+ * SEVEN BEFORE THE SWEEP AND TWO BECAUSE OF IT. Five guards had no case anywhere that could go red — the uuid guard on
+ * the PATCH path, the project and organization halves of a binding read, the
+ * `organizationId` clause of the raw anonymisation, the re-enable half of both
+ * install upserts, and `jsonb_set(create_missing => true)` — and two more prove
+ * the default stamps directly. `mutations-skills.json` names each of them.
+ *
+ * TWO OF ITS SUITES ARE ONE CASE APIECE AND THAT IS THE INSTRUMENT, not a thin
+ * suite. The conformance differential drives ONE scenario against the double and
+ * then against PostgreSQL and compares the two transcripts key by key — the
+ * scenario records more than fifty observations and the suite asserts it
+ * recorded more than forty, so a run that recorded nothing would satisfy every
+ * comparison in it. The statement suite measures EVERY method over both
+ * fixtures into one map and compares the map, so a moved pin shows every number
+ * that moved rather than the first. Adding an observation to either strengthens
+ * it and moves NO count here, which is why `mutations-skills.json` beside the
+ * package is where those guards are held falsifiable.
+ *
+ *
  * ALL FOUR OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE TOO, so its row is
- * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 = 75 files and
- * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 = 778 cases. `providers`
- * contributes 7 files / 77 cases and `conversations` 8 / 97, and no branch's
- * own figure — 67/681 or 68/701 — survives the merge. The tree total is
- * 431 + 15 = 446 files and 6520 + 174 = 6694 cases. The adapters term of the
- * three-way identity carries all fifteen, because every added file is an
- * adapter's: 79 + 15 = 94, and 349 + 3 + 94 = 446.
+ * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 = 81 files and
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 = 840 cases. `providers`
+ * contributes 7 files / 77 cases, `conversations` 8 / 97 and `skills` 6 / 62,
+ * and no branch's own figure — 67/681, 68/701 or 66/666 — survives the merge.
+ * The tree total is 431 + 21 = 452 files and 6520 + 236 = 6756 cases. The
+ * adapters term of the three-way identity carries all twenty-one, because every
+ * added file is an adapter's: 79 + 21 = 100, and 349 + 3 + 100 = 452.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1878,7 +1949,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 75, cases: 778 },
+  "packages/adapters/postgres-tenancy": { files: 81, cases: 840 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2036,24 +2107,16 @@ export const EXPECTED = Object.freeze({
  * stores — `channels`' 72, `governance`'s 66 and `secrets`' 83 — each
  * enumerated file by file in the block beside the postgres-tenancy row.
  *
- * 6520 -> 6617: the 97 cases of `conversations`, the LAST canonical store of
- * this wave and the ninth owner of the one ORM home, enumerated file by file in
- * the same block. Three of its eight files exist only because `max-file-lines`
- * bit at the HARD error, so the file count moved by eight where the work was
- * five suites' worth — which is the kind of thing a census states rather than
- * absorbs.
+ * 6520 -> 6756: the 77 cases of `providers`, the 97 of `conversations` and the
+ * 62 of `skills`, each enumerated file by file in the blocks above. Three of
+ * `conversations`' eight files exist only because `max-file-lines` bit at the
+ * HARD error, so that file count moved by eight where the work was five suites'
+ * worth — which is the kind of thing a census states rather than absorbs.
  *
  * The cases this census records that `pnpm test:v1-packages` does not execute
  * are the ones whose file name carries `.integration.`, which the package's own
- * `test` script excludes. MEASURED over this tree: 495 cases across 56 files,
- * all of them in `packages/adapters/postgres-tenancy`. This wave contributes 230
- * of those over 25 suites — `channels`' 47 over 5, `governance`'s 45 over 5,
- * `secrets`' 65 over 8 and `conversations`' 73 over 7 — and its remaining 88
- * (`channels-rows.test.ts` 25, `governance-rows.test.ts` 21,
- * `secrets-rows.test.ts` 18 and `conversations-rows.test.ts` 24) run in the
- * ordinary package test script, because none of those four modules has a
- * database in it: they reach the mapping branches a container suite cannot,
- * since a container only ever reads rows this binary wrote.
+ * `test` script excludes. MEASURED over this tree: 598 cases across
+ * 67 files, all of them in `packages/adapters/postgres-tenancy`.
  *
  * THIS SENTENCE SAID "183 cases across 20 files" AND THE TREE SAID 265 ACROSS
  * 31, at the base of this wave and before any of these three stores existed.
@@ -2072,7 +2135,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6694;
+export const EXPECTED_RUNTIME_TOTAL = 6756;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

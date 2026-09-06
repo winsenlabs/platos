@@ -89,13 +89,14 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares THIRTY-FIVE bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
+  it("declares THIRTY-SIX bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
-    // `IdentityAccessRepository` and — WIN-258 tranche 5, six stores over —
+    // `IdentityAccessRepository` and — WIN-258 tranche 5, seven stores over —
     // `ToolsRepository`, `AgentsRepository`, `ScaffoldingRepository`,
-    // `BudgetRepository`, `ChannelsRepository`, `secrets`' two and `governance`'s five, because
+    // `BudgetRepository`, `ChannelsRepository`, `SkillsRepository`, `secrets`'
+    // two and `governance`'s five, because
     // there is one PostgreSQL database behind one client. All twelve are
     // asserted, and the gap between the two counts is asserted too, so a change
     // that collapsed them back into one count fails.
@@ -112,8 +113,11 @@ describe("the declared binding table", () => {
     // compacted and archived; a turn and its steps settle together and are never
     // edited again; a postman execution outlives the turn it produced; and the
     // erasure half is the only surface in that context that deletes anything.
-    expect(ADAPTER_BINDINGS).toHaveLength(35);
-    expect(DECLARED_BINDING_COUNT).toBe(35);
+    // The eleventh is `skills`, whose ONE port covers its three tables: a
+    // catalogue entry, a project's adoption of one and an environment's binding
+    // of that adoption are one aggregate with one uniqueness key.
+    expect(ADAPTER_BINDINGS).toHaveLength(36);
+    expect(DECLARED_BINDING_COUNT).toBe(36);
     expect(ADAPTER_NAMES).toHaveLength(12);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
@@ -138,6 +142,7 @@ describe("the declared binding table", () => {
       "TurnRepository",
       "PostmanRepository",
       "ConversationsErasureStore",
+      "SkillsRepository",
       "TenancyLocks",
       "OperatorSessionRevoker",
       "EnvironmentAccessKeyRevocationCounter",
@@ -164,6 +169,7 @@ describe("the declared binding table", () => {
       "conversations",
       "conversations",
       "conversations",
+      "skills",
       "tenancy",
       "tenancy",
       "tenancy",
@@ -172,7 +178,7 @@ describe("the declared binding table", () => {
     ]);
   });
 
-  it("names each adapter DIRECTORY exactly once, even though one has TWENTY-FOUR bindings", () => {
+  it("names each adapter DIRECTORY exactly once, even though one has TWENTY-FIVE bindings", () => {
     // `ADAPTER_NAMES` is what an install iterates to CONSTRUCT adapters. A
     // duplicate there would open a second pool over the one database.
     expect(new Set(ADAPTER_NAMES).size).toBe(ADAPTER_NAMES.length);
@@ -204,9 +210,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(35);
+    expect(report.unsatisfied).toHaveLength(36);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/35 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/36 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -233,7 +239,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(34);
+    expect(report.unsatisfied).toHaveLength(35);
 
     expect(report.faults).toEqual([]);
   });
@@ -263,7 +269,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(35);
+    expect(app.bindings.unsatisfied).toHaveLength(36);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -293,7 +299,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(34);
+    expect(app.bindings.unsatisfied).toHaveLength(35);
 
   });
 

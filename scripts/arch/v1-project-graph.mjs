@@ -73,25 +73,29 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `secrets` on the kernel alone — so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // unchanged.
 //
-// 102 -> 104 (WIN-258 T5, a NINTH and a TENTH owner). The directory gained two
-// more owner edges. The first is to `packages/contexts/providers`, whose four
-// canonical rows — `ProviderKey`, `EnvironmentProvider`, `Model` and
+// 102 -> 105 (WIN-258 T5, a NINTH, a TENTH and an ELEVENTH owner). The directory
+// gained three more owner edges. The first is to `packages/contexts/providers`,
+// whose four canonical rows — `ProviderKey`, `EnvironmentProvider`, `Model` and
 // `ModelPrice` — are in that same PostgreSQL database: ONE edge carrying ONE
 // binding, because `providers` publishes a single canonical-store port over all
 // four. The second is to `packages/contexts/conversations`: ONE edge carrying
 // FOUR bindings, because a project reference is per PACKAGE and not per port —
 // the same one-edge-many-bindings shape `agents` introduced at two and
-// `governance` at five.
+// `governance` at five. The third is to `packages/contexts/skills`: ONE edge
+// carrying ONE binding, on the same rule, because `SkillsRepository` is one port
+// over three tables.
 //
-// NEITHER CAN CREATE A CYCLE, and on the first that needed checking rather than
+// NONE CAN CREATE A CYCLE, and on the first that needed checking rather than
 // asserting: `providers` DEPENDS on `secrets`, and `secrets` is already an owner
 // of this same directory. A cycle would need `secrets` to depend on `providers`,
 // and the §1 DAG has it depending on the kernel alone — so
 // `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged and the two owner edges are
 // parallel rather than circular. `conversations` is the DAG's sink: it depends on
-// eleven contexts and nothing depends on it, so the 17-context graph is again
-// unchanged and no cycle is possible there either.
-export const EXPECTED_EDGE_COUNT = 104;
+// eleven contexts and nothing depends on it. `skills` depends on `tenancy` and
+// `files` and `agents` depends on `skills`, all of which the 17-context DAG
+// already carries, and an adapter is a leaf of that DAG. The 17-context graph is
+// unchanged by all three.
+export const EXPECTED_EDGE_COUNT = 105;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -220,6 +224,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "secrets",
     "providers",
     "conversations",
+    "skills",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -242,7 +247,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 10 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 11 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

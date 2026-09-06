@@ -866,12 +866,30 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               entry in `CANONICAL_STORE_ADAPTERS`. Those harnesses are
     //               unchanged — the entry moves no owner TAG — but the directory
     //               that could not write a thread now can, from this store.
+    //  1328 -> 1345 +17: WIN-258 TRANCHE 5, `skills`' canonical store, in that
+    //               SAME one ORM home. SEVENTEEN files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: ELEVEN source
+    //               (the guards, the row readers, the visibility predicate and
+    //               catalogue ordering, the `Skill` half, the two install rows,
+    //               the erasure half, the refusal wrapper, the composite, the
+    //               harness and the two conformance halves) and SIX suites.
+    //               `packages/contexts/skills` gains NO file — its port entry
+    //               point and its application barrel were widened IN PLACE, and
+    //               a widened file is not a new one.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` a FIFTH time, and
+    //               this tranche decided the SHAPE for the second time:
+    //               `SkillsRepository.findInstallation(scope, skillId)` and
+    //               `ChannelsRepository.findInstallation(installationId)` are
+    //               both top-level members with different signatures, so
+    //               `PostgresTenancyAdapter` cannot extend both ports and the
+    //               store arrives as a named property rather than a spread —
+    //               the same collision `secrets` produced on `appendAudit`.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 = 1364.
-    //               No branch's own figure is right merged — 1344 and 1348 each
-    //               under-count the other by its whole tranche.
-    assert.equal(result.fileCount, 1364, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20);
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 =
+    //               1381. No branch's own figure is right merged — 1344, 1348 and
+    //               1345 each under-count the others by their whole tranche.
+    assert.equal(result.fileCount, 1381, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

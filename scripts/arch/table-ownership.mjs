@@ -506,6 +506,44 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // which is honest about the fact that the rows belong to contexts whose stores
   // do not exist yet, rather than reaching for a permission the map withholds.
   conversations: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The ELEVENTH context to resolve to this directory, on the
+  // sentence every entry above stands on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the THREE rows `skills` owns — `Skill`,
+  // `ProjectSkill` and `EnvironmentSkill`. Nothing else. `checkSoleWriter` asks
+  // per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn` from
+  // this package still fails, and a write to any of these three from anywhere
+  // else still fails. Nine owners resolving to one directory is not nine owners
+  // losing their boundaries: the boundary is the owner TAG on the row, and this
+  // entry moves no tag.
+  //
+  // IT IS ALSO WHAT MAKES AN INSTALL ATOMIC. An install is TWO rows in two
+  // tables — the `ProjectSkill` adoption and the `EnvironmentSkill` binding that
+  // is keyed by the adoption's id — and `install-skill.ts` writes both in one
+  // unit of work. They commit or roll back together only because they are the
+  // same client on the same connection; a thirteenth adapter package holding
+  // only this context's repository would have had its own pool, and an install
+  // that failed on its second row would have left a project adoption behind that
+  // nothing points at and that the uninstall path — which deletes only the
+  // environment row — could never remove.
+  //
+  // AND IT CLOSES THE GAP THIS MAP RECORDED AT `agents`. The `agents` entry
+  // above says its own loadout write depends on `EnvironmentSkill`, "which ADR
+  // M0.3 §1 row 6 gives to `skills`; `skills` has no entry here, so this
+  // directory cannot create the row its own loadout write depends on", and that
+  // its integration fixture seeds the chain as SQL applied by `prisma db
+  // execute` rather than reaching for a permission the map withholds. The
+  // permission is now granted — to `skills`, tagged `skills`, and used by
+  // `skills`' own store. It does NOT widen what `agents` may write: the tag on
+  // `EnvironmentSkill` did not move, so a write to it from `agents`' repository
+  // modules is still judged against `ownerDirectories("skills")`, which is this
+  // directory — the same directory — which is exactly why the ownership that
+  // matters is carried by the tag rather than by the folder.
+  skills: "packages/adapters/postgres-tenancy",
 });
 
 /**

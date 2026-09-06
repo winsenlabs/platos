@@ -1092,6 +1092,9 @@ importers:
       '@platos/context-secrets':
         specifier: workspace:*
         version: link:../../contexts/secrets
+      '@platos/context-skills':
+        specifier: workspace:*
+        version: link:../../contexts/skills
       '@platos/context-tenancy':
         specifier: workspace:*
         version: link:../../contexts/tenancy
