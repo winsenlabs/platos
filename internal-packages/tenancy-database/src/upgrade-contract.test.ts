@@ -212,7 +212,7 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(orderedMigrations.at(-1)).toBe("20260828120000_win296_access_key_bootstrap_grant");
+    expect(orderedMigrations.at(-1)).toBe("20260906120000_win258_thread_listing_index");
     expect(accessKeyRuntime).toContain("accessKeyRevocationVersion");
     assertUpgradeRehearsalPrecedesCandidateEvidence(imageWorkflow);
     expect(imageWorkflow).not.toContain("  publish-images:");

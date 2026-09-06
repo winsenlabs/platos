@@ -236,16 +236,6 @@ describe("the plan", () => {
     plan = await explain(harness.client, pageRowStatement(dense));
     const sparse = await capture(harness, () => page(SPARSE, { limit: PAGE }));
     sparsePlan = await explain(harness.client, pageRowStatement(sparse));
-    console.log("T7-DIAG agents", JSON.stringify({
-      sql: pageRowStatement(dense).query.slice(0, 400),
-      nodes: nodeTypesOf(plan),
-      indexes: indexesUsed(plan),
-      bindingRows: rowsFrom(plan, "AgentBinding"),
-      agentRows: rowsFrom(plan, "Agent"),
-      root: plan.nodeType,
-      rootRows: plan.actualRows,
-      sparseBindingRows: rowsFrom(sparsePlan, "AgentBinding"),
-    }));
   }, 300_000);
 
   test("the environment clause is served by an index rather than a scan", async () => {
@@ -261,9 +251,14 @@ describe("the plan", () => {
     // a column on the other table.
     expect(rowsFrom(plan, "AgentBinding")).toBe(DENSE_ROWS);
     expect(rowsFrom(sparsePlan, "AgentBinding")).toBe(SPARSE_ROWS);
-    // The AGENT side is hydrated for every binding read, not for every binding
-    // returned — the join happens before the window is taken.
+    // The AGENT side is touched for every binding READ, not for every binding
+    // RETURNED — the join happens before the window is taken. Measured at 900
+    // for three hundred bindings, across the three nodes the planner used; the
+    // pin is the LINEARITY rather than the multiplier, because which nodes the
+    // planner picks is its business and how many rows they see is not.
     expect(rowsFrom(plan, "Agent")).toBeGreaterThanOrEqual(DENSE_ROWS);
+    // And the sort is real: no index can deliver a joined column's order.
+    expect(nodeTypesOf(plan)).toContain("Sort");
   });
 
   test("the window is applied by the database, not after the rows are in hand", async () => {

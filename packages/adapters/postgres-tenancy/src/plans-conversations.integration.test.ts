@@ -247,8 +247,14 @@ describe("statement cost", () => {
   test("a turn page is two statements whatever the transcript's length", async () => {
     const shallow = await measure(harness.base, () => turns({ limit: 1 }));
     const deep = await measure(harness.base, () => turns({ offset: TURNS - PAGE }));
-    expect(shallow.counted).toBe(2);
-    expect(deep.counted).toBe(2);
+    // THREE, MEASURED, and the third is the tenant clause rather than a row.
+    // `Turn` carries no `environmentId` — `turnScopedWhere` reaches it through
+    // `thread` — and the client resolves that relation filter as its own
+    // statement for the window and the count alike. What matters is that the
+    // figure is the SAME for a page of one and for the last page of three
+    // hundred: it is fixed by the read's shape, not by the transcript's length.
+    expect(shallow.counted).toBe(3);
+    expect(deep.counted).toBe(3);
   });
 });
 
@@ -285,31 +291,6 @@ describe("the plan", () => {
         await capture(harness.base, () => turns()),
         (sql) => /FROM\s+"public"\."Turn"/u.test(sql) && /\bLIMIT\b/u.test(sql),
       ),
-    );
-    console.log(
-      "T7-DIAG conversations",
-      JSON.stringify({
-        unfiltered: {
-          nodes: nodeTypesOf(unfiltered),
-          indexes: indexesUsed(unfiltered),
-          threadRows: rowsFrom(unfiltered, "Thread"),
-        },
-        bySubject: {
-          nodes: nodeTypesOf(bySubject),
-          indexes: indexesUsed(bySubject),
-          threadRows: rowsFrom(bySubject, "Thread"),
-        },
-        sparse: {
-          nodes: nodeTypesOf(sparse),
-          indexes: indexesUsed(sparse),
-          threadRows: rowsFrom(sparse, "Thread"),
-        },
-        transcript: {
-          nodes: nodeTypesOf(transcript),
-          indexes: indexesUsed(transcript),
-          turnRows: rowsFrom(transcript, "Turn"),
-        },
-      }),
     );
   }, 300_000);
 

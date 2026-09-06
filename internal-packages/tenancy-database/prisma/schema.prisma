@@ -1039,6 +1039,12 @@ model Thread {
   postmanExecutions PostmanExecution[]
 
   @@index([environmentId, endUserId, updatedAt])
+  /// WIN-258 T7. The operator thread listing passes NO end user, so
+  /// `[environmentId, endUserId, updatedAt]` cannot deliver its order: the
+  /// middle column is unconstrained. MEASURED on a real database at three
+  /// hundred threads, that listing read every live row in the environment and
+  /// sorted them, at every window. This index is its whole order.
+  @@index([environmentId, updatedAt(sort: Desc), id(sort: Desc)])
   @@index([agentId, status])
   @@index([clusterId])
   @@index([parentThreadId])

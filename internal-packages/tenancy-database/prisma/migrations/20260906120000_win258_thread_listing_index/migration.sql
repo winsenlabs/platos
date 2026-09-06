@@ -1,0 +1,39 @@
+-- WIN-258 T7 — the index the operator thread listing was said to have.
+--
+-- `ThreadRepository.pageThreads` reads one environment's threads newest first:
+--
+--   WHERE "environmentId" = $1 [AND "endUserId" = $2] [AND "archivedAt" IS NULL]
+--   ORDER BY "updatedAt" DESC, "id" DESC
+--   LIMIT $n OFFSET $m
+--
+-- The port's own words are that a null end user "reads every end user's
+-- threads", which is the listing an operator surface makes. The existing
+-- `Thread_environmentId_endUserId_updatedAt_idx` cannot serve it: `endUserId`
+-- sits BETWEEN the equality column and the order column, so with no end user
+-- named the index delivers the rows of an environment but not their order.
+--
+-- MEASURED, on a real PostgreSQL 16 with three hundred threads in one
+-- environment, before this index existed: `Index Scan` on
+-- `Thread_environmentId_endUserId_updatedAt_idx` feeding a full `Sort`, reading
+-- 241 rows — every live thread in the environment — to return a page of 25.
+-- The same read with an end user named used `Incremental Sort` and read 15.
+-- The cost of the operator listing was therefore the size of the environment,
+-- at every window, and no window made it cheaper.
+--
+-- The columns here are the listing's WHOLE order, in its own direction, so the
+-- rows come off the index already ordered and the window stops the scan.
+-- `archivedAt` is deliberately NOT in it: it is a filter, not an order key, and
+-- putting it between the environment and the order column would reproduce the
+-- exact defect this migration fixes for the `includeArchived` listing.
+--
+-- IDEMPOTENT, like every migration after the initial one here, because a clean
+-- database may already carry the object from the integrated initial SQL.
+--
+-- LOCKING. This is a plain `CREATE INDEX`, which holds a `SHARE` lock on
+-- `Thread` for the duration: concurrent reads continue, concurrent writes wait.
+-- `CONCURRENTLY` is not available to it — Prisma runs each migration inside a
+-- transaction and PostgreSQL refuses a concurrent build there — so this is a
+-- maintenance-window migration in the same sense as
+-- `20260824233000_m4_forward_upgrade_contract`.
+CREATE INDEX IF NOT EXISTS "Thread_environmentId_updatedAt_id_idx"
+  ON "public"."Thread" ("environmentId", "updatedAt" DESC, "id" DESC);
