@@ -1418,7 +1418,7 @@
       "path": "docs/audits/sbom/license-index.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "7de9125362cecbb47b217f233036e55dd438a66671a4734008fb3369b3f7e596",
+      "sha256": "6ddfd92742189cdb4a603a7799387fc49beb90c3cc1e126264538b0cf78ed8c1",
       "sourceSnapshot": "frozen registry licence snapshot recorded by scripts/audit-licenses.mjs",
       "baseline": "point-in-time registry metadata baseline; current shipping membership is checked separately",
       "date": "2026-08-30"
@@ -1553,7 +1553,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c3ff9ec7af9dd0cb40f067c6bac38f5ab9e8977d0fedc9dd1682250d937c9192",
+      "sha256": "6539586f32566cfe3a996a4e625c5891c2a52b06f9f56e8f66339c81deba6382",
       "binds": "current-repository-truth"
     },
     {
