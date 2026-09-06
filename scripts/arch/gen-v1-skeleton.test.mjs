@@ -83,7 +83,11 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // packages/contexts/memory, the sixth through twelfth owners of that same
   // client. SEVEN edges for FIFTEEN bindings. The count is READ BACK from the
   // generator here rather than computed, which is the whole point of this case.
-  assert.match(output, /32 V1 projects and 106 project edges/u);
+  // 106 -> 107 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/eventing, the THIRTEENTH owner of that same client. ONE
+  // edge for ONE binding over ONE canonical row. The count is READ BACK from the
+  // generator here rather than computed, which is the whole point of this case.
+  assert.match(output, /32 V1 projects and 107 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -537,6 +541,12 @@ const LIVE_ADAPTERS = [
       { port: "SkillsRepository", owner: "skills" },
       { port: "MemoryRepository", owner: "memory" },
       { port: "KnowledgeGraphRepository", owner: "memory" },
+      // WIN-258 T5. `eventing`'s one canonical-store port, in the fixture copy
+      // for the reason `secrets`' two and `skills`' one are: the mutations
+      // below are measured against a table that is otherwise identical to the
+      // live one, so a copy missing a binding would make the refusal COUNTS
+      // wrong rather than the refusals.
+      { port: "NotificationRuleRepository", owner: "eventing" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
@@ -566,17 +576,20 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a THIRTY-NINTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FORTIETH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to thirty-nine across four tranches:
   // `providers`' one, `conversations`' four, `skills`' one and `memory`'s two
-  // canonical-store bindings all landed in the one directory.
+  // canonical-store bindings all landed in the one directory. `eventing`'s one
+  // makes forty the refused figure and thirty-nine the declared one — the pair
+  // moves TOGETHER, which is the whole point of pinning a refusal rather than a
+  // ceiling: the case fails if either number drifts on its own.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 38 adapter bindings; ADAPTERS flattens to 39")));
+  assert.ok(errors.some((error) => error.includes("declares 39 adapter bindings; ADAPTERS flattens to 40")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

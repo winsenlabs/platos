@@ -170,6 +170,27 @@ function guardJsonObject(code: string, label: string, value: unknown): void {
 }
 
 /**
+ * `NotificationRule_filters_json_root`, restated in front of the statement.
+ *
+ * EXPORTED, UNLIKE THE OTHER GUARDS IN THIS FILE, and that is a consequence of
+ * the acceptance rather than a convenience. Every guard here has to be
+ * FALSIFIABLE by a named case, and this one cannot be reached through the port
+ * at all: `toRuleFilterInput` returns an object on every path the domain can
+ * build. So the case calls it directly, which is the only honest way to build
+ * the input — the same arrangement `skills-guards.ts` reached for when a guard
+ * was unreachable through its own port. What stands behind it is proved
+ * separately, by a raw INSERT in `eventing-constraints.integration.test.ts`.
+ */
+export function guardFiltersJsonRoot(value: unknown): void {
+  guardJsonObject(EVENTING_FILTERS_NOT_OBJECT, "filters", value);
+}
+
+/** `NotificationRule_delivery_json_root`, restated. Exported for the same reason. */
+export function guardDeliveryJsonRoot(value: unknown): void {
+  guardJsonObject(EVENTING_DELIVERY_NOT_OBJECT, "delivery", value);
+}
+
+/**
  * Everything a full row write binds, in one place.
  *
  * Both `insertRule` and `updateRule` take a whole `NotificationRule`, so one
@@ -184,8 +205,8 @@ export function guardNotificationRuleWrite(rule: NotificationRule): void {
   guardDestinationText(rule.destination);
   guardInstant("rule.createdAt", rule.createdAt);
   guardInstant("rule.updatedAt", rule.updatedAt);
-  guardJsonObject(EVENTING_FILTERS_NOT_OBJECT, "filters", writeFilter(rule.filter));
-  guardJsonObject(EVENTING_DELIVERY_NOT_OBJECT, "delivery", writeDestination(rule.destination));
+  guardFiltersJsonRoot(writeFilter(rule.filter));
+  guardDeliveryJsonRoot(writeDestination(rule.destination));
 }
 
 /**

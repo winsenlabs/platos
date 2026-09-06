@@ -555,18 +555,36 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was written from; splitting them would separate the pair that is the
   // evidence.
   //
+  // AND `eventing` ADDS FOURTEEN: eight source files and six suites, over ONE
+  // canonical row. The split is per CONCERN and not per table, because there is
+  // only one table: `eventing-rows` is the mapping and the two `where` shapes,
+  // `eventing-guards` what the schema refuses before a statement is sent,
+  // `eventing-refusal` the one place a throw becomes a `Result`,
+  // `eventing-rules` the seven CRUD-and-read methods, `eventing-erasure` the two
+  // that scrub — separate because it is the ONE write in this store that is raw
+  // SQL, and its reason (`@updatedAt` would move a column the domain owns) is a
+  // paragraph rather than a line — `eventing-repository` the composition and the
+  // record of the two ports deliberately skipped, and `eventing-harness` and
+  // `eventing-conformance` the fixture and the differential the other suites
+  // share.
+  //
+  // NOTHING HERE IS IN THE WARNING BAND, which is the one thing this tranche can
+  // claim that the four before it could not: the largest file is the conformance
+  // scenario and it is under 400 effective lines, because one table's scenario
+  // is one table's scenario.
+  //
   // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
-  // + 17 + 21 = 1377. All the stores are in the one adapter directory, so no
-  // branch's own figure survives the merge — 1266 for `channels`, 1269 for
+  // + 17 + 21 + 14 = 1391. All the stores are in the one adapter directory, so
+  // no branch's own figure survives the merge — 1266 for `channels`, 1269 for
   // `governance`, 1270 for `secrets`, 1319 for `providers`, 1323 for
-  // `conversations`, 1320 for `skills`, 1324 for `memory`.
-  assert.equal(result.fileCount, 1377);
+  // `conversations`, 1320 for `skills`, 1324 for `memory`, 1214 for `eventing`.
+  assert.equal(result.fileCount, 1391);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -574,13 +592,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
   // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
   // (secrets) + 16 (providers) + 20 (conversations) + 17 (skills) + 21
-  // (memory) = 291. The contexts, kernel and app rows are untouched, which is
+  // (memory) + 14 (eventing) = 305. The contexts, kernel and app rows are
+  // untouched, which is
   // the claim worth making: no tranche-5 store adds a file to a context at all —
   // each implements a port that already existed rather than widening one.
   // `secrets`, `providers`, `conversations`, `skills` and `memory` are the
   // sharpest cases: each had its port entry point widened, in place, and a
   // widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 291 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 305 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

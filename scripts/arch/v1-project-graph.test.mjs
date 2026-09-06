@@ -402,7 +402,17 @@ test("the live owner map passes its own check", () => {
   // `memory` is a second converse: it publishes SIX ports and gets ONE edge,
   // because only two of the six are canonical stores — `Cache` is bound to
   // `redis-cache`, and the other three write no row at all.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 12 });
+  // 12 -> 13 (WIN-258 T5). `eventing` is the THIRTEENTH owner delegated to this
+  // one directory, over its ONE canonical row. It is a THIRD converse and the
+  // narrowest: it publishes THREE ports and gets ONE edge, because only one is a
+  // canonical store — `DestinationScreen` is an SSRF boundary over sockets this
+  // package does not open, and `NotificationQueue` is a delayed hand-off that
+  // belongs behind `durable-runtime`.
+  //
+  // THE SECOND ASSERTION IS UNMOVED AND THAT IS THE POINT: twelve adapter
+  // DIRECTORIES, thirteen OWNERS of one of them. A pin that conflated the two
+  // could not have told a new owner from a new package.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 13 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
 });
 
@@ -425,7 +435,7 @@ test("§15 refusal: the multi-owner adapter LOSING an edge it was granted fails 
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 12 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/postgres-tenancy expects 1 owner edge(s); 13 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

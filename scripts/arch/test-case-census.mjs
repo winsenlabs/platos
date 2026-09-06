@@ -2007,6 +2007,19 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * three-way identity carries all seven, because every added file is an
  * adapter's: 79 + 7 = 86, and 349 + 3 + 86 = 438.
  *
+ * AND `eventing` ADDS SIX FILES / 51 CASES to the same row a FIFTH time, over
+ * ONE canonical row: `eventing-rows.test.ts` (17 cases, no database in it),
+ * `eventing-constraints.integration.test.ts` (11), `eventing-transaction.integration.test.ts`
+ * (9), `eventing-rules.integration.test.ts` (7), `eventing-statements.integration.test.ts`
+ * (4) and `eventing-conformance.integration.test.ts` (3). No CONTEXT row moves
+ * for it either: the port it implements already existed and this wave only
+ * widened the context's export map.
+ *
+ * THE CONFORMANCE SUITE IS THREE CASES AND THAT IS THE NUMBER TO WATCH, for the
+ * reason every tranche before it gives: it is ONE scenario of thirty-odd
+ * observations compared verbatim, so adding an observation strengthens the
+ * differential and moves NO count here.
+ *
  * ALL FOUR OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE TOO, so its row is
  * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 + 6 + 7 = 88 files
  * and 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 + 62 + 89 = 929 cases.
@@ -2016,6 +2029,11 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * and 6520 + 325 = 6845 cases. The adapters term of the three-way identity
  * carries all twenty-eight, because every added file is an adapter's:
  * 79 + 28 = 107, and 349 + 3 + 107 = 459.
+ *
+ * AND `eventing` MOVES THE SAME ROW ONCE MORE: 88 + 6 = 94 files and
+ * 929 + 51 = 980 cases, so the tree total goes 459 + 6 = 465 files and
+ * 6845 + 51 = 6896 cases. The adapters term carries all six, because every added
+ * file is this adapter's: 107 + 6 = 113, and 349 + 3 + 113 = 465.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2026,7 +2044,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 88, cases: 929 },
+  "packages/adapters/postgres-tenancy": { files: 94, cases: 980 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2211,8 +2229,18 @@ export const EXPECTED = Object.freeze({
  * package test script for the reason the other three row suites do — it has no
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
+ *
+ * 6845 -> 6896: the 51 cases of WIN-258 tranche 5's `eventing` canonical
+ * store, enumerated file by file in the block beside the postgres-tenancy row.
+ * Five of its six suites carry `.integration.` in the name, so the cases this
+ * census records and `pnpm test:v1-packages` does not execute go up by 34; the
+ * sixth, `eventing-rows.test.ts`, runs in the ordinary package test script for
+ * the reason the other row suites do — it has no database in it, and it reaches
+ * the three unreadable-row branches and the two `*_json_root` guards a container
+ * suite cannot: a container only ever reads rows this binary wrote, and no port
+ * call can build a non-object for either JSON column.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6845;
+export const EXPECTED_RUNTIME_TOTAL = 6896;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

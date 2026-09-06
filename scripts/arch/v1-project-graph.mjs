@@ -103,7 +103,21 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // per port. `memory` depends on `tenancy` and `providers` and nothing in the
 // 17-context DAG depends on `memory`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // again unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 106;
+// AND a THIRTEENTH owner edge, to `packages/contexts/eventing`, whose ONE
+// canonical row — `NotificationRule` — is in that same PostgreSQL database. One
+// edge carrying ONE binding, `NotificationRuleRepository`. It is the smallest
+// owner this directory has and it needs the edge for the same reason the twelve
+// above it do: ADR M0.3 §2 forbids the context's own `domain/` and
+// `application/` from importing the ORM, so the package permitted to write the
+// row cannot hold the client.
+//
+// NO CYCLE IS POSSIBLE, and here that is checked rather than asserted. ADR M0.3
+// §1 grants `eventing` exactly two dependencies — `tenancy` and the kernel — and
+// `application/dependencies.ts` holds the tenancy handle OPAQUELY and never calls
+// it, so nothing in the 17-context DAG depends on `eventing` at all: it emits
+// `NotificationRequested` and performs no delivery. `EXPECTED_CONTEXT_DEPENDS_ON`
+// below is unchanged, and an adapter is a leaf of that DAG either way.
+export const EXPECTED_EDGE_COUNT = 107;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -234,6 +248,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "conversations",
     "skills",
     "memory",
+    "eventing",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -256,7 +271,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 12 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 13 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

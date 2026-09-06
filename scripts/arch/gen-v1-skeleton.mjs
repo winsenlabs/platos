@@ -638,6 +638,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/providers", // WIN-258 T5 — measured against InMemoryProvidersRepository by packages/adapters/postgres-tenancy
   "packages/contexts/conversations", // WIN-258 T5 — InMemoryConversations satisfies all FOUR of its ports and is the differential
   "packages/contexts/memory", // WIN-258 T5 — InMemoryMemoryRepository and InMemoryKnowledgeGraphRepository are the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/eventing", // WIN-258 T5 — InMemoryNotificationRuleRepository is the differential packages/adapters/postgres-tenancy is measured against
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
@@ -661,6 +662,17 @@ export const TESTING_ENTRY_PROJECTS = [
 // `InMemoryCriteriaRepository`, `InMemoryEvalsRepository` and
 // `InMemoryGoldenSetsRepository` — and without the subpath the adapter's suites
 // do not fail an assertion, they fail to LOAD.
+//
+// `eventing` is the EIGHTH, and it is the one whose double this list is most
+// obviously FOR. `InMemoryNotificationRuleRepository`'s own header says "It is
+// not a stub. It enforces the two invariants the real table enforces" — the
+// `@@unique([environmentId, name])` index and scope isolation — and every
+// use-case suite in `packages/contexts/eventing` is written against that claim.
+// It is a claim about the PostgreSQL store, so the PostgreSQL store is what
+// checks it, and without the subpath the differential cannot name the double at
+// all. The double turned out to hold BOTH invariants and to miss the shapes: it
+// accepts `id-0001` and the scope triple `org-1`/`proj-1`/`env-1`, none of
+// which `@db.Uuid` will hold.
 //
 // Every entry must be an adopted project: an unadopted one's `application/`
 // tree is generated placeholders, so `selfCheck` fails on it.
