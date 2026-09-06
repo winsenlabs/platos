@@ -2348,7 +2348,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
-  "packages/contexts/providers": { files: 27, cases: 375 },
+  "packages/contexts/providers": { files: 27, cases: 378 },
   "packages/contexts/secrets": { files: 20, cases: 239 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
@@ -2769,7 +2769,33 @@ export const EXPECTED = Object.freeze({
  * `.integration.` in its name. It runs on the Mac mini under
  * `pnpm test:postgres-tenancy:integration`.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7494;
+/*
+ * WIN-259 (M2.4) THE LEDGER'S 37th ENTRY, +3 cases and NO file, in
+ * `packages/contexts/providers`: 375 -> 378 cases, 27 files unchanged, and
+ * 7494 -> 7497. THIS IS THE FIRST TIME THIS BRANCH HAS MOVED THE PROVIDERS
+ * ROW, and the two previous entries above both recorded that it did NOT move.
+ *
+ * The three cases go into the existing `application/authorization.test.ts` and
+ * they exist because a mutation had no kill. M23 -- "the providers DOUBLE stops
+ * modelling the vault's refusal" -- changed nothing when applied alone, because
+ * every other case in this package reaches the double through a use case and
+ * the use cases wrap at their own seam, so the double never saw a bare string.
+ * It was recorded as a COMPOUND measurement, an integrator counted 37 entries
+ * against 36 named kills, and the branch was held back for it.
+ *
+ * The repair was the CASE and not the declaration. All three drive
+ * `InMemorySecrets` directly: one pairs the refusal with an ACCEPTANCE whose
+ * material is minted by `acceptPlaintext` -- the one mint `secrets` publishes --
+ * so the double is held to the real vault rather than to a shape this package
+ * owns; one repeats it on ROTATION, the second call site of the same guard; and
+ * one hands it a structurally perfect MIMIC, which is what stops the refusal
+ * being satisfiable by a shape check.
+ *
+ * Measured with `pnpm --filter @platos/context-providers exec vitest run` --
+ * "Test Files 27 passed (27) / Tests 378 passed (378)" -- and the file on its
+ * own prints 18, up from 15.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7497;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
