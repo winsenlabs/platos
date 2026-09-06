@@ -35,7 +35,10 @@ import {
   BASELINE_SQL_PATH,
   GENESIS_MIGRATION,
   MIGRATION_BASELINE_DRIFT,
-  MIGRATION_ORDER_BROKEN,
+  MIGRATION_NAME_MALFORMED,
+  MIGRATION_SET_POLLUTED,
+  MIGRATION_SET_UNGROUNDED,
+  MIGRATION_STAMP_COLLISION,
   MigrationSetError,
   orderedMigrations,
   verifyFrozenBaseline,
@@ -90,7 +93,7 @@ describe("the ordered migration set", () => {
       refusalCode(() =>
         orderedMigrations(migrationSet([GENESIS_MIGRATION, "20260824010000_a", "20260824010000_b"])),
       ),
-    ).toBe(MIGRATION_ORDER_BROKEN);
+    ).toBe(MIGRATION_STAMP_COLLISION);
   });
 
   test("orders by name and by number identically, which is why the order is total", () => {
@@ -111,18 +114,18 @@ describe("the ordered migration set", () => {
   test("refuses a directory that is not a stamp and a snake_case label", () => {
     expect(
       refusalCode(() => orderedMigrations(migrationSet([GENESIS_MIGRATION, "drop_everything"]))),
-    ).toBe(MIGRATION_ORDER_BROKEN);
+    ).toBe(MIGRATION_NAME_MALFORMED);
   });
 
   test("refuses a stray file beside the migration directories", () => {
     expect(
       refusalCode(() => orderedMigrations(migrationSet([GENESIS_MIGRATION], ["notes.sql"]))),
-    ).toBe(MIGRATION_ORDER_BROKEN);
+    ).toBe(MIGRATION_SET_POLLUTED);
   });
 
   test("refuses a set that does not begin at the genesis migration", () => {
     expect(refusalCode(() => orderedMigrations(migrationSet(["20260824010000_a"])))).toBe(
-      MIGRATION_ORDER_BROKEN,
+      MIGRATION_SET_UNGROUNDED,
     );
   });
 

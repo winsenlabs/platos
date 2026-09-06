@@ -159,6 +159,7 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
   let difference: CatalogueDifference;
   let renamedColumn: UpgradeBaselineField;
   let replacementColumn: UpgradeBaselineField;
+  let migrationRefusal: string | null = "the ordered set was never applied";
 
   beforeAll(async () => {
     oracleHead = await rebuildUpgradeBaseline("oracle-head");
@@ -174,7 +175,18 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
     await seedAsLegacyBinary(legacyClient, renamedColumn);
     baseline = await readCatalogue(legacyClient);
 
-    applyOrderedMigrations(databaseUrl);
+    // THE UPGRADE'S OWN REFUSAL IS CAPTURED, NOT THROWN. A `beforeAll` that dies
+    // takes every case with it and executes NONE, which a mutation sweep reads
+    // as vacuous rather than as a kill — the sweep found exactly that, and it is
+    // why this is a variable instead of a bare call. The first case below
+    // asserts it, so the ordered set refusing is a NAMED failure.
+    try {
+      applyOrderedMigrations(databaseUrl);
+      migrationRefusal = null;
+    } catch (error: unknown) {
+      migrationRefusal = describeError(error);
+      return;
+    }
 
     v1 = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
     migrated = await readCatalogue(v1);
@@ -191,6 +203,7 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
   });
 
   test("the ordered migration set is total and gap-free, and the database applied exactly it", async () => {
+    expect(migrationRefusal).toBeNull();
     const ordered = orderedMigrations();
     expect(ordered.length).toBeGreaterThan(1);
 

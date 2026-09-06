@@ -63,10 +63,13 @@
       "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
       "from": "  if (duplicates.length > 0) {",
       "to": "  if (false) {",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "the ordered migration set > refuses a set whose stamps collide, because the filesystem then decides"
-      ]
+      ],
+      "note": "THE SWEEP CHANGED THE CODE for this one: it SURVIVED the first pass, because a set with two directories on one stamp also fails the order comparison two lines later and the two guards answered the same code. Five distinct codes were minted so each case can tell its guard from the one behind it."
     },
     {
       "name": "M-T7-03 a directory that is not a stamp and a label is admitted",
@@ -74,7 +77,9 @@
       "from": "      if (matched === null) {",
       "to": "      if (matched === undefined) {",
       "note": "A nullish off-by-one rather than a deletion: `exec` answers null, never undefined, so the branch is skipped and the stamp read from it is read off null.",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "the ordered migration set > refuses a directory that is not a stamp and a snake_case label"
       ]
@@ -84,7 +89,9 @@
       "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
       "from": "  if (unexpected.length > 0) {",
       "to": "  if (false) {",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "the ordered migration set > refuses a stray file beside the migration directories"
       ]
@@ -94,7 +101,9 @@
       "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
       "from": "  if (migrations[0]?.name !== GENESIS_MIGRATION) {",
       "to": "  if (false) {",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "the ordered migration set > refuses a set that does not begin at the genesis migration"
       ]
@@ -104,7 +113,9 @@
       "file": "internal-packages/tenancy-database/src/upgrade-rehearsal-support.ts",
       "from": "  if (digest !== BASELINE_SQL_SHA256) {",
       "to": "  if (false) {",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "the frozen release schemas > refuses a frozen baseline SQL that no longer hashes to its pin"
       ]
@@ -114,7 +125,9 @@
       "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
       "from": "  if (digest !== release.schemaSha256) {",
       "to": "  if (false) {",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "the frozen release schemas > refuses a schema that no longer hashes to its pin"
       ]
@@ -125,7 +138,9 @@
       "from": "  if (!OUTPUT_LINE.test(source)) {",
       "to": "  if (false) {",
       "note": "The guard that stops a rebuild writing over the LIVE client. Both frozen schemas name the live output path, so a silent no-match would generate an old release's datamodel into the directory the rest of the package imports.",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "the frozen release schemas > refuses a schema with no generator output line to redirect"
       ]
@@ -135,7 +150,9 @@
       "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
       "from": "  if (only.length !== 1) {",
       "to": "  if (false) {",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "addressing a renamed column without spelling it > refuses when the two datamodels differ by more than one stored field",
         "addressing a renamed column without spelling it > refuses when they differ by none, because then there is nothing to rehearse"
@@ -147,7 +164,9 @@
       "from": "  return model.fields.filter((field) => field.kind === \"scalar\" || field.kind === \"enum\");",
       "to": "  return model.fields.filter((field) => field.kind !== \"unused\");",
       "note": "A relation is not a column, so counting one would make the whole-table column sweep compare a name PostgreSQL has never heard of.",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "addressing a renamed column without spelling it > counts scalar and enum fields and nothing else"
       ]
@@ -157,7 +176,9 @@
       "file": "internal-packages/tenancy-database/src/upgrade-baseline-clients.ts",
       "from": "  if (delegate === undefined || delegate === null) {",
       "to": "  if (false) {",
-      "suites": ["internal-packages/tenancy-database/src/upgrade-guards.test.ts"],
+      "suites": [
+        "internal-packages/tenancy-database/src/upgrade-guards.test.ts"
+      ],
       "kills": [
         "addressing a renamed column without spelling it > refuses a delegate the rebuilt client does not expose"
       ]
@@ -193,7 +214,7 @@
       "file": "internal-packages/tenancy-database/src/upgrade-fixture.ts",
       "from": "      endUserId: ids.endUser,\n      turnId: ids.turn,\n      kind: \"document\",",
       "to": "      endUserId: ids.endUser,\n      kind: \"document\",",
-      "note": "Proves the fixture is what satisfies the m4 ownership preflight, and therefore that the rehearsal is running the REAL backfill rather than a migration that found nothing to do.",
+      "note": "Proves the fixture is what satisfies the m4 ownership preflight, and therefore that the rehearsal is running the REAL backfill rather than a migration that found nothing to do. THE SWEEP CHANGED THE SUITE for this one: the refusal originally reached `beforeAll`, which executed zero cases and read as VACUOUS rather than as a kill, so the upgrade's own refusal is now captured into a variable a named case asserts.",
       "suites": [
         "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts"
       ],
@@ -210,7 +231,9 @@
       "suites": [
         "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
       ],
-      "kills": ["the V1 stores read the tenancy tree a legacy release wrote"]
+      "kills": [
+        "the V1 stores read the tenancy tree a legacy release wrote"
+      ]
     },
     {
       "name": "M-T7-16 the rollout partner is the legacy release rather than the binary being replaced",
@@ -221,7 +244,9 @@
       "suites": [
         "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
       ],
-      "kills": ["the binary being replaced reads back what the V1 stores wrote"]
+      "kills": [
+        "the binary being replaced reads back what the V1 stores wrote"
+      ]
     }
   ],
   "declared-unfalsifiable": [

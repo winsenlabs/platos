@@ -38,8 +38,28 @@ export const BASELINE_SQL_PATH = resolve(
 export const BASELINE_SQL_SHA256 =
   "5c43055e8b4d134676d7252ceba59bfe72d90b63c34be03e1807512b30ea19d3";
 
-/** Refused when the on-disk migration set is not a total, gap-free order. */
-export const MIGRATION_ORDER_BROKEN = "tenancy.migrations.order_broken";
+// FIVE CODES, NOT ONE, AND THE SWEEP IS WHY. The first draft answered every
+// malformed migration set with a single `order_broken`, and the mutation that
+// removed the stamp-collision check SURVIVED: a set with two directories on one
+// stamp also fails the lexicographic-versus-numeric comparison two lines later,
+// which answered the same code, so the case could not tell the guard it was
+// aimed at from the one that caught the input on its way past. Two guards that
+// answer the same code are one guard as far as any case can see.
+
+/** Refused when two migration directories carry the same stamp. */
+export const MIGRATION_STAMP_COLLISION = "tenancy.migrations.stamp_collision";
+
+/** Refused when sorting by name and sorting by stamp disagree. */
+export const MIGRATION_ORDER_DISAGREES = "tenancy.migrations.order_disagrees";
+
+/** Refused when a directory is not a stamp and a snake_case label. */
+export const MIGRATION_NAME_MALFORMED = "tenancy.migrations.name_malformed";
+
+/** Refused when something that is not a migration sits among the migrations. */
+export const MIGRATION_SET_POLLUTED = "tenancy.migrations.set_polluted";
+
+/** Refused when the set does not begin at the genesis migration. */
+export const MIGRATION_SET_UNGROUNDED = "tenancy.migrations.set_ungrounded";
 
 /** Refused when the frozen baseline SQL no longer hashes to its pin. */
 export const MIGRATION_BASELINE_DRIFT = "tenancy.migrations.baseline_drift";
@@ -86,7 +106,7 @@ export function orderedMigrations(root: string = migrationsRoot): readonly Order
   const unexpected = files.filter((name) => name !== "migration_lock.toml");
   if (unexpected.length > 0) {
     throw new MigrationSetError(
-      MIGRATION_ORDER_BROKEN,
+      MIGRATION_SET_POLLUTED,
       `prisma/migrations holds ${unexpected.join(", ")}; only migration directories and ` +
         "migration_lock.toml belong there",
     );
@@ -100,7 +120,7 @@ export function orderedMigrations(root: string = migrationsRoot): readonly Order
       const matched = MIGRATION_NAME.exec(name);
       if (matched === null) {
         throw new MigrationSetError(
-          MIGRATION_ORDER_BROKEN,
+          MIGRATION_NAME_MALFORMED,
           `migration directory ${name} is not <14-digit stamp>_<snake_case label>`,
         );
       }
@@ -116,7 +136,7 @@ export function orderedMigrations(root: string = migrationsRoot): readonly Order
   const duplicates = stamps.filter((stamp, index) => stamps.indexOf(stamp) !== index);
   if (duplicates.length > 0) {
     throw new MigrationSetError(
-      MIGRATION_ORDER_BROKEN,
+      MIGRATION_STAMP_COLLISION,
       `stamp(s) ${[...new Set(duplicates)].join(", ")} are used by more than one migration, so ` +
         "the set has no total order and the filesystem decides which runs first",
     );
@@ -126,7 +146,7 @@ export function orderedMigrations(root: string = migrationsRoot): readonly Order
     const current = stamps[index] as string;
     if (!(Number(current) > Number(previous))) {
       throw new MigrationSetError(
-        MIGRATION_ORDER_BROKEN,
+        MIGRATION_ORDER_DISAGREES,
         `lexicographic order puts ${current} after ${previous}, but numerically it does not ` +
           "come later; the two orders disagree",
       );
@@ -134,7 +154,7 @@ export function orderedMigrations(root: string = migrationsRoot): readonly Order
   }
   if (migrations[0]?.name !== GENESIS_MIGRATION) {
     throw new MigrationSetError(
-      MIGRATION_ORDER_BROKEN,
+      MIGRATION_SET_UNGROUNDED,
       `the first migration is ${String(migrations[0]?.name)}, not ${GENESIS_MIGRATION}`,
     );
   }
