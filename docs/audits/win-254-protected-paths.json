@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "a1b27d9a71101317f16bac9aae535b09ab1471b31ec51ab3c5e5d8bd65ced371"
+      "sha256": "e5bc5acc7c985a2bd8b969473c7bb28077e71a017656e7b0148ef9704bb872e0"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "682b4929ded1249ba1aadd56a62a75d4adf3decab5502c0057dc5a7b00d6fa2e"
+      "sha256": "22d510cb4578490e0d5c3e98eeccb53935cb60d88bd93efbf32fd3724494490d"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "69270bf5fdcff15e7cc1797c13f8e8000314a373d877533e6f46c46b143f5274"
+      "sha256": "9cd7783c844b95961df1085d4a1e80871d3b42ee44bc4aabd6248c7faaa5307a"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "d49be28581c8b900a3a5036669b7ed35791862b9f33d486bfa66a4dc57f8ab2e"
+      "sha256": "feebf69daafe9a9cf98542c8a984c0e95e3bc6e233864a9efce5f37519c61aa3"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d"
+      "sha256": "d0d10aeaa29a39e62bad3e4546b57661e533d7f578a1c31bba38461bfbaed05c"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "4056fee251592aa44f69be131fae3d2ec892ab55b169f54d8054f20043df04da"
+      "sha256": "dbf354e34a7f473dbd523ddcfa73cae2d724feaa2f2be9ebd621f8b8d9e0df8e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "b3d8cae9c8229502f9747a7ebd3f599509b9e46800d5677fc3c2b9e552b24605"
+      "sha256": "4a2ade6e6a88c721b4d8a78fe39d65975ba687851e5b9cc95d0e35b20bbc527e"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3643,7 +3643,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "e34e96d623fbfbff43c8a8b825ac2ea11316df1f0e07811fc6e5fa53e6da442b"
+      "sha256": "8f2cd03c5aae1ed1ea425c070dc7d9b7dde9a23de2cd318831d6c3cd2d00903a"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "76a3976e4782e3670c72520b64cb8f5542f533de5fb0538d9a3cd93d816a46bf"
+      "sha256": "b4a28ad1896767fc0a663369a99829a7061726590150334c04ac0e035bebf054"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
