@@ -116,8 +116,8 @@ describe("the declared binding table", () => {
     // The eleventh is `skills`, whose ONE port covers its three tables: a
     // catalogue entry, a project's adoption of one and an environment's binding
     // of that adoption are one aggregate with one uniqueness key.
-    expect(ADAPTER_BINDINGS).toHaveLength(36);
-    expect(DECLARED_BINDING_COUNT).toBe(36);
+    expect(ADAPTER_BINDINGS).toHaveLength(38);
+    expect(DECLARED_BINDING_COUNT).toBe(38);
     // The twelfth is `memory`, whose TWO ports — `MemoryRepository` and
     // `KnowledgeGraphRepository` — are both proven through the PROPERTY that
     // carries them, because `KnowledgeGraphRepository.findEntity(subject,
