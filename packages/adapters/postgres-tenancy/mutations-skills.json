@@ -79,19 +79,27 @@
         "src/skills-rows.test.ts",
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.origin is validated against the closed set, not cast to it the three values, and one that is not",
+        "Skill.origin is a plain TEXT column with the closed set only in the domain a value outside SkillOrigin is REFUSED on read, not cast"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 34
     },
     {
       "name": "M-K02 rows: a NULL TEXT[] reads as the empty list the DEFAULT names",
       "file": "src/skills-rows.ts",
       "from": "  if (value === null || value === undefined) return [];\n  if (!Array.isArray(value)) {",
       "to": "  if (false) return [];\n  if (!Array.isArray(value)) {",
-      "note": "`tags`, `requiredEnvironmentKeys` and `optionalEnvironmentKeys` are declared TEXT[] with no NOT NULL in the migration and as non-optional `String[]` in schema.prisma. A row holding SQL NULL is representable and the generated types deny it; without this arm the reader refuses a row an older writer left.",
+      "note": "`tags`, `requiredEnvironmentKeys` and `optionalEnvironmentKeys` are declared TEXT[] with no NOT NULL in the migration and as non-optional `String[]` in schema.prisma. A row holding SQL NULL is representable and the generated types deny it; without this arm the reader refuses a row an older writer left. MEASURED, AND NOT WHAT WAS EXPECTED: the integration case that plants a row with SQL NULL in all three columns stayed GREEN against this mutation. The generated client answers `[]` for a scalar-list column holding SQL NULL rather than handing the reader a null, so the reader's own arm is unreachable from a container suite however the row is planted. The arm stays — it is what makes the reader independent of a client upgrade, and it is what handles an OMITTED projection, which reaches it as `undefined` — and the falsifying case is the pure suite's.",
       "suites": [
-        "src/skills-rows.test.ts",
-        "src/skills-rules.integration.test.ts"
+        "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the TEXT[] columns a READ answers the empty list the column DEFAULT names for SQL NULL"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 34
     },
     {
       "name": "M-K03 rows: a TEXT[] element is text, checked rather than assumed",
@@ -102,7 +110,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the TEXT[] columns a READ answers the empty list the column DEFAULT names for SQL NULL"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K04 rows: a REQUIRED manifest key is present and is text",
@@ -114,7 +126,12 @@
         "src/skills-rows.test.ts",
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.manifest reads what an older binary wrote and refuses what is corrupt a missing REQUIRED key, a wrong-typed nullable key and a bad root are refused",
+        "Skill.manifest is JSONB behind one CHECK on its ROOT and nothing else a manifest missing a REQUIRED key is refused — that is corruption, not skew"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 34
     },
     {
       "name": "M-K05 rows: a NULLABLE manifest key present with the wrong type is refused",
@@ -126,7 +143,12 @@
         "src/skills-rows.test.ts",
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.manifest reads what an older binary wrote and refuses what is corrupt a missing REQUIRED key, a wrong-typed nullable key and a bad root are refused",
+        "Skill.manifest is JSONB behind one CHECK on its ROOT and nothing else a nullable key PRESENT with the wrong type is refused too"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 34
     },
     {
       "name": "M-K06 rows: an ABSENT manifest list normalises to empty rather than refusing",
@@ -138,7 +160,18 @@
         "src/skills-rows.test.ts",
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.manifest reads what an older binary wrote and refuses what is corrupt every ABSENT nullable key normalises, and every absent list becomes empty",
+        "the three TEXT[] columns are NULLABLE in the DDL and non-optional in schema.prisma a row holding SQL NULL in all three reads as the empty list the DEFAULT names",
+        "Skill.origin is a plain TEXT column with the closed set only in the domain and the three real values all read",
+        "Skill.manifest is JSONB behind one CHECK on its ROOT and nothing else a manifest missing every NULLABLE key still reads — expand/contract",
+        "Skill.manifest is JSONB behind one CHECK on its ROOT and nothing else an UNKNOWN key survives a read and a re-registration",
+        "Skill.providesTools is the column the RUNTIME reads an element that is not an object is refused",
+        "Skill.providesTools is the column the RUNTIME reads an element missing its OPTIONAL fields reads with the documented defaults",
+        "the write paths whose input the port itself cannot produce a manifest that never carried an author GAINS one when the row is anonymised"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 34
     },
     {
       "name": "M-K07 rows: manifest.origin is validated against the closed set",
@@ -149,7 +182,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.manifest reads what an older binary wrote and refuses what is corrupt a missing REQUIRED key, a wrong-typed nullable key and a bad root are refused"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K08 rows: an UNKNOWN manifest key survives a read",
@@ -161,7 +198,12 @@
         "src/skills-rows.test.ts",
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.manifest reads what an older binary wrote and refuses what is corrupt an UNKNOWN key survives, so a newer release's field is not deleted",
+        "Skill.manifest is JSONB behind one CHECK on its ROOT and nothing else an UNKNOWN key survives a read and a re-registration"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 34
     },
     {
       "name": "M-K09 rows: an UNKNOWN provided-tool field survives a read",
@@ -172,7 +214,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.providesTools is the column the runtime reads optional fields default and unknown fields survive"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K10 rows: a provided tool has a NAME",
@@ -183,7 +229,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.providesTools is the column the runtime reads a bad root, a bad element and a nameless element are refused"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K11 rows: a provided tool's schema is an object or null",
@@ -194,7 +244,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.providesTools is the column the runtime reads a bad root, a bad element and a nameless element are refused"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K12 rows: providesTools has an ARRAY root",
@@ -205,7 +259,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.providesTools is the column the runtime reads a bad root, a bad element and a nameless element are refused"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K13 rows: manifest has an OBJECT root",
@@ -216,7 +274,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "Skill.manifest reads what an older binary wrote and refuses what is corrupt a missing REQUIRED key, a wrong-typed nullable key and a bad root are refused"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K14 rows: EnvironmentSkill.config has an OBJECT root",
@@ -227,7 +289,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "EnvironmentSkill.config an absent config is the empty object the column DEFAULT names"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K15 guards: the uuid shape is the canonical hyphenated form",
@@ -239,7 +305,16 @@
         "src/skills-rows.test.ts",
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent an organization id that is not a uuid — the double's own fixture shape",
+        "the shapes the schema will not hold, refused BEFORE a statement is sent and a non-uuid row id READS as absent rather than aborting the read",
+        "the clauses that decide WHICH ROW a call reaches a patch of a non-uuid id refuses without aborting the caller's transaction",
+        "the uuid guard is the canonical hyphenated form and nothing else what it accepts and what it does not",
+        "the uuid guard is the canonical hyphenated form and nothing else requireUuid refuses under its own code and names the field",
+        "a scope naming one identifier at two levels is refused because the trigger reads the stored rows and not the caller's claim"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 33
     },
     {
       "name": "M-K16 guards: a scope naming one identifier at two levels is refused",
@@ -251,7 +326,12 @@
         "src/skills-rows.test.ts",
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent a scope naming one identifier at two levels",
+        "a scope naming one identifier at two levels is refused because the trigger reads the stored rows and not the caller's claim"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 33
     },
     {
       "name": "M-K17 guards: a JSON-object column refuses an array, a null and a scalar",
@@ -263,7 +343,12 @@
         "src/skills-rows.test.ts",
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent a manifest whose JSON root is an array — Skill_manifest_json_root",
+        "the three JSON-root CHECKs, refused before a statement is sent an object column, an array column and a config column"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 33
     },
     {
       "name": "M-K18 guards: a JSON-array column refuses an object",
@@ -275,7 +360,12 @@
         "src/skills-rows.test.ts",
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent provided tools whose JSON root is an object — Skill_providesTools_json_root",
+        "the three JSON-root CHECKs, refused before a statement is sent an object column, an array column and a config column"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 33
     },
     {
       "name": "M-K19 guards: a TEXT[] write refuses a non-list",
@@ -286,7 +376,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the TEXT[] columns a write refuses anything that is not a list of text"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K20 guards: a TEXT[] write refuses a non-text element",
@@ -297,7 +391,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the TEXT[] columns a write refuses anything that is not a list of text"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K21 guards: an empty segment of the uniqueness key is refused",
@@ -309,7 +407,12 @@
         "src/skills-rows.test.ts",
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent an empty version — two thirds of the uniqueness key, with no CHECK behind it",
+        "the remaining two write guards an empty segment of the uniqueness key, and an unrepresentable instant"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 33
     },
     {
       "name": "M-K22 guards: an unrepresentable instant is refused",
@@ -320,7 +423,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the remaining two write guards an empty segment of the uniqueness key, and an unrepresentable instant"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K23 visibility: the install clause spans BOTH levels",
@@ -331,7 +438,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K24 visibility: the organization match is a CONJUNCT, not a fallback",
@@ -342,7 +453,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K25 visibility: an official row is visible with no install at all",
@@ -353,7 +468,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K26 visibility: official rows sort FIRST",
@@ -364,7 +483,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K27 visibility: a slug's HIGHEST version wins",
@@ -375,7 +498,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K28 visibility: a search term is TRIMMED",
@@ -386,7 +513,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K29 visibility: a null search is no filter at all",
@@ -398,7 +529,12 @@
         "src/skills-conformance.integration.test.ts",
         "src/skills-statements.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically",
+        "every statement count is pinned and NONE of them moves with the number of rows"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 4
     },
     {
       "name": "M-K30 visibility: a reference that is not a uuid is not sent to uuid_in",
@@ -409,7 +545,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K31 catalogue: a non-uuid row id READS as absent",
@@ -420,7 +560,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent and a non-uuid row id READS as absent rather than aborting the read"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 14
     },
     {
       "name": "M-K32 catalogue: a re-registration does not move createdAt",
@@ -431,7 +575,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K33 catalogue: a re-registration OVERWRITES what the manifest describes",
@@ -442,7 +590,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K34 catalogue: a patch of an unknown id is a refusal, not a crash",
@@ -453,7 +605,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K35 catalogue: a patch of a NON-UUID id is a refusal, not an aborted transaction",
@@ -464,7 +620,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the clauses that decide WHICH ROW a call reaches a patch of a non-uuid id refuses without aborting the caller's transaction"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 14
     },
     {
       "name": "M-K36 catalogue: the official flag is what hasOfficialSkills asks about",
@@ -475,7 +635,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K37 catalogue: hasOfficialSkills is confined to ONE organization",
@@ -486,7 +650,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K38 catalogue: a page's TOTAL is of the filter, not of the window",
@@ -497,7 +665,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K39 catalogue: skills resolved FROM installations are still visibility-filtered",
@@ -508,7 +680,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K40 installs: an adoption checks the scope before it writes",
@@ -519,7 +695,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent a scope naming one identifier at two levels"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 14
     },
     {
       "name": "M-K41 installs: both upserts RE-ENABLE",
@@ -530,7 +710,11 @@
       "suites": [
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the write paths whose input the port itself cannot produce a DISABLED binding is re-enabled by a re-install"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-K42 installs: the environment upsert re-enables too",
@@ -541,7 +725,11 @@
       "suites": [
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the write paths whose input the port itself cannot produce a DISABLED binding is re-enabled by a re-install"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-K43 installs: a binding read joins through the PROJECT, not the environment alone",
@@ -552,7 +740,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the clauses that decide WHICH ROW a call reaches a binding is not resolvable through a scope whose PROJECT is somebody else's"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 14
     },
     {
       "name": "M-K44 installs: a bulk resolve answers in the CALLER'S order and repeats a repeated id",
@@ -563,7 +755,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K45 installs: a non-uuid binding id is dropped rather than sent",
@@ -574,7 +770,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent and a non-uuid row id READS as absent rather than aborting the read"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 14
     },
     {
       "name": "M-K46 installs: an uninstall answers whether it removed anything",
@@ -585,29 +785,37 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K47 installs: an uninstall reaches only THIS environment's binding",
       "file": "src/skills-installations.ts",
       "from": "          where: {\n            environmentId: scope.environment.environmentId,\n            projectSkill: {\n              projectId: scope.environment.projectId,\n              skillId,\n              project: { organizationId: scope.environment.organizationId },\n            },\n          },\n        });\n        return ok(outcome.count > 0);",
       "to": "          where: {\n            projectSkill: {\n              skillId,\n            },\n          },\n        });\n        return ok(outcome.count > 0);",
-      "note": "'Uninstalling from staging must not uninstall from production.' Without the environment clause one tenant's uninstall removes the binding in every environment that adopted the same catalogue row.",
+      "note": "'Uninstalling from staging must not uninstall from production.' Without the environment clause one tenant's uninstall removes the binding in every environment that adopted the same catalogue row. SURVIVED THE FIRST SWEEP with nothing red: nothing in the conformance scenario installs one skill in TWO environments, so removing the environment clause changed no answer it asks for. The named case that kills it was written for this entry.",
       "suites": [
-        "src/skills-conformance.integration.test.ts"
+        "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [],
+      "verdict": "PENDING-RESWEEP",
+      "executedCases": 2
     },
     {
       "name": "M-K48 installs: a non-uuid skill id does not reach an uninstall statement",
       "file": "src/skills-installations.ts",
       "from": "        if (!looksLikeUuid(skillId)) return ok(false);",
       "to": "        if (false) return ok(false);",
-      "note": "The write path again: a DELETE whose predicate raises takes the caller's transaction.",
+      "note": "The write path again: a DELETE whose predicate raises takes the caller's transaction. SURVIVED THE FIRST SWEEP for the same reason: no case called the uninstall with a non-uuid at all. The named case that kills it was written for this entry.",
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [],
+      "verdict": "PENDING-RESWEEP",
+      "executedCases": 14
     },
     {
       "name": "M-K49 erasure: a project-level selector selects NOTHING",
@@ -618,7 +826,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K50 erasure: a subject with no principal selects nothing",
@@ -629,7 +841,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K51 erasure: the anonymisation is confined to ONE organization",
@@ -640,7 +856,11 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the clauses that decide WHICH ROW a call reaches an anonymisation is confined to ONE organization"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 14
     },
     {
       "name": "M-K52 erasure: the anonymisation is confined to the SUBJECT",
@@ -651,7 +871,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K53 erasure: the stored MANIFEST is overwritten as well as the column",
@@ -662,7 +886,11 @@
       "suites": [
         "src/skills-conformance.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the in-memory double and PostgreSQL answer the same scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 2
     },
     {
       "name": "M-K54 erasure: jsonb_set CREATES the key when a manifest never carried one",
@@ -673,7 +901,11 @@
       "suites": [
         "src/skills-rules.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the write paths whose input the port itself cannot produce a manifest that never carried an author GAINS one when the row is anonymised"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-K55 refusal: a TransactionScopeError is RETHROWN, never folded into a Result",
@@ -684,7 +916,13 @@
       "suites": [
         "src/skills-transaction.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the three scope refusals stay three DISTINCT codes a write with no transaction open is not_open",
+        "the three scope refusals stay three DISTINCT codes a write with a FINISHED transaction's token is scope_unknown",
+        "the three scope refusals stay three DISTINCT codes a write with ANOTHER LIVE transaction's token is scope_foreign"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 7
     },
     {
       "name": "M-K56 refusal: the distinct CODE leads the reason a caller receives",
@@ -695,7 +933,15 @@
       "suites": [
         "src/skills-constraints.integration.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the shapes the schema will not hold, refused BEFORE a statement is sent an organization id that is not a uuid — the double's own fixture shape",
+        "the shapes the schema will not hold, refused BEFORE a statement is sent a scope naming one identifier at two levels",
+        "the shapes the schema will not hold, refused BEFORE a statement is sent a manifest whose JSON root is an array — Skill_manifest_json_root",
+        "the shapes the schema will not hold, refused BEFORE a statement is sent provided tools whose JSON root is an object — Skill_providesTools_json_root",
+        "the shapes the schema will not hold, refused BEFORE a statement is sent an empty version — two thirds of the uniqueness key, with no CHECK behind it"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 14
     },
     {
       "name": "M-K57 stamps: the instant source never repeats",
@@ -706,7 +952,11 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the default stamps mint what the columns will hold the instant source never repeats, so two rows in ONE transaction can be ordered"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     },
     {
       "name": "M-K58 stamps: every minted identifier is a uuid",
@@ -717,7 +967,34 @@
       "suites": [
         "src/skills-rows.test.ts"
       ],
-      "kills": []
+      "kills": [
+        "the default stamps mint what the columns will hold every minted identifier is a uuid the column accepts"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 19
     }
+  ],
+  "sweep": [
+    "MEASURED on a real PostgreSQL, on the machine with a daemon, at",
+    "932d4881 and re-measured for the two entries below at the head that",
+    "carries their named cases.",
+    "",
+    "FIRST SWEEP: 58 entries, 56 KILLED, 2 SURVIVED, 0 VACUOUS, 0 UNAPPLIED.",
+    "Every suite set was proved green UNMUTATED with a non-zero executed case",
+    "count before anything was scored, and the driver classifies a run with no",
+    "executed cases as VACUOUS rather than as a kill.",
+    "",
+    "THE TWO SURVIVORS WERE BOTH REAL GAPS IN THE SUITES, not weak guards.",
+    "M-K47 (an uninstall reaches only THIS environment's binding) survived",
+    "because nothing installed one skill in two environments; M-K48 (a non-uuid",
+    "skill id does not reach an uninstall statement) survived because no case",
+    "called that method with one. Both now have a named case, and both are",
+    "re-measured in the second sweep.",
+    "",
+    "ONE ENTRY'S SUITE LIST WAS WRONG AND IS CORRECTED. M-K02 claimed the",
+    "integration suite as a witness; it is not one, because the client answers",
+    "`[]` for a scalar-list column holding SQL NULL and the reader's arm is",
+    "therefore unreachable from a container. The entry's note records the",
+    "measurement rather than the expectation."
   ]
 }

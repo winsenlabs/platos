@@ -149,6 +149,20 @@ describe("the three TEXT[] columns are NULLABLE in the DDL and non-optional in s
     ]);
   });
 
+  // *** MEASURED, AND NOT WHAT WAS EXPECTED: THE CLIENT NORMALISES THE NULL ***
+  //
+  // The mutation sweep beside this package removed `readTextList`'s NULL arm and
+  // this case stayed GREEN — only the unit suite went red. The reason is that
+  // the generated client answers `[]` for a scalar-list column holding SQL NULL
+  // rather than handing the reader a null, so the reader's arm is unreachable
+  // from here however the row was planted.
+  //
+  // BOTH HALVES ARE STILL WORTH HAVING AND THE LEDGER SAYS SO. What this case
+  // proves is that a row an older writer left with NULL in all three columns
+  // READS AT ALL — the client could as easily have raised on a non-optional list
+  // it found empty of a value — and the shape it reads as. What the unit suite
+  // proves is that the reader does not depend on the client for it, which is the
+  // half that survives a client upgrade.
   test("a row holding SQL NULL in all three reads as the empty list the DEFAULT names", async () => {
     const id = plantSkill({ slug: "legacy.nulltags", tags: "NULL" });
     harness.applyRows(

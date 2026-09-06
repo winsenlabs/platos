@@ -445,6 +445,68 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
     expect(honest.ok && honest.value !== null).toBe(true);
   });
 
+  test("an uninstall reaches THIS environment's binding and no other", async () => {
+    // `domain/installation.ts`: "uninstalling from staging must not uninstall
+    // from production, and neither may delete organization-wide catalogue
+    // content." Nothing in the conformance scenario installs one skill in TWO
+    // environments, so the environment clause of the DELETE survived the first
+    // mutation sweep with nothing red — which is what this case is for.
+    const skill = await harness.run((transaction) =>
+      harness.repository.upsertSkill(conformanceDraft(tenant.scope, "acme.twoenvs", "1.0.0"), transaction),
+    );
+    const skillId = skill.ok ? skill.value.skillId : asIdentifier<SkillId>("x");
+    const adoption = await harness.run((transaction) =>
+      harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
+    );
+    if (!adoption.ok) throw new Error("the adoption is the fixture");
+    // BOTH environments of the SAME project bind the SAME adoption — which is
+    // the shape the second row's key makes possible and the reason it is keyed
+    // by the project row rather than by the skill.
+    for (const scope of [tenant.scope, tenant.staging]) {
+      const bound = await harness.run((transaction) =>
+        harness.repository.upsertEnvironmentInstallation(scope, adoption.value, transaction),
+      );
+      expect(bound.ok).toBe(true);
+    }
+
+    const removed = await harness.run((transaction) =>
+      harness.repository.deleteEnvironmentInstallation(tenant.scope, skillId, transaction),
+    );
+    expect(removed).toEqual({ ok: true, value: true });
+
+    // Gone here, and STILL THERE in the sibling environment.
+    expect(await harness.repository.findInstallation(tenant.scope, skillId)).toEqual({
+      ok: true,
+      value: null,
+    });
+    const survivor = await harness.repository.findInstallation(tenant.staging, skillId);
+    expect(survivor.ok && survivor.value !== null).toBe(true);
+    // And the catalogue row is untouched, because an uninstall is not a delete.
+    const catalogued = await harness.repository.findSkillByIdentity(
+      conformanceIdentity(tenant.scope, "acme.twoenvs", "1.0.0"),
+    );
+    expect(catalogued.ok && catalogued.value !== null).toBe(true);
+  });
+
+  test("a non-uuid skill id does not reach an uninstall STATEMENT", async () => {
+    // The write-path half of the uuid guard on the delete, and the expensive
+    // one: a DELETE whose predicate raises takes the caller's transaction with
+    // it. The read-path cases above cost only an answer.
+    const written = await harness.run(async (transaction) => {
+      const removed = await harness.repository.deleteEnvironmentInstallation(
+        tenant.scope,
+        asIdentifier<SkillId>("acme.search"),
+        transaction,
+      );
+      expect(removed).toEqual({ ok: true, value: false });
+      return harness.repository.upsertSkill(
+        conformanceDraft(tenant.scope, "acme.afterdelete", "1.0.0"),
+        transaction,
+      );
+    });
+    expect(written.ok).toBe(true);
+  });
+
   test("an anonymisation is confined to ONE organization", async () => {
     // The `organizationId` clause of the raw `UPDATE "Skill"`. Without it an
     // erasure addressed at one tenant would rewrite the author of every skill in
