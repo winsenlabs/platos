@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "a1b27d9a71101317f16bac9aae535b09ab1471b31ec51ab3c5e5d8bd65ced371"
+      "sha256": "e5bc5acc7c985a2bd8b969473c7bb28077e71a017656e7b0148ef9704bb872e0"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "8e242310ce95b36b5edc964a522abebd8c5c9e5118f8c263a36f708d7f0eb195"
+      "sha256": "33bcbf8d942d75d3bdec8e9a38d0fbdd009a465cfdff1bf2ffdf921acee66a66"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "ce48066bdca3471b8927cc80a47a58fdabdfda4819f93ecaa4833ea7ddf8cb2d"
+      "sha256": "2504bfd2c17bd8203f9711cb7c9a13e19c25f6c3888cb9de6f5e2ba5ba8b0cab"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "19765b9b247df5b16655a232fd19b78d26a559e1a3c8864417b8469636ebe07b"
+      "sha256": "af252c042fdda72e5b69942d7e8373376e4537637b9a217d2195a24649380ca8"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "1460af9a5edb23fcaf1df5ff6e412ef87af360ef3b92ed91f5d89ba620834a09"
+      "sha256": "bc05c9a21ee898b7676952002df32a8ec483d6a7fa039450adfc1044f0c14275"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3903,7 +3903,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "1942edd9d5992bab6d5fb8a070c567a437d14fb31be36fbd1827c24fdf30f918"
+      "sha256": "ee6119fc0aa899aab32457d1933d5f6cdf0d24dd12a842396406751c3bd8ba85"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
