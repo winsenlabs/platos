@@ -972,7 +972,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 14 + 2 + 1 = 17. `packages/contexts/secrets` gains NO file: its port entry
     // point was widened IN PLACE to publish the seven values its three
     // cryptography ports' signatures use, and a widened file is not a new one.
-    packages: 1414,
+    // WIN-259 (M2.4) 1414 -> 1416. The sweep and its suite:
+    // `packages/contexts/secrets/application/sweep-root-key-reencryption.ts`
+    // and `…test.ts`, rotation as a JOB rather than as a request-time loop.
+    // 14 (keyring-envelope) + 2 (providers) + 1 (postgres) + 2 (secrets) = 19.
+    packages: 1416,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.

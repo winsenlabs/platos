@@ -3,17 +3,18 @@
   "milestone": "M2.4",
   "dimension": "credential envelopes, key versions, rotation and re-encryption",
   "branch": "tejas/secret-lifecycle",
-  "generatedFrom": "42e4baec9b3a974c5cbb831ce3934d314fc391a3",
+  "generatedFrom": "tejas/secret-lifecycle @ the sweep commit",
   "howToReproduce": "Apply the `from` -> `to` replacement in `file`, run `command`, and observe the named case fail. Restore. The three postgres entries run ON THE MAC MINI inside a detached worktree; the laptop's Docker daemon is unreachable by policy and a local run of those three MUST fail to start, which is correct rather than a defect.",
   "summary": {
-    "entries": 24,
-    "killed": 24,
+    "entries": 34,
+    "killed": 34,
     "survived": 0,
     "declaredUnfalsifiable": 0
   },
   "notes": [
-    "One mutation SURVIVED on the first sweep and is recorded below as `cipher-latin1-plaintext`, with the case that was added to kill it. It found a real hole: this adapter opened three non-ASCII fixtures and had never SEALED one, so the write side's text encoding was untested and a mis-encoded seal round-trips inside a process that makes the same mistake twice.",
-    "No entry is killed by an assertion that compares two things this tranche controls. The six wire-format entries are killed by ciphertexts produced by `internal-packages/tenancy-database/src/secrets.ts`, which this issue does not edit; the three postgres entries are killed by what a real PostgreSQL returns."
+    "TWO mutations SURVIVED their first sweep and both are recorded below with the case that was added to kill them. `cipher-latin1-plaintext` found that this adapter opened three non-ASCII fixtures and had never SEALED one, so the write side's text encoding was untested. `sweep-limit-not-clamped` found a case whose own comment admitted the clamp was \"not observable\" -- an assertion that could not fail, which is the exact shape this repository has a rule about.",
+    "A THIRD DEFECT WAS FOUND BY A TEST RATHER THAN BY A MUTATION, in code this issue wrote: the sweep's first draft asked `needsReEncryption`, which is true only for the `prior` status, so a credential whose root key had been REMOVED from the ring -- `absent`, the fail-closed case -- was counted as `alreadyActive` and the environment was reported complete over a stranded credential. It is now `rootKeyStatus(...) === \"active\"`, and `sweep-absent-key-counted-as-done` below restores the bug and watches two named cases fail.",
+    "No entry is killed by an assertion that compares two things this tranche controls. The six wire-format entries are killed by ciphertexts produced by `internal-packages/tenancy-database/src/secrets.ts`, which this issue does not edit; the three postgres entries are killed by what a real PostgreSQL returns; and the ten sweep entries are killed through `reportRootKeyUsage` and the audit trail -- the store's own record of what happened -- rather than through the sweep's own return value."
   ],
   "mutations": [
     {
@@ -280,6 +281,117 @@
       "failingCases": 1,
       "killedBy": "secrets-key-version.integration.test.ts > stores a 35-byte ciphertext beside a 25-byte one without padding either",
       "why": "`rootKeyVersion` is inside the HKDF info AND the associated data, so a store that defaulted it produces a row nothing can open even though every ciphertext byte survived. Every other suite in the directory writes 1 or 2, so a default of 1 would pass all of them; this one writes NINE."
+    },
+    {
+      "id": "sweep-absent-key-counted-as-done",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "if (rootKeyStatus(ring.value, version.rootKeyVersion) === \"active\") {",
+      "to": "if (!needsReEncryption(ring.value, version.rootKeyVersion)) {",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "sweep-root-key-reencryption.test.ts > a credential the sweep cannot move > records a failure, carries on, and refuses to call the sweep complete",
+      "why": "THIS MUTATION IS A DEFECT THIS ISSUE WROTE AND THEN FOUND. `domain/key-ring.ts` has THREE statuses and `needsReEncryption` is true for only one of them, so a credential whose key had left the ring was counted as already-done and the environment was reported complete over it. A stranded credential would have been invisible in the one report an operator reads before destroying a key."
+    },
+    {
+      "id": "sweep-ignores-the-limit",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "if (examined >= limit.value) {",
+      "to": "if (examined >= Number.MAX_SAFE_INTEGER) {",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 4,
+      "killedBy": "sweep-root-key-reencryption.test.ts > the sweep is bounded and resumable > stops at the limit and hands back a cursor",
+      "why": "Unbounded is the one thing a job may not be. Without the break, one call rewraps an entire environment in a single invocation and the caller has no way to stop it or to learn how far it got."
+    },
+    {
+      "id": "sweep-limit-not-clamped",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "return ok(Math.min(limit, SWEEP_HARD_LIMIT));",
+      "to": "return ok(limit);",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "sweep-root-key-reencryption.test.ts > clamps a limit above the hard maximum rather than honouring it",
+      "survivedFirstSweep": true,
+      "why": "SURVIVED the first sweep. The case seeded TWO credentials and asked for a thousand, and its own comment said the clamp was 'not observable in examined' -- an assertion that could not fail. It now seeds SWEEP_HARD_LIMIT + 1, so `examined` is 50 with the clamp and 51 without."
+    },
+    {
+      "id": "sweep-cursor-resumes-at-not-after",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "rows.value.filter((row) => row.credential.name > after)",
+      "to": "rows.value.filter((row) => row.credential.name >= after)",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "sweep-root-key-reencryption.test.ts > resumes strictly after the cursor and never repeats a credential",
+      "why": "An off-by-one on the cursor re-encrypts the boundary credential on every resume: a second envelope at the same revision under the same active key, refused by the store's unique index, and a REWRAP audit row for work that was already done. It is caught by counting REWRAP audits, not by counting the report's own numbers."
+    },
+    {
+      "id": "sweep-nextCursor-always-null",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "nextCursor: exhausted ? null : cursor,",
+      "to": "nextCursor: null,",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "sweep-root-key-reencryption.test.ts > stops at the limit and hands back a cursor",
+      "why": "A null cursor on an unfinished batch is how a scheduled job restarts from the beginning for ever, re-examining the first fifty credentials on every run and never reaching the rest."
+    },
+    {
+      "id": "sweep-complete-ignores-skips",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "complete: exhausted && skipped.length === 0,",
+      "to": "complete: exhausted,",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "sweep-root-key-reencryption.test.ts > records a failure, carries on, and refuses to call the sweep complete",
+      "why": "The whole point of `complete`. A caller that loops until it is true would stop while a credential is still on the old key, and then be told the rotation had finished."
+    },
+    {
+      "id": "sweep-accepts-a-zero-limit",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "if (!Number.isSafeInteger(limit) || limit <= 0) {",
+      "to": "if (false) {",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "sweep-root-key-reencryption.test.ts > refuses a limit that is not a positive integer",
+      "why": "A limit of zero is a sweep that examines nothing and reports `complete: false` for ever; a fractional one makes `examined >= limit` fire in the middle of a credential. Both are refused with the same code `purge-retired-versions.ts` refuses them with."
+    },
+    {
+      "id": "sweep-skip-carries-the-message",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "skipped.push({ credentialId: row.credential.id, code: moved.error.code });",
+      "to": "skipped.push({ credentialId, code, message: moved.error.message });",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "sweep-root-key-reencryption.test.ts > reports the failure's CODE and never its reason or its envelope",
+      "why": "`domain/errors.ts` collapses nine reasons into one code precisely so a caller cannot tell a missing credential from a tampered envelope from a retired root key. A report that widened the skip by one field would re-open that oracle for every credential a sweep touched."
+    },
+    {
+      "id": "sweep-accepts-a-read-only-grant",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "const granted = requireSecretMutation(command.authorization);",
+      "to": "const granted = requireMetadataAccess(command.authorization);",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "sweep-root-key-reencryption.test.ts > who may run a sweep > refuses a read-only operator grant",
+      "why": "Metadata access is what `describeCredential` needs; a sweep WRITES an envelope for every credential in the environment. Widening it would let a read-only console session rewrap a tenant's whole vault."
+    },
+    {
+      "id": "sweep-revoked-credential-becomes-a-skip",
+      "file": "packages/contexts/secrets/application/sweep-root-key-reencryption.ts",
+      "from": "if (version === null || row.credential.revokedAt !== null) { alreadyActive += 1; continue; }",
+      "to": "if (version === null || row.credential.revokedAt !== null) { skipped.push(...); continue; }",
+      "command": "pnpm --filter @platos/context-secrets exec vitest run sweep-root-key",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "sweep-root-key-reencryption.test.ts > skips a revoked credential as already-done rather than as a failure",
+      "why": "The converse of `sweep-complete-ignores-skips`, and it needs its own case: a revoked credential has no envelope to move and is behaving correctly, so counting it as a skip would hold `complete` false for ever and stop an operator ever retiring the old key."
     }
   ]
 }
