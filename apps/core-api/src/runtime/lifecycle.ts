@@ -12,11 +12,30 @@
 //      is still up and can still finish — and still ACCEPT — what arrives;
 //   2. keep serving for `drainGraceMs`, so a load balancer polling /readyz has a
 //      chance to observe (1) and stop routing here;
-//   3. stop accepting new connections and release idle keep-alive sockets — a
+//   3. CLOSE ADMISSION: every request that arrives from here on is REFUSED with
+//      503 and a `Retry-After`, not begun and later truncated;
+//   4. stop accepting new connections and release idle keep-alive sockets — a
 //      keep-alive idler holds `server.close()` open indefinitely, which is the
-//      usual reason a "graceful" shutdown hangs until the deploy times out;
-//   4. wait for in-flight work to finish, bounded by `shutdownTimeoutMs`;
-//   5. release every socket still open, then close the framework.
+//      usual reason a "graceful" shutdown hangs until the release times out;
+//   5. wait for in-flight work to finish, bounded by `shutdownTimeoutMs`;
+//   6. drain deferred work — the outbox first — out of what is LEFT of that same
+//      budget, never a second full copy of it;
+//   7. release every socket still open, then close the framework.
+//
+// STEPS 3 AND 6 ARE WIN-260 (M2.5). Step 3 exists because `server.close()`
+// refuses new CONNECTIONS and says nothing about a keep-alive connection an
+// upstream proxy already holds: such a connection could deliver a request after
+// the drain counted zero, have it routed, and have the socket destroyed under it
+// at step 7 — work accepted and silently dropped, which is strictly worse than
+// work refused. Step 6 exists because the outbox row is written inside the
+// transaction and emitted LATER, so the rows the requests just drained wrote are
+// sitting in the table with nobody holding them; the flush that empties them is
+// `@platos/adapter-outbox`'s `src/flush.ts`, and it is there rather than here
+// because rule (C1) allows one importer of an adapter package and because its
+// paging contract is outbox knowledge.
+// Their arithmetic is in shutdown-drain.ts, and it is arithmetic rather than two
+// `await`s because handing each drain the full `shutdownTimeoutMs` spends the
+// budget twice and guarantees the second one is SIGKILLed mid-flush.
 //
 // STEPS 2 AND 5 BOTH EXIST BECAUSE A TEST CAUGHT THEIR ABSENCE.
 //
@@ -47,6 +66,7 @@ import { CoreApiHttpModule } from "../http/http.module.js";
 import { resolveCorrelation, withCorrelation } from "./correlation.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
 import { createProcessLogger, systemClock, ulidGenerator } from "./process-ports.js";
+import { drainAll, type Drainable, type ShutdownDrainReport } from "./shutdown-drain.js";
 
 export interface StartOptions {
   readonly configuration: CoreApiConfiguration;
@@ -55,12 +75,29 @@ export interface StartOptions {
   readonly ids?: IdGenerator;
   readonly logger?: Logger;
   readonly inFlight?: InFlightRegister;
+  /**
+   * Subsystems holding work that outlives a request — the outbox first among
+   * them. Drained in the order given, AFTER in-flight requests, out of what is
+   * left of the one shutdown budget. See `shutdown-drain.ts` for why the budget
+   * is divided rather than handed to each in full.
+   *
+   * Empty at M2.5 in every install this repository composes: the outbox flush is
+   * built and proven in `@platos/adapter-outbox` (`src/flush.ts`) and has no
+   * production handler to hand pages to until M4 wires the projection and
+   * notification drains. An absent handler is stated as an absent drainable
+   * rather than as a drain that reads pages and drops them.
+   */
+  readonly drainables?: readonly Drainable[];
 }
 
 export interface StopOutcome {
   readonly drained: boolean;
   readonly remaining: number;
   readonly waitedMs: number;
+  /** Requests refused after admission closed. They were never begun. */
+  readonly refused: number;
+  /** One row per drainable. Empty when none was supplied. */
+  readonly deferred: ShutdownDrainReport;
 }
 
 export interface RunningCoreApi {
@@ -90,6 +127,9 @@ interface EdgeRequest {
 interface EdgeResponse {
   setHeader(name: string, value: string): unknown;
   on(event: string, listener: () => void): unknown;
+  /** Written only on the refusal path; see the admission gate in the middleware. */
+  statusCode?: number;
+  end(body?: string): unknown;
 }
 
 export function createProcessDefaults(configuration: CoreApiConfiguration): {
@@ -117,6 +157,7 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
   const ids = options.ids ?? defaults.ids;
   const logger = options.logger ?? defaults.logger;
   const inFlight = options.inFlight ?? createInFlightRegister();
+  const drainables = options.drainables ?? [];
 
   const app = composeApplication({
     configuration,
@@ -146,6 +187,21 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     response.setHeader(configuration.requestIdHeader, correlation.requestId);
     withCorrelation(correlation, () => {
       const registration = inFlight.begin(`${request.method ?? "?"} ${request.url ?? "?"}`);
+      if (!registration.admitted) {
+        // REFUSED, NOT DROPPED. Admission closed while this connection was still
+        // open — a keep-alive socket an upstream proxy holds for minutes can
+        // deliver a request after the drain has counted zero, and a few lines
+        // later shutdown destroys every remaining socket. Without this the
+        // client sees a reset in the middle of a write it cannot safely repeat.
+        // 503 with `Connection: close` and a `Retry-After` is the same event
+        // told truthfully, and it is retriable.
+        response.statusCode = 503;
+        response.setHeader("connection", "close");
+        response.setHeader("retry-after", "1");
+        response.setHeader("content-type", "application/json");
+        response.end(JSON.stringify({ error: { code: registration.refusal } }));
+        return;
+      }
       // Both events fire in practice — `finish` on a normal response, `close` on
       // an aborted one, and sometimes both. `settle` is idempotent for exactly
       // this reason; see in-flight.ts.
@@ -189,28 +245,31 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
         await new Promise((resolve) => setTimeout(resolve, configuration.drainGraceMs));
       }
 
+      // ADMISSION CLOSES ONE LINE BEFORE THE LISTENER DOES, and the two are not
+      // the same act. `server.close()` refuses new CONNECTIONS; a keep-alive
+      // connection an upstream proxy already holds can still deliver a request
+      // after the drain below has counted zero, and that request would be routed
+      // and then destroyed by the socket release further down. Closing admission
+      // turns that into a 503 the client can act on. See in-flight.ts.
+      inFlight.closeAdmission();
+
       server.close();
       server.closeIdleConnections?.();
 
+      // ONE BUDGET, DIVIDED. `shutdownTimeoutMs` is what the orchestrator gives
+      // this process before SIGKILL, so the in-flight drain and every deferred
+      // drain share it — measured on the injected clock, so a suite can spend it
+      // without spending real seconds. Handing the full timeout to each would
+      // spend the budget twice and guarantee the outbox flush is killed
+      // mid-page; shutdown-drain.ts states that failure and its arithmetic.
+      const budgetStartedAt = clock.now().getTime();
       const outcome = await inFlight.drain(configuration.shutdownTimeoutMs, () => clock.now().getTime());
+      const leftOverMs = Math.max(
+        configuration.shutdownTimeoutMs - (clock.now().getTime() - budgetStartedAt),
+        0,
+      );
+      const deferred = await drainAll(drainables, leftOverMs, () => clock.now().getTime());
 
-      // RELEASE EVERY REMAINING SOCKET BEFORE HANDING OVER TO THE FRAMEWORK.
-      //
-      // `nest.close()` is `new Promise(resolve => httpServer.close(resolve))`
-      // with no guard, and Node emits `close` only once the CONNECTION count
-      // reaches zero. Connections and in-flight work are different sets, which
-      // is the trap: `closeIdleConnections()` skips a socket whose request
-      // headers are partially received, because the parser has begun a message
-      // — while the middleware never registered any work for it, because it was
-      // never routed. Such a socket is invisible to the drain and fatal to the
-      // close, and the process hangs until the orchestrator SIGKILLs it,
-      // truncating exactly the work the drain existed to protect.
-      //
-      // Destroying what is left is safe, and only here. The middleware registers
-      // EVERY routed request, so `drain` reaching zero means no promised work is
-      // outstanding; a socket still open past this line is an idle keep-alive or
-      // a request whose headers never arrived. When the drain gave up instead,
-      // abandoning the socket is the decision already taken.
       // RELEASE EVERY REMAINING SOCKET BEFORE HANDING OVER TO THE FRAMEWORK.
       //
       // `nest.close()` is `new Promise(resolve => httpServer.close(resolve))`
@@ -234,13 +293,32 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
       await nest.close();
       state.phase = "stopped";
 
-      logger.log(outcome.drained ? "info" : "warn", "process.stopped", {
+      // ONE VERDICT OVER BOTH HALVES. A process that drained every request and
+      // abandoned a full outbox has not shut down cleanly, and reporting only
+      // the request half would have said it had — which is how the exit code in
+      // main.ts would have answered 0 to a lossy stop.
+      const drained = outcome.drained && deferred.drained;
+      logger.log(drained ? "info" : "warn", "process.stopped", {
         reason,
-        drained: outcome.drained,
+        drained,
         remaining: outcome.remaining,
         waitedMs: outcome.waitedMs,
+        refused: inFlight.refused,
+        deferred: deferred.steps.map((step) => ({
+          name: step.name,
+          drained: step.outcome.drained,
+          handled: step.outcome.handled,
+          waitedMs: step.waitedMs,
+          stoppedBecause: step.outcome.stoppedBecause,
+        })),
       });
-      return outcome;
+      return {
+        drained,
+        remaining: outcome.remaining,
+        waitedMs: outcome.waitedMs,
+        refused: inFlight.refused,
+        deferred,
+      };
     })();
     return await stopping;
   };
