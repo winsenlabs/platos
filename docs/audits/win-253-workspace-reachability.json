@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "80da40cf7a4eef09aca40a9723163bb6a8557b6df45ece8fdb33e19ada72a8a5",
+  "evidenceSha256": "7ca0a1e5e4f321d7b54a861ec0470b604cc5bf695279fb2a3157402e96e9ba0a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "df4977c95745d2adf20207f5676cc39fff0d915fef869316460475d8549b18cb",
+    "aggregateSha256": "6e7a54664b1829ccdbc4a9afa3f63def1c844a166a2f479a99f0b9b2b691ded8",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -19405,11 +19405,11 @@
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
-        "sha256": "ad32339d928779598aaefaaa57b3b7cc73a968a5e1f1bd5d7d4adcc6a18bed8e"
+        "sha256": "886a329c16813dbe33647c88fe7198720c6f9184aa5c3a609cef7bc0d00ebbb1"
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
-        "sha256": "ff182354cbf4be65cbd9113099ed31b46574cdda926e740d39d948de1e54d12f"
+        "sha256": "c54577c7fd9be823106fc94ba2a96794c347abad817da83fea3c9760ba30e3f2"
       },
       {
         "path": "scripts/hook-policy.mjs",
@@ -19457,7 +19457,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "01be0087ccd5e16d439ed1cbdd1e1f441d2568d56abbbe8b5cb203b01afd2fc2"
+        "sha256": "61426c2257160b3c683443f66b6cfe7f007940615816f7ba9ba85b75e1098417"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
