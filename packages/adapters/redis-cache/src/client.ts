@@ -70,22 +70,60 @@ export function createRedisConnection(options: RedisConnectionOptions): RedisCon
     maxRetriesPerRequest: 1,
   });
 
+  // A PERMANENT ERROR LISTENER, OR THE PROCESS DIES. An `error` event with no
+  // listener is rethrown by the emitter, so a Redis that went away would take
+  // down a process whose whole design is to report that as a value. This is the
+  // one place a connection failure is swallowed, and it is swallowed only as an
+  // EVENT: every command still rejects, and every caller turns that rejection
+  // into `IDEMPOTENCY_UNAVAILABLE` or `MEMORY_CACHE_UNAVAILABLE`.
+  client.on("error", () => undefined);
+
+  /**
+   * Resolved once the handshake has finished.
+   *
+   * `enableOfflineQueue: false` is what makes a command fail rather than wait
+   * when the server is gone, and it is also why this is needed: a command issued
+   * in the window between construction and the handshake has no queue to sit in
+   * and fails with "Stream isn't writeable", which is not a fact about the
+   * server. Awaiting readiness ONCE closes that window without reopening the one
+   * the flag exists to close — after a later disconnect this promise is already
+   * settled, so the command goes straight to the socket and fails fast, which is
+   * the behaviour `jobs` fails closed on.
+   */
+  const ready: Promise<void> =
+    client.status === "ready"
+      ? Promise.resolve()
+      : new Promise<void>((resolve, reject) => {
+          client.once("ready", () => resolve());
+          // Only until `ready` settles it: a promise cannot be rejected twice,
+          // so a later transient error cannot poison a live connection.
+          client.once("error", (error: Error) => reject(error));
+        });
+
   return {
-    read: (key) => client.get(key),
+    async read(key) {
+      await ready;
+      return await client.get(key);
+    },
     async claim(key, value, ttlSeconds) {
+      await ready;
       return (await client.set(key, value, "EX", ttlSeconds, "NX")) === "OK";
     },
     async overwrite(key, value, ttlSeconds) {
+      await ready;
       return (await client.set(key, value, "EX", ttlSeconds, "XX")) === "OK";
     },
     async write(key, value, ttlSeconds) {
+      await ready;
       await client.set(key, value, "EX", ttlSeconds);
     },
     async remove(keys) {
       if (keys.length === 0) return 0;
+      await ready;
       return await client.del(...keys);
     },
     async scanPrefix(cursor, pattern, count) {
+      await ready;
       const [next, keys] = await client.scan(cursor, "MATCH", pattern, "COUNT", count);
       return [next, keys];
     },
