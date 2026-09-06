@@ -1032,8 +1032,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // MERGED: 1477 + 7 + 3 + 4 + 2 = 1493, read back from the scan itself. No
     //               dimension's own figure — 1484, 1480, or the 1477 the other
     //               two left untouched — is right here.
-    assert.equal(result.fileCount, 1493, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2);
+    // WIN-259 (M2.4) +6, and the split of the six is worth stating because this
+    // scan covers a WIDER set of roots than the line-budget one next door:
+    // packages/kernel takes redaction.ts and its suite (+2),
+    // packages/contexts/secrets takes the write-only and denied-read suites
+    // (+2), packages/adapters/postgres-tenancy takes the fence split (+1), and
+    // apps/core-api takes log-redaction.test.ts (+1) — which max-file-lines does
+    // NOT see, because its fourth selector is `src/transports/**` only.
+    // 1493 + 6 = 1499.
+    assert.equal(result.fileCount, 1499, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 2 + 2 + 1 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
