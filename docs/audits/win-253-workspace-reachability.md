@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `00c95e0072881ed638b49a1ae2a21343cae4155553f58363df82f4c10efdac14`
+Evidence SHA-256: `91ebb8ded1df2640475281795b357e78c8af68312b2fe9788b72c4866298b1ee`
 
 ## Baseline
 
@@ -51,9 +51,9 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `internal-packages/docs` | `@internal/docs` | yes | yes | yes | yes | retain-oci-image | no | no | `46bdcc86a506379d…` |
 | `internal-packages/emails` | `emails` | no | no | no | no | owner-review-repository-referenced | no | yes | `26084070c458a754…` |
 | `internal-packages/llm-model-catalog` | `@internal/llm-model-catalog` | no | no | no | no | owner-review-repository-referenced | no | yes | `01ef30f9cd4ea0f7…` |
-| `internal-packages/otlp-importer` | `@platos/otlp-importer` | no | no | no | no | owner-review-repository-referenced | no | yes | `a8fd77709b1e0df2…` |
+| `internal-packages/otlp-importer` | `@platos/otlp-importer` | no | no | no | no | owner-review-repository-referenced | no | yes | `30a9ee9e6b23cb70…` |
 | `internal-packages/redis` | `@internal/redis` | no | no | no | no | owner-review-repository-referenced | no | yes | `08d45dbdf86429ec…` |
-| `internal-packages/run-engine` | `@internal/run-engine` | no | no | no | no | owner-review-repository-referenced | no | yes | `23aab19e9504166c…` |
+| `internal-packages/run-engine` | `@internal/run-engine` | no | no | no | no | owner-review-repository-referenced | no | yes | `741f4f97772f6569…` |
 | `internal-packages/schedule-engine` | `@internal/schedule-engine` | no | no | no | no | owner-review-repository-referenced | no | yes | `c6e22fe59eb7f562…` |
 | `internal-packages/tenancy-database` | `@platos/tenancy-database` | yes | yes | yes | yes | retain-oci-image | no | no | `e6dd050b87dddd06…` |
 | `internal-packages/tenancy-database/migration-image` | `@platos/tenancy-migration-image` | yes | no | yes | yes | retain-oci-image | no | no | `f63a66d17bb21fb6…` |
@@ -86,7 +86,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/contexts/observability` | `@platos/context-observability` | no | yes | yes | no | retain-application-deployable | no | no | `f65454267f92c691…` |
 | `packages/contexts/privacy` | `@platos/context-privacy` | no | yes | yes | no | retain-application-deployable | no | no | `14c36801c456c694…` |
 | `packages/contexts/providers` | `@platos/context-providers` | no | yes | yes | no | retain-application-deployable | no | no | `788e0d2ea114b8a9…` |
-| `packages/contexts/secrets` | `@platos/context-secrets` | no | yes | yes | no | retain-application-deployable | no | no | `e30c655403f093cf…` |
+| `packages/contexts/secrets` | `@platos/context-secrets` | no | yes | yes | no | retain-application-deployable | no | no | `dabb3d0107f7e5e6…` |
 | `packages/contexts/skills` | `@platos/context-skills` | no | yes | yes | no | retain-application-deployable | no | no | `ffa5c0bb2dc684e5…` |
 | `packages/contexts/tenancy` | `@platos/context-tenancy` | no | yes | yes | no | retain-application-deployable | no | no | `848d6ea2236d423c…` |
 | `packages/contexts/tools` | `@platos/context-tools` | no | yes | yes | no | retain-application-deployable | no | no | `5748871805bad9d7…` |
