@@ -477,6 +477,7 @@ export interface PostgresTenancyAdapter
   readonly jobs: JobsRepository;
   readonly approvals: ApprovalsRepository;
 
+  /**
    * WIN-258 T5 — `observability`'s one canonical-store port.
    *
    * A PROPERTY, and forced by the same sentence `skills` and `memory` stand on:
