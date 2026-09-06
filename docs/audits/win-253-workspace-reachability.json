@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "3c76e9209ad1c0b90708c5b2daae3b8ad8f21b80ebae8b63eeea47f71f6c18ca",
+  "evidenceSha256": "a57971ade6feb9a3a72dfde3576ac93e800b9c3c7b2db0e447f0b1e5570e93c5",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "4a8523622af37df5b4ff606219e3a0c8e5e0b4620cfba55158cd12892b49404d",
+    "aggregateSha256": "7e2670dfdd4d66424ee8a6dbb656d7688c5a63b319a4f0e83643a5e7d13fce35",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -10669,7 +10669,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/index.ts",
-        "sha256": "e428b940a094611b44886f0dc0837f965e563281b679cd93106c009dc9888252"
+        "sha256": "8b7df62cce67a778eee375f65002ac2e01fe0d874f2b1ef59ac6d396817745be"
       },
       {
         "path": "internal-packages/tenancy-database/src/integration.test.ts",
@@ -12593,7 +12593,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
-        "sha256": "2627d232012a8daaf776bab52bcd431fd3b7dfe84c31a75ae55e195439cb29a1"
+        "sha256": "3306b1bb362dddb5a0fdc2c4d9eeb633e014b37448f83ab6cd1f6722b6bc67eb"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
@@ -39047,7 +39047,7 @@
             {
               "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 77,
+              "line": 87,
               "specifier": "@platos/tenancy-database"
             }
           ],
@@ -39383,8 +39383,20 @@
             {
               "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 25,
-              "specifier": "@platos/tenancy-database"
+              "line": 34,
+              "specifier": "@platos/tenancy-database/dist/upgrade-baseline-clients.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 41,
+              "specifier": "@platos/tenancy-database/dist/upgrade-fixture.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/upgrade-rollout-harness.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 42,
+              "specifier": "@platos/tenancy-database/dist/upgrade-rehearsal-support.js"
             }
           ],
           "reversePaths": [
@@ -40690,7 +40702,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "4c750b9ae47b31a2c07290501e063c51651c2d12fa917f1abf936e6df92f23ba",
+      "evidenceSha256": "1dddbb02449121cd3ba492edd469366fa75b86478ca9fffa120c299ec6641c72",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
