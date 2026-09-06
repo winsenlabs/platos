@@ -13,6 +13,7 @@ import {
   allDistinct,
   countedQueries,
   indexesUsed,
+  inlineParameters,
   nodeTypesOf,
   nodesOf,
   onlyStatement,
@@ -120,6 +121,38 @@ describe("onlyStatement", () => {
 
   test("REFUSES a match that found nothing", () => {
     expect(() => onlyStatement(events, () => false)).toThrow(/found 0/u);
+  });
+});
+
+describe("inlineParameters", () => {
+  test("puts a value back where the driver logged a placeholder", () => {
+    expect(inlineParameters('SELECT * FROM t WHERE a = $1 AND b = $2', ["x", 5])).toBe(
+      "SELECT * FROM t WHERE a = 'x' AND b = 5",
+    );
+  });
+
+  test("fills the TENTH placeholder before the first, so `$1` cannot eat `$10`", () => {
+    const params = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "TENTH"];
+    expect(inlineParameters("v $10 w $1", params)).toBe("v 'TENTH' w 'a'");
+  });
+
+  test("renders each kind the driver logs", () => {
+    expect(inlineParameters("$1 $2 $3 $4", [null, true, ["p", "q"], { k: 1 }])).toBe(
+      `NULL true ARRAY['p', 'q'] '{"k":1}'`,
+    );
+  });
+
+  test("doubles a quote rather than closing the literal early", () => {
+    expect(inlineParameters("$1", ["O'Hara"])).toBe("'O''Hara'");
+  });
+
+  test("WHY THIS EXISTS: a re-bound uuid arrives as text and PostgreSQL refuses it", () => {
+    // The captured value is a string in the log whatever the column type is.
+    // Inlined, `"id" = 'aaaa…'` resolves against a `uuid` column; re-bound, it
+    // arrives as `text` and the comparison has no operator.
+    expect(inlineParameters('"id" = $1', ["aa000000-0000-4000-8000-000000000004"])).toBe(
+      `"id" = 'aa000000-0000-4000-8000-000000000004'`,
+    );
   });
 });
 

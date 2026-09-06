@@ -212,6 +212,46 @@ export function readPlan(result: unknown): PlanNode {
   return readNode(raw);
 }
 
+/** One bound value, as SQL text. */
+function literalOf(value: unknown): string {
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "NULL";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  if (Array.isArray(value)) {
+    return `ARRAY[${(value as unknown[]).map(literalOf).join(", ")}]`;
+  }
+  if (typeof value === "object") return `'${JSON.stringify(value).replaceAll("'", "''")}'`;
+  return `'${String(value).replaceAll("'", "''")}'`;
+}
+
+/**
+ * Put the bound values back into the statement text.
+ *
+ * WHY NOT JUST BIND THEM AGAIN. Handing the captured values to
+ * `$queryRawUnsafe` as parameters was the first form written here, and the real
+ * database refused it: `operator does not exist: uuid = text`. Every identifier column in
+ * these migrations is `uuid`, the driver's own query log renders those values as
+ * JSON STRINGS, and a re-bound string arrives as `text`. The client's normal
+ * path knows the column types and casts; a raw re-bind does not, and there is no
+ * way to recover the types from the log.
+ *
+ * An UNQUOTED literal has no such problem: PostgreSQL resolves `"id" = 'a…'`
+ * against the column, so a uuid stays a uuid and a timestamp stays a timestamp.
+ * The plan that comes back is the CUSTOM plan for these exact values rather than
+ * a generic plan over placeholders — which is the plan a reader wants anyway,
+ * because it is the one whose row counts are real.
+ *
+ * The substitution walks the placeholders HIGHEST FIRST, so `$1` cannot eat the
+ * front of `$10`.
+ */
+export function inlineParameters(query: string, params: readonly unknown[]): string {
+  let filled = query;
+  for (let index = params.length; index >= 1; index -= 1) {
+    filled = filled.replaceAll(`$${String(index)}`, literalOf(params[index - 1]));
+  }
+  return filled;
+}
+
 /**
  * Plan the statement the store actually sent, with the values it bound.
  *
@@ -223,9 +263,9 @@ export async function explain(
   client: TenancyDatabaseClient,
   statement: CapturedStatement,
 ): Promise<PlanNode> {
+  const sql = inlineParameters(statement.query, statement.params);
   const result: unknown = await client.$queryRawUnsafe(
-    `EXPLAIN (ANALYZE, VERBOSE, FORMAT JSON) ${statement.query}`,
-    ...statement.params,
+    `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${sql}`,
   );
   return readPlan(result);
 }

@@ -51,6 +51,7 @@ import {
   explain,
   indexesUsed,
   measure,
+  nodeTypesOf,
   onlyStatement,
   rowsFrom,
   windows,
@@ -208,9 +209,12 @@ describe("statement cost", () => {
     const sparse = await measure(harness, () => page(SPARSE, { limit: PAGE }));
     const dense = await measure(harness, () => page(DENSE, { limit: PAGE }));
     expect(dense.counted).toBe(sparse.counted);
-    // Six: the binding window, the count, and the four relations the client
-    // hydrates with `IN (…)` — never one statement per row.
-    expect(dense.counted).toBe(6);
+    // FOUR, MEASURED: the binding window, its count, and the two relations
+    // that are not null on this fixture — the agent and the active version.
+    // The client SKIPS a relation whose foreign key is null, so the canary and
+    // the cluster cost nothing here. Every one of the four is a set read with
+    // `IN (…)`; none is per row, which is why three hundred cost what three do.
+    expect(dense.counted).toBe(4);
     expect(dense.total).toBeGreaterThanOrEqual(dense.counted);
   });
 
@@ -232,6 +236,16 @@ describe("the plan", () => {
     plan = await explain(harness.client, pageRowStatement(dense));
     const sparse = await capture(harness, () => page(SPARSE, { limit: PAGE }));
     sparsePlan = await explain(harness.client, pageRowStatement(sparse));
+    console.log("T7-DIAG agents", JSON.stringify({
+      sql: pageRowStatement(dense).query.slice(0, 400),
+      nodes: nodeTypesOf(plan),
+      indexes: indexesUsed(plan),
+      bindingRows: rowsFrom(plan, "AgentBinding"),
+      agentRows: rowsFrom(plan, "Agent"),
+      root: plan.nodeType,
+      rootRows: plan.actualRows,
+      sparseBindingRows: rowsFrom(sparsePlan, "AgentBinding"),
+    }));
   }, 300_000);
 
   test("the environment clause is served by an index rather than a scan", async () => {
