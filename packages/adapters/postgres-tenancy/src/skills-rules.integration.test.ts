@@ -15,13 +15,16 @@
 //
 //   THE ORDER IS A COLLATION. `compareCatalogueEntries` compares strings with
 //   `<`, which is UTF-16 code-unit order; PostgreSQL compares them under the
-//   database's collation, `en_US.utf8` on this image. The two agree for the
-//   alphanumerics a namespaced slug is made of and disagree for punctuation,
-//   which glibc weighs only after letters and digits. `version` is an opaque
-//   author-supplied string with no character restriction at all, so the exposure
-//   is real. It is not closable in memory: `pageVisibleSkills` windows with
-//   `skip`/`take`, and a store that fetched every visible row to sort a page of
-//   ten would answer a paged read with an unbounded one.
+//   database's collation, measured below as `en_US.utf8`. The two agree over the
+//   alphabet a namespaced slug is restricted to — `[a-z0-9_-]`, one case — and
+//   DISAGREE on case, which glibc weighs at the tertiary level with lower-case
+//   first while UTF-16 puts `A` (65) before `a` (97). `version` is "an opaque
+//   author-supplied string, never parsed as semver" with no character
+//   restriction at all, and `isNamespacedSkillId` is case-INSENSITIVE, so the
+//   exposure is real rather than contrived. It is not closable in memory:
+//   `pageVisibleSkills` windows with `skip`/`take`, and a store that fetched
+//   every visible row to sort a page of ten would answer a paged read with an
+//   unbounded one.
 //
 //   `%` AND `_` ARE LIKE METACHARACTERS. `matchesSearch` is a plain substring
 //   test; `contains` compiles to `ILIKE '%term%'` and the client escapes
@@ -271,13 +274,28 @@ describe("Skill.providesTools is the column the RUNTIME reads", () => {
 
 describe("the two divergences between this store and the double, PINNED and reported", () => {
   test("FINDING 1: the catalogue ORDER is the database's collation, not JavaScript's", async () => {
-    // Two versions of one slug differing only in where the punctuation sits.
-    // JavaScript compares code units, so `1-0` sorts before `10`; glibc's
-    // `en_US.utf8` weighs alphanumerics first, so `10` sorts before `1-0`. The
-    // port orders `version` DESCENDING, so the two stores name a different row
-    // as "the highest version" for the same slug.
+    // THE COLLATION IS PART OF THE PIN. A different image with a different
+    // `datcollate` would give a different answer, and a case that did not say
+    // which collation it measured would look like a behaviour change when the
+    // base image moved.
+    const locale = (await harness.base.client.$queryRawUnsafe(
+      `SELECT datcollate FROM pg_database WHERE datname = current_database()`,
+    )) as ReadonlyArray<{ readonly datcollate: string }>;
+    expect(locale[0]?.datcollate).toBe("en_US.utf8");
+
+    // Two versions of one slug differing only in CASE. JavaScript compares
+    // UTF-16 code units, where `A` (65) precedes `a` (97); glibc's `en_US.utf8`
+    // weighs case at the tertiary level with lower-case FIRST, so `a` precedes
+    // `A`. The port orders `version` DESCENDING and `findVisibleSkillByReference`
+    // takes the first row, so the two stores name a DIFFERENT ROW as "the
+    // highest version" of the same slug.
+    //
+    // The exposure is real rather than contrived: `domain/manifest.ts` treats
+    // `version` as "an opaque author-supplied string, never parsed as semver",
+    // so nothing anywhere restricts its characters, and `isNamespacedSkillId` is
+    // case-INSENSITIVE, so a slug may carry upper case too.
     const slug = "acme.collate";
-    for (const version of ["1-0", "10"]) {
+    for (const version of ["1.0.0a", "1.0.0A"]) {
       const written = await harness.run((transaction) =>
         harness.repository.upsertSkill(
           conformanceDraft(tenant.scope, slug, version, { isOfficial: true }),
@@ -289,7 +307,7 @@ describe("the two divergences between this store and the double, PINNED and repo
     const real = await harness.repository.findVisibleSkillByReference(tenant.scope, slug);
 
     const fake = new InMemorySkillsRepository(uuidStamps());
-    for (const version of ["1-0", "10"]) {
+    for (const version of ["1.0.0a", "1.0.0A"]) {
       await fake.upsertSkill(
         conformanceDraft(tenant.scope, slug, version, { isOfficial: true }),
         FAKE_TXN,
@@ -302,7 +320,21 @@ describe("the two divergences between this store and the double, PINNED and repo
     // BOTH ARE INTERNALLY CONSISTENT AND THEY DISAGREE. The pin is the
     // disagreement itself: the day either side changes, this case moves and
     // somebody has to decide which order the port means.
-    expect({ realVersion, fakeVersion }).toEqual({ realVersion: "1-0", fakeVersion: "10" });
+    expect({ realVersion, fakeVersion }).toEqual({ realVersion: "1.0.0A", fakeVersion: "1.0.0a" });
+  });
+
+  test("and the two orders AGREE for everything a slug is allowed to be made of", async () => {
+    // The bound on FINDING 1, without which it reads as "the ordering is
+    // unreliable" rather than as the narrow fact it is.
+    // `domain/manifest.ts` restricts a manifest id to `[a-z0-9_-]` segments, and
+    // over that alphabet — one case, one punctuation class — the database's
+    // order and JavaScript's are the same sequence.
+    const sample = ["acme.a", "acme.a_b", "acme.ab", "acme.b", "acme.z9", "acme.a-b"];
+    const ordered = (await harness.base.client.$queryRawUnsafe(
+      `SELECT string_agg(s, ',' ORDER BY s) AS ordered
+         FROM (VALUES ${sample.map((value) => `('${value}')`).join(",")}) AS v(s)`,
+    )) as ReadonlyArray<{ readonly ordered: string }>;
+    expect(ordered[0]?.ordered.split(",")).toEqual([...sample].sort());
   });
 
   test("FINDING 2: `_` in a search term is a LIKE metacharacter in SQL and a letter in the double", async () => {
