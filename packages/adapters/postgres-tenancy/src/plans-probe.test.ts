@@ -95,9 +95,14 @@ describe("countedQueries", () => {
     expect(countedQueries([lock, "SELECT 1"])).toEqual([lock]);
   });
 
-  test("keeps a statement whose text merely begins with a discarded word", () => {
-    // `BEGINNING` is not `BEGIN`, and the word boundary is what says so.
-    expect(countedQueries(['SELECT "BEGINNING" FROM x'])).toHaveLength(1);
+  test("keeps a statement whose FIRST WORD merely begins with a discarded one", () => {
+    // `BEGINNING` is not `BEGIN`, and the word boundary is what says so. The
+    // earlier form of this case put the word in the projection of a `SELECT`,
+    // which the anchor never looked at — so it passed with the boundary removed
+    // and the sweep reported the guard as surviving. It is stated here as it is
+    // measured: the anchor reads the statement's FIRST token, and this is a
+    // token that starts with a discarded word without being one.
+    expect(countedQueries(["BEGINNING FROM x", "BEGIN"])).toEqual(["BEGINNING FROM x"]);
   });
 });
 

@@ -219,6 +219,23 @@ describe("page truth over three hundred threads", () => {
     expect(allDistinct(walked)).toBe(true);
   });
 
+  test("the listing is NEWEST FIRST, and stays so across every page", async () => {
+    // The partition case above cannot see a reversed order: the same rows come
+    // back either way, once each, and the walk is still a partition. The order
+    // is the port's contract and the new index is declared in its direction, so
+    // it is asserted directly — the sweep reported a reversed `orderBy` as
+    // SURVIVING until this case existed.
+    const live = await threads();
+    const walked: Thread[] = [];
+    for (const offset of windows(live.total, PAGE)) {
+      walked.push(...(await threads({ offset })).items);
+    }
+    expect(walked).toHaveLength(live.total);
+    const stamps = walked.map((thread) => thread.updatedAt.getTime());
+    expect(stamps).toEqual([...stamps].sort((left, right) => right - left));
+    expect(stamps[0]).toBe(Math.max(...stamps));
+  });
+
   test("a turn transcript pages without dropping or repeating a sequence", async () => {
     const first = await turns();
     expect(first.total).toBe(TURNS);

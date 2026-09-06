@@ -92,11 +92,12 @@
       "file": "src/plans-probe.ts",
       "from": "      !/^\\s*(BEGIN|COMMIT|ROLLBACK|DEALLOCATE)\\b/iu.test(statement) &&",
       "to": "      !/^\\s*(BEGIN|COMMIT|ROLLBACK|DEALLOCATE)/iu.test(statement) &&",
-      "why": "A statement that merely BEGINS with one of the four words is not the frame. Without the boundary a read projecting a column called `BEGINNING` is discarded as bookkeeping, and the same silent under-count follows.",
+      "why": "A statement whose FIRST TOKEN merely begins with one of the four words is not the frame. IT IS DEFENCE IN DEPTH AND SAYS SO: no SQL this adapter emits starts with `BEGINNING`, so the boundary defends a shape the tree does not produce today — which is not the same as being untested and not the same as being load-bearing either. It is recorded at that weight rather than dressed up. THE FIRST SWEEP REPORTED IT SURVIVING and the finding was in the CASE, not the guard: the case put the word in a `SELECT`'s projection, which an anchor reading the first token never looks at. The case now reads the first token.",
       "suite": "plans-probe",
       "kills": [
-        "plans-probe.test.ts > countedQueries > keeps a statement whose text merely begins with a discarded word"
-      ]
+        "plans-probe.test.ts > countedQueries > keeps a statement whose FIRST WORD merely begins with a discarded one"
+      ],
+      "sweep": "SURVIVED the first sweep against a case that could not see it; KILLED on the second, after the case was corrected."
     },
     {
       "name": "M-Q03 probe: an ambiguous statement match takes the first instead of refusing",
@@ -246,11 +247,12 @@
       "file": "src/conversations-threads.ts",
       "from": "          orderBy: [{ updatedAt: \"desc\" }, { id: \"desc\" }],",
       "to": "          orderBy: [{ updatedAt: \"asc\" }, { id: \"asc\" }],",
-      "why": "THE INDEX THIS TRANCHE ADDED IS DIRECTIONAL. `Thread_environmentId_updatedAt_id_idx` is declared `DESC, DESC`; an ascending read can still walk it backwards, so this is not a plan defect — it is the case that proves the plan pins are reading the ORDER the port names rather than whichever order happens to be cheap.",
+      "why": "THE ORDER IS THE PORT'S CONTRACT AND THE NEW INDEX IS DECLARED IN ITS DIRECTION. A reversed `orderBy` returns the same rows, once each, in windows that still partition the listing — so the partition case cannot see it, and the FIRST SWEEP REPORTED THIS SURVIVING for exactly that reason. The case that kills it walks every page and demands the stamps come back non-increasing, which is the property `Thread_environmentId_updatedAt_id_idx` exists to serve without a sort.",
       "suite": "plans-conversations",
       "kills": [
-        "plans-conversations.integration.test.ts > page truth over three hundred threads > the windows partition the listing"
-      ]
+        "plans-conversations.integration.test.ts > page truth over three hundred threads > the listing is NEWEST FIRST, and stays so across every page"
+      ],
+      "sweep": "SURVIVED the first sweep — the partition case is blind to direction; KILLED on the second, against a case written for the order itself."
     },
     {
       "name": "M-Q17 budgets: the tombstone filter is dropped from the live read",
@@ -319,5 +321,25 @@
         "plans-tools.integration.test.ts > count truth > the total does not move with the window"
       ]
     }
+  ],
+  "result": [
+    "SWEPT TWICE ON A REAL POSTGRESQL, on the Mac mini, against the suite set at",
+    "this branch's head. Baseline: 68 cases, 0 failing, and the driver refuses to",
+    "sweep a set that is not green or a mutated run in which the named case did",
+    "not execute.",
+    "",
+    "FIRST SWEEP: 20 of 22 killed. The two survivors were both defects in the",
+    "CASE rather than in the guard, and both are recorded above rather than",
+    "quietly re-anchored — M-Q02's case put the word in a projection the anchor",
+    "never reads, and M-Q16's case proved the pages PARTITION, which a reversed",
+    "order satisfies exactly as well as the right one.",
+    "",
+    "SECOND SWEEP: 22 of 22 killed, none vacuous, none declared unfalsifiable.",
+    "",
+    "AND ONE ENTRY ELSEWHERE IS SUPERSEDED. `mutations-tools.json` M09 is",
+    "recorded there as SURVIVED and NOT counted as a guard; M-Q19 is the same",
+    "edit killed by a named case. The entry in that file is left as written —",
+    "it was an honest report of what its own suite set could see — and this one",
+    "names it as superseded rather than editing another tranche's ledger."
   ]
 }
