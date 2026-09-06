@@ -324,7 +324,7 @@ export function toMacroSteps(id: string, value: unknown): readonly MacroStep[] {
         ? (element as JsonObject)
         : null;
     const tool = step === null ? undefined : step["tool"];
-    if (typeof tool !== "string" || tool === "") {
+    if (step === null || typeof tool !== "string" || tool === "") {
       throw new UnreadableAgentsRowError(
         MACRO_STEP_NAMES_NO_TOOL,
         "Macro.steps",
