@@ -59,7 +59,24 @@ export type CredentialUnavailableReason =
   | "root_key_absent"
   | "envelope_open_failed"
   | "envelope_format_unreadable"
-  | "scope_mismatch";
+  | "scope_mismatch"
+  // WIN-259 — the five ways a SECRET REFERENCE fails to become material. All
+  // five collapse to the same CREDENTIAL_UNAVAILABLE on the wire, for the
+  // probing-oracle reason this file opens with: a holder must not be able to
+  // tell "this reference is for another environment" from "this reference is
+  // expired" from "the credential behind it was rotated", because each of those
+  // answers is a fact about the vault it was not given.
+  //
+  // `handle_open_failed` is the UNDIFFERENTIATED one and it is undifferentiated
+  // by construction rather than by policy: a reference minted for another
+  // environment, a reference whose bytes were edited, and a reference invented
+  // outright all fail at the SAME authentication tag, so there is no branch here
+  // that could tell them apart even if it wanted to.
+  | "handle_malformed"
+  | "handle_open_failed"
+  | "handle_expired"
+  | "handle_revision_superseded"
+  | "handle_lifetime_invalid";
 
 function withReason(reason: string, extra: Readonly<Record<string, JsonValue>> = {}): Readonly<Record<string, JsonValue>> {
   return { reason, ...extra };

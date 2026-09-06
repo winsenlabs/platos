@@ -685,13 +685,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   // integration.test.ts (the split this file's own band entry pre-registered).
   // 2 + 2 + 1 = 5. apps/core-api/src/runtime/log-redaction.test.ts is NOT among
   // them: the fourth selector is `apps/core-api/src/transports/**` only.
-  assert.equal(result.fileCount, 1473);
+  //
+  // WIN-259 (M2.4), SECOND PASS 1473 -> 1477, +4 and all four in `secrets`: the
+  // SECRET REFERENCE. `domain/secret-handle.ts` with its suite, and
+  // `application/secret-handles.ts` with its suite. No adapter and no other
+  // context moves — the reference is a VALUE, so it adds no row, no store and no
+  // port implementation; the one port it widens (`AeadCipher`) is widened IN
+  // PLACE, and a widened file is not a new one.
+  assert.equal(result.fileCount, 1477);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 2 + 2 + 1
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 2 + 2 + 1 + 4
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -729,7 +736,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // band entry pre-registered (382 -> 383). The APPS term does not move: its
   // selector is `apps/core-api/src/transports/**` and the redaction suite lives
   // under `src/runtime/`. 22 + 1062 + 383 + 6 = 1473.
-  assert.equal(result.fileCount, 22 + 1062 + 383 + 6);
+  //
+  // THE SECOND PASS MOVES EXACTLY ONE TERM. The secret reference is four files
+  // in `packages/contexts/secrets` and nowhere else, so the CONTEXTS term goes
+  // 1062 -> 1066 and the kernel, adapters and apps terms are unchanged.
+  // 22 + 1066 + 383 + 6 = 1477.
+  assert.equal(result.fileCount, 22 + 1066 + 383 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

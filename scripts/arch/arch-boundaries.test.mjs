@@ -1051,8 +1051,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               log-redaction.test.ts (+1) — which max-file-lines does NOT
     //               see, because its fourth selector is `src/transports/**`
     //               only. 1503 + 6 = 1509.
-    assert.equal(result.fileCount, 1509, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 + 2 + 2 + 1 + 1);
+    // WIN-259 (M2.4) SECOND PASS +4, and all four are in
+    //               `packages/contexts/secrets`: the SECRET REFERENCE's domain
+    //               file and use-case file with a suite each. This scan reads
+    //               the SAME four files the line-budget one next door reads, so
+    //               the two deltas agree at +4 for the first time on this branch
+    //               — the first pass differed (+6 here, +5 there) only because
+    //               of the apps selector. 1509 + 4 = 1513.
+    assert.equal(result.fileCount, 1513, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 + 2 + 2 + 1 + 1 + 4);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

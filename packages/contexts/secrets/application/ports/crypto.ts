@@ -18,6 +18,7 @@ import type { Result } from "@platos/kernel";
 import type { EnvelopeBinding, SealedEnvelope } from "../../domain/envelope.js";
 import type { RootKeyRingState } from "../../domain/key-ring.js";
 import type { RootKeyVersion } from "../../domain/ids.js";
+import type { SecretHandleBinding, SecretHandleEnvelope } from "../../domain/secret-handle.js";
 import type { SecretMaterial } from "../../domain/secret-material.js";
 
 declare const rootKeyHandle: unique symbol;
@@ -66,9 +67,47 @@ export interface OpenRequest {
  * wrong key, a tampered tag, a tampered ciphertext and a relocated binding — the
  * extraction source's pure test pins exactly that collapse.
  */
+/**
+ * WIN-259 — sealing a SECRET REFERENCE.
+ *
+ * A SECOND AAD SHAPE ON THE SAME PORT, NOT A SECOND PORT, and the distinction is
+ * worth stating. ADR M0.3 §6 budgets this context's injected collaborators at
+ * eight and it already holds eight; a ninth would have bought a name for
+ * something that is the same primitive — authenticated encryption with
+ * associated data — over a different label space. What makes a reference safe
+ * is not a separate cipher, it is that `secretHandleAad` and `envelopeAad` can
+ * never collide, so a credential envelope presented as a reference (or the
+ * reverse) fails at the tag.
+ *
+ * The body is `string` rather than `SecretMaterial` because a reference's body
+ * is NOT material: it is an identifier, a revision and two instants. Typing it
+ * as material would have said the opposite of what this whole mechanism is for,
+ * and would have made `reveal()` — the greppable unwrap that marks every real
+ * plaintext call site — fire on a value that never held a plaintext.
+ */
+export interface SealHandleRequest {
+  readonly key: RootKeyHandle;
+  readonly binding: SecretHandleBinding;
+  readonly body: string;
+}
+
+export interface OpenHandleRequest {
+  readonly key: RootKeyHandle;
+  readonly binding: SecretHandleBinding;
+  readonly envelope: SecretHandleEnvelope;
+}
+
 export interface AeadCipher {
   seal(request: SealRequest): Promise<Result<SealedEnvelope>>;
   open(request: OpenRequest): Promise<Result<SecretMaterial>>;
+  /** Seal a reference's claims. Environment-bound through `binding`, never material. */
+  sealHandle(request: SealHandleRequest): Promise<Result<SecretHandleEnvelope>>;
+  /**
+   * Open a reference. ONE undifferentiated failure for a wrong environment, a
+   * wrong root key, an edited byte and an invented reference — the same collapse
+   * `open` above makes, for the same reason.
+   */
+  openHandle(request: OpenHandleRequest): Promise<Result<string>>;
 }
 
 /**

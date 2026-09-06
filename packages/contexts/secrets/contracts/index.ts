@@ -19,8 +19,20 @@
 //     its own ProviderKey write.
 //
 //   * No envelope bytes, and no way to ask for any. Every read below is metadata
-//     except `readSecret`, which returns `SecretMaterial` — a value that redacts
-//     itself under JSON, string coercion, inspection, spreading and enumeration.
+//     except `readSecret` and `exchangeSecretHandle`, both of which return
+//     `SecretMaterial` — a value that redacts itself under JSON, string
+//     coercion, inspection, spreading and enumeration.
+//
+// WHAT IT DOES NOW OFFER, AND WHY IT IS NOT THE STALE ADR ROW ABOVE. WIN-259
+// publishes a SECRET REFERENCE: `issueSecretHandle` mints an opaque,
+// environment-bound `SecretHandle`, and `exchangeSecretHandle` spends one for
+// material. It is emphatically NOT the `SecretReference` ROW the first bullet
+// retires -- that row is a persisted legacy table already merged into
+// `Credential`, and no table, column or contract type is added here. A
+// `SecretHandle` is a VALUE: this context never stores one, it names no row of
+// its own, and it exists only between the caller that was issued one and the
+// exchange that spends it. The two share an English word and nothing else,
+// which is why the name published here is deliberately not the ADR row's.
 //
 //   * No plaintext ARGUMENT either, since WIN-259. Every mutating command takes
 //     its material as the same self-redacting `SecretMaterial`, minted by the
@@ -45,6 +57,9 @@ import type {
   DeleteEnvironmentVariableResult,
   DescribeCredentialQuery,
   EnvironmentVariableValue,
+  ExchangeSecretHandleQuery,
+  IssueSecretHandleCommand,
+  IssuedSecretHandle,
   PurgeReport,
   PurgeRetiredCommand,
   ReadEnvironmentVariableQuery,
@@ -79,6 +94,8 @@ export type {
   RootKeyStatus,
   RootKeyUsage,
   RootKeyVersion,
+  SecretHandle,
+  SecretHandleClaims,
   SecretMaterial,
   SecretRevision,
   SecretVersionId,
@@ -90,10 +107,13 @@ export {
   CANONICAL_ENVELOPE_FORMAT,
   CREDENTIAL_KINDS,
   CREDENTIAL_METADATA_FIELDS,
+  DEFAULT_SECRET_HANDLE_LIFETIME_MS,
   ENVELOPE_FORMAT_VERSIONS,
   ENVIRONMENT_VARIABLE_KINDS,
   ENVIRONMENT_VARIABLE_METADATA_FIELDS,
+  MAX_SECRET_HANDLE_LIFETIME_MS,
   SECRETS_ERROR_CODES,
+  SECRET_HANDLE_SCHEME,
   WITHHELD_CREDENTIAL_FIELDS,
   envelopeFormat,
   isSecretMaterial,
@@ -124,6 +144,9 @@ export type {
   DeleteEnvironmentVariableResult,
   DescribeCredentialQuery,
   EnvironmentVariableValue,
+  ExchangeSecretHandleQuery,
+  IssueSecretHandleCommand,
+  IssuedSecretHandle,
   PurgeReport,
   PurgeRetiredCommand,
   ReadEnvironmentVariableQuery,
@@ -157,6 +180,21 @@ export interface SecretsContract {
   readEnvironmentVariable(
     query: ReadEnvironmentVariableQuery,
   ): Promise<Result<EnvironmentVariableValue>>;
+  /**
+   * Spend a SECRET REFERENCE. Runtime tier only, audited in both directions, and
+   * refused outright when the reference was minted for another environment --
+   * which fails at the authentication tag, not at a comparison.
+   */
+  exchangeSecretHandle(query: ExchangeSecretHandleQuery): Promise<Result<SecretMaterial>>;
+
+  // ---- secret references (any minted environment grant) ------------------
+  /**
+   * Mint an opaque, environment-bound reference to a credential's CURRENT
+   * revision, so a caller can persist an address instead of a value. Issuing
+   * discloses nothing: the reference carries no material and confers no access
+   * the exchange does not separately demand.
+   */
+  issueSecretHandle(command: IssueSecretHandleCommand): Promise<Result<IssuedSecretHandle>>;
 
   // ---- mutation (operator secret:mutate, or service secret:write) --------
   createCredential(command: CreateCredentialCommand): Promise<Result<CredentialMetadata>>;
@@ -208,6 +246,8 @@ export function secretsContract(dependencies: SecretsDependencies): SecretsContr
       useCases.listEnvironmentVariables(dependencies, authorization),
     readSecret: (query) => useCases.readSecret(dependencies, query),
     readEnvironmentVariable: (query) => useCases.readEnvironmentVariable(dependencies, query),
+    exchangeSecretHandle: (query) => useCases.exchangeSecretHandle(dependencies, query),
+    issueSecretHandle: (command) => useCases.issueSecretHandle(dependencies, command),
     createCredential: (command) => useCases.createCredential(dependencies, command),
     rotateCredential: (command) => useCases.rotateCredential(dependencies, command),
     revokeCredential: (command) => useCases.revokeCredential(dependencies, command),

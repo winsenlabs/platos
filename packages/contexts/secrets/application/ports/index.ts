@@ -9,8 +9,10 @@ export type {
   AeadCipher,
   Hasher,
   KeyRing,
+  OpenHandleRequest,
   OpenRequest,
   RootKeyHandle,
+  SealHandleRequest,
   SealRequest,
 } from "./crypto.js";
 export type {
@@ -89,6 +91,8 @@ export type {
   RootKeyUsage,
   RootKeyVersion,
   SealedEnvelope,
+  SecretHandleBinding,
+  SecretHandleEnvelope,
   SecretMaterial,
   SecretRevision,
   SecretVersionId,

@@ -219,8 +219,21 @@ export const VIOLATION_CODES = Object.freeze({
  * back over the same five roots. WIN-260 adds TEN files: seven configuration
  * modules and two suites under `apps/core-api/src/config/`, and one environment
  * reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-259 (M2.4) adds TEN more over the same five roots, in two passes, and
+ * this gate did not exist when the first pass landed — so it is told both here
+ * rather than only the second. FIRST PASS +6: `packages/kernel/src/vo/
+ * redaction.ts` and its suite, `packages/contexts/secrets/application/`
+ * write-only-inputs.test.ts and denied-read-audit.test.ts,
+ * `packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.
+ * test.ts`, and `apps/core-api/src/runtime/log-redaction.test.ts`. SECOND PASS
+ * +4, all in `packages/contexts/secrets`: the SECRET REFERENCE's
+ * `domain/secret-handle.ts` and `application/secret-handles.ts` with a suite
+ * each. 1503 + 6 + 4 = 1513, and `scripts/arch/arch-boundaries.mjs` reads the
+ * same 1513 back from its own scan of the same five roots, so the two can
+ * DISAGREE and be caught.
  */
-export const EXPECTED_FILE_COUNT = 1503;
+export const EXPECTED_FILE_COUNT = 1513;
 
 function listSourceFiles(root) {
   const found = [];

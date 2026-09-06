@@ -2349,7 +2349,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 27, cases: 375 },
-  "packages/contexts/secrets": { files: 18, cases: 186 },
+  "packages/contexts/secrets": { files: 20, cases: 239 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
@@ -2714,7 +2714,39 @@ export const EXPECTED = Object.freeze({
  * the name, so this census records them and that script runs neither. They run
  * on the Mac mini under `pnpm test:postgres-tenancy:integration`.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7440;
+/*
+ * WIN-259 (M2.4) THE SECRET REFERENCE, +53 cases and +2 FILES, all in
+ * `packages/contexts/secrets`: 186 -> 239 cases, 18 -> 20 files, and
+ * 7440 -> 7493.
+ *
+ * THE TWO FILES SPLIT BY WHAT CAN BE PROVED WITHOUT A CIPHER AND WHAT CANNOT,
+ * which is why there are two rather than one.
+ *
+ * `domain/secret-handle.test.ts` carries 27 and proves only STRUCTURE: the two
+ * label strings byte for byte, the claims body byte for byte, the base64url
+ * codec at every length modulo 3, the wire form's field count and scheme, and
+ * the lifetime rule at its boundary millisecond. It deliberately proves NOTHING
+ * about opacity or environment binding, because neither is a property of that
+ * file — both live in the cipher's key derivation and its AAD, and asserting
+ * them there would have compared the classifier to itself.
+ *
+ * `application/secret-handles.test.ts` carries 26 and proves the four
+ * properties that only exist once a cipher and a store are involved, each
+ * joined to something the assertion does not control: opacity against the
+ * plaintext, the name and the provider; environment binding against a SECOND
+ * fully-built environment whose reference is carried across by hand; revision
+ * pinning against a rotation the real `rotateCredential` performed; and the
+ * audit trail against the store's own rows in BOTH directions.
+ *
+ * `packages/contexts/providers` moves no pin again, for the same reason it did
+ * not move for write-only inputs: a reference is a VALUE and adds no port a
+ * peer implements.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 20 passed (20) / Tests 239 passed (239)" -- and the two new files
+ * on their own print 27 and 26.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7493;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
