@@ -83,7 +83,18 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // packages/contexts/memory, the sixth through twelfth owners of that same
   // client. SEVEN edges for FIFTEEN bindings. The count is READ BACK from the
   // generator here rather than computed, which is the whole point of this case.
-  assert.match(output, /32 V1 projects and 111 project edges/u);
+  // 106 -> 113 (WIN-259 M2.4): TWO edges and one new project, for
+  // packages/adapters/keyring-envelope -> packages/contexts/secrets and
+  // apps/core-api -> packages/adapters/keyring-envelope. THREE bindings for ONE
+  // edge, because a project reference is per PACKAGE.
+  //
+  // The count is READ BACK from the generator here rather than computed, which
+  // is the whole point of this case — and doing so mattered: on the first run
+  // this gate read 113 while the independently maintained
+  // `scripts/arch/v1-project-graph.mjs` read 112, because that gate had no
+  // vertex for the new directory yet and so never walked its owner edge. A pin
+  // taken from that number would have been one short.
+  assert.match(output, /33 V1 projects and 113 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -137,12 +148,16 @@ test("stale, missing, and extra owned files each fail closed", () => {
 // source tier is released only by an explicit, monotonic adoption.
 // ---------------------------------------------------------------------------
 
-test("the scaffolding tier is exactly 97 files and is only ever manifests, tsconfigs and READMEs", () => {
+test("the scaffolding tier is exactly 100 files and is only ever manifests, tsconfigs and READMEs", () => {
   const files = renderSkeleton([]);
   const { scaffolding, placeholders, total } = tierCounts(files);
   assert.equal(scaffolding, EXPECTED_SCAFFOLDING_FILE_COUNT);
   assert.equal(placeholders, EXPECTED_PLACEHOLDER_FILE_COUNT);
-  assert.equal(total, 201, "an unadopted skeleton is still the M1 201-file tree");
+  // WIN-259 (M2.4) 201 -> 206. The thirteenth adapter directory brings three
+  // scaffolding files and two source placeholders; 97 + 3 = 100 and
+  // 104 + 2 = 106. The literal is asserted BESIDE the two constants above so a
+  // pin moved without the tree moving, or the reverse, cannot pass here.
+  assert.equal(total, 206, "an unadopted skeleton is the M1 tree plus the thirteenth adapter");
 
   const scaffoldingPaths = [...files.keys()].filter((path) => isScaffoldingPath(path));
   assert.equal(scaffoldingPaths.length, EXPECTED_SCAFFOLDING_FILE_COUNT);
@@ -570,6 +585,13 @@ const LIVE_ADAPTERS = [
   { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n" },
   { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "n" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "n" },
+  // WIN-259 (M2.4). The fixture copy carries the thirteenth directory and its
+  // three bindings, so `checkAdapterTable(LIVE_ADAPTERS)` stays a real copy of
+  // the live table rather than a stale one that happens to pass.
+  { dir: "keyring-envelope", port: "KeyRing", owner: "secrets", additional: [
+      { port: "AeadCipher", owner: "secrets" },
+      { port: "Hasher", owner: "secrets" },
+    ], note: "n" },
 ];
 
 test("the live adapter table passes its own check, and the fixture copy of it does too", () => {
@@ -579,15 +601,24 @@ test("the live adapter table passes its own check, and the fixture copy of it do
   assert.deepEqual(checkAdapterTable(LIVE_ADAPTERS), []);
 });
 
-test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings may exceed twelve", () => {
+// WIN-259 (M2.4) RENAMED THIS CASE FROM THIRTEENTH TO FOURTEENTH, and the
+// rename is the whole record of what changed. The pin held at twelve through
+// SEVENTEEN consecutive owner grants, every one of which was another owner of
+// the rows in the one PostgreSQL database. It moved once, for a directory that
+// holds no rows and no database client — `keyring-envelope`, which holds the
+// AES-256 root keys the ORM's own adapter refused to hold. The refusal it
+// proves is unchanged: a directory beyond the declared count still fails.
+test("§15 refusal: a FOURTEENTH adapter directory fails, even though bindings may exceed thirteen", () => {
   const errors = checkAdapterTable([
     ...LIVE_ADAPTERS,
     { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
   ]);
-  assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
+  assert.ok(errors.some((error) => error.includes("names 13 concrete adapter directories; ADAPTERS has 14")));
 });
 
-test("§15 refusal: a FORTY-FIFTH binding fails, even though a directory may hold more than one", () => {
+// WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
+// thirteenth directory. The case is renamed with the number it now guards.
+test("§15 refusal: a FORTY-EIGHTH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -598,7 +629,7 @@ test("§15 refusal: a FORTY-FIFTH binding fails, even though a directory may hol
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 44 adapter bindings; ADAPTERS flattens to 45")));
+  assert.ok(errors.some((error) => error.includes("declares 47 adapter bindings; ADAPTERS flattens to 48")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
