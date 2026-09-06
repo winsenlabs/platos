@@ -2349,7 +2349,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 27, cases: 375 },
-  "packages/contexts/secrets": { files: 16, cases: 162 },
+  "packages/contexts/secrets": { files: 17, cases: 175 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
@@ -2645,7 +2645,30 @@ export const EXPECTED = Object.freeze({
  * here. It is named because it is the half of the evidence that is NOT in this
  * census, and a reader counting 16 should know 9 more exist.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7415;
+/*
+ * WIN-259 (M2.4) WRITE-ONLY INPUTS, +13 and one new FILE, all in
+ * `packages/contexts/secrets`: 162 -> 175 cases, 16 -> 17 files, and
+ * 7415 -> 7428.
+ *
+ * The file is `application/write-only-inputs.test.ts`. Its thirteen cases are
+ * the WRITE half of the boundary: four that a mutating command cannot be
+ * written down (JSON, string coercion, spreading, enumeration), six that a bare
+ * string is refused with its own code and leaves no row and no audit, two that
+ * tell the carrier refusal apart from the material refusal, and one that
+ * DECLARES what the carrier check cannot see rather than overclaiming it.
+ *
+ * `packages/contexts/providers` moves NO pin and that is the finding worth
+ * recording. Its double now refuses a bare string the way the real vault does,
+ * so every existing write-path case there became a witness for the wrapping at
+ * the providers/secrets seam without one case being added. Measured: `pnpm
+ * --filter @platos/context-providers exec vitest run` prints 27 files / 375
+ * tests before and after.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` —
+ * "Test Files 17 passed (17) / Tests 175 passed (175)" — and the new file on
+ * its own prints 13.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7428;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

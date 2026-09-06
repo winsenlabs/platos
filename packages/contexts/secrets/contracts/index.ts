@@ -21,6 +21,13 @@
 //   * No envelope bytes, and no way to ask for any. Every read below is metadata
 //     except `readSecret`, which returns `SecretMaterial` — a value that redacts
 //     itself under JSON, string coercion, inspection, spreading and enumeration.
+//
+//   * No plaintext ARGUMENT either, since WIN-259. Every mutating command takes
+//     its material as the same self-redacting `SecretMaterial`, minted by the
+//     `acceptPlaintext` re-exported below. The read side has been safe since
+//     this context was written; the write side was a bare `string`, so a
+//     command serialised into a queue, a retry buffer, a structured log or an
+//     error report on its way here recorded the secret verbatim.
 
 import type { Result } from "@platos/kernel";
 
@@ -90,6 +97,12 @@ export {
   WITHHELD_CREDENTIAL_FIELDS,
   envelopeFormat,
   isSecretMaterial,
+  // WIN-259. The ONE way to mint the write-only input every mutating command
+  // below now requires. A transport calls this the moment it has decoded a
+  // request body and before it has built a command, so the plaintext is inside
+  // a self-redacting holder before any object exists that a logger, a retry
+  // buffer or an error report could serialise.
+  acceptPlaintext,
 } from "../domain/index.js";
 
 // The mint functions. `secrets` may not import identity-access (ADR M0.3 §1 row

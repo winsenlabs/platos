@@ -37,6 +37,7 @@ export const SECRETS_ERROR_CODES = [
   "ENVIRONMENT_VARIABLE_VALUE_REQUIRED",
   "ENVIRONMENT_VARIABLE_VALUE_TOO_LONG",
   "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+  "SECRET_INPUT_NOT_WRITE_ONLY",
 ] as const;
 
 export type SecretsErrorCode = (typeof SECRETS_ERROR_CODES)[number];
@@ -95,6 +96,36 @@ export function invalidSecretMaterial(reason: string): DomainError {
   return domainError("INVALID_SECRET_MATERIAL", "invalid_input", "secret material is not acceptable", {
     details: withReason(reason),
   });
+}
+
+/**
+ * WIN-259 — a BARE STRING arrived where a write-only input was required.
+ *
+ * A distinct code from `INVALID_SECRET_MATERIAL`, which says the material is
+ * unacceptable. This one says the material is unacceptably CARRIED: it reached
+ * the command as an ordinary string, so anything that serialised, logged or
+ * queued that command on the way here already recorded the plaintext. Telling
+ * the two apart is the difference between "the caller sent an empty secret" and
+ * "the caller's whole request path has been writing secrets down".
+ *
+ * The field name is safe to publish — it names a position in the command shape,
+ * not a value — so it rides in `fields` rather than in log-only `details`.
+ */
+export function secretInputNotWriteOnly(field: string): DomainError {
+  return domainError(
+    "SECRET_INPUT_NOT_WRITE_ONLY",
+    "invalid_input",
+    "secret input must be a write-only value",
+    {
+      fields: [
+        {
+          field,
+          code: "write_only",
+          message: "must be minted by acceptPlaintext, never passed as a plain string",
+        },
+      ],
+    },
+  );
 }
 
 export function invalidPurgeRequest(reason: string): DomainError {
