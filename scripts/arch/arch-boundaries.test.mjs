@@ -1042,8 +1042,25 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `scripts/arch/env-access.mjs` read the same number back from
     //               their own scans of the same five roots, so the three can
     //               DISAGREE and be caught.
-    assert.equal(result.fileCount, 1503, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1);
+    // WIN-260 (M2.5), the ERRORS-AND-IDEMPOTENCY dimension, +23. This gate was
+    //               left at 1503 while that dimension's ELEVEN files were
+    //               already in the tree — the code-to-status map and its suite
+    //               under `apps/core-api/src/transports`, the kernel's
+    //               `CorrelationSource` port, seven files under
+    //               `packages/adapters/redis-cache/src` and the correlation
+    //               integration suite under
+    //               `packages/adapters/postgres-tenancy/src` — so 1503 and the
+    //               scan had already parted company before this pass. This pass
+    //               adds TWELVE more: five source modules and four suites under
+    //               `apps/core-api/src/http`, the kernel's `RequestIdempotency`
+    //               port, and the Redis implementation of that port with its
+    //               suite. 1503 + 11 + 12 = 1526, read back from the scan, and
+    //               `scripts/arch/composition-root.mjs` and
+    //               `scripts/arch/env-access.mjs` read the same number back from
+    //               their own scans of the same five roots, so the three can
+    //               DISAGREE and be caught.
+    assert.equal(result.fileCount, 1526, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 + 11 + 12);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

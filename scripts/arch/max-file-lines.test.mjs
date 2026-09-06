@@ -677,13 +677,30 @@ test("the live selectors scan an exact nonzero source census", () => {
   // every pin carries the measurement it came from — and effective lines
   // exclude comments, so a reader comparing raw line counts with this figure
   // will find them very different and should.
-  assert.equal(result.fileCount, 1468);
+  //
+  // WIN-260 (M2.5): 1468 -> 1482, and ELEVEN of the fourteen were already in the
+  // tree before this pass — the pin and the scan had parted company on the
+  // errors-and-idempotency dimension's first landing and nobody moved it.
+  //
+  // THE APPS SELECTOR IS `apps/core-api/src/transports/**` AND NOTHING WIDER,
+  // which is why the arithmetic here is not the arithmetic in the v1 ledger:
+  // the nine files this pass added under `apps/core-api/src/http/` are outside
+  // every selector and are counted by no term below. What IS counted is +11
+  // already present (the kernel `CorrelationSource` port, seven files under
+  // `packages/adapters/redis-cache/src`, the `postgres-tenancy` correlation
+  // suite, and `src/transports/error-status.ts` with its suite) and +3 from this
+  // pass (the kernel `RequestIdempotency` port, and the Redis implementation of
+  // it with its suite). 1468 + 11 + 3 = 1482.
+  //
+  // NONE of the fourteen is in the warning band; the largest is the redis-cache
+  // reserve-once integration suite, comfortably under 400 effective lines.
+  assert.equal(result.fileCount, 1482);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 2 + 12
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -712,7 +729,15 @@ test("the live selectors scan an exact nonzero source census", () => {
   // nowhere else: the plan dimension implements no port, so neither the kernel
   // nor the contexts term moves. 366 + 7 = 373, and the merged tranche's other
   // nine land in that same term: 366 + 16 = 382.
-  assert.equal(result.fileCount, 20 + 1060 + 382 + 6);
+  //
+  // WIN-260 (M2.5) moves THREE of the four terms and not the contexts one, which
+  // is the claim worth making: this dimension implements ports and a transport
+  // and widens no context. Kernel 20 -> 22 (`CorrelationSource` and
+  // `RequestIdempotency`), adapters 382 -> 392 (seven redis-cache files plus its
+  // request-store pair, and the postgres-tenancy correlation suite), apps
+  // 6 -> 8 (`error-status.ts` and its suite; the nine files under `src/http/`
+  // are outside the transports selector). 22 + 1060 + 392 + 8 = 1482.
+  assert.equal(result.fileCount, 22 + 1060 + 392 + 8);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
