@@ -330,7 +330,23 @@ export const ADAPTERS = [
     // The note stays "one namespaced keyspace" and drops "one owner", because
     // that is now false and a generated README repeating it would be the exact
     // drift `countWord` was written to remove.
-    additional: [{ port: "IdempotencyStore", owner: "jobs" }],
+    //
+    // AND A THIRD, `kernel:RequestIdempotency` — M0.4 §2's `Idempotency-Key`
+    // envelope. It is a THIRD binding on the same directory for the same reason
+    // the second was one: reserve-once with a server-enforced TTL is what this
+    // client is for, and a thirteenth directory would have been a second Redis
+    // client for one Redis. It is a SEPARATE port from `jobs`' rather than a
+    // widening of it because the contracts differ — that one reserves a job
+    // execution keyed by an `ExecutionRequestId` and settles with a
+    // `JobExecutionErrorCode`, this one reserves an HTTP request keyed by a
+    // caller's header and settles with the bytes that went on the wire — and
+    // their keyspaces are disjoint by prefix so neither can read the other's
+    // records. Its owner is `kernel`, which is what gives this directory its
+    // `packages/kernel` project reference and moves EXPECTED_EDGE_COUNT.
+    additional: [
+      { port: "IdempotencyStore", owner: "jobs" },
+      { port: "RequestIdempotency", owner: "kernel" },
+    ],
     note: "one namespaced keyspace behind one Redis client",
   },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "one namespaced keyspace, one owner" },
@@ -561,7 +577,15 @@ export const EXPECTED_ADAPTER_COUNT = 12;
 // directory. `redis-cache` becomes the SECOND multi-owner directory in the
 // layout, which is why `EXPECTED_MULTI_OWNER_ADAPTERS` in
 // scripts/arch/v1-project-graph.mjs gains its first entry since it was written.
-export const EXPECTED_BINDING_COUNT = 45;
+// 45 -> 46 (WIN-260, M2.5, the errors-and-idempotency dimension).
+// `redis-cache:RequestIdempotency` for `kernel`. The DIRECTORY count is unmoved
+// at twelve for the nineteenth time, and the reason is again the one that held
+// for the eighteen before it: another port behind an EXISTING vendor client is a
+// row on an existing directory. `redis-cache` becomes the first directory in the
+// layout to carry THREE bindings outside `postgres-tenancy`, and the first to
+// own a kernel port alongside two context ports — which is what gives it the
+// `packages/kernel` project reference counted in EXPECTED_EDGE_COUNT below.
+export const EXPECTED_BINDING_COUNT = 46;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -749,7 +773,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // cannot create a cycle: ADR M0.3 §1 gives `jobs` no dependency on `memory`,
 // contexts are leaves relative to adapters, and an adapter is a leaf of the
 // context DAG either way.
-export const EXPECTED_EDGE_COUNT = 113;
+//
+// WIN-260 (M2.5), the errors-and-idempotency dimension: 113 -> 114.
+// `packages/adapters/redis-cache` -> `packages/kernel`, carrying the kernel's
+// `RequestIdempotency` port. A THIRD owner edge on a directory that had two, and
+// a reference per PACKAGE rather than per port, so one new binding is again
+// exactly one new edge. It cannot create a cycle for the reason the
+// `postgres-tenancy` -> kernel edge cannot: the kernel imports nothing
+// (`kernel-is-leaf`), so an edge INTO it never comes back out.
+export const EXPECTED_EDGE_COUNT = 114;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project

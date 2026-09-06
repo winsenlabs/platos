@@ -216,11 +216,20 @@ export const VIOLATION_CODES = Object.freeze({
  *
  * ARITHMETIC. The tree at `f88c8364` scanned 1493, the same number
  * `scripts/arch/arch-boundaries.mjs` and `scripts/arch/composition-root.mjs` read
- * back over the same five roots. WIN-260 adds TEN files: seven configuration
- * modules and two suites under `apps/core-api/src/config/`, and one environment
- * reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ * back over the same five roots. WIN-260's configuration dimension adds TEN
+ * files: seven configuration modules and two suites under
+ * `apps/core-api/src/config/`, and one environment reader under
+ * `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-260's errors-and-idempotency dimension adds ELEVEN more, none of which
+ * reads the environment: the code-to-status map and its suite under
+ * `apps/core-api/src/transports/`, the `CorrelationSource` port under
+ * `packages/kernel/src/ports/`, seven files under
+ * `packages/adapters/redis-cache/src/` (the client, the two stores, the harness
+ * and three suites), and the correlation integration suite under
+ * `packages/adapters/postgres-tenancy/src/`. 1503 + 11 = 1514.
  */
-export const EXPECTED_FILE_COUNT = 1503;
+export const EXPECTED_FILE_COUNT = 1514;
 
 function listSourceFiles(root) {
   const found = [];

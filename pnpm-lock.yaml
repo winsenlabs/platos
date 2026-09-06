@@ -1138,6 +1138,9 @@ importers:
       '@platos/context-memory':
         specifier: workspace:*
         version: link:../../contexts/memory
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
       ioredis:
         specifier: ^5.6.1
         version: 5.10.1

@@ -172,7 +172,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // directory in the layout, and the first entry `EXPECTED_MULTI_OWNER_ADAPTERS`
 // has gained since it was written — which is the whole point of that map being
 // a named, counted exception rather than a permission.
-export const EXPECTED_EDGE_COUNT = 113;
+//
+// WIN-260 (M2.5), the errors-and-idempotency dimension: 113 -> 114.
+// `packages/adapters/redis-cache` -> `packages/kernel`, carrying the kernel's
+// `RequestIdempotency` port. A THIRD owner edge on a directory that had two, and
+// a reference per PACKAGE rather than per port, so one new binding is again
+// exactly one new edge. It cannot create a cycle for the reason the
+// `postgres-tenancy` -> kernel edge cannot: the kernel imports nothing
+// (`kernel-is-leaf`), so an edge INTO it never comes back out.
+export const EXPECTED_EDGE_COUNT = 114;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -329,7 +337,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "clickhouse-observability": ["observability"],
   "objectstore-minio": ["files"],
   "redis-ratelimit": ["identity-access"],
-  "redis-cache": ["memory", "jobs"],
+  "redis-cache": ["memory", "jobs", "kernel"],
   "redis-streams": ["kernel"],
   "model-router-providers": ["providers"],
   "channel-slack": ["channels"],
@@ -345,7 +353,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 2 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 3 };
 
 /**
  * Edges an adapter has that are NOT owner edges, declared separately.

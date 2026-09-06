@@ -13,6 +13,18 @@
 // that mints it and the adapters that carry it to the store — are on opposite
 // sides of the whole system. A port owned by any one context would have made the
 // other sixteen depend on that context to be traceable.
+//
+// `RequestIdempotency` is the ELEVENTH, admitted on exactly that test and no
+// weaker one. M0.4 §2 puts `Idempotency-Key` on every side-effecting
+// `POST/PATCH/DELETE` in all seventeen contexts and REQUIRES it on the
+// one-time-secret mints; no context decides anything with the key, and the two
+// ends that must agree — the transport that reads the header and the store that
+// holds the reservation — are again on opposite sides of the system. It is a
+// SEPARATE port from `jobs`' `IdempotencyStore` rather than a reuse of it: that
+// one reserves a job execution keyed by an `ExecutionRequestId` and settles with
+// a `JobExecutionErrorCode`, and this one reserves an HTTP request keyed by a
+// caller's header and settles with a status and the bytes. They share a store,
+// which ADR M0.3 §15 permits, and they do not share a contract.
 export * from "./clock.js";
 export * from "./id-generator.js";
 export * from "./logger.js";
@@ -23,3 +35,4 @@ export * from "./durable-runtime.js";
 export * from "./safety-event-sink.js";
 export * from "./erasure-target.js";
 export * from "./correlation.js";
+export * from "./request-idempotency.js";

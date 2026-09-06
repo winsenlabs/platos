@@ -2,7 +2,7 @@
   "name": "@platos/adapter-redis-cache",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the memory Cache port and the jobs IdempotencyStore port.",
+  "description": "Implements the memory Cache port, the jobs IdempotencyStore port and the kernel RequestIdempotency port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -21,6 +21,7 @@
   "dependencies": {
     "@platos/context-memory": "workspace:*",
     "@platos/context-jobs": "workspace:*",
+    "@platos/kernel": "workspace:*",
     "ioredis": "^5.6.1"
   },
   "devDependencies": {

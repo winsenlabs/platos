@@ -1,12 +1,12 @@
-// TWO owner-supplied ports over ONE Redis client.
+// THREE owner-supplied ports over ONE Redis client.
 //
 // ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a
 // directory may satisfy more than one port when the ports sit behind the same
 // client. `postgres-tenancy` is that rule applied seventeen times; this is the
-// second directory it applies to, and the argument is the same one — `Cache` and
-// `IdempotencyStore` are the same connection, the same server and the same
-// namespace discipline, so a thirteenth directory would have been a second Redis
-// client for one Redis.
+// second directory it applies to, and the argument is the same one — `Cache`,
+// `IdempotencyStore` and the kernel's `RequestIdempotency` are the same
+// connection, the same server and the same namespace discipline, so a thirteenth
+// directory would have been a second Redis client for one Redis.
 //
 // THE PAIRING WAS DECIDED BEFORE THIS ISSUE, TWICE. `jobs`' own
 // `jobs-repository.ts` explains why `IdempotencyStore` is not a canonical store
@@ -30,6 +30,8 @@ import type { RedisConnection, RedisConnectionOptions } from "./client.js";
 import { createRedisConnection } from "./client.js";
 import type { RedisIdempotencyStore } from "./idempotency-store.js";
 import { createRedisIdempotencyStore } from "./idempotency-store.js";
+import type { RedisRequestIdempotency } from "./request-idempotency.js";
+import { createRedisRequestIdempotency } from "./request-idempotency.js";
 
 export interface RedisCacheAdapter {
   readonly adapterName: "redis-cache";
@@ -37,6 +39,16 @@ export interface RedisCacheAdapter {
   readonly cache: Cache;
   /** The `jobs` `IdempotencyStore` port. */
   readonly idempotency: RedisIdempotencyStore;
+  /**
+   * The kernel `RequestIdempotency` port — the THIRD on this connection.
+   *
+   * A separate slot rather than a widening of `idempotency` because the two are
+   * different contracts over the same primitive: one reserves a job execution
+   * and settles with a `JobExecutionErrorCode`, the other reserves an HTTP
+   * request and settles with the bytes that went on the wire. Their keyspaces
+   * are disjoint by prefix, so neither can read the other's records.
+   */
+  readonly requests: RedisRequestIdempotency;
   /** Release the connection. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -55,6 +67,7 @@ export function buildRedisCacheAdapter(connection: RedisConnection): RedisCacheA
     adapterName: "redis-cache",
     cache: createRedisCache(connection),
     idempotency: createRedisIdempotencyStore(connection),
+    requests: createRedisRequestIdempotency(connection),
     close: () => connection.close(),
   };
 }

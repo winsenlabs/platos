@@ -1,9 +1,10 @@
 # @platos/adapter-redis-cache
 
-Implements TWO owner-supplied ports — one namespaced keyspace behind one Redis client:
+Implements THREE owner-supplied ports — one namespaced keyspace behind one Redis client:
 
 - the memory `Cache` port
 - the jobs `IdempotencyStore` port
+- the kernel `RequestIdempotency` port
 
 ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a
 directory may satisfy more than one port when the ports sit behind the same
