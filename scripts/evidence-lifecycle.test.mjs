@@ -51,10 +51,19 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // covered column moves as M4-M6 land; a snapshot classification would be
   // false about what the artifact is for.
   //
-  // Neither branch adds a POINT-IN-TIME, SUPERSEDED-BY or DRAFT entry, so
-  // those three counts are deliberately unchanged.
-  assert.equal(manifest.entryCount, 250, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, and the WIN-284 differential coverage matrix");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 225, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
+  // WIN-259 (M2.4) +1: docs/audits/win-259-secret-response-census.json, the
+  // dispositioned raw-secret RESPONSE count. ACCEPTED for the same reason the
+  // two above are: `audit:secret-response-census` re-scans the 143 request
+  // surfaces on every run and fails when the live result and the file disagree,
+  // so it binds current repository truth rather than recording one date. It is
+  // pinned by name in EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS because it is only HALF
+  // generated — the scanner emits path/key/occurrences and a human writes the
+  // disposition and the reason — and the ambiguous-root rule refuses to guess.
+  //
+  // No branch adds a POINT-IN-TIME, SUPERSEDED-BY or DRAFT entry, so those
+  // three counts are deliberately unchanged.
+  assert.equal(manifest.entryCount, 251, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, and the WIN-259 secret-response census");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 226, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 20);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

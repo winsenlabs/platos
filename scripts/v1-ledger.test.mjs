@@ -537,7 +537,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // NO LEDGER RULE CHANGED: apps-core-api.source.process already matched
     // src/config/**, so the seven source files land on a rule WIN-297 wrote.
     // 19 + 10 = 29.
-    "apps-core-api": 29,
+    // WIN-259 (M2.4) 29 -> 30: `src/runtime/log-redaction.test.ts`, the suite
+    // that reads the canonical Prisma schema and holds the kernel's redactor to
+    // BOTH sides of it. It lives here rather than beside the redactor because
+    // the kernel may not read a file at all (kernel-content K1/K4), so a suite
+    // in `packages/kernel` could only have compared the classifier to itself.
+    "apps-core-api": 30,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -961,7 +966,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
     // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
     // again -- is right here, and neither is any pair of them.
-    packages: 1397,
+    // WIN-259 (M2.4) 1397 -> 1401, and the four are in TWO packages rather than
+    // one, which is why they are named here: `packages/kernel` gains
+    // `src/vo/redaction.ts` and its two-sided suite (the redactor
+    // `ports/logger.ts` has always described and never supplied), and
+    // `packages/contexts/secrets` gains `application/write-only-inputs.test.ts`
+    // and `application/denied-read-audit.test.ts`. 2 + 2 = 4. No adapter and no
+    // other context moves: the write-only change altered THREE command types in
+    // place and `providers` wrapped at its existing seam, and a changed file is
+    // not a new one.
+    packages: 1401,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1208,13 +1222,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
-    "docs-content": 13,
     // +2 (WIN-260): scripts/arch/env-access.mjs and its test. Both classify
     // under the existing root-infra.tooling.scripts rule, so no ledger rule
     // changed here either. 41 + 2 = 43.
-    "root-infra": 43,
+    //
+    // WIN-259 (M2.4) IS THE FIRST SLICE SINCE THE M2 INTEGRATION TO MOVE FOUR
+    // AREAS AT ONCE, and it moves them by 1 + 4 + 1 + 2 = 8. docs-content
+    // 13 -> 14 is `docs/audits/win-259-secret-response-census.json`, the
+    // dispositioned raw-secret RESPONSE count; root-infra 43 -> 45 is the AST
+    // scanner that produces it and that scanner's own fixture suite. The
+    // scanner is fixture-tested rather than repository-tested on purpose: a
+    // re-run of the repository scan agrees with a manifest the same author
+    // wrote, and would have been the assertion-that-cannot-fail this project
+    // has already been bitten by once.
+    "docs-content": 14,
+    "root-infra": 45,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1495);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1503);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1260,7 +1284,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and CHANGES NO LEDGER RULE: every one of the thirteen is classified by a
     // rule that already existed, which is why the delta is purely additive and
     // sums with every one above it.
-    rulesDocument.baseline.totalFiles + 1495
+    //
+    // and WIN-259 (M2.4) +8, the same +8 as the totalFiles assertion above,
+    // across apps-core-api (+1), packages (+4), docs-content (+1) and
+    // root-infra (+2); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1503
   );
 });
 
