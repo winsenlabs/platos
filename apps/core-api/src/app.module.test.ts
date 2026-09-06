@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares THIRTY bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
+  it("declares THIRTY-TWO bindings across ADR M0.3 §4's TWELVE adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -100,13 +100,19 @@ describe("the declared binding table", () => {
     // asserted, and the gap between the two counts is asserted too, so a change
     // that collapsed them back into one count fails.
     //
-    // 12 directories + 16 extra ports on the one shared directory = 28 bindings.
-    // The directory count does NOT move when a third, fourth, fifth and sixth
-    // owner are delegated to it, nor when WIN-258 M2.3 gives tenancy's five
+    // 12 directories + 20 extra ports on the one shared directory = 32 bindings.
+    // The directory count does NOT move when a third through NINTH owner is
+    // delegated to it, nor when WIN-258 M2.3 gives tenancy's five
     // NON-REPOSITORY ports slots on the directory that already satisfied them.
     // That is the whole property this pair of numbers exists to state.
-    expect(ADAPTER_BINDINGS).toHaveLength(30);
-    expect(DECLARED_BINDING_COUNT).toBe(30);
+    //
+    // 30 -> 32 (WIN-258 T5): `memory`'s `MemoryRepository` and
+    // `KnowledgeGraphRepository` over its three canonical rows. Both are proven
+    // through the PROPERTY that carries them, because
+    // `KnowledgeGraphRepository.findEntity` and `TenancyRepository.findEntity`
+    // are one name with two signatures.
+    expect(ADAPTER_BINDINGS).toHaveLength(32);
+    expect(DECLARED_BINDING_COUNT).toBe(32);
     expect(ADAPTER_NAMES).toHaveLength(12);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
@@ -131,6 +137,8 @@ describe("the declared binding table", () => {
       "EnvironmentAccessKeyRevocationCounter",
       "InvitationTokenIssuer",
       "OperatorDirectory",
+      "MemoryRepository",
+      "KnowledgeGraphRepository",
     ]);
     expect(sharedDirectory.map((binding) => binding.owner)).toEqual([
       "tenancy",
@@ -152,6 +160,8 @@ describe("the declared binding table", () => {
       "tenancy",
       "tenancy",
       "tenancy",
+      "memory",
+      "memory",
     ]);
   });
 
@@ -187,9 +197,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(30);
+    expect(report.unsatisfied).toHaveLength(32);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/30 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/32 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while SEVENTEEN of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -215,7 +225,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(29);
+    expect(report.unsatisfied).toHaveLength(31);
 
     expect(report.faults).toEqual([]);
   });
@@ -245,7 +255,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(30);
+    expect(app.bindings.unsatisfied).toHaveLength(32);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -275,7 +285,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(29);
+    expect(app.bindings.unsatisfied).toHaveLength(31);
 
   });
 
