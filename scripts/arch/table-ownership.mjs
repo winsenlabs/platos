@@ -575,6 +575,49 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // this entry the one package permitted to write the row would be issuing a
   // statement the gate refuses.
   memory: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The THIRTEENTH context to resolve to this directory, on the
+  // sentence every entry above stands on: one PostgreSQL database is one client
+  // is one adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the ONE row `eventing` owns —
+  // `NotificationRule`. Nothing else, and there IS nothing else: ADR M0.3 §1 row
+  // 17 names three rows for this context and `UNOWNED_ADR_ROWS` above records
+  // that the other two, `PlatformNotification` and
+  // `PlatformNotificationInteraction`, exist only in the legacy schema and are
+  // therefore not canonical tenancy rows at all. This is the SMALLEST grant in
+  // the map.
+  //
+  // ONE ROW DOES NOT MAKE THE ENTRY OPTIONAL, and that is the whole reason it
+  // reads like the twelve above it. Without it `ownerDirectories("eventing")` is
+  // `packages/contexts/eventing` alone — and ADR M0.3 §2 forbids that package's
+  // `domain/` and `application/` from importing the ORM — so the one package
+  // permitted to write `NotificationRule` would be the one package unable to.
+  // `checkSoleWriter` still asks per WRITE whether the file's directory is one
+  // of `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn`
+  // from this package still fails, and a write to `NotificationRule` from
+  // anywhere else still fails.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET ATOMIC ACROSS CONTEXTS. Unlike
+  // `governance`'s and `memory`'s, this context's target touches ONE table, so
+  // the atomicity it needs is not internal — it is that `privacy` opens one unit
+  // of work, hands the SAME `TransactionScope` to every `ErasureTarget` in the
+  // array, and this context's `createdBy` scrub commits or rolls back with the
+  // others. That is true only because they are the same client on the same
+  // connection: a thirteenth adapter package holding this one repository would
+  // have had its own pool and its own ambient frame, and the shared scope would
+  // have been refused as `scope_unknown` — the right fact under the wrong cause.
+  //
+  // AND IT DOES NOT GRANT WHAT `eventing` READS AND DOES NOT OWN. Every read in
+  // this store narrows through `Environment` and `Project` — the ancestry filter
+  // the legacy `environmentScopeWhere` walks — and both rows are `tenancy`'s.
+  // Reads are unrestricted by design (§1 restricts WRITES), and the row that
+  // makes the difference visible is `Event`: the outbox envelope this context
+  // ROUTES belongs to the `<kernel-outbox-adapter>` pseudo-owner, and a write to
+  // it attributed to `eventing` is refused from here exactly as it is from
+  // anywhere else.
+  eventing: "packages/adapters/postgres-tenancy",
 });
 
 /**

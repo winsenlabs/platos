@@ -202,6 +202,23 @@ export const ADAPTERS = [
       // synchronous host hash with no failure channel and no row.
       { port: "MemoryRepository", owner: "memory" },
       { port: "KnowledgeGraphRepository", owner: "memory" },
+      // WIN-258 T5 adds the THIRTEENTH owner. `eventing` owns ONE canonical row
+      // in that same database — `NotificationRule`, the only member of ADR M0.3
+      // §1 row 17 that exists in the canonical schema at all — and publishes ONE
+      // canonical-store port over it.
+      //
+      // IT IS SATISFIED BY THE ADAPTER ITSELF rather than by a property, like
+      // `ProvidersRepository` above: its nine method names collide with nothing
+      // this directory already publishes, so
+      // `PostgresTenancyAdapter extends NotificationRuleRepository` resolves
+      // directly. The context's TWO other ports get no row here and that is a
+      // claim rather than an omission: `DestinationScreen` is the SSRF boundary,
+      // whose contract is DNS resolution and a socket pinned to the resolved
+      // address, and `NotificationQueue` is a DELAYED hand-off whose
+      // `availableAt` asks for the durable schedule §7 decision 10 puts behind
+      // `durable-runtime`. Neither is a store, and a PostgreSQL client can
+      // honour no clause of either.
+      { port: "NotificationRuleRepository", owner: "eventing" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -336,8 +353,17 @@ export function adapterOwnerPackages(adapter) {
 // signature, so one interface cannot extend both. EXPECTED_ADAPTER_COUNT is
 // deliberately unmoved a TWELFTH time, which is the point of pinning the two
 // separately.
+//
+// AND `eventing` adds ONE, `NotificationRuleRepository`, over the ONE canonical
+// row of ADR M0.3 §1 row 17 — the THIRTEENTH owner of the one PostgreSQL client.
+// One row is the smallest grant this table has made and it changes nothing about
+// the argument: without it `ownerDirectories("eventing")` is the context alone,
+// and §2 forbids that package from importing the ORM, so the one package
+// permitted to write the row would be the one package unable to. It is SPREAD
+// rather than a property — its nine method names collide with nothing — and
+// EXPECTED_ADAPTER_COUNT is deliberately unmoved a THIRTEENTH time.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 38;
+export const EXPECTED_BINDING_COUNT = 39;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -448,7 +474,23 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // nothing in the 17-context DAG depends on `memory`. The independent expectation
 // in scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 106;
+// AND `packages/adapters/postgres-tenancy` -> `packages/contexts/eventing`.
+// A THIRTEENTH owner edge, carrying that context's ONE canonical-store port over
+// its ONE canonical row. 106 -> 107, and the arithmetic is the whole delta: one
+// new project REFERENCE, because a reference is per PACKAGE and not per port and
+// this owner brings exactly one package.
+//
+// IT CANNOT CREATE A CYCLE, and here that is checked rather than asserted. ADR
+// M0.3 §1 grants `eventing` exactly two dependencies — `tenancy` and the kernel
+// — and `application/dependencies.ts` holds the tenancy handle opaquely and
+// never calls it. `tenancy` is already an owner of this same directory, so the
+// two owner edges are parallel rather than circular, and nothing in the
+// 17-context DAG depends on `eventing`: it is a sink that emits
+// `NotificationRequested` and performs no delivery. An adapter is a leaf of the
+// graph either way. The independent expectation in
+// scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
+export const EXPECTED_EDGE_COUNT = 107;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project

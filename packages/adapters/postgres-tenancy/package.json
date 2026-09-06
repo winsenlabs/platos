@@ -2,7 +2,7 @@
   "name": "@platos/adapter-postgres-tenancy",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the tenancy TenancyRepository port, the identity-access IdentityAccessRepository port, the tools ToolsRepository port, the agents AgentsRepository port, the agents ScaffoldingRepository port, the cost-monitoring BudgetRepository port, the channels ChannelsRepository port, the governance SafetyLedger port, the governance RatingsRepository port, the governance CriteriaRepository port, the governance EvalsRepository port, the governance GoldenSetsRepository port, the secrets SecretsRepository port, the secrets EnvironmentVariableRepository port, the providers ProvidersRepository port, the conversations ThreadRepository port, the conversations TurnRepository port, the conversations PostmanRepository port, the conversations ConversationsErasureStore port, the skills SkillsRepository port, the tenancy TenancyLocks port, the tenancy OperatorSessionRevoker port, the tenancy EnvironmentAccessKeyRevocationCounter port, the tenancy InvitationTokenIssuer port, the tenancy OperatorDirectory port, the memory MemoryRepository port and the memory KnowledgeGraphRepository port.",
+  "description": "Implements the tenancy TenancyRepository port, the identity-access IdentityAccessRepository port, the tools ToolsRepository port, the agents AgentsRepository port, the agents ScaffoldingRepository port, the cost-monitoring BudgetRepository port, the channels ChannelsRepository port, the governance SafetyLedger port, the governance RatingsRepository port, the governance CriteriaRepository port, the governance EvalsRepository port, the governance GoldenSetsRepository port, the secrets SecretsRepository port, the secrets EnvironmentVariableRepository port, the providers ProvidersRepository port, the conversations ThreadRepository port, the conversations TurnRepository port, the conversations PostmanRepository port, the conversations ConversationsErasureStore port, the skills SkillsRepository port, the tenancy TenancyLocks port, the tenancy OperatorSessionRevoker port, the tenancy EnvironmentAccessKeyRevocationCounter port, the tenancy InvitationTokenIssuer port, the tenancy OperatorDirectory port, the memory MemoryRepository port, the memory KnowledgeGraphRepository port and the eventing NotificationRuleRepository port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,6 +31,7 @@
     "@platos/context-conversations": "workspace:*",
     "@platos/context-skills": "workspace:*",
     "@platos/context-memory": "workspace:*",
+    "@platos/context-eventing": "workspace:*",
     "@platos/tenancy-database": "workspace:*"
   },
   "devDependencies": {
