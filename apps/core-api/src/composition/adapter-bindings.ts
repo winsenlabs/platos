@@ -49,7 +49,10 @@ import type {
 import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
 import type { Cache } from "@platos/context-memory/application/ports/index.js";
-import type { ModelRouter } from "@platos/context-providers/application/ports/index.js";
+import type {
+  ModelRouter,
+  ProvidersRepository,
+} from "@platos/context-providers/application/ports/index.js";
 import type {
   ChannelAdapter,
   ChannelsRepository,
@@ -87,7 +90,7 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, THIRTY BINDINGS (ADR M0.3 §15). An install wires a
+ * TWELVE SLOTS, THIRTY-ONE BINDINGS (ADR M0.3 §15). An install wires a
  * DIRECTORY — one process-lifetime object holding one vendor client — so this
  * table stays keyed by directory and keeps twelve entries. What a directory
  * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
@@ -214,6 +217,15 @@ interface PortSatisfaction {
   // `never` and fail a binding that holds. Indexing the property is what makes
   // the obligation the true one — that `secrets` IS a `SecretsRepository` — so
   // the day the adapter renames or re-types either, `pnpm build:v1` fails here.
+  // WIN-258 T5. `providers`' canonical-store port, proven through the ADAPTER
+  // rather than through a property: its eighteen method names collide with
+  // nothing the adapter already publishes, so it is spread in like the six
+  // repository composites above it and `PostgresTenancyAdapter extends
+  // ProvidersRepository` resolves directly.
+  readonly "postgres-tenancy:ProvidersRepository": Satisfies<
+    PostgresTenancyAdapter,
+    ProvidersRepository
+  >;
   readonly "postgres-tenancy:SecretsRepository": Satisfies<
     PostgresTenancyAdapter["secrets"],
     SecretsRepository
@@ -256,6 +268,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": true,
   "postgres-tenancy:InvitationTokenIssuer": true,
   "postgres-tenancy:OperatorDirectory": true,
+  "postgres-tenancy:ProvidersRepository": true,
   "postgres-tenancy:SecretsRepository": true,
   "postgres-tenancy:EnvironmentVariableRepository": true,
   "outbox:OutboxWriter": true,
@@ -400,8 +413,28 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "EnvironmentVariableRepository",
     owner: "secrets",
   }),
-  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the FIFTEENTH through
-  // NINETEENTH bindings of the same directory.
+  // WIN-258 T5 (ADR M0.3 §15). The FIFTEENTH binding of the same directory, and
+  // the NINTH owner of the one PostgreSQL client. `providers` is sole writer of
+  // four rows — `ProviderKey`, `EnvironmentProvider`, `Model` and `ModelPrice` —
+  // in the same database as the other thirty-nine, so a separate adapter package
+  // for them would be a second home for a client the architecture gives exactly
+  // one. It is ONE row and not two because `providers` publishes ONE
+  // canonical-store port over all four.
+  //
+  // IT SITS AT THE END OF THE REPOSITORY GROUP rather than beside `channels`,
+  // and that is the placement the ordinals force: the five rows below count from
+  // the end of this group, so a repository composite inserted anywhere ABOVE
+  // would have made their ordinals wrong. Adding one here moves exactly one
+  // number — theirs — which the block's own comment now states.
+  //
+  // The context's TWO OTHER ports get no row here, and that is a claim rather
+  // than an omission: `ModelRouter` already has one, bound to
+  // `model-router-providers` at the bottom of this table by ADR M0.3 §5.1 rule
+  // (h), and `ProviderProbeCache` is a five-minute memo of what a provider said
+  // — §13's map has no home for it and no canonical store should hold it.
+  Object.freeze({ adapter: "postgres-tenancy", port: "ProvidersRepository", owner: "providers" }),
+  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the SIXTEENTH through
+  // TWENTIETH bindings of the same directory.
   //
   // They are a different KIND of binding from the seven above and that is why
   // they sit together at the end rather than beside `TenancyRepository`: each of
@@ -442,10 +475,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirty rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-one rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` NINETEEN times and open
- * nineteen pools over the one database.
+ * adapters would otherwise build `postgres-tenancy` TWENTY times and open
+ * twenty pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),

@@ -816,12 +816,40 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `ToolsRepository` both declare `appendAudit` — so they are
     //               named properties on the one adapter rather than a thirteenth
     //               package with a second client.
+    //  1276 -> 1292 +16: WIN-258 TRANCHE 5, `providers`' canonical store, in
+    //               that SAME one ORM home and for the fifth time on the same
+    //               sentence. FIFTEEN files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: nine source (the
+    //               write guards, the row crossing, the key store, the link
+    //               store, the catalogue store, the composite, the fixture
+    //               harness and the shared conformance scenario IN TWO HALVES)
+    //               and SEVEN suites — the constraints proof is two files, split
+    //               along the same scoping seam by the §6 budget at 491 lines. The scenario is two files for a reason one
+    //               tranche back's was: the two halves have DIFFERENT SCOPING
+    //               REGIMES — every step in one takes an `EnvironmentScope` and
+    //               not one step in the other does — and keeping them together
+    //               would have put a call with a scope next to one without and
+    //               made the missing argument look like an oversight.
+    //               The `mutations-providers.json` beside them is not source and
+    //               is not counted here; the v1 ledger counts it and its own
+    //               delta says 16.
+    //               `packages/contexts/providers` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A FIFTH TIME, and
+    //               here it decided the TRANSACTION rather than only the home:
+    //               `register-provider-key.ts` creates a credential through
+    //               `secrets` and then writes the `ProviderKey` that points at
+    //               it, and `ProviderKey_credential_provider_integrity` RE-READS
+    //               that credential from inside the key's own INSERT. Two homes
+    //               would have been two pools, and the rule would have
+    //               refused a key that was correct.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 = 1328. No
-    //               branch's own figure is right merged — 1291, 1294 and 1295
-    //               each under-count the other two by their whole tranche.
-    assert.equal(result.fileCount, 1328, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19);
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 = 1344. No
+    //               branch's own figure is right merged — 1291, 1294, 1295 and
+    //               1292 each under-count the others by their whole tranche.
+    assert.equal(result.fileCount, 1344, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

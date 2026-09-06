@@ -1,0 +1,716 @@
+{
+ "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+ "purpose": [
+  "The guard ledger for WIN-258 TRANCHE 5 -- `providers`' canonical store, the",
+  "NINTH owner behind the one PostgreSQL client ADR M0.3 \u00a715 gives the ORM. One",
+  "entry per guard: per scope predicate, per clause the port's own contract says",
+  "must hold, per savepoint, per shape check that stands where a migration-only",
+  "CHECK stands, and per closed union a row is read back through. Each carries",
+  "the file it lives in, the EXACT text that implements it (`from`), the edit",
+  "that removes it (`to`), and the NAMED cases that were seen to go red",
+  "(`kills`).",
+  "",
+  "IT IS A NINTH FILE beside mutations.json, mutations-identity.json,",
+  "mutations-ports.json, mutations-outbox.json, mutations-tools.json,",
+  "mutations-agents.json, mutations-cost.json, mutations-channels.json,",
+  "mutations-governance.json and mutations-secrets.json rather than an extension",
+  "of any of them, for the reason the others are separate: each tranche is a",
+  "separate claim about a separate port surface, and a reader checking one",
+  "should not have to read past the rest. All are hashed by the same",
+  "packages.adapters.config rule and counted together by the v1 ledger.",
+  "",
+  "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. `ModelPrice` is IMMUTABLE -- three",
+  "database rules refuse UPDATE, DELETE and TRUNCATE outright with the",
+  "privileges revoked from PUBLIC on top -- so a defect written into a price",
+  "card cannot be corrected afterwards, only superseded. And the port's hardest",
+  "promises are all about what does NOT happen: a listing must apply a",
+  "JavaScript comparator the database's own collation DISAGREES with, a touch",
+  "must NOT enlist in the caller's transaction and must NOT re-date the row, a",
+  "price clash must be refused rather than converted into an update, and a",
+  "catalogue pass must NOT un-hide a model an operator hid. None of that is",
+  "visible in a returned value on a store with one caller, which is exactly the",
+  "shape of guard a green suite hides.",
+  "",
+  "ONE ENTRY MAKES A GUARD STRICTER RATHER THAN LOOSER, AND IT IS DELIBERATE.",
+  "M-P43 makes `requireRateProvenance` symmetric, so an UNAVAILABLE rate",
+  "carrying a note about why it is unknown is refused by this store and accepted",
+  "by the database. `ModelPrice_rate_check` is one-directional and that is the",
+  "drift a constraints suite written only as 'the guard refuses what the CHECK",
+  "refuses' cannot see."
+ ],
+ "procedure": [
+  "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+  "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+  "failed to load its import and would have 'died' against any mutation at all,",
+  "including none. The driver runs each suite set UNMUTATED and refuses to sweep",
+  "unless it is green with a non-zero executed case count, and classifies a run",
+  "with no executed cases as VACUOUS rather than as a kill. That cleaning is not",
+  "hypothetical here either: `pnpm test:v1-foundation` runs `test:clean-v1`, and",
+  "this branch watched it remove every V1 project's dist mid-run.",
+  "",
+  "EACH ENTRY NAMES THE SUITE FILES IT IS SWEPT AGAINST, and the driver runs",
+  "only those. A mutation swept against the whole set would be slower and would",
+  "also hide the fact that a guard's only witness is a file nobody would think",
+  "to look in -- which is the fact the `suites` list is here to record.",
+  "",
+  "THE ADAPTER'S OWN SOURCE NEEDS NO REBUILD between edits: vitest transpiles",
+  "`packages/adapters/postgres-tenancy/src/**` on the fly. The CONTEXT packages",
+  "do -- the suites resolve `@platos/context-providers` through its package",
+  "`main` and its two published subpaths, which are dist/ -- and the",
+  "`postgres-tenancy-repository` CI job builds it for exactly that reason.",
+  "",
+  "RUN IT ON REAL PostgreSQL. Six of the seven suites start a container of their",
+  "own; an in-memory double cannot falsify a clause whose whole subject is what",
+  "the database does with it.",
+  "",
+  "THREE SWEEPS. THE FIRST SCORED 41 KILLED, 3 SURVIVED AND 0 VACUOUS, and every",
+  "one of the three was a real finding rather than a driver artefact:",
+  "  * M-P17's edit projected `SELECT 0` where the guard projects `SELECT 1`,",
+  "    inside an `EXISTS` -- which treats the two identically. The edit removed",
+  "    NOTHING, and a driver that could not tell a no-op edit from a surviving",
+  "    guard would have scored it the same way. It is recorded here rather than",
+  "    quietly repaired, and it is now the removal of the whole `OR EXISTS` block.",
+  "  * M-P16's clause is written out TWICE, once per half of the pin predicate,",
+  "    and the negative control seeded only the ROUTES -- so the memory",
+  "    configuration's copy had no witness at all. The control now seeds both",
+  "    sites, and the second copy has an entry of its own (M-P16b).",
+  "  * M-P18's environment clause had no witness because the only scoped case",
+  "    differed in all THREE ids, so the tenant clauses above it refused the read",
+  "    before the environment clause was consulted. A project with two",
+  "    environments is the ordinary shape that reaches it, and it is now a named",
+  "    case.",
+  "",
+  "THE SECOND SWEEP SCORED 46 KILLED, 1 SURVIVED, 0 VACUOUS, and the survivor",
+  "was the converse of the third finding above: with the environment clause",
+  "restored, the TENANT clauses had no witness, because the scoped case differed",
+  "in the environment too. The forged-ancestry case -- the right environment id",
+  "under the wrong organization and project -- now asks the pin count as well as",
+  "the four delegate reads.",
+  "",
+  "THE THIRD SWEEP SCORED 47 KILLED, 0 SURVIVED, 0 VACUOUS, every one by a NAMED",
+  "case rather than by an unnamed red, and the working tree was clean afterwards."
+ ],
+ "mutations": [
+  {
+   "name": "M-P01 keysIn: the domain order the port promises",
+   "file": "src/providers-keys.ts",
+   "from": "    return rows.map((row: ProviderKeyRow) => readProviderKey(row)).sort(byListingOrder);",
+   "to": "    return rows.map((row: ProviderKeyRow) => readProviderKey(row));",
+   "note": "The listing comes back in the planner's order. `byListingOrder` is a FOUR-key total order the port names explicitly, and the fixture inserts every key out of that order on purpose.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > the listing order was the domain's, tie-break included"
+   ]
+  },
+  {
+   "name": "M-P02 keysIn: the provider narrowing",
+   "file": "src/providers-keys.ts",
+   "from": "      where: { ...scopedWhere(scope), ...(provider === null ? {} : { provider }) },",
+   "to": "      where: { ...scopedWhere(scope) },",
+   "note": "`listProviderKeysFor` and a provider-filtered page return every key in the environment, so a caller asking which keys exist for anthropic is handed openai's as well.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > the steps that could agree by being empty did not"
+   ]
+  },
+  {
+   "name": "M-P03 keysIn: the scope predicate",
+   "file": "src/providers-keys.ts",
+   "from": "      where: { ...scopedWhere(scope), ...(provider === null ? {} : { provider }) },\n      select: KEY_COLUMNS,\n    });",
+   "to": "      where: { ...(provider === null ? {} : { provider }) },\n      select: KEY_COLUMNS,\n    });",
+   "note": "Every listing becomes installation-wide. The conformance run cannot see it -- it uses one scope throughout -- so the witness is the forged-ancestry case.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "the scope predicate is the whole ancestry, not the environment id > a caller holding another tenant's grant sees nothing, whatever id it supplies"
+   ]
+  },
+  {
+   "name": "M-P04 scopedWhere: the ancestry above the environment",
+   "file": "src/providers-keys.ts",
+   "from": "    environmentId: scope.environmentId,\n    environment: {\n      projectId: scope.projectId,\n      project: { organizationId: scope.organizationId },\n    },\n  };\n}\n\n/**\n * Which of `ProviderKey`'s rules refused",
+   "to": "    environmentId: scope.environmentId,\n  };\n}\n\n/**\n * Which of `ProviderKey`'s rules refused",
+   "note": "The predicate falls back to the environment id alone -- exactly what `InMemoryProvidersRepository` does -- so a caller holding one tenant's grant and another tenant's environment id is served.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "the scope predicate is the whole ancestry, not the environment id > a caller holding another tenant's grant sees nothing, whatever id it supplies"
+   ]
+  },
+  {
+   "name": "M-P05 pageProviderKeys: the page window guard",
+   "file": "src/providers-keys.ts",
+   "from": "      requirePageWindow(query.limit, query.offset);\n",
+   "to": "",
+   "note": "A negative `take` reaches the driver as an error rather than an empty page, and the port's signature says `number`.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "the instant and page-window guards > a negative page window is refused before it reaches skip and take"
+   ]
+  },
+  {
+   "name": "M-P06 pageProviderKeys: the credential name is searchable",
+   "file": "src/providers-keys.ts",
+   "from": "              [key.provider, key.label, key.credentialName].some((field) =>",
+   "to": "              [key.provider, key.label].some((field) =>",
+   "note": "The port names three searchable fields. A surface search for the credential a key points at finds nothing.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > their transcripts match, observation for observation"
+   ]
+  },
+  {
+   "name": "M-P07 pageProviderKeys: the search is case-insensitive",
+   "file": "src/providers-keys.ts",
+   "from": "      const needle = query.search === null ? null : query.search.toLowerCase();",
+   "to": "      const needle = query.search;",
+   "note": "An operator typing a provider name in capitals gets an empty page.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > the steps that could agree by being empty did not"
+   ]
+  },
+  {
+   "name": "M-P08 pageProviderKeys: the total is the MATCH count, not the page's",
+   "file": "src/providers-keys.ts",
+   "from": "        items: matched.slice(query.offset, query.offset + query.limit),\n        total: matched.length,",
+   "to": "        items: matched.slice(query.offset, query.offset + query.limit),\n        total: matched.slice(query.offset, query.offset + query.limit).length,",
+   "note": "The surface renders `total` beside the page; a total equal to the page size says there is nothing on the next page when there is.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > the steps that could agree by being empty did not"
+   ]
+  },
+  {
+   "name": "M-P09 findProviderKey: the scope in the WHERE",
+   "file": "src/providers-keys.ts",
+   "from": "        where: { id: providerKeyId, ...scopedWhere(scope) },\n        select: KEY_COLUMNS,",
+   "to": "        where: { id: providerKeyId },\n        select: KEY_COLUMNS,",
+   "note": "A key that exists in another environment is RETURNED rather than absent, which is the cross-tenant read the port's own header forbids.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > a key that exists in another environment was ABSENT, not returned"
+   ]
+  },
+  {
+   "name": "M-P10 insertProviderKey: the savepoint around a refusable write",
+   "file": "src/providers-keys.ts",
+   "from": "      const written = await providersRefusable(\n        client,\n        () => client.providerKey.create({ data: writeProviderKey(key), select: KEY_COLUMNS }),\n        keyRefusal,\n      );",
+   "to": "      const written = await providersRefusable(\n        { $executeRawUnsafe: async () => 0 },\n        () => client.providerKey.create({ data: writeProviderKey(key), select: KEY_COLUMNS }),\n        keyRefusal,\n      );",
+   "note": "The refusal is still classified and the transaction is still aborted, so a caller told `PROVIDERS_KEY_ALREADY_EXISTS` silently loses every write it had already made -- which on this port is the DEMOTION that made room for the insert.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "ProviderKey_credential_provider_integrity > the refusal left the caller's transaction usable"
+   ]
+  },
+  {
+   "name": "M-P11 uniqueRefusal: the identifier read that comes first",
+   "file": "src/providers-keys.ts",
+   "from": "    if (excluding === null) {\n      const held = await client.providerKey.findFirst({\n        where: { id: key.providerKeyId },\n        select: { id: true },\n      });",
+   "to": "    if (excluding !== null) {\n      const held = await client.providerKey.findFirst({\n        where: { id: key.providerKeyId },\n        select: { id: true },\n      });",
+   "note": "A caller minting an identifier already in use is told its LABEL was taken, and an operator renames a key that is not the problem.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "WHICH unique index refused, established by reading > an identifier already in use is NOT reported as a label conflict"
+   ]
+  },
+  {
+   "name": "M-P12 uniqueRefusal: the row being updated is not in conflict with itself",
+   "file": "src/providers-keys.ts",
+   "from": "        ...(excluding === null ? {} : { id: { not: excluding } }),",
+   "to": "",
+   "note": "An UPDATE that violates the PARTIAL default index finds its own label and reports a label conflict -- the right refusal for the wrong reason.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "WHICH unique index refused, established by reading > a key claiming a second default is told about the DEFAULT, not its own label"
+   ]
+  },
+  {
+   "name": "M-P13 updateProviderKey: the environment in the WHERE",
+   "file": "src/providers-keys.ts",
+   "from": "        () => client.providerKey.updateMany({ where: { id, environmentId }, data: mutable }),",
+   "to": "        () => client.providerKey.updateMany({ where: { id }, data: mutable }),",
+   "note": "A caller holding a key from another tenant can edit its LABEL. No database rule refuses that: `ProviderKey_owner_immutable` freezes the environment and says nothing about the rest of the row.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "ProviderKey_owner_immutable > the store cannot reach that rule at all, and that is the claim"
+   ]
+  },
+  {
+   "name": "M-P14 deleteProviderKey: the scope predicate",
+   "file": "src/providers-keys.ts",
+   "from": "          client.providerKey.deleteMany({\n            where: { id: providerKeyId, ...scopedWhere(scope) },\n          }),",
+   "to": "          client.providerKey.deleteMany({\n            where: { id: providerKeyId },\n          }),",
+   "note": "A key is deletable from any scope that can name its id.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > a key that exists in another environment was ABSENT, not returned"
+   ]
+  },
+  {
+   "name": "M-P15 deleteProviderKey: the count is READ rather than invented",
+   "file": "src/providers-keys.ts",
+   "from": "        const pinned = await pinnedBy(scope, providerKeyId);\n        return err(providerKeyPinnedByAgents(providerKeyId, pinned));",
+   "to": "        return err(providerKeyPinnedByAgents(providerKeyId, 1));",
+   "note": "The refusal carries a number the rule never reported. An operator told `1` when three versions pin the key fixes one and is refused again.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "reject_executable_provider_key_delete > a key pinned through modelRoutes cannot be deleted, and the count is truthful"
+   ]
+  },
+  {
+   "name": "M-P16 pinnedBy: the provider clause the memoryConfig half carries",
+   "file": "src/providers-keys.ts",
+   "from": "             version.\"memoryConfig\" #>> '{__runtime,providerKeyId}' = key.\"id\"::text\n             AND split_part(version.\"model\", ':', 1) = key.\"provider\"",
+   "to": "             version.\"memoryConfig\" #>> '{__runtime,providerKeyId}' = key.\"id\"::text",
+   "note": "A version whose MEMORY CONFIGURATION names this key beside ANOTHER provider's model is counted as a use of it, and a delete the database would allow is refused. The first sweep scored this SURVIVED: the negative control seeded only the routes, so the memory half's copy of the clause had no witness at all. The control now seeds both sites.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "reject_executable_provider_key_delete > a version naming ANOTHER provider's model pins nothing, in EITHER place"
+   ]
+  },
+  {
+   "name": "M-P16b pinnedBy: the provider clause the modelRoutes half carries",
+   "file": "src/providers-keys.ts",
+   "from": "              WHERE split_part(COALESCE(route ->> 'model', ''), ':', 1) = key.\"provider\"\n                AND (",
+   "to": "              WHERE (",
+   "note": "The clause is written out TWICE, once per half, and this is the second copy: a ROUTE that carries this key's id beside another provider's model is counted as a use of it.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "reject_executable_provider_key_delete > a version naming ANOTHER provider's model pins nothing, in EITHER place"
+   ]
+  },
+  {
+   "name": "M-P17 pinnedBy: the modelRoutes half",
+   "file": "src/providers-keys.ts",
+   "from": "           OR EXISTS (\n             SELECT 1\n               FROM jsonb_array_elements(version.\"modelRoutes\") route\n              WHERE split_part(COALESCE(route ->> 'model', ''), ':', 1) = key.\"provider\"\n                AND (\n                  route ->> 'providerCredentialId' = key.\"id\"::text\n                  OR route ->> 'providerKeyId' = key.\"id\"::text\n                )\n           )\n",
+   "to": "",
+   "note": "The routes array stops being walked at all, so a key pinned by a route counts ZERO: the store says the delete is safe and the database refuses it. The first sweep's edit for this entry projected `SELECT 0` instead of `SELECT 1`, which `EXISTS` treats identically -- a no-op the driver could not tell from a surviving guard, and the one kind of ledger defect a sweep reports as a finding rather than repairing quietly.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "reject_executable_provider_key_delete > a key pinned through modelRoutes cannot be deleted, and the count is truthful"
+   ]
+  },
+  {
+   "name": "M-P17b pinnedBy: BOTH spellings of the route's identifier",
+   "file": "src/providers-keys.ts",
+   "from": "                  route ->> 'providerCredentialId' = key.\"id\"::text\n                  OR route ->> 'providerKeyId' = key.\"id\"::text",
+   "to": "                  route ->> 'providerKeyId' = key.\"id\"::text",
+   "note": "The rule accepts `providerCredentialId` -- the extraction source's spelling -- as well as `providerKeyId`. A store reading only the current one agrees with the rule on every key written by the release it was built against and disagrees on every key written by the other, and both spellings are live in one database the day an upgrade lands.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "reject_executable_provider_key_delete > a key pinned through the LEGACY route field is refused too"
+   ]
+  },
+  {
+   "name": "M-P18 pinnedBy: the ENVIRONMENT clause, below the tenant",
+   "file": "src/providers-keys.ts",
+   "from": "         AND environment.\"id\" = ${scope.environmentId}::uuid\n",
+   "to": "",
+   "note": "A project with TWO environments is the ordinary shape that reaches this clause: without it, an operator asking about a key from the staging environment is told the production environment's versions pin it. The first sweep scored this SURVIVED because the only scoped case differed in all three ids, so the tenant clauses refused it before this one was consulted.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "reject_executable_provider_key_delete > and scoped to the ENVIRONMENT, not just to the tenant above it"
+   ]
+  },
+  {
+   "name": "M-P18b pinnedBy: the tenant clauses above the environment",
+   "file": "src/providers-keys.ts",
+   "from": "         AND environment.\"projectId\" = ${scope.projectId}::uuid\n         AND project.\"organizationId\" = ${scope.organizationId}::uuid\n",
+   "to": "",
+   "note": "The count stops being anchored to the caller's TENANT and stays anchored only to the environment id the caller supplied -- so a caller holding one tenant's grant and another tenant's environment id is served. It is the same ancestry argument `scopedWhere` makes for the delegate reads, in the one read that could not use it: this is hand-written SQL, so the clauses are spelled out rather than folded in by the driver. The first sweep scored this SURVIVED because the only scoped case differed in the environment too, and the environment clause alone refused it.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "the scope predicate is the whole ancestry, not the environment id > a caller holding another tenant's grant sees nothing, whatever id it supplies"
+   ]
+  },
+  {
+   "name": "M-P19 touchProviderKey: the POOL rather than the ambient transaction",
+   "file": "src/providers-keys.ts",
+   "from": "      await transactions.pool().$executeRaw`",
+   "to": "      await transactions.reader().$executeRaw`",
+   "note": "The bookkeeping write joins the caller's unit of work, so a turn that fails rolls back the record that the key was used -- which is the enlistment the port forbids in its own words.",
+   "suites": [
+    "src/providers-transaction.integration.test.ts"
+   ],
+   "kills": [
+    "touchProviderKey is outside the caller's unit of work > the timestamp survives a transaction that rolled everything else back"
+   ]
+  },
+  {
+   "name": "M-P20 touchProviderKey: ONE column, because `updatedAt` is `@updatedAt`",
+   "file": "src/providers-keys.ts",
+   "from": "      await transactions.pool().$executeRaw`\n        UPDATE \"ProviderKey\" SET \"lastUsedAt\" = ${usedAt} WHERE \"id\" = ${providerKeyId}::uuid\n      `;",
+   "to": "      await transactions.pool().providerKey.updateMany({\n        where: { id: providerKeyId },\n        data: { lastUsedAt: usedAt },\n      });",
+   "note": "The client sets `updatedAt` on every delegate write, so a read-path touch re-dates the row and an operator reading that column to find out when a key was last CHANGED is told when it was last USED.",
+   "suites": [
+    "src/providers-transaction.integration.test.ts"
+   ],
+   "kills": [
+    "touchProviderKey is outside the caller's unit of work > the timestamp survives a transaction that rolled everything else back"
+   ]
+  },
+  {
+   "name": "M-P21 listProviderLinks: the total order an unordered read does not have",
+   "file": "src/providers-links.ts",
+   "from": "        select: LINK_COLUMNS,\n        orderBy: { providerId: \"asc\" },",
+   "to": "        select: LINK_COLUMNS,",
+   "note": "The adoption list comes back in the planner's order, so a page an operator reads beside the manifest catalogue moves between loads.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "EnvironmentProvider, where the double and the database part company > the store's own link order is total and does not depend on insertion order"
+   ]
+  },
+  {
+   "name": "M-P22 findProviderLink: the scope predicate",
+   "file": "src/providers-links.ts",
+   "from": "        where: { providerId: provider, ...scopedWhere(scope) },\n        select: LINK_COLUMNS,\n      });\n      return ok(row === null ? null : readProviderLink(row));",
+   "to": "        where: { providerId: provider },\n        select: LINK_COLUMNS,\n      });\n      return ok(row === null ? null : readProviderLink(row));",
+   "note": "An adoption in another tenant's environment is returned as this one's.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > a key that exists in another environment was ABSENT, not returned"
+   ]
+  },
+  {
+   "name": "M-P23 upsertProviderLink: the identity and the original adoption date",
+   "file": "src/providers-links.ts",
+   "from": "        update: { enabled: row.enabled, updatedAt: row.updatedAt },",
+   "to": "        update: row,",
+   "note": "Re-adopting a provider MOVES the row's identity and re-dates `linkedAt`, so `EnvironmentProvider.id` stops being stable and 'adopted since' becomes 'last touched'.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "EnvironmentProvider, where the double and the database part company > a second adoption keeps the STORED identity and the ORIGINAL linkedAt"
+   ]
+  },
+  {
+   "name": "M-P24 upsertProviderLink: the row as it NOW stands",
+   "file": "src/providers-links.ts",
+   "from": "      return ok(readProviderLink(written));",
+   "to": "      return ok(link);",
+   "note": "The caller is handed the draft it passed rather than the stored row, so a careless second adoption is told its invented identity took.",
+   "suites": [
+    "src/providers-rules.integration.test.ts"
+   ],
+   "kills": [
+    "EnvironmentProvider, where the double and the database part company > a second adoption keeps the STORED identity and the ORIGINAL linkedAt"
+   ]
+  },
+  {
+   "name": "M-P25 deleteProviderLink: the scope predicate",
+   "file": "src/providers-links.ts",
+   "from": "      const removed = await client.environmentProvider.deleteMany({\n        where: { providerId: provider, ...scopedWhere(scope) },\n      });",
+   "to": "      const removed = await client.environmentProvider.deleteMany({\n        where: { providerId: provider },\n      });",
+   "note": "One tenant unadopting a provider unadopts it for every tenant that shares the id.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > a key that exists in another environment was ABSENT, not returned"
+   ]
+  },
+  {
+   "name": "M-P26 upsertModel: the operator's `isHidden` is not a catalogue fact",
+   "file": "src/providers-catalogue.ts",
+   "from": "            update: { ...written, capabilities: { set: [...written.capabilities] } },",
+   "to": "            update: { ...written, isHidden: false, capabilities: { set: [...written.capabilities] } },",
+   "note": "Every catalogue pass un-hides every model an operator has hidden, and nothing else in the tree ever writes that column.",
+   "suites": [
+    "src/providers-catalogue-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "isHidden is an operator's decision and not a catalogue fact > a catalogue pass over a hidden model leaves it hidden"
+   ]
+  },
+  {
+   "name": "M-P27 upsertModel: the SECOND identity the port does not model",
+   "file": "src/providers-catalogue.ts",
+   "from": "          if (namesConstraint(error, \"provider,name\") || namesConstraint(error, \"Model_provider_name_key\")) {",
+   "to": "          if (namesConstraint(error, \"Model_key_key\")) {",
+   "note": "`@@unique([provider, name])` escapes as a rejected promise instead of a refusal, so an alias published beside its target crashes the catalogue ingest.",
+   "suites": [
+    "src/providers-catalogue-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "Model's SECOND identity, which the port does not model > two keys resolving to one provider and name are refused"
+   ]
+  },
+  {
+   "name": "M-P28 insertPrice: the append-only clash is the port's own code",
+   "file": "src/providers-catalogue.ts",
+   "from": "            return priceRevisionConflict(modelId, card.effectiveFrom.toISOString());",
+   "to": "            return repositoryUnavailable(\"price already exists\");",
+   "note": "A caller matching on `PROVIDERS_PRICE_REVISION_CONFLICT` -- which the port's documentation requires it to answer -- is handed a code it does not recognise.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > the append-only price ledger refused a second card at one instant"
+   ]
+  },
+  {
+   "name": "M-P29 insertPrice: the model foreign key",
+   "file": "src/providers-catalogue.ts",
+   "from": "          if (sqlstateOf(error) === FOREIGN_KEY_VIOLATION) {\n            return repositoryUnavailable(\"no such model\");\n          }",
+   "to": "",
+   "note": "A card for a model that does not exist escapes as a rejected promise rather than a refusal.",
+   "suites": [
+    "src/providers-catalogue-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "Model's SECOND identity, which the port does not model > a card for a model that does not exist is refused by the foreign key"
+   ]
+  },
+  {
+   "name": "M-P30 findLatestPrice: NEWEST, and the order that decides it",
+   "file": "src/providers-catalogue.ts",
+   "from": "        select: PRICE_COLUMNS,\n        orderBy: { effectiveFrom: \"desc\" },",
+   "to": "        select: PRICE_COLUMNS,\n        orderBy: { effectiveFrom: \"asc\" },",
+   "note": "`ingest-rate-card.ts` compares a candidate against the latest card to decide whether it says anything new; comparing against the OLDEST re-appends a card that is already superseded.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > their transcripts match, observation for observation"
+   ]
+  },
+  {
+   "name": "M-P31 findPricesForKeys: the in-force clause",
+   "file": "src/providers-catalogue.ts",
+   "from": "         WHERE price.\"effectiveFrom\" <= ${at}\n           AND model.\"key\" = ANY(${[...keys]}::text[])",
+   "to": "         WHERE model.\"key\" = ANY(${[...keys]}::text[])",
+   "note": "A card dated in the FUTURE prices a turn that ran before it. `price-card.ts` exists to make an announced price change loadable ahead of time without repricing everything that runs before it.",
+   "suites": [
+    "src/providers-conformance.integration.test.ts"
+   ],
+   "kills": [
+    "the PostgreSQL providers store against the in-memory double > their transcripts match, observation for observation"
+   ]
+  },
+  {
+   "name": "M-P32 findPricesForKeys: ONE statement for any number of keys",
+   "file": "src/providers-catalogue.ts",
+   "from": "      const rows = await transactions.reader().$queryRaw<readonly JoinedPriceRow[]>`",
+   "to": "      const rows: readonly JoinedPriceRow[] = (\n        await Promise.all(\n          [...keys].map((one) =>\n            transactions.reader().$queryRaw<readonly JoinedPriceRow[]>`\n              SELECT price.\"id\", price.\"modelId\", price.\"effectiveFrom\",\n                     price.\"inputRate\", price.\"outputRate\", price.\"cacheReadRate\", price.\"cacheWriteRate\",\n                     price.\"inputSource\", price.\"outputSource\",\n                     price.\"cacheReadSource\", price.\"cacheWriteSource\",\n                     price.\"inputObservedAt\", price.\"outputObservedAt\",\n                     price.\"cacheReadObservedAt\", price.\"cacheWriteObservedAt\",\n                     price.\"inputSourceRef\", price.\"outputSourceRef\",\n                     price.\"cacheReadSourceRef\", price.\"cacheWriteSourceRef\",\n                     model.\"key\" AS \"modelKey\",\n                     model.\"provider\" AS \"modelProvider\",\n                     model.\"name\" AS \"modelName\"\n                FROM \"ModelPrice\" price\n                JOIN \"Model\" model ON model.\"id\" = price.\"modelId\"\n               WHERE price.\"effectiveFrom\" <= ${at}\n                 AND model.\"key\" = ${one}\n            `,\n          ),\n        )\n      ).flat();\n      const unusedRows = await transactions.reader().$queryRaw<readonly JoinedPriceRow[]>`",
+   "note": "The join becomes ONE STATEMENT PER KEY. `model-key.ts` produces up to four candidate keys for one model string and this read is asked once per priced step, so the cost of pricing a turn grows with how many ways its model can be named.",
+   "suites": [
+    "src/providers-statements.integration.test.ts"
+   ],
+   "kills": [
+    "every read costs the same over a small environment and a large one > each read's statement count matches its pin, over BOTH sizes"
+   ]
+  },
+  {
+   "name": "M-P33 readRate: an unknown rate source is not collapsed",
+   "file": "src/providers-rows.ts",
+   "from": "  const source = String(row[columns.source]);\n  if (!isRateSource(source)) {",
+   "to": "  const source = isRateSource(String(row[columns.source]))\n    ? String(row[columns.source])\n    : \"UNAVAILABLE\";\n  if (false) {",
+   "note": "A source a LATER release wrote is read as `UNAVAILABLE`, and `chargeableRate` then refuses to bill a rate that is perfectly well known -- or, worse, bills zero for a token count of zero and hides the disagreement.",
+   "suites": [
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "a row this binary cannot read RAISES rather than guessing > an unknown rate source is not collapsed to UNAVAILABLE"
+   ]
+  },
+  {
+   "name": "M-P34 readRate: an unparseable decimal is not read as zero",
+   "file": "src/providers-rows.ts",
+   "from": "  const parsed = rateFromDecimalString(String(raw));\n  if (!parsed.ok) {",
+   "to": "  const parsed = rateFromDecimalString(String(raw));\n  if (false) {",
+   "note": "A rate column the type refuses becomes ZERO, which is exactly the silent free turn `price-card.ts`'s \"`UNAVAILABLE` IS NOT ZERO\" note exists to prevent.",
+   "suites": [
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "a row this binary cannot read RAISES rather than guessing > a decimal the rate type refuses is not read as zero"
+   ]
+  },
+  {
+   "name": "M-P35 readModel: the capabilities are copied, not handed out",
+   "file": "src/providers-rows.ts",
+   "from": "    capabilities: [...row.capabilities],",
+   "to": "    capabilities: row.capabilities,",
+   "note": "A caller holding the decoded model holds a handle on the driver's own array, so mutating a `readonly string[]` through a cast reaches back into the row.",
+   "suites": [
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "the Model crossing > the read hands back a COPY of the capabilities, not the row's own array"
+   ]
+  },
+  {
+   "name": "M-P36 writeRateBook: the rate range guard",
+   "file": "src/providers-rows.ts",
+   "from": "    requireRateInDomain(`ModelPrice.${columns.rate}`, entry.rate.picoUsdPerToken);\n",
+   "to": "",
+   "note": "A negative rate, or one wider than `Decimal(24, 12)`, reaches the driver. `tokenRate()` refuses both and a `TokenRate` is a plain readonly object, so a literal never went near the constructor.",
+   "suites": [
+    "src/providers-catalogue-constraints.integration.test.ts",
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "ModelPrice_rate_check > the guard refuses a rate outside the Decimal(24, 12) domain",
+    "the ModelPrice crossing > a rate outside the Decimal(24, 12) domain is refused at either end"
+   ]
+  },
+  {
+   "name": "M-P37 writeRateBook: the provenance clause of the rate CHECK",
+   "file": "src/providers-rows.ts",
+   "from": "    requireRateProvenance(`ModelPrice.${columns.sourceRef}`, entry.source, entry.sourceRef);\n",
+   "to": "",
+   "note": "A KNOWN rate that names no source reaches the database and is refused there instead -- with a constraint name and a SQLSTATE, and with the caller's transaction aborted.",
+   "suites": [
+    "src/providers-catalogue-constraints.integration.test.ts",
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "ModelPrice_rate_check > the guard refuses a KNOWN rate that names no source",
+    "the ModelPrice crossing > a KNOWN rate with no source reference is refused, and an UNAVAILABLE one is not"
+   ]
+  },
+  {
+   "name": "M-P38 writeProviderKey: the uuid columns",
+   "file": "src/providers-rows.ts",
+   "from": "    id: requireUuid(\"ProviderKey.id\", key.providerKeyId),",
+   "to": "    id: key.providerKeyId,",
+   "note": "`ProviderKey.id` is `@db.Uuid` and PostgreSQL PARSES the value; a value that is not one fails somewhere in the driver with no column on it.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts",
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "the uuid guard and the uuid columns behind it > the guard refuses a value that is not a uuid",
+    "the ProviderKey crossing > a uuid column refuses a value that is not one, and names the column"
+   ]
+  },
+  {
+   "name": "M-P39 writeModelFacts: the INTEGER columns",
+   "file": "src/providers-rows.ts",
+   "from": "    contextWindow: requireModelIntegerOrNull(\"Model.contextWindow\", facts.contextWindow),",
+   "to": "    contextWindow: facts.contextWindow,",
+   "note": "A catalogue publishing a context window in BYTES reaches an INTEGER column, and the refusal names neither the column nor the value.",
+   "suites": [
+    "src/providers-catalogue-constraints.integration.test.ts",
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "Model's two INTEGER columns > the guard refuses a context window the column cannot hold",
+    "the Model crossing > a context window the INTEGER column cannot hold is refused"
+   ]
+  },
+  {
+   "name": "M-P40 writeProviderKey: the instant guard",
+   "file": "src/providers-rows.ts",
+   "from": "    createdAt: requireInstant(\"ProviderKey.createdAt\", key.createdAt),",
+   "to": "    createdAt: key.createdAt,",
+   "note": "`new Date(\"nonsense\")` is a `Date`, satisfies the port's type, and reaches the driver as `NaN`.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts",
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "the instant and page-window guards > an Invalid Date is refused before it reaches the driver",
+    "the ProviderKey crossing > an Invalid Date is refused with the column that carried it"
+   ]
+  },
+  {
+   "name": "M-P41 requireUuid: the canonical form and nothing else",
+   "file": "src/providers-guards.ts",
+   "from": "const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;",
+   "to": "const UUID = /[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/u;",
+   "note": "The braced and `urn:uuid:` forms are admitted. The column stores the UNWRAPPED value, so a later read does not compare equal to the string the caller wrote and `findProviderKey` misses a row it has just inserted.",
+   "suites": [
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "the ProviderKey crossing > the braced and urn forms of a uuid are refused too"
+   ]
+  },
+  {
+   "name": "M-P42 requirePageWindow: a limit of zero is not a page",
+   "file": "src/providers-guards.ts",
+   "from": "  if (!Number.isSafeInteger(limit) || limit <= 0) {",
+   "to": "  if (!Number.isSafeInteger(limit) || limit < 0) {",
+   "note": "A limit of zero reaches `take: 0`, which the driver reads as 'no limit' -- so the page a caller asked for NOTHING from comes back whole.",
+   "suites": [
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "the page window > a non-positive limit and a negative offset are refused separately"
+   ]
+  },
+  {
+   "name": "M-P43 requireRateProvenance: the rule is one-directional",
+   "file": "src/providers-guards.ts",
+   "from": "  if (source !== \"UNAVAILABLE\" && sourceRef === null) {",
+   "to": "  if ((source !== \"UNAVAILABLE\") !== (sourceRef !== null)) {",
+   "note": "The guard becomes STRICTER than the CHECK: an UNAVAILABLE rate carrying a note about why it is unknown is refused by this store and accepted by the database. That is the drift a constraints suite written only as 'the guard refuses what the CHECK refuses' cannot see.",
+   "suites": [
+    "src/providers-rows.test.ts"
+   ],
+   "kills": [
+    "the ModelPrice crossing > a KNOWN rate with no source reference is refused, and an UNAVAILABLE one is not"
+   ]
+  },
+  {
+   "name": "M-P44 providersRefusable: an unrecognised refusal is RETHROWN",
+   "file": "src/providers-guards.ts",
+   "from": "    const refusal = classify(error);\n    if (refusal === null) throw error;",
+   "to": "    const refusal = classify(error);\n    if (refusal === null) return { ok: false, refusal: \"unique\" as unknown as Refusal };",
+   "note": "Every future constraint is filed under one refusal nothing can tell apart, and a defect reaches the caller as a business outcome.",
+   "suites": [
+    "src/providers-constraints.integration.test.ts"
+   ],
+   "kills": [
+    "the uuid guard and the uuid columns behind it > the guard refuses a value that is not a uuid"
+   ]
+  }
+ ]
+}

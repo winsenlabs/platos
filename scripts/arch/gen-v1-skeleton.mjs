@@ -118,6 +118,19 @@ export const ADAPTERS = [
       // `PostgresTenancyAdapter["secretsVariables"]`.
       { port: "SecretsRepository", owner: "secrets" },
       { port: "EnvironmentVariableRepository", owner: "secrets" },
+      // WIN-258 T5 adds the NINTH. `providers` owns four canonical rows in that
+      // same database — `ProviderKey`, `EnvironmentProvider`, `Model` and
+      // `ModelPrice` — and publishes ONE canonical-store port over all four.
+      //
+      // IT IS SATISFIED BY THE ADAPTER ITSELF rather than by a property: its
+      // eighteen method names collide with nothing the directory already
+      // publishes, so `PostgresTenancyAdapter extends ProvidersRepository`
+      // resolves directly. The context's two OTHER ports get no row here and
+      // that is a claim rather than an omission: `ModelRouter` already has one,
+      // on `model-router-providers` below, and `ProviderProbeCache` is a
+      // five-minute memo of what a provider said, which §13's map has no home
+      // for and which no canonical store should hold.
+      { port: "ProvidersRepository", owner: "providers" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -245,8 +258,17 @@ export function adapterOwnerPackages(adapter) {
 // unmoved through all of it, which is the whole point of pinning the two
 // separately: another owner is a row on an existing directory, not a thirteenth
 // package holding a second PostgreSQL client.
+//
+// 30 -> 31 (WIN-258 T5). `providers` adds ONE canonical-store binding,
+// `ProvidersRepository`, over the four rows of ADR M0.3 §1 row 4. It is the
+// NINTH owner of the one PostgreSQL client and the only one of tranche 5's
+// stores whose port needed no property at all: its eighteen method names are
+// disjoint from every other port this directory satisfies, so the composition
+// root proves it against the adapter itself. EXPECTED_ADAPTER_COUNT is unmoved
+// again, and for the ninth time that is the point of pinning the two
+// separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 30;
+export const EXPECTED_BINDING_COUNT = 31;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -321,7 +343,21 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `conversations` already depending on `secrets`. The independent expectation in
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 102;
+//
+// 102 -> 103 (WIN-258 T5, a NINTH owner). `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/providers`, for that context's `ProvidersRepository`
+// over the four rows of §1 row 4. ONE edge carrying ONE binding: `providers`
+// publishes a single canonical-store port over all four, and its other two
+// ports belong elsewhere — `ModelRouter` to `model-router-providers` and
+// `ProviderProbeCache` to no adapter at all.
+//
+// IT CANNOT CREATE A CYCLE, and this is the one owner edge where that needed
+// checking rather than asserting: `providers` DEPENDS on `secrets`, which is
+// already an owner of the same directory. A cycle would need `secrets` to
+// depend on `providers`, and the §1 DAG has it depending on the kernel alone —
+// so the two owner edges are parallel rather than circular and the 17-context
+// DAG is untouched.
+export const EXPECTED_EDGE_COUNT = 103;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -454,6 +490,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/cost-monitoring", // WIN-258 T5 — measured against InMemoryBudgetRepository by packages/adapters/postgres-tenancy
   "packages/contexts/channels", // WIN-258 T5 — measured against InMemoryChannelsRepository by packages/adapters/postgres-tenancy
   "packages/contexts/governance", // WIN-258 T5 — its FIVE doubles are the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/providers", // WIN-258 T5 — measured against InMemoryProvidersRepository by packages/adapters/postgres-tenancy
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
@@ -463,6 +500,13 @@ export const TESTING_ENTRY_PROJECTS = [
 // list again would reproduce exactly that. `agents` is absent on purpose: it
 // publishes its doubles from `application/index.js`, so it is on
 // APPLICATION_ENTRY_PROJECTS above instead.
+//
+// `providers` is the FOURTH, and it is the entry whose absence would have been
+// hardest to see: `InMemoryProvidersRepository` is already published from
+// `application/testing/index.js` FOR THE CONTEXTS DOWNSTREAM OF IT — its own
+// header names `agents`, `tools`, `memory`, `cost-monitoring` and
+// `conversations` — so the file existed, the export map did not, and the suite
+// that needs it is in an adapter rather than in a context.
 //
 // `governance` is the third, and it needs the entry more than either: its
 // conformance differential is measured against FIVE doubles at once —
