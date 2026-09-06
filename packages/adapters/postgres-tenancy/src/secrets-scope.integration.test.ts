@@ -254,6 +254,60 @@ describe("the purge sweep's eligibility clauses", () => {
     expect(purged).toEqual({ ok: true, value: 0 });
   });
 
+  test("a RETIRED envelope that is still the credential's active one is untouchable", async () => {
+    // THE STATE THE `activeSecretVersionId IS DISTINCT FROM` CLAUSE EXISTS FOR,
+    // and the only way to reach it: a rotation that retired the old envelope and
+    // did not live to repoint the credential. `retiredAt IS NOT NULL` alone lets
+    // it through, which is why the first sweep of this store's ledger found BOTH
+    // copies of the clause — the candidate list's and the delete's — surviving
+    // against a fixture where the active envelope was simply never retired.
+    const credentialId = fresh();
+    const versionId = fresh();
+    await inTransaction(async (transaction) => {
+      await harness.repository.insertCredential(
+        credentialDraft({
+          id: credentialId,
+          environmentId,
+          kind: "ENTITY_SECRET",
+          name: "RETIRED_AND_ACTIVE",
+        }),
+        transaction,
+      );
+      await harness.repository.insertSecretVersion(
+        versionDraft({ id: versionId, credentialId, secretRevision: 1, rootKeyVersion: 1, fill: 0xa2 }),
+        transaction,
+      );
+      await harness.repository.setActiveSecretVersion(
+        credentialIdOf(credentialId),
+        versionIdOf(versionId),
+        AT,
+        transaction,
+      );
+      await harness.repository.retireSecretVersion(versionIdOf(versionId), LATER, null, transaction);
+    });
+    // Old enough, retired, inside no retention window — and STILL not a
+    // candidate, because the credential points at it.
+    expect(await candidateIds()).not.toContain(versionId);
+    // And the delete re-checks the same clause. Without it
+    // `Credential_activeSecretVersionId_id_fkey` — ON DELETE RESTRICT — raises
+    // 23503 mid-batch with the transaction already poisoned, instead of
+    // reporting zero.
+    const purged = await inTransaction((transaction) =>
+      harness.repository.purgeSecretVersion(
+        {
+          secretVersionId: versionIdOf(versionId),
+          credentialId: credentialIdOf(credentialId),
+          environmentId,
+          secretRevision: revisionOf(1),
+          rootKeyVersion: rootKeyOf(1),
+        },
+        CUTOFF,
+        transaction,
+      ),
+    );
+    expect(purged).toEqual({ ok: true, value: 0 });
+  });
+
   test("the sweep holds its candidates against a second sweep", async () => {
     await retiredEnvelope(environmentId, "LOCKED_CANDIDATE", LATER, null);
     const trace: string[] = [];

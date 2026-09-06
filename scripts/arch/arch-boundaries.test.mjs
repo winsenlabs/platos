@@ -762,7 +762,7 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               through a crashed `beforeAll`. It imports what every other
     //               suite in the directory imports, so `tenancy-prisma-only` is
     //               measured against one more file and still holds.
-    //  1276 -> 1294 +18: WIN-258 TRANCHE 5, `secrets`' canonical store, in that
+    //  1276 -> 1295 +19: WIN-258 TRANCHE 5, `secrets`' canonical store, in that
     //               SAME one ORM home. Fifteen files, all under
     //               `packages/adapters/postgres-tenancy/src/`: nine source (the
     //               guards, the row readers, the credential store, the envelope
@@ -780,11 +780,11 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               named properties on the one adapter rather than a thirteenth
     //               package with a second client.
     // ALL FOUR TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 + 18 = 1294. No branch's own
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 19 = 1295. No branch's own
     //               figure is right merged, and taking any one alone
     //               under-counts the others by their whole tranche.
-    assert.equal(result.fileCount, 1294, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 18);
+    assert.equal(result.fileCount, 1295, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 19);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

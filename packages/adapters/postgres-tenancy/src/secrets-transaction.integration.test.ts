@@ -182,6 +182,24 @@ describe("the three transaction-scope refusals, told apart", () => {
     ).rejects.toMatchObject({ code: TRANSACTION_NOT_OPEN });
   });
 
+  test("the ROW LOCK is refused outside a transaction, not taken on the pool", async () => {
+    // `loadForUpdate` is a READ that resolves through `writer(scope)`, and this
+    // is the case that says why. `FOR UPDATE` is TRANSACTION-scoped: taken on a
+    // pooled connection it is released the instant the statement returns, the
+    // call succeeds, and the race the lock exists to close is wide open.
+    // WIN-258 T5's first mutation sweep proved the point the hard way — swapping
+    // `writer(transaction)` for `reader()` left the serialisation case GREEN,
+    // because inside a transaction `reader()` resolves to the same ambient
+    // client. Only a call from OUTSIDE one can tell the two apart.
+    await expect(
+      harness.repository.loadForUpdate(
+        environmentId,
+        credentialIdOf(fresh()),
+        { transactionId: "pg-txn-nonexistent" } as unknown as TransactionScope,
+      ),
+    ).rejects.toMatchObject({ code: TRANSACTION_NOT_OPEN });
+  });
+
   test("a write carrying a finished transaction's token is scope_unknown", async () => {
     let stale: TransactionScope | null = null;
     await harness.base.adapter.unitOfWork.run(async (transaction) => {

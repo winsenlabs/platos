@@ -55,9 +55,15 @@ beforeAll(async () => {
   harness = await startSecretsHarness();
   environmentId = await harness.freshEnvironment();
   ids = {
-    alphaCredentialId: uuid("0001"),
+    // THE IDENTIFIER ORDER IS DELIBERATELY THE REVERSE OF THE NAME ORDER.
+    // `listCredentials` answers name-ascending, which is the extraction source's
+    // order and the double's; numbered the obvious way the two orderings would
+    // AGREE and a store that sorted on the identifier alone would match the
+    // double anyway. WIN-258 T5's mutation sweep proved that: replacing the name
+    // sort with the identifier left every observation identical.
+    alphaCredentialId: uuid("0003"),
     bravoCredentialId: uuid("0002"),
-    charlieCredentialId: uuid("0003"),
+    charlieCredentialId: uuid("0001"),
     missingCredentialId: uuid("0004"),
     // THE ENVELOPE IDENTIFIERS ARE DELIBERATELY IN THE ORDER THE TWO SORTS
     // DISAGREE ON. `purgeOrder` is oldest `createdAt` first with the id as the
