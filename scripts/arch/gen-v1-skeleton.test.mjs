@@ -79,9 +79,14 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // 99 -> 102 (WIN-258 T5): packages/adapters/postgres-tenancy ->
   // packages/contexts/channels, -> packages/contexts/governance and ->
   // packages/contexts/secrets, the sixth, seventh and eighth owners of that same
-  // client. THREE edges for EIGHT bindings. The count is READ BACK from the
-  // generator here rather than computed, which is the whole point of this case.
-  assert.match(output, /32 V1 projects and 102 project edges/u);
+  // client. THREE edges for EIGHT bindings.
+  // 102 -> 103 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/memory, the NINTH owner of that same client. ONE edge for
+  // TWO bindings — `MemoryRepository` and `KnowledgeGraphRepository` — because a
+  // project reference is per package and not per port. The count is READ BACK
+  // from the generator here rather than computed, which is the whole point of
+  // this case.
+  assert.match(output, /32 V1 projects and 103 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -518,6 +523,8 @@ const LIVE_ADAPTERS = [
       // binding would make the refusal COUNTS wrong rather than the refusals.
       { port: "SecretsRepository", owner: "secrets" },
       { port: "EnvironmentVariableRepository", owner: "secrets" },
+      { port: "MemoryRepository", owner: "memory" },
+      { port: "KnowledgeGraphRepository", owner: "memory" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
@@ -547,14 +554,20 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a THIRTY-FIRST binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a THIRTY-THIRD binding fails, even though a directory may hold more than one", () => {
+  // WIN-258 T5 moved this from thirty-one to thirty-three: `memory`'s two
+  // canonical-store ports took the pinned count from 30 to 32, and a case that
+  // kept the old ordinal would have been asserting a message the checker no
+  // longer prints. The MUTATION is unchanged — one extra binding on the shared
+  // directory — and `Cache` is still the right one to add, because it is a port
+  // `memory` owns that this directory deliberately does NOT satisfy.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 30 adapter bindings; ADAPTERS flattens to 31")));
+  assert.ok(errors.some((error) => error.includes("declares 32 adapter bindings; ADAPTERS flattens to 33")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

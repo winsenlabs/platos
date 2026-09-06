@@ -161,13 +161,19 @@ test("§15: the shared directory may write BOTH owners' rows and NOTHING else", 
 
   // A third owner's row from the same directory is still refused. "Many owners
   // per directory" is not "any row from that directory".
+  //
+  // WIN-258 T5 moved this example from `Memory` to `Artifact`. `memory` became
+  // the NINTH delegated owner in that tranche, so a write to `Memory` from this
+  // directory is now legal and the case would have gone green while asserting
+  // nothing. `files` owns `Artifact` and has no entry in
+  // `CANONICAL_STORE_ADAPTERS`, which is the property this case is about.
   const refused = fixture({
-    "packages/adapters/postgres-tenancy/src/c.ts": write("memory", "deleteMany"),
+    "packages/adapters/postgres-tenancy/src/c.ts": write("artifact", "deleteMany"),
   });
   const violations = checkWriteEnforcement(refused).violations;
   assert.equal(violations.length, 1);
-  assert.equal(violations[0].model, "Memory");
-  assert.match(violations[0].message, /memory is its sole writer/u);
+  assert.equal(violations[0].model, "Artifact");
+  assert.match(violations[0].message, /files is its sole writer/u);
 });
 
 test("WIN-258 T5: an `agents` row written from any OTHER directory FAILS", () => {
@@ -260,7 +266,14 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/secrets",
     "packages/adapters/postgres-tenancy",
   ]);
-  for (const owner of ["memory", "files"]) {
+  // WIN-258 T5. `memory` is the NINTH context delegated to that directory, and
+  // it moved out of the undelegated list below — which still has to contain
+  // somebody, or the case stops saying anything.
+  assert.deepEqual(ownerDirectories("memory"), [
+    "packages/contexts/memory",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  for (const owner of ["files", "conversations"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
 });
@@ -466,6 +479,116 @@ test("only governance's own two directories may write its five rows", () => {
   assert.equal(raw.violations[0].model, "SafetyEvent");
 });
 
+test("only memory's own two directories may write its three rows", () => {
+  // WIN-258 T5. The delegation added in this tranche is a permission, and a
+  // permission is only worth anything if the thing it does NOT permit goes red.
+  // All THREE rows are checked rather than a representative one, because the
+  // grant is per row and a map entry lost for a single model would otherwise sit
+  // here unnoticed behind a green case for `Memory`.
+  const THREE = [
+    ["memory", "Memory"],
+    ["memoryEntity", "MemoryEntity"],
+    ["memoryRelationship", "MemoryRelationship"],
+  ];
+
+  for (const [delegate, model] of THREE) {
+    // The delegate directory: legal, and the reason the two repositories can
+    // exist at all — ADR M0.3 §2 forbids `packages/contexts/memory` from holding
+    // the client.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its canonical-store adapter`,
+    );
+    // The owning context itself: also legal, and never exercised in the live
+    // tree for exactly that reason.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ "packages/contexts/memory/application/x.ts": write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its owning context`,
+    );
+    // ANY THIRD PLACE: refused. `conversations` is the pointed choice — it owns
+    // the `Thread` and `Turn` every extracted memory points at, and is the
+    // context most plausibly tempted to write one — and it is exactly as refused
+    // as anything else.
+    const trespass = checkWriteEnforcement(
+      fixture({ "packages/contexts/conversations/application/x.ts": write(delegate, "create") }),
+    );
+    assert.equal(trespass.violations.length, 1, `a foreign write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.equal(trespass.violations[0].actual, "packages/contexts/conversations");
+    assert.deepEqual(trespass.violations[0].permitted, [
+      "packages/contexts/memory",
+      "packages/adapters/postgres-tenancy",
+    ]);
+    // And a SIBLING canonical-store adapter is not a loophole either: being an
+    // adapter is not the qualification, being THIS owner's declared store is.
+    assert.equal(
+      checkWriteEnforcement(
+        fixture({ "packages/adapters/outbox/src/x.ts": write(delegate, "create") }),
+      ).violations.length,
+      1,
+      `${model} must be refused from an adapter that is not its canonical store`,
+    );
+  }
+
+  // And the widening did not licence the directory over rows `memory` does not
+  // own. `Thread` is `conversations`', `MessageRating` is `governance`' — and
+  // `MemoryRepository` READS both, which §5.2 exempts by name. A WRITE to either
+  // from here is still refused, which is what makes "reads are unrestricted"
+  // a bounded statement rather than an open door.
+  const readOnlyPeers = checkWriteEnforcement(
+    fixture({
+      "packages/adapters/postgres-tenancy/src/memory-y.ts": write("thread", "update"),
+    }),
+  );
+  assert.equal(readOnlyPeers.violations.length, 1);
+  assert.equal(readOnlyPeers.violations[0].model, "Thread");
+  assert.equal(readOnlyPeers.violations[0].expected, "packages/contexts/conversations");
+});
+
+test("the RAW `UPDATE` that carries a vector is attributed to `memory`, not waved through", () => {
+  // `Memory.embedding` and `MemoryEntity.embedding` are
+  // `Unsupported("vector(1536)")`, so the generated client cannot write them and
+  // `memory-vectors.ts` sends raw SQL. That is the FIRST canonical write in this
+  // tree with no delegate form, and it is judged by the table it names rather
+  // than exempted for being raw.
+  const permitted = checkWriteEnforcement(
+    fixture({
+      "packages/adapters/postgres-tenancy/src/memory-vectors.ts":
+        'const rows = await db.$executeRaw`UPDATE "Memory" SET "embedding" = ${v}::vector WHERE "id" = ${id}::uuid`;\n',
+    }),
+  );
+  assert.deepEqual(permitted.violations, []);
+  assert.equal(permitted.writeCount, 1, "the raw write must be SEEN, not merely un-flagged");
+
+  const trespass = checkWriteEnforcement(
+    fixture({
+      "packages/contexts/conversations/application/x.ts":
+        'const rows = await db.$executeRaw`UPDATE "Memory" SET "embedding" = ${v}::vector`;\n',
+    }),
+  );
+  assert.equal(trespass.violations.length, 1);
+  assert.equal(trespass.violations[0].model, "Memory");
+
+  // And a raw statement whose TABLE is interpolated is unattributable from
+  // everywhere, including from the one directory entitled to write the row —
+  // which is why the two statements in `memory-vectors.ts` are static templates
+  // whose only interpolations are VALUES.
+  const dynamic = checkWriteEnforcement(
+    fixture({
+      "packages/adapters/postgres-tenancy/src/memory-z.ts":
+        'const rows = await db.$executeRaw`UPDATE "${table}" SET "embedding" = NULL`;\n',
+    }),
+  );
+  assert.equal(dynamic.unattributable.length, 1);
+  assert.deepEqual(dynamic.violations, []);
+});
+
 test("only secrets' own two directories may write its four rows", () => {
   // WIN-258 T5. The delegation added in this tranche is a permission, and a
   // permission is only worth anything if the thing it does NOT permit goes red.
@@ -548,7 +671,12 @@ test("the shared directory is not a blanket licence over the whole schema", () =
   // the same PostgreSQL database, behind the same client, in reach of the same
   // file — and are refused from the directory that legally writes 106 rows.
   for (const [delegate, model] of [
-    ["memory", "Memory"],
+    // WIN-258 T5 moved `Memory` out of this pair: it is now written from that
+    // directory legally, so leaving it here would have made the case pass while
+    // asserting the opposite of what it says. `Artifact` and `Turn` belong to
+    // `files` and `conversations`, neither of which has a canonical-store
+    // adapter, and both live in the same database behind the same client.
+    ["artifact", "Artifact"],
     ["turn", "Turn"],
   ]) {
     const result = checkWriteEnforcement(
@@ -1111,7 +1239,39 @@ test("an element-access member that is not a delegate is still not a write", () 
 // 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 = 198. All of tranche 5's stores
 // landed in the ONE directory, so this pin is the SUM of every enumeration above
 // and no single branch's own figure — 157, 163 or 178 — survives the merge.
-const LIVE_TREE_WRITE_COUNT = 198;
+//
+// WIN-258 T5 — THE `memory` CANONICAL STORE adds FIFTEEN, and TWO of them are
+// raw SQL rather than delegate calls, which is the first time that has been true
+// of a write in this tree:
+//
+//   src/memory-store.ts            create, update, deleteMany, a second update
+//                                  for the reconciled confidence, and the raw
+//                                  `UPDATE "Memory" SET "lastAccessedAt"` that
+//                                  keeps recall from bumping `@updatedAt`      5
+//   src/memory-vectors.ts          the two raw `UPDATE`s that carry a
+//                                  `vector(1536)`. The column is `Unsupported`
+//                                  in `schema.prisma`, so the generated client
+//                                  can neither select nor set it and there is
+//                                  no delegate form of this write at all.
+//                                  `MUTATING_SQL_STATEMENT` attributes each by
+//                                  the TABLE it names — `Memory` and
+//                                  `MemoryEntity` — exactly as it would a
+//                                  delegate call                               2
+//   src/memory-entities.ts         create, update, deleteMany                  3
+//   src/memory-relationships.ts    create, update                              2
+//   src/memory-erasure.ts          three deleteMany, one per table, because a
+//                                  cascade reports no count and a receipt has
+//                                  to                                          3
+//                                                                       total = 15
+//
+// `src/memory-harness.ts` contributes ZERO and its `UPDATE "MemoryEntity" SET
+// "embedding"` is not one of them: it is a STRING handed to `prisma db execute`,
+// not a call to `$executeRaw`, so the scanner never sees it — which is the same
+// out-of-band seed the other harnesses use for rows this directory may not
+// write, applied here to a column no port method can.
+//
+// 198 + 15 = 213.
+const LIVE_TREE_WRITE_COUNT = 213;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1171,13 +1331,13 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   // owner with no entry here still has exactly one permitted directory — which
   // is what stops the shared directory from becoming a blanket licence.
   //
-  // `memory` carries that negative now that cost-monitoring has been delegated.
-  // It is not a decorative example: `packages/adapters/postgres-tenancy` holds
-  // repositories for FIVE owners, and `Memory` is a row in the very same
+  // `files` carries that negative now that `memory` has been delegated too. It
+  // is not a decorative example: `packages/adapters/postgres-tenancy` holds
+  // repositories for NINE owners, and `Artifact` is a row in the very same
   // PostgreSQL database, reachable through the very same client, whose write
   // from this directory is still refused.
-  assert.equal(CANONICAL_STORE_ADAPTERS.memory, undefined);
-  assert.deepEqual(ownerDirectories("memory"), ["packages/contexts/memory"]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.files, undefined);
+  assert.deepEqual(ownerDirectories("files"), ["packages/contexts/files"]);
   // WIN-258 T5: `agents` is delegated to the SAME directory a fourth time, and
   // the grant is exactly the SEVEN rows ADR M0.3 §1 row 5 gives it.
   assert.deepEqual(ownerDirectories("agents"), [

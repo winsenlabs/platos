@@ -21,7 +21,7 @@
 // exactly the four it leaves alone, and `relationshipType` is one of them. That
 // last one is worth stating: retyping an edge onto a triple another edge already
 // holds is a legal statement that the unique refuses, which is a different
-// refusal from the trigger's and has its own named case.
+// refusal from the immutability rule's and has its own named case.
 
 import type {
   AgentId,

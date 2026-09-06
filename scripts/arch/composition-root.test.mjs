@@ -87,8 +87,15 @@ test("the live repository satisfies both the boundary rules and the composition-
   // `appendAudit` with different signatures, so one interface cannot extend
   // both. The DIRECTORY count deliberately does not move through any of it,
   // which is the whole content of the amendment.
+  // 30 -> 32 (WIN-258 T5): `memory` adds `MemoryRepository` and
+  // `KnowledgeGraphRepository` over its three canonical rows, so that directory
+  // carries TWENTY-ONE. Both are proven through the property that carries them,
+  // and there too it was FORCED: `KnowledgeGraphRepository` and
+  // `TenancyRepository` both declare a top-level `findEntity` with different
+  // signatures, so one interface cannot extend both. The DIRECTORY count is
+  // unmoved a fourth time.
   assert.equal(audit.bindingCount, adapterBindings().length);
-  assert.equal(audit.bindingCount, 30);
+  assert.equal(audit.bindingCount, 32);
   assert.equal(ADAPTERS.length, 12);
 });
 
@@ -235,7 +242,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 29 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 31 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -290,12 +297,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all THIRTY bindings, across twelve directories", () => {
+test("the binding-table parser reads all THIRTY-TWO bindings, across twelve directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 30);
+  assert.equal(bindings.length, 32);
   assert.equal(ADAPTERS.length, 12);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -314,8 +321,9 @@ test("the binding-table parser reads all THIRTY bindings, across twelve director
   // FIVE and `secrets` two, all over the same client as tenancy's and
   // identity-access's — and WIN-258 M2.3 then gave tenancy's five
   // NON-REPOSITORY ports slots on the same directory that already satisfied
-  // them. 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 = 19.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 19);
+  // them, and WIN-258 T5 then added `memory`'s two.
+  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 2 = 21.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 21);
   assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 12);
 });
 
@@ -361,7 +369,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 30 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 32 declared bindings")
     )
   );
 });
@@ -392,7 +400,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 29 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 31 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

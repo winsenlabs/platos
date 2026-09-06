@@ -11,17 +11,17 @@
 // sends none either, because a row PostgreSQL has just defaulted to NULL is
 // already cleared.
 //
-// AN UPDATE NEVER SENDS AN OWNER COLUMN. `Memory_owner_immutable` is a BEFORE
-// UPDATE trigger over `environmentId`, `endUserId`, `agentId`, `clusterId`,
+// AN UPDATE NEVER SENDS AN OWNER COLUMN. `Memory_owner_immutable` fires BEFORE
+// UPDATE over `environmentId`, `endUserId`, `agentId`, `clusterId`,
 // `sourceThreadId` and `extractorVersion`, and it raises 23514 on any change —
 // which on PostgreSQL aborts the enclosing transaction. `memoryWriteData` omits
 // the first five entirely, so no statement this file sends can move them.
 //
 // *** THE SIXTH IS `extractorVersion`, AND THE DOMAIN'S OWN MERGE RULE MOVES
 // IT. *** `mergeRepeatedExtraction` in `domain/memory.ts` takes "the newer one,
-// so a row records which extractor last confirmed it", and the trigger names
+// so a row records which extractor last confirmed it", and the rule names
 // that column as an ownership key. Re-extraction with the SAME extractor is
-// unaffected — the trigger compares OLD to NEW — but a version BUMP is a legal
+// unaffected — the rule compares OLD to NEW — but a version BUMP is a legal
 // domain operation the canonical schema refuses. It is sent anyway rather than
 // silently dropped, so the refusal is the database's and is visible; the named
 // case is in `memory-rules.integration.test.ts` and it is reported.

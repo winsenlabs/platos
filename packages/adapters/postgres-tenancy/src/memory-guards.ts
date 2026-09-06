@@ -11,7 +11,7 @@
 // answer is the same. Refuse in TypeScript, send nothing, keep the transaction.
 //
 // EVERY GUARD BELOW IS A CONSTRAINT THAT EXISTS ONLY IN THE MIGRATIONS, ONLY IN
-// THE COLUMN TYPE, OR ONLY IN A TRIGGER — AND THAT NO IN-MEMORY DOUBLE IN THIS
+// THE COLUMN TYPE, OR ONLY IN A ROW RULE — AND THAT NO IN-MEMORY DOUBLE IN THIS
 // CONTEXT HOLDS.
 //
 //   `@db.Uuid` on three primary keys and on the six foreign keys they carry.
@@ -70,6 +70,7 @@ import type {
   MemorySubject,
 } from "@platos/context-memory/application/ports/index.js";
 import {
+  EMBEDDING_DIMENSIONS,
   isMemoryKind,
   isMemorySource,
   isMemoryVisibility,
@@ -134,8 +135,17 @@ export class MemoryWriteRefused extends Error {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
 const SHA256_HEX = /^[0-9a-f]{64}$/u;
 
-/** The dimension the column declares. Not configurable: it is in the DDL. */
-export const EMBEDDING_DIMENSIONS = 1536;
+/**
+ * The dimension the column declares, RE-EXPORTED rather than restated.
+ *
+ * `embedding-model.ts` in the context already publishes `EMBEDDING_DIMENSIONS`
+ * and `isStorableEmbedding` over it, and the number is in the DDL as
+ * `vector(1536)`. A second `= 1536` in this file would be a third place the
+ * width is written down and the first one to drift; the guard below reads the
+ * port's value, so a column widened in the schema and the port is widened here
+ * by the same edit.
+ */
+export { EMBEDDING_DIMENSIONS };
 
 export function requireUuid(label: string, value: string): string {
   if (!UUID.test(value)) {

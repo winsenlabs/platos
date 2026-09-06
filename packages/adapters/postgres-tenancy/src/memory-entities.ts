@@ -14,9 +14,9 @@
 // same time, and that is the conflict the domain refuses rather than a length
 // check on a list.
 //
-// A PROMOTION IS AN UPDATE THE TRIGGER JUDGES, NOT ONE THIS STORE DECIDES.
+// A PROMOTION IS AN UPDATE THE DATABASE JUDGES, NOT ONE THIS STORE DECIDES.
 // `enforce_memory_entity_owner_transition` replaces the generic owner-immutable
-// trigger on this table and permits exactly ONE ownership move: `clusterId` from
+// rule on this table and permits exactly ONE ownership move: `clusterId` from
 // NULL to a cluster the agent is ACTUALLY BOUND TO, and only while the node has
 // no relationships. Everything else — re-parenting, demotion to standalone, a
 // changed `agentId`, a changed `environmentId` — raises 23514. So `clusterId` is
@@ -174,10 +174,10 @@ export function createMemoryEntityStore(transactions: TenancyTransactions): Memo
      * Rewrite a node.
      *
      * `entityKey` is NOT in the payload: the two partial unique indexes are over
-     * it, no trigger guards it, and `applyEntityDraft` in the domain never moves
+     * it, no database rule guards it, and `applyEntityDraft` in the domain never moves
      * it — so offering a rename here would be offering a way to move a node onto
      * another node's identity. `clusterId` IS in the payload, because the one
-     * legal ownership move on this table goes through it, and the trigger is
+     * legal ownership move on this table goes through it, and the database is
      * what decides whether this particular move is that one.
      */
     async updateEntity(
