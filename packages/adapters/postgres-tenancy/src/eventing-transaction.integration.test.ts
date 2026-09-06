@@ -136,8 +136,9 @@ describe("a unit of work commits whole or not at all", () => {
     // The `cost-monitoring` trap, and this context's own sharpest form of it.
     // Both inserts are the ADAPTER's own statements; nothing is simulated. The
     // second is refused by `@@unique([environmentId, name])`, which aborts the
-    // block — so the COMMIT the resolved callback triggers is a ROLLBACK, and
-    // the row whose `Result` said `ok` is not there either.
+    // block — so the COMMIT the resolved callback issues is turned into a
+    // ROLLBACK by PostgreSQL, and the row whose `Result` said `ok` is not there
+    // either.
     const first = ruleFor(tenant.scope, "clash-first");
     const seed = ruleFor(tenant.scope, "clash-taken");
     const seeded = await harness.run((t) => harness.repository.insertRule(seed, t));

@@ -2007,11 +2007,20 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * three-way identity carries all seven, because every added file is an
  * adapter's: 79 + 7 = 86, and 349 + 3 + 86 = 438.
  *
- * AND `eventing` ADDS SIX FILES / 51 CASES to the same row a FIFTH time, over
+ * AND `eventing` ADDS SIX FILES / 56 CASES to the same row a FIFTH time, over
  * ONE canonical row: `eventing-rows.test.ts` (17 cases, no database in it),
- * `eventing-constraints.integration.test.ts` (11), `eventing-transaction.integration.test.ts`
+ * `eventing-constraints.integration.test.ts` (15), `eventing-transaction.integration.test.ts`
  * (9), `eventing-rules.integration.test.ts` (7), `eventing-statements.integration.test.ts`
- * (4) and `eventing-conformance.integration.test.ts` (3). No CONTEXT row moves
+ * (5) and `eventing-conformance.integration.test.ts` (3).
+ *
+ * FIVE OF THOSE 56 EXIST BECAUSE THE MUTATION LEDGER WAS ENUMERATED FIRST, and
+ * they are the four in the constraints suite and the one in the statements
+ * suite. Four guards had no case anywhere that could go red — the NUL guard on
+ * the `findRuleByName` LOOKUP, the NUL guard on the erasure REPLACEMENT, the
+ * erasure selector's own scope guard, and `updateRule` addressed with another
+ * environment's scope — and the fifth pins the two vacuous-selector
+ * short-circuits at ZERO STATEMENTS, which is the only measurement that can tell
+ * them from falling through. No CONTEXT row moves
  * for it either: the port it implements already existed and this wave only
  * widened the context's export map.
  *
@@ -2031,8 +2040,8 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 79 + 28 = 107, and 349 + 3 + 107 = 459.
  *
  * AND `eventing` MOVES THE SAME ROW ONCE MORE: 88 + 6 = 94 files and
- * 929 + 51 = 980 cases, so the tree total goes 459 + 6 = 465 files and
- * 6845 + 51 = 6896 cases. The adapters term carries all six, because every added
+ * 929 + 56 = 985 cases, so the tree total goes 459 + 6 = 465 files and
+ * 6845 + 56 = 6901 cases. The adapters term carries all six, because every added
  * file is this adapter's: 107 + 6 = 113, and 349 + 3 + 113 = 465.
  */
 export const EXPECTED = Object.freeze({
@@ -2044,7 +2053,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 94, cases: 980 },
+  "packages/adapters/postgres-tenancy": { files: 94, cases: 985 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2230,17 +2239,17 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  *
- * 6845 -> 6896: the 51 cases of WIN-258 tranche 5's `eventing` canonical
+ * 6845 -> 6901: the 56 cases of WIN-258 tranche 5's `eventing` canonical
  * store, enumerated file by file in the block beside the postgres-tenancy row.
  * Five of its six suites carry `.integration.` in the name, so the cases this
- * census records and `pnpm test:v1-packages` does not execute go up by 34; the
+ * census records and `pnpm test:v1-packages` does not execute go up by 39; the
  * sixth, `eventing-rows.test.ts`, runs in the ordinary package test script for
  * the reason the other row suites do — it has no database in it, and it reaches
  * the three unreadable-row branches and the two `*_json_root` guards a container
  * suite cannot: a container only ever reads rows this binary wrote, and no port
  * call can build a non-object for either JSON column.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6896;
+export const EXPECTED_RUNTIME_TOTAL = 6901;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
