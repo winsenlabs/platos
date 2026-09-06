@@ -524,7 +524,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // app.module.ts and the six transport seams were rewritten in place and add
     // no files. The transports rule stays at exactly 6 — the new rule is
     // declared ahead of it so process code does not inherit transport evidence.
-    "apps-core-api": 19,
+    //
+    // 19 -> 21. WIN-260 (M2.5) adds the code-to-status mapping a transport will
+    // execute — src/transports/error-status.ts and its suite — so the transports
+    // rule goes 6 -> 7 and the core-api suite rule 7 -> 8. It is under
+    // transports/ rather than runtime/ because ADR M0.3 §2 makes an HTTP status
+    // transport vocabulary: a context says `not_found`, and only that file knows
+    // it means 404.
+    "apps-core-api": 21,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1191,10 +1198,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
-    "docs-content": 13,
-    "root-infra": 41,
+    //
+    // WIN-260 (M2.5) ADDS FIVE, IN THREE AREAS, AND NONE OF THEM IS `packages`.
+    // docs-content 13 -> 14: docs/error-taxonomy.json, the canonical
+    // code-to-status table, on a NEW rule (docs-content.pin.error-taxonomy)
+    // because no existing docs rule matches a top-level docs/*.json and the
+    // audits rule would have called it `regenerate`, which it is not — its
+    // inventory is derived and its four hundred statuses are not.
+    // root-infra 41 -> 43: scripts/error-taxonomy.mjs on the existing
+    // root-infra.tooling.scripts rule and scripts/error-taxonomy.test.mjs on
+    // root-infra.test.script-suites, so neither rule is new.
+    // apps-core-api 19 -> 21, stated at its own entry above.
+    // `packages` is untouched: the three codes WIN-260 mints and the port whose
+    // shape it changed are edits to files that already existed.
+    "docs-content": 14,
+    "root-infra": 43,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1482);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1487);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1229,10 +1249,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // +3); this one re-derives it by summing the per-area counts independently,
     // so the two can DISAGREE and be caught.
     // and that tranche's rollout rehearsal +11 across TWO areas, 3 in
-    // `packages` and 8 in `internal-packages`); this one re-derives it by
+    // `packages` and 8 in `internal-packages`, and WIN-260's error taxonomy +5
+    // across THREE areas, 2 in `apps-core-api`, 1 in `docs-content` and 2 in
+    // `root-infra`, and none in `packages`); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1482
+    rulesDocument.baseline.totalFiles + 1487
   );
 });
 
