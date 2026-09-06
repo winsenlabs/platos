@@ -37,6 +37,7 @@ export const SECRETS_ERROR_CODES = [
   "ENVIRONMENT_VARIABLE_VALUE_REQUIRED",
   "ENVIRONMENT_VARIABLE_VALUE_TOO_LONG",
   "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+  "SECRET_INPUT_NOT_WRITE_ONLY",
 ] as const;
 
 export type SecretsErrorCode = (typeof SECRETS_ERROR_CODES)[number];
@@ -58,7 +59,24 @@ export type CredentialUnavailableReason =
   | "root_key_absent"
   | "envelope_open_failed"
   | "envelope_format_unreadable"
-  | "scope_mismatch";
+  | "scope_mismatch"
+  // WIN-259 — the five ways a SECRET REFERENCE fails to become material. All
+  // five collapse to the same CREDENTIAL_UNAVAILABLE on the wire, for the
+  // probing-oracle reason this file opens with: a holder must not be able to
+  // tell "this reference is for another environment" from "this reference is
+  // expired" from "the credential behind it was rotated", because each of those
+  // answers is a fact about the vault it was not given.
+  //
+  // `handle_open_failed` is the UNDIFFERENTIATED one and it is undifferentiated
+  // by construction rather than by policy: a reference minted for another
+  // environment, a reference whose bytes were edited, and a reference invented
+  // outright all fail at the SAME authentication tag, so there is no branch here
+  // that could tell them apart even if it wanted to.
+  | "handle_malformed"
+  | "handle_open_failed"
+  | "handle_expired"
+  | "handle_revision_superseded"
+  | "handle_lifetime_invalid";
 
 function withReason(reason: string, extra: Readonly<Record<string, JsonValue>> = {}): Readonly<Record<string, JsonValue>> {
   return { reason, ...extra };
@@ -95,6 +113,36 @@ export function invalidSecretMaterial(reason: string): DomainError {
   return domainError("INVALID_SECRET_MATERIAL", "invalid_input", "secret material is not acceptable", {
     details: withReason(reason),
   });
+}
+
+/**
+ * WIN-259 — a BARE STRING arrived where a write-only input was required.
+ *
+ * A distinct code from `INVALID_SECRET_MATERIAL`, which says the material is
+ * unacceptable. This one says the material is unacceptably CARRIED: it reached
+ * the command as an ordinary string, so anything that serialised, logged or
+ * queued that command on the way here already recorded the plaintext. Telling
+ * the two apart is the difference between "the caller sent an empty secret" and
+ * "the caller's whole request path has been writing secrets down".
+ *
+ * The field name is safe to publish — it names a position in the command shape,
+ * not a value — so it rides in `fields` rather than in log-only `details`.
+ */
+export function secretInputNotWriteOnly(field: string): DomainError {
+  return domainError(
+    "SECRET_INPUT_NOT_WRITE_ONLY",
+    "invalid_input",
+    "secret input must be a write-only value",
+    {
+      fields: [
+        {
+          field,
+          code: "write_only",
+          message: "must be minted by acceptPlaintext, never passed as a plain string",
+        },
+      ],
+    },
+  );
 }
 
 export function invalidPurgeRequest(reason: string): DomainError {

@@ -17,9 +17,11 @@ export type {
   EnvironmentVariableUpsert,
   Hasher,
   KeyRing,
+  OpenHandleRequest,
   OpenRequest,
   RetiredSecretVersionCandidate,
   RootKeyHandle,
+  SealHandleRequest,
   SealRequest,
   SecretsRepository,
 } from "./ports/index.js";
@@ -42,6 +44,13 @@ export type { RevokeCredentialCommand } from "./revoke-credential.js";
 
 export { readSecret } from "./read-secret.js";
 export type { ReadSecretQuery } from "./read-secret.js";
+
+export { exchangeSecretHandle, issueSecretHandle } from "./secret-handles.js";
+export type {
+  ExchangeSecretHandleQuery,
+  IssueSecretHandleCommand,
+  IssuedSecretHandle,
+} from "./secret-handles.js";
 
 export { describeCredential, listCredentials, reportRootKeyUsage } from "./describe-credentials.js";
 export type { DescribeCredentialQuery } from "./describe-credentials.js";

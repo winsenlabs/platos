@@ -1,6 +1,8 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { secretMaterial } from "../domain/secret-material.js";
+
 import type { CredentialId } from "../domain/ids.js";
 import { createCredential } from "./create-credential.js";
 import { describeCredential } from "./describe-credentials.js";
@@ -26,7 +28,7 @@ beforeEach(async () => {
     await createCredential(context.dependencies, {
       authorization: grants.operator,
       name: "OPENAI_API_KEY",
-      plaintext: "sk-live-1",
+      plaintext: secretMaterial("sk-live-1"),
     }),
   ).id;
 });

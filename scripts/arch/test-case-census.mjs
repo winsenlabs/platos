@@ -2332,7 +2332,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
+  "packages/adapters/postgres-tenancy": { files: 133, cases: 1485 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2348,12 +2348,12 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
-  "packages/contexts/providers": { files: 27, cases: 375 },
-  "packages/contexts/secrets": { files: 16, cases: 162 },
+  "packages/contexts/providers": { files: 27, cases: 378 },
+  "packages/contexts/secrets": { files: 20, cases: 240 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
-  "packages/kernel": { files: 3, cases: 44 },
+  "packages/kernel": { files: 4, cases: 60 },
 });
 
 /*
@@ -2625,7 +2625,195 @@ export const EXPECTED = Object.freeze({
  * states independently. The `postgres-tenancy-repository` CI job running 109
  * files / 1054 tests is therefore a check on this split derived without it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7399;
+/*
+ * WIN-259 (M2.4) SECRET PROJECTION, +16 and one new FILE, all in
+ * `packages/kernel`: 44 -> 60 cases, 3 -> 4 files, and 7399 -> 7415.
+ *
+ * The file is `src/vo/redaction.test.ts`, the colocated suite for the redactor
+ * `ports/logger.ts` has always described and never had. Its sixteen cases are
+ * TWO-SIDED by design and that is why there are sixteen rather than six: every
+ * case that pins a hidden field is paired with one that pins a field which must
+ * SURVIVE, because a redactor that hides everything passes a one-sided suite
+ * and deletes the log.
+ *
+ * Measured with `pnpm --filter @platos/kernel exec vitest run` — "Test Files 4
+ * passed (4) / Tests 60 passed (60)" — and the file on its own prints 16.
+ *
+ * `apps/core-api` gained 9 cases (116 -> 125) in
+ * `src/runtime/log-redaction.test.ts`, the suite that joins the classifier to
+ * the canonical Prisma schema, and is outside PACKAGE_ROOTS so it moves no pin
+ * here. It is named because it is the half of the evidence that is NOT in this
+ * census, and a reader counting 16 should know 9 more exist.
+ */
+/*
+ * WIN-259 (M2.4) WRITE-ONLY INPUTS, +13 and one new FILE, all in
+ * `packages/contexts/secrets`: 162 -> 175 cases, 16 -> 17 files, and
+ * 7415 -> 7428.
+ *
+ * The file is `application/write-only-inputs.test.ts`. Its thirteen cases are
+ * the WRITE half of the boundary: four that a mutating command cannot be
+ * written down (JSON, string coercion, spreading, enumeration), six that a bare
+ * string is refused with its own code and leaves no row and no audit, two that
+ * tell the carrier refusal apart from the material refusal, and one that
+ * DECLARES what the carrier check cannot see rather than overclaiming it.
+ *
+ * `packages/contexts/providers` moves NO pin and that is the finding worth
+ * recording. Its double now refuses a bare string the way the real vault does,
+ * so every existing write-path case there became a witness for the wrapping at
+ * the providers/secrets seam without one case being added. Measured: `pnpm
+ * --filter @platos/context-providers exec vitest run` prints 27 files / 375
+ * tests before and after.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` —
+ * "Test Files 17 passed (17) / Tests 175 passed (175)" — and the new file on
+ * its own prints 13.
+ */
+/*
+ * WIN-259 (M2.4) DENIED-READ EVIDENCE, +11 and one new FILE, again all in
+ * `packages/contexts/secrets`: 175 -> 186 cases, 17 -> 18 files, and
+ * 7428 -> 7439.
+ *
+ * The file is `application/denied-read-audit.test.ts`. `DENIED` has been in
+ * `CREDENTIAL_AUDIT_OUTCOMES` since this context was written and a grep of the
+ * package found it declared and never produced -- `recordAudit` defaulted to
+ * `SUCCESS` and no caller passed anything else -- so a refused read left no
+ * trace at all. Seven cases pin the row that now exists; THREE DECLARE A
+ * SILENCE (an unminted grant, a credential that does not resolve, a PLAIN
+ * variable) because each is a place the trail is deliberately empty and a
+ * reader counting rows has to know which emptiness is honest; one pins that the
+ * evidence path cannot change the answer the caller receives.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 18 passed (18) / Tests 186 passed (186)" -- and the new file on
+ * its own prints 11.
+ */
+/*
+ * WIN-259 (M2.4) ON REAL POSTGRESQL, +1 case and +1 FILE in
+ * `packages/adapters/postgres-tenancy`: 1483 -> 1484 cases, 132 -> 133 files,
+ * and 7439 -> 7440.
+ *
+ * THE CASE IS `a DENIED outcome reaches PostgreSQL, and commits in a
+ * transaction of its OWN`, in `secrets-rules.integration.test.ts`. It exists
+ * because until this branch NO ROW WITH THAT OUTCOME HAD EVER REACHED THE
+ * DATABASE: the value was declared in `CREDENTIAL_AUDIT_OUTCOMES` and never
+ * produced, and the in-memory double stores whatever string it is handed. That
+ * is the shape of the failure this project has already recorded — the doubles
+ * mint values the canonical store refuses, and every use-case suite passes.
+ * Read from the MIGRATION rather than from `schema.prisma`: `outcome` is TEXT
+ * NOT NULL with no CHECK, which is a fact about an ABSENCE that the generated
+ * types cannot show.
+ *
+ * THE FILE IS `secrets-variable-fence.integration.test.ts`, AND IT ADDS NO
+ * CASE. It is the split scripts/arch/max-file-lines.test.mjs pre-registered in
+ * WIN-258 T7's own band entry — "A further case takes it past 460 and the split
+ * to make then is the fence's own `describe`, moved whole" — carried out
+ * verbatim. The `describe` moved unedited, so the case delta is 1 (the DENIED
+ * case) and not 1 plus the fence's four.
+ *
+ * Neither is executed by `pnpm test:v1-packages`: both carry `.integration.` in
+ * the name, so this census records them and that script runs neither. They run
+ * on the Mac mini under `pnpm test:postgres-tenancy:integration`.
+ */
+/*
+ * WIN-259 (M2.4) THE SECRET REFERENCE, +53 cases and +2 FILES, all in
+ * `packages/contexts/secrets`: 186 -> 239 cases, 18 -> 20 files, and
+ * 7440 -> 7493.
+ *
+ * THE TWO FILES SPLIT BY WHAT CAN BE PROVED WITHOUT A CIPHER AND WHAT CANNOT,
+ * which is why there are two rather than one.
+ *
+ * `domain/secret-handle.test.ts` carries 27 and proves only STRUCTURE: the two
+ * label strings byte for byte, the claims body byte for byte, the base64url
+ * codec at every length modulo 3, the wire form's field count and scheme, and
+ * the lifetime rule at its boundary millisecond. It deliberately proves NOTHING
+ * about opacity or environment binding, because neither is a property of that
+ * file — both live in the cipher's key derivation and its AAD, and asserting
+ * them there would have compared the classifier to itself.
+ *
+ * `application/secret-handles.test.ts` carries 26 and proves the four
+ * properties that only exist once a cipher and a store are involved, each
+ * joined to something the assertion does not control: opacity against the
+ * plaintext, the name and the provider; environment binding against a SECOND
+ * fully-built environment whose reference is carried across by hand; revision
+ * pinning against a rotation the real `rotateCredential` performed; and the
+ * audit trail against the store's own rows in BOTH directions.
+ *
+ * `packages/contexts/providers` moves no pin again, for the same reason it did
+ * not move for write-only inputs: a reference is a VALUE and adds no port a
+ * peer implements.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 20 passed (20) / Tests 239 passed (239)" -- and the two new files
+ * on their own print 27 and 26.
+ */
+/*
+ * WIN-259 (M2.4) THE REFERENCE AGAINST REAL POSTGRESQL, +1 case and NO file, in
+ * `packages/adapters/postgres-tenancy`: 1484 -> 1485 cases, 133 files
+ * unchanged, and 7493 -> 7494.
+ *
+ * THE CASE IS `an audit row naming a credential from ANOTHER environment is
+ * refused by the database`, appended to `secrets-rules.integration.test.ts`.
+ * The denied-exchange path states a limit in prose -- a reference that does not
+ * open under the presented grant's environment leaves no trace, because the
+ * trail may only name credentials that exist here -- and this case turns the
+ * second half of that sentence into a fact about the database.
+ *
+ * `inMemorySecretsStore` keys its audit rows by nothing and accepts the pair
+ * happily, so all 26 exchange cases in `packages/contexts/secrets` pass either
+ * way. Only `CredentialAudit_credentialId_environmentId_fkey` -- a COMPOSITE
+ * key that lives in the migration and in neither the generated types nor any
+ * port signature -- refuses it. That is the shape this project has already been
+ * bitten by, and it is why the case is here rather than beside the use case.
+ *
+ * It is NOT executed by `pnpm test:v1-packages`: the file carries
+ * `.integration.` in its name. It runs on the Mac mini under
+ * `pnpm test:postgres-tenancy:integration`.
+ */
+/*
+ * WIN-259 (M2.4) THE LEDGER'S 37th ENTRY, +3 cases and NO file, in
+ * `packages/contexts/providers`: 375 -> 378 cases, 27 files unchanged, and
+ * 7494 -> 7497. THIS IS THE FIRST TIME THIS BRANCH HAS MOVED THE PROVIDERS
+ * ROW, and the two previous entries above both recorded that it did NOT move.
+ *
+ * The three cases go into the existing `application/authorization.test.ts` and
+ * they exist because a mutation had no kill. M23 -- "the providers DOUBLE stops
+ * modelling the vault's refusal" -- changed nothing when applied alone, because
+ * every other case in this package reaches the double through a use case and
+ * the use cases wrap at their own seam, so the double never saw a bare string.
+ * It was recorded as a COMPOUND measurement, an integrator counted 37 entries
+ * against 36 named kills, and the branch was held back for it.
+ *
+ * The repair was the CASE and not the declaration. All three drive
+ * `InMemorySecrets` directly: one pairs the refusal with an ACCEPTANCE whose
+ * material is minted by `acceptPlaintext` -- the one mint `secrets` publishes --
+ * so the double is held to the real vault rather than to a shape this package
+ * owns; one repeats it on ROTATION, the second call site of the same guard; and
+ * one hands it a structurally perfect MIMIC, which is what stops the refusal
+ * being satisfiable by a shape check.
+ *
+ * Measured with `pnpm --filter @platos/context-providers exec vitest run` --
+ * "Test Files 27 passed (27) / Tests 378 passed (378)" -- and the file on its
+ * own prints 18, up from 15.
+ */
+/*
+ * WIN-259 (M2.4) THE REFERENCE IS REACHABLE, +1 case and NO file, in
+ * `packages/contexts/secrets`: 239 -> 240 cases, 20 files unchanged, and
+ * 7497 -> 7498.
+ *
+ * THE CASE IS `issues and spends a SECRET REFERENCE through the contract
+ * alone`, appended to the existing `contracts/index.test.ts`. Every other
+ * assertion about the reference drives the use cases directly; this one proves
+ * the deliverable is actually PUBLISHED -- that a peer context holding nothing
+ * but `SecretsContract` can mint an address, hand it on, spend it, and be
+ * refused when the grant that minted it tries to spend it too. A deliverable
+ * that works and is not reachable is not delivered, and no other case in this
+ * package could have caught that.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 20 passed (20) / Tests 240 passed (240)" -- and
+ * contracts/index.test.ts on its own prints 9, up from 8.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7498;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
