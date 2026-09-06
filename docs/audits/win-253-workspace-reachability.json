@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "9ff023df491913d4750db6a1888c6c46fc8a4e6acd23240e3b4b6fa0592137de",
+  "evidenceSha256": "5b00584792d98ab340efde1c83bf056c566ab409ab259ea7551f3287b4d6069f",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "588563eafe4b5bff0698dc0cdcb1b77071018b65adf1acd296cf5f8c14eabb5c",
+    "aggregateSha256": "ae486d49d4ba30d930e617e65bcee0636181306e6fa31874302c497bcf1fa8f4",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11529,7 +11529,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/index.ts",
-        "sha256": "b333e355cb6cd0174861b48766ddf1ce09fca2b82ee958a0e1f3129cce55d721"
+        "sha256": "f7ca2b2dca84906115de955f8c7e43272606a6dc343b52e7258f82c915713883"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/invitation-token.test.ts",
