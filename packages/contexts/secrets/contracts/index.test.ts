@@ -119,6 +119,44 @@ describe("the whole vault lifecycle through the contract alone", () => {
     expect(context.store.allVersions()).toHaveLength(0);
   });
 
+  it("issues and spends a SECRET REFERENCE through the contract alone", async () => {
+    // Reachability, and it is worth a case of its own. Every other assertion
+    // about the reference drives the use cases directly; this one proves the
+    // deliverable is actually PUBLISHED — that a peer context holding nothing
+    // but `SecretsContract` can mint an address, hand it on, and spend it.
+    const created = unwrap(
+      await vault.createCredential({
+        authorization: grants.operator,
+        name: "STRIPE_SECRET_KEY",
+        provider: "stripe",
+        plaintext: secretMaterial("sk-live-referenced"),
+      }),
+    );
+
+    const issued = unwrap(
+      await vault.issueSecretHandle({
+        authorization: grants.readOnlyOperator,
+        credentialId: created.id,
+      }),
+    );
+    expect(issued.handle.startsWith(`${published.SECRET_HANDLE_SCHEME}.`)).toBe(true);
+    expect(issued.handle).not.toContain("sk-live-referenced");
+    expect(issued.handle).not.toContain("STRIPE_SECRET_KEY");
+
+    const spent = unwrap(
+      await vault.exchangeSecretHandle({ authorization: grants.runtime, handle: issued.handle }),
+    );
+    expect(spent.reveal()).toBe("sk-live-referenced");
+    expect(published.isSecretMaterial(spent)).toBe(true);
+
+    // The issuer may mint and may not spend, on the same surface.
+    const refused = await vault.exchangeSecretHandle({
+      authorization: grants.readOnlyOperator,
+      handle: issued.handle,
+    });
+    expect(refused.ok).toBe(false);
+  });
+
   it("routes environment variables through the same surface", async () => {
     unwrap(
       await vault.setEnvironmentVariable({

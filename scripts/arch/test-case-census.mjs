@@ -2349,7 +2349,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 27, cases: 378 },
-  "packages/contexts/secrets": { files: 20, cases: 239 },
+  "packages/contexts/secrets": { files: 20, cases: 240 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
@@ -2795,7 +2795,25 @@ export const EXPECTED = Object.freeze({
  * "Test Files 27 passed (27) / Tests 378 passed (378)" -- and the file on its
  * own prints 18, up from 15.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7497;
+/*
+ * WIN-259 (M2.4) THE REFERENCE IS REACHABLE, +1 case and NO file, in
+ * `packages/contexts/secrets`: 239 -> 240 cases, 20 files unchanged, and
+ * 7497 -> 7498.
+ *
+ * THE CASE IS `issues and spends a SECRET REFERENCE through the contract
+ * alone`, appended to the existing `contracts/index.test.ts`. Every other
+ * assertion about the reference drives the use cases directly; this one proves
+ * the deliverable is actually PUBLISHED -- that a peer context holding nothing
+ * but `SecretsContract` can mint an address, hand it on, spend it, and be
+ * refused when the grant that minted it tries to spend it too. A deliverable
+ * that works and is not reachable is not delivered, and no other case in this
+ * package could have caught that.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 20 passed (20) / Tests 240 passed (240)" -- and
+ * contracts/index.test.ts on its own prints 9, up from 8.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7498;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
