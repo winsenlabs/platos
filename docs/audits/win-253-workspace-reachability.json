@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "55347784a61459b9e6130ebd3127d4b2dcee156afd47562cd84fecbeee89a687",
+  "evidenceSha256": "4a5caf25be026cde650fb6bd961d1eeeeff25de684d728f0632b07ad0a528e87",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "a891ccea6e361fc0a1679f79b0f13d17ed338ce15f4cee96fab52f8016d193b5",
+    "aggregateSha256": "971b717eb535fe5a418603f38b0550b15009af7b73b4d56af06e254b23ea51a1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11229,7 +11229,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/adapter.ts",
-        "sha256": "680f619cf8e78de9ec931a5b9bb0720fd16f63e8899cf57935f6c84df49f7195"
+        "sha256": "dd7beeec70fb0c6c293acd9d3b53e811f5321a110a66f89ed8909810ce8c5ac7"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/agents-catalog.ts",
