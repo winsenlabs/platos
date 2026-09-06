@@ -285,6 +285,24 @@ describe("a rate is read from three columns or from none", () => {
     expect(step.rates.input?.source).toBe("LITELLM");
   });
 
+  test("an EXPONENTIAL rate from the driver is expanded, not refused", () => {
+    // THE DRIVER, NOT THE DATABASE. The ORM hands a `Decimal` back as a
+    // decimal.js value whose `toString()` switches to exponential below 1e-7, so
+    // an entirely ordinary `cacheReadRate` of `0.000000300000` reads back as the
+    // string `"3e-7"`. This case is the one the first integration run produced.
+    const step = readStep(stepRow({ cacheReadRate: { toString: () => "3e-7" } }));
+    expect(step.rates.cacheRead?.usdPerToken).toBe("0.000000300000");
+  });
+
+  test("the scale is PART OF THE TYPE, so trailing zeros round-trip exactly", () => {
+    // `Decimal(24, 12)` stores twelve fractional digits. A reader that answered
+    // `0.0000003` would be numerically right and would make every comparison of
+    // two rate books — including the conformance differential — report a
+    // difference that is not one.
+    const step = readStep(stepRow({ inputRate: { toString: () => "0.0000031" } }));
+    expect(step.rates.input?.usdPerToken).toBe("0.000003100000");
+  });
+
   test("the twelfth decimal survives, because the string is never a float", () => {
     // `Decimal(24, 12)` exceeds what a binary float holds exactly. A mapper that
     // went through `Number` would answer 0.000000000001 as 1e-12 and re-render
@@ -373,6 +391,11 @@ describe("a Decimal is read as a string or refused", () => {
     );
     expect(refusal.code).toBe(UNREADABLE_DECIMAL);
     expect(refusal.column).toBe("Step.costCents");
+  });
+
+  test("an exponential COST is expanded to the cent scale too", () => {
+    const step = readStep(stepRow({ costCents: { toString: () => "1.5e-5" } }));
+    expect(step.cost?.microCents).toBe(15n);
   });
 
   test("a cost finer than Decimal(18, 6) is refused rather than rounded", () => {

@@ -222,7 +222,7 @@ describe("@db.Uuid — a non-uuid identifier is a driver fault, not a constraint
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(CONVERSATIONS_IDENTIFIER_NOT_UUID);
+    expect(refused.error.message).toContain(CONVERSATIONS_IDENTIFIER_NOT_UUID);
   });
 
   test("the database refuses it too, and not with a constraint name", async () => {
@@ -248,7 +248,7 @@ describe("@db.Uuid — a non-uuid identifier is a driver fault, not a constraint
     });
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(CONVERSATIONS_IDENTIFIER_NOT_UUID);
+    expect(refused.error.message).toContain(CONVERSATIONS_IDENTIFIER_NOT_UUID);
   });
 });
 
@@ -263,7 +263,7 @@ describe("Thread_sessionContext_json_root", () => {
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(SESSION_CONTEXT_NOT_OBJECT);
+    expect(refused.error.message).toContain(SESSION_CONTEXT_NOT_OBJECT);
   });
 
   test("the database refuses it, naming the constraint", async () => {
@@ -294,7 +294,7 @@ describe("Thread_ancestry — the fork lineage rule nothing outside the migratio
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(FORK_LINEAGE_INCOHERENT);
+    expect(refused.error.message).toContain(FORK_LINEAGE_INCOHERENT);
   });
 
   test("the store refuses a boundary set with an EMPTY lineage", async () => {
@@ -308,7 +308,7 @@ describe("Thread_ancestry — the fork lineage rule nothing outside the migratio
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(FORK_LINEAGE_INCOHERENT);
+    expect(refused.error.message).toContain(FORK_LINEAGE_INCOHERENT);
   });
 
   test("the store refuses a lineage that names one turn twice, under its OWN code", async () => {
@@ -327,7 +327,7 @@ describe("Thread_ancestry — the fork lineage rule nothing outside the migratio
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(FORK_LINEAGE_REPEATED);
+    expect(refused.error.message).toContain(FORK_LINEAGE_REPEATED);
   });
 
   test("the database refuses the same three, as one ancestry violation", async () => {
@@ -359,7 +359,7 @@ describe("Turn_usage_check", () => {
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(SEQUENCE_OUT_OF_RANGE);
+    expect(refused.error.message).toContain(SEQUENCE_OUT_OF_RANGE);
   });
 
   test("the store refuses a negative latency", async () => {
@@ -369,7 +369,7 @@ describe("Turn_usage_check", () => {
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(MEASUREMENT_NEGATIVE);
+    expect(refused.error.message).toContain(MEASUREMENT_NEGATIVE);
   });
 
   test("the store refuses a turn that completed before it started", async () => {
@@ -384,7 +384,7 @@ describe("Turn_usage_check", () => {
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(TIMESTAMPS_INCOHERENT);
+    expect(refused.error.message).toContain(TIMESTAMPS_INCOHERENT);
   });
 
   test("the database refuses all three, naming one constraint", async () => {
@@ -428,7 +428,7 @@ describe("Turn_input_json_root and Turn_output_json_root", () => {
       );
       expect(refused.ok).toBe(false);
       if (refused.ok) return;
-      expect(String(refused.error.details["reason"])).toContain(TURN_JSON_NOT_OBJECT);
+      expect(refused.error.message).toContain(TURN_JSON_NOT_OBJECT);
     }
   });
 
@@ -465,7 +465,7 @@ describe("Step_usage_check", () => {
     });
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(STEP_USAGE_NEGATIVE);
+    expect(refused.error.message).toContain(STEP_USAGE_NEGATIVE);
   });
 
   test("the store refuses cache figures that exceed the input total, under its OWN code", async () => {
@@ -489,7 +489,7 @@ describe("Step_usage_check", () => {
     });
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(STEP_CACHE_EXCEEDS_INPUT);
+    expect(refused.error.message).toContain(STEP_CACHE_EXCEEDS_INPUT);
   });
 
   test("the store refuses a priced step with no price snapshot", async () => {
@@ -499,7 +499,7 @@ describe("Step_usage_check", () => {
     });
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(STEP_PRICE_SNAPSHOT_INCOMPLETE);
+    expect(refused.error.message).toContain(STEP_PRICE_SNAPSHOT_INCOMPLETE);
   });
 
   test("the database refuses all three, naming one constraint", async () => {
@@ -534,7 +534,7 @@ describe("PostmanExecution_requestFingerprint_check and _contextHandle_check", (
       );
       expect(refused.ok).toBe(false);
       if (refused.ok) return;
-      expect(String(refused.error.details["reason"])).toContain(REQUEST_FINGERPRINT_MALFORMED);
+      expect(refused.error.message).toContain(REQUEST_FINGERPRINT_MALFORMED);
     }
   });
 
@@ -554,7 +554,7 @@ describe("PostmanExecution_requestFingerprint_check and _contextHandle_check", (
       );
       expect(refused.ok).toBe(false);
       if (refused.ok) return;
-      expect(String(refused.error.details["reason"])).toContain(CONTEXT_HANDLE_MALFORMED);
+      expect(refused.error.message).toContain(CONTEXT_HANDLE_MALFORMED);
     }
   });
 
@@ -601,7 +601,7 @@ describe("PostmanExecution_ancestry — a turn link needs a thread link", () => 
     );
     expect(refused.ok).toBe(false);
     if (refused.ok) return;
-    expect(String(refused.error.details["reason"])).toContain(EXECUTION_TURN_WITHOUT_THREAD);
+    expect(refused.error.message).toContain(EXECUTION_TURN_WITHOUT_THREAD);
   });
 
   test("the database refuses it as an ancestry violation, naming neither column", async () => {

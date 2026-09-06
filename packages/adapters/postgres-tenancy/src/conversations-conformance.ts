@@ -18,8 +18,8 @@
 // `conversations-constraints.integration.test.ts` instead.
 //
 // ---------------------------------------------------------------------------
-// FOUR THINGS ARE DELIBERATELY NOT IN THIS SCENARIO, BECAUSE ON EACH THE DOUBLE
-// IS WRONG RATHER THAN DIFFERENT
+// FIVE THINGS ARE OUT OF THIS SCENARIO OR NARROWED IN IT, BECAUSE ON EACH THE
+// DOUBLE IS WRONG RATHER THAN DIFFERENT
 // ---------------------------------------------------------------------------
 //
 //   A FAILED TURN IN THE TRANSCRIPT. `TurnRepository.readTranscriptTurns` is
@@ -42,7 +42,13 @@
 //   whole objects and has no column to disagree with. `conversations-rows.test.ts`
 //   pins that the rollup wins.
 //
-// All four are pinned against the real database instead, and all four are
+//   A FIFTH ONE IS NARROWED RATHER THAN LEFT OUT, because the step around it is
+//   worth keeping: after an erasure the real store answers an execution whose
+//   `threadId` and `turnId` are NULL — `onDelete: SetNull` on both — and the
+//   double keeps them pointing at a thread it has just deleted. The observation
+//   records what the erasure is about and the nulling is pinned separately.
+//
+// All five are pinned against the real database instead, and all five are
 // reported.
 
 import {
@@ -73,7 +79,12 @@ import {
   type TurnId,
 } from "@platos/context-conversations/application/ports/index.js";
 
-import { CONFORMANCE_RATES, RATE_OBSERVED_AT, RATE_SOURCE } from "./conversations-harness.js";
+import {
+  CONFORMANCE_RATES,
+  RATE_OBSERVED_AT,
+  RATE_SOURCE,
+  RATE_SOURCE_REF,
+} from "./conversations-harness.js";
 import type { ConversationsStores } from "./conversations-repository.js";
 
 /** Every identifier the scenario needs. All uuids; both stores use the same. */
@@ -129,7 +140,9 @@ function rateBook(): StepRateBook {
     usdPerToken,
     source: RATE_SOURCE,
     observedAt: RATE_OBSERVED_AT,
-    sourceRef: null,
+    // NOT NULL, and that is `ModelPrice_rate_check` reaching through
+    // `Step_price_snapshot`; see `RATE_SOURCE_REF` in the harness.
+    sourceRef: RATE_SOURCE_REF,
   });
   return {
     input: rate(CONFORMANCE_RATES.input),
@@ -581,11 +594,18 @@ export async function runConversationsConformance(
     (taken) => taken,
   );
 
-  const compacted = await stores.threads.findThread(scope, threadId);
-  if (!compacted.ok || compacted.value === null) throw new Error("the thread went missing");
+  // THE SECOND THREAD IS THE ONE ARCHIVED, and which one is not arbitrary. The
+  // real store lists by `updatedAt DESC` and the double in insertion order; the
+  // second thread was created FIRST and carries the LATER instant, so stamping
+  // it again with the latest instant of all keeps it first on both sides.
+  // Archiving the other one would have moved it to the head of the real store's
+  // listing and left it at the tail of the double's, and the differential would
+  // then be reporting the fixture's own ordering rather than a divergence.
+  const archivable = await stores.threads.findThread(scope, secondThreadId);
+  if (!archivable.ok || archivable.value === null) throw new Error("the thread went missing");
   observed["saveThread.archived"] = outcome(
     await stores.threads.saveThread(scope, {
-      ...compacted.value,
+      ...archivable.value,
       summary: "the subject asked about refunds",
       archivedAt: at(40_000),
       updatedAt: at(40_000),
@@ -714,12 +734,30 @@ export async function runConversationsConformance(
     await stores.conversationsErasure.censusForEndUser(subject, scope.organizationId),
     (census) => ({ ...census }),
   );
+  // A NARROWER PROJECTION THAN EVERY OTHER EXECUTION STEP, and the two fields it
+  // leaves out are a FIFTH place the double is wrong rather than different.
+  // `PostmanExecution.thread` and `.turn` are both `onDelete: SetNull`, so the
+  // real store answers a row whose `threadId` and `turnId` are gone with the
+  // thread they named; `InMemoryConversations` has no cascade for either column
+  // and keeps them pointing at a thread it has just deleted. What the erasure is
+  // ABOUT is compared here — the row SURVIVED, its operator is intact, its
+  // subject link is severed — and the nulling is pinned against the real
+  // database in `conversations-rules.integration.test.ts`.
   observed["findExecution.afterErasure"] = outcome(
     await stores.postman.findExecution(
       scope,
       asConversationsIdentifier<PostmanExecutionId>(ids.executionId),
     ),
-    projectExecution,
+    (execution) =>
+      execution === null
+        ? null
+        : {
+            executionId: execution.executionId,
+            actorUserId: execution.actorUserId,
+            simulatedEndUserId: execution.simulatedEndUserId,
+            requestFingerprint: execution.requestFingerprint,
+            status: execution.status,
+          },
   );
   // THE CASCADE. `Turn.thread` and `Step.turn` are both `onDelete: Cascade`, so
   // the subject's turns went with their thread. A store that deleted the thread

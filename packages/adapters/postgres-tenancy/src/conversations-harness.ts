@@ -100,6 +100,25 @@ export const CONFORMANCE_RATES = Object.freeze({
 /** The source every rate in the fixture carries. Never `UNAVAILABLE` by default. */
 export const RATE_SOURCE: RateSource = "LITELLM";
 
+/**
+ * The provenance reference every rate carries, and it is NOT optional.
+ *
+ * FOUND BY THE FIRST INTEGRATION RUN, from a constraint that exists only in the
+ * migrations: `ModelPrice_rate_check` demands
+ * `(source = 'UNAVAILABLE' OR sourceRef IS NOT NULL)` for all four rates, so a
+ * card whose sources are real cannot be seeded without one. And because
+ * `Step_price_snapshot` compares a step's four `*RateSourceRef` columns to the
+ * card's, the requirement propagates: a priced `Step` whose rate source is not
+ * `UNAVAILABLE` must carry a non-null `sourceRef` too.
+ *
+ * NOTHING SAYS SO ON THE STEP'S SIDE. `Step_usage_check` ties twelve rate
+ * columns to `costCents` and leaves the four references out; `domain/step-rates.ts`
+ * types `sourceRef` as `string | null`; and the context's own `stepFixture` sets
+ * all four to `null`. That fixture is green in every use-case suite in the
+ * context and cannot be stored against a real price card.
+ */
+export const RATE_SOURCE_REF = "litellm@2026-04-01";
+
 /** One seeded conversation, and everything it hangs off. */
 export interface PeerChain {
   readonly scope: EnvironmentScope;
@@ -108,6 +127,8 @@ export interface PeerChain {
   readonly secondAgentVersionId: string;
   readonly clusterId: string;
   readonly endUserId: string;
+  /** A SECOND subject in the SAME organization. The subject-immutability proof. */
+  readonly secondEndUserId: string;
   readonly templateId: string;
   readonly actorUserId: string;
   readonly modelPriceId: string;
@@ -178,12 +199,15 @@ export async function startConversationsHarness(): Promise<ConversationsHarness>
                "inputRate", "outputRate", "cacheReadRate", "cacheWriteRate",
                "inputSource", "outputSource", "cacheReadSource", "cacheWriteSource",
                "inputObservedAt", "outputObservedAt", "cacheReadObservedAt", "cacheWriteObservedAt",
+               "inputSourceRef", "outputSourceRef", "cacheReadSourceRef", "cacheWriteSourceRef",
                "createdAt")
             VALUES ('${priceId}', '${modelId}', ${STAMP},
                     ${CONFORMANCE_RATES.input}, ${CONFORMANCE_RATES.output},
                     ${CONFORMANCE_RATES.cacheRead}, ${CONFORMANCE_RATES.cacheWrite},
                     '${RATE_SOURCE}', '${RATE_SOURCE}', '${RATE_SOURCE}', '${RATE_SOURCE}',
                     ${observed}, ${observed}, ${observed}, ${observed},
+                    '${RATE_SOURCE_REF}', '${RATE_SOURCE_REF}',
+                    '${RATE_SOURCE_REF}', '${RATE_SOURCE_REF}',
                     ${STAMP});`;
   }
 
@@ -230,6 +254,7 @@ export async function startConversationsHarness(): Promise<ConversationsHarness>
       const secondAgentVersionId = base.freshId("0026");
       const clusterId = base.freshId("0027");
       const endUserId = base.freshId("0028");
+      const secondEndUserId = base.freshId("002c");
       const templateId = base.freshId("0029");
       const modelId = base.freshId("002a");
       const modelPriceId = base.freshId("002b");
@@ -242,6 +267,13 @@ export async function startConversationsHarness(): Promise<ConversationsHarness>
            VALUES ('${clusterId}', '${scope.environmentId}', 'support', 'support', ${STAMP}, ${STAMP});`,
           `INSERT INTO "EndUser" ("id", "organizationId", "displayName", "createdAt", "updatedAt")
            VALUES ('${endUserId}', '${scope.organizationId}', 'the subject', ${STAMP}, ${STAMP});`,
+          // The SECOND subject shares the organization on purpose. Moving a
+          // thread to it satisfies `Thread_ancestry` — which checks the ORG —
+          // so the only rule left to refuse the write is
+          // `Thread_subject_immutable`, and the case that sends it is measuring
+          // that trigger rather than the ancestry rule in front of it.
+          `INSERT INTO "EndUser" ("id", "organizationId", "displayName", "createdAt", "updatedAt")
+           VALUES ('${secondEndUserId}', '${scope.organizationId}', 'another subject', ${STAMP}, ${STAMP});`,
           `INSERT INTO "PostmanTemplate"
              ("id", "environmentId", "agentId", "name", "simulateUserId", "createdBy", "createdAt", "updatedAt")
            VALUES ('${templateId}', '${scope.environmentId}', '${agentId}', 'saved request',
@@ -256,6 +288,7 @@ export async function startConversationsHarness(): Promise<ConversationsHarness>
         secondAgentVersionId,
         clusterId,
         endUserId,
+        secondEndUserId,
         templateId,
         // The operator `User` the shared identity fixture already seeds.
         // `PostmanExecution_ancestry` asks only that the row EXIST — it joins

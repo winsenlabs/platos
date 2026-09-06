@@ -63,6 +63,7 @@ import {
   CONFORMANCE_RATES,
   RATE_OBSERVED_AT,
   RATE_SOURCE,
+  RATE_SOURCE_REF,
   startConversationsHarness,
 } from "./conversations-harness.js";
 import {
@@ -160,7 +161,9 @@ function stepOf(stepId: string, turnId: string, sequence: number, overrides: Par
     usdPerToken,
     source: RATE_SOURCE,
     observedAt: RATE_OBSERVED_AT,
-    sourceRef: null,
+    // NOT NULL, and that is `ModelPrice_rate_check` reaching through
+    // `Step_price_snapshot`; see `RATE_SOURCE_REF` in the harness.
+    sourceRef: RATE_SOURCE_REF,
   });
   return Object.freeze({
     stepId: asConversationsIdentifier<StepId>(stepId),
@@ -250,25 +253,25 @@ describe("a settlement is atomic, and the second write is the one that fails", (
               usdPerToken: "0.000009000000",
               source: RATE_SOURCE,
               observedAt: RATE_OBSERVED_AT,
-              sourceRef: null,
+              sourceRef: RATE_SOURCE_REF,
             },
             output: {
               usdPerToken: CONFORMANCE_RATES.output,
               source: RATE_SOURCE,
               observedAt: RATE_OBSERVED_AT,
-              sourceRef: null,
+              sourceRef: RATE_SOURCE_REF,
             },
             cacheRead: {
               usdPerToken: CONFORMANCE_RATES.cacheRead,
               source: RATE_SOURCE,
               observedAt: RATE_OBSERVED_AT,
-              sourceRef: null,
+              sourceRef: RATE_SOURCE_REF,
             },
             cacheWrite: {
               usdPerToken: CONFORMANCE_RATES.cacheWrite,
               source: RATE_SOURCE,
               observedAt: RATE_OBSERVED_AT,
-              sourceRef: null,
+              sourceRef: RATE_SOURCE_REF,
             },
           }),
         }),
@@ -417,28 +420,47 @@ describe("the three transaction-scope refusals, each with its own code", () => {
     // the reason it is a third code: `scope_unknown` says the transaction is
     // over, this says it is somebody else's. A single shared code would make the
     // two indistinguishable in a log.
-    let refused: unknown;
-    await harness.base.adapter.unitOfWork.run(async (outer: TransactionScope) => {
-      const gate = new Promise<void>((resolve) => {
-        void harness.base.adapter.unitOfWork
-          .run(async () =>
-            harness.stores.conversationsErasure
-              .deleteThreadsForEndUser(
-                asConversationsIdentifier<EndUserId>(chain.endUserId),
-                scope.organizationId,
-                outer,
-              )
-              .catch((error: unknown) => {
-                refused = error;
-              }),
-          )
-          .catch((error: unknown) => {
-            refused = error;
-          })
-          .finally(resolve);
-      });
-      await gate;
+    //
+    // THE CONCURRENT TRANSACTION IS OPENED OUTSIDE THIS ASYNC CONTEXT and parked
+    // on a gate, and that is not a stylistic choice. `UnitOfWork.run` JOINS an
+    // open transaction rather than opening a second one — the kernel port says
+    // so and it is what keeps a composed use case atomic — so a nested `run`
+    // would hand back the OUTER token and there would be nothing foreign about
+    // it. The first draft of this case did exactly that and observed no refusal
+    // at all. The token below is in `open` when the write is issued, so only the
+    // identity check can refuse it, which is precisely what separates
+    // `scope_foreign` from `scope_unknown`.
+    let release = (): void => undefined;
+    const gate = new Promise<void>((settle) => {
+      release = settle;
     });
+    let concurrent: TransactionScope | undefined;
+    const held = new Promise<void>((ready) => {
+      void harness.base.adapter.unitOfWork.run(async (transaction: TransactionScope) => {
+        concurrent = transaction;
+        ready();
+        await gate;
+      });
+    });
+    await held;
+    const other = concurrent as TransactionScope;
+
+    let refused: unknown;
+    await harness.base.adapter.unitOfWork.run(async (live: TransactionScope) => {
+      expect(other.transactionId).not.toBe(live.transactionId);
+      refused = await harness.stores.conversationsErasure
+        .deleteThreadsForEndUser(
+          asConversationsIdentifier<EndUserId>(chain.endUserId),
+          scope.organizationId,
+          other,
+        )
+        .then(
+          () => undefined,
+          (error: unknown) => error,
+        );
+    });
+    release();
+
     expect(refused).toBeInstanceOf(TransactionScopeError);
     expect((refused as TransactionScopeError).code).toBe(TRANSACTION_SCOPE_FOREIGN);
   }, 120_000);

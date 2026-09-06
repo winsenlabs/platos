@@ -342,11 +342,30 @@ export function createThreadRepository(transactions: TenancyTransactions): Threa
         // that matches the double: the port says losing this race is a normal
         // outcome for scheduled work, and a compaction sweep that met a
         // just-erased thread should skip it rather than fail the sweep.
-        const moved = await transactions.reader().thread.updateMany({
-          where: { id: threadId, ...scopedWhere(scope), compactionState: "IDLE" },
-          data: { compactionState: "IN_PROGRESS" },
-        });
-        return ok(moved.count === 1);
+        //
+        // RAW SQL, AND THE REASON IS `updatedAt`. `Thread.updatedAt` is
+        // `@updatedAt`, which is a CLIENT feature rather than a database default:
+        // the ORM stamps the column on every update it issues unless the caller
+        // supplies a value, and this method has none to supply. Taking a
+        // compaction lock is not a user-visible change to a conversation, and
+        // `Thread_environmentId_endUserId_updatedAt_idx` is the index a user's
+        // thread list is ordered by — so a background sweep that touched the
+        // column would silently reorder every list it passed over. This
+        // statement names the two columns it means to write and no others, and
+        // `conversations-conformance.integration.test.ts` caught the bump the
+        // first time round.
+        //
+        // It is static text with bound parameters, which is what keeps it
+        // attributable to `Thread` under the ADR M0.3 §5.2 sole-writer lint; SQL
+        // assembled at run time is refused there as unattributable, and rightly.
+        const moved = await transactions.reader().$executeRaw`
+          UPDATE "Thread"
+             SET "compactionState" = 'IN_PROGRESS'
+           WHERE "id" = ${threadId}::uuid
+             AND "environmentId" = ${scope.environmentId}::uuid
+             AND "compactionState" = 'IDLE'
+        `;
+        return ok(moved === 1);
       }, "threads acquireCompactionLock");
     },
 

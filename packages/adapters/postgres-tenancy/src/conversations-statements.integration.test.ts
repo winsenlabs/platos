@@ -241,11 +241,15 @@ async function pinned(
 }
 
 describe("reads that answer a Turn cost the same for two turns and for twenty", () => {
-  test("pageTurns is TWO statements, not one per turn", async () => {
-    // The page and the count. The STEPS of every turn on the page are loaded by
-    // the SAME two, because the relation is resolved in the page's own statement
-    // rather than one query per row.
-    await pinned("pageTurns", 2, (fixture) =>
+  test("pageTurns is THREE statements, not one per turn", async () => {
+    // THE PAGE, ITS STEPS AND THE COUNT — measured rather than assumed, and the
+    // middle one is the finding. The ORM resolves a to-many `select` with a
+    // SECOND query over an `IN` list of the page's ids, not with a join and not
+    // with one query per row: three statements for a page of two turns and three
+    // for a page of twenty, which is the property this file exists to hold. The
+    // pin was first written at TWO on the assumption of a join and the first run
+    // corrected it; the number here is the measurement.
+    await pinned("pageTurns", 3, (fixture) =>
       harness.stores.turns.pageTurns({
         scope,
         threadId: fixture.threadId,
@@ -256,22 +260,26 @@ describe("reads that answer a Turn cost the same for two turns and for twenty", 
     );
   }, 120_000);
 
-  test("readTranscriptTurns is ONE statement", async () => {
-    await pinned("readTranscriptTurns", 1, (fixture) =>
+  test("readTranscriptTurns is TWO statements: the turns and their steps", async () => {
+    // TWO, and the same two for two turns and for twenty. A transcript is read
+    // on every prompt a long conversation builds, so this is the pin that would
+    // catch a rollup done one turn at a time.
+    await pinned("readTranscriptTurns", 2, (fixture) =>
       harness.stores.turns.readTranscriptTurns(scope, fixture.threadId, 0, 50),
     );
   }, 120_000);
 
-  test("findTurnWithSteps is ONE statement, however many steps the turn has", async () => {
-    await pinned("findTurnWithSteps", 1, (fixture) =>
+  test("findTurnWithSteps is TWO, however many steps the turn has", async () => {
+    await pinned("findTurnWithSteps", 2, (fixture) =>
       harness.stores.turns.findTurnWithSteps(scope, fixture.turnIds[0] as TurnId),
     );
   }, 120_000);
 
   test("findInheritedTurns resolves a whole list in ONE statement", async () => {
-    // The obvious wrong shape is one lookup per inherited turn, which is what a
-    // fork's transcript would do on every prompt it builds.
-    await pinned("findInheritedTurns", 1, (fixture) =>
+    // TWO — the turns and their steps — for a list of two and for a list of
+    // twenty. The obvious wrong shape is one lookup per inherited turn, which is
+    // what a fork's transcript would do on every prompt it builds.
+    await pinned("findInheritedTurns", 2, (fixture) =>
       harness.stores.threads.findInheritedTurns(scope, fixture.turnIds),
     );
   }, 120_000);

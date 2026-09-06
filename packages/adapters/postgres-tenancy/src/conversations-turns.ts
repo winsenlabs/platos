@@ -18,8 +18,9 @@
 //
 // IT IS NOT AN N+1, and `conversations-statements.integration.test.ts` measures
 // that rather than asserting it. The relation is loaded for the WHOLE page in
-// one further statement, not one per turn, so a page of one turn and a page of
-// fifty cost the same, and the pin is taken over both fixtures.
+// ONE FURTHER STATEMENT — the ORM resolves a to-many `select` with a second
+// query over an `IN` list of the page's ids — so a page of two turns and a page
+// of twenty cost the same three statements, and the pin is taken over both.
 //
 // ---------------------------------------------------------------------------
 // THE SEQUENCE CLASH IS AN OUTCOME, AND A SAVEPOINT IS WHAT MAKES IT ONE

@@ -191,31 +191,78 @@ export interface DecimalLike {
 }
 
 /**
- * A `Decimal` column read as the exact string the schema stores.
+ * The scale of the two decimal columns this store reads.
+ *
+ * THE SCALE IS PART OF THE TYPE, not a formatting preference.
+ * `Decimal(24, 12)` stores twelve fractional digits and `Decimal(18, 6)` six, so
+ * a rate written as `0.000000300000` is stored as exactly that and must read
+ * back as exactly that. See `readDecimalString` for why it does not, unaided.
+ */
+const RATE_SCALE = 12;
+const CENT_SCALE = 6;
+
+/**
+ * A decimal in exponential form, expanded to plain notation without a float.
+ *
+ * FOUND BY THE FIRST INTEGRATION RUN, and it is the driver rather than the
+ * database: the ORM hands a `Decimal` back as a decimal.js value whose
+ * `toString()` switches to EXPONENTIAL below 1e-7. A `cacheReadRate` of
+ * `0.000000300000` — an entirely ordinary rate, and one this package's own
+ * fixture uses — reads back as the string `"3e-7"`.
+ *
+ * `domain/step-rates.ts` requires the canonical decimal STRING and says why in
+ * as many words: twelve fractional digits do not survive a binary float, and the
+ * value is written back into a decimal column. So the expansion is done on the
+ * DIGITS, by moving the point, and never through `Number`.
+ */
+function expandExponential(text: string): string | null {
+  const match = /^(-?)(\d+)(?:\.(\d*))?[eE]([+-]?\d+)$/u.exec(text);
+  if (match === null) return null;
+  const [, sign = "", whole = "0", fraction = "", exponent = "0"] = match;
+  const digits = `${whole}${fraction}`;
+  const point = whole.length + Number.parseInt(exponent, 10);
+  if (point <= 0) return `${sign}0.${"0".repeat(-point)}${digits}`;
+  if (point >= digits.length) return `${sign}${digits}${"0".repeat(point - digits.length)}`;
+  return `${sign}${digits.slice(0, point)}.${digits.slice(point)}`;
+}
+
+/**
+ * A `Decimal` column read as the exact string the schema stores, at its own
+ * scale.
  *
  * NEVER THROUGH `Number`. `Decimal(24, 12)` has twelve fractional digits and
  * `Decimal(18, 6)` eighteen significant ones; both exceed what a binary float
  * holds exactly, and `domain/step-rates.ts` says in as many words that parsing a
  * rate into a float and re-rendering it is how a rate drifts in its last digits.
+ *
+ * PADDED TO THE COLUMN'S SCALE, which is what makes the round trip EXACT rather
+ * than merely numerically equal. Without it a rate written as `0.000000300000`
+ * comes back as `0.0000003` and a caller comparing two rate books — or a
+ * conformance differential comparing this store against the in-memory double —
+ * sees a difference that is not one. A value FINER than the scale is refused
+ * rather than rounded: the column could not have held it, so reporting it would
+ * be reporting a number the database never stored.
  */
-function readDecimalString(column: string, value: DecimalLike | null): string | null {
+function readDecimalString(
+  column: string,
+  value: DecimalLike | null,
+  scale: number,
+): string | null {
   if (value === null || value === undefined) return null;
   const rendered = value.toString();
-  if (!/^-?\d+(?:\.\d+)?$/u.test(rendered)) unreadable(UNREADABLE_DECIMAL, column, rendered);
-  return rendered;
+  const plain = /[eE]/u.test(rendered) ? expandExponential(rendered) : rendered;
+  if (plain === null || !/^-?\d+(?:\.\d+)?$/u.test(plain)) {
+    unreadable(UNREADABLE_DECIMAL, column, rendered);
+  }
+  const [whole = "0", fraction = ""] = plain.split(".");
+  if (fraction.length > scale) unreadable(UNREADABLE_DECIMAL, column, rendered);
+  return `${whole}.${fraction.padEnd(scale, "0")}`;
 }
 
 function readMoney(column: string, value: DecimalLike | null): Money | null {
-  const rendered = readDecimalString(column, value);
+  const rendered = readDecimalString(column, value, CENT_SCALE);
   if (rendered === null) return null;
-  try {
-    return moneyFromCentsString(rendered);
-  } catch {
-    // FINER THAN THE COLUMN, which is a different fault from "not a decimal"
-    // and shares its code deliberately: both mean the stored number is one this
-    // binary must not round, and the value is in the message either way.
-    return unreadable(UNREADABLE_DECIMAL, column, rendered);
-  }
+  return moneyFromCentsString(rendered);
 }
 
 // ------------------------------------------------------------------- Thread
@@ -338,7 +385,7 @@ function readRate(
     unreadable(UNREADABLE_STEP_RATE, `Step.${name}Rate`, `${String(present.length)} of 3 columns`);
   }
   return Object.freeze({
-    usdPerToken: readDecimalString(`Step.${name}Rate`, rate) as string,
+    usdPerToken: readDecimalString(`Step.${name}Rate`, rate, RATE_SCALE) as string,
     source: readRateSource(`Step.${name}RateSource`, source as string),
     observedAt: observedAt as Date,
     sourceRef,

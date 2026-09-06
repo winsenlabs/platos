@@ -1,5 +1,5 @@
 // The `ConversationsErasureStore` — the only file in this package that deletes a
-// row, and the one where the real database contradicted the port twice.
+// row, and the one where the real database contradicted this file four times.
 //
 // ---------------------------------------------------------------------------
 // EVERY METHOD IS SCOPED TO AN ORGANIZATION, AND NO ROW HERE HAS ONE
@@ -22,27 +22,66 @@
 // which cannot see it.
 //
 // ---------------------------------------------------------------------------
-// FINDING 1 — THE THREADS ARE DELETED PARENT-LAST, OR THE ERASURE FAILS
+// FINDING 1 — THE `SetNull` CASCADE ONTO `PostmanExecution` REFUSES ITSELF
+// ---------------------------------------------------------------------------
+//
+// This one cost an integration run rather than being read out of the migrations
+// first, and it is the sharpest thing the real database said.
+//
+// `PostmanExecution.thread` and `PostmanExecution.turn` are BOTH
+// `onDelete: SetNull`, so deleting a thread makes PostgreSQL issue the nulling
+// UPDATEs itself. They are two separate foreign-key constraints and are applied
+// as two separate statements, so between them the row is `threadId = NULL` with
+// `turnId` still set — and `PostmanExecution_ancestry` fires BEFORE UPDATE. Its
+// turn clause is
+// `LEFT JOIN "Turn" turn ON turn.id = NEW."turnId" AND turn."threadId" = thread.id`,
+// which cannot resolve against a null thread, so the rule refuses the row and
+// the DELETE fails with `PostmanExecution crosses its canonical owner ancestry`
+// — a message naming neither the execution nor the thread.
+//
+// The effect is that an erasure is impossible for any subject an operator ever
+// ran a SETTLED postman request against, which is every subject a support
+// engineer has ever reproduced a bug for. Clearing BOTH columns in ONE update
+// first satisfies the rule, because both of its clauses are
+// `NEW."x" IS NULL OR …`. The in-memory double sees none of it: it has no
+// cascade, no trigger and no statement order.
+//
+// ---------------------------------------------------------------------------
+// FINDING 2 — THE FORK RESTRICT BLOCKS A LOOP AND NOT A SINGLE STATEMENT
 // ---------------------------------------------------------------------------
 //
 // `Thread_forkedUpToTurnId_fkey` is `ON DELETE RESTRICT`, and it is the ONLY
 // restricting foreign key pointing into any of this context's four rows. A fork
 // names the ancestor turn it branched at; deleting the ancestor THREAD cascades
-// to that turn; RESTRICT then refuses the delete — and RESTRICT is not deferred,
-// so it refuses even when the fork is being deleted in the SAME statement.
+// to that turn; and the RESTRICT is checked when the TURN goes.
 //
-// A single `deleteMany` over a subject's threads therefore FAILS for any subject
-// who has ever forked a conversation, with SQLSTATE 23503 and a message naming
-// neither the thread nor the fork. The in-memory double cannot see this: it
-// deletes from a Map, in insertion order, with no referential integrity at all.
+// WHICH ORDER THOSE HAPPEN IN IS THE WHOLE FINDING. Deleting the ancestor ALONE
+// is refused. Deleting the ancestor AND the fork in ONE statement is admitted,
+// because PostgreSQL removes every `Thread` row the statement names before the
+// cascade to `Turn` runs, and by then nothing references the turn.
 //
-// AND THE LINK CANNOT BE BROKEN FIRST. `Thread_owner_immutable` lists
-// `forkedUpToTurnId` among the columns `reject_canonical_owner_change` refuses to
-// let an UPDATE change, so nulling it before the delete is refused by a second
-// rule. The only remaining order is DEEPEST FIRST, which is what this does.
+// AND THE REFUSAL A CALLER MEETS IS NOT THE RESTRICT. `Thread.parentThreadId` is
+// `onDelete: SetNull`, so deleting the ancestor first makes the database UPDATE
+// the fork — and `Thread_ancestry` fires BEFORE UPDATE, where its lineage clause
+// requires a parent to exist whenever `forkedTurnIds` is non-empty. That refusal
+// arrives first, with `Thread crosses its canonical owner ancestry`, and the
+// RESTRICT is behind it. Two rules, one outcome, and neither message names the
+// fork.
+//
+// So a per-thread loop — the obvious shape, and the one the first draft of this
+// file used — fails on the first ancestor it reaches, and a single `deleteMany`
+// over the subject's threads does not. That is why the delete below is one
+// statement, and `conversations-rules.integration.test.ts` pins BOTH halves:
+// the ancestor alone is refused, the whole subject is not.
+//
+// AND THE LINK CANNOT BE BROKEN FIRST EITHER. `forkedUpToTurnId` is one of the
+// four columns `Thread_owner_immutable` freezes, and nulling it while
+// `forkedTurnIds` is non-empty ALSO breaks the lineage clause of
+// `Thread_ancestry`, which runs first and is the refusal a caller actually sees.
+// Two rules, one message.
 //
 // ---------------------------------------------------------------------------
-// FINDING 2 — `findHeldThreads` HAS NO COLUMN, AND ITS TRUTHFUL ANSWER IS THIN
+// FINDING 3 — `findHeldThreads` HAS NO COLUMN, AND ITS TRUTHFUL ANSWER IS THIN
 // ---------------------------------------------------------------------------
 //
 // The port asks for "threads an operator hold or retention rule blocks". There
@@ -68,14 +107,17 @@
 // answer, so a mutation that drops the "outside the erasure" clause turns red.
 //
 // ---------------------------------------------------------------------------
-// FINDING 3 — `anonymizeExecutionsForActor` CANNOT SEVER WHAT ITS DOC SAYS
+// FINDING 4 — `anonymizeExecutionsForActor` CANNOT SEVER WHAT ITS DOC SAYS
 // ---------------------------------------------------------------------------
 //
 // The port's comment reads "The same severing for an operator subject, on
-// `actorUserId`". THE DATABASE FORBIDS THAT THREE TIMES OVER: `actorUserId` is
-// NOT NULL, its foreign key is `ON DELETE RESTRICT` to `User`, and
+// `actorUserId`". THE DATABASE FORBIDS THAT FOUR TIMES OVER: `actorUserId` is
+// NOT NULL, its foreign key is `ON DELETE RESTRICT` to `User`,
 // `prevent_postman_execution_attribution_mutation` raises SQLSTATE 55000 on any
-// UPDATE that changes it. There is no value this store could write.
+// UPDATE that changes it, and `PostmanExecution_ancestry` joins `"User" actor ON
+// actor.id = NEW."actorUserId"` so a null refuses there FIRST — which is the
+// message the integration run actually produced. There is no value this store
+// could write.
 //
 // The in-memory double does NOT sever `actorUserId` either — it nulls
 // `simulatedEndUserId` on the executions that actor launched — and the erasure
@@ -125,10 +167,6 @@ function organizationExecutionWhere(
 
 interface HeldThreadRow {
   readonly heldThreadId: string;
-}
-
-interface DoomedThreadRow {
-  readonly doomedThreadId: string;
 }
 
 export function createConversationsErasureStore(
@@ -182,44 +220,25 @@ export function createConversationsErasureStore(
     ): Promise<Result<number>> {
       return refuse(async () => {
         const client = transactions.writer(transaction);
-        // ORDERED DEEPEST FIRST. See FINDING 1 in the header: a single
-        // `deleteMany` is refused by `Thread_forkedUpToTurnId_fkey` for any
-        // subject who forked, and the link cannot be nulled first because
-        // `Thread_owner_immutable` refuses that too.
-        //
-        // ONE statement computes the order — a recursive walk down
-        // `parentThreadId` from the subject's roots — so the cost is one query
-        // plus one delete per DEPTH, never per thread.
-        const doomed = await client.$queryRaw<readonly DoomedThreadRow[]>`
-          WITH RECURSIVE lineage("id", "depth") AS (
-            SELECT thread."id", 0
-              FROM "Thread" thread
-              JOIN "Environment" environment ON environment."id" = thread."environmentId"
-              JOIN "Project" project ON project."id" = environment."projectId"
-             WHERE thread."endUserId" = ${subjectId}::uuid
-               AND project."organizationId" = ${organizationId}::uuid
-               AND thread."parentThreadId" IS NULL
-            UNION ALL
-            SELECT fork."id", lineage."depth" + 1
-              FROM lineage
-              JOIN "Thread" fork ON fork."parentThreadId" = lineage."id"
-          )
-          SELECT lineage."id" AS "doomedThreadId"
-            FROM lineage
-           ORDER BY lineage."depth" DESC
-        `;
-        // A thread whose parent is NOT the subject's cannot exist —
-        // `enforce_domain_ancestry` requires a fork's parent to share its end
-        // user — so the walk from the roots reaches every one of them. The
-        // count is taken from the deletes rather than from this list, so a walk
-        // that missed a thread reports fewer than it planned rather than
-        // claiming the plan's number.
-        let deleted = 0;
-        for (const row of doomed) {
-          const outcome = await client.thread.deleteMany({ where: { id: row.doomedThreadId } });
-          deleted += outcome.count;
-        }
-        return ok(deleted);
+        const doomed = organizationThreadWhere(subjectId, organizationId);
+        // THE EXECUTION LINKS ARE CLEARED FIRST, IN ONE STATEMENT, and this is
+        // the half that cost an integration run. See FINDING 1 in the header:
+        // `PostmanExecution.thread` and `.turn` are both `onDelete: SetNull`,
+        // the two foreign keys null in two separate statements, and
+        // `PostmanExecution_ancestry` sees the half-nulled row and refuses the
+        // delete with `PostmanExecution crosses its canonical owner ancestry`.
+        // Clearing BOTH columns in one update satisfies the rule, because both
+        // of its clauses are `NEW."x" IS NULL OR …`.
+        await client.postmanExecution.updateMany({
+          where: { thread: doomed },
+          data: { threadId: null, turnId: null },
+        });
+        // ONE DELETE FOR THE WHOLE SUBJECT, forks included, and see FINDING 2:
+        // a per-thread loop would be refused by `Thread_forkedUpToTurnId_fkey`
+        // the moment it reached an ancestor before its fork, while the single
+        // statement is admitted because every referencing thread goes with it.
+        const outcome = await client.thread.deleteMany({ where: doomed });
+        return ok(outcome.count);
       }, "erasure deleteThreadsForEndUser");
     },
 

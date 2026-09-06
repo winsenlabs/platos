@@ -51,6 +51,7 @@ import {
   CONFORMANCE_RATES,
   RATE_OBSERVED_AT,
   RATE_SOURCE,
+  RATE_SOURCE_REF,
   startConversationsHarness,
 } from "./conversations-harness.js";
 
@@ -139,7 +140,9 @@ function pricedStep(link: PeerChain, stepId: string, turnId: string): Step {
     usdPerToken,
     source: RATE_SOURCE,
     observedAt: RATE_OBSERVED_AT,
-    sourceRef: null,
+    // NOT NULL, and that is `ModelPrice_rate_check` reaching through
+    // `Step_price_snapshot`; see `RATE_SOURCE_REF` in the harness.
+    sourceRef: RATE_SOURCE_REF,
   });
   return Object.freeze({
     stepId: asConversationsIdentifier<StepId>(stepId),
@@ -296,12 +299,22 @@ describe("the erasure is scoped to ONE organization, and the double is not", () 
   });
 });
 
-describe("Thread_forkedUpToTurnId_fkey — a fork must be deleted before its ancestor", () => {
-  test("a single unordered DELETE is refused by the database", async () => {
-    // THE ONLY RESTRICTING FOREIGN KEY POINTING INTO ANY OF THIS CONTEXT'S FOUR
-    // ROWS, and RESTRICT is not deferred: it refuses even when the referencing
-    // row is being deleted in the SAME statement. This case sends exactly the
-    // statement a naive implementation would.
+describe("Thread_forkedUpToTurnId_fkey blocks a LOOP and not a single statement", () => {
+  test("deleting the ancestor ALONE is refused while its fork is still there", async () => {
+    // TWO RULES STAND BETWEEN A PER-THREAD DELETE AND SUCCESS, and the one a
+    // caller MEETS is not the one the column names suggest.
+    //
+    // `Thread.parentThreadId` is `onDelete: SetNull`, so deleting the ancestor
+    // makes PostgreSQL UPDATE the fork's `parentThreadId` to NULL — and
+    // `Thread_ancestry` fires BEFORE UPDATE, where its lineage clause requires a
+    // parent to exist whenever `forkedTurnIds` is non-empty. That refusal
+    // arrives FIRST, with `Thread crosses its canonical owner ancestry`.
+    // `Thread_forkedUpToTurnId_fkey`'s RESTRICT is behind it, waiting for the
+    // cascade to reach `Turn`.
+    //
+    // Either way a per-thread loop fails on the first ancestor it reaches — and
+    // a per-thread loop is what the first draft of this store used. The case
+    // below it shows the single statement is admitted.
     const ancestorId = uuid("31");
     const ancestorTurnId = uuid("32");
     const forkId = uuid("33");
@@ -326,31 +339,29 @@ describe("Thread_forkedUpToTurnId_fkey — a fork must be deleted before its anc
     ).toBe(true);
 
     const message = await refusedByDatabase(() =>
-      db().$executeRawUnsafe(
-        `DELETE FROM "Thread" WHERE "endUserId" = $1::uuid AND "environmentId" = $2::uuid`,
-        chain.endUserId,
-        scope.environmentId,
-      ),
+      db().$executeRawUnsafe(`DELETE FROM "Thread" WHERE "id" = $1::uuid`, ancestorId),
     );
-    expect(message).toContain("Thread_forkedUpToTurnId_fkey");
+    expect(message).toContain("Thread crosses its canonical owner ancestry");
   });
 
-  test("and the link cannot be broken first, because the column is immutable", async () => {
-    // `Thread_owner_immutable` lists `forkedUpToTurnId` among the columns
-    // `reject_canonical_owner_change` refuses to let an UPDATE change, so the
-    // obvious escape — null it, then delete — is refused by a SECOND rule. The
-    // ordered delete is the only remaining option, which is why the store does it.
+  test("and the link cannot be broken first: two rules refuse the nulling", async () => {
+    // THE OBVIOUS ESCAPE — null the boundary, then delete — is refused twice
+    // over. `Thread_owner_immutable` lists `forkedUpToTurnId` among the four
+    // columns `reject_canonical_owner_change` freezes, and `Thread_ancestry`
+    // ALSO refuses the row, because its lineage clause requires the boundary and
+    // the array to be empty together and `forkedTurnIds` still names a turn. The
+    // ancestry rule fires first, so it is its message a caller reads — which is
+    // exactly the sort of thing only a run against the real database says.
     const message = await refusedByDatabase(() =>
       db().$executeRawUnsafe(
         `UPDATE "Thread" SET "forkedUpToTurnId" = NULL WHERE "id" = $1::uuid`,
         uuid("33"),
       ),
     );
-    expect(message).toContain("forkedUpToTurnId");
-    expect(message).toContain("immutable");
+    expect(message).toContain("Thread crosses its canonical owner ancestry");
   });
 
-  test("the store's ordered delete removes the whole lineage", async () => {
+  test("the store's SINGLE delete removes the whole lineage", async () => {
     const deleted = await harness.base.adapter.unitOfWork.run((transaction) =>
       harness.stores.conversationsErasure.deleteThreadsForEndUser(
         asConversationsIdentifier<EndUserId>(chain.endUserId),
@@ -361,8 +372,10 @@ describe("Thread_forkedUpToTurnId_fkey — a fork must be deleted before its anc
     expect(deleted.ok).toBe(true);
     if (!deleted.ok) return;
     // THREE: the ancestor, the fork, and the thread the transcript cases seeded.
-    // The count comes from the deletes rather than from the plan, so a walk that
-    // missed a thread would report fewer rather than claim the plan's number.
+    // ONE statement took all three, ancestor and fork together — which is the
+    // half of the finding the case above cannot show: PostgreSQL removes every
+    // `Thread` row the statement names before the cascade reaches `Turn`, so by
+    // the time the RESTRICT is checked nothing references the boundary turn.
     expect(deleted.value).toBe(3);
 
     const census = await harness.stores.conversationsErasure.censusForEndUser(
@@ -448,10 +461,13 @@ describe("findHeldThreads names what the database would refuse, and nothing else
 describe("PostmanExecution's forensic attribution is immutable", () => {
   test("`actorUserId` cannot be severed — the port's own comment is unhonourable", async () => {
     // THE PORT SAYS "The same severing for an operator subject, on
-    // `actorUserId`". THE DATABASE FORBIDS IT THREE TIMES OVER: the column is NOT
-    // NULL, its foreign key is `ON DELETE RESTRICT` to `User`, and
+    // `actorUserId`". THE DATABASE FORBIDS IT FOUR TIMES OVER: the column is NOT
+    // NULL, its foreign key is `ON DELETE RESTRICT` to `User`,
     // `prevent_postman_execution_attribution_mutation` raises SQLSTATE 55000 on
-    // any UPDATE that changes it. There is no value the store could write.
+    // any UPDATE that changes it, and `PostmanExecution_ancestry` joins
+    // `"User" actor ON actor.id = NEW."actorUserId"` — which is the one that
+    // fires FIRST on a null, and so the message a caller actually reads. There is
+    // no value the store could write.
     //
     // The MECHANISM is settled elsewhere and agrees with the store:
     // `conversations-erasure-target.ts` says "the row is an audit trail and
@@ -468,7 +484,7 @@ describe("PostmanExecution's forensic attribution is immutable", () => {
         uuid("31"),
       ),
     );
-    expect(nulled.toLowerCase()).toContain("null");
+    expect(nulled).toContain("PostmanExecution crosses its canonical owner ancestry");
 
     const moved = await refusedByDatabase(() =>
       db().$executeRawUnsafe(
@@ -550,9 +566,21 @@ describe("Thread_owner_immutable and Thread_subject_immutable", () => {
   });
 
   test("the database refuses the same two writes when they are sent", async () => {
+    // BOTH TARGETS ARE CHOSEN SO THAT `Thread_ancestry` PASSES, and that is the
+    // whole care in this case. The second subject shares this ORGANIZATION and
+    // the sibling thread shares this environment, agent and subject, so the
+    // ancestry rule — which runs BEFORE the immutability triggers and refuses
+    // first when it can — has nothing to object to. What is left is
+    // `Thread_subject_immutable` and `Thread_owner_immutable`, which is what this
+    // case is about. Pointing either at a foreign row would have measured the
+    // ancestry rule instead, and the first draft of this case did exactly that.
+    const siblingId = uuid("52");
+    expect((await harness.stores.threads.createThread(scope, threadOf(chain, siblingId))).ok).toBe(
+      true,
+    );
     for (const [column, value] of [
-      ["endUserId", (await harness.foreignChain()).endUserId],
-      ["parentThreadId", uuid("41")],
+      ["endUserId", chain.secondEndUserId],
+      ["parentThreadId", siblingId],
     ] as const) {
       const message = await refusedByDatabase(() =>
         db().$executeRawUnsafe(
@@ -562,6 +590,7 @@ describe("Thread_owner_immutable and Thread_subject_immutable", () => {
         ),
       );
       expect(message).toContain("immutable");
+      expect(message).toContain(column);
     }
   });
 });
@@ -592,14 +621,19 @@ describe("Step_price_snapshot — a priced step's billing evidence is immutable"
                             "inputRate", "outputRate", "cacheReadRate", "cacheWriteRate",
                             "inputRateSource", "outputRateSource", "cacheReadRateSource", "cacheWriteRateSource",
                             "inputRateObservedAt", "outputRateObservedAt", "cacheReadRateObservedAt",
-                            "cacheWriteRateObservedAt", "createdAt")
-         VALUES ($1::uuid, $2::uuid, 1, 'anthropic:claude-test', 'SUCCEEDED', 4.5, $3::uuid,
+                            "cacheWriteRateObservedAt",
+                            "inputRateSourceRef", "outputRateSourceRef", "cacheReadRateSourceRef",
+                            "cacheWriteRateSourceRef", "createdAt")
+         VALUES ($1::uuid, $2::uuid, 2, 'anthropic:claude-test', 'SUCCEEDED', 4.5, $3::uuid,
                  0.000009000000, 0.000015000000, 0.000000300000, 0.000003750000,
                  'LITELLM', 'LITELLM', 'LITELLM', 'LITELLM',
-                 now(), now(), now(), now())`,
+                 $4, $4, $4, $4,
+                 $5, $5, $5, $5, now())`,
         uuid("63"),
         turnId,
         chain.modelPriceId,
+        RATE_OBSERVED_AT,
+        RATE_SOURCE_REF,
       ),
     );
     // The INPUT RATE is three times the card's. A store that had gone through a
