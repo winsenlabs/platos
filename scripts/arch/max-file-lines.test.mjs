@@ -486,29 +486,42 @@ test("the live selectors scan an exact nonzero source census", () => {
   // unchanged by it.
   //
   //
-  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 = 1303. All
-  // the stores are in the one adapter directory, so no branch's own figure
+  //
+  // 1303 -> 1320 (WIN-258 T5): `skills`' canonical store adds seventeen files to
+  // the one ORM home -- ELEVEN source and SIX suites.
+  //
+  // THE BUDGET SHAPED ONE SPLIT, before either file was committed. The
+  // conformance scenario reached past the warning band as a single module and
+  // was cut at a seam the budget was pointing at and that is real: everything in
+  // `skills-conformance.ts` is a question about the CATALOGUE, which is
+  // organization-scoped, and everything in `skills-conformance-installs.ts` is a
+  // question about an INSTALL, which is not. The largest file the tranche adds
+  // is `skills-conformance-installs.ts` at 361 effective lines, so the finding
+  // list below is unchanged by it.
+  //
+  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 17 = 1320.
+  // All the stores are in the one adapter directory, so no branch's own figure
   // survives the merge — 1266 for `channels`, 1269 for `governance`, 1270 for
-  // `secrets`.
-  assert.equal(result.fileCount, 1303);
+  // `secrets`, 1268 for `skills`.
+  assert.equal(result.fileCount, 1320);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 17
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
   // the one directory and then swept one of them again: 88 + 11 (tranche 3) +
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
   // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
-  // (secrets) = 217. The contexts, kernel and app rows are untouched, which is
-  // the claim worth making: no tranche-5 store adds a file to a context at all —
-  // each implements a port that already existed rather than widening one.
-  // `secrets` is the sharpest case: its port entry point WAS widened, in place,
-  // and a widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 217 + 6);
+  // (secrets) + 17 (skills) = 234. The contexts, kernel and app rows are
+  // untouched, which is the claim worth making: no tranche-5 store adds a file to
+  // a context at all — each implements a port that already existed rather than
+  // widening one. `secrets` and `skills` are the sharpest cases: both had their
+  // port entry point widened, in place, and a widened file is not a new one.
+  assert.equal(result.fileCount, 20 + 1060 + 234 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

@@ -1711,14 +1711,67 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * differential and moves NO count here, which is why `mutations-channels.json`
  * beside the package is where those guards are held falsifiable.
  *
- * ALL THREE OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE, so its row is the
- * SUM: 20 + 6 + 6 + 7 + 6 + 6 + 9 = 60 files and
- * 199 + 59 + 60 + 65 + 72 + 66 + 83 = 604 cases. `channels` contributes 6 files
- * / 72 cases, `governance` 6 / 66 and `secrets` 9 / 83, and no branch's own
- * figure — 45/455, 45/449 or 48/466 — survives the merge. The tree total is
- * 391 + 40 = 431 files and 6115 + 405 = 6520 cases. The adapters term of the
- * three-way identity carries all forty, because every added file is an
- * adapter's: 39 + 40 = 79, and 349 + 3 + 79 = 431.
+ * WIN-258 TRANCHE 5 ONCE MORE — `skills`' canonical store, the FIFTH in the same
+ * package. SIX files, 52 cases, and not one of them anywhere else:
+ *
+ *   skills-rows.test.ts                        17  the row readers and the eight
+ *                                                  write guards, on BOTH sides of
+ *                                                  each boundary, plus the
+ *                                                  assertion that all thirteen
+ *                                                  refusal codes are distinct. It
+ *                                                  runs under the default `test`
+ *                                                  script; the five below do not.
+ *   skills-rules.integration.test.ts           13  rows an OLDER BINARY could have
+ *                                                  written, planted as SQL — a
+ *                                                  NULL `TEXT[]`, an origin
+ *                                                  outside the closed set, a thin
+ *                                                  manifest, a manifest carrying a
+ *                                                  key this release has never
+ *                                                  heard of — and the TWO
+ *                                                  divergences between this store
+ *                                                  and the double, pinned rather
+ *                                                  than hidden.
+ *   skills-constraints.integration.test.ts     11  the six migration-only
+ *                                                  constraints read back out of
+ *                                                  `pg_catalog`, then falsified in
+ *                                                  PAIRS: the double accepts, the
+ *                                                  canonical schema refuses.
+ *   skills-transaction.integration.test.ts      7  failure injection over a SECOND
+ *                                                  client, and the three scope
+ *                                                  refusals under their three
+ *                                                  distinct codes.
+ *   skills-conformance.integration.test.ts      2  the differential, one case
+ *                                                  driving one scenario twice, and
+ *                                                  its negative control.
+ *   skills-statements.integration.test.ts       2  every count measured over a
+ *                                                  small fixture AND one 20x
+ *                                                  larger, in ONE map, plus the
+ *                                                  probe-filter case that keeps the
+ *                                                  measurement from discarding what
+ *                                                  it measures.
+ *
+ * 17 + 13 + 11 + 7 + 2 + 2 = 52. Five of the six need a real PostgreSQL and are
+ * run by the `postgres-tenancy-repository` CI job.
+ *
+ * TWO OF ITS SUITES ARE ONE CASE APIECE AND THAT IS THE INSTRUMENT, not a thin
+ * suite. The conformance differential drives ONE scenario against the double and
+ * then against PostgreSQL and compares the two transcripts key by key — the
+ * scenario records more than fifty observations and the suite asserts it
+ * recorded more than forty, so a run that recorded nothing would satisfy every
+ * comparison in it. The statement suite measures EVERY method over both
+ * fixtures into one map and compares the map, so a moved pin shows every number
+ * that moved rather than the first. Adding an observation to either strengthens
+ * it and moves NO count here, which is why `mutations-skills.json` beside the
+ * package is where those guards are held falsifiable.
+ *
+ * ALL FOUR OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE, so its row is the
+ * SUM: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 6 = 66 files and
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 52 = 656 cases. `channels` contributes 6
+ * files / 72 cases, `governance` 6 / 66, `secrets` 9 / 83 and `skills` 6 / 52,
+ * and no branch's own figure — 45/455, 45/449, 48/466 or 45/435 — survives the
+ * merge. The tree total is 391 + 46 = 437 files and 6115 + 457 = 6572 cases. The
+ * adapters term of the three-way identity carries all forty-six, because every
+ * added file is an adapter's: 39 + 46 = 85, and 349 + 3 + 85 = 437.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1729,7 +1782,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 60, cases: 604 },
+  "packages/adapters/postgres-tenancy": { files: 66, cases: 656 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1887,16 +1940,20 @@ export const EXPECTED = Object.freeze({
  * stores — `channels`' 72, `governance`'s 66 and `secrets`' 83 — each
  * enumerated file by file in the block beside the postgres-tenancy row.
  *
+ * 6520 -> 6572: the 52 cases of `skills`' canonical store, the fourth of this
+ * wave to land in that same row, enumerated file by file in the same block.
+ *
  * The cases this census records that `pnpm test:v1-packages` does not execute
  * are the ones whose file name carries `.integration.`, which the package's own
- * `test` script excludes. MEASURED over this tree: 422 cases across 49 files,
- * all of them in `packages/adapters/postgres-tenancy`. This wave contributes 157
- * of those over 18 suites — `channels`' 47 over 5, `governance`'s 45 over 5 and
- * `secrets`' 65 over 8 — and its remaining 64 (`channels-rows.test.ts` 25,
- * `governance-rows.test.ts` 21 and `secrets-rows.test.ts` 18) run in the
- * ordinary package test script, because none of those three modules has a
- * database in it: they reach the mapping branches a container suite cannot,
- * since a container only ever reads rows this binary wrote.
+ * `test` script excludes. MEASURED over this tree: 457 cases across 54 files,
+ * all of them in `packages/adapters/postgres-tenancy`. This wave contributes 192
+ * of those over 23 suites — `channels`' 47 over 5, `governance`'s 45 over 5,
+ * `secrets`' 65 over 8 and `skills`' 35 over 5 — and its remaining 81
+ * (`channels-rows.test.ts` 25, `governance-rows.test.ts` 21,
+ * `secrets-rows.test.ts` 18 and `skills-rows.test.ts` 17) run in the ordinary
+ * package test script, because none of those four modules has a database in it:
+ * they reach the mapping branches a container suite cannot, since a container
+ * only ever reads rows this binary wrote.
  *
  * THIS SENTENCE SAID "183 cases across 20 files" AND THE TREE SAID 265 ACROSS
  * 31, at the base of this wave and before any of these three stores existed.
@@ -1906,7 +1963,7 @@ export const EXPECTED = Object.freeze({
  * of cases stated in prose beside an asserted one is exactly the drift this file
  * exists to catch.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6520;
+export const EXPECTED_RUNTIME_TOTAL = 6572;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

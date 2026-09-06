@@ -202,14 +202,81 @@ test("WIN-258 T5: an `agents` row written from any OTHER directory FAILS", () =>
   assert.equal(allowed.writeCount, 1);
 
   // And the widening did not licence the directory over rows `agents` does not
-  // own: `EnvironmentSkill` is `skills`', and is still refused from here.
+  // own: `Memory` is `memory`'s, and is refused from here however the write is
+  // spelled.
+  //
+  // WIN-258 T5 MOVED THIS EXAMPLE, and the move is itself the finding.
+  // `EnvironmentSkill` used to stand here, because `skills` had no entry in
+  // `CANONICAL_STORE_ADAPTERS` and this directory therefore could not write it.
+  // It now does, and it resolves to the SAME directory — so a write to
+  // `EnvironmentSkill` from a file named `agents-y.ts` is legal, because the
+  // gate judges the DIRECTORY and both owners resolve to this one. That is the
+  // exact consequence Amendment 15 chose and it is stated rather than papered
+  // over: what still holds is that ownership is carried by the TAG on the row,
+  // so a row NO owner has delegated here is still refused, and a write from any
+  // third directory is still refused. `Memory` is the witness for the first and
+  // the case below is the witness for the second.
   const refused = fixture({
-    "packages/adapters/postgres-tenancy/src/agents-y.ts": write("environmentSkill", "create"),
+    "packages/adapters/postgres-tenancy/src/agents-y.ts": write("memory", "create"),
   });
   const violations = checkWriteEnforcement(refused).violations;
   assert.equal(violations.length, 1);
-  assert.equal(violations[0].model, "EnvironmentSkill");
-  assert.equal(violations[0].expected, "packages/contexts/skills");
+  assert.equal(violations[0].model, "Memory");
+  assert.equal(violations[0].expected, "packages/contexts/memory");
+});
+
+// ---------------------------------------------------------------------------
+// WIN-258 T5 — `skills`, the NINTH owner delegated to the one adapter directory.
+// ---------------------------------------------------------------------------
+
+test("§15: skills' three rows are writable from the delegate and from NOWHERE else", () => {
+  // The permission, first. Without this the refusals below would pass against a
+  // gate that refused everything.
+  for (const delegate of ["skill", "projectSkill", "environmentSkill"]) {
+    const permitted = fixture({
+      [`packages/adapters/postgres-tenancy/src/skills-${delegate}.ts`]: write(delegate, "upsert"),
+    });
+    const allowed = checkWriteEnforcement(permitted);
+    assert.deepEqual(allowed.violations, [], `${delegate} must be permitted from the delegate`);
+    assert.equal(allowed.writeCount, 1);
+  }
+
+  // THE REFUSAL, from every OTHER kind of directory a write could come from: a
+  // peer context, a peer adapter, and the outbox adapter — which is delegated
+  // here for `Event` and is delegated for nothing else.
+  const elsewhere = [
+    "packages/contexts/memory/application/rogue.ts",
+    "packages/contexts/agents/application/rogue.ts",
+    "packages/adapters/redis-cache/src/rogue.ts",
+    "packages/adapters/outbox/src/rogue.ts",
+  ];
+  for (const model of ["skill", "projectSkill", "environmentSkill"]) {
+    for (const path of elsewhere) {
+      const trespass = checkWriteEnforcement(fixture({ [path]: write(model, "create") }));
+      assert.equal(
+        trespass.violations.length,
+        1,
+        `a write to ${model} from ${path} must be refused`,
+      );
+      assert.equal(trespass.violations[0].expected, "packages/contexts/skills");
+      assert.deepEqual(trespass.violations[0].permitted, [
+        "packages/contexts/skills",
+        "packages/adapters/postgres-tenancy",
+      ]);
+      assert.match(trespass.violations[0].message, /skills is its sole writer/u);
+    }
+  }
+
+  // And raw SQL naming the table is judged the same way as a delegate call, from
+  // the same foreign directories — which is the door six of the seven 2026-09-02
+  // probes went through.
+  const raw = 'export async function run(db: any) {\n  await db.$executeRawUnsafe(\'INSERT INTO "Skill" (id) VALUES (1)\');\n}\n';
+  const rawTrespass = checkWriteEnforcement(
+    fixture({ "packages/contexts/memory/application/rogue.ts": raw }),
+  );
+  assert.equal(rawTrespass.violations.length, 1);
+  assert.equal(rawTrespass.violations[0].model, "Skill");
+  assert.equal(rawTrespass.violations[0].expected, "packages/contexts/skills");
 });
 
 test("§15: the delegation is per OWNER, not per adapter that happens to serve one", () => {
@@ -1108,10 +1175,32 @@ test("an element-access member that is not a delegate is still not a write", () 
 // reason: every row they need is written through the port under measurement.
 //
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 = 198. All of tranche 5's stores
-// landed in the ONE directory, so this pin is the SUM of every enumeration above
-// and no single branch's own figure — 157, 163 or 178 — survives the merge.
-const LIVE_TREE_WRITE_COUNT = 198;
+//   WIN-258 T5, `skills`' canonical store — SIX, and every one of them in
+//   `packages/adapters/postgres-tenancy/src/`:
+//
+//   src/skills-catalogue.ts     skill.upsert + skill.updateManyAndReturn       2
+//   src/skills-installations.ts projectSkill.upsert, environmentSkill.upsert
+//                               and environmentSkill.deleteMany                3
+//   src/skills-erasure.ts       the raw `UPDATE "Skill" … jsonb_set(...)` that
+//                               overwrites the author in the COLUMN and in the
+//                               stored manifest in ONE statement               1
+//                                                                        total = 6
+//
+// Its FIVE suites contribute ZERO between them, and for two different reasons
+// worth keeping apart. `skills-conformance`, `-constraints`, `-transaction` and
+// `-statements` write every row they need through the port under measurement,
+// because `Skill`, `ProjectSkill` and `EnvironmentSkill` are now this
+// directory's to write and the tenant tree above them already was.
+// `skills-rules.integration.test.ts` plants rows this store REFUSES to write —
+// an unknown `origin`, a NULL `tags`, a manifest missing a required key — and
+// applies them through `prisma db execute`, which is the ORM's CLI at runtime
+// and not a client call at all, so the scanner neither sees them nor should.
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 6 = 204. All of tranche 5's
+// stores landed in the ONE directory, so this pin is the SUM of every
+// enumeration above and no single branch's own figure — 157, 163, 178 or 204 —
+// survives a merge with the others.
+const LIVE_TREE_WRITE_COUNT = 204;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1224,11 +1313,27 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   // left unextracted for exactly this reason.
   assert.equal(CANONICAL_STORE_ADAPTERS.providers, undefined);
   assert.deepEqual(ownerDirectories("providers"), ["packages/contexts/providers"]);
-  // And `skills` is NOT delegated, which is why the adapter cannot seed the
-  // `EnvironmentSkill` row its own `AgentSkill` foreign key needs and the
-  // integration fixture applies that chain as SQL instead.
-  assert.equal(CANONICAL_STORE_ADAPTERS.skills, undefined);
-  assert.deepEqual(ownerDirectories("skills"), ["packages/contexts/skills"]);
+  // WIN-258 T5: `skills` is the NINTH owner delegated to that directory, and the
+  // grant is exactly the THREE rows ADR M0.3 §1 row 6 gives it.
+  //
+  // THIS ASSERTION USED TO SAY THE OPPOSITE, and the flip is worth naming. Until
+  // this tranche `skills` had no entry, which is why the `agents` note above
+  // records that its integration fixture seeds the `EnvironmentSkill` its own
+  // `AgentSkill` foreign key needs as SQL rather than reaching for a permission
+  // the map withheld. The permission now exists — granted to `skills`, tagged
+  // `skills`, and used by `skills`' own store — and `agents`' fixture is
+  // unchanged, because the grant moved no tag and `agents` still owns none of
+  // these three rows.
+  assert.deepEqual(ownerDirectories("skills"), [
+    "packages/contexts/skills",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.skills, "packages/adapters/postgres-tenancy");
+  const skillRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "skills")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(skillRows, ["EnvironmentSkill", "ProjectSkill", "Skill"]);
   // WIN-258 T5: `channels` is delegated to the SAME directory a fifth time, and
   // the grant is exactly the SIX rows ADR M0.3 §1 row 9 gives it.
   assert.deepEqual(ownerDirectories("channels"), [
