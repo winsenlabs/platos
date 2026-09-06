@@ -177,6 +177,38 @@ describe("the writes", () => {
     expect(withVector.counted).toBe(2);
   });
 
+  test("an update with `keep` is ONE statement and with `set` it is two", async () => {
+    // The insert case above measures the same difference on the other write.
+    // Both are here because `EmbeddingDirective` is a three-case union rather
+    // than a nullable vector precisely so `keep` can cost nothing, and a
+    // measurement of one write does not measure the other.
+    const memoryId = harness.base.freshId("00f2");
+    await write((transaction) =>
+      harness.stores.memory.insertMemory(
+        { memory: memoryDraft(small.chain, memoryId, AT), embedding: { action: "keep" } },
+        transaction,
+      ),
+    );
+    const kept = await measure(() =>
+      write((transaction) =>
+        harness.stores.memory.updateMemory(
+          { memory: memoryDraft(small.chain, memoryId, AT, { content: "revised" }), embedding: { action: "keep" } },
+          transaction,
+        ),
+      ),
+    );
+    const set = await measure(() =>
+      write((transaction) =>
+        harness.stores.memory.updateMemory(
+          { memory: memoryDraft(small.chain, memoryId, AT, { content: "revised again" }), embedding: { action: "set", vector: harness.unitVector(9) } },
+          transaction,
+        ),
+      ),
+    );
+    expect(kept.counted).toBe(1);
+    expect(set.counted).toBe(2);
+  });
+
   test("`touchAccessed` is ONE statement for one row and ONE for twenty", async () => {
     // The wrong implementation is a loop, and it is the natural one: the port
     // takes a LIST of ids and stamps each. Twenty ids costing twenty statements

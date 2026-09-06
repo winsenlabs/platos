@@ -492,9 +492,9 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `secrets`.
   //
   //
-  // 1303 -> 1323 (WIN-258 T5): `memory`'s canonical store adds TWENTY files to
-  // the one ORM home — fourteen source and six suites. Its mutation ledger is
-  // not source and is not scanned here.
+  // 1303 -> 1324 (WIN-258 T5): `memory`'s canonical store adds TWENTY-ONE files
+  // to the one ORM home — fourteen source and seven suites. Its mutation ledger
+  // is not source and is not scanned here.
   //
   // THE BUDGET SHAPED THE SPLIT THREE TIMES, and each seam it pointed at is one
   // the two ports already had. `MemoryRepository` alone is twenty methods, so
@@ -505,21 +505,31 @@ test("the live selectors scan an exact nonzero source census", () => {
   // because they SPAN both ports and are one operation. The shared conformance
   // scenario is two files for the reason `governance`'s is.
   //
-  // AND THE BAND MOVED, for the first time in this directory since `channels`:
-  // `memory-conformance.ts` is 418 effective lines. Its length IS the scenario —
-  // one sequence of observations driven against the two in-memory doubles and
-  // against PostgreSQL and compared verbatim — and splitting it further would
-  // split a transcript that is only evidence while it is one sequence. The graph
-  // half is already its own file and is below the band; halving the memory half
-  // again would put the write path and the read path of the same three rows in
-  // two transcripts that no longer compare as one object.
-  assert.equal(result.fileCount, 1323);
+  // AND THE BUDGET BIT A FOURTH TIME, AFTER THE MUTATION SWEEP RATHER THAN
+  // BEFORE IT. Three cases closing `mutations-memory.json` M-M13 took
+  // `memory-rules.integration.test.ts` to 500 effective lines — the ERROR
+  // threshold EXACTLY — so the two `vector(1536)` columns moved into
+  // `memory-vectors.integration.test.ts`, which is why this tranche adds
+  // twenty-one files rather than twenty. The seam is real: the rules suite is
+  // about what the SCHEMA decides for a row, and the new one about the one thing
+  // in this store the schema declares and the client cannot express.
+  //
+  // TWO FILES REMAIN IN THE WARNING BAND. `memory-conformance.ts` is 428: its
+  // length IS the scenario — one sequence of observations driven against the two
+  // in-memory doubles and against PostgreSQL and compared verbatim — and its
+  // graph half is already a separate file, so halving it again would put the
+  // write path and the read path of the same three rows in two transcripts that
+  // no longer compare as one object. `memory-constraints.integration.test.ts` is
+  // 406, and each of its cases stands a guard beside the raw statement the guard
+  // was written from; splitting them would separate the pair that is the
+  // evidence.
+  assert.equal(result.fileCount, 1324);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 20
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 21
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -532,11 +542,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `secrets` is the sharpest case: its port entry point WAS widened, in place,
   // and a widened file is not a new one.
   //
-  // 217 -> 237 (WIN-258 T5, a SIXTH time): `memory`'s canonical store adds
-  // twenty files to that same directory — fourteen source and six suites — and
-  // adds none to any context, because both ports already existed and only the
-  // port ENTRY POINT was widened. A widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 237 + 6);
+  // 217 -> 238 (WIN-258 T5, a SIXTH time): `memory`'s canonical store adds
+  // twenty-one files to that same directory — fourteen source and seven suites —
+  // and adds none to any context, because both ports already existed and only
+  // the port ENTRY POINT was widened. A widened file is not a new one.
+  assert.equal(result.fileCount, 20 + 1060 + 238 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -589,15 +599,21 @@ test("the live selectors scan an exact nonzero source census", () => {
   // tables in a second tenant. A table-driven loop would not be counted as cases
   // at all.
   //
-  // WIN-258 T5 (`memory`) BROUGHT A SEVENTH, and it is the same shape as
-  // `channels`' and `governance`'s: `memory-conformance.ts` is ONE scenario
-  // driven against two in-memory doubles and against PostgreSQL and compared
-  // verbatim. Its graph half is ALREADY a separate file and is below the band;
-  // what is left is the write path and the read path of the same three rows, and
-  // splitting those would produce two transcripts that no longer compare as one
-  // object. The eleven store modules beside it are all well inside the band,
-  // because the twenty methods of `MemoryRepository` were split by whose rows
-  // they touch and by what they do before any of them was written.
+  // WIN-258 T5 (`memory`) BROUGHT A SEVENTH AND AN EIGHTH.
+  // `memory-conformance.ts` is the same shape as `channels`' and `governance`'s:
+  // ONE scenario driven against two in-memory doubles and against PostgreSQL and
+  // compared verbatim. Its graph half is ALREADY a separate file and is below
+  // the band; what is left is the write path and the read path of the same three
+  // rows, and splitting those would produce two transcripts that no longer
+  // compare as one object. `memory-constraints.integration.test.ts` is the
+  // eighth, and its length is its instrument: every case stands a TypeScript
+  // guard beside the raw statement the guard was written from, so PostgreSQL is
+  // asked directly as well — and a guard whose constraint had been dropped from
+  // the schema would pass the first half and fail the second. Splitting the pairs
+  // apart would leave two files neither of which is the evidence. The eleven
+  // store modules beside them are all well inside the band, because the twenty
+  // methods of `MemoryRepository` were split by whose rows they touch and by what
+  // they do before any of them was written.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
@@ -631,7 +647,12 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/memory-conformance.ts",
-      effectiveLines: 418,
+      effectiveLines: 428,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/memory-constraints.integration.test.ts",
+      effectiveLines: 406,
       severity: "warning",
     },
     {

@@ -1,32 +1,26 @@
 // Rules the canonical schema enforces that NO method on either port restates —
-// and the two contracts the real database proves UNHONOURABLE.
+// and the one contract the real database proves UNHONOURABLE.
 //
 // A CONSTRAINT SUITE ASKS "does the store send a value the schema refuses?".
 // THIS ONE ASKS "what does the schema do that the store does not know about?".
-// Four row rules, one cascade, one foreign key that nulls, and two ports whose
-// stated behaviour cannot be produced. Every one of them is a fact about the
-// database that a reader of `memory-store.ts` or `memory-entities.ts` alone
-// would not learn, and every one of them changes what a use case may assume.
+// Four row rules, one cascade, one foreign key that nulls, and two places where
+// the context's own in-memory doubles are WRONG rather than different. Every one
+// of them is a fact about the database that a reader of `memory-store.ts` or
+// `memory-entities.ts` alone would not learn, and every one of them changes what
+// a use case may assume.
 //
-// THE TWO UNHONOURABLE CONTRACTS ARE REPORTED, NOT PAPERED OVER. WIN-258 T3 did
-// the same with `OperatorSessionRevoker.revoke`, whose truthful count is
+// THE UNHONOURABLE CONTRACT IS REPORTED, NOT PAPERED OVER. WIN-258 T3 did the
+// same with `OperatorSessionRevoker.revoke`, whose truthful count is
 // unobtainable because a database rule has already revoked the rows before the
-// port runs. Here it is:
+// port runs. Here it is `mergeRepeatedExtraction`, which takes "the newer
+// extractorVersion, so a row records which extractor last confirmed it", while
+// `Memory_owner_immutable` names `extractorVersion` as an ownership key. A
+// re-extraction by a BUMPED extractor is a legal domain operation the schema
+// refuses. Both halves are pinned below: the same version updates, a changed one
+// is refused, and the row is unchanged either way.
 //
-//   `KnowledgeGraphRepository.searchEntities` reads `MemoryEntity.embedding`,
-//   and NO METHOD ON THAT PORT CAN WRITE IT. `insertEntity` takes a
-//   `MemoryEntity`, which carries no vector, and there is no second parameter
-//   and no `EntityWrite` to pair one with — unlike `MemoryWrite`, which pairs
-//   every `Memory` with an `EmbeddingDirective`. So a node written through the
-//   port is never a candidate. Both halves are pinned below: empty through the
-//   port, and correct once the column is filled out of band.
-//
-//   `mergeRepeatedExtraction` in `domain/memory.ts` takes "the newer
-//   extractorVersion, so a row records which extractor last confirmed it", and
-//   `Memory_owner_immutable` names `extractorVersion` as an ownership key. A
-//   re-extraction by a BUMPED extractor is a legal domain operation the schema
-//   refuses. Both halves are pinned: the same version updates, a changed one is
-//   refused.
+// THE SECOND ONE IS IN `memory-vectors.integration.test.ts`, with the rest of
+// what the two `vector(1536)` columns decide.
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -37,6 +31,7 @@ import type {
   EntityKey,
   MemoryEntityId,
   MemoryId,
+  ProfileKey,
   ThreadId,
   TransactionScope,
   TurnId,
@@ -45,6 +40,7 @@ import { asMemoryIdentifier } from "@platos/context-memory/application/ports/ind
 
 import type { MemoryChain, MemoryHarness } from "./memory-harness.js";
 import { edgeDraft, entityDraft, memoryDraft, startMemoryHarness } from "./memory-harness.js";
+import { countRowsWithEmbedding, writeMemoryEmbedding } from "./memory-vectors.js";
 
 let harness: MemoryHarness;
 let chain: MemoryChain;
@@ -369,76 +365,53 @@ describe("the cascades the receipt must not rely on", () => {
   });
 });
 
-describe("*** a port contract the database proves unhonourable ***", () => {
-  test("`searchEntities` returns NOTHING for a node written through the port, because no method can write its vector", async () => {
-    const entityId = id("00c0");
-    await write((transaction) =>
-      harness.stores.memoryGraph.insertEntity(
-        entityDraft(chain, entityId, AT, {
-          entityKey: asMemoryIdentifier<EntityKey>("unsearchable"),
-          label: "Unsearchable Corp",
-        }),
-        transaction,
-      ),
-    );
 
-    const found = await harness.stores.memoryGraph.searchEntities({
-      subject: chain.subject,
-      agentIds: [asMemoryIdentifier<AgentId>(chain.agentId)],
-      embedding: harness.unitVector(11),
-      limit: 10,
-    });
-    expect(found.ok).toBe(true);
-    if (found.ok) expect(found.value).toEqual([]);
-
-    // The row IS there and IS readable by every other method — so the empty
-    // candidate list above is about the COLUMN and not about the scope.
-    const byId = await harness.stores.memoryGraph.findEntity(
-      chain.subject,
-      [asMemoryIdentifier<AgentId>(chain.agentId)],
-      asMemoryIdentifier<MemoryEntityId>(entityId),
-    );
-    expect(byId.ok && byId.value?.label).toBe("Unsearchable Corp");
-
-    // And the column really is NULL, rather than holding something the search
-    // filtered out for another reason.
-    const stored = await harness.base.client.$queryRaw<{ readonly present: bigint }[]>`
-      SELECT count(*) AS "present" FROM "MemoryEntity"
-       WHERE "id" = ${entityId}::uuid AND "embedding" IS NOT NULL`;
-    expect(Number(stored[0]?.present ?? 0n)).toBe(0);
-  });
-
-  test("and the SAME search finds it the moment the column is filled out of band — the store's half is correct", async () => {
-    // The other half, and the reason the case above is a REPORT rather than a
-    // defect: the statement, the operator class, the scope and the ordering are
-    // all right. What is missing is a way for a caller to supply the vector.
-    const entityId = id("00c1");
-    await write((transaction) =>
-      harness.stores.memoryGraph.insertEntity(
-        entityDraft(chain, entityId, AT, {
-          entityKey: asMemoryIdentifier<EntityKey>("searchable"),
-          label: "Searchable Corp",
-        }),
-        transaction,
-      ),
-    );
-    harness.seedEntityVector(entityId, harness.unitVector(11));
-
-    const found = await harness.stores.memoryGraph.searchEntities({
-      subject: chain.subject,
-      agentIds: [asMemoryIdentifier<AgentId>(chain.agentId)],
-      embedding: harness.unitVector(11),
-      limit: 10,
-    });
-    expect(found.ok).toBe(true);
-    if (found.ok) {
-      expect(found.value.map((match) => match.entity.entityId)).toEqual([entityId]);
-      expect(found.value[0]?.score).toBeCloseTo(1, 5);
-    }
-  });
-});
 
 describe("two more places the doubles and the database disagree", () => {
+  test("the content-identity probe distinguishes a threaded row from an unthreaded one", async () => {
+    // M-M16's guard. The unique is over FOUR columns and `sourceThreadId` is one
+    // of them, so a probe that dropped it would report a collision the index does
+    // not hold — and `mergeRepeatedExtraction` would then fold a fact extracted
+    // from one conversation into a row written by hand.
+    const hash = asMemoryIdentifier<ContentHash>("9".repeat(64));
+    const unthreaded = id("00e3");
+    const threaded = id("00e4");
+    await write(async (transaction) => {
+      await harness.stores.memory.insertMemory(
+        { memory: memoryDraft(chain, unthreaded, AT, { contentHash: hash, content: "written by hand" }), embedding: { action: "keep" } },
+        transaction,
+      );
+      await harness.stores.memory.insertMemory(
+        {
+          memory: memoryDraft(chain, threaded, AT, {
+            content: "pulled out of a conversation",
+            source: "extracted",
+            contentHash: hash,
+            provenance: {
+              sourceThreadId: asMemoryIdentifier<ThreadId>(chain.threadId),
+              sourceTurnIds: [asMemoryIdentifier<TurnId>(chain.turnId)],
+              extractorVersion: "extractor-v3",
+              originalSource: null,
+              originalSourceThreadId: null,
+              originalSourceTurnIds: [],
+            },
+          }),
+          embedding: { action: "keep" },
+        },
+        transaction,
+      );
+    });
+
+    const byThread = await harness.stores.memory.findByContentIdentity(
+      chain.subject,
+      asMemoryIdentifier<ThreadId>(chain.threadId),
+      hash,
+    );
+    const byNothing = await harness.stores.memory.findByContentIdentity(chain.subject, null, hash);
+    expect(byThread.ok && byThread.value?.memoryId).toBe(threaded);
+    expect(byNothing.ok && byNothing.value?.memoryId).toBe(unthreaded);
+  });
+
   test("the content-identity unique does NOT bind when the source thread is NULL", async () => {
     // `@@unique([environmentId, endUserId, sourceThreadId, contentHash])`, and
     // PostgreSQL treats NULLs as DISTINCT — so two direct writes with the same

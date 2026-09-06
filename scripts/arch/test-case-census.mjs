@@ -1721,7 +1721,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * adapter's: 39 + 40 = 79, and 349 + 3 + 79 = 431.
  *
  *
- * WIN-258 TRANCHE 5 — THE `memory` CANONICAL STORE (M2.3) adds 6 files and 83
+ * WIN-258 TRANCHE 5 — THE `memory` CANONICAL STORE (M2.3) adds 7 files and 89
  * cases to `packages/adapters/postgres-tenancy`, and nothing anywhere else:
  *
  *   memory-rows.test.ts                       24  the row mapping and the write
@@ -1737,31 +1737,50 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                 step by step, plus a
  *                                                 non-vacuity case that pins
  *                                                 its shape
- *   memory-constraints.integration.test.ts    17  what the MIGRATIONS refuse and
+ *   memory-constraints.integration.test.ts    18  what the MIGRATIONS refuse and
  *                                                 `schema.prisma` does not say,
  *                                                 each stood beside the raw
  *                                                 statement the guard was
  *                                                 written from
- *   memory-rules.integration.test.ts          11  the four row rules, the two
- *                                                 cascades and the TWO port
+ *   memory-rules.integration.test.ts          10  the four row rules, the two
+ *                                                 cascades, ONE of the two port
  *                                                 contracts the real database
- *                                                 proves unhonourable
+ *                                                 proves unhonourable, and the
+ *                                                 two places the context's own
+ *                                                 doubles are WRONG rather than
+ *                                                 different
+ *   memory-vectors.integration.test.ts         5  the two `vector(1536)` columns
+ *                                                 the generated client cannot
+ *                                                 name: what `set`, `keep` and
+ *                                                 `clear` do to one, and the
+ *                                                 OTHER unhonourable contract —
+ *                                                 a search reading a column no
+ *                                                 method on its port can write
  *   memory-transaction.integration.test.ts    12  failure injection from a
  *                                                 SECOND connection, a returned
  *                                                 error `Result` that COMMITS,
  *                                                 the three scope refusals and
  *                                                 the ambient read frame
- *   memory-statements.integration.test.ts     17  measured statement counts,
+ *   memory-statements.integration.test.ts     18  measured statement counts,
  *                                                 every pin taken over two rows
  *                                                 and over twenty
  *
- * 24 + 2 + 17 + 11 + 12 + 17 = 83, over 6 files, and every one of the six
+ * 24 + 2 + 18 + 10 + 12 + 18 + 5 = 89, over 7 files, and every one of the seven
  * numbers is READ BACK from the counter in this file rather than tallied by
- * hand. Five of the six need a real PostgreSQL and are run by the
+ * hand. Six of the seven need a real PostgreSQL and are run by the
  * `postgres-tenancy-repository` CI job; `memory-rows.test.ts` is not, because
  * neither the mapping nor the guards have a database in them — and it is the
- * only one of the six that can reach a stored `kind` this binary cannot read,
+ * only one of the seven that can reach a stored `kind` this binary cannot read,
  * since a container only ever reads rows this binary wrote.
+ *
+ * THE SEVENTH FILE EXISTS BECAUSE A MUTATION SURVIVED AND THE BUDGET THEN BIT.
+ * `mutations-memory.json` M-M13 clears the vector on every update and survived
+ * FIVE suites, because no read on either port returns an embedding; the three
+ * cases that close it ask the column directly. Appending them to the rules suite
+ * took it to 500 effective lines — the ADR M0.3 §6 ERROR threshold exactly — and
+ * the seam the budget was pointing at is real: that file is about what the
+ * SCHEMA decides for a row, and this one about the one thing in this store the
+ * schema declares and the client cannot express.
  *
  * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite, for the
  * reason every tranche before it gives: it is ONE scenario of sixty-odd
@@ -1770,10 +1789,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * `packages/adapters/postgres-tenancy/mutations-memory.json` is where those
  * guards are held falsifiable instead.
  *
- * THE PACKAGE ROW THEREFORE MOVES 60 -> 66 FILES and 604 -> 687 CASES, and the
- * tree total 431 -> 437 files and 6520 -> 6603 cases. The adapters term of the
- * three-way identity carries all six, because every added file is an adapter's:
- * 79 + 6 = 85, and 349 + 3 + 85 = 437.
+ * THE PACKAGE ROW THEREFORE MOVES 60 -> 67 FILES and 604 -> 693 CASES, and the
+ * tree total 431 -> 438 files and 6520 -> 6609 cases. The adapters term of the
+ * three-way identity carries all seven, because every added file is an
+ * adapter's: 79 + 7 = 86, and 349 + 3 + 86 = 438.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1784,7 +1803,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 66, cases: 687 },
+  "packages/adapters/postgres-tenancy": { files: 67, cases: 693 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1961,7 +1980,7 @@ export const EXPECTED = Object.freeze({
  * of cases stated in prose beside an asserted one is exactly the drift this file
  * exists to catch.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6603;
+export const EXPECTED_RUNTIME_TOTAL = 6609;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

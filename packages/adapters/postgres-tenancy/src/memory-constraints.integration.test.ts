@@ -363,6 +363,32 @@ describe("tenant isolation", () => {
     expect(await harness.base.client.memory.count({ where: { id: foreignMemory } })).toBe(1);
   });
 
+  test("`touchAccessed` names an environment, and an id from another one is not stamped", async () => {
+    // M-M18's guard. It is the one write on this port that takes NO
+    // `TransactionScope` — a failed access stamp must not fail a recall that is
+    // already correct — so a caller has no scope object it could have been
+    // checked against, and the `WHERE` is the only thing that scopes it.
+    const foreignMemory = id("007c");
+    await write((transaction) =>
+      harness.stores.memory.insertMemory(
+        { memory: memoryDraft(foreign, foreignMemory, AT), embedding: { action: "keep" } },
+        transaction,
+      ),
+    );
+
+    const touched = await harness.stores.memory.touchAccessed(
+      chain.scope,
+      [asMemoryIdentifier<MemoryId>(foreignMemory)],
+      new Date("2026-07-01T00:00:00.000Z"),
+    );
+    expect(touched.ok && touched.value).toBe(0);
+    const row = await harness.base.client.memory.findUnique({
+      where: { id: foreignMemory },
+      select: { lastAccessedAt: true },
+    });
+    expect(row).toEqual({ lastAccessedAt: null });
+  });
+
   test("an erasure names one subject and destroys nothing of another's", async () => {
     const mine = id("007e");
     const theirs = id("007f");

@@ -50,17 +50,35 @@
     "entry whose `from` occurs zero times or more than once.",
     "",
     "RESULT, 2026-09-06, against PostgreSQL 16 (pgvector/pgvector:pg16) in a",
-    "container: 40 entries, 40 KILLED, 0 SURVIVED, 0 VACUOUS. Every baseline suite",
+    "container: 40 entries, 40 KILLED, 0 SURVIVED, 0 VACUOUS on the SECOND sweep.",
+    "Every baseline suite",
     "set was green with a non-zero executed case count before its mutation was",
     "applied, and every `from` matched its file exactly once.",
     "",
-    "THE FIRST SWEEP FOUND THREE SURVIVORS AND THEY ARE WHY THREE CASES EXIST.",
-    "M-M13 survived because nothing read a memory back after an `updateMemory`",
-    "carrying `keep`, so a store that cleared the vector on every update looked",
-    "identical. M-M24 survived because the export cursor was only ever followed",
-    "once, and a store that ignored `afterId` returns the same first page.",
-    "M-M31 survived because `listEntitiesByIds` was only asked for ids in the",
-    "table's own order. Each is now a named case rather than a widened entry."
+    "THE FIRST SWEEP FOUND FIVE SURVIVORS AND ONE UNUSABLE ANCHOR, AND THEY ARE",
+    "WHY SIX CASES AND ONE OBSERVATION EXIST.",
+    "",
+    "M-M13 survived because NO READ ON EITHER PORT RETURNS AN EMBEDDING, so a",
+    "store that cleared the column on every update looked identical from every",
+    "suite; the three cases in `the three-case embedding directive` ask the column",
+    "directly instead. M-M16 survived because only one row ever carried the probe",
+    "hash, so dropping `sourceThreadId` from a four-column probe changed no",
+    "answer. M-M17 survived because the scenario only ever probed a profile as the",
+    "agent that WROTE it, for whom the cluster spelling and the agent spelling",
+    "resolve the same row — `findProfileRowFromPeer` is the observation that",
+    "separates them. M-M18 survived because every id it was given belonged to the",
+    "environment it was given. M-M35 survived because NO CALL THROUGH EITHER PORT",
+    "CAN EXERCISE IT: the store takes the row id and the environment off the same",
+    "aggregate, so a mismatched pair is unreachable — the case that closes it",
+    "calls the statement directly rather than arguing an equivalent mutant.",
+    "",
+    "AND M-M34'S ANCHOR MATCHED TWICE. `selectMemoryCandidates` and",
+    "`selectEntityCandidates` carry byte-identical agent-scope and",
+    "`embedding IS NOT NULL` clauses, so the driver refused the entry rather than",
+    "mutating a statement the entry does not name. The anchor now reaches one line",
+    "further and is unique. That refusal is the driver doing its job: an entry",
+    "that silently mutated the wrong statement would have been scored against the",
+    "wrong guard."
   ],
   "mutations": [
     {
@@ -189,10 +207,10 @@
       "from": "        if (write.embedding.action !== \"keep\") {",
       "to": "        if (true) {",
       "note": "`keep` means the content did not change, so recomputing the vector would spend a model call to store the same numbers — and `vector` is null on that branch, so sending the statement CLEARS the column instead. The row silently stops being a search candidate.",
-      "suites": ["src/memory-conformance.integration.test.ts", "src/memory-statements.integration.test.ts"],
+      "suites": ["src/memory-rules.integration.test.ts", "src/memory-statements.integration.test.ts"],
       "kills": [
-        "the in-memory doubles and the PostgreSQL stores answer the scenario identically",
-        "the writes an insert WITHOUT a vector is one statement; WITH one it is exactly two"
+        "the three-case embedding directive, against the column itself `keep` on an update leaves the stored vector standing",
+        "the writes an update with `keep` is ONE statement and with `set` it is two"
       ]
     },
     {
@@ -218,16 +236,16 @@
       "file": "src/memory-store.ts",
       "from": "          where: { ...subjectWhere(subject), sourceThreadId, contentHash },",
       "to": "          where: { ...subjectWhere(subject), contentHash },",
-      "note": "The unique is over FOUR columns and the thread is one of them. A probe that ignored it would report a collision the index does not hold, and `mergeRepeatedExtraction` would fold two different conversations' facts into one row.",
-      "suites": ["src/memory-conformance.integration.test.ts"],
-      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+      "note": "The unique is over FOUR columns and the thread is one of them. A probe that ignored it would report a collision the index does not hold, and `mergeRepeatedExtraction` would fold a fact extracted from a conversation into a row written by hand.",
+      "suites": ["src/memory-rules.integration.test.ts"],
+      "kills": ["two more places the doubles and the database disagree the content-identity probe distinguishes a threaded row from an unthreaded one"]
     },
     {
       "name": "M-M17 store: the ownership branch on findProfileRow",
       "file": "src/memory-store.ts",
       "from": "        const owner =\n          ownership.clusterId === null\n            ? { clusterId: null, agentId: ownership.agentId }\n            : { clusterId: ownership.clusterId };",
       "to": "        const owner = { agentId: ownership.agentId };",
-      "note": "A clustered profile is one row for the whole cluster and a standalone one is one row per agent. Collapsing the two makes a peer agent's profile invisible and an unclustered agent's profile findable from the cluster.",
+      "note": "A clustered profile is one row for the whole cluster and a standalone one is one row per agent. Collapsing the two makes a peer agent's profile invisible and an unclustered agent's profile findable from the cluster. IT SURVIVED THE FIRST SWEEP because the scenario only ever probed as the WRITING agent, for whom both spellings answer the same row; `findProfileRowFromPeer` is the observation that separates them.",
       "suites": ["src/memory-conformance.integration.test.ts"],
       "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
     },
@@ -237,8 +255,8 @@
       "from": "             WHERE \"environmentId\" = ${environment.environmentId}::uuid\n               AND \"id\" = ANY(string_to_array(${csv}, ',')::uuid[])`,",
       "to": "             WHERE \"id\" = ANY(string_to_array(${csv}, ',')::uuid[])`,",
       "note": "A raw statement whose only predicate is a list of ids is installation-wide. It is also the one write on this port that takes no `TransactionScope`, so a caller has no scope object to have checked it against.",
-      "suites": ["src/memory-conformance.integration.test.ts"],
-      "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
+      "suites": ["src/memory-constraints.integration.test.ts"],
+      "kills": ["tenant isolation `touchAccessed` names an environment, and an id from another one is not stamped"]
     },
     {
       "name": "M-M19 store: the agent scope on deleteMemories",
@@ -390,8 +408,8 @@
     {
       "name": "M-M34 vectors: the agent scope inside the raw search",
       "file": "src/memory-vectors.ts",
-      "from": "       AND \"agentId\" = ANY(string_to_array(${bindings.agentCsv}, ',')::uuid[])\n       AND \"embedding\" IS NOT NULL",
-      "to": "       AND \"embedding\" IS NOT NULL",
+      "from": "       AND \"endUserId\" = ${bindings.endUserId}::uuid\n       AND \"agentId\" = ANY(string_to_array(${bindings.agentCsv}, ',')::uuid[])\n       AND \"embedding\" IS NOT NULL\n       AND (${bindings.kind}::text IS NULL",
+      "to": "       AND \"endUserId\" = ${bindings.endUserId}::uuid\n       AND \"embedding\" IS NOT NULL\n       AND (${bindings.kind}::text IS NULL",
       "note": "The one read whose `WHERE` is written in SQL rather than composed by the client, and therefore the one a reviewer is least likely to check against the port's scoping rule.",
       "suites": ["src/memory-conformance.integration.test.ts"],
       "kills": ["the in-memory doubles and the PostgreSQL stores answer the scenario identically"]
@@ -401,9 +419,9 @@
       "file": "src/memory-vectors.ts",
       "from": "     WHERE \"id\" = ${memoryId}::uuid AND \"environmentId\" = ${environmentId}::uuid`;\n}\n\nexport async function writeEntityEmbedding(",
       "to": "     WHERE \"id\" = ${memoryId}::uuid`;\n}\n\nexport async function writeEntityEmbedding(",
-      "note": "A raw UPDATE keyed on a bare primary key is installation-wide. It is a WRITE and `MUTATING_SQL_STATEMENT` attributes it to `memory` by the table it names, but nothing in the gate says which ROWS of that table it may reach.",
-      "suites": ["src/memory-statements.integration.test.ts"],
-      "kills": ["the writes an insert WITHOUT a vector is one statement; WITH one it is exactly two"]
+      "note": "A raw UPDATE keyed on a bare primary key is installation-wide. It is a WRITE and `MUTATING_SQL_STATEMENT` attributes it to `memory` by the table it names, but nothing in the gate says which ROWS of that table it may reach. NO CALL THROUGH EITHER PORT CAN EXERCISE IT — the store takes the id and the environment off the same aggregate — so the case that kills it calls the statement directly, which is the honest alternative to arguing an equivalent mutant.",
+      "suites": ["src/memory-rules.integration.test.ts"],
+      "kills": ["the three-case embedding directive, against the column itself the vector write is SCOPED, so a mismatched environment reaches no row"]
     },
     {
       "name": "M-M36 entities: the clustered branch of the upsert probe",

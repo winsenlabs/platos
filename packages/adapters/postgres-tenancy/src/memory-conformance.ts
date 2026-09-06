@@ -345,6 +345,22 @@ export async function runMemoryConformance(
       asMemoryIdentifier<ProfileKey>("role"),
     ),
   );
+  // THE PEER AGENT'S PROBE IS THE ONE THAT SEPARATES THE TWO OWNERSHIP DOMAINS.
+  // The row was written by `agentId` under `clusterId`, and a CLUSTERED profile
+  // is one row for the whole cluster — so `peerAgentId`, which is bound into the
+  // same cluster, must find it. A store that keyed the lookup on the agent alone
+  // answers both this step and the one below correctly for the writing agent and
+  // wrongly for every other member of its cluster.
+  observed["findProfileRowFromPeer"] = summaryOf(
+    await stores.memory.findProfileRow(
+      subject,
+      {
+        agentId: asMemoryIdentifier<AgentId>(ids.peerAgentId),
+        clusterId: asMemoryIdentifier<ClusterId>(ids.clusterId),
+      },
+      asMemoryIdentifier<ProfileKey>("role"),
+    ),
+  );
   observed["findProfileRowOtherOwner"] = summaryOf(
     await stores.memory.findProfileRow(
       subject,
