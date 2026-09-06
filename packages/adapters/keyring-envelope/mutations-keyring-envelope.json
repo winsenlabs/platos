@@ -6,8 +6,8 @@
   "generatedFrom": "tejas/secret-lifecycle, rebased onto v1 @ 2abd19b4, at the legacy-envelope migration",
   "howToReproduce": "Apply the `from` -> `to` replacement in `file`, run `command`, and observe the named case fail. Restore. The three postgres entries run ON THE MAC MINI inside a detached worktree; the laptop's Docker daemon is unreachable by policy and a local run of those three MUST fail to start, which is correct rather than a defect.",
   "summary": {
-    "entries": 65,
-    "killed": 63,
+    "entries": 66,
+    "killed": 64,
     "survived": 0,
     "declaredUnfalsifiable": 2
   },
@@ -17,7 +17,8 @@
     "No entry is killed by an assertion that compares two things this tranche controls. The six wire-format entries are killed by ciphertexts produced by `internal-packages/tenancy-database/src/secrets.ts`, which this issue does not edit; the three postgres entries are killed by what a real PostgreSQL returns; and the ten sweep entries are killed through `reportRootKeyUsage` and the audit trail -- the store's own record of what happened -- rather than through the sweep's own return value.",
     "THE LEGACY-ENVELOPE MIGRATION ADDS 31 ENTRIES BELOW, and FOUR of them SURVIVED their first sweep. Each survival named a real hole and each is recorded with the cases that closed it: `legacy-shape-check-removed` (no payload ever reached the width rule, because the decoder refused every mis-declared one first), `legacy-packed-header-length-guard-removed` (`subarray` past the end yields empty slices rather than throwing, so a truncated column was refused for the wrong reason), `audit-action-migrate-removed` (a TYPE-level deletion, caught by tsc and by no case) and `double-format-rule-hardcoded` (the in-memory double's own format rule was unreachable from the only suite that drives it, because the use case refuses format 1 before the cipher is called).",
     "TWO ENTRIES ARE DECLARED UNFALSIFIABLE WITH A MEASURED REASON RATHER THAN COUNTED AS KILLS. `legacy-format2-alphabet-base64` cannot change behaviour because Node's base64 DECODER accepts the base64url alphabet — verified directly on this node (v24.3.0) against two format-2 vectors — and its encode-side twin IS killed, so the pair together shows exactly where the alphabets do and do not matter. `migrate-format-check-after-the-grant` moves a guard between two points that are both before `inTransaction`, past only a pure field read, so no observation distinguishes them; the reorder that DOES matter is `migrate-format-check-not-before-the-lock`, which is killed.",
-    "NO LEGACY ENTRY IS KILLED BY AN ASSERTION COMPARING TWO THINGS THIS TRANCHE CONTROLS. Every wire entry is killed by ciphertexts produced by `internal-packages/tenancy-database/src/auth.ts` or `apps/agent/src/auth/secrets.service.ts` — the two modules `secrets/domain/envelope.ts` records as those formats' `legacyOrigin`, neither of which this issue edits. A reader that swapped a field order, a width or an alphabet would move only its own side; the frozen bytes do not move with it."
+    "NO LEGACY ENTRY IS KILLED BY AN ASSERTION COMPARING TWO THINGS THIS TRANCHE CONTROLS. Every wire entry is killed by ciphertexts produced by `internal-packages/tenancy-database/src/auth.ts` or `apps/agent/src/auth/secrets.service.ts` — the two modules `secrets/domain/envelope.ts` records as those formats' `legacyOrigin`, neither of which this issue edits. A reader that swapped a field order, a width or an alphabet would move only its own side; the frozen bytes do not move with it.",
+    "A FIFTH SURVIVOR WAS FOUND OUTSIDE THE NEW CODE, in a guard this issue did not write. `openSecret-legacy-refusal-removed` deletes the check that makes `openSecret` reject a legacy format — the exact refusal WIN-259 exists to make unreachable — and it survived, because no case in the tree had ever asserted `envelope_format_unreadable`. It is recorded here rather than left to the issue that wrote it: a deliverable whose whole subject is that refusal has to leave it falsifiable."
   ],
   "mutations": [
     {
@@ -736,6 +737,17 @@
       "failingCases": 1,
       "killedBy": "in-memory-ports.test.ts > the legacy double is faithful about the FORMAT, and says so > routes through the domain's own rule rather than deciding for itself",
       "why": "SURVIVED ITS FIRST SWEEP, and the survival named a real hole. `migrate-legacy-envelope.test.ts` reaches the cipher only THROUGH the use case, which refuses the canonical format before the cipher is ever called — so the double's own format rule was unreachable from the one suite that drives it. A double that quietly stops honouring the rule is worse than no double: every 'fails closed' assertion built on it would pass for the wrong reason. Three cases were added to `in-memory-ports.test.ts`, which is where this package already proves its doubles non-vacuous."
+    },
+    {
+      "id": "openSecret-legacy-refusal-removed",
+      "file": "packages/contexts/secrets/application/envelope-operations.ts",
+      "from": "if (!envelopeFormat(version.formatVersion).versionedRootKey) return err(credentialUnavailable(\"envelope_format_unreadable\"));",
+      "to": "(the branch deleted)",
+      "command": "pnpm --filter @platos/context-secrets test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "migrate-legacy-envelope.test.ts > the refusal the migration exists to make unreachable > REFUSES to open a legacy-format row, which is what made the material unreachable",
+      "why": "THE REFUSAL THIS WHOLE ISSUE IS ABOUT, AND NOTHING HAD EVER ASSERTED IT. The guard has been in `envelope-operations.ts` since the context was written; no case named `envelope_format_unreadable`, so it was a sentence rather than a measurement and this mutation would have survived silently. Removing it does not merely relax an error — it sends a legacy envelope's salt-less, context-unbound bytes to a cipher that derives its key from a binding the format never authenticated, so the read either fails opaquely or returns whatever the tag check lets through. A case was added that reproduces the legacy row and watches the runtime read path refuse it, and a second states why a real database could not hold that row at all."
     }
   ]
 }

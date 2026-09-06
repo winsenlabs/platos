@@ -2409,9 +2409,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * rather than a case of its own, so the catalogue's "mints every declared code
  * and nothing else" assertion covers it without a census row moving twice.
  *
- *   packages/contexts/secrets            16 -> 19 files,  162 -> 213 cases
+ *   packages/contexts/secrets            16 -> 19 files,  162 -> 215 cases
  *
- * THREE NEW FILES AND ONE WIDENED, FIFTY-ONE CASES. The first is
+ * THREE NEW FILES AND ONE WIDENED, FIFTY-THREE CASES. The first is
  * `sweep-root-key-reencryption.test.ts` (16), the bounded, resumable
  * re-encryption sweep — rotation as a JOB rather than as a request-time loop.
  * TWO of its sixteen exist because the sweep was WRONG and a case caught it
@@ -2476,7 +2476,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 28, cases: 383 },
-  "packages/contexts/secrets": { files: 19, cases: 213 },
+  "packages/contexts/secrets": { files: 19, cases: 215 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
@@ -2753,26 +2753,26 @@ export const EXPECTED = Object.freeze({
  * files / 1054 tests is therefore a check on this split derived without it.
  */
 /*
- * WIN-259 (M2.4) 7399 -> 7541: +71 in the new `packages/adapters/keyring-envelope`
+ * WIN-259 (M2.4) 7399 -> 7543: +71 in the new `packages/adapters/keyring-envelope`
  * row, +12 in `packages/adapters/postgres-tenancy`, +8 in
- * `packages/contexts/providers` and +51 in `packages/contexts/secrets`.
- * 7399 + 71 + 12 + 8 + 51 = 7541.
+ * `packages/contexts/providers` and +53 in `packages/contexts/secrets`.
+ * 7399 + 71 + 12 + 8 + 53 = 7543.
  *
- * SIXTY-SIX OF THE HUNDRED-AND-THIRTY-FIVE ARE THE LEGACY-ENVELOPE
- * MIGRATION, split 31 / 35 across the two packages, and the split is the
+ * SIXTY-EIGHT OF THE HUNDRED-AND-FORTY-FOUR ARE THE LEGACY-ENVELOPE
+ * MIGRATION, split 31 / 37 across the two packages, and the split is the
  * deliverable's own shape: the 31 in `keyring-envelope` are the only ones that
- * touch real bytes, and the 35 in `secrets` are the domain rule, the control
- * flow and the double's own non-vacuity proof. Neither half can make the other's claim, which is why they are not one
+ * touch real bytes, and the 37 in `secrets` are the domain rule, the control
+ * flow, the refusal itself and the double's own non-vacuity proof. Neither half can make the other's claim, which is why they are not one
  * suite.
  *
  * THE RUNNABLE/INTEGRATION SPLIT MOVES ON BOTH SIDES, WHICH IS UNUSUAL FOR A
- * TRANCHE THAT TOUCHES THIS ADAPTER. A hundred and thirty of the
- * hundred-and-forty-two are RUNNABLE by `pnpm test:v1-packages` — the whole
- * keyring-envelope row plus providers' eight and secrets' fifty-one — because
+ * TRANCHE THAT TOUCHES THIS ADAPTER. A hundred and thirty-two of the
+ * hundred-and-forty-four are RUNNABLE by `pnpm test:v1-packages` — the whole
+ * keyring-envelope row plus providers' eight and secrets' fifty-three — because
  * real AES-256-GCM needs no daemon and neither does an in-memory probe cache or
  * an in-memory vault. Only the remaining twelve carry `.integration.` in the name,
  * so the cases this census records that the script does not execute go
- * 1054 -> 1066 over 109 -> 111 files, and the runnable side goes 429 -> 559 for
+ * 1054 -> 1066 over 109 -> 111 files, and the runnable side goes 429 -> 561 for
  * the postgres row's own split plus the three rows outside it.
  *
  * The three-way file identity holds with the same shape:
@@ -2783,7 +2783,7 @@ export const EXPECTED = Object.freeze({
  * `providers` and three for `secrets`. The v1 ledger counts the same twelve
  * inside its twenty-eight.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7541;
+export const EXPECTED_RUNTIME_TOTAL = 7543;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

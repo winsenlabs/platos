@@ -17,8 +17,10 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { envelopeFormat } from "../domain/envelope.js";
 import { asSecretsIdentifier } from "../domain/ids.js";
-import type { CredentialId } from "../domain/ids.js";
+import type { CredentialId, RootKeyVersion, SecretRevision, SecretVersionId } from "../domain/ids.js";
+import { canonicalRowRefusals } from "../domain/legacy-envelope.js";
 import { createCredential } from "./create-credential.js";
 import { inMemorySecrets } from "./in-memory-dependencies.js";
 import type { InMemorySecrets } from "./in-memory-dependencies.js";
@@ -140,6 +142,72 @@ describe("a legacy column becomes a canonical envelope", () => {
       legacy: { formatVersion: 2, payload: legacyPayload(2, LEGACY_PLAINTEXT) },
     });
     expect(context.store.allAudits().some((row) => row.action === "CREATE")).toBe(false);
+  });
+});
+
+describe("the refusal the migration exists to make unreachable", () => {
+  it("REFUSES to open a legacy-format row, which is what made the material unreachable", async () => {
+    // THE STATE THIS ISSUE WAS ABOUT, reproduced so the refusal is falsifiable.
+    // `openSecret` rejects any format whose descriptor is not `versionedRootKey`,
+    // which is both legacy formats — so a credential pointing at one is
+    // permanently unreadable through every path this context publishes.
+    //
+    // NOTHING ELSE IN THIS PACKAGE ASSERTED THIS. The guard has been in
+    // `envelope-operations.ts` since the context was written and no case named
+    // it, so "the refusal" was a sentence rather than a measurement.
+    const versionId = asSecretsIdentifier<SecretVersionId>("version-legacy-row");
+    await context.dependencies.unitOfWork.run(async (transaction) => {
+      unwrap(
+        await context.dependencies.repository.insertSecretVersion(
+          {
+            id: versionId,
+            credentialId: unmigrated,
+            secretRevision: 1 as SecretRevision,
+            formatVersion: 2,
+            rootKeyVersion: 1 as RootKeyVersion,
+            salt: new Uint8Array(0),
+            nonce: new Uint8Array(12),
+            ciphertext: new Uint8Array(8),
+            authTag: new Uint8Array(16),
+            createdAt: context.clock.now(),
+          },
+          transaction,
+        ),
+      );
+      unwrap(
+        await context.dependencies.repository.setActiveSecretVersion(
+          unmigrated,
+          versionId,
+          context.clock.now(),
+          transaction,
+        ),
+      );
+    });
+
+    const read = await readSecret(context.dependencies, {
+      authorization: grants.runtime,
+      credentialId: unmigrated,
+    });
+    expect(read.ok).toBe(false);
+    if (read.ok) return;
+    expect(read.error.details?.reason).toBe("envelope_format_unreadable");
+  });
+
+  it("is a state a real database cannot hold, which is why the fix is a transcoding", () => {
+    // THE ROW ABOVE EXISTS ONLY BECAUSE THIS STORE IS A MAP. Its salt is zero
+    // bytes, and `CredentialSecretVersion_salt_length_check` demands exactly 32,
+    // so PostgreSQL refuses that INSERT outright —
+    // `postgres-tenancy/src/secrets-legacy-envelope.integration.test.ts` asks a
+    // real database and reads the constraint name back.
+    //
+    // That is the whole reason the migration reads a legacy STRING out of a
+    // foreign column rather than updating a row in place: the row it would have
+    // updated could never have been written. This case states the divergence
+    // rather than hiding it, the way `agents-constraints` states the doubles'.
+    expect(canonicalRowRefusals(envelopeFormat(2))).toContain(
+      "CredentialSecretVersion_salt_length_check",
+    );
+    expect(canonicalRowRefusals(envelopeFormat(1))).toHaveLength(0);
   });
 });
 
