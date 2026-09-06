@@ -167,6 +167,21 @@
 // which §1 row 3 gives to `secrets` — a row this directory can physically read
 // and this port is not entitled to.
 
+// AND SO DO `jobs`' TWO CANONICAL-STORE PORTS (WIN-258 T5) — the THIRTEENTH
+// owner delegated to this directory, and the THIRD whose ports are PROPERTIES
+// because a name collided. `Job` and `AgentApproval` are in the same PostgreSQL
+// database behind the same client, so Amendment 15 puts them here; but
+// `ApprovalsRepository` declares a top-level `list`, `resolve` and `erase`, and
+// `ConversationsErasureStore` already publishes an `erase` with a different
+// signature — so this interface cannot extend both ports and a spread would have
+// let whichever composite came last answer both. The two arrive under
+// `JobsDependencies`' own slot names, `jobs` and `approvals`. The context's two
+// OTHER ports are deliberately absent and `jobs-repository.ts` says why for
+// each: `IdempotencyStore` is a reserve-once keyspace whose three properties
+// PostgreSQL does not have, and `JobHandlerRuntime` is the isolate that runs
+// untrusted handler source, which ADR M0.3 §7 decision 10 puts behind
+// `packages/adapters/durable-runtime`.
+
 import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
 import type {
   ConversationsErasureStore,
@@ -191,6 +206,10 @@ import type {
   SafetyLedger,
 } from "@platos/context-governance/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
+import type {
+  ApprovalsRepository,
+  JobsRepository,
+} from "@platos/context-jobs/application/ports/index.js";
 import type { ProvidersRepository } from "@platos/context-providers/application/ports/index.js";
 import type {
   EnvironmentVariableRepository,
@@ -220,6 +239,7 @@ import { createGovernanceStores } from "./governance-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createInvitationTokenIssuer } from "./invitation-token.js";
+import { createJobsStores } from "./jobs-repository.js";
 import { createTenancyLocks } from "./locks.js";
 import { createMemoryStores } from "./memory-repository.js";
 import { createMembershipRepository } from "./membership.js";
@@ -350,6 +370,23 @@ export interface PostgresTenancyAdapter
    */
   readonly memory: MemoryRepository;
   readonly memoryGraph: KnowledgeGraphRepository;
+
+  /**
+   * WIN-258 T5 — `jobs`' two canonical-store ports.
+   *
+   * PROPERTIES, and the first half is FORCED by the third name collision this
+   * file has had to arbitrate. `ApprovalsRepository.erase(selector, transaction)`
+   * and `ConversationsErasureStore.erase(...)` are both top-level members with
+   * different signatures, and `ApprovalsRepository.list` and `.resolve` are two
+   * more names a directory serving thirteen owners cannot give away once — so
+   * `PostgresTenancyAdapter` cannot extend this port and a spread would have let
+   * whichever composite came last answer both. The second half is the reason
+   * `conversations`' four are properties: `JobsDependencies` names TWO SLOTS and
+   * a composition root has to hand each port over under its own name. The names
+   * below are those two slots exactly.
+   */
+  readonly jobs: JobsRepository;
+  readonly approvals: ApprovalsRepository;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -410,6 +447,14 @@ export function buildPostgresTenancyAdapter(
     // memories, nodes and edges and then destroys all three cannot leave the
     // graph standing over a person whose memories are gone.
     ...createMemoryStores(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The THIRTEENTH owner delegated to this
+    // directory. Built from the same `transactions` as everything above, so
+    // `resolve-approval.ts` — which records a human's decision and then resumes
+    // the run parked on a `DurableRuntime` suspension — is ONE transaction, and
+    // so `privacy`'s erasure counts and destroys a subject's approvals through a
+    // `TransactionScope` this ambient frame minted rather than a second one that
+    // would refuse it as `scope_unknown`.
+    ...createJobsStores(transactions),
     async close(): Promise<void> {
       await client.$disconnect();
     },

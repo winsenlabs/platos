@@ -1086,6 +1086,9 @@ importers:
       '@platos/context-identity-access':
         specifier: workspace:*
         version: link:../../contexts/identity-access
+      '@platos/context-jobs':
+        specifier: workspace:*
+        version: link:../../contexts/jobs
       '@platos/context-memory':
         specifier: workspace:*
         version: link:../../contexts/memory

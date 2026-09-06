@@ -350,6 +350,14 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/memory",
     "packages/adapters/postgres-tenancy",
   ]);
+  // And `jobs` is the THIRTEENTH, on the narrowest grant in the map: `Job` and
+  // `AgentApproval` and nothing else. `files` and `privacy` below are unmoved —
+  // this wave reaches neither — so the undelegated half of this case still names
+  // somebody and the case still says something.
+  assert.deepEqual(ownerDirectories("jobs"), [
+    "packages/contexts/jobs",
+    "packages/adapters/postgres-tenancy",
+  ]);
   for (const owner of ["files", "privacy"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
@@ -1534,11 +1542,37 @@ test("an element-access member that is not a delegate is still not a write", () 
 // write, applied here to a column no port method can.
 //
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 + 6 + 15 = 266. All
-// of tranche 5's stores landed in the ONE directory, so this pin is the SUM of
-// every enumeration above and no single branch's own figure — 215, 228, 204 or
-// 213 — survives the merge.
-const LIVE_TREE_WRITE_COUNT = 266;
+// WIN-258 T5 — THE `jobs` CANONICAL STORE adds EIGHT, the narrowest store in
+// this directory because the context owns the fewest rows in the map — two:
+//
+//   src/jobs-definitions.ts    job.createManyAndReturn, the updateMany behind
+//                              `updateJob`, the SECOND updateMany behind
+//                              `markStarted` — guarded on `status: "ACTIVE"`
+//                              and resolved through `atomic()` because the
+//                              port carries no token — and deleteMany         4
+//   src/jobs-approvals.ts      agentApproval.createManyAndReturn, the guarded
+//                              `updateMany({ where: { status: "PENDING" } })`
+//                              that makes a second decision land on nothing,
+//                              and the updateMany behind `markConsumed`       3
+//   src/jobs-erasure.ts        one deleteMany. Nothing holds a foreign key TO
+//                              an approval, so this single statement IS the
+//                              erasure and its count is the receipt's         1
+//                                                                        total = 8
+//
+// Its SIX suites contribute ZERO between them. `jobs-conformance`,
+// `-constraints`, `-transaction` and `-statements` write every row they need
+// through the ports under measurement, because `Job` and `AgentApproval` are now
+// this directory's to write. `jobs-harness.ts` and
+// `jobs-rules.integration.test.ts` seed the ancestry an approval hangs off —
+// `Agent`, `Thread`, `Turn` — and plant the rows this store REFUSES to write,
+// and both do it through `prisma db execute`, which is the ORM's CLI at runtime
+// and not a client call at all, so the scanner neither sees them nor should.
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 + 6 + 15 + 8 = 274.
+// All of tranche 5's stores landed in the ONE directory, so this pin is the SUM
+// of every enumeration above and no single branch's own figure — 215, 228, 204,
+// 213 or this branch's own 8 — survives the merge.
+const LIVE_TREE_WRITE_COUNT = 274;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1844,6 +1878,98 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
       "packages/adapters/postgres-tenancy",
     ]);
   }
+});
+
+test("§15: `jobs` is delegated to that same directory, and the grant is TWO rows wide", () => {
+  // The THIRTEENTH owner. `Job` and `AgentApproval` are in the one PostgreSQL
+  // database behind the one client, so ADR M0.3 §15 puts them in this directory
+  // rather than in a thirteenth adapter package holding a second client.
+  assert.equal(CANONICAL_STORE_ADAPTERS.jobs, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("jobs"), [
+    "packages/contexts/jobs",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  const jobRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "jobs")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(jobRows, ["AgentApproval", "Job"]);
+  // AND THE NEGATIVE IS THE ANCESTRY AN APPROVAL HANGS OFF. `AgentApproval`
+  // carries foreign keys to `Agent`, `Thread` and `Turn`, and
+  // `enforce_domain_ancestry` re-reads all three from inside its own INSERT —
+  // so this is the store in the directory with the strongest reason to reach
+  // for a row it does not own, and it may not. All three ARE writable from this
+  // directory, under `agents`' and `conversations`' tags, from their own
+  // stores; the tag is what decides, not the folder.
+  for (const [delegate, model, owner] of [
+    ["agent", "Agent", "agents"],
+    ["thread", "Thread", "conversations"],
+    ["turn", "Turn", "conversations"],
+  ]) {
+    const trespass = checkWriteEnforcement(
+      fixture({
+        "packages/contexts/jobs/application/x.ts": write(delegate, "create"),
+      }),
+    );
+    assert.equal(trespass.violations.length, 1, `a jobs write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.deepEqual(trespass.violations[0].permitted, [
+      `packages/contexts/${owner}`,
+      "packages/adapters/postgres-tenancy",
+    ]);
+  }
+});
+
+test("a THIRD directory writing a `jobs` row is refused, and the refusal names it", () => {
+  // The RED case the `jobs` entry needs to be a narrow grant rather than a
+  // blanket licence: the same two statements, on the same two rows, from a
+  // directory that is neither `packages/contexts/jobs` nor its one delegate.
+  // Every write the live tree makes is already legal, so without this case the
+  // entry would be indistinguishable from a licence over the schema.
+  const root = fixture({
+    // A context that is NOT jobs, writing a job through the ORM.
+    "packages/contexts/agents/application/steal.ts":
+      `export async function run(db: any) {\n  await db.job.create({ data: {} });\n}\n`,
+    // And an ADAPTER that is not the delegate, writing the other row raw.
+    "packages/adapters/redis-cache/src/steal.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.$executeRaw\`insert into "public"."AgentApproval" (id) values ('x')\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.violations.length, 2, "both writes must be refused, not just the ORM one");
+  const byModel = Object.fromEntries(result.violations.map((v) => [v.model, v]));
+  assert.deepEqual(Object.keys(byModel).sort(), ["AgentApproval", "Job"]);
+  assert.deepEqual(byModel.Job.permitted, [
+    "packages/contexts/jobs",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.deepEqual(byModel.AgentApproval.permitted, byModel.Job.permitted);
+  assert.match(byModel.Job.message, /jobs is its sole writer/);
+  assert.match(byModel.AgentApproval.message, /jobs is its sole writer/);
+  // And it has to name the directory that actually wrote it, or a reader cannot
+  // find the offending line.
+  assert.equal(byModel.Job.actual, "packages/contexts/agents");
+  assert.equal(byModel.AgentApproval.actual, "packages/adapters/redis-cache");
+});
+
+test("the SAME `jobs` writes from the delegate directory are permitted", () => {
+  // The control for the case above. Same two statements, same two rows, moved
+  // into the one directory the map grants — and now there is no violation at
+  // all. Without this the RED case could be passing because the harness refuses
+  // everything rather than because the delegation is narrow.
+  const root = fixture({
+    "packages/adapters/postgres-tenancy/src/steal.ts":
+      `export async function run(db: any) {\n` +
+      `  await db.job.create({ data: {} });\n` +
+      `  await db.$executeRaw\`insert into "public"."AgentApproval" (id) values ('x')\`;\n` +
+      `}\n`,
+  });
+  const result = checkWriteEnforcement(root);
+  assert.deepEqual(result.violations, []);
+  assert.deepEqual(result.unattributable, []);
+  assert.equal(result.writeCount, 2);
 });
 
 test("a THIRD directory writing a `tools` row is refused, and the refusal names it", () => {

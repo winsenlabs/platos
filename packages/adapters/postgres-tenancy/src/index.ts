@@ -438,3 +438,53 @@ export {
   UNREADABLE_MEMORY_METADATA,
   UnreadableMemoryRow,
 } from "./memory-rows.js";
+//
+// WIN-258 T5 — `jobs`' two canonical stores. The factory leaves the package for
+// the reason `createGovernanceStores` does: a composition root that wanted this
+// pair WITHOUT tenancy's repositories — the platform-wide approval sweep, say,
+// which is the one caller in this system that reads across every tenant — has to
+// be able to build them over the SAME transactions rather than over a second
+// client. `createListingClock` leaves it with the factory because the ONE
+// question either store asks the wall clock is `ApprovalQuery.sinceDays`, and a
+// root that wanted a deterministic window has to be able to supply one without
+// reimplementing it.
+//
+// THE REFUSAL CODES LEAVE IT FOR THE REASON `secrets`' AND `skills`' DO.
+// `jobs/domain/errors.ts` publishes exactly ONE code a store may answer with —
+// `JOBS_REPOSITORY_UNAVAILABLE` — so a caller cannot tell a payload schema the
+// column will not hold from a row an older binary wrote from a database that is
+// down. That collapse is right for a caller, which has one thing to do in all
+// three cases, and useless for an operator; the seven write-shape refusals and
+// the five unreadable-row refusals are named here and carried out of band.
+//
+// TWO ARE PREFIXED AT THE SOURCE RATHER THAN ALIASED AT THIS DOOR, and both
+// collisions are real. `cost-monitoring`, `channels`, `secrets` and `skills`
+// each already publish an `IDENTIFIER_NOT_UUID`, and `conversations-guards.ts`
+// records why the fifth mints its own prefixed name instead of taking a fifth
+// alias: four aliases of one name are four chances to export the wrong one.
+// `UNKNOWN_WORK_STATUS` is the second, and `conversations`' own note predicted
+// it — "a name three contexts could plausibly want; `WorkStatus` is shared by
+// `Thread`, `Turn`, `PostmanExecution`, `Job` and `ErasureOperation`". `Job` is
+// the row that arrived, and its code leaves under its owner's prefix.
+export type { JobsStores } from "./jobs-repository.js";
+export { createJobsStores, createListingClock } from "./jobs-repository.js";
+export {
+  APPROVAL_EDIT_NOT_STORABLE,
+  APPROVAL_OUTCOME_RESERVED,
+  APPROVAL_PAGE_WINDOW_INVALID,
+  APPROVAL_TIMEOUT_NOT_STORABLE,
+  JOB_BUDGET_NOT_STORABLE,
+  JOBS_IDENTIFIER_NOT_UUID,
+  JOBS_INSTANT_NOT_REPRESENTABLE,
+  JobsWriteRefused,
+  PAYLOAD_SCHEMA_NOT_OBJECT,
+} from "./jobs-guards.js";
+export {
+  APPROVAL_METADATA_MARKER,
+  APPROVAL_OUTCOME_MARKER,
+  JOBS_UNKNOWN_WORK_STATUS,
+  UNKNOWN_APPROVAL_STATUS,
+  UNKNOWN_INVOCATION_TYPE,
+  UNREADABLE_APPROVAL_ENVELOPE,
+  UNREADABLE_PAYLOAD_SCHEMA,
+} from "./jobs-rows.js";

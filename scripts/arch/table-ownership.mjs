@@ -575,6 +575,45 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // this entry the one package permitted to write the row would be issuing a
   // statement the gate refuses.
   memory: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The THIRTEENTH context to resolve to this directory, on the
+  // sentence every entry above stands on: one PostgreSQL database is one client
+  // is one adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the TWO rows `jobs` owns — `Job` and
+  // `AgentApproval`. Nothing else, and this is the narrowest grant in the map.
+  // `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Thread`, to `Turn` or to
+  // `Agent` from this package still fails — and all three matter here, because
+  // `AgentApproval` carries a foreign key to every one of them. Thirteen owners
+  // resolving to one directory is not thirteen owners losing their boundaries:
+  // the boundary is the owner TAG on the row, and this entry moves no tag.
+  //
+  // IT IS WHAT MAKES A DECISION AND ITS RESUMPTION ONE UNIT OF WORK.
+  // `resolve-approval.ts` records a human's decision on `AgentApproval` and then
+  // resumes the run parked on a `DurableRuntime` suspension, and
+  // `jobs-erasure-target.ts` counts a subject's approvals and then destroys
+  // them — both through a `TransactionScope` the caller opened. Those writes are
+  // the same client on the same connection only because this owner resolves to
+  // the same directory as `tenancy`, whose `UnitOfWork` mints the token; a
+  // thirteenth adapter package holding only these two repositories would have
+  // had its own pool and its own `AsyncLocalStorage` frame, and a token minted
+  // by one would have been refused by the other as `scope_unknown`.
+  //
+  // IT DOES NOT GRANT WHAT `jobs` NEEDS AND DOES NOT OWN, and here that is the
+  // whole ancestry of an approval. `enforce_domain_ancestry` fires BEFORE INSERT
+  // OR UPDATE on `AgentApproval` and demands that its `agentId` belong to an
+  // `Agent` in the environment's project, its `threadId` to a `Thread` in the
+  // environment, and its `turnId` to a `Turn` in that thread. `Agent` is
+  // `agents`' row (ADR M0.3 §1 row 5) and `Thread` and `Turn` are
+  // `conversations`' (row 16); both contexts resolve to this same directory, so
+  // this package CAN write them — under their own owners' tags, from their own
+  // stores, never from `jobs`'. The integration fixture seeds that chain as SQL
+  // applied by `prisma db execute` for the reason `governance-harness.ts` gives
+  // for its own: a fixture with two mechanisms for one chain is a fixture that
+  // has to be debugged before a suite can be read.
+  jobs: "packages/adapters/postgres-tenancy",
 });
 
 /**
