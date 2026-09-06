@@ -260,6 +260,13 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/secrets",
     "packages/adapters/postgres-tenancy",
   ]);
+  // WIN-258 T5. `conversations` is the NINTH, and it is the one the list it left
+  // most needed to lose: `Thread` and `Turn` are the rows the OTHER eight
+  // owners' harnesses seed by hand precisely because this owner had no entry.
+  assert.deepEqual(ownerDirectories("conversations"), [
+    "packages/contexts/conversations",
+    "packages/adapters/postgres-tenancy",
+  ]);
   for (const owner of ["memory", "files"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
@@ -544,12 +551,20 @@ test("only secrets' own two directories may write its four rows", () => {
 
 test("the shared directory is not a blanket licence over the whole schema", () => {
   // The converse of the case above, and the one that would catch a delegation
-  // written as "this directory may write anything". `Memory` and `Turn` live in
-  // the same PostgreSQL database, behind the same client, in reach of the same
-  // file — and are refused from the directory that legally writes 106 rows.
+  // written as "this directory may write anything". `Memory` and `Artifact` live
+  // in the same PostgreSQL database, behind the same client, in reach of the
+  // same file — and are refused from the directory that legally writes 110 rows.
+  //
+  // WIN-258 T5 REPLACED `Turn` HERE WITH `Artifact`, and the substitution is the
+  // point rather than a repair. `Turn` was the second name in this case because
+  // it was undelegated; this tranche delegates `conversations`, so `Turn` became
+  // writable from that directory and the case would have gone red for the RIGHT
+  // reason. `Artifact` is `files`' (ADR M0.3 §1 row 10), is still undelegated,
+  // and — like `Turn` before it — hangs off a `Thread` this directory now writes,
+  // so it is the same shape of proof: adjacency in the schema is not permission.
   for (const [delegate, model] of [
     ["memory", "Memory"],
-    ["turn", "Turn"],
+    ["artifact", "Artifact"],
   ]) {
     const result = checkWriteEnforcement(
       fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write(delegate, "create") }),
