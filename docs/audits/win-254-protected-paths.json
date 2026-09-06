@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "aebe3674a588cb6d003808375b4cded6589baeb407a1b71f79d48901a82e46f0"
+      "sha256": "cd5b73a9e4774a5813dccafa410a060a321ca31822cf556cd6e99edc37ee0c40"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
