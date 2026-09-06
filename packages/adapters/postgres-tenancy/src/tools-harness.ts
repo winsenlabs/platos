@@ -55,6 +55,7 @@ import type { PostgresTenancyAdapter } from "./adapter.js";
 import type { TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
 import { startIdentityHarness, type IdentityHarness } from "./identity-harness.js";
+import type { CapturedStatement } from "./harness.js";
 
 /** How many complete tenants `fixtures/tools-rows.sql` seeds. */
 export const SEEDED_TENANTS = 16;
@@ -93,6 +94,8 @@ export interface ToolsHarness {
   readonly first: SeededToolsTenant;
   readonly second: SeededToolsTenant;
   statements(): readonly string[];
+  /** The same statements with the values bound to them. WIN-258 T7. */
+  events(): readonly CapturedStatement[];
   resetStatements(): void;
   freshId(kind: string): string;
   /** Claim the next unused pre-seeded tenant. The label is for diagnostics. */
@@ -198,6 +201,7 @@ export async function startToolsHarness(): Promise<ToolsHarness> {
     first,
     second,
     statements: base.statements,
+    events: base.events,
     resetStatements: base.resetStatements,
     freshId: base.freshId,
 

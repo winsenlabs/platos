@@ -64,6 +64,17 @@ export const entityIdOf = (value: string): EntityId => asIdentifier<EntityId>(va
 export const projectMembershipIdOf = (value: string): ProjectMembershipId =>
   asIdentifier<ProjectMembershipId>(value);
 
+/**
+ * One statement the client sent, and the values it bound to it.
+ *
+ * WIN-258 T7. The driver logs its parameters as a JSON ARRAY IN A STRING, not as
+ * an array — so the parsing happens once, here, rather than at each plan suite.
+ */
+export interface CapturedStatement {
+  readonly query: string;
+  readonly params: readonly unknown[];
+}
+
 export interface TenancyHarness {
   readonly client: TenancyDatabaseClient;
   /**
@@ -79,6 +90,14 @@ export interface TenancyHarness {
   readonly adapter: PostgresTenancyAdapter;
   /** Every statement the client has sent since `resetStatements`. */
   statements(): readonly string[];
+  /**
+   * The same statements WITH the values the driver bound to them.
+   *
+   * WIN-258 T7. A statement string alone cannot be re-run: every literal in it
+   * is a `$1`. `EXPLAIN` needs the placeholders filled, so the plan suites read
+   * the pair rather than re-deriving a query the store might not be sending.
+   */
+  events(): readonly CapturedStatement[];
   resetStatements(): void;
   /** A fresh UUID, so no two cases in a suite can collide on a key. */
   freshId(kind: string): string;
@@ -90,6 +109,26 @@ export interface TenancyHarness {
 const packageRoot = process.cwd();
 const databasePackage = resolve(packageRoot, "../../../internal-packages/tenancy-database");
 const prismaBinary = resolve(packageRoot, "../../../node_modules/.bin/prisma");
+
+/**
+ * The bound values of one logged statement, as an array.
+ *
+ * The driver hands them over as a JSON array INSIDE a string. A statement with
+ * no parameters logs an empty array, and a driver build that ever stopped
+ * logging them at all would answer `undefined` — both are read as "nothing was
+ * bound" rather than thrown on, because the statement text is still evidence and
+ * a harness that refused it would take the whole suite down over a log format.
+ */
+function readBoundValues(params: unknown): readonly unknown[] {
+  if (Array.isArray(params)) return params as readonly unknown[];
+  if (typeof params !== "string") return [];
+  try {
+    const parsed: unknown = JSON.parse(params);
+    return Array.isArray(parsed) ? (parsed as readonly unknown[]) : [];
+  } catch {
+    return [];
+  }
+}
 
 export async function startTenancyHarness(): Promise<TenancyHarness> {
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
@@ -121,12 +160,12 @@ export async function startTenancyHarness(): Promise<TenancyHarness> {
     log: [{ emit: "event", level: "query" }],
   }) as TenancyDatabaseClient;
 
-  let statements: string[] = [];
+  let captured: CapturedStatement[] = [];
   const listening = client as unknown as {
-    $on(event: "query", listener: (event: { query: string }) => void): void;
+    $on(event: "query", listener: (event: { query: string; params?: unknown }) => void): void;
   };
   listening.$on("query", (event) => {
-    statements.push(event.query);
+    captured.push({ query: event.query, params: readBoundValues(event.params) });
   });
 
   const adapter = buildPostgresTenancyAdapter(client);
@@ -136,9 +175,10 @@ export async function startTenancyHarness(): Promise<TenancyHarness> {
     client,
     databaseUrl,
     adapter,
-    statements: () => statements,
+    statements: () => captured.map((entry) => entry.query),
+    events: () => captured,
     resetStatements: () => {
-      statements = [];
+      captured = [];
     },
     freshId(kind: string): string {
       sequence += 1;

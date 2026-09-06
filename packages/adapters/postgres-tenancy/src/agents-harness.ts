@@ -51,7 +51,7 @@ import { asAgentsIdentifier, DEFAULT_AGENTS_POLICY } from "@platos/context-agent
 
 import type { PostgresTenancyAdapter } from "./adapter.js";
 import type { TenancyDatabaseClient } from "./client.js";
-import { startTenancyHarness, type TenancyHarness } from "./harness.js";
+import { startTenancyHarness, type CapturedStatement, type TenancyHarness } from "./harness.js";
 import { buildAgentsScenarioSnapshot } from "./agents-conformance.js";
 
 /** Rows `fixtures/agents-rows.sql` creates. Named so no suite spells a uuid twice. */
@@ -104,6 +104,8 @@ export interface AgentsHarness {
   readonly repository: AgentsRepository;
   readonly scaffolding: ScaffoldingRepository;
   statements(): readonly string[];
+  /** The same statements with the values bound to them. WIN-258 T7. */
+  events(): readonly CapturedStatement[];
   resetStatements(): void;
   freshId(kind: string): string;
   /** An agent, its first version and a binding, all through the port. */
@@ -162,6 +164,7 @@ export async function startAgentsHarness(): Promise<AgentsHarness> {
     repository,
     scaffolding,
     statements: base.statements,
+    events: base.events,
     resetStatements: base.resetStatements,
     freshId: base.freshId,
 
