@@ -502,30 +502,38 @@ test("the live selectors scan an exact nonzero source census", () => {
   // double, and it is ALREADY two files -- the catalogue half is a separate
   // module for the same scoping reason.
   //
-  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 =
-  // 1319. All the stores are in the one adapter directory, so no branch's own
+  //
+  // 1303 -> 1323 (WIN-258 T5, `conversations`): TWENTY more files in the same
+  // ORM home — twelve source modules and eight suites. TWO of the twenty exist
+  // only because this gate bit at the HARD error, and a third because it bit
+  // twice more; see the note above the finding list for what each split is
+  // along. Its guard ledger is not source and is not scanned here.
+  //
+  //
+  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
+  // = 1339. All the stores are in the one adapter directory, so no branch's own
   // figure survives the merge — 1266 for `channels`, 1269 for `governance`,
-  // 1270 for `secrets`, 1267 for `providers`.
-  assert.equal(result.fileCount, 1319);
+  // 1270 for `secrets`, 1319 for `providers`, 1323 for `conversations`.
+  assert.equal(result.fileCount, 1339);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
   // the one directory and then swept one of them again: 88 + 11 (tranche 3) +
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
   // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) + 19
-  // (secrets) + 16 (providers) = 233. The contexts, kernel and app rows are
-  // untouched, which is
+  // (secrets) + 16 (providers) + 20 (conversations) = 253. The contexts,
+  // kernel and app rows are untouched, which is
   // the claim worth making: no tranche-5 store adds a file to a context at all —
   // each implements a port that already existed rather than widening one.
   // `secrets` is the sharpest case: its port entry point WAS widened, in place,
   // and a widened file is not a new one.
-  assert.equal(result.fileCount, 20 + 1060 + 233 + 6);
+  assert.equal(result.fileCount, 20 + 1060 + 253 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -588,10 +596,48 @@ test("the live selectors scan an exact nonzero source census", () => {
   // sequence. The constraints suite beside it was 491 and IS split, along the
   // same seam, which is the difference between a warning that is a shape and one
   // that is a queue for the hard error.
+  //
+  // WIN-258 T5 (`conversations`) BROUGHT TWO MORE AND FORCED TWO SPLITS AT THE
+  // HARD ERROR, which is the loudest this budget has been in the programme.
+  //
+  // The shared conformance scenario measured 605 effective lines and is halved
+  // along the seam it already had — the CONVERSATION (threads, turns, steps, the
+  // compaction lock, the paged listings) and the OPERATOR'S EXECUTION with the
+  // erasure that severs it — leaving 485 here and its sibling below the band.
+  // The constraints suite measured 585 and split into the shapes a conversation
+  // admits and the shapes a BILL and an operator's audit row admit; the rules
+  // suite measured 695 and split into what happens when rows are DESTROYED and
+  // what a caller may not reach or change. All four halves are below the band.
+  //
+  // A SHARED FIXTURE MODULE CAME OUT OF THE SAME PRESSURE and is the part worth
+  // recording: four suites over four tables each needed a `Thread`, a `Turn`, a
+  // `Step` and a `PostmanExecution` of the right shape, and four copies of those
+  // builders would have been four chances for one to drift into a shape the
+  // database refuses — which is the exact class of defect this tranche spent an
+  // integration run on. `conversations-fixtures.ts` is one copy, imported four
+  // times, and it is why the four halves stay short.
+  //
+  // The two that remain in the band are `conversations-conformance.ts` at 485 —
+  // one scenario, and its length IS the scenario, exactly as
+  // `channels-conformance.ts`'s is — and
+  // `conversations-transaction.integration.test.ts` at 401, which is failure
+  // injection against a real database: every case seeds a pair of writes, forces
+  // the second to fail and then reads BOTH back on a second connection, and a
+  // shorter version would be one that stopped checking the second half.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
       effectiveLines: 459,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/conversations-conformance.ts",
+      effectiveLines: 485,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/conversations-transaction.integration.test.ts",
+      effectiveLines: 401,
       severity: "warning",
     },
     {

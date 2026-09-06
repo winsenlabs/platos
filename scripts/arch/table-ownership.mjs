@@ -466,6 +466,46 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // seeds the versions it needs as SQL applied by `prisma db execute`, which is
   // honest about the fact that those rows belong to another context.
   providers: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The TENTH context to resolve to this directory, on the sentence
+  // every entry above stands on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FOUR rows `conversations` owns — `Thread`,
+  // `Turn`, `Step` and `PostmanExecution`. Nothing else. `checkSoleWriter` asks
+  // per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory`, to `Artifact` or to
+  // `ToolCallAudit` from this package still fails, and a write to any of these
+  // four from anywhere else still fails.
+  //
+  // IT CLOSES A HOLE THE OTHER EIGHT ENTRIES HAD TO WORK AROUND. Until now
+  // `conversations` had NO entry here, and three sibling harnesses said so in as
+  // many words: `governance-harness.ts` seeds its `Thread` and `Turn` peers
+  // through `prisma db execute` because "sole-writer.mjs refuses a write to
+  // either from this directory, correctly", and the `channels` entry above
+  // records the same for its thread links. Those fixtures are unchanged and stay
+  // unchanged: this entry moves no owner TAG, so a `Thread` written from
+  // `channels-links.ts` is still refused — what it grants is that
+  // `conversations-threads.ts`, in the same directory, may write one.
+  //
+  // AND IT IS WHAT MAKES THE FOUR PORTS IMPLEMENTABLE AT ALL. Without it
+  // `ownerDirectories("conversations")` is `packages/contexts/conversations`
+  // alone, and ADR M0.3 §2 forbids that package's `domain/` and `application/`
+  // from importing the ORM — so the one package permitted to write these four
+  // rows would be the one package unable to.
+  //
+  // IT DOES NOT GRANT WHAT `conversations` NEEDS AND DOES NOT OWN, and here the
+  // list is long because a turn touches everything: `Agent` and `AgentVersion`
+  // are `agents`' (§1 row 5), `EndUser` is `identity-access`' (row 1),
+  // `PostmanTemplate` is `agents`', `User` is `identity-access`' and `ModelPrice`
+  // is `providers`' (row 4). `providers` has no entry here at all, and
+  // `Step_price_snapshot` makes that bite: a priced step's four rates must match
+  // a real `ModelPrice` row exactly, and this directory cannot create one. The
+  // integration fixture seeds that chain as SQL applied by `prisma db execute`,
+  // which is honest about the fact that the rows belong to contexts whose stores
+  // do not exist yet, rather than reaching for a permission the map withholds.
+  conversations: "packages/adapters/postgres-tenancy",
 });
 
 /**

@@ -875,7 +875,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1237,
+    packages: 1258,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1047,21 +1047,31 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   SAME directory again) + 19 (that tranche's `governance` canonical store,
     //   in the same directory once more) + 20 (its `secrets` canonical store,
     //   there too) = 1296, + 17 (WIN-258 tranche 5, the `providers` canonical
-    //   store, in that SAME one directory) = 1313.
+    //   store, in that SAME one directory) + 21 (its `conversations` canonical
+    //   store, the TENTH owner of that one directory) = 1334.
     //
     // EACH SLICE CARRIES ITS GUARD LEDGER AND IS ONE LARGER THAN ITS `.ts`
     // COUNT. `channels`' 16 are 15 source-and-test files plus
     // `mutations-channels.json`, `governance`'s 19 are 18 plus
-    // `mutations-governance.json`, and `secrets`' 20 are 19 — ten source and
-    // nine suites — plus `mutations-secrets.json`. `providers`' 17 are 16 — nine
-    // source and SEVEN suites — plus `mutations-providers.json`; it is seven
-    // suites rather than six because the §6 budget split the constraints proof at
-    // 491 effective lines, along the port's own scoping seam. The existing
-    // `packages.adapters.config` rule already classifies all three, so no ledger
-    // rule changed for any of them: a guard ledger is DATA beside the package
-    // rather than a module in it. `packages/contexts/secrets` gains NO file —
-    // its port entry point was widened IN PLACE, and a widened file is not a new
-    // one.
+    // `mutations-governance.json`, `secrets`' 20 are 19 — ten source and
+    // nine suites — plus `mutations-secrets.json`. `providers`' 17 are 16 —
+    // nine source and SEVEN suites — plus `mutations-providers.json`; it is
+    // seven suites rather than six because the §6 budget split the constraints
+    // proof at 491 effective lines, along the port's own scoping seam. And
+    // `conversations`' 21 are 20 — twelve source and eight suites — plus
+    // `mutations-conversations.json`. The existing `packages.adapters.config`
+    // rule already classifies all five, so no ledger rule changed for any of
+    // them: a guard ledger is DATA beside the package rather than a module in
+    // it. None of `packages/contexts/secrets`, `packages/contexts/providers` or
+    // `packages/contexts/conversations` gains a file — each had its port entry
+    // point widened IN PLACE, and a widened file is not a new one.
+    //
+    // THREE OF `conversations`' TWENTY EXIST BECAUSE `max-file-lines` BIT AT THE
+    // HARD ERROR: the shared conformance scenario, the constraints suite and the
+    // rules suite each split along a seam they already had, and a shared fixture
+    // module came out of the same pressure. A file count that moved by twenty
+    // where the work was five suites' worth is exactly the kind of thing a
+    // ledger states rather than absorbs.
     //
     // ALL FOUR TRANCHE-5 SLICES ARE ALL `packages`, every file under
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
@@ -1070,7 +1080,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1313);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1334);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1092,10 +1102,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // five tenancy ports +12, WIN-258 tranche 4's kernel outbox +18 across
     // TWO adapter directories, and WIN-258 tranche 5's SIX canonical stores,
     // `tools` +20, `agents` +18, `cost-monitoring` +17, `channels` +16,
-    // `governance` +19, `secrets` +20 and `providers` +17, all in ONE, plus that
-    // tranche's second sweep +1); this one re-derives it by summing the per-area
-    // counts independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1313
+    // `governance` +19, `secrets` +20, `providers` +17 and `conversations` +21,
+    // all in ONE, plus that tranche's second sweep +1); this one re-derives it
+    // by summing the per-area counts independently, so the two can DISAGREE and
+    // be caught.
+    rulesDocument.baseline.totalFiles + 1334
   );
 });
 

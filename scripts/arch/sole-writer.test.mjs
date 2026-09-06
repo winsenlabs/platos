@@ -260,6 +260,13 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/secrets",
     "packages/adapters/postgres-tenancy",
   ]);
+  // WIN-258 T5. `conversations` is the NINTH, and it is the one the list it left
+  // most needed to lose: `Thread` and `Turn` are the rows the OTHER eight
+  // owners' harnesses seed by hand precisely because this owner had no entry.
+  assert.deepEqual(ownerDirectories("conversations"), [
+    "packages/contexts/conversations",
+    "packages/adapters/postgres-tenancy",
+  ]);
   for (const owner of ["memory", "files"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
@@ -466,6 +473,81 @@ test("only governance's own two directories may write its five rows", () => {
   assert.equal(raw.violations[0].model, "SafetyEvent");
 });
 
+test("only conversations' own two directories may write its four rows", () => {
+  // WIN-258 T5. The delegation added in this tranche is a permission, and a
+  // permission is only worth anything if the thing it does NOT permit goes red.
+  // Every one of the four rows is checked, not a representative one, because the
+  // grant is per row and a map entry lost for a single model would otherwise sit
+  // here unnoticed behind a green case for `Thread`.
+  const FOUR = [
+    ["thread", "Thread"],
+    ["turn", "Turn"],
+    ["step", "Step"],
+    ["postmanExecution", "PostmanExecution"],
+  ];
+
+  for (const [delegate, model] of FOUR) {
+    // The delegate directory: legal, and the reason the four stores can exist.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/postgres-tenancy/src/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its canonical-store adapter`,
+    );
+    // The owning context itself: also legal, and never exercised in the live
+    // tree, because ADR M0.3 §2 forbids that package from holding the client.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/contexts/conversations/application/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its owning context`,
+    );
+    // ANY THIRD PLACE: refused. `governance` is the pointed choice — three of
+    // its five rows hang off a `Thread` or a `Turn`, it reads all three through
+    // inverted read-seam ports precisely because it may not write them, and it
+    // is delegated to the SAME directory, so this is the case that proves the
+    // boundary is the owner TAG rather than the directory.
+    const trespass = checkWriteEnforcement(
+      fixture({ [`packages/contexts/governance/application/x.ts`]: write(delegate, "create") }),
+    );
+    assert.equal(trespass.violations.length, 1, `a foreign write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.equal(trespass.violations[0].actual, "packages/contexts/governance");
+    assert.deepEqual(trespass.violations[0].permitted, [
+      "packages/contexts/conversations",
+      "packages/adapters/postgres-tenancy",
+    ]);
+    // And a SIBLING canonical-store adapter is not a loophole either: being an
+    // adapter is not the qualification, being THIS owner's declared store is.
+    assert.equal(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/outbox/src/x.ts`]: write(delegate, "create") }),
+      ).violations.length,
+      1,
+      `${model} must be refused from an adapter that is not its canonical store`,
+    );
+  }
+
+  // AND RAW SQL IS NOT A WAY ROUND IT. The compaction lock is a literal
+  // `UPDATE "Thread"`, so the gate attributes it to the table its SQL names:
+  // legal from the delegated directory, and the same refusal a delegate call
+  // would be from anywhere else.
+  const lock =
+    'db.$executeRaw`UPDATE "Thread" SET "compactionState" = \'IN_PROGRESS\' WHERE "id" = $1`;';
+  assert.deepEqual(
+    checkWriteEnforcement(fixture({ "packages/adapters/postgres-tenancy/src/x.ts": lock }))
+      .violations,
+    [],
+  );
+  const rawTrespass = checkWriteEnforcement(
+    fixture({ "packages/contexts/channels/application/steal.ts": lock }),
+  );
+  assert.equal(rawTrespass.violations.length, 1);
+  assert.equal(rawTrespass.violations[0].model, "Thread");
+});
+
 test("only secrets' own two directories may write its four rows", () => {
   // WIN-258 T5. The delegation added in this tranche is a permission, and a
   // permission is only worth anything if the thing it does NOT permit goes red.
@@ -626,12 +708,20 @@ test("only providers' own two directories may write its four rows", () => {
 
 test("the shared directory is not a blanket licence over the whole schema", () => {
   // The converse of the case above, and the one that would catch a delegation
-  // written as "this directory may write anything". `Memory` and `Turn` live in
-  // the same PostgreSQL database, behind the same client, in reach of the same
-  // file — and are refused from the directory that legally writes 106 rows.
+  // written as "this directory may write anything". `Memory` and `Artifact` live
+  // in the same PostgreSQL database, behind the same client, in reach of the
+  // same file — and are refused from the directory that legally writes 110 rows.
+  //
+  // WIN-258 T5 REPLACED `Turn` HERE WITH `Artifact`, and the substitution is the
+  // point rather than a repair. `Turn` was the second name in this case because
+  // it was undelegated; this tranche delegates `conversations`, so `Turn` became
+  // writable from that directory and the case would have gone red for the RIGHT
+  // reason. `Artifact` is `files`' (ADR M0.3 §1 row 10), is still undelegated,
+  // and — like `Turn` before it — hangs off a `Thread` this directory now writes,
+  // so it is the same shape of proof: adjacency in the schema is not permission.
   for (const [delegate, model] of [
     ["memory", "Memory"],
-    ["turn", "Turn"],
+    ["artifact", "Artifact"],
   ]) {
     const result = checkWriteEnforcement(
       fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write(delegate, "create") }),
@@ -1239,11 +1329,63 @@ test("an element-access member that is not a delegate is still not a write", () 
 // measurement.
 //
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 = 215. All of tranche 5's
-// stores landed in the ONE directory, so this pin is the SUM of every
-// enumeration above and no single branch's own figure — 157, 163, 178 or 198 —
-// survives the merge.
-const LIVE_TREE_WRITE_COUNT = 215;
+//
+// WIN-258 TRANCHE 5 adds 30 more, all from the SAME directory, on the FOUR rows
+// of ADR M0.3 §1 row 16 — the LAST context whose rows every other owner's
+// harness had to seed by hand:
+//
+//   src/conversations-threads.ts   thread.create, thread.updateMany, and the raw
+//                                  `UPDATE "Thread" SET "compactionState"` that
+//                                  is the compaction lock. It is raw because
+//                                  `updatedAt` is `@updatedAt` and the ORM would
+//                                  stamp it, reordering every user's thread list
+//                                  from a background sweep                    3
+//   src/conversations-turns.ts     turn.create, turn.updateMany, step.deleteMany
+//                                  and step.createMany — the settlement is a
+//                                  REPLACE because `Step_price_snapshot` makes a
+//                                  priced step's billing evidence immutable on
+//                                  UPDATE                                     4
+//   src/conversations-postman.ts   postmanExecution.create + .updateMany, the
+//                                  second naming only the EIGHT columns the
+//                                  forensic-attribution rule leaves alone     2
+//   src/conversations-erasure.ts   the postmanExecution.updateMany that clears
+//                                  the thread and turn links BEFORE the delete —
+//                                  without it the SetNull cascade is refused by
+//                                  `PostmanExecution_ancestry` — the
+//                                  thread.deleteMany itself, and the two
+//                                  anonymise updates                           4
+//   src/conversations-constraints.integration.test.ts
+//                                  5 raw writes standing each Thread and Turn
+//                                  guard beside the CHECK it restates          5
+//   src/conversations-billing-constraints.integration.test.ts
+//                                  4 more for `Step_usage_check` and the two
+//                                  PostmanExecution regular expressions        4
+//   src/conversations-rules.integration.test.ts
+//                                  3 proving the deletion rules NO port method
+//                                  restates: the ancestor-alone delete, the
+//                                  nulling the two rules refuse, and the foreign
+//                                  fork `enforce_domain_ancestry` forbids       3
+//   src/conversations-isolation.integration.test.ts
+//                                  5 proving the three immutability rules:
+//                                  two on `PostmanExecution.actorUserId`, one
+//                                  over `Thread`'s frozen columns, and two on a
+//                                  priced `Step`'s billing evidence            5
+//                                                                       total = 30
+//
+// `src/conversations-harness.ts` contributes ZERO for the reason
+// `governance-harness.ts` does: every peer row it seeds belongs to a context
+// whose store does not exist yet — `Agent`, `AgentVersion`, `AgentCluster`,
+// `PostmanTemplate`, `EndUser`, `Model` and `ModelPrice` — and it applies them
+// through the ORM's own CLI, which is runtime and out of this scanner's scope by
+// construction. `src/conversations-fixtures.ts` contributes zero because it
+// builds domain values and sends no statement at all.
+//
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 = 245. All of tranche
+// 5's stores landed in the ONE directory, so this pin is the SUM of every
+// enumeration above and no single branch's own figure — 215 or 228 — survives
+// the merge.
+const LIVE_TREE_WRITE_COUNT = 245;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1396,11 +1538,29 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     "ChannelInstallation",
     "ChannelThread",
   ]);
-  // And `conversations` is NOT delegated, which is why the adapter cannot seed
-  // the `Thread` row every one of its link rows points at, and why the
-  // integration harness applies that chain as SQL instead.
-  assert.equal(CANONICAL_STORE_ADAPTERS.conversations, undefined);
-  assert.deepEqual(ownerDirectories("conversations"), ["packages/contexts/conversations"]);
+  // WIN-258 T5: `conversations` IS delegated now — the NINTH owner — and the
+  // grant is exactly the FOUR rows ADR M0.3 §1 row 16 gives it. The note that
+  // stood here said it was NOT delegated, which was why `channels`' harness
+  // seeds the `Thread` its link rows point at as SQL; that harness is unchanged
+  // and stays unchanged, because this entry moves no owner TAG and a `Thread`
+  // written from `channels-links.ts` is still refused.
+  assert.equal(CANONICAL_STORE_ADAPTERS.conversations, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("conversations"), [
+    "packages/contexts/conversations",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  const conversationRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "conversations")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(conversationRows, ["PostmanExecution", "Step", "Thread", "Turn"]);
+  // AND THE UNDELEGATED NEGATIVE MOVES TO `files`, which now carries what
+  // `conversations` used to: `Artifact` and `MessageAttachment` both hang off a
+  // `Thread` this directory writes, are rows in the very same PostgreSQL
+  // database, reachable through the very same client — and a write to either
+  // from here is still refused. Adjacency in the schema is not permission.
+  assert.equal(CANONICAL_STORE_ADAPTERS.files, undefined);
+  assert.deepEqual(ownerDirectories("files"), ["packages/contexts/files"]);
 
   // WIN-258 T4: the outbox pseudo-owner is delegated to that SAME directory.
   // Its primary directory is an ADAPTER rather than a context — the one owner in
@@ -1476,8 +1636,36 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   // NOT in the grant. `Turn` and `Thread` are `conversations`', and three of
   // these five tables hang off one -- so the entry that lets this directory
   // write an eval still does not let it write the conversation the eval scored.
-  assert.equal(CANONICAL_STORE_ADAPTERS.conversations, undefined);
-  assert.deepEqual(ownerDirectories("conversations"), ["packages/contexts/conversations"]);
+  //
+  // WIN-258 T5 CHANGED WHAT THAT SENTENCE RESTS ON AND NOT WHETHER IT IS TRUE.
+  // `conversations` is delegated to this same directory now, so `Thread` and
+  // `Turn` ARE writable from it — but not by `governance`'s entry, which is the
+  // whole point. The grant is per OWNER and the owner TAG is read per write, so
+  // the case below asks the question directly rather than through the absence of
+  // a map entry that is no longer absent: a write to `Thread` attributed to
+  // `governance`'s directory-and-context pair is refused, because the pair
+  // permitted to write it is `conversations`'.
+  assert.equal(CANONICAL_STORE_ADAPTERS.conversations, "packages/adapters/postgres-tenancy");
+  assert.deepEqual(ownerDirectories("conversations"), [
+    "packages/contexts/conversations",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  for (const [delegate, model] of [
+    ["thread", "Thread"],
+    ["turn", "Turn"],
+  ]) {
+    const trespass = checkWriteEnforcement(
+      fixture({
+        [`packages/contexts/governance/application/x.ts`]: write(delegate, "create"),
+      }),
+    );
+    assert.equal(trespass.violations.length, 1, `a governance write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.deepEqual(trespass.violations[0].permitted, [
+      "packages/contexts/conversations",
+      "packages/adapters/postgres-tenancy",
+    ]);
+  }
 });
 
 test("a THIRD directory writing a `tools` row is refused, and the refusal names it", () => {

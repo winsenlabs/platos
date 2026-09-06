@@ -1,0 +1,840 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `conversations`' canonical store, the",
+    "NINTH owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM. One",
+    "entry per guard: per scope predicate, per vocabulary check that stands where",
+    "no enum stands, per shape check that stands where a migration-only CHECK",
+    "stands, per decision about a column the driver renders in a form the domain",
+    "cannot hold, and per statement the port's contract says must be one",
+    "statement. Each carries the file it lives in, the EXACT text that implements",
+    "it (`from`), the edit that removes it (`to`), and the NAMED cases that were",
+    "seen to go red (`kills`).",
+    "",
+    "IT IS A TENTH FILE beside mutations.json, mutations-identity.json,",
+    "mutations-ports.json, mutations-outbox.json, mutations-tools.json,",
+    "mutations-agents.json, mutations-cost.json, mutations-channels.json,",
+    "mutations-governance.json and mutations-secrets.json rather than an extension",
+    "of any of them, for the reason the fourth was: ten tranches are ten separate",
+    "claims about ten separate port surfaces, and a reader checking one should not",
+    "have to read past the other nine. All are hashed by the same",
+    "packages.adapters.config rule and counted together by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP, in one sentence per reason.",
+    "",
+    "A TURN'S MONEY HAS NO COLUMNS. `Turn.cost` carries an amount, a step count,",
+    "an unpriced count and a completeness flag, and `Turn.usage` five token",
+    "figures; the `Turn` ROW carries `costCents` and nothing else of either. Six",
+    "of the nine numbers are rolled up from the STEP rows on every read, so a",
+    "store that answered them from a column that does not exist would report a",
+    "turn's bill as complete when it is a floor — and no returned value on a store",
+    "with one caller shows it.",
+    "",
+    "THE DRIVER RENDERS A RATE IN A FORM THE DOMAIN CANNOT HOLD. `Decimal(24, 12)`",
+    "below 1e-7 comes back from the ORM as `\"3e-7\"`, and `domain/step-rates.ts`",
+    "requires the canonical decimal STRING because twelve fractional digits do not",
+    "survive a float. Two entries cover the expansion and the scale padding, and",
+    "both were found by the first integration run rather than by reading.",
+    "",
+    "AND FOUR OF THE GUARDS PROTECT A TENANT BOUNDARY NO DATABASE RULE HOLDS.",
+    "`Thread.id`, `Turn.id`, `PostmanExecution.id` and",
+    "`PostmanExecution.contextHandle` are unique INSTALLATION-WIDE, and the handle",
+    "is a capability, so a `where` that lost its `environmentId` answers another",
+    "tenant's row to whoever holds the identifier. `InMemoryConversations` takes",
+    "the scope parameter on every method and ignores it, so the conformance",
+    "differential is structurally unable to see any of the four."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. Each suite set below was run UNMUTATED, on the same machine",
+    "and in the same container image, and required to be green with a non-zero",
+    "executed case count before its mutation was applied; a run reporting zero",
+    "executed cases is recorded as VACUOUS rather than as a kill.",
+    "",
+    "THE INTEGRATION SUITES RUN ON A REAL POSTGRESQL, in a container, on the",
+    "machine that has a daemon. `conversations-rows.test.ts` is the only suite",
+    "here that runs without one, and it is the one that reaches the mapping",
+    "branches a container suite cannot: a container only ever reads rows THIS",
+    "binary wrote, so the unknown-enum and half-written-rate branches are",
+    "unreachable from it.",
+    "",
+    "THE SUITES ARE SIX AND NOT FOUR, because `max-file-lines` bit at the 500-line",
+    "HARD error twice and both seams it pointed at were real. The constraints suite",
+    "split into the shapes a CONVERSATION admits and the shapes a BILL and an",
+    "OPERATOR'S AUDIT ROW admit; the rules suite split into what happens when rows",
+    "are DESTROYED and what a caller may not reach or change. The shared scenario",
+    "split the same way, into the conversation and the operator's execution, and",
+    "both halves still write into ONE observation map so the differential still",
+    "compares one object per store.",
+    "",
+    "EVERY `from` IS A UNIQUE SUBSTRING OF ITS FILE and is applied literally, so a",
+    "sweep that silently matched nothing is impossible: an entry whose `from`",
+    "occurs zero times or more than once is refused rather than swept.",
+    "",
+    "THE FIRST SWEEP FOUND SEVEN SURVIVORS AND THEY ARE WHY SEVEN CASES EXIST.",
+    "M-C21 survived because every step fixture used sequence 1. M-C24 and M-C25",
+    "survived because one case sent a step carrying NEITHER a card nor its rates,",
+    "so whichever guard ran first refused it and deleting either changed nothing —",
+    "they are now two cases, each leaving the other half satisfied. M-C33 survived",
+    "because the frozen-column case asserts the write SUCCEEDS, so a lost scope",
+    "predicate was invisible to it. M-C34 survived because every earlier",
+    "measurement was taken on a ROOT thread, where the maximum and the minimum",
+    "depth are both zero. M-C39 survived because the earlier case asked for two",
+    "turns the planner happened to return in the requested order. M-C51 survived",
+    "because every earlier case ran inside ONE organization. Each is now a named",
+    "case rather than a widened entry.",
+    "",
+    "RESULT, 2026-09-06, against PostgreSQL 16 (pgvector/pgvector:pg16) in a",
+    "container: 56 entries, 56 KILLED, 0 SURVIVED, 0 VACUOUS. Every baseline suite",
+    "set was green with a non-zero executed case count before its mutation was",
+    "applied, and every `from` matched its file exactly once."
+  ],
+  "mutations": [
+    {
+      "name": "M-C01 rows: Thread.status is validated, not cast",
+      "file": "src/conversations-rows.ts",
+      "from": "  if (!isWorkStatus(value)) unreadable(UNKNOWN_WORK_STATUS, column, value);",
+      "to": "  if (false) unreadable(UNKNOWN_WORK_STATUS, column, value);",
+      "note": "`WorkStatus` is one PostgreSQL enum shared by four tables. A binary older than a migration that ADDED a member reads a value it has never heard of, and a cast puts it into a transition table that has no row for it.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "every stored enum is validated rather than cast > a WorkStatus this binary has never heard of is refused, per table"
+      ]
+    },
+    {
+      "name": "M-C02 rows: Thread.compactionState is validated",
+      "file": "src/conversations-rows.ts",
+      "from": "  if (!(THREAD_COMPACTION_STATES as readonly string[]).includes(value)) {\n    unreadable(UNKNOWN_COMPACTION_STATE, \"Thread.compactionState\", value);",
+      "to": "  if (false) {\n    unreadable(UNKNOWN_COMPACTION_STATE, \"Thread.compactionState\", value);",
+      "note": "Its own code rather than the WorkStatus one, because a compaction state and a work status are different columns with different remedies.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "every stored enum is validated rather than cast > an unknown compaction state and an unknown version bucket have separate codes"
+      ]
+    },
+    {
+      "name": "M-C03 rows: Turn.versionBucket is validated",
+      "file": "src/conversations-rows.ts",
+      "from": "  if (!(VERSION_BUCKETS as readonly string[]).includes(value)) {\n    unreadable(UNKNOWN_VERSION_BUCKET, \"Turn.versionBucket\", value);",
+      "to": "  if (false) {\n    unreadable(UNKNOWN_VERSION_BUCKET, \"Turn.versionBucket\", value);",
+      "note": "The bucket is the axis every canary judgement is drawn along; a third member read as a cast would put a turn in neither arm of the comparison.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "every stored enum is validated rather than cast > an unknown compaction state and an unknown version bucket have separate codes"
+      ]
+    },
+    {
+      "name": "M-C04 rows: Step rate sources are validated",
+      "file": "src/conversations-rows.ts",
+      "from": "  if (!(RATE_SOURCES as readonly string[]).includes(value)) {\n    unreadable(UNKNOWN_RATE_SOURCE, column, value);",
+      "to": "  if (false) {\n    unreadable(UNKNOWN_RATE_SOURCE, column, value);",
+      "note": "`ratesFullyObserved` decides a turn's `complete` flag by comparing the source to `UNAVAILABLE`; a value outside the union is neither, so a bill silently claims a confidence it does not have.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "a rate is read from three columns or from none > a rate source this binary does not know is refused, naming the column"
+      ]
+    },
+    {
+      "name": "M-C05 rows: a JSON column must be an object at its root",
+      "file": "src/conversations-rows.ts",
+      "from": "  if (typeof value !== \"object\" || Array.isArray(value)) {\n    unreadable(UNREADABLE_JSON_ROOT, column, Array.isArray(value) ? \"a JSON array\" : typeof value);",
+      "to": "  if (false) {\n    unreadable(UNREADABLE_JSON_ROOT, column, Array.isArray(value) ? \"a JSON array\" : typeof value);",
+      "note": "The `*_json_root` CHECKs protect rows written while they were installed; a row predating one reaches the mapper, and a cast puts an array into a `Record` every reader then indexes.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "a JSON column is an object root or it is refused > an array in `Thread.sessionContext` is refused rather than indexed",
+        "a JSON column is an object root or it is refused > `Turn.input` and `Turn.output` are refused separately"
+      ]
+    },
+    {
+      "name": "M-C06 rows: an exponential decimal is expanded rather than refused",
+      "file": "src/conversations-rows.ts",
+      "from": "  const plain = /[eE]/u.test(rendered) ? expandExponential(rendered) : rendered;",
+      "to": "  const plain = rendered;",
+      "note": "FOUND BY THE FIRST INTEGRATION RUN. The ORM renders `Decimal(24, 12)` below 1e-7 in exponential form, so an ordinary `cacheReadRate` of 0.000000300000 reads back as `\"3e-7\"` and every priced step becomes unreadable.",
+      "suites": [
+        "src/conversations-rows.test.ts",
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "a rate is read from three columns or from none > an EXPONENTIAL rate from the driver is expanded, not refused",
+        "a Decimal is read as a string or refused > an exponential COST is expanded to the cent scale too",
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C07 rows: a decimal is padded to its COLUMN'S scale",
+      "file": "src/conversations-rows.ts",
+      "from": "  return `${whole}.${fraction.padEnd(scale, \"0\")}`;",
+      "to": "  return `${whole}.${fraction}`;",
+      "note": "`Decimal(24, 12)` stores twelve fractional digits. Without the padding a rate written as 0.000000300000 comes back as 0.0000003 — numerically right, and a difference that is not one to every caller comparing two rate books, including the conformance differential.",
+      "suites": [
+        "src/conversations-rows.test.ts",
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "a rate is read from three columns or from none > all three present is a rate, with the exact decimal STRING",
+        "a rate is read from three columns or from none > the scale is PART OF THE TYPE, so trailing zeros round-trip exactly",
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C08 rows: a value finer than the scale is refused, not rounded",
+      "file": "src/conversations-rows.ts",
+      "from": "  if (fraction.length > scale) unreadable(UNREADABLE_DECIMAL, column, rendered);",
+      "to": "  if (false) unreadable(UNREADABLE_DECIMAL, column, rendered);",
+      "note": "The column could not have held it, so reporting it would be reporting a number the database never stored — and the alternative to refusing is silently truncating a cost.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "a Decimal is read as a string or refused > a cost finer than Decimal(18, 6) is refused rather than rounded"
+      ]
+    },
+    {
+      "name": "M-C09 rows: a half-written rate has its own refusal",
+      "file": "src/conversations-rows.ts",
+      "from": "  if (present.length !== 3) {\n    unreadable(UNREADABLE_STEP_RATE, `Step.${name}Rate`",
+      "to": "  if (false) {\n    unreadable(UNREADABLE_STEP_RATE, `Step.${name}Rate`",
+      "note": "All twelve rate columns are nullable and `Step_usage_check` ties them together only when `costCents` is present, so a rate with no observation instant is a legal row and no `StepRate` can hold it.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "a rate is read from three columns or from none > present in SOME of the three is refused, with its own code"
+      ]
+    },
+    {
+      "name": "M-C10 rows: a NULL token column is a count of NONE",
+      "file": "src/conversations-rows.ts",
+      "from": "      inputTokens: row.inputTokens ?? 0,",
+      "to": "      inputTokens: row.inputTokens ?? 1,",
+      "note": "The domain makes the five counts non-nullable numbers and the schema makes them nullable integers; the reconciliation is that an absent count is a count of none, which is what `Step_usage_check` already assumes.",
+      "suites": [
+        "src/conversations-rows.test.ts"
+      ],
+      "kills": [
+        "a NULL token column is a count of none, not an unknown > the five counts default to zero",
+        "a turn's money comes from its steps and from nowhere else > usage is summed over the steps, cache figures kept apart"
+      ]
+    },
+    {
+      "name": "M-C11 rows: a turn's cost is rolled up from its STEPS",
+      "file": "src/conversations-rows.ts",
+      "from": "    cost: rollUpTurnCost(steps),",
+      "to": "    cost: rollUpTurnCost([]),",
+      "note": "Six of the seven numbers in `TurnCost` have no column. A store that answered them from nowhere reports every turn as costing zero and being complete, which is a bill that overstates its own confidence in the one direction that matters.",
+      "suites": [
+        "src/conversations-rows.test.ts",
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "a turn's money comes from its steps and from nowhere else > the rollup is the sum of the step costs, exactly",
+        "a turn's money comes from its steps and from nowhere else > an unpriced step makes the total a FLOOR rather than a fact",
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C12 rows: a turn's usage is summed over its STEPS",
+      "file": "src/conversations-rows.ts",
+      "from": "    usage: sumStepUsage(steps.map((step) => step.usage)),",
+      "to": "    usage: sumStepUsage([]),",
+      "note": "`domain/step-usage.ts` records the measured defect this prevents: the extraction source reports 14,788 and 39,795 tokens for one turn from two places, because one counts the sub-agent steps and the other does not.",
+      "suites": [
+        "src/conversations-rows.test.ts",
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "a turn's money comes from its steps and from nowhere else > usage is summed over the steps, cache figures kept apart",
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C13 guards: an identifier bound for @db.Uuid is checked first",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (!UUID.test(value)) {\n    refuse(CONVERSATIONS_IDENTIFIER_NOT_UUID",
+      "to": "  if (false) {\n    refuse(CONVERSATIONS_IDENTIFIER_NOT_UUID",
+      "note": "A non-uuid is not a constraint failure at all: it is a driver conversion error partway through a transaction, with no SQLSTATE a caller can act on. The context's own `threadFixture` mints `thread-1` and its `stepFixture` a `modelPriceId` of `price-1`.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts",
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "@db.Uuid — a non-uuid identifier is a driver fault, not a constraint > the store refuses `thread-1`, which every in-memory double accepts",
+        "@db.Uuid on a step's price card > the store refuses `price-1`, which the context's own stepFixture mints"
+      ]
+    },
+    {
+      "name": "M-C14 guards: a session context must be an object root",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (typeof value !== \"object\" || Array.isArray(value)) {\n    refuse(code, `${field} must be a JSON object at its root`);",
+      "to": "  if (false) {\n    refuse(code, `${field} must be a JSON object at its root`);",
+      "note": "`Thread_sessionContext_json_root`, `Turn_input_json_root` and `Turn_output_json_root` all raise 23514, which aborts the caller's whole transaction rather than the statement.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Thread_sessionContext_json_root > the store refuses an array root",
+        "Turn_input_json_root and Turn_output_json_root > the store refuses a non-object in either, under ONE code"
+      ]
+    },
+    {
+      "name": "M-C15 guards: a fork lineage may not name one turn twice",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (new Set(lineage).size !== lineage.length) {",
+      "to": "  if (false) {",
+      "note": "`Thread_ancestry`'s clause is `cardinality(...) = (SELECT count(DISTINCT ...))`, and it shares one message with two other lineage failures — which is why this has a code of its own.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Thread_ancestry — the fork lineage rule nothing outside the migration states > the store refuses a lineage that names one turn twice, under its OWN code"
+      ]
+    },
+    {
+      "name": "M-C16 guards: a boundary with an EMPTY lineage is refused",
+      "file": "src/conversations-guards.ts",
+      "from": "    if (thread.forkedUpToTurnId !== null) {\n      refuse(\n        FORK_LINEAGE_INCOHERENT,",
+      "to": "    if (false) {\n      refuse(\n        FORK_LINEAGE_INCOHERENT,",
+      "note": "The rule's own clause is `cardinality = 0 AND forkedUpToTurnId IS NULL OR parent.id IS NOT NULL AND ...`; the two halves must be empty together.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Thread_ancestry — the fork lineage rule nothing outside the migration states > the store refuses a boundary set with an EMPTY lineage"
+      ]
+    },
+    {
+      "name": "M-C17 guards: the boundary is the LAST inherited turn",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (thread.forkedUpToTurnId !== lineage[lineage.length - 1]) {",
+      "to": "  if (false) {",
+      "note": "`NEW.\"forkedUpToTurnId\" = NEW.\"forkedTurnIds\"[cardinality(NEW.\"forkedTurnIds\")]` is a rule stated nowhere but the migration, and a fork whose boundary is not its last ancestor replays a transcript that ends in the middle.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Thread_ancestry — the fork lineage rule nothing outside the migration states > the store refuses a boundary that is not the LAST inherited turn"
+      ]
+    },
+    {
+      "name": "M-C18 guards: a Turn sequence is a whole number above zero",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (!Number.isInteger(turn.sequence) || turn.sequence <= 0) {",
+      "to": "  if (false) {",
+      "note": "`Turn_usage_check` opens with `\"sequence\" > 0`, and the sequence is what `@@unique([threadId, sequence])` orders a transcript by.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Turn_usage_check > the store refuses a sequence of zero"
+      ]
+    },
+    {
+      "name": "M-C19 guards: a negative measurement is refused",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (!Number.isFinite(value) || value < 0) {\n    refuse(MEASUREMENT_NEGATIVE",
+      "to": "  if (false) {\n    refuse(MEASUREMENT_NEGATIVE",
+      "note": "`Turn_usage_check` and `Step_usage_check` both refuse a negative latency and a negative cost, and both abort the caller's transaction when they do.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Turn_usage_check > the store refuses a negative latency"
+      ]
+    },
+    {
+      "name": "M-C20 guards: a row may not complete before it started",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (completedAt.getTime() < startedAt.getTime()) {",
+      "to": "  if (false) {",
+      "note": "`(\"startedAt\" IS NULL OR \"completedAt\" IS NULL OR \"completedAt\" >= \"startedAt\")` is the last clause of `Turn_usage_check`, and a negative duration is what a latency histogram reads as a very large one.",
+      "suites": [
+        "src/conversations-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Turn_usage_check > the store refuses a turn that completed before it started"
+      ]
+    },
+    {
+      "name": "M-C21 guards: a Step sequence is a whole number above zero",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (!Number.isInteger(step.sequence) || step.sequence <= 0) {",
+      "to": "  if (false) {",
+      "note": "`Step_usage_check` opens with `\"sequence\" > 0 AND \"retryCount\" >= 0`, and `PRIMARY_STEP_SEQUENCE` is 1 because the row layout says so.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Step_usage_check > the store refuses a step sequence of zero"
+      ]
+    },
+    {
+      "name": "M-C22 guards: a token count is a whole non-negative number",
+      "file": "src/conversations-guards.ts",
+      "from": "    if (!Number.isInteger(value) || value < 0) {\n      refuse(STEP_USAGE_NEGATIVE",
+      "to": "    if (false) {\n      refuse(STEP_USAGE_NEGATIVE",
+      "note": "Five columns, one clause each in `Step_usage_check`, and a negative one is a provider report this system cannot bill.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Step_usage_check > the store refuses a negative token count"
+      ]
+    },
+    {
+      "name": "M-C23 guards: the cache figures are PARTS of the input total",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (usage.cacheCreationInputTokens + usage.cacheReadInputTokens > usage.inputTokens) {",
+      "to": "  if (false) {",
+      "note": "`COALESCE(cacheCreation,0) + COALESCE(cacheRead,0) <= inputTokens` is the one clause of `Step_usage_check` that relates two columns, and it is the one that stops a cached step being charged twice.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Step_usage_check > the store refuses cache figures that exceed the input total, under its OWN code"
+      ]
+    },
+    {
+      "name": "M-C24 guards: a priced step names the card it was charged against",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (step.modelPriceId === null) {\n    refuse(\n      STEP_PRICE_SNAPSHOT_INCOMPLETE,",
+      "to": "  if (false) {\n    refuse(\n      STEP_PRICE_SNAPSHOT_INCOMPLETE,",
+      "note": "`Step_usage_check` ties `costCents` to thirteen other columns. A cost with no price card is a row nobody can audit, re-price or explain.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Step_usage_check > a priced step with full rates but NO card is refused"
+      ]
+    },
+    {
+      "name": "M-C25 guards: a priced step carries all four rates",
+      "file": "src/conversations-guards.ts",
+      "from": "    if (step.rates[name] === null) {",
+      "to": "    if (false) {",
+      "note": "The second half of the same clause, and a different mistake from M-C24: a step that named a card and carried no rates would be refused by the database rather than by the store, with the caller's transaction gone.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "Step_usage_check > a priced step with a card but ONE rate missing is refused"
+      ]
+    },
+    {
+      "name": "M-C26 guards: a request fingerprint is 64 lowercase hex",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (!FINGERPRINT.test(execution.requestFingerprint)) {",
+      "to": "  if (false) {",
+      "note": "`PostmanExecution_requestFingerprint_check` is `~ '^[0-9a-f]{64}$'`, and the fingerprint is what tells a replay from a collision.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "PostmanExecution_requestFingerprint_check and _contextHandle_check > the store refuses a fingerprint that is not 64 lowercase hex"
+      ]
+    },
+    {
+      "name": "M-C27 guards: a context handle pins its version AND variant nibble",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (!CONTEXT_HANDLE.test(execution.contextHandle)) {",
+      "to": "  if (false) {",
+      "note": "The CHECK is not the ordinary uuid pattern: version 1-8, variant 8/9/a/b, lowercase only. A version-0 uuid is a perfectly good `@db.Uuid` and is refused by this column alone.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "PostmanExecution_requestFingerprint_check and _contextHandle_check > the store refuses a handle whose VERSION or VARIANT nibble is wrong"
+      ]
+    },
+    {
+      "name": "M-C28 guards: a turn link requires a thread link",
+      "file": "src/conversations-guards.ts",
+      "from": "  if (execution.turnId !== null && execution.threadId === null) {",
+      "to": "  if (false) {",
+      "note": "`PostmanExecution_ancestry` resolves the turn through the row's own thread, so a turn with a null thread can never resolve — and the database's message names neither column.",
+      "suites": [
+        "src/conversations-billing-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "PostmanExecution_ancestry — a turn link needs a thread link > the store refuses a turn with no thread, under its own code"
+      ]
+    },
+    {
+      "name": "M-C29 threads: findThread carries its scope",
+      "file": "src/conversations-threads.ts",
+      "from": "          where: { id: threadId, ...scopedWhere(scope) },\n          select: THREAD_COLUMNS,\n        });\n        return ok(row === null ? null : readThread(row as unknown as ThreadRow));\n      }, \"threads findThread\");",
+      "to": "          where: { id: threadId },\n          select: THREAD_COLUMNS,\n        });\n        return ok(row === null ? null : readThread(row as unknown as ThreadRow));\n      }, \"threads findThread\");",
+      "note": "`Thread.id` is unique INSTALLATION-WIDE and no database rule protects a read, so this predicate is the whole tenant boundary. The double ignores the scope on every method.",
+      "suites": [
+        "src/conversations-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "tenant isolation: every read and every write carries its scope > a foreign thread, turn and execution are all invisible through this scope"
+      ]
+    },
+    {
+      "name": "M-C30 threads: pageThreads hides archived threads unless asked",
+      "file": "src/conversations-threads.ts",
+      "from": "          ...(query.includeArchived ? {} : { archivedAt: null }),",
+      "to": "          ...(query.includeArchived ? {} : {}),",
+      "note": "An archived thread is readable and refuses writes; a listing that showed it by default would put a closed conversation back at the top of a user's list.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C31 threads: the listing is ordered newest-first and TOTALLY",
+      "file": "src/conversations-threads.ts",
+      "from": "          orderBy: [{ updatedAt: \"desc\" }, { id: \"desc\" }],",
+      "to": "          orderBy: [{ updatedAt: \"asc\" }, { id: \"desc\" }],",
+      "note": "`Thread_environmentId_endUserId_updatedAt_idx` exists for this listing, and `id` breaks the millisecond tie so a paged listing does not repeat rows on one page and drop them from the next.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C32 threads: saveThread does not write the frozen columns",
+      "file": "src/conversations-threads.ts",
+      "from": "  return {\n    agentId: thread.agentId,\n    clusterId: thread.clusterId,",
+      "to": "  return {\n    endUserId: thread.endUserId,\n    agentId: thread.agentId,\n    clusterId: thread.clusterId,",
+      "note": "`Thread_subject_immutable` and `Thread_owner_immutable` raise 23514 on five columns between them. Sending one back makes a caller that DID change it look like one that did not, and the refusal arrives from the database with the transaction gone.",
+      "suites": [
+        "src/conversations-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "Thread_owner_immutable and Thread_subject_immutable > `saveThread` writes neither the environment, the lineage nor the subject"
+      ]
+    },
+    {
+      "name": "M-C33 threads: saveThread carries its scope into the UPDATE",
+      "file": "src/conversations-threads.ts",
+      "from": "            where: { id: thread.threadId, ...scopedWhere(scope) },\n            data: threadUpdate(thread),",
+      "to": "            where: { id: thread.threadId },\n            data: threadUpdate(thread),",
+      "note": "Without it a save addressed across a tenant boundary writes another tenant's row and reports success.",
+      "suites": [
+        "src/conversations-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "tenant isolation: every read and every write carries its scope > a saveThread addressed across the boundary writes nothing and says so"
+      ]
+    },
+    {
+      "name": "M-C34 threads: the fork depth is the DEEPEST ancestor, not the nearest",
+      "file": "src/conversations-threads.ts",
+      "from": "          SELECT COALESCE(MAX(\"depth\"), 0)::int AS \"depth\" FROM ancestry",
+      "to": "          SELECT COALESCE(MIN(\"depth\"), 0)::int AS \"depth\" FROM ancestry",
+      "note": "The depth ceiling is what stops a fork chain growing without bound; a store that answered the nearest ancestor would report every thread at depth zero and the ceiling would never bite.",
+      "suites": [
+        "src/conversations-rules.integration.test.ts"
+      ],
+      "kills": [
+        "findHeldThreads names what the database would refuse, and nothing else > measureForkDepth counts EVERY ancestor, not the nearest"
+      ]
+    },
+    {
+      "name": "M-C35 threads: the sequence allocation takes a REAL row lock",
+      "file": "src/conversations-threads.ts",
+      "from": "               AND thread.\"environmentId\" = ${scope.environmentId}::uuid\n            FOR UPDATE\n          `;",
+      "to": "               AND thread.\"environmentId\" = ${scope.environmentId}::uuid\n          `;",
+      "note": "WIN-258 T3's advisory lock was measured at ZERO statements because it projected `SELECT 1`; this one projects `id AS \"lockedThreadId\"` so the statement suite counts it, and the transaction suite proves a second allocator BLOCKS.",
+      "suites": [
+        "src/conversations-transaction.integration.test.ts"
+      ],
+      "kills": [
+        "the sequence allocation is serialised by a real row lock > a second allocator waits for the first transaction to finish"
+      ]
+    },
+    {
+      "name": "M-C36 threads: the allocation returns the NEXT sequence",
+      "file": "src/conversations-threads.ts",
+      "from": "          return ok((highest[0]?.highest ?? 0) + 1);",
+      "to": "          return ok(highest[0]?.highest ?? 0);",
+      "note": "One off, and the whole promise of the port: two callers given the same number is a `@@unique([threadId, sequence])` violation at best and an overwritten turn at worst.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C37 threads: the compaction lock is CONDITIONAL on IDLE",
+      "file": "src/conversations-threads.ts",
+      "from": "             AND \"compactionState\" = 'IDLE'\n        `;",
+      "to": "        `;",
+      "note": "The predicate IS the lock: the database takes the row lock, re-checks it and reports how many rows it moved, so two callers racing produce one count of 1 and one of 0 with no window between the read and the write.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C38 threads: the compaction lock does NOT bump updatedAt",
+      "file": "src/conversations-threads.ts",
+      "from": "        const moved = await transactions.reader().$executeRaw`\n          UPDATE \"Thread\"\n             SET \"compactionState\" = 'IN_PROGRESS'",
+      "to": "        const bumped = await transactions.reader().thread.updateMany({\n          where: { id: threadId, ...scopedWhere(scope), compactionState: \"IDLE\" },\n          data: { compactionState: \"IN_PROGRESS\" },\n        });\n        const moved = bumped.count;\n        void `\n          UPDATE \"Thread\"\n             SET \"compactionState\" = 'IN_PROGRESS'",
+      "note": "`Thread.updatedAt` is `@updatedAt`, a CLIENT feature: the ORM stamps it on every update it issues. A background compaction sweep that touched it would silently reorder every user's thread list, and the conformance run caught exactly that on its first pass.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C39 threads: inherited turns come back in the CALLER'S order",
+      "file": "src/conversations-threads.ts",
+      "from": "        const byId = new Map(rows.map((row) => [row.id, row as unknown as TurnRow]));",
+      "to": "        const byId = new Map([...rows].reverse().map((row) => [row.id, row as unknown as TurnRow]));\n        void byId;\n        return ok(rows.map((row) => readTurn(row as unknown as TurnRow)));",
+      "note": "The database returns rows in whatever order suits it, and a fork's inherited transcript read out of order is a conversation whose question follows its answer.",
+      "suites": [
+        "src/conversations-rules.integration.test.ts"
+      ],
+      "kills": [
+        "findHeldThreads names what the database would refuse, and nothing else > findInheritedTurns answers in the CALLER'S order, not the database's"
+      ]
+    },
+    {
+      "name": "M-C40 turns: the transcript is SUCCEEDED turns only",
+      "file": "src/conversations-turns.ts",
+      "from": "            status: \"SUCCEEDED\",\n            sequence: { gt: afterSequence },",
+      "to": "            sequence: { gt: afterSequence },",
+      "note": "The port says so in as many words and `InMemoryConversations` does not filter at all, so the conformance differential is unable to see this one: a transcript carrying a failed turn replays a question the agent never answered.",
+      "suites": [
+        "src/conversations-rules.integration.test.ts"
+      ],
+      "kills": [
+        "readTranscriptTurns is SUCCEEDED-only, and the double is not > an unsettled turn is left out of the transcript"
+      ]
+    },
+    {
+      "name": "M-C41 turns: a transcript page leaves the reply turns out",
+      "file": "src/conversations-turns.ts",
+      "from": "          ...(query.includeSubThreads ? {} : { parentTurnId: null }),",
+      "to": "          ...(query.includeSubThreads ? {} : {}),",
+      "note": "`parentTurnId` is the only thing that makes a turn a reply, and `includeSubThreads: false` is what a transcript shows.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C42 turns: a settlement REPLACES its steps",
+      "file": "src/conversations-turns.ts",
+      "from": "          await client.step.deleteMany({ where: { turnId: settlement.turn.turnId } });",
+      "to": "          void settlement.turn.turnId;",
+      "note": "A settlement is the whole record of the turn, and merging would let a step from a previous try survive into a rollup it was never part of — or violate `@@unique([turnId, sequence])` outright.",
+      "suites": [
+        "src/conversations-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "tenant isolation: every read and every write carries its scope > a settlement REPLACES its steps, so a second one does not accumulate"
+      ]
+    },
+    {
+      "name": "M-C43 turns: a settlement across the tenant boundary writes nothing",
+      "file": "src/conversations-turns.ts",
+      "from": "            where: { id: settlement.turn.turnId, ...turnScopedWhere(scope) },",
+      "to": "            where: { id: settlement.turn.turnId },",
+      "note": "`Turn` carries no `environmentId`, so the containment is a relation filter through `Thread`; without it a settlement addressed across a boundary overwrites another tenant's answer.",
+      "suites": [
+        "src/conversations-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "tenant isolation: every read and every write carries its scope > a settlement addressed across the boundary writes nothing and says so"
+      ]
+    },
+    {
+      "name": "M-C44 turns: a lost sequence race is an OUTCOME, not a dead transaction",
+      "file": "src/conversations-turns.ts",
+      "from": "    isUniqueViolation(error) ? turnSequenceTaken(turn.threadId, turn.sequence) : null;",
+      "to": "    isUniqueViolation(error) ? null : null;",
+      "note": "On PostgreSQL the violation aborts the WHOLE transaction and `run-turn.ts` composes the allocation, the create, the settlement and an outbox append into one. The savepoint is what makes the double's answer reachable at all.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C45 turns: every requested turn is in the tool-call map",
+      "file": "src/conversations-turns.ts",
+      "from": "        for (const turnId of turnIds) counts.set(turnId, 0);",
+      "to": "        void turnIds;",
+      "note": "A turn missing from the map and a turn that called nothing are the same fact, and a caller that had to tell them apart would be reading absence as meaning.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C46 turns: a step's rate source REFERENCE is written",
+      "file": "src/conversations-turns.ts",
+      "from": "    inputRateSourceRef: step.rates.input?.sourceRef ?? null,",
+      "to": "    inputRateSourceRef: null,",
+      "note": "`ModelPrice_rate_check` demands a reference for any rate whose source is not UNAVAILABLE, and `Step_price_snapshot` compares the step's four references to the card's — so dropping one is refused by a rule, for a value the caller had.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C47 postman: a null template sends NO statement",
+      "file": "src/conversations-postman.ts",
+      "from": "        if (templateId === null) return ok(null);",
+      "to": "        if (false) return ok(null);",
+      "note": "PostgreSQL treats NULLs as DISTINCT, so `@@unique([templateId, requestId])` is vacuous for an ad-hoc request. A filter on null would find the row a previous ad-hoc request left behind and report a replay the constraint never prevented.",
+      "suites": [
+        "src/conversations-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the listings are two statements and the point lookups one > findByRequest with a NULL template sends NOTHING"
+      ]
+    },
+    {
+      "name": "M-C48 postman: the capability lookup is SCOPED",
+      "file": "src/conversations-postman.ts",
+      "from": "          where: { contextHandle: handle, ...scopedWhere(scope) },",
+      "to": "          where: { contextHandle: handle },",
+      "note": "`contextHandle` is `@unique` installation-wide and is a CAPABILITY — whoever holds it can name that execution — so a lookup without the environment is a cross-tenant read for anyone who has ever been handed one.",
+      "suites": [
+        "src/conversations-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "tenant isolation: every read and every write carries its scope > a foreign thread, turn and execution are all invisible through this scope"
+      ]
+    },
+    {
+      "name": "M-C49 postman: the forensic attribution is not sent back",
+      "file": "src/conversations-postman.ts",
+      "from": "            data: {\n              templateId: execution.templateId,",
+      "to": "            data: {\n              requestFingerprint: execution.requestFingerprint,\n              templateId: execution.templateId,",
+      "note": "`prevent_postman_execution_attribution_mutation` raises SQLSTATE 55000 — not the 23514 every CHECK raises — on seven columns, and a settlement that sent one back would fail on a value the caller never meant to change.",
+      "suites": [
+        "src/conversations-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "PostmanExecution's forensic attribution is immutable > `saveExecution` writes none of the seven frozen columns"
+      ]
+    },
+    {
+      "name": "M-C50 erasure: the census is scoped to ONE organization",
+      "file": "src/conversations-erasure.ts",
+      "from": "  return {\n    endUserId: subjectId,\n    environment: { project: { organizationId } },\n  };",
+      "to": "  return {\n    endUserId: subjectId,\n  };",
+      "note": "`Thread` stores an environment and not an organization, so the containment is a relation filter the database resolves in the same statement. The double ignores `organizationId` entirely, which is a cross-tenant erasure in a real installation.",
+      "suites": [
+        "src/conversations-rules.integration.test.ts"
+      ],
+      "kills": [
+        "the erasure is scoped to ONE organization, and the double is not > a second tenant's identically-named subject is not counted or deleted"
+      ]
+    },
+    {
+      "name": "M-C51 erasure: the execution census is scoped too",
+      "file": "src/conversations-erasure.ts",
+      "from": "  return {\n    [column]: subjectId,\n    environment: { project: { organizationId } },\n  };",
+      "to": "  return {\n    [column]: subjectId,\n  };",
+      "note": "The same boundary on the operator's audit trail: an anonymise that lost it would strip another tenant's rows and report the count as this subject's.",
+      "suites": [
+        "src/conversations-rules.integration.test.ts"
+      ],
+      "kills": [
+        "the erasure is scoped to ONE organization, and the double is not > censusForActor is scoped to ONE organization too"
+      ]
+    },
+    {
+      "name": "M-C52 erasure: the execution links are cleared BEFORE the delete",
+      "file": "src/conversations-erasure.ts",
+      "from": "        await client.postmanExecution.updateMany({\n          where: { thread: doomed },\n          data: { threadId: null, turnId: null },\n        });",
+      "to": "        void doomed;",
+      "note": "THE ONE THAT COST AN INTEGRATION RUN. The `SetNull` cascade nulls the two foreign keys in two statements, and `PostmanExecution_ancestry` sees the half-nulled row and refuses the delete — so an erasure is impossible for any subject an operator ever ran a settled request against.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C53 erasure: the subject's threads go in ONE statement",
+      "file": "src/conversations-erasure.ts",
+      "from": "        const outcome = await client.thread.deleteMany({ where: doomed });\n        return ok(outcome.count);",
+      "to": "        const ids = await client.thread.findMany({ where: doomed, select: { id: true } });\n        let removed = 0;\n        for (const row of ids) {\n          const one = await client.thread.deleteMany({ where: { id: row.id } });\n          removed += one.count;\n        }\n        return ok(removed);",
+      "note": "A per-thread loop is refused the moment it reaches an ancestor before its fork: `Thread.parentThreadId` is `onDelete: SetNull`, `Thread_ancestry` fires on that UPDATE, and the fork's lineage clause requires a parent to exist. The single statement removes every `Thread` row before the cascade reaches `Turn`.",
+      "suites": [
+        "src/conversations-rules.integration.test.ts"
+      ],
+      "kills": [
+        "Thread_forkedUpToTurnId_fkey blocks a LOOP and not a single statement > the store's SINGLE delete removes the whole lineage"
+      ]
+    },
+    {
+      "name": "M-C54 erasure: a held thread is one OUTSIDE the erasure blocks",
+      "file": "src/conversations-erasure.ts",
+      "from": "             AND fork.\"endUserId\" <> ${subjectId}::uuid",
+      "to": "             AND fork.\"endUserId\" IS NOT NULL",
+      "note": "Without the clause every ancestor of a fork is reported as blocked and every plan for a subject who forked says so falsely — and `blockedBy` on the plan is what an operator reads before anything is destroyed.",
+      "suites": [
+        "src/conversations-rules.integration.test.ts"
+      ],
+      "kills": [
+        "findHeldThreads names what the database would refuse, and nothing else > an ancestor whose fork is INSIDE the erasure is not reported as held"
+      ]
+    },
+    {
+      "name": "M-C55 erasure: an operator authors no conversation",
+      "file": "src/conversations-erasure.ts",
+      "from": "        return ok({ threadCount: 0, turnCount: 0, stepCount: 0, postmanExecutionCount });",
+      "to": "        return ok({ threadCount: 1, turnCount: 0, stepCount: 0, postmanExecutionCount });",
+      "note": "`Thread.endUserId` is an `EndUser` and an operator is a `User`, two different tables — so the three zeros are guaranteed by the schema and are answered without a statement, which the statement suite pins at ONE.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-C56 erasure: the end-user anonymise selects on the SIMULATED link",
+      "file": "src/conversations-erasure.ts",
+      "from": "          where: organizationExecutionWhere(\"simulatedEndUserId\", subjectId, organizationId),\n          data: { simulatedEndUserId: null },\n        });\n        return ok(outcome.count);\n      }, \"erasure anonymizeExecutionsForEndUser\");",
+      "to": "          where: organizationExecutionWhere(\"actorUserId\", subjectId, organizationId),\n          data: { simulatedEndUserId: null },\n        });\n        return ok(outcome.count);\n      }, \"erasure anonymizeExecutionsForEndUser\");",
+      "note": "An end-user erasure severs the SIMULATED link and an operator erasure selects on the ACTOR; swapping them leaves the subject named on every row an operator ran against them.",
+      "suites": [
+        "src/conversations-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "the fake and the real store answer the same scenario identically"
+      ]
+    }
+  ]
+}

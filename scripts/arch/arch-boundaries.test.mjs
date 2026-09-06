@@ -816,9 +816,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `ToolsRepository` both declare `appendAudit` — so they are
     //               named properties on the one adapter rather than a thirteenth
     //               package with a second client.
-    //  1276 -> 1292 +16: WIN-258 TRANCHE 5, `providers`' canonical store, in
+    //  1328 -> 1344 +16: WIN-258 TRANCHE 5, `providers`' canonical store, in
     //               that SAME one ORM home and for the fifth time on the same
-    //               sentence. FIFTEEN files, all under
+    //               sentence. SIXTEEN files, all under
     //               `packages/adapters/postgres-tenancy/src/`: nine source (the
     //               write guards, the row crossing, the key store, the link
     //               store, the catalogue store, the composite, the fixture
@@ -844,12 +844,34 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               that credential from inside the key's own INSERT. Two homes
     //               would have been two pools, and the rule would have
     //               refused a key that was correct.
+    //  1328 -> 1348 +20: WIN-258 TRANCHE 5, `conversations`' canonical store, in
+    //               that SAME one ORM home and the NINTH owner of it. TWENTY
+    //               files, all under `packages/adapters/postgres-tenancy/src/`:
+    //               twelve source (the guards, the row readers, the refusal
+    //               parser, the four stores, the composite, the harness, the
+    //               shared fixtures and the two conformance halves) and EIGHT
+    //               suites. THREE of the twenty exist only because
+    //               `max-file-lines` bit at the HARD error — the conformance
+    //               scenario, the constraints suite and the rules suite each
+    //               split along a seam they already had.
+    //               `packages/contexts/conversations` gains NO file: its port
+    //               entry point was widened in place to republish the vocabulary
+    //               its four signatures are written in, and a widened file is
+    //               not a new one.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` a FIFTH time, and
+    //               this tranche is the one where the ORM's single home stopped
+    //               being an inconvenience for anyone: `Thread` and `Turn` were
+    //               the rows the OTHER eight owners' harnesses had to seed
+    //               through `prisma db execute`, because `conversations` had no
+    //               entry in `CANONICAL_STORE_ADAPTERS`. Those harnesses are
+    //               unchanged — the entry moves no owner TAG — but the directory
+    //               that could not write a thread now can, from this store.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 = 1344. No
-    //               branch's own figure is right merged — 1291, 1294, 1295 and
-    //               1292 each under-count the others by their whole tranche.
-    assert.equal(result.fileCount, 1344, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16);
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 = 1364.
+    //               No branch's own figure is right merged — 1344 and 1348 each
+    //               under-count the other by its whole tranche.
+    assert.equal(result.fileCount, 1364, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

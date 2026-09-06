@@ -292,3 +292,59 @@ export {
   UNREADABLE_RATE,
   UnreadableProvidersRowError,
 } from "./providers-rows.js";
+// WIN-258 T5 — `conversations`' four canonical stores. The factory leaves the
+// package for the reason `createGovernanceStores` does: a composition root that
+// wanted these four WITHOUT tenancy's — a compaction sweep or an erasure worker,
+// say — has to be able to build them over the same transactions, and it takes
+// the transactions rather than a client so there is no second
+// `AsyncLocalStorage` frame to build.
+//
+// THE REFUSAL CODES LEAVE IT BECAUSE THEY ARE DECISIONS AN OPERATOR ACTS ON, and
+// this context collapses them harder than any other in this directory:
+// `domain/errors.ts` publishes ONE code for every way a store can fail —
+// `CONVERSATIONS_REPOSITORY_UNAVAILABLE` — so a caller cannot tell a malformed
+// context handle from a database that is down. That collapse is right for a
+// caller and useless for an operator, so the fourteen write-shape refusals and
+// the seven unreadable-row refusals are named here and carried out of band.
+//
+// TWO ARE ALIASED AND ONE WAS NAMED TO AVOID BEING. `UNKNOWN_RATE_SOURCE` is
+// the second: `providers` owns `ModelPrice` and exports the bare name for the
+// rate source it stores, and a `Step` carries a SNAPSHOT of that same enum, so
+// the two modules mint one name for one vocabulary and only one of them can
+// hold it at this door. It leaves under the owner's prefix for the same reason
+// the next one does. `UNKNOWN_WORK_STATUS` is a
+// name three contexts could plausibly want — `WorkStatus` is shared by `Thread`,
+// `Turn`, `PostmanExecution`, `Job` and `ErasureOperation` — so it leaves under
+// the owner's prefix rather than claiming the bare name for whichever tranche
+// landed first. `IDENTIFIER_NOT_UUID` was already taken three times over, by
+// `cost-monitoring`, `channels` and `secrets`, so this context's is minted
+// prefixed at the source instead of aliased at the door: four aliases of one
+// name would be four chances to export the wrong one.
+export type { ConversationsStores } from "./conversations-repository.js";
+export { createConversationsStores } from "./conversations-repository.js";
+export {
+  CONTEXT_HANDLE_MALFORMED,
+  CONVERSATIONS_IDENTIFIER_NOT_UUID,
+  ConversationsWriteRefused,
+  EXECUTION_TURN_WITHOUT_THREAD,
+  FORK_LINEAGE_INCOHERENT,
+  FORK_LINEAGE_REPEATED,
+  MEASUREMENT_NEGATIVE,
+  REQUEST_FINGERPRINT_MALFORMED,
+  SEQUENCE_OUT_OF_RANGE,
+  SESSION_CONTEXT_NOT_OBJECT,
+  STEP_CACHE_EXCEEDS_INPUT,
+  STEP_PRICE_SNAPSHOT_INCOMPLETE,
+  STEP_USAGE_NEGATIVE,
+  TIMESTAMPS_INCOHERENT,
+  TURN_JSON_NOT_OBJECT,
+} from "./conversations-guards.js";
+export {
+  UNKNOWN_COMPACTION_STATE,
+  UNKNOWN_RATE_SOURCE as CONVERSATIONS_UNKNOWN_RATE_SOURCE,
+  UNKNOWN_VERSION_BUCKET,
+  UNKNOWN_WORK_STATUS as CONVERSATIONS_UNKNOWN_WORK_STATUS,
+  UNREADABLE_DECIMAL,
+  UNREADABLE_JSON_ROOT,
+  UNREADABLE_STEP_RATE,
+} from "./conversations-rows.js";

@@ -137,6 +137,12 @@
 
 import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
 import type {
+  ConversationsErasureStore,
+  PostmanRepository,
+  ThreadRepository,
+  TurnRepository,
+} from "@platos/context-conversations/application/ports/index.js";
+import type {
   AgentsRepository,
   ScaffoldingRepository,
 } from "@platos/context-agents/application/ports/index.js";
@@ -171,6 +177,7 @@ import { createScaffoldingRepository } from "./agents-scaffolding.js";
 import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
 import { createChannelsRepository } from "./channels-repository.js";
+import { createConversationsStores } from "./conversations-repository.js";
 import { createCostMonitoringRepository } from "./cost-repository.js";
 import { createGovernanceStores } from "./governance-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
@@ -251,6 +258,26 @@ export interface PostgresTenancyAdapter
    */
   readonly secrets: SecretsRepository;
   readonly secretsVariables: EnvironmentVariableRepository;
+  /**
+   * WIN-258 T5 — `conversations`' FOUR canonical-store ports.
+   *
+   * PROPERTIES, like `governance`'s five and `secrets`' two, and for the middle
+   * reason of the three this file now carries. They do not collide with each
+   * other the way governance's do, and they could not have been spread the way
+   * `secrets`' cannot: `ConversationsDependencies` names FOUR SEPARATE SLOTS —
+   * `threads`, `turns`, `postman`, `erasureStore` — and a composition root has
+   * to hand each port over under its own name. A flat spread would give the root
+   * twenty-eight loose methods and no way to assemble that bundle without
+   * guessing which method belongs to which slot.
+   *
+   * `conversationsErasure` is the one rename. `erasureStore` is not a name a
+   * directory serving nine owners can give to one of them; see
+   * `conversations-repository.ts`.
+   */
+  readonly threads: ThreadRepository;
+  readonly turns: TurnRepository;
+  readonly postman: PostmanRepository;
+  readonly conversationsErasure: ConversationsErasureStore;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -378,6 +405,16 @@ export function buildPostgresTenancyAdapter(
     // transaction — and therefore what lets the rule that re-reads the
     // credential from inside the key's INSERT see it.
     ...createProvidersRepository(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The TENTH owner in this directory. Built from
+    // the SAME `transactions` as everything else here, which is what makes three
+    // separate things true at once: a turn sequence allocated under a
+    // `FOR UPDATE` on the thread row is serialised against the insert that uses
+    // it; a settlement writes `Turn.costCents` and replaces its `Step` rows in
+    // one unit of work, so the rollup never disagrees with its own parts; and
+    // `privacy`'s erasure counts, deletes and anonymises through a
+    // `TransactionScope` minted by THIS ambient frame rather than by a second
+    // one that would refuse it as `scope_unknown`.
+    ...createConversationsStores(transactions),
   };
 }
 

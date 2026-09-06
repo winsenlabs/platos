@@ -42,6 +42,9 @@
     },
     {
       "path": "../../contexts/providers"
+    },
+    {
+      "path": "../../contexts/conversations"
     }
   ]
 }

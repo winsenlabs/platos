@@ -131,6 +131,16 @@ export const ADAPTERS = [
       // five-minute memo of what a provider said, which §13's map has no home
       // for and which no canonical store should hold.
       { port: "ProvidersRepository", owner: "providers" },
+      // WIN-258 T5 — `conversations`' FOUR canonical-store ports, the NINTH
+      // owner of the one PostgreSQL client. `Thread`, `Turn`, `Step` and
+      // `PostmanExecution` live in that same database, so by §15 they are
+      // written from the same directory behind the same client. The context
+      // publishes four SEPARATE ports because they are four lifetimes, and
+      // declares NO non-store port at all — there is nothing here to skip.
+      { port: "ThreadRepository", owner: "conversations" },
+      { port: "TurnRepository", owner: "conversations" },
+      { port: "PostmanRepository", owner: "conversations" },
+      { port: "ConversationsErasureStore", owner: "conversations" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -259,16 +269,26 @@ export function adapterOwnerPackages(adapter) {
 // separately: another owner is a row on an existing directory, not a thirteenth
 // package holding a second PostgreSQL client.
 //
-// 30 -> 31 (WIN-258 T5). `providers` adds ONE canonical-store binding,
-// `ProvidersRepository`, over the four rows of ADR M0.3 §1 row 4. It is the
+// 30 -> 35 (WIN-258 T5, twice). `providers` adds ONE canonical-store binding,
+// `ProvidersRepository`, over the four rows of ADR M0.3 §1 row 4; it is the
 // NINTH owner of the one PostgreSQL client and the only one of tranche 5's
-// stores whose port needed no property at all: its eighteen method names are
-// disjoint from every other port this directory satisfies, so the composition
-// root proves it against the adapter itself. EXPECTED_ADAPTER_COUNT is unmoved
-// again, and for the ninth time that is the point of pinning the two
-// separately.
+// stores whose port needed no property at all, because its eighteen method names
+// are disjoint from every other port this directory satisfies and the
+// composition root proves it against the adapter itself. `conversations` adds
+// FOUR — `ThreadRepository`, `TurnRepository`, `PostmanRepository` and
+// `ConversationsErasureStore` — and is the TENTH owner. Four ports and not one
+// because they are four lifetimes: a thread is opened, forked, compacted and
+// archived; a turn and its steps settle together and are never edited again; a
+// postman execution outlives the turn it produced, which is what makes it an
+// audit row; and the erasure half is the only surface in the context that
+// deletes anything. Those four are PROPERTIES for the middle of the three
+// reasons this file now carries — they do not collide with each other the way
+// governance's five do and they are not blocked from spreading the way secrets'
+// two are; `ConversationsDependencies` simply names four SLOTS, and a root has to
+// hand each port over under its own name. EXPECTED_ADAPTER_COUNT is unmoved
+// again, and for the tenth time that is the point of pinning the two separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 31;
+export const EXPECTED_BINDING_COUNT = 35;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -344,20 +364,25 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
 //
-// 102 -> 103 (WIN-258 T5, a NINTH owner). `packages/adapters/postgres-tenancy`
-// -> `packages/contexts/providers`, for that context's `ProvidersRepository`
-// over the four rows of §1 row 4. ONE edge carrying ONE binding: `providers`
-// publishes a single canonical-store port over all four, and its other two
-// ports belong elsewhere — `ModelRouter` to `model-router-providers` and
-// `ProviderProbeCache` to no adapter at all.
+// 102 -> 104 (WIN-258 T5, a NINTH and a TENTH owner).
+// `packages/adapters/postgres-tenancy` -> `packages/contexts/providers`, for that
+// context's `ProvidersRepository` over the four rows of §1 row 4: ONE edge
+// carrying ONE binding, because `providers` publishes a single canonical-store
+// port over all four and its other two ports belong elsewhere — `ModelRouter` to
+// `model-router-providers` and `ProviderProbeCache` to no adapter at all. And
+// `packages/adapters/postgres-tenancy` -> `packages/contexts/conversations`: ONE
+// edge carrying FOUR bindings, because a project reference is per PACKAGE and not
+// per port — the same one-edge-many-bindings shape `agents` introduced at two and
+// `governance` at five.
 //
-// IT CANNOT CREATE A CYCLE, and this is the one owner edge where that needed
-// checking rather than asserting: `providers` DEPENDS on `secrets`, which is
-// already an owner of the same directory. A cycle would need `secrets` to
-// depend on `providers`, and the §1 DAG has it depending on the kernel alone —
-// so the two owner edges are parallel rather than circular and the 17-context
-// DAG is untouched.
-export const EXPECTED_EDGE_COUNT = 103;
+// NEITHER CAN CREATE A CYCLE, and on the first that needed checking rather than
+// asserting: `providers` DEPENDS on `secrets`, which is already an owner of the
+// same directory. A cycle would need `secrets` to depend on `providers`, and the
+// §1 DAG has it depending on the kernel alone — so the two owner edges are
+// parallel rather than circular. `conversations` is the DAG's sink: it depends on
+// eleven contexts and nothing depends on it. The 17-context DAG is untouched by
+// either.
+export const EXPECTED_EDGE_COUNT = 104;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -491,6 +516,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/channels", // WIN-258 T5 — measured against InMemoryChannelsRepository by packages/adapters/postgres-tenancy
   "packages/contexts/governance", // WIN-258 T5 — its FIVE doubles are the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/providers", // WIN-258 T5 — measured against InMemoryProvidersRepository by packages/adapters/postgres-tenancy
+  "packages/contexts/conversations", // WIN-258 T5 — InMemoryConversations satisfies all FOUR of its ports and is the differential
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,

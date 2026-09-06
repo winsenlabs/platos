@@ -1795,11 +1795,79 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * differential and moves NO count here, which is why `mutations-providers.json`
  * beside the package is where those guards are held falsifiable.
  *
- * WITH `providers` THE PACKAGE'S ROW IS 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 = 67
- * files and 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 = 681 cases. The tree total
- * is 431 + 7 = 438 files and 6520 + 77 = 6597 cases. The adapters term of the
- * three-way identity carries all seven, because every added file is an
- * adapter's: 79 + 7 = 86, and 349 + 3 + 86 = 438.
+ *
+ * WIN-258 TRANCHE 5, `conversations` — the NINTH owner of the one ORM home, and
+ * the tranche whose suite COUNT was decided by `max-file-lines` rather than by
+ * choice. Eight files, 97 cases:
+ *
+ *   conversations-rows.test.ts                  24  the turn rollup from its
+ *                                                   STEPS — six of the nine
+ *                                                   numbers have no column —
+ *                                                   the exponential decimal the
+ *                                                   driver renders below 1e-7,
+ *                                                   the scale padding that makes
+ *                                                   the round trip exact, every
+ *                                                   stored enum validated rather
+ *                                                   than cast, and the
+ *                                                   half-written rate
+ *   conversations-constraints.integration.test.ts
+ *                                               14  each Thread and Turn guard
+ *                                                   stood beside the migration
+ *                                                   CHECK it restates, in two
+ *                                                   halves: the store's refusal
+ *                                                   and the database's
+ *   conversations-billing-constraints.integration.test.ts
+ *                                               12  the same instrument over
+ *                                                   `Step_usage_check` and the
+ *                                                   two PostmanExecution regular
+ *                                                   expressions, split out when
+ *                                                   the file passed the 500-line
+ *                                                   hard error
+ *   conversations-isolation.integration.test.ts 11  the three immutability
+ *                                                   rules and the tenant
+ *                                                   boundary — four rows unique
+ *                                                   INSTALLATION-WIDE, one of
+ *                                                   them a capability
+ *   conversations-rules.integration.test.ts     11  the transcript filter the
+ *                                                   double does not implement,
+ *                                                   the organization-scoped
+ *                                                   erasure it ignores, and the
+ *                                                   deletion order two rules
+ *                                                   force
+ *   conversations-transaction.integration.test.ts
+ *                                                8  failure injection over a
+ *                                                   second client, the negative
+ *                                                   control, the three scope
+ *                                                   refusals, and the row lock
+ *                                                   a second allocator BLOCKS on
+ *   conversations-statements.integration.test.ts
+ *                                               16  measured statement counts
+ *                                                   over two fixture sizes, the
+ *                                                   probe anchor, and the ONE
+ *                                                   read whose count is zero
+ *   conversations-conformance.integration.test.ts
+ *                                                1  the scenario against the
+ *                                                   fake and the real store,
+ *                                                   compared verbatim
+ *
+ * 24 + 14 + 12 + 11 + 11 + 8 + 16 + 1 = 97. Seven of the eight need a real
+ * PostgreSQL and are run by the `postgres-tenancy-repository` CI job.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 1 in the conformance suite, for the
+ * reason `channels`' 5 is: it is ONE scenario compared verbatim against
+ * `InMemoryConversations`, so adding an observation strengthens the differential
+ * and moves NO count here. `mutations-conversations.json` beside the package is
+ * where those guards are held falsifiable — 56 entries, 56 killed.
+ *
+ *
+ * ALL FOUR OF THIS WAVE'S STORES LAND IN THIS ONE PACKAGE TOO, so its row is
+ * the SUM of both waves: 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 + 8 = 75 files and
+ * 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 + 97 = 778 cases. `providers`
+ * contributes 7 files / 77 cases and `conversations` 8 / 97, and no branch's
+ * own figure — 67/681 or 68/701 — survives the merge. The tree total is
+ * 431 + 15 = 446 files and 6520 + 174 = 6694 cases. The adapters term of the
+ * three-way identity carries all fifteen, because every added file is an
+ * adapter's: 79 + 15 = 94, and 349 + 3 + 94 = 446.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -1810,7 +1878,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 67, cases: 681 },
+  "packages/adapters/postgres-tenancy": { files: 75, cases: 778 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1964,18 +2032,26 @@ export const EXPECTED = Object.freeze({
  * — enumerated file by file in the block beside the postgres-tenancy row, every
  * number there read back from the counter in this file.
  *
- * 6299 -> 6520: the 221 cases of WIN-258 tranche 5's last three canonical
+ * 6299 -> 6520: the 221 cases of WIN-258 tranche 5's next three canonical
  * stores — `channels`' 72, `governance`'s 66 and `secrets`' 83 — each
  * enumerated file by file in the block beside the postgres-tenancy row.
  *
+ * 6520 -> 6617: the 97 cases of `conversations`, the LAST canonical store of
+ * this wave and the ninth owner of the one ORM home, enumerated file by file in
+ * the same block. Three of its eight files exist only because `max-file-lines`
+ * bit at the HARD error, so the file count moved by eight where the work was
+ * five suites' worth — which is the kind of thing a census states rather than
+ * absorbs.
+ *
  * The cases this census records that `pnpm test:v1-packages` does not execute
  * are the ones whose file name carries `.integration.`, which the package's own
- * `test` script excludes. MEASURED over this tree: 422 cases across 49 files,
- * all of them in `packages/adapters/postgres-tenancy`. This wave contributes 157
- * of those over 18 suites — `channels`' 47 over 5, `governance`'s 45 over 5 and
- * `secrets`' 65 over 8 — and its remaining 64 (`channels-rows.test.ts` 25,
- * `governance-rows.test.ts` 21 and `secrets-rows.test.ts` 18) run in the
- * ordinary package test script, because none of those three modules has a
+ * `test` script excludes. MEASURED over this tree: 495 cases across 56 files,
+ * all of them in `packages/adapters/postgres-tenancy`. This wave contributes 230
+ * of those over 25 suites — `channels`' 47 over 5, `governance`'s 45 over 5,
+ * `secrets`' 65 over 8 and `conversations`' 73 over 7 — and its remaining 88
+ * (`channels-rows.test.ts` 25, `governance-rows.test.ts` 21,
+ * `secrets-rows.test.ts` 18 and `conversations-rows.test.ts` 24) run in the
+ * ordinary package test script, because none of those four modules has a
  * database in it: they reach the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  *
@@ -1996,7 +2072,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6597;
+export const EXPECTED_RUNTIME_TOTAL = 6694;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -68,6 +68,12 @@ import type {
   RatingsRepository,
   SafetyLedger,
 } from "@platos/context-governance/application/ports/index.js";
+import type {
+  ConversationsErasureStore,
+  PostmanRepository,
+  ThreadRepository,
+  TurnRepository,
+} from "@platos/context-conversations/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
 import type { OutboxAdapter, OutboxEventStore } from "@platos/adapter-outbox";
@@ -90,7 +96,7 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, THIRTY-ONE BINDINGS (ADR M0.3 §15). An install wires a
+ * TWELVE SLOTS, THIRTY-FIVE BINDINGS (ADR M0.3 §15). An install wires a
  * DIRECTORY — one process-lifetime object holding one vendor client — so this
  * table stays keyed by directory and keeps twelve entries. What a directory
  * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
@@ -234,6 +240,34 @@ interface PortSatisfaction {
     PostgresTenancyAdapter["secretsVariables"],
     EnvironmentVariableRepository
   >;
+  // WIN-258 T5. `conversations`' four canonical-store ports, proven through the
+  // PROPERTY that carries each one. The reason is the middle of the three this
+  // file now carries: they do not collide with each other the way governance's
+  // five do, and they are not blocked from spreading the way `secrets`' two are
+  // — `ConversationsDependencies` simply names FOUR SLOTS, and a composition
+  // root has to hand each port over under its own name. A flat spread would give
+  // a root twenty-eight loose methods and no way to assemble that bundle without
+  // guessing which method belongs to which slot.
+  //
+  // `conversationsErasure` is the one renamed slot: the bundle calls it
+  // `erasureStore`, which is not a name a directory serving nine owners can give
+  // to one of them, and this is the row that puts the two names back together.
+  readonly "postgres-tenancy:ThreadRepository": Satisfies<
+    PostgresTenancyAdapter["threads"],
+    ThreadRepository
+  >;
+  readonly "postgres-tenancy:TurnRepository": Satisfies<
+    PostgresTenancyAdapter["turns"],
+    TurnRepository
+  >;
+  readonly "postgres-tenancy:PostmanRepository": Satisfies<
+    PostgresTenancyAdapter["postman"],
+    PostmanRepository
+  >;
+  readonly "postgres-tenancy:ConversationsErasureStore": Satisfies<
+    PostgresTenancyAdapter["conversationsErasure"],
+    ConversationsErasureStore
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -271,6 +305,10 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:ProvidersRepository": true,
   "postgres-tenancy:SecretsRepository": true,
   "postgres-tenancy:EnvironmentVariableRepository": true,
+  "postgres-tenancy:ThreadRepository": true,
+  "postgres-tenancy:TurnRepository": true,
+  "postgres-tenancy:PostmanRepository": true,
+  "postgres-tenancy:ConversationsErasureStore": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -433,14 +471,40 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // (h), and `ProviderProbeCache` is a five-minute memo of what a provider said
   // — §13's map has no home for it and no canonical store should hold it.
   Object.freeze({ adapter: "postgres-tenancy", port: "ProvidersRepository", owner: "providers" }),
-  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the SIXTEENTH through
-  // TWENTIETH bindings of the same directory.
+  // WIN-258 T5 (ADR M0.3 §15). The SIXTEENTH through NINETEENTH bindings of the
+  // same directory, and the TENTH owner of the one PostgreSQL client. They are
+  // FOUR rows and not one because `conversations` publishes four separate ports
+  // over four separate lifetimes: a THREAD is opened, forked, compacted and
+  // archived; a TURN and its STEPS settle together and are never edited again; a
+  // POSTMAN EXECUTION outlives the turn it produced, which is what makes it an
+  // audit row; and the ERASURE half is the only surface in the context that
+  // deletes anything, kept apart so that every use case does not hold a
+  // `deleteAll` it has no business holding.
   //
-  // They are a different KIND of binding from the seven above and that is why
+  // AND THERE IS NOTHING TO SKIP HERE, which is unusual enough in this table to
+  // be worth saying: this context declares FOUR driven ports and all four are
+  // canonical stores. Its own `application/ports/index.ts` says why — "FOUR
+  // PORTS AND NOT ONE MORE" — because every other collaborator a turn needs is
+  // reached through a peer context's published contract, so there is no
+  // `ModelPort` and no `ToolExecutorPort` for an adapter to satisfy. The
+  // inference seam is `providers`' `ModelRouter`, bound below.
+  Object.freeze({ adapter: "postgres-tenancy", port: "ThreadRepository", owner: "conversations" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "TurnRepository", owner: "conversations" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "PostmanRepository", owner: "conversations" }),
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "ConversationsErasureStore",
+    owner: "conversations",
+  }),
+  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the TWENTIETH through
+  // TWENTY-FOURTH bindings of the same directory.
+  //
+  // They are a different KIND of binding from the nineteen above and that is why
   // they sit together at the end rather than beside `TenancyRepository`: each of
-  // the seven above is a whole repository composite SPREAD INTO the adapter, and
-  // each of these five is a single named PROPERTY on it. The ordinals above stay
-  // true because nothing was inserted before them.
+  // those is a whole repository composite spread into the adapter or a named
+  // store slot on it, and each of these five is a single named PROPERTY. The
+  // ordinals above stay true because every addition has gone in FRONT of this
+  // block rather than into it.
   //
   // WHY THEY GET SLOTS AT ALL. This table is the surface that proves every port
   // has a satisfying adapter — `composition-root.mjs` compares it against the
@@ -475,10 +539,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-one rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-five rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` TWENTY times and open
- * twenty pools over the one database.
+ * adapters would otherwise build `postgres-tenancy` TWENTY-FOUR times and open
+ * twenty-four pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),

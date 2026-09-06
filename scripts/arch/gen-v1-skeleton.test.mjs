@@ -81,7 +81,7 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // packages/contexts/secrets, the sixth, seventh and eighth owners of that same
   // client. THREE edges for EIGHT bindings. The count is READ BACK from the
   // generator here rather than computed, which is the whole point of this case.
-  assert.match(output, /32 V1 projects and 103 project edges/u);
+  assert.match(output, /32 V1 projects and 104 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -522,6 +522,13 @@ const LIVE_ADAPTERS = [
       // row 4. ONE port and not two: the context publishes three, and only this
       // one is a canonical store.
       { port: "ProvidersRepository", owner: "providers" },
+      // WIN-258 T5: `conversations` publishes FOUR canonical-store ports and one
+      // directory satisfies all four, because four separate rows in the one
+      // PostgreSQL database are four repositories behind one client.
+      { port: "ThreadRepository", owner: "conversations" },
+      { port: "TurnRepository", owner: "conversations" },
+      { port: "PostmanRepository", owner: "conversations" },
+      { port: "ConversationsErasureStore", owner: "conversations" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
@@ -551,14 +558,14 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a THIRTY-SECOND binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a THIRTY-SIXTH binding fails, even though a directory may hold more than one", () => {
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 31 adapter bindings; ADAPTERS flattens to 32")));
+  assert.ok(errors.some((error) => error.includes("declares 35 adapter bindings; ADAPTERS flattens to 36")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
