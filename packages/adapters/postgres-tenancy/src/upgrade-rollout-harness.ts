@@ -22,17 +22,27 @@
 
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 
+// THE REHEARSAL SURFACE COMES BY MODULE PATH, NOT THROUGH THE BARREL, and the
+// reason is measured rather than stylistic: these three modules `spawnSync` the
+// Prisma CLI and read the migrations directory, so they import
+// `node:child_process`, `node:fs` and `node:url` at the top level. Re-exporting
+// them from `@platos/tenancy-database`'s entry point puts them in the Remix
+// BROWSER bundle of every `apps/webapp` route that names an enum from that
+// package, and the webapp image build refuses it outright. The package has no
+// `exports` map — `apps/agent` deep-imports the generated client's runtime
+// library and adding one would refuse that — so these paths resolve.
 import {
-  applyFrozenBaseline,
-  applyOrderedMigrations,
   delegateOf,
   rebuildUpgradeBaseline,
-  ROLLOUT_IDS,
-  seedAsLegacyBinary,
   soleStoredFieldOnlyIn,
   type UpgradeBaseline,
   type UpgradeBaselineClient,
-} from "@platos/tenancy-database";
+} from "@platos/tenancy-database/dist/upgrade-baseline-clients.js";
+import { ROLLOUT_IDS, seedAsLegacyBinary } from "@platos/tenancy-database/dist/upgrade-fixture.js";
+import {
+  applyFrozenBaseline,
+  applyOrderedMigrations,
+} from "@platos/tenancy-database/dist/upgrade-rehearsal-support.js";
 
 import type { PostgresTenancyAdapter } from "./adapter.js";
 import { buildPostgresTenancyAdapter } from "./adapter.js";
