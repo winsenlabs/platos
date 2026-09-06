@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6f1bf72870d218e5781fccc92d021150492e54a9ab7f5497b913d7fd9282ecf6",
+  "evidenceSha256": "9043fe9883c95f343b41b66e60d2d54e33534a0453ba544f728fe302290dd4e9",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5ddb73a7af20084925aba5b1dd1bac53b14c998df2efd7e5b9c655684eb0d50d",
+    "aggregateSha256": "bd602530dc71053a52c53dbf7e04a2f06b59d0b16a896e08fa8f87809cea52d6",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11193,7 +11193,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-channels.json",
-        "sha256": "9a168f43404dfb1200c49af925e86e6a52ea60fb5783a519e6e5629c53114f08"
+        "sha256": "702e9b769330f04b9b19b024b7af28f121cf0f9331eb91e770b9e943fdfa2591"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-cost.json",
@@ -11297,11 +11297,11 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/channels-conformance.integration.test.ts",
-        "sha256": "7bd67802f4346c916ac5e422dcbdf2cbff8c4fa97fe09d5a077a2c7b27b3a935"
+        "sha256": "91da910d1a530bd5ee293487381bd5ec7dc51ebb667d7b5af37a30582984da09"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
-        "sha256": "97f281d30ef242390387510150499e7eeb14843e503f3be40b31f36aeab5ed0b"
+        "sha256": "0566d743db5a89131bb7501d0e02b06ad4d423a1510b705404ea6637fd5a8ec8"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/channels-connections.ts",
