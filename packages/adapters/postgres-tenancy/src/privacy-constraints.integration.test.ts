@@ -218,7 +218,7 @@ describe("the unique index on (organizationId, idempotencyKey)", () => {
       id<IdempotencyKey>(key),
     );
     expect(still.ok && still.value?.operationId).toBe(winner);
-    expect(still.ok && still.value?.subjectKeyHash).toBe("d0000abc");
+    expect(still.ok && still.value?.subjectKeyHash).toBe("d0000001");
     const absent = await harness.repository.findOperation(
       tenant.organizationId,
       id<ErasureOperationId>(loser),
@@ -276,11 +276,20 @@ describe("the unique index on (organizationId, idempotencyKey)", () => {
 
 describe("the unique index on (organizationId, aliasHash), and the seal that must survive a race", () => {
   test("a concurrent seal of the same alias does NOT abort the caller's transaction", async () => {
-    // `skipDuplicates` is `ON CONFLICT DO NOTHING`, and this is what it is for. A
-    // queue resume racing an operator retry seals the same subject twice; losing
-    // that race must not open the barrier, and on this port "abort the caller's
-    // transaction" means the whole destructive pass is discarded with the seal
-    // that was already committed by the winner.
+    // A queue resume racing an operator retry seals the same subject twice.
+    // Losing that race must not open the barrier, and on this port "abort the
+    // caller's transaction" means the whole destructive pass is discarded along
+    // with the seal the winner already committed.
+    //
+    // WHAT THIS MEASURES, HONESTLY. The transaction runs at READ COMMITTED, so
+    // the scoped read that splits the batch SEES the winner's committed row and
+    // the loser takes the EXTEND branch — it never sends a conflicting INSERT at
+    // all, which is why the outcome below is `{ sealed: 0, extended: 1 }` rather
+    // than `{ 0, 0 }`. `skipDuplicates` is the belt for the NARROWER window: the
+    // winner committing between this store's own read and its own `createMany`.
+    // That window is real and is why the clause is there; it is microseconds
+    // wide and this suite cannot produce it deterministically, so it is REPORTED
+    // rather than claimed.
     const alias = `a-race-${harness.base.freshId("009d").slice(-12)}`;
     const operationId = harness.base.freshId("009e");
     const draft: TombstoneDraft = {
@@ -319,10 +328,10 @@ describe("the unique index on (organizationId, aliasHash), and the seal that mus
       return { sealed, survivor: survivor.ok };
     });
     expect(result.sealed.ok).toBe(true);
-    // Nothing was inserted — the winner's row was already there — and nothing was
-    // extended either, because the scoped read did not see it. What matters is
-    // that the ALIAS IS SEALED and the transaction lived.
-    expect(result.sealed.ok && result.sealed.value).toEqual({ sealed: 0, extended: 0 });
+    // Nothing was INSERTED — the winner's row was already there and the scoped
+    // read saw it — so the loser extended instead. What matters is that the ALIAS
+    // IS SEALED throughout and that the transaction lived.
+    expect(result.sealed.ok && result.sealed.value).toEqual({ sealed: 0, extended: 1 });
     expect(result.survivor).toBe(true);
     const active = await harness.repository.findActiveTombstones(
       tenant.organizationId,
@@ -341,9 +350,14 @@ describe("the unique index on (organizationId, aliasHash), and the seal that mus
                '${harness.base.freshId("00a3")}', 'privacy/1',
                '2026-05-01T09:00:00Z', '2026-06-01T09:00:00Z');`;
     expect(planted(insert(harness.base.freshId("00a4")))).toBe("");
+    // The ORM's CLI reports its OWN code and the FIELD NAMES rather than
+    // PostgreSQL's index name, which is what a planted row can actually be
+    // asserted on: `Error: P2002 / Unique constraint failed on the fields:
+    // (organizationId, aliasHash)`.
     expect(planted(insert(harness.base.freshId("00a5")))).toMatch(
-      /ErasureTombstone_organizationId_aliasHash_key|duplicate key/iu,
+      /P2002|Unique constraint failed/iu,
     );
+    expect(planted(insert(harness.base.freshId("00a6")))).toMatch(/organizationId/u);
   });
 });
 

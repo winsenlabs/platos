@@ -37,7 +37,16 @@ let foreign: PrivacyTenant;
 let observer: TenancyDatabaseClient;
 
 const EXPIRES_AT = new Date("2026-06-01T09:00:00.000Z");
-const SUBJECT = "d0000abc";
+/**
+ * The digest `operationDraft` mints, and therefore the digest every operation in
+ * this suite carries.
+ *
+ * It is a CONSTANT here rather than a literal at each call site because the two
+ * per-subject cases below are only meaningful if the rows they look for really
+ * are the rows this suite wrote — a digest that matched nothing would make both
+ * of them pass by returning zero on each side.
+ */
+const SUBJECT = "d0000001";
 
 function id<Brand>(value: string): Brand {
   return value as Brand;
@@ -376,6 +385,16 @@ describe("every read is organization-scoped, and one deliberately is not", () =>
   });
 
   test("a subject digest that exists in another tenant lists nothing", async () => {
+    // The row is inserted HERE rather than relied on from another case. Two
+    // organization-scoped reads both returning zero would pass this assertion for
+    // the wrong reason — because the digest matched nothing anywhere — which is
+    // exactly the vacuity a cross-tenant case is most prone to.
+    await harness.run((transaction) =>
+      harness.repository.insertOperation(
+        operationDraft(tenant, harness.base.freshId("00d2")),
+        transaction,
+      ),
+    );
     const listed = await harness.repository.listOperationsForSubject(
       foreign.organizationId,
       id<SubjectKeyHash>(SUBJECT),
@@ -423,18 +442,30 @@ describe("every read is organization-scoped, and one deliberately is not", () =>
     expect(row?.status).toBe("PENDING");
   });
 
-  test("the queue's page crosses tenants ON PURPOSE, and the port says so", () => {
+  test("the queue's page crosses tenants ON PURPOSE, and the port says so", async () => {
     // `listDueOperations(asOf, limit)` takes no organization, unlike every other
     // read on this port. That is the one deliberate exception: it is the QUEUE's
     // page, and a queue that had to be told which tenant to drain would need a
     // tenant list nothing gives it. Every column it returns is already
     // content-free, so the widening carries no subject data across a boundary.
-    return harness.repository.listDueOperations(EXPIRES_AT, 100).then((page) => {
-      expect(page.ok).toBe(true);
-      const organizations = new Set(
-        page.ok ? page.value.map((row) => String(row.organizationId)) : [],
+    //
+    // TWO tenants, one due row each, and the assertion is that the page holds
+    // BOTH. A page that held one would be indistinguishable from a page that was
+    // scoped, and a page that held none would make the case vacuous.
+    for (const where of [tenant, foreign]) {
+      await harness.run((transaction) =>
+        harness.repository.insertOperation(
+          operationDraft(where, harness.base.freshId("00d3"), { nextRetryAt: REQUESTED_AT }),
+          transaction,
+        ),
       );
-      expect(organizations.size).toBeGreaterThan(0);
-    });
+    }
+    const page = await harness.repository.listDueOperations(EXPIRES_AT, 100);
+    expect(page.ok).toBe(true);
+    const organizations = new Set(
+      page.ok ? page.value.map((row) => String(row.organizationId)) : [],
+    );
+    expect(organizations.has(String(tenant.organizationId))).toBe(true);
+    expect(organizations.has(String(foreign.organizationId))).toBe(true);
   });
 });
