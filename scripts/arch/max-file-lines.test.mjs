@@ -836,6 +836,24 @@ test("the live selectors scan an exact nonzero source census", () => {
   // store modules beside them are all well inside the band, because the twenty
   // methods of `MemoryRepository` were split by whose rows they touch and by what
   // they do before any of them was written.
+  // WIN-260 (M2.5) MOVES TEN OF THESE EIGHTEEN, all in the WARNING band and none
+  // near the 500-line ERROR, and the arithmetic is one import line per file plus
+  // the comments that say why:
+  //   conversations-conformance.ts                  485 -> 486  (+1)
+  //   conversations-transaction.integration.test.ts 401 -> 403  (+2)
+  //   cost-constraints.integration.test.ts          453 -> 454  (+1)
+  //   files-scope.integration.test.ts               467 -> 468  (+1)
+  //   governance-conformance.ts                     418 -> 420  (+2)
+  //   governance-rules.integration.test.ts          424 -> 425  (+1)
+  //   memory-constraints.integration.test.ts        406 -> 409  (+3)
+  //   providers-conformance.ts                      421 -> 423  (+2)
+  //   secrets-rules.integration.test.ts             439 -> 441  (+2)
+  //   skills-constraints.integration.test.ts        438 -> 435  (-3)
+  // The last one SHRANK: two multi-line `.run(` chains became single-line
+  // `runResult(` calls. A dimension that only ever grew files would be one that
+  // never simplified anything, so the one negative is worth as much as the nine
+  // positives. EIGHT of the eighteen did not move at all, which is what says this
+  // list was measured rather than regenerated wholesale.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
@@ -844,17 +862,17 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/conversations-conformance.ts",
-      effectiveLines: 485,
+      effectiveLines: 486,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/conversations-transaction.integration.test.ts",
-      effectiveLines: 401,
+      effectiveLines: 403,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/cost-constraints.integration.test.ts",
-      effectiveLines: 453,
+      effectiveLines: 454,
       severity: "warning",
     },
     {
@@ -869,17 +887,17 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/files-scope.integration.test.ts",
-      effectiveLines: 467,
+      effectiveLines: 468,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/governance-conformance.ts",
-      effectiveLines: 418,
+      effectiveLines: 420,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
-      effectiveLines: 424,
+      effectiveLines: 425,
       severity: "warning",
     },
     {
@@ -889,12 +907,12 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/memory-constraints.integration.test.ts",
-      effectiveLines: 406,
+      effectiveLines: 409,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/providers-conformance.ts",
-      effectiveLines: 421,
+      effectiveLines: 423,
       severity: "warning",
     },
     {
@@ -907,7 +925,7 @@ test("the live selectors scan an exact nonzero source census", () => {
       // rule of exactly that store. A further case takes it past 460 and the
       // split to make then is the fence's own `describe`, moved whole.
       path: "packages/adapters/postgres-tenancy/src/secrets-rules.integration.test.ts",
-      effectiveLines: 439,
+      effectiveLines: 441,
       severity: "warning",
     },
     {
@@ -929,7 +947,7 @@ test("the live selectors scan an exact nonzero source census", () => {
       // is already its own `describe`. A sixth case in that block takes it past
       // 500 and the split is that block, moved whole.
       path: "packages/adapters/postgres-tenancy/src/skills-constraints.integration.test.ts",
-      effectiveLines: 438,
+      effectiveLines: 435,
       severity: "warning",
     },
     {
