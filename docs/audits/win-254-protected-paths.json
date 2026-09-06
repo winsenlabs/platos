@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "5d765590c69a79eb86f7fecb9fbf52e6b68ef227ae46b0278934337bf8914e17"
+      "sha256": "69e9d9c7ed357d6d9d6ba5435063f42abc73f22a1c6f78229ec0c7a395038a9b"
     },
     {
       "path": "LICENSE",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "035e1b5577365f938ddeef2a408a6c128361ffbaaa32e05e2d03c26312877ac4"
+      "sha256": "1b7d57e8d3afcf1d6274a6d25927d882991987d827c1a2fd5cbdf2c33538e945"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "f85c2e3134c02e82f776d89c8a9327991078e71da63a6db6b83e915896a4a3d9"
+      "sha256": "43f9e96a61f3f30aad6a2ef08b4a3e5fd3eb14dc79cbd768e7531041cf4551ab"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1413,7 +1413,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "4f9a4b7160542bb39096919a885c93aa9cd4eb1dcb6f0e08153721d990f82da4"
+      "sha256": "68cfee6166b877ae7f39d20357311256d2e3bbb90663c7e2a9f2d35c3ffbab5a"
     },
     {
       "path": "docs/errors-retrying.mdx",
