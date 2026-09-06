@@ -99,6 +99,14 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // what coverage looked like on some past date.
   "docs/audits/win-284-differential-coverage.json",
   "docs/audits/win-284-differential-coverage.md",
+  // WIN-259 (M2.4). ACCEPTED rather than POINT-IN-TIME because it binds CURRENT
+  // repository truth: `audit:secret-response-census` re-scans the request
+  // surfaces on every run and fails when the live result and this file disagree,
+  // so a raw-secret response path cannot appear or vanish without somebody
+  // editing it. It is only HALF generated — `--write` emits path/key/occurrences
+  // and a human writes the disposition and the reason — which is why it is
+  // pinned here by name rather than picked up by a generated-artifact root.
+  "docs/audits/win-259-secret-response-census.json",
   "docs/audits/win253-removals/clickhouse-split.json",
   "docs/audits/win253-removals/clickhouse-split.md",
   "docs/audits/win253-removals/vendored-build.json",

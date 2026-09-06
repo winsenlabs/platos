@@ -91,6 +91,7 @@
         "docs/audits/win-253-workspace-reachability.md",
         "docs/audits/win-284-differential-coverage.json",
         "docs/audits/win-284-differential-coverage.md",
+        "docs/audits/win-259-secret-response-census.json",
         "docs/audits/win253-removals/clickhouse-split.json",
         "docs/audits/win253-removals/clickhouse-split.md",
         "docs/audits/win253-removals/vendored-build.json",
@@ -123,7 +124,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4",
+  "protectedPathSetSha256": "80bc12c13e261492fc566ed5fbed0462104dd7f45f81d7ea979da4f1bb37251f",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -133,9 +134,9 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 250,
+  "entryCount": 251,
   "counts": {
-    "ACCEPTED": 225,
+    "ACCEPTED": 226,
     "SUPERSEDED-BY": 4,
     "POINT-IN-TIME": 20,
     "DRAFT": 1
@@ -1397,7 +1398,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "993a45740d697221e86aabe1efc810dfb4189efdb49f81c8da0dbdd6b0ed5148",
+      "sha256": "1df3e8ad0638e0db588836344afdac548b91239efead2d8f179a744486657be6",
       "binds": "current-repository-truth"
     },
     {
@@ -1511,14 +1512,21 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "e8c6e42fe4117fbfeb6238403eaa18d55acc701c46c2fd93127dee75b804cacf",
+      "sha256": "1b40a5125d7ac397377a081ca33dd809aee48a215bd27a890c97d067e4f03f87",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "d62719afbb986e6cc16240f1d8d2cd83d74eb9fefb820b9526ad5c5a3311dd0b",
+      "sha256": "071c5a6d0d5e3793dd3c0d2ac2e62e2a4240dcc3e6f4ae35986d69f31ebd1d91",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-259-secret-response-census.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "99f2d1970f404cb8df25270100b6a0928b90254058703fe80eafd6344a7fdec8",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1561,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "940b5cb8ad644de80d8be3a752b90580006412363ee4e3bdf66a0cf2315d4468",
+      "sha256": "55e28c1110bcee1f43a8791da739b98a64a208c4d392aed2a75d5ad1582f23d9",
       "binds": "current-repository-truth"
     },
     {
