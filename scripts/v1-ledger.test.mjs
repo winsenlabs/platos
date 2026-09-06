@@ -986,7 +986,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // told the next author to move whole once a further case took
     // secrets-rules.integration.test.ts past 460. It is a MOVE that shows as an
     // addition, because the source file keeps its path.
-    packages: 1403,
+    // WIN-259 (M2.4) SECOND PASS 1403 -> 1407, and all four are in ONE package
+    // for the first time on this branch: `packages/contexts/secrets` takes
+    // `domain/secret-handle.ts` and `application/secret-handles.ts` with a suite
+    // each. The SECRET REFERENCE adds no adapter file and no row of its own — it
+    // is a VALUE this context never persists, so no store moves, and the one
+    // port it widens (`AeadCipher`) is widened IN PLACE. 2 source + 2 test = 4.
+    packages: 1407,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1249,7 +1255,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 14,
     "root-infra": 45,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1505);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1509);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1300,7 +1306,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // across apps-core-api (+1), packages (+4), docs-content (+1) and
     // root-infra (+2); this one re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1505
+    //
+    // and its SECOND PASS +4, ALL of them `packages` and all of them the SECRET
+    // REFERENCE. It is the only slice on this branch that moves ONE area: the
+    // reference is a value, so it lands no artifact under docs/audits, no
+    // scanner under scripts/ and no suite outside the context that owns it.
+    // 1505 + 4 = 1509.
+    rulesDocument.baseline.totalFiles + 1509
   );
 });
 
