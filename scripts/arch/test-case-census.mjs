@@ -2020,7 +2020,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 88 -> 95 FILES AND 929 -> 1024 CASES (WIN-258 T5, `files`). SEVEN files and
  * NINETY-FIVE cases, every number READ BACK from the counter in this file:
  *
- *   files-rows.test.ts                        20  the mapping boundary, and the
+ *   files-rows.test.ts                        21  the mapping boundary, and the
  *                                                 only one of the seven that
  *                                                 needs no container
  *   files-conformance.integration.test.ts      2  ONE scenario of forty-four
@@ -2031,13 +2031,18 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   files-rules.integration.test.ts           16  the five rules that live only
  *                                                 in the migrations, and the two
  *                                                 referential actions
- *   files-scope.integration.test.ts           27  one case per clause of every
+ *   files-scope.integration.test.ts           31  one case per clause of every
  *                                                 scoped read, one wrong id each
  *   files-transaction.integration.test.ts      9  failure injection and the three
  *                                                 scope refusals
  *   files-statements.integration.test.ts       6  the measured counts
  *
- * 20 + 2 + 15 + 16 + 27 + 9 + 6 = 95, over 7 files. Six of the seven need a real
+ * 21 + 2 + 15 + 16 + 31 + 9 + 6 = 100, over 7 files. FIVE of those hundred were
+ * added by the MUTATION SWEEP rather than written first, and they are the five
+ * worth naming: four clause-isolation cases whose absence let a scoped read drop
+ * its environment clause, its artifact-key clause or its thread clause and stay
+ * green, and one unit case for a SQL NULL that JavaScript coerced to the right
+ * answer. Six of the seven need a real
  * PostgreSQL and are run by the `postgres-tenancy-repository` CI job;
  * `files-rows.test.ts` is not, and it is the one that reaches the two
  * unreadable-row branches a container cannot — an unresolved ancestry, which the
@@ -2051,7 +2056,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * `packages/adapters/postgres-tenancy/mutations-files.json` is where those
  * guards are held falsifiable instead.
  *
- * The tree total is 459 + 7 = 466 files and 6845 + 95 = 6940 cases. The adapters
+ * The tree total is 459 + 7 = 466 files and 6845 + 100 = 6945 cases. The adapters
  * term of the three-way identity carries all seven, because every added file is
  * an adapter's: 107 + 7 = 114, and 349 + 3 + 114 = 466.
  */
@@ -2064,7 +2069,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 95, cases: 1024 },
+  "packages/adapters/postgres-tenancy": { files: 95, cases: 1029 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2250,13 +2255,13 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  *
- * 6845 -> 6940: the 95 cases of WIN-258 tranche 5's `files` canonical store,
+ * 6845 -> 6945: the 100 cases of WIN-258 tranche 5's `files` canonical store,
  * enumerated file by file in the block beside the postgres-tenancy row. Six of
  * its seven suites carry `.integration.` in the name; the seventh,
  * `files-rows.test.ts`, runs in the ordinary package test script for the reason
  * every other row suite does.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6940;
+export const EXPECTED_RUNTIME_TOTAL = 6945;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
