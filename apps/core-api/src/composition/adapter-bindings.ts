@@ -289,14 +289,30 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "BudgetRepository",
     owner: "cost-monitoring",
   }),
-  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the SEVENTH through
-  // ELEVENTH bindings of the same directory.
+  // WIN-258 T5 (ADR M0.3 §15). The SEVENTH canonical-store binding of the same
+  // directory, and the sixth CONTEXT owner of the one PostgreSQL client.
+  // `channels` is sole writer of six rows in the same database as tenancy's,
+  // identity-access's, tools', agents' and cost-monitoring's, so a separate
+  // adapter package for them would be a second home for a client the
+  // architecture gives exactly one.
   //
-  // They are a different KIND of binding from the six above and that is why they
-  // sit together at the end rather than beside `TenancyRepository`: each of the
-  // six above is a whole repository composite SPREAD INTO the adapter, and each
-  // of these five is a single named PROPERTY on it. The ordinals above stay true
-  // because nothing was inserted before them.
+  // IT SITS HERE, BEFORE THE M2.3 BLOCK, because the block below is about a
+  // different KIND of binding and its own comment counts from the end of this
+  // group. A repository composite added after it would have made that comment's
+  // ordinals wrong, which is the drift the ordinals exist to make visible.
+  Object.freeze({
+    adapter: "postgres-tenancy",
+    port: "ChannelsRepository",
+    owner: "channels",
+  }),
+  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the EIGHTH through
+  // TWELFTH bindings of the same directory.
+  //
+  // They are a different KIND of binding from the seven above and that is why
+  // they sit together at the end rather than beside `TenancyRepository`: each of
+  // the seven above is a whole repository composite SPREAD INTO the adapter, and
+  // each of these five is a single named PROPERTY on it. The ordinals above stay
+  // true because nothing was inserted before them.
   //
   // WHY THEY GET SLOTS AT ALL. This table is the surface that proves every port
   // has a satisfying adapter — `composition-root.mjs` compares it against the
@@ -306,17 +322,6 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // silently narrowed the completeness property to the ports that happened to be
   // listed. `reportAdapterSupply` can now say an install has not wired the
   // session revoker, which before this it could not.
-  // WIN-258 T5 (ADR M0.3 §15). The SEVENTH canonical-store binding of the same
-  // directory, and the sixth CONTEXT owner of the one PostgreSQL client.
-  // `channels` is sole writer of six rows in the same database as tenancy's,
-  // identity-access's, tools', agents' and cost-monitoring's, so a separate
-  // adapter package for them would be a second home for a client the
-  // architecture gives exactly one.
-  Object.freeze({
-    adapter: "postgres-tenancy",
-    port: "ChannelsRepository",
-    owner: "channels",
-  }),
   Object.freeze({ adapter: "postgres-tenancy", port: "TenancyLocks", owner: "tenancy" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "OperatorSessionRevoker", owner: "tenancy" }),
   Object.freeze({
