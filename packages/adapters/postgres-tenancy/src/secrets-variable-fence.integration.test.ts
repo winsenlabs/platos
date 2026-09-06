@@ -8,7 +8,7 @@
 // — and this is the `describe`, moved whole and unedited.
 //
 // WHY THIS SEAM AND NOT ANOTHER. Everything left behind is a rule the DATABASE
-// carries and no port method restates: an immutability trigger, a re-read from
+// carries and no port method restates: a raise on UPDATE, a re-read from
 // inside a write, a foreign key. This block is the one rule that belongs to the
 // PORT rather than to the database — a version the caller read, carried back
 // into the WHERE clause so a lost update is refused instead of applied — and it
