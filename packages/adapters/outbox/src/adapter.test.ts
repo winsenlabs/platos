@@ -11,6 +11,8 @@ import { describe, expect, test } from "vitest";
 
 import type {
   Clock,
+  CorrelationRef,
+  CorrelationSource,
   DomainEventDraft,
   EnvironmentId,
   JsonValue,
@@ -126,6 +128,95 @@ describe("append", () => {
       .catch((error: unknown) => (error as { readonly code?: string }).code);
     expect(refused).toBe("tenancy.transaction.not_open");
     expect(memory.rows()).toHaveLength(0);
+  });
+});
+
+describe("correlation (WIN-260)", () => {
+  /** A `CorrelationSource` a case can move, standing in for the process edge. */
+  function edge(): CorrelationSource & { enter(requestId: string | null): void } {
+    let reference: CorrelationRef | null = null;
+    return {
+      current: () => reference,
+      enter(requestId) {
+        reference = requestId === null ? null : { requestId: asIdentifier<RequestId>(requestId) };
+      },
+    };
+  }
+
+  function correlatedHarness() {
+    const memory = createInMemoryOutbox();
+    const source = edge();
+    const adapter = buildOutboxAdapter({
+      store: memory.store,
+      clock: fixedClock(),
+      randomBytes: fixedTail,
+      correlation: source,
+    });
+    return { memory, source, adapter };
+  }
+
+  const storedRequestId = (payload: unknown): unknown =>
+    (payload as Record<string, unknown>).requestId;
+
+  test("stamps the request in flight onto a draft that named none", async () => {
+    // Before WIN-260 every one of the eight drafts the tree appends supplied
+    // `requestId: null`, so the envelope's correlation field existed and was
+    // never populated. This is the half that populates it.
+    const { memory, source, adapter } = correlatedHarness();
+    source.enter("req-from-the-edge");
+    await memory.unitOfWork.run((transaction) =>
+      adapter.append(draft("tenancy.invitation.issued", {}), transaction),
+    );
+    expect(storedRequestId(memory.rows()[0]?.payload)).toBe("req-from-the-edge");
+  });
+
+  test("does NOT overwrite a request the producer named", async () => {
+    // An event appended while replaying work on behalf of an EARLIER request
+    // belongs to that request. An overwrite would relabel history with whatever
+    // happened to be in flight, which is the drift correlation exists to stop.
+    const { memory, source, adapter } = correlatedHarness();
+    source.enter("req-now");
+    await memory.unitOfWork.run((transaction) =>
+      adapter.append(
+        { ...draft("tenancy.invitation.issued", {}), requestId: asIdentifier<RequestId>("req-original") },
+        transaction,
+      ),
+    );
+    expect(storedRequestId(memory.rows()[0]?.payload)).toBe("req-original");
+  });
+
+  test("leaves requestId NULL for work that belongs to no request", async () => {
+    // A drain tick, a scheduled sweep, a boot-time migration. A fabricated
+    // correlation is worse than an absent one: absence is visible.
+    const { memory, source, adapter } = correlatedHarness();
+    source.enter(null);
+    await memory.unitOfWork.run((transaction) =>
+      adapter.append(draft("tenancy.invitation.issued", {}), transaction),
+    );
+    expect(storedRequestId(memory.rows()[0]?.payload)).toBeNull();
+  });
+
+  test("an adapter built with NO correlation source behaves exactly as before", async () => {
+    // The negative control. If the stamp were unconditional this would pass by
+    // accident on an adapter that had a source; with none supplied there is
+    // nothing to stamp, and the producer's null has to survive.
+    const { memory, adapter } = harness();
+    await memory.unitOfWork.run((transaction) =>
+      adapter.append(draft("tenancy.invitation.issued", {}), transaction),
+    );
+    expect(storedRequestId(memory.rows()[0]?.payload)).toBeNull();
+  });
+
+  test("the stamped id survives the drain, so a consumer inherits it", async () => {
+    // The point of the field: an asynchronous consumer that never saw the
+    // request can still join its work to the request that caused it.
+    const { memory, source, adapter } = correlatedHarness();
+    source.enter("req-carried");
+    await memory.unitOfWork.run((transaction) =>
+      adapter.append(draft("tenancy.invitation.issued", {}), transaction),
+    );
+    const page = await adapter.drain(null, 10);
+    expect(page.events[0]?.requestId).toBe("req-carried");
   });
 });
 

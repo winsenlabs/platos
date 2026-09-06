@@ -1119,6 +1119,9 @@ importers:
       '@platos/context-tools':
         specifier: workspace:*
         version: link:../../contexts/tools
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
       '@platos/tenancy-database':
         specifier: workspace:*
         version: link:../../../internal-packages/tenancy-database

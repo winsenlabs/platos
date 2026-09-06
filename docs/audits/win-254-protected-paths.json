@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "70d7c9d8f89de386f1dd32141ca39c663247e6b3adac07df48c35da6ef0ab662"
+      "sha256": "939974b83eb6c17345fd9121a729cd46478b5197cc23f4478f7009343dbbd944"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "54467a353071e9d538fa07935adfc45fe697975c7101c60975e05f6d14082e83"
+      "sha256": "edd10b4025ce1ac69bcea22f2d89d2777c6d766b81761fa4f5785ac10750657f"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "8cdd89869c1af0ce7e91e01ee09364d1d965a0cdc81f7c07434eb9aa4e8dab4a"
+      "sha256": "c7938bf6160e430ae8623e683299d64bbd04c3502f9d518f5fe968d9d4064864"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "172a00795ca74aba5d7924f36e2a4eef8c9aac89df9928788b8508556d1bf01c"
+      "sha256": "373fb10298428b12a7ee20c2181bd6e15f3d4861a0a15fecce6b963c0144f644"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3473,7 +3473,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "17529e482fa3d2db9e3002794a258f9000c9e764e673677a37e26f010973a137"
+      "sha256": "3ee96496ffd09cda922de7737a3985a12e5cc2cd6d647bd8c5f5ddbfc517d9c0"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3648,7 +3648,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "e34e96d623fbfbff43c8a8b825ac2ea11316df1f0e07811fc6e5fa53e6da442b"
+      "sha256": "31120bf9a72f3b1ee444af1313fd7f3886a6c02bfea06621e0f334fc87dc0a02"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3908,7 +3908,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "30d014da2451bce937992348018d56e72e8b5366acb0ca2b05aa7a3aa8697289"
+      "sha256": "aceb45a4104a152a93c3f9e977d87e8481612b2753eef07e238494cb57b11849"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

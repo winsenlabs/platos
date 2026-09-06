@@ -347,17 +347,56 @@ export function adapterOwners(adapter) {
 }
 
 /** The projects an adapter references: one per distinct owner it serves. */
+/**
+ * Workspace projects an adapter depends on that are NOT one of its port owners.
+ *
+ * WIN-260 (M2.5). `packages/adapters/postgres-tenancy` implements seventeen
+ * contexts' ports and none of the kernel's, so no owner ever put `packages/kernel`
+ * on its edge list — and its `transaction.ts` now CONSUMES the kernel
+ * `CorrelationSource` port, so that the request identifier the process edge
+ * decided on reaches PostgreSQL's own transaction-local settings and can be read
+ * back off a committed row by a second connection.
+ *
+ * The edge is DECLARED rather than avoided. WIN-258 T7 faced the same choice and
+ * took `environmentScope` from `channels` instead, on the grounds that "adding
+ * `@platos/kernel` to this package's manifest for one function would add a
+ * workspace edge `scripts/arch/v1-project-graph.mjs` counts". That reasoning
+ * holds for a helper a SUITE borrows and not for a port the adapter implements
+ * against: a consumed port is the dependency, and hiding it behind a re-export
+ * from an unrelated context would make the graph say something false.
+ *
+ * One table, two derivations — the tsconfig reference (which IS the build DAG)
+ * and the manifest dependency — so the two cannot disagree. The count moves
+ * 111 -> 112 in BOTH `EXPECTED_EDGE_COUNT` here and the independent expectation
+ * in `scripts/arch/v1-project-graph.mjs`, which is maintained separately on
+ * purpose.
+ */
+export const ADAPTER_EXTRA_PROJECTS = Object.freeze({
+  "postgres-tenancy": ["packages/kernel"],
+});
+
+/** The workspace name a V1 project publishes under. */
+function packageNameForProject(project) {
+  if (project === "packages/kernel") return "@platos/kernel";
+  const context = /^packages\/contexts\/(.+)$/u.exec(project);
+  if (context !== null) return `@platos/context-${context[1]}`;
+  const adapter = /^packages\/adapters\/(.+)$/u.exec(project);
+  if (adapter !== null) return `@platos/adapter-${adapter[1]}`;
+  throw new Error(`no workspace package name for project ${project}`);
+}
+
 export function adapterOwnerProjects(adapter) {
-  return adapterOwners(adapter).map((owner) =>
-    owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`,
-  );
+  return [
+    ...adapterOwners(adapter).map((owner) =>
+      owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`,
+    ),
+    ...(ADAPTER_EXTRA_PROJECTS[adapter.dir] ?? []),
+  ];
 }
 
 /** The workspace packages an adapter depends on: one per distinct owner. */
 export function adapterOwnerPackages(adapter) {
-  return adapterOwners(adapter).map((owner) =>
-    owner === "kernel" ? "@platos/kernel" : `@platos/context-${owner}`,
-  );
+  return adapterOwnerProjects(adapter).map(packageNameForProject);
 }
 
 // ADR M0.3 §4 names twelve concrete adapter DIRECTORIES and, after the §15
@@ -661,7 +700,18 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // graph either way. The independent expectation in
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 111;
+//
+// WIN-260 (M2.5): 111 -> 112, and this one is NOT an owner edge.
+// `packages/adapters/postgres-tenancy` -> `packages/kernel`, because
+// `transaction.ts` consumes the kernel `CorrelationSource` port so the request
+// identifier the process edge decided on is stamped into PostgreSQL's own
+// transaction-local settings and can be read back off a committed row. Every
+// other edge into this directory carries a canonical-store port an owner
+// PUBLISHES; this one carries a port the adapter CONSUMES, which is why
+// `ADAPTER_EXTRA_PROJECTS` exists rather than a seventeenth owner being invented
+// to hang it on. No cycle: the kernel imports nothing (`kernel-is-leaf`), so an
+// edge INTO it can never come back out.
+export const EXPECTED_EDGE_COUNT = 112;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -691,7 +741,7 @@ export const EXPECTED_PLACEHOLDER_FILE_COUNT = 104;
 // + EXTRA real files), and `gen-v1-skeleton.test.mjs` asserts exactly that.
 // ---------------------------------------------------------------------------
 export const ADOPTED_PROJECTS = [
-  "packages/kernel", // WIN-256 — the nine decoupling ports and the value objects
+  "packages/kernel", // WIN-256 — the decoupling ports and the value objects (nine at WIN-256; CorrelationSource is the tenth, WIN-260)
   "packages/contexts/identity-access", // WIN-256 — the DAG leaf that kills the wrong-way auth edges
   "packages/contexts/tenancy", // WIN-256 — the org/project/environment tree and its authorization
   "packages/contexts/secrets", // WIN-256 — the credential vault and the encryption boundary

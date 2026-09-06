@@ -2331,8 +2331,8 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
-  "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
+  "packages/adapters/outbox": { files: 4, cases: 46 },
+  "packages/adapters/postgres-tenancy": { files: 133, cases: 1492 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2661,7 +2661,55 @@ export const EXPECTED = Object.freeze({
  * 7399 - 1054 = 6345 -> 6353, with the integration term unchanged at 1054.
  * 6353 + 1054 = 7407.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7407;
+/*
+ * WIN-260 DELTA (M2.5), the correlation half. TWO packages, +14 cases and ONE
+ * new file.
+ *
+ * The finding it answers: `DomainEvent.requestId` has been in the kernel
+ * envelope since M2.1 and every one of the EIGHT drafts the tree appends
+ * supplied `requestId: null`, while `RequestScope` — the other carrier — was
+ * named by exactly one port and taken by no use case. The identifier was minted
+ * at the process edge and reached nothing. `CorrelationSource` is the kernel's
+ * TENTH port and the seam that carries it.
+ *
+ *   packages/adapters/outbox            41 -> 46 (+5), no new FILE.
+ *     src/adapter.test.ts  +5  the stamp fills a draft that named no request;
+ *                              a draft that DID name one is not overwritten (an
+ *                              event appended while replaying earlier work
+ *                              belongs to that earlier request); work outside
+ *                              any request stays null rather than being given a
+ *                              fabricated id; an adapter built with NO source
+ *                              behaves exactly as before, which is the control
+ *                              that keeps the other four from passing on an
+ *                              unconditional stamp; and the id survives the
+ *                              DRAIN, which is the point of the field.
+ *
+ *   packages/adapters/postgres-tenancy  1483 -> 1492 (+9), files 132 -> 133.
+ *     src/correlation.integration.test.ts  +9, all NINE in the new file. Every
+ *                              one reads `current_setting('platos.request_id',
+ *                              true)` off the transaction's own connection or
+ *                              reads a committed row through the ONLOOKER — a
+ *                              case that asserted the source's own memory would
+ *                              have proved AsyncLocalStorage works and nothing
+ *                              about the database. The nine are: PostgreSQL
+ *                              reports the edge's id; the option answered for is
+ *                              the one the exported constant names (the join
+ *                              that stops the constant and the literal SQL
+ *                              drifting); no request stamps nothing; a runner
+ *                              with no source stamps nothing (the control); the
+ *                              setting is TRANSACTION-local and cannot leak onto
+ *                              the next borrower of a pooled connection; a row
+ *                              written under it is durable while the setting is
+ *                              not; a rolled-back transaction leaves neither;
+ *                              concurrent requests do not borrow each other's;
+ *                              and a nested unit of work inherits the outer id.
+ *
+ * ALL NINE CARRY `.integration.` so `pnpm test:v1-packages` executes none of
+ * them; the five outbox cases are runnable. The runnable term therefore goes
+ * 6353 -> 6358 and the integration term 1054 -> 1063, over 109 -> 110 files.
+ * 6358 + 1063 = 7421.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7421;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

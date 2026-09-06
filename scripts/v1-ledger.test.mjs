@@ -951,7 +951,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
     // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
     // again -- is right here, and neither is any pair of them.
-    packages: 1397,
+    //
+    // 1397 -> 1399. WIN-260 (M2.5) adds TWO, one to `packages.kernel.source` and
+    // one to `packages.adapters.test`, on rules that already existed:
+    //   packages/kernel/src/ports/correlation.ts   the TENTH kernel port,
+    //     `CorrelationSource`. The nine before it were closed by a comment that
+    //     said so; this one earns the place on the same test they pass, in that
+    //     it belongs to no context -- every context produces work a request
+    //     identifier must follow and none of them decides anything with one.
+    //   packages/adapters/postgres-tenancy/src/correlation.integration.test.ts
+    //     the nine cases that read the identifier back out of PostgreSQL.
+    // The three files WIN-260 widened to carry it -- the outbox adapter, the
+    // transaction runner and the app's edge module -- add none: each was widened
+    // in place, and a widened file is not a new one.
+    packages: 1399,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1214,7 +1227,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 14,
     "root-infra": 43,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1487);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1489);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1251,10 +1264,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and that tranche's rollout rehearsal +11 across TWO areas, 3 in
     // `packages` and 8 in `internal-packages`, and WIN-260's error taxonomy +5
     // across THREE areas, 2 in `apps-core-api`, 1 in `docs-content` and 2 in
-    // `root-infra`, and none in `packages`); this one re-derives it by
+    // `root-infra`, and none in `packages`, and WIN-260's correlation half +2 in
+    // `packages`, the tenth kernel port and the suite that reads the identifier
+    // back out of PostgreSQL); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1487
+    rulesDocument.baseline.totalFiles + 1489
   );
 });
 

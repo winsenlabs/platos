@@ -17,6 +17,8 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 
+import { asIdentifier, type CorrelationRef, type CorrelationSource, type RequestId } from "@platos/kernel";
+
 /** What travels with one inbound unit of work at the edge. */
 export interface CorrelationContext {
   readonly requestId: string;
@@ -65,3 +67,25 @@ export function withCorrelation<Value>(context: CorrelationContext, work: () => 
 export function currentCorrelation(): CorrelationContext | null {
   return storage.getStore() ?? null;
 }
+
+/**
+ * The kernel `CorrelationSource` over this module's storage.
+ *
+ * WIN-260. The id had nowhere to go: `RequestScope` carried one, exactly one
+ * port named `RequestScope`, and every domain event the tree appends supplied
+ * `requestId: null`. This is the seam that lets an adapter read the id the edge
+ * decided on WITHOUT importing this app — the adapter names the kernel port, the
+ * composition root hands it this object, and `packages/adapters/postgres-tenancy`
+ * puts the value into PostgreSQL's own session state for the transaction, where
+ * a second connection can read it back off the committed row.
+ *
+ * It is a plain object rather than a class because it holds no state of its own:
+ * the storage is this module's, and a second instance would read the same frame.
+ */
+export const correlationSource: CorrelationSource = {
+  current(): CorrelationRef | null {
+    const context = storage.getStore();
+    if (context === undefined) return null;
+    return { requestId: asIdentifier<RequestId>(context.requestId) };
+  },
+};
