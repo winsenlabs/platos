@@ -7,8 +7,8 @@
     "docs/audits/win-254-protected-paths.json",
     "docs/audits/win-254-evidence-lifecycle.json"
   ],
-  "pathCount": 788,
-  "pathSetSha256": "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4",
+  "pathCount": 789,
+  "pathSetSha256": "80bc12c13e261492fc566ed5fbed0462104dd7f45f81d7ea979da4f1bb37251f",
   "entries": [
     {
       "path": ".github/workflows/ci.yml",
@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "682b4929ded1249ba1aadd56a62a75d4adf3decab5502c0057dc5a7b00d6fa2e"
+      "sha256": "e4148b0ffd09fb1fe2baadf8452b61bfd227a9c1532f5c3b9d863f891ecbaf08"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,17 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "69270bf5fdcff15e7cc1797c13f8e8000314a373d877533e6f46c46b143f5274"
+      "sha256": "b290c8bfebf8c16c302b012f0087404abd87fee2170cb64acb3678b62345a327"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "d49be28581c8b900a3a5036669b7ed35791862b9f33d486bfa66a4dc57f8ab2e"
+      "sha256": "9a5affdc9c059b85d36aa44a6a6a5b45f530e64b57f390e0faed4b24c6f35c44"
+    },
+    {
+      "path": "docs/audits/win-259-secret-response-census.json",
+      "mode": "100644",
+      "sha256": "99f2d1970f404cb8df25270100b6a0928b90254058703fe80eafd6344a7fdec8"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1068,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "4056fee251592aa44f69be131fae3d2ec892ab55b169f54d8054f20043df04da"
+      "sha256": "4f3441d537213ea8a2ff22b71c71bbd40a6f488f3f4c23b4dc606bac397a126a"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3473,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "b3d8cae9c8229502f9747a7ebd3f599509b9e46800d5677fc3c2b9e552b24605"
+      "sha256": "7672ecf8bb40cbfad8d960151129f5c3330897eab379ff3dfcb2b194eff44745"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3638,7 +3643,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "1183568aa76211de07ab4b398f5149a704c5329de35edf2ab8bb969d95215ded"
+      "sha256": "e079d4fc800dc42d90535037c34a7e913f8eac939da884d71f07e3360a724ee6"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3853,12 +3858,12 @@
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "ad32339d928779598aaefaaa57b3b7cc73a968a5e1f1bd5d7d4adcc6a18bed8e"
+      "sha256": "886a329c16813dbe33647c88fe7198720c6f9184aa5c3a609cef7bc0d00ebbb1"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
       "mode": "100644",
-      "sha256": "ff182354cbf4be65cbd9113099ed31b46574cdda926e740d39d948de1e54d12f"
+      "sha256": "c54577c7fd9be823106fc94ba2a96794c347abad817da83fea3c9760ba30e3f2"
     },
     {
       "path": "scripts/lib/advisory-dispositions.mjs",
@@ -3878,7 +3883,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "01be0087ccd5e16d439ed1cbdd1e1f441d2568d56abbbe8b5cb203b01afd2fc2"
+      "sha256": "61426c2257160b3c683443f66b6cfe7f007940615816f7ba9ba85b75e1098417"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
@@ -3903,7 +3908,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "76a3976e4782e3670c72520b64cb8f5542f533de5fb0538d9a3cd93d816a46bf"
+      "sha256": "7a647f390b67280793500327f57bbbe343b958fbccd352af1ed1de5f4291c467"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
