@@ -455,6 +455,19 @@ jobs:
         # step the six suites do not fail an assertion — they fail to LOAD, which
         # is the vacuity the mutation driver beside this package refuses to score.
         run: pnpm --filter "@platos/context-memory..." build
+      - name: Build the jobs context
+        # WIN-258 T5. The THIRTEENTH owner delegated to this directory. Its
+        # suites resolve that context through TWO published subpaths, both of
+        # which are dist/: `application/ports/index.js` for `JobsRepository`,
+        # `ApprovalsRepository` and the twenty-six domain values their signatures
+        # name — republished there by this tranche, because before it the two
+        # ports were nameable and `Job` and `Approval` were not — and
+        # `application/testing/index.js` for `InMemoryJobsRepository` and
+        # `InMemoryApprovalsRepository`, which the conformance differential is
+        # measured against. Without this step the six suites do not fail an
+        # assertion — they fail to LOAD, which is the vacuity the mutation driver
+        # beside this package refuses to score.
+        run: pnpm --filter "@platos/context-jobs..." build
 
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
@@ -484,6 +497,13 @@ jobs:
         # eight owners' harnesses had to seed by hand because it had no entry in
         # `CANONICAL_STORE_ADAPTERS`. Those fixtures are unchanged and stay
         # unchanged: the entry moves no owner TAG.
+        #
+        # And the `jobs` canonical store — the two rows of ADR M0.3 §1 row 15,
+        # the narrowest grant in the map, and the store whose `AgentApproval`
+        # carries the strongest reason in this directory to reach for a row it
+        # does not own: `enforce_domain_ancestry` re-reads its `Agent`, its
+        # `Thread` and its `Turn` from inside its own INSERT, and all three
+        # belong to other contexts. They are seeded through the ORM's own CLI.
         #
         # They FAIL when Docker is absent rather than skipping.
         run: pnpm test:postgres-tenancy:integration

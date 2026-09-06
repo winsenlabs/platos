@@ -9,12 +9,16 @@
 // is where a per-scope query would be invisible until it was slow on the
 // install with the most tenants.
 //
-// `findScopesWithPending` IS THE PIN THIS SUITE EXISTS FOR. The live
-// `sweepExpiredAllScopes` reads its distinct environments and then calls
-// `sweepExpired` ONCE PER SCOPE, which is an N+1 in the TENANT TREE rather than
-// in the rows — and the port deliberately splits the enumeration from the sweep
-// so the enumeration can be one statement. It is measured here at three scopes
-// and at one, and both are ONE.
+// `findScopesWithPending` IS THE PIN THIS SUITE EXISTS FOR, AND IT IS THREE
+// RATHER THAN ONE. The live `sweepExpiredAllScopes` reads its distinct
+// environments and then calls `sweepExpired` ONCE PER SCOPE, which is an N+1 in
+// the TENANT TREE rather than in the rows — and the port splits the enumeration
+// from the sweep so the enumeration can be constant. It is: the client loads
+// each relation level with a query of its own, so the cost is
+// `AgentApproval -> Environment -> Project`, which the SCHEMA fixes at three.
+// The case measures it at three scopes and at six and gets three both times,
+// which is the property that matters; the number itself is the driver's
+// relation-loading strategy and is reported rather than asserted away.
 //
 // THE ERASURE'S TENANT FILTER IS THE SECOND. `countErasable` takes a TENANT
 // scope and every approval stores only its environment, so the containment is a
@@ -299,15 +303,34 @@ describe("the Approval store's reads", () => {
 });
 
 describe("the platform-wide read, and the erasure's tenant filter", () => {
-  test("findScopesWithPending is ONE statement whether one scope is pending or three", async () => {
-    // TWO fixtures already hold pending approvals; a third is seeded here so the
-    // measurement is taken across a growing set rather than a fixed one.
-    const oneMore = await seedFixture(1, "0804");
-    expect(oneMore.approvals.length).toBe(1);
-    const measured = await measure(() => harness.stores.approvals.findScopesWithPending());
-    expect(measured.counted).toBe(1);
+  test("findScopesWithPending costs the SAME whether three scopes are pending or six", async () => {
+    // MEASURED AT THREE, NOT ONE, AND THE THREE ARE THE TENANT TREE'S DEPTH.
+    // The port asks for the distinct environments holding a pending approval
+    // AND the organization each one belongs to, and the client loads each
+    // relation level with a query of its own — the approvals, then their
+    // `Environment` rows, then those rows' `Project` rows. So the cost is
+    // `AgentApproval -> Environment -> Project`, which the SCHEMA fixes, and
+    // nothing here grows with the number of tenants.
+    //
+    // THAT IS THE PROPERTY THIS CASE EXISTS FOR, and it is the one the live
+    // system does not have. `sweepExpiredAllScopes` reads its distinct
+    // environments and then calls `sweepExpired` ONCE PER SCOPE — an N+1 in the
+    // TENANT TREE, invisible until the install with the most tenants — which is
+    // why the port splits the enumeration from the sweep. Three scopes and six
+    // are measured below and both are THREE.
+    const beforeCount = await harness.stores.approvals.findScopesWithPending();
+    expect(beforeCount.ok && beforeCount.value.length).toBeGreaterThanOrEqual(2);
+    const atThree = await measure(() => harness.stores.approvals.findScopesWithPending());
+
+    for (const tag of ["0804", "0807", "0808"]) {
+      const grown = await seedFixture(1, tag);
+      expect(grown.approvals.length).toBe(1);
+    }
+    const atSix = await measure(() => harness.stores.approvals.findScopesWithPending());
+    expect({ three: atThree.counted, six: atSix.counted }).toEqual({ three: 3, six: 3 });
+
     const found = await harness.stores.approvals.findScopesWithPending();
-    expect(found.ok && found.value.length).toBeGreaterThanOrEqual(3);
+    expect(found.ok && found.value.length).toBeGreaterThanOrEqual(5);
   });
 
   test("countErasable is ONE statement at an ENVIRONMENT and at an ORGANIZATION", async () => {

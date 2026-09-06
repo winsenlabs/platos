@@ -33,10 +33,15 @@
 // `findScopesWithPending` IS THE ONE READ IN THIS FILE THAT CROSSES TENANTS, and
 // the port says why it is its own method rather than a null scope on another:
 // "an unscoped read should be impossible to write by accident and obvious to
-// find when auditing". It is ONE statement — `distinct: ["environmentId"]` with
-// the organization joined up through `Environment` and `Project` — and not a
-// distinct read followed by a lookup per environment, which is the N+1 a sweep
-// running platform-wide would pay for on every scope in the install.
+// find when auditing". It is `distinct: ["environmentId"]` with the organization
+// reached up through `Environment` and `Project`, and it costs THREE statements
+// rather than one: the client loads each relation level with a query of its own,
+// so the cost is the DEPTH of the tenant tree and the schema fixes it at three.
+// Nothing in it grows with the number of tenants, which is the property that
+// matters and the one the live `sweepExpiredAllScopes` does not have — that path
+// enumerates the same environments and then calls `sweepExpired` ONCE PER SCOPE.
+// `jobs-statements.integration.test.ts` measures the three at three scopes and
+// at six.
 
 import type {
   Approval,
@@ -173,7 +178,7 @@ export function createApprovalsRepository(
               respondedBy: approval.resolution?.respondedBy ?? null,
               comment: approval.resolution?.comment ?? null,
               toolName: approval.toolName,
-              arguments: writeApprovalEnvelope(approval),
+              arguments: nullableJson(writeApprovalEnvelope(approval)),
               resolution: nullableJson(writeApprovalOutcome(approval.outcome)),
               createdAt: approval.createdAt,
               updatedAt: approval.updatedAt,
@@ -290,7 +295,7 @@ export function createApprovalsRepository(
             respondedBy: approval.resolution?.respondedBy ?? null,
             comment: approval.resolution?.comment ?? null,
             resolvedAt: approval.resolution?.resolvedAt ?? null,
-            arguments: writeApprovalEnvelope(approval),
+            arguments: nullableJson(writeApprovalEnvelope(approval)),
             updatedAt: approval.updatedAt,
           },
         });
@@ -365,7 +370,7 @@ export function createApprovalsRepository(
         const written = await client.agentApproval.updateMany({
           where: { id: row.id, ...scopedWhere(scope) },
           data: {
-            arguments: writeApprovalEnvelope(consumed),
+            arguments: nullableJson(writeApprovalEnvelope(consumed)),
             resolution: nullableJson(writeApprovalOutcome(outcome)),
             updatedAt: at,
           },

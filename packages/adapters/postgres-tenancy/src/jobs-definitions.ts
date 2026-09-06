@@ -105,7 +105,7 @@ const JOB_COLUMNS = {
  * generated client does not have, because `@map` renames the COLUMN and not the
  * property. That helper is not copied. This is the property.
  */
-function jobColumns(job: Job): Record<string, unknown> {
+function jobColumns(job: Job) {
   return {
     externalId: job.jobKey,
     displayName: job.displayName,

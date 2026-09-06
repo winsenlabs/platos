@@ -237,6 +237,30 @@ describe("the approval envelope round-trips every one of its ten column-less fie
     ).toBe(UNREADABLE_APPROVAL_ENVELOPE);
   });
 
+  test("the refusal names the COLUMN it found the problem in, not just the row", () => {
+    // The metadata guard and the field guards share one CODE, because a caller
+    // has one thing to do about either. An OPERATOR does not: "the envelope is
+    // not an object" and "the approvalId inside it is a number" are two
+    // different repairs, and the column is where that distinction is carried.
+    const columnOf = (work: () => unknown): string => {
+      try {
+        work();
+        return "<no refusal>";
+      } catch (error) {
+        return error instanceof UnreadableRowError ? error.column : `<${String(error)}>`;
+      }
+    };
+    expect(columnOf(() => readApprovalEnvelope({ [APPROVAL_METADATA_MARKER]: "nope" }))).toBe(
+      `AgentApproval.arguments.${APPROVAL_METADATA_MARKER}`,
+    );
+    expect(
+      columnOf(() =>
+        readApprovalEnvelope({ [APPROVAL_METADATA_MARKER]: { approvalId: 7, source: "x" } }),
+      ),
+    ).toBe("arguments.__platosApproval.approvalId");
+    expect(columnOf(() => readApprovalEnvelope("nope"))).toBe("AgentApproval.arguments");
+  });
+
   test("a metadata field of the wrong type is unreadable rather than coerced", () => {
     for (const metadata of [
       { approvalId: 7, source: "request_approval" },

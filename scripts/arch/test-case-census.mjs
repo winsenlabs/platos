@@ -2037,7 +2037,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *   jobs-transaction.integration.test.ts    13 — failure injection, the three
  *                                                scope refusals, and the
  *                                                `cost-monitoring` trap
- *   jobs-isolation.integration.test.ts      11 — what the DATABASE decides with
+ *   jobs-isolation.integration.test.ts      16 — what the DATABASE decides with
  *                                                no guard beside it
  *   jobs-conformance.integration.test.ts     1 — one scenario, two stores, one
  *                                                comparison
@@ -2049,8 +2049,15 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * `packages/adapters/postgres-tenancy/mutations-jobs.json` is where those guards
  * are held falsifiable instead.
  *
- * THE PACKAGE ROW THEREFORE MOVES 88 -> 95 FILES and 929 -> 1022 CASES, and the
- * tree total 459 -> 466 files and 6845 -> 6938 cases. The adapters term of the
+ * FIVE OF THE ISOLATION SUITE'S SIXTEEN EXIST BECAUSE THE MUTATION SWEEP ASKED
+ * FOR THEM — the three predicates of the dedupe lookup, the default thirty-day
+ * listing window the conformance differential cannot ask for, the platform-wide
+ * enumeration's `distinct` and its pending filter, the writes that must miss
+ * another tenant's row, and the erasure's tenant narrowing. Every one closed a
+ * guard the first sweep left standing with nothing red.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 88 -> 95 FILES and 929 -> 1027 CASES, and the
+ * tree total 459 -> 466 files and 6845 -> 6943 cases. The adapters term of the
  * three-way identity carries all seven, because every added file is an
  * adapter's: 107 + 7 = 114, and 349 + 3 + 114 = 466.
  */
@@ -2063,7 +2070,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 95, cases: 1022 },
+  "packages/adapters/postgres-tenancy": { files: 95, cases: 1027 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2249,7 +2256,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6938;
+export const EXPECTED_RUNTIME_TOTAL = 6943;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

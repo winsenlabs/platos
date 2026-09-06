@@ -342,11 +342,11 @@ export async function runJobsConformance(
     threadId: asIdentifier<ThreadId>(ids.threadId),
     turnId: asIdentifier<TurnId>(ids.turnId),
     secondTurnId: asIdentifier<TurnId>(ids.secondTurnId),
-    rowIds: ids.approvalRowIds.map((value) => asIdentifier<ApprovalRowId>(value)) as readonly [
-      ApprovalRowId,
-      ApprovalRowId,
-      ApprovalRowId,
-      ApprovalRowId,
+    rowIds: [
+      asIdentifier<ApprovalRowId>(ids.approvalRowIds[0]),
+      asIdentifier<ApprovalRowId>(ids.approvalRowIds[1]),
+      asIdentifier<ApprovalRowId>(ids.approvalRowIds[2]),
+      asIdentifier<ApprovalRowId>(ids.approvalRowIds[3]),
     ],
     absentApprovalId: asIdentifier<ApprovalId>("appr-does-not-exist"),
     absentRowId: asIdentifier<ApprovalRowId>(ids.absentId),

@@ -44,6 +44,8 @@ import type {
   Job,
   JobId,
   JobKey,
+  ThreadId,
+  TurnId,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier, environmentScope } from "@platos/context-jobs/application/ports/index.js";
 import type { TransactionId } from "@platos/context-tenancy/application/ports/index.js";
@@ -173,8 +175,8 @@ describe("a write the DATABASE refuses takes everything written before it with i
         scope,
         approvalIn(second, {
           agentId: asIdentifier<AgentId>(peers.agentId),
-          threadId: asIdentifier(peers.threadId),
-          turnId: asIdentifier(peers.turnId),
+          threadId: asIdentifier<ThreadId>(peers.threadId),
+          turnId: asIdentifier<TurnId>(peers.turnId),
         }),
         transaction,
       );
