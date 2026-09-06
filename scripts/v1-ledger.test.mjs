@@ -524,7 +524,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // app.module.ts and the six transport seams were rewritten in place and add
     // no files. The transports rule stays at exactly 6 — the new rule is
     // declared ahead of it so process code does not inherit transport evidence.
-    "apps-core-api": 19,
+    // 19 -> 22 (WIN-260, M2.5): src/runtime/shutdown-drain.ts and its suite,
+    // plus mutations.json, which the existing apps-core-api.config.package rule
+    // already classifies. The admission gate and its wiring changed
+    // in-flight.ts, lifecycle.ts and their two suites IN PLACE and add no file.
+    "apps-core-api": 22,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -944,7 +948,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
     // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
     // again -- is right here, and neither is any pair of them.
-    packages: 1397,
+    // 1397 -> 1404 (WIN-260, M2.5), and this is the FIRST dimension since
+    // tranche 2 that adds nothing to packages/adapters/postgres-tenancy:
+    //   +4 packages/kernel   — vo/retry.ts, vo/retry.test.ts,
+    //      ports/unit-of-work.test.ts and mutations.json, the kernel's first
+    //      guard ledger. ports/unit-of-work.ts and vo/index.ts were widened IN
+    //      PLACE and a widened file is not a new one.
+    //   +1 packages/contexts/eventing — the kernel-policy conformance suite.
+    //      domain/retry-schedule.ts is UNCHANGED.
+    //   +2 packages/adapters/outbox — src/flush.ts and its suite. The flush is
+    //      HERE and not under apps/core-api because composition-root.mjs rule
+    //      (C1) allows exactly one importer of an adapter package; index.ts and
+    //      mutations.json were widened in place.
+    // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
+    packages: 1404,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1191,10 +1208,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
-    "docs-content": 13,
-    "root-infra": 41,
+    // 13 -> 14 (WIN-260, M2.5): docs/audits/M2.5-transaction-outbox-clock-retry.md,
+    // pinned into docs-content.lifecycle.point-in-time-reports rather than left
+    // to the audit-notes bucket, so this rule and evidence-lifecycle.mjs
+    // classify the same file the same way.
+    "docs-content": 14,
+    // 41 -> 43 (WIN-260, M2.5): scripts/arch/ambient-time.mjs and its test, both
+    // under the existing scripts/** prefix. ci.yml, ci-policy.test.mjs,
+    // protected-paths.mjs, evidence-lifecycle.mjs and the two census files were
+    // edited in place.
+    "root-infra": 43,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1482);
+  // 1482 -> 1495 (WIN-260, M2.5): +3 apps-core-api, +7 packages, +1
+  // docs-content, +2 root-infra = 13, which is also the sum of the four area
+  // deltas above and is asserted as such by the deepEqual below rather than
+  // trusted.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1495);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1232,7 +1261,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and 8 in `internal-packages`); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1482
+    // and WIN-260 (M2.5) +13 across FOUR areas -- 3 apps-core-api, 7 packages,
+    // 1 docs-content, 2 root-infra -- the first dimension since tranche 2 that
+    // adds nothing to `packages/adapters/postgres-tenancy`); this one
+    // re-derives it by summing the per-area counts independently, so the two
+    // can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1495
   );
 });
 

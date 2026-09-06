@@ -7,13 +7,13 @@
     "docs/audits/win-254-protected-paths.json",
     "docs/audits/win-254-evidence-lifecycle.json"
   ],
-  "pathCount": 788,
-  "pathSetSha256": "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4",
+  "pathCount": 789,
+  "pathSetSha256": "1945eba06b0bd47e5f531babb71c16d1ad0caad686269bfc67fe5366c991cbb8",
   "entries": [
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "7f023be9eb11efeb38d7d7772fbd4be702c35154021b3533b78dbed7a4ded226"
+      "sha256": "7f3fef9ffc2832554f5a25f255a94d52237cd64c4caac9fd03cf008d5c390088"
     },
     {
       "path": "LICENSE",
@@ -856,6 +856,11 @@
       "sha256": "f5254318ac99f0ed5c212b9e4bc7a1662dc5997f7e52855119e7beaefa5ab12a"
     },
     {
+      "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
+      "mode": "100644",
+      "sha256": "8a6366e85fdfc75776c2ea790c2c30a36ddf0c65afc1a8cc63eee94c74aa746d"
+    },
+    {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",
       "mode": "100644",
       "sha256": "1091fb28f224657f049d4ed3a4cd362b43fa1597c35ec7c96456868d9937782c"
@@ -1033,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "e8c6e42fe4117fbfeb6238403eaa18d55acc701c46c2fd93127dee75b804cacf"
+      "sha256": "9e5c33d6c2692eb2578713dfa5c7028d8216bba1ef761cade760ede5fecdac98"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "d62719afbb986e6cc16240f1d8d2cd83d74eb9fefb820b9526ad5c5a3311dd0b"
+      "sha256": "f55e8ed893cf792fdb33bdb19a20fbd252a8822131051e67c04c1026350832ca"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1068,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "940b5cb8ad644de80d8be3a752b90580006412363ee4e3bdf66a0cf2315d4468"
+      "sha256": "f98ec4ff5520c2b2f2027af5cc734cefcc046e332d47a689585d1eccd179979e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3853,12 +3858,12 @@
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "ad32339d928779598aaefaaa57b3b7cc73a968a5e1f1bd5d7d4adcc6a18bed8e"
+      "sha256": "6c5400225403de783231d519fcf850eb522ff55dc038c1e42756a84a3c628878"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
       "mode": "100644",
-      "sha256": "ff182354cbf4be65cbd9113099ed31b46574cdda926e740d39d948de1e54d12f"
+      "sha256": "ca6aea4b19c80178a2d87a366850d90ebca1b433988853f0818771db2c1dcdab"
     },
     {
       "path": "scripts/lib/advisory-dispositions.mjs",
@@ -3878,7 +3883,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "01be0087ccd5e16d439ed1cbdd1e1f441d2568d56abbbe8b5cb203b01afd2fc2"
+      "sha256": "cafc75dc52954aeebfc4a24c939473601ef4b6d0fe51e436037748187cb794b1"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
