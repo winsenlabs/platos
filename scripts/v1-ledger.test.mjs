@@ -875,7 +875,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1298,
+    packages: 1317,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1050,7 +1050,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   store, in that SAME one directory) + 21 (its `conversations` canonical
     //   store, the TENTH owner of that one directory) + 18 (its `skills`
     //   canonical store, the ELEVENTH, there again) + 22 (its `memory`
-    //   canonical store, the TWELFTH, in that ONE directory again) = 1374.
+    //   canonical store, the TWELFTH, in that ONE directory again) = 1374,
+    //   + 19 (WIN-258 tranche 5, the `files` canonical store, the THIRTEENTH
+    //   owner of that ONE directory) = 1393.
     //
     // EACH SLICE CARRIES ITS GUARD LEDGER AND IS ONE LARGER THAN ITS `.ts`
     // COUNT. `channels`' 16 are 15 source-and-test files plus
@@ -1078,6 +1080,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // where the work was five suites' worth is exactly the kind of thing a
     // ledger states rather than absorbs.
     //
+    // AND `files`' 19 ARE 18 — eleven source and seven suites — PLUS
+    // `mutations-files.json`, on the same rule as every guard ledger above it:
+    // the existing `packages.adapters.config` rule already classifies it, so no
+    // ledger rule changed. `packages/contexts/files` gains NO file — its port
+    // entry point was widened IN PLACE to publish the names its own fifteen
+    // signatures use, and a widened file is not a new one.
+    //
+    // TWO OF `files`' ELEVEN SOURCE MODULES EXIST BECAUSE THE MUTATION SWEEP
+    // ASKED FOR THEM RATHER THAN THE BUDGET: `files-ancestry.ts` is one question
+    // both halves of the store have to ask the database, in a file so it cannot
+    // be asked two ways, and `files-fixtures.ts` holds the builders four suites
+    // share — kept OUT of the conformance scenario on purpose, because a
+    // differential's values have to be identical on both sides and are minted
+    // from a counter it owns.
+    //
     // ALL FIVE TRANCHE-5 SLICES ARE ALL `packages`, every file under
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
@@ -1085,7 +1102,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1374);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1393);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1108,10 +1125,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // TWO adapter directories, and WIN-258 tranche 5's SIX canonical stores,
     // `tools` +20, `agents` +18, `cost-monitoring` +17, `channels` +16,
     // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21,
-    // `skills` +18 and `memory` +22, all in ONE, plus that tranche's second
-    // sweep +1); this one re-derives it by summing the per-area counts
-    // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1374
+    // `skills` +18, `memory` +22 and `files` +19, all in ONE, plus that
+    // tranche's second sweep +1); this one re-derives it by summing the per-area
+    // counts independently, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1393
   );
 });
 
