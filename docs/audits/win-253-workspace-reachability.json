@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "b88f5d5937a0c69cf41417eb75908c691f148589a404d1c17ccfe9357df4bff8",
+  "evidenceSha256": "cd0203c74479be38180e32454095c838d838b0a7b0dd9dca2b24264660bd11b6",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b50a91c0998eab3bf5825ca7aa1363ce1ece4482c0294908f8dc6841eaadcda1",
+    "aggregateSha256": "91c75436b5555ca01db3663e9483907123ee11f6e5af48efa6f4d52bd9880ac9",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2441,7 +2441,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "ddd772e89c48b9ead0ecb1981799da67f0526a5296190287a81d0c2752412adb"
+        "sha256": "3c269146f5511c1c10410102ae809330b587d22e61b6d8c4dffbccfdc725e103"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -2509,7 +2509,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "fa136a57ce84f143064f7bdb3863fc2776bdba89d2cd000313e8af59f4c83991"
+        "sha256": "aec72da8028d1b76d89cae76bc637e59bc96554139488829a1de832f5c240292"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "e1b30193d44a3940d39c8250499a34c9496a31a38eaf17ea73d98a31247396fb"
+        "sha256": "0f6ae493bfca7a16d196e452760c16ddb2688c7772f5f9201f976a2fdc2c4b4a"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -18333,7 +18333,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "c800bbadfb80b220adc64f88634c68eb0246d2f7bc282d777f78c53d15cd75e9"
+        "sha256": "ca6e1ee07de2e1f5806158bf4c3fd975c01b5bbc1055baa6d83f6c1e805cd04f"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -25978,7 +25978,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 563
+              "line": 574
             },
             {
               "from": "apps/webapp/package.json",
@@ -26789,7 +26789,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "5847c575da7b72b67e3cc0d47c4a4da9ef0cc808314abd52f31dd081ac62e194",
+      "evidenceSha256": "0325694e6b79a3250f8caa0b9a9c9e50a7a950add3294e04c5c4db70c576afed",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
