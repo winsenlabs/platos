@@ -260,6 +260,21 @@ describe("the uuid guard", () => {
         }),
       ),
     ).toBe(EVENTING_IDENTIFIER_NOT_UUID);
+    // AND THE LEAF, which is the id the row actually stores. It is asserted
+    // separately from the two above because the guard returns EARLY at each
+    // level, so a check deleted from the last arm is invisible to a case whose
+    // scope stops at the first: the 2026-09-06 mutation sweep found exactly
+    // that, and M-V14 survived until this line existed.
+    expect(
+      codeOf(() =>
+        guardScope({
+          level: "environment",
+          organizationId: asIdentifier(ORGANIZATION),
+          projectId: asIdentifier(PROJECT),
+          environmentId: asIdentifier("env-1"),
+        }),
+      ),
+    ).toBe(EVENTING_IDENTIFIER_NOT_UUID);
   });
 
   test("the five write-refusal codes are five distinct strings", () => {

@@ -85,7 +85,10 @@
       "from": "  if (!parsed.ok) {\n    throw new UnreadableRowError(EVENTING_NAME_UNREADABLE, \"NotificationRule.name\", value);\n  }",
       "to": "  if (false) {\n    throw new UnreadableRowError(EVENTING_NAME_UNREADABLE, \"NotificationRule.name\", value);\n  }",
       "note": "`name` is a plain TEXT with NO length constraint; `domain/rule-name.ts` says the 1-120 predicate IS the constraint. A cast hands a caller a `RuleName` that is not one, and the value flows straight into the `@@unique([environmentId, name])` lookup.",
-      "suites": ["src/eventing-rows.test.ts", "src/eventing-rules.integration.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts",
+        "src/eventing-rules.integration.test.ts"
+      ]
     },
     {
       "name": "M-V02 rows: NotificationRule.filters is parsed, not cast",
@@ -93,7 +96,10 @@
       "from": "      EVENTING_FILTERS_UNREADABLE,\n      \"NotificationRule.filters\",",
       "to": "      EVENTING_FILTERS_UNREADABLE + \"\",\n      \"NotificationRule.filters-disabled\",",
       "note": "The refusal must name the COLUMN and carry its own code, or an operator reading a log cannot find the row. Changing the column name is the smallest edit that keeps the refusal and destroys its usefulness.",
-      "suites": ["src/eventing-rows.test.ts", "src/eventing-rules.integration.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts",
+        "src/eventing-rules.integration.test.ts"
+      ]
     },
     {
       "name": "M-V03 rows: an unparseable filters column REFUSES rather than returning empty",
@@ -101,7 +107,10 @@
       "from": "function readFilter(value: unknown): RuleFilter {\n  const parsed = parseRuleFilter(value as never);\n  if (!parsed.ok) {",
       "to": "function readFilter(value: unknown): RuleFilter {\n  const parsed = parseRuleFilter(value as never);\n  if (false) {",
       "note": "`NotificationRule_filters_json_root` checks the ROOT only, so `{}` is a legal row this binary cannot read. A cast puts an object with no `eventPatterns` into `ruleAdmits`, whose first act is to iterate them.",
-      "suites": ["src/eventing-rows.test.ts", "src/eventing-rules.integration.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts",
+        "src/eventing-rules.integration.test.ts"
+      ]
     },
     {
       "name": "M-V04 rows: an unrecognised delivery type REFUSES rather than passing through",
@@ -109,7 +118,10 @@
       "from": "function readDestination(value: unknown): Destination {\n  const parsed = parseDestination(value as never);\n  if (!parsed.ok) {",
       "to": "function readDestination(value: unknown): Destination {\n  const parsed = parseDestination(value as never);\n  if (false) {",
       "note": "`domain/destination.ts` says its default arm exists so that \"a rule whose destination cannot be parsed is skipped at routing time rather than delivered to an unknown place\". A cast deletes that arm.",
-      "suites": ["src/eventing-rows.test.ts", "src/eventing-rules.integration.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts",
+        "src/eventing-rules.integration.test.ts"
+      ]
     },
     {
       "name": "M-V05 rows: scopedWhere narrows on the ENVIRONMENT",
@@ -128,7 +140,9 @@
       "from": "    environment: {\n      projectId: scope.projectId,\n      project: { organizationId: scope.organizationId },\n    },\n  };\n}",
       "to": "    environment: {\n      project: { organizationId: scope.organizationId },\n    },\n  };\n}",
       "note": "The clause that makes the ECHOED scope truthful. Without it a caller holding the right environment id under the wrong project gets a rule tagged with an ancestry it does not have.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V07 rows: scopedWhere narrows on the ORGANIZATION",
@@ -136,7 +150,9 @@
       "from": "      projectId: scope.projectId,\n      project: { organizationId: scope.organizationId },\n    },\n  };\n}",
       "to": "      projectId: scope.projectId,\n    },\n  };\n}",
       "note": "The outermost conjunct of the ancestry walk the legacy `environmentScopeWhere` performs.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V08 rows: a PROJECT-level erasure selector still carries its organization",
@@ -144,7 +160,9 @@
       "from": "      environment: {\n        projectId: scope.projectId,\n        project: { organizationId: scope.organizationId },\n      },\n    };\n  }",
       "to": "      environment: {\n        projectId: scope.projectId,\n      },\n    };\n  }",
       "note": "A project id alone would reach a project of ANOTHER organization. Project ids are uuids so a collision is not the risk; a caller passing a project it does not own is.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V09 rows: tenantWhere's ENVIRONMENT arm is the full scoped predicate",
@@ -174,7 +192,9 @@
       "from": "const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;",
       "to": "const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu;",
       "note": "An unanchored pattern admits `{...}`, which PostgreSQL's own `uuid` input accepts and stores under a DIFFERENT spelling — so a row would be written under one string and read back under another, and every rule-id comparison in this context is a string comparison in TypeScript.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V12 guards: guardScope checks the ORGANIZATION id",
@@ -182,7 +202,10 @@
       "from": "  guardUuid(\"scope.organizationId\", scope.organizationId);\n  if (scope.level === \"organization\") return;",
       "to": "  if (scope.level === \"organization\") return;",
       "note": "An organization-level erasure selector names ONE id, and it is this one. Skipping it would send `org-1` into a `@db.Uuid` comparison inside the caller's multi-context erasure transaction.",
-      "suites": ["src/eventing-rows.test.ts", "src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts",
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V13 guards: guardScope checks the PROJECT id",
@@ -190,7 +213,9 @@
       "from": "  guardUuid(\"scope.projectId\", scope.projectId);\n  if (scope.level === \"project\") return;",
       "to": "  if (scope.level === \"project\") return;",
       "note": "The middle conjunct of the ancestry filter, and the one no environment-level caller can reach through a scope it did not build itself.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V14 guards: guardScope checks the ENVIRONMENT id",
@@ -198,7 +223,9 @@
       "from": "  guardUuid(\"scope.environmentId\", scope.environmentId);\n}",
       "to": "}",
       "note": "The leaf id, which is also the only tenancy COLUMN the row carries.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V15 guards: a NUL byte in a text value is refused",
@@ -206,7 +233,9 @@
       "from": "  if (value.includes(\"\\u0000\")) {",
       "to": "  if (false) {",
       "note": "PostgreSQL cannot store U+0000 in a TEXT column or inside a jsonb string, and NOTHING in this context refuses one: `parseRuleName` trims nothing and bounds by code units, `nonEmptyString` asks only for length, and the email rule really is just \"contains @\".",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V16 guards: an Invalid Date is refused before it reaches timestamp(3)",
@@ -214,7 +243,9 @@
       "from": "  if (!Number.isFinite(millis)) {",
       "to": "  if (false) {",
       "note": "`createNotificationRule` and `editNotificationRule` stamp both instants from the context's `Clock`, and a clock that answers `new Date(NaN)` produces a driver error naming neither the column nor the port call.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V17 guards: the DELIVERY union's url arm is walked for NULs",
@@ -222,7 +253,9 @@
       "from": "  guardNoNul(\"delivery.url\", destination.url);",
       "to": "  void destination.url;",
       "note": "Each arm of the destination union carries exactly one string and each is a TEXT-shaped value inside the `delivery` JSONB. The url arm is the one the SSRF screen also looks at, so it is the one an operator is most likely to paste into.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V18 guards: the filters JSON root is checked",
@@ -230,7 +263,9 @@
       "from": "export function guardFiltersJsonRoot(value: unknown): void {\n  guardJsonObject(EVENTING_FILTERS_NOT_OBJECT, \"filters\", value);\n}",
       "to": "export function guardFiltersJsonRoot(value: unknown): void {\n  void value;\n}",
       "note": "Restates `NotificationRule_filters_json_root`. UNREACHABLE through the port — `toRuleFilterInput` returns an object on every path — so the case calls it directly, which is the only honest way to build the input.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V19 guards: the delivery JSON root is checked, under its OWN code",
@@ -238,7 +273,9 @@
       "from": "export function guardDeliveryJsonRoot(value: unknown): void {\n  guardJsonObject(EVENTING_DELIVERY_NOT_OBJECT, \"delivery\", value);\n}",
       "to": "export function guardDeliveryJsonRoot(value: unknown): void {\n  guardJsonObject(EVENTING_FILTERS_NOT_OBJECT, \"delivery\", value);\n}",
       "note": "TWO CHECKS, TWO CODES. `NotificationRule_filters_json_root` and `NotificationRule_delivery_json_root` are separate constraints on separate columns, and a shared code would make an operator read one incident as the other.",
-      "suites": ["src/eventing-rows.test.ts"]
+      "suites": [
+        "src/eventing-rows.test.ts"
+      ]
     },
     {
       "name": "M-V20 guards: the LOOKUP name is guarded, not only the written one",
@@ -246,7 +283,9 @@
       "from": "export function guardNotificationRuleName(name: string): void {\n  guardNoNul(\"name\", name);\n}",
       "to": "export function guardNotificationRuleName(name: string): void {\n  void name;\n}",
       "note": "`findRuleByName` sends the name as a bind parameter of a SELECT, and a NUL in a bind parameter is refused before any row is compared — inside whatever transaction the caller has open. Guarding only the write path keeps the 25P02 out of an insert and lets a lookup put it there instead.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V21 guards: the erasure REPLACEMENT is guarded like any other text",
@@ -254,7 +293,9 @@
       "from": "export function guardReplacementPrincipal(replacement: string): void {\n  guardNoNul(\"replacement\", replacement);\n}",
       "to": "export function guardReplacementPrincipal(replacement: string): void {\n  void replacement;\n}",
       "note": "The replacement comes from the CALLER — the erasure target passes a fixed sentinel, but the port does not require one — and it lands in a TEXT column inside the multi-context transaction `privacy` opened. It is the one place in this store where a refusal costs somebody else's work.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V22 refusal: a TransactionScopeError is RETHROWN, not turned into a Result",
@@ -262,7 +303,9 @@
       "from": "    if (\n      error instanceof EventingWriteRefused ||\n      error instanceof UnreadableRowError ||\n      isDriverError(error)\n    ) {",
       "to": "    if (true) {",
       "note": "The three scope refusals are the property tranche 1 built. Converting them to a `Result` would let a use case that lost its transaction carry on as though a row had merely failed to write.",
-      "suites": ["src/eventing-transaction.integration.test.ts"]
+      "suites": [
+        "src/eventing-transaction.integration.test.ts"
+      ]
     },
     {
       "name": "M-V23 refusal: a foreign key violation gets its OWN reason code",
@@ -270,7 +313,9 @@
       "from": "  if (isForeignKeyViolation(error)) {\n    return `${EVENTING_ENVIRONMENT_UNKNOWN}: ${label} names an environment that does not exist`;\n  }",
       "to": "  if (false) {\n    return `${EVENTING_ENVIRONMENT_UNKNOWN}: ${label} names an environment that does not exist`;\n  }",
       "note": "\"that environment does not exist\" and \"a table is down\" are separate incidents behind one published code, so the distinction lives in `details.reason` — and a reason that fell back to the driver's own message would name neither.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V24 refusal: a refusal's reason LEADS with its distinct code",
@@ -278,7 +323,9 @@
       "from": "  if (error instanceof EventingWriteRefused) return `${error.code}: ${error.detail}`;",
       "to": "  if (error instanceof EventingWriteRefused) return error.detail;",
       "note": "`domain/errors.ts` mints ONE code for a store failure, so the only thing separating five guards in a log is the code at the front of the reason string.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V25 refusal: a name clash is recognised by the ORM's own code",
@@ -286,7 +333,10 @@
       "from": "export function isNameClash(error: unknown): boolean {\n  return isUniqueViolation(error);\n}",
       "to": "export function isNameClash(error: unknown): boolean {\n  void error;\n  return false;\n}",
       "note": "`register-notification-rule.ts` says a racing insert \"still fails at the store, where the adapter maps it onto the same code\". The driver's raw 23505 message names the KEY COLUMNS and not the index, which is why this is recognised by `P2002` rather than by matching prose.",
-      "suites": ["src/eventing-conformance.integration.test.ts", "src/eventing-transaction.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts",
+        "src/eventing-transaction.integration.test.ts"
+      ]
     },
     {
       "name": "M-V26 rules: every read is SCOPED",
@@ -294,7 +344,9 @@
       "from": "      where: { ...scopedWhere(scope), ...where },",
       "to": "      where: { ...where },",
       "note": "The port's own instruction: \"There is no findRule(id). There is findRule(scope, id), and an implementation MUST return null — not a row from another environment — when the id exists elsewhere.\"",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V27 rules: insertRule writes the DOMAIN's id, not the column default",
@@ -302,7 +354,9 @@
       "from": "            data: {\n              id: rule.ruleId,\n              environmentId: rule.scope.environmentId,",
       "to": "            data: {\n              environmentId: rule.scope.environmentId,",
       "note": "`NotificationRule.id` has `@default(uuid())`, so omitting it writes a row the caller cannot address: `registerNotificationRule` returns the rule it built and the store would have stored a different one.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V28 rules: only a NAME CLASH is turned into a conflict on insert",
@@ -310,7 +364,9 @@
       "from": "        } catch (error) {\n          if (!isNameClash(error)) throw error;\n          return err(ruleNameTaken(rule.name));\n        }\n      }, \"insertRule\");",
       "to": "        } catch (error) {\n          void error;\n          return err(ruleNameTaken(rule.name));\n        }\n      }, \"insertRule\");",
       "note": "The catch sits over EVERY driver failure the insert can raise, and the foreign key is one of them. Swallowing it would report \"that name is taken\" for an environment that does not exist.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V29 rules: updateRule is addressed by the whole ancestry, not by the id",
@@ -318,7 +374,9 @@
       "from": "            where: { id: rule.ruleId, ...scopedWhere(rule.scope) },",
       "to": "            where: { id: rule.ruleId },",
       "note": "The legacy `updateRule` writes with an UNSCOPED where and is safe only because of the read before it. Here the scope travels on the rule, so a synthesised one must match no row rather than update somebody else's.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V30 rules: an update that matched NOTHING is reported, not invented",
@@ -326,7 +384,9 @@
       "from": "          if (row === undefined) return err(ruleNotFound(rule.ruleId));",
       "to": "          if (false) return err(ruleNotFound(rule.ruleId));",
       "note": "`updateManyAndReturn` answers an empty array rather than raising, so without this the method would return the row it did not write — which is exactly the upsert the in-memory double performs and this store deliberately does not.",
-      "suites": ["src/eventing-constraints.integration.test.ts"]
+      "suites": [
+        "src/eventing-constraints.integration.test.ts"
+      ]
     },
     {
       "name": "M-V31 rules: updatedAt is written EXPLICITLY, against the @updatedAt stamp",
@@ -334,7 +394,9 @@
       "from": "    createdAt: rule.createdAt,\n    updatedAt: rule.updatedAt,\n  };\n}",
       "to": "    createdAt: rule.createdAt,\n  };\n}",
       "note": "The column carries `@updatedAt`, so the client stamps it on every update unless a value is supplied — and `editNotificationRule` already computed one from the context's Clock. Letting the client win makes `updateNotificationRule` return a rule that disagrees with the row it just wrote.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V32 rules: deleteRule reports whether a row actually went",
@@ -342,7 +404,9 @@
       "from": "        return ok(count > 0);",
       "to": "        return ok(count >= 0);",
       "note": "`deleteNotificationRule` turns the boolean into the caller's answer, so a store that always said `true` would report a rule removed from an environment that never held it.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V33 rules: the DELETE is scoped",
@@ -350,7 +414,9 @@
       "from": "          where: { id: ruleId, ...scopedWhere(scope) },\n        });\n        return ok(count > 0);",
       "to": "          where: { id: ruleId },\n        });\n        return ok(count > 0);",
       "note": "An unscoped delete addressed by id alone removes another environment's standing order, and the caller is told it succeeded.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V34 rules: listRules is NEWEST FIRST",
@@ -358,7 +424,9 @@
       "from": "          orderBy: { createdAt: \"desc\" },",
       "to": "          orderBy: { createdAt: \"asc\" },",
       "note": "The port promises it and the legacy `orderBy: { createdAt: \"desc\" }` is where it comes from. The double sorts the same way, so the differential compares two ordered lists rather than two sets.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V35 rules: the routing read is narrowed to ENABLED rules in the STORE",
@@ -366,15 +434,20 @@
       "from": "          where: { ...scopedWhere(scope), enabled: true },",
       "to": "          where: { ...scopedWhere(scope) },",
       "note": "The port says why: \"a routing pass over a busy environment must not load every disabled rule to discard it in memory\". `ruleAdmits` re-checks `enabled`, so the delivery would still be correct and the read would still be wrong.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V36 erasure: a vacuous selector costs NO statement on the count",
       "file": "src/eventing-erasure.ts",
       "from": "        if (selector.principalId === null) return ok(0);\n        guardScope(selector.scope);\n        const total = await transactions.reader().notificationRule.count({",
       "to": "        guardScope(selector.scope);\n        const total = await transactions.reader().notificationRule.count({",
-      "note": "An `end-user` or an `entity` subject never registered a rule, so the plan is vacuous — and falling through would still ANSWER zero, because `createdBy` is NOT NULL. Only the statement count can tell the two apart, which is why it is pinned at zero.",
-      "suites": ["src/eventing-statements.integration.test.ts"]
+      "note": "An `end-user` or an `entity` subject never registered a rule, so the plan is vacuous. FALLING THROUGH DOES NOT ANSWER ZERO, and the 2026-09-06 sweep is where that was learned: `createdBy` is a NON-NULLABLE String, so `where: { createdBy: null }` is a CLIENT VALIDATION error rather than a query that matches nothing — the delegate never sends a statement, so the statement pin cannot see it, and the caller gets a refusal where the port promises a count. The differential is what catches it, because the double answers zero.",
+      "suites": [
+        "src/eventing-conformance.integration.test.ts",
+        "src/eventing-statements.integration.test.ts"
+      ]
     },
     {
       "name": "M-V37 erasure: a vacuous selector costs NO statement on the scrub either",
@@ -382,7 +455,9 @@
       "from": "        if (selector.principalId === null) return ok(0);\n        guardScope(selector.scope);\n        guardReplacementPrincipal(replacement);",
       "to": "        guardScope(selector.scope);\n        guardReplacementPrincipal(replacement);",
       "note": "The same shortcut on the write half, and it matters more: the erasure path runs inside `privacy`'s transaction, so a statement per vacuous target is a statement per target on every erasure of a non-operator subject.",
-      "suites": ["src/eventing-statements.integration.test.ts"]
+      "suites": [
+        "src/eventing-statements.integration.test.ts"
+      ]
     },
     {
       "name": "M-V38 erasure: the containment join carries the ORGANIZATION clause",
@@ -390,7 +465,9 @@
       "from": "             AND p.\"organizationId\" = ${organizationId}::uuid",
       "to": "             AND (p.\"organizationId\" = ${organizationId}::uuid OR true)",
       "note": "The outermost clause. Without it the statement scrubs every matching row in the INSTALLATION, and every other assertion about the erasure still passes.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V39 erasure: the containment join carries the PROJECT clause",
@@ -398,7 +475,9 @@
       "from": "             AND (${projectId}::uuid IS NULL OR e.\"projectId\" = ${projectId}::uuid)",
       "to": "             AND (${projectId}::uuid IS NULL OR TRUE)",
       "note": "A project-level erasure that widened to the organization would scrub a second project's standing orders. It is unfalsifiable in a tenant with ONE project, which is why the harness has a COUSIN.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V40 erasure: the containment join carries the ENVIRONMENT clause",
@@ -406,7 +485,9 @@
       "from": "             AND (${environmentId}::uuid IS NULL OR r.\"environmentId\" = ${environmentId}::uuid)",
       "to": "             AND (${environmentId}::uuid IS NULL OR TRUE)",
       "note": "The narrowest clause, and the one the scenario could not see until the erasure widened in three steps rather than one.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V41 erasure: the scrub is restricted to the SUBJECT's own rows",
@@ -414,7 +495,9 @@
       "from": "             AND r.\"createdBy\" = ${selector.principalId}",
       "to": "             AND (r.\"createdBy\" = ${selector.principalId} OR true)",
       "note": "An erasure that scrubbed every row in the scope would destroy the attribution of every OTHER operator's standing orders, and would report a count that looked like a thorough job.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V42 erasure: the scrub does NOT move updatedAt",
@@ -422,7 +505,9 @@
       "from": "        const count = await transactions.writer(transaction).$executeRaw`\n          UPDATE \"NotificationRule\" AS r\n             SET \"createdBy\" = ${replacement}",
       "to": "        const count = await transactions.writer(transaction).$executeRaw`\n          UPDATE \"NotificationRule\" AS r\n             SET \"updatedAt\" = now(), \"createdBy\" = ${replacement}",
       "note": "The whole reason this write is raw SQL rather than an `updateMany`. `updatedAt` is when the standing ORDER last changed, the DOMAIN computes it, and the in-memory double leaves it alone — so a client-stamped column is a difference the differential compares verbatim.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V43 erasure: the count and the scrub agree on the level",
@@ -430,7 +515,9 @@
       "from": "function selectedProject(selector: EventingErasureSelector): string | null {\n  return selector.scope.level === \"organization\" ? null : selector.scope.projectId;\n}",
       "to": "function selectedProject(selector: EventingErasureSelector): string | null {\n  void selector;\n  return null;\n}",
       "note": "The count goes through the delegate with `tenantWhere` and the scrub through a hand-written join; TWO spellings of one containment rule can drift, so the scenario asserts at every level that the number planned is the number erased.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     },
     {
       "name": "M-V44 erasure: the ENVIRONMENT id is bound only when the level names it",
@@ -438,7 +525,9 @@
       "from": "function selectedEnvironment(selector: EventingErasureSelector): string | null {\n  return selector.scope.level === \"environment\" ? selector.scope.environmentId : null;\n}",
       "to": "function selectedEnvironment(selector: EventingErasureSelector): string | null {\n  void selector;\n  return null;\n}",
       "note": "The converse of M-V43: binding NULL where the level DOES name an environment widens an environment-level erasure to its whole project.",
-      "suites": ["src/eventing-conformance.integration.test.ts"]
+      "suites": [
+        "src/eventing-conformance.integration.test.ts"
+      ]
     }
   ],
   "sweep": [
