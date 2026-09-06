@@ -25,13 +25,13 @@
 //   Skill_manifest_json_root            CHECK jsonb_typeof("manifest") = 'object'
 //   Skill_providesTools_json_root       CHECK jsonb_typeof("providesTools") = 'array'
 //   EnvironmentSkill_config_json_root   CHECK jsonb_typeof("config") = 'object'
-//   Skill_owner_immutable               TRIGGER rejecting an organizationId change
-//   ProjectSkill_owner_immutable        TRIGGER rejecting a projectId change
-//   EnvironmentSkill_owner_immutable    TRIGGER rejecting an environmentId change
-//   ProjectSkill_ancestry               TRIGGER: the project and the skill must
+//   Skill_owner_immutable               RULE rejecting an organizationId change
+//   ProjectSkill_owner_immutable        RULE rejecting a projectId change
+//   EnvironmentSkill_owner_immutable    RULE rejecting an environmentId change
+//   ProjectSkill_ancestry               RULE: the project and the skill must
 //                                       share an organization — ON INSERT *AND*
 //                                       ON UPDATE
-//   EnvironmentSkill_ancestry           TRIGGER: the environment and the project
+//   EnvironmentSkill_ancestry           RULE: the environment and the project
 //                                       adoption must share a project — likewise
 //                                       on both
 //
@@ -95,7 +95,7 @@ export const INSTANT_NOT_REPRESENTABLE = "skills.write.instant_not_representable
  * `upsertProjectInstallation` takes a `CatalogueScope` and a `SkillId` and has to
  * write `ProjectSkill.projectId` from the scope; `ProjectSkill_ancestry` will
  * then check the project against the SKILL's organization. This guard catches the
- * case the trigger cannot see, because the trigger reads the stored rows and not
+ * case the rule cannot see, because the rule reads the stored rows and not
  * the caller's claim: a scope whose `organizationId` and `projectId` are
  * inconsistent with each other is a forged scope, and it must not reach a
  * statement that would resolve the project alone and quietly write into whatever

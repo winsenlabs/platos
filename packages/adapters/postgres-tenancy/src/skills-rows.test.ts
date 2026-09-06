@@ -113,7 +113,7 @@ describe("the uuid guard is the canonical hyphenated form and nothing else", () 
 });
 
 describe("a scope naming one identifier at two levels is refused", () => {
-  test("because the trigger reads the stored rows and not the caller's claim", () => {
+  test("because the rule reads the stored rows and not the caller's claim", () => {
     expect(() => requireCoherentScope(ORGANIZATION, PROJECT, ENVIRONMENT)).not.toThrow();
     expect(codeOfThrow(() => requireCoherentScope(ORGANIZATION, ORGANIZATION, ENVIRONMENT))).toBe(
       SCOPE_ANCESTRY_INCOHERENT,

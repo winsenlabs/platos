@@ -6,7 +6,7 @@
 // production and staging of one project hold different `config` for the same
 // skill, and what makes a half-created install unrepresentable.
 //
-// *** TWO TRIGGERS GOVERN THESE TABLES AND NEITHER IS IN `schema.prisma` ***
+// *** TWO RULES GOVERN THESE TABLES AND NEITHER IS IN `schema.prisma` ***
 //
 //   ProjectSkill_ancestry      BEFORE INSERT OR UPDATE. Demands that the project
 //                              and the skill share an ORGANIZATION. So adopting
@@ -84,7 +84,7 @@ interface InstallationRow extends EnvironmentSkillRow {
  * organization clause is not redundant with the project clause. Every read of
  * this table is addressed by an `EnvironmentScope` the CALLER supplied, and the
  * only thing that makes the three ids a real chain is a join that says so — the
- * database's own ancestry triggers check the rows against each other when they
+ * database's own ancestry rules check the rows against each other when they
  * are WRITTEN and have nothing to say about a scope produced later. The
  * in-memory double compares `organizationId` on the project half for exactly
  * this reason.

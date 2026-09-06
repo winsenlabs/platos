@@ -17,7 +17,7 @@
 // hangs off a chain rooted in this id.
 //
 // `organizationId`, `slug` AND `version` DO NOT APPEAR IN THE UPDATE CLAUSE
-// EITHER, and there the reason is a trigger rather than an argument.
+// EITHER, and there the reason is a database rule rather than an argument.
 // `Skill_owner_immutable` fires BEFORE UPDATE and raises 23514 if
 // `organizationId` moves; the other two ARE the key being matched on, so writing
 // them would either be a no-op or a rename onto another row's identity.

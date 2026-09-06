@@ -246,7 +246,7 @@
       "file": "src/skills-guards.ts",
       "from": "  if (organizationId === projectId || projectId === environmentId || organizationId === environmentId) {",
       "to": "  if (false) {",
-      "note": "The ancestry triggers check the stored rows against each other when a row is WRITTEN and have nothing to say about a scope assembled by the caller later. A forged scope would resolve the project alone and write into whatever organization actually owns it.",
+      "note": "The ancestry rules check the stored rows against each other when a row is WRITTEN and have nothing to say about a scope assembled by the caller later. A forged scope would resolve the project alone and write into whatever organization actually owns it.",
       "suites": [
         "src/skills-rows.test.ts",
         "src/skills-constraints.integration.test.ts"

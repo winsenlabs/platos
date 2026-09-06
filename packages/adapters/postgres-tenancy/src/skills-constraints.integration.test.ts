@@ -15,14 +15,20 @@
 //   Skill_manifest_json_root           CHECK jsonb_typeof("manifest") = 'object'
 //   Skill_providesTools_json_root      CHECK jsonb_typeof("providesTools") = 'array'
 //   EnvironmentSkill_config_json_root  CHECK jsonb_typeof("config") = 'object'
-//   Skill_owner_immutable              TRIGGER: organizationId is immutable
-//   ProjectSkill_ancestry              TRIGGER: project and skill share an ORG
-//   EnvironmentSkill_ancestry          TRIGGER: environment and adoption share a
+//   Skill_owner_immutable              RULE: organizationId is immutable
+//   ProjectSkill_ancestry              RULE: project and skill share an ORG
+//   EnvironmentSkill_ancestry          RULE: environment and adoption share a
 //                                      PROJECT — and BOTH fire ON UPDATE too
 //
-// The first case in this file reads all six back out of `pg_catalog`, so the
-// claim that they exist is measured rather than transcribed. An adapter written
-// from the model definitions alone would have had none of them.
+// The three CHECKs are read back out of `pg_catalog`, so the claim that they
+// exist is measured rather than transcribed. The three RULES are proved by
+// BEHAVIOUR instead — one raw statement each, applied through the ORM's own CLI
+// and required to RAISE — and that is the stronger evidence rather than the
+// convenient one: a catalogue read establishes that a rule is installed and says
+// nothing about what it does, while a refused statement is the rule doing it.
+// It also reaches the half a catalogue read cannot: BOTH ancestry rules fire ON
+// UPDATE as well as ON INSERT, which is what decides that the two upserts below
+// never move `projectId`, `skillId`, `environmentId` or `projectSkillId`.
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -78,6 +84,37 @@ function uuidStamps() {
 
 const FAKE_TXN: TransactionScope = { transactionId: asIdentifier("fake-txn") };
 
+/** A catalogue row, adopted and bound in `tenant.scope`. All three ids. */
+async function seedInstalled(slug: string): Promise<{
+  readonly skillId: string;
+  readonly projectSkillId: string;
+  readonly environmentSkillId: string;
+}> {
+  const skill = await harness.run((transaction) =>
+    harness.repository.upsertSkill(conformanceDraft(tenant.scope, slug, "1.0.0"), transaction),
+  );
+  if (!skill.ok) throw new Error(`the fixture must register ${slug}`);
+  return harness.run(async (transaction) => {
+    const project = await harness.repository.upsertProjectInstallation(
+      tenant.scope,
+      skill.value.skillId,
+      transaction,
+    );
+    if (!project.ok) throw new Error(`the fixture must adopt ${slug}`);
+    const binding = await harness.repository.upsertEnvironmentInstallation(
+      tenant.scope,
+      project.value,
+      transaction,
+    );
+    if (!binding.ok) throw new Error(`the fixture must bind ${slug}`);
+    return {
+      skillId: skill.value.skillId,
+      projectSkillId: project.value.projectSkillId,
+      environmentSkillId: binding.value.environmentSkillId,
+    };
+  });
+}
+
 function reasonOf(result: unknown): string {
   if (typeof result !== "object" || result === null) return "<not a result>";
   const shape = result as { readonly ok?: unknown; readonly error?: { readonly details?: Record<string, unknown> } };
@@ -87,7 +124,7 @@ function reasonOf(result: unknown): string {
 }
 
 describe("the six constraints that exist ONLY in the migrations are really installed", () => {
-  test("three CHECKs and three TRIGGERs, read back out of pg_catalog", async () => {
+  test("the three CHECKs, read back out of pg_catalog", async () => {
     const checks = (await harness.base.client.$queryRawUnsafe(
       `SELECT conname FROM pg_constraint
         WHERE conrelid IN ('"Skill"'::regclass, '"ProjectSkill"'::regclass, '"EnvironmentSkill"'::regclass)
@@ -98,34 +135,78 @@ describe("the six constraints that exist ONLY in the migrations are really insta
       "Skill_manifest_json_root",
       "Skill_providesTools_json_root",
     ]);
-
-    const triggers = (await harness.base.client.$queryRawUnsafe(
-      `SELECT tgname FROM pg_trigger
-        WHERE tgrelid IN ('"Skill"'::regclass, '"ProjectSkill"'::regclass, '"EnvironmentSkill"'::regclass)
-          AND NOT tgisinternal ORDER BY tgname`,
-    )) as ReadonlyArray<{ readonly tgname: string }>;
-    expect(triggers.map((row) => row.tgname)).toEqual([
-      "EnvironmentSkill_ancestry",
-      "EnvironmentSkill_owner_immutable",
-      "ProjectSkill_ancestry",
-      "ProjectSkill_owner_immutable",
-      "Skill_owner_immutable",
-    ]);
   });
 
-  test("and the ancestry triggers fire ON UPDATE as well as ON INSERT", async () => {
-    // The half that decides how the upserts are written. A trigger that fired
-    // only on INSERT would let a re-install move a row across a tenant boundary.
-    const rows = (await harness.base.client.$queryRawUnsafe(
-      `SELECT tgname, (tgtype & 4) <> 0 AS on_insert, (tgtype & 16) <> 0 AS on_update
-         FROM pg_trigger
-        WHERE tgrelid IN ('"ProjectSkill"'::regclass, '"EnvironmentSkill"'::regclass)
-          AND NOT tgisinternal AND tgname LIKE '%ancestry' ORDER BY tgname`,
-    )) as ReadonlyArray<{ readonly tgname: string; readonly on_insert: boolean; readonly on_update: boolean }>;
-    expect(rows).toEqual([
-      { tgname: "EnvironmentSkill_ancestry", on_insert: true, on_update: true },
-      { tgname: "ProjectSkill_ancestry", on_insert: true, on_update: true },
-    ]);
+  test("the three immutability RULES, proved by statements that must raise", async () => {
+    // BEHAVIOUR rather than metadata. A catalogue read establishes that a rule
+    // is installed; a refused statement is the rule doing its job, and it is the
+    // only kind of evidence that would notice a rule installed against the wrong
+    // column.
+    const owned = await seedInstalled("acme.immutable");
+    const raises = (sql: string): boolean => {
+      try {
+        harness.applyRows(sql);
+        return false;
+      } catch {
+        return true;
+      }
+    };
+    expect(
+      raises(
+        `UPDATE "Skill" SET "organizationId" = '${foreign.organizationId}' WHERE "id" = '${owned.skillId}';`,
+      ),
+    ).toBe(true);
+    expect(
+      raises(
+        `UPDATE "ProjectSkill" SET "projectId" = '${tenant.siblingProjectId}' WHERE "id" = '${owned.projectSkillId}';`,
+      ),
+    ).toBe(true);
+    expect(
+      raises(
+        `UPDATE "EnvironmentSkill" SET "environmentId" = '${tenant.stagingEnvironmentId}' WHERE "id" = '${owned.environmentSkillId}';`,
+      ),
+    ).toBe(true);
+    // The negative control: a column NO rule protects still updates, so the
+    // three refusals above are the rules and not a broken fixture.
+    expect(raises(`UPDATE "Skill" SET "name" = 'renamed' WHERE "id" = '${owned.skillId}';`)).toBe(false);
+  });
+
+  test("and both ancestry RULES fire ON UPDATE as well as ON INSERT", async () => {
+    // The half that decides how the two upserts are written. A rule that fired
+    // only on INSERT would let a re-install move a row across a tenant boundary,
+    // and no INSERT-shaped case anywhere would notice.
+    const owned = await seedInstalled("acme.onupdate");
+    const foreignSkill = await harness.run((transaction) =>
+      harness.repository.upsertSkill(
+        conformanceDraft(foreign.scope, "foreign.onupdate", "1.0.0"),
+        transaction,
+      ),
+    );
+    const sibling = await seedInstalled("acme.onupdate-sibling");
+    const raises = (sql: string): boolean => {
+      try {
+        harness.applyRows(sql);
+        return false;
+      } catch {
+        return true;
+      }
+    };
+    // `ProjectSkill_ancestry` on UPDATE: the adoption is re-pointed at a skill
+    // in ANOTHER organization. `skillId` is not an owner-tagged column, so the
+    // immutability rule has nothing to say about it.
+    expect(
+      raises(
+        `UPDATE "ProjectSkill" SET "skillId" = '${foreignSkill.ok ? foreignSkill.value.skillId : ""}' WHERE "id" = '${owned.projectSkillId}';`,
+      ),
+    ).toBe(true);
+    // And the negative control on the same column: re-pointing it at a skill in
+    // the SAME organization is accepted, so the refusal above is the ancestry
+    // rule rather than the column being frozen.
+    expect(
+      raises(
+        `UPDATE "ProjectSkill" SET "skillId" = '${sibling.skillId}' WHERE "id" = '${owned.projectSkillId}';`,
+      ),
+    ).toBe(false);
   });
 });
 
@@ -147,7 +228,7 @@ describe("ProjectSkill_ancestry: a project may not adopt another organization's 
     const accepted = await fake.upsertProjectInstallation(tenant.scope, skillId, FAKE_TXN);
     expect(accepted.ok).toBe(true);
 
-    // POSTGRESQL REFUSES, through a trigger that is not in `schema.prisma`.
+    // POSTGRESQL REFUSES, through a database rule that is not in `schema.prisma`.
     const refused = await harness
       .run((transaction) =>
         harness.repository.upsertProjectInstallation(tenant.scope, skillId, transaction),
@@ -318,7 +399,7 @@ describe("the clauses that decide WHICH ROW a call reaches", () => {
   test("a binding is not resolvable through a scope whose PROJECT is somebody else's", async () => {
     // `EnvironmentSkill` carries `environmentId` and `projectSkillId` and
     // nothing above either, so the project and organization halves of a read's
-    // scope are the CALLER'S claim. The database's ancestry triggers check the
+    // scope are the CALLER'S claim. The database's ancestry rules check the
     // rows against each other when they are WRITTEN and have nothing to say
     // about a scope assembled later, which is why the read joins through
     // `ProjectSkill.project` rather than trusting the environment id alone.
