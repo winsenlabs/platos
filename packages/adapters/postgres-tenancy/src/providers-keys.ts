@@ -399,16 +399,29 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
           client.providerKey.deleteMany({
             where: { id: providerKeyId, ...scopedWhere(scope) },
           }),
+        // A 23503 ON THIS DELETE CAN ONLY BE THE TRIGGER, and that is a property
+        // of the schema rather than an assumption. NO table in the canonical
+        // schema carries a foreign key INTO `ProviderKey` — the references live
+        // inside `AgentVersion`'s JSON, which is exactly why the rule is a
+        // trigger and not a constraint — so nothing else can raise a
+        // foreign-key violation when this row is deleted.
+        //
+        // IT IS MATCHED ON THE SQLSTATE AND NOT ON THE MESSAGE, and the first
+        // run against a real database is why. The trigger raises
+        // `USING ERRCODE = '23503'` with the text "ProviderKey is referenced by
+        // an executable AgentVersion"; the client RECOGNISES that SQLSTATE, maps
+        // it to `P2003`, and reports "Foreign key constraint violated on the
+        // (not available)" — the raised text is gone. A rule that raises a
+        // SQLSTATE the client does not know keeps its message; one that raises a
+        // SQLSTATE it does knows loses it.
+        //
         // The classifier answers a REASON, not an error, because the error this
         // refusal deserves carries a COUNT the trigger does not report — it says
         // THAT an executable version names the key and never HOW MANY. Minting
         // the error here would have meant inventing that number, which is the
         // fabrication tranche 3 refused on `OperatorSessionRevoker.revoke`.
         (error) =>
-          sqlstateOf(error) === FOREIGN_KEY_VIOLATION &&
-          raisedMessageOf(error).includes("referenced by an executable AgentVersion")
-            ? "pinned_by_executable_version"
-            : null,
+          sqlstateOf(error) === FOREIGN_KEY_VIOLATION ? "pinned_by_executable_version" : null,
       );
       if (!removed.ok) {
         // The savepoint has already rolled the DELETE back, so the versions the
