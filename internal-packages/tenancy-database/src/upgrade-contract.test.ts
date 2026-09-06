@@ -60,7 +60,9 @@ const evidenceStepName = "Measure the pristine dense fixture against the exact c
 const rehearsalRun = [
   "CI=true pnpm --filter @platos/tenancy-database exec vitest run \\",
   "  src/upgrade-contract.test.ts \\",
+  "  src/upgrade-guards.test.ts \\",
   "  src/upgrade-rehearsal.integration.test.ts \\",
+  "  src/upgrade-expand-contract.integration.test.ts \\",
   "  --reporter=verbose",
 ].join("\n") + "\n";
 const evidenceRun = [

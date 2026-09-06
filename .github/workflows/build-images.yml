@@ -221,7 +221,9 @@ jobs:
         run: |
           CI=true pnpm --filter @platos/tenancy-database exec vitest run \
             src/upgrade-contract.test.ts \
+            src/upgrade-guards.test.ts \
             src/upgrade-rehearsal.integration.test.ts \
+            src/upgrade-expand-contract.integration.test.ts \
             --reporter=verbose
 
       - name: Start digest-pinned clean stores
