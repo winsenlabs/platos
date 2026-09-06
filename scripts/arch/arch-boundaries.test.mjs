@@ -1032,8 +1032,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // MERGED: 1477 + 7 + 3 + 4 + 2 = 1493, read back from the scan itself. No
     //               dimension's own figure — 1484, 1480, or the 1477 the other
     //               two left untouched — is right here.
-    assert.equal(result.fileCount, 1493, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2);
+    // WIN-260 (M2.5) +10: nine files under `apps/core-api/src/config` — the six
+    //               typed configuration sections, `environment.ts`, and the two
+    //               suites — and `apps/mcp-stdio/src/environment.ts`, the second
+    //               deployable's own reader. `mutations-config.json` is NOT in
+    //               this count: it is data at the package root, and this scan
+    //               reads source under `src/`. 1493 + 10 = 1503, and
+    //               `scripts/arch/composition-root.mjs` and
+    //               `scripts/arch/env-access.mjs` read the same number back from
+    //               their own scans of the same five roots, so the three can
+    //               DISAGREE and be caught.
+    assert.equal(result.fileCount, 1503, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

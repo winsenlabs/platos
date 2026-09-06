@@ -524,11 +524,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // app.module.ts and the six transport seams were rewritten in place and add
     // no files. The transports rule stays at exactly 6 — the new rule is
     // declared ahead of it so process code does not inherit transport evidence.
-    "apps-core-api": 19,
+    // +10 (WIN-260, M2.5), and each of the ten is attributable:
+    //   +6  the five sibling configuration sections beside WIN-297's core one —
+    //       stores, providers, channels, durable-runtime, security — and the
+    //       platform aggregate that validates all six in ONE pass.
+    //   +1  config/environment.ts, the one file in this deployable entitled to
+    //       read the ambient environment. main.ts held that read inline and was
+    //       rewritten in place, so it adds no file.
+    //   +2  the two suites, config/{platform,sections}.test.ts.
+    //   +1  mutations-config.json, this dimension's guard ledger, classified by
+    //       the existing apps-core-api.config.package rule.
+    // NO LEDGER RULE CHANGED: apps-core-api.source.process already matched
+    // src/config/**, so the seven source files land on a rule WIN-297 wrote.
+    // 19 + 10 = 29.
+    "apps-core-api": 29,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
-    "apps-mcp-stdio": 3,
+    // +1 (WIN-260): apps/mcp-stdio/src/environment.ts. The stdio binary is the
+    // SECOND deployable and has a process edge of its own; rule (j) is why it
+    // may not borrow the core-api reader. The gate found the inline read in its
+    // main.ts on its first run — nothing in the repository had looked there.
+    "apps-mcp-stdio": 4,
     // 1 -> 207 -> 272 -> 339. WIN-252 added packages/core/NOTICE (the upstream
     // MIT attribution, kept out of LICENSE so every publishable package's
     // LICENSE stays byte-identical to the repository Apache-2.0 text). WIN-256
@@ -1192,9 +1209,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
     "docs-content": 13,
-    "root-infra": 41,
+    // +2 (WIN-260): scripts/arch/env-access.mjs and its test. Both classify
+    // under the existing root-infra.tooling.scripts rule, so no ledger rule
+    // changed here either. 41 + 2 = 43.
+    "root-infra": 43,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1482);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1495);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1232,7 +1252,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and 8 in `internal-packages`); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1482
+    //
+    // and WIN-260 (M2.5) +13 across THREE areas — `apps-core-api` +10 (seven
+    // configuration modules, two suites, and this dimension's guard ledger),
+    // `apps-mcp-stdio` +1 (the second deployable's own environment reader) and
+    // `root-infra` +2 (the containment gate and its test). It ADOPTS NO PROJECT
+    // and CHANGES NO LEDGER RULE: every one of the thirteen is classified by a
+    // rule that already existed, which is why the delta is purely additive and
+    // sums with every one above it.
+    rulesDocument.baseline.totalFiles + 1495
   );
 });
 
