@@ -359,23 +359,30 @@ test("the census is not vacuous — it reads the real suites", () => {
   //      row, ONE (`secrets-key-version.integration.test.ts`) in
   //      `packages/adapters/postgres-tenancy` and ONE
   //      (`probe-cache-eviction.test.ts`) in `packages/contexts/providers`.
-  //   +7 WIN-259 (M2.4). FOUR in the new `packages/adapters/keyring-envelope`
+  //  +11 WIN-259 (M2.4). SIX in the new `packages/adapters/keyring-envelope`
   //      row, ONE (`secrets-key-version.integration.test.ts`) in
   //      `packages/adapters/postgres-tenancy`, ONE
   //      (`probe-cache-eviction.test.ts`) in `packages/contexts/providers` and
-  //      ONE (`sweep-root-key-reencryption.test.ts`) in
-  //      `packages/contexts/secrets`. 503 + 7 = 510.
-  assert.equal(live.totalFiles, 510);
+  //      THREE in `packages/contexts/secrets` —
+  //      `sweep-root-key-reencryption.test.ts`, `domain/legacy-envelope.test.ts`
+  //      and `application/migrate-legacy-envelope.test.ts`. 503 + 11 = 514.
+  //
+  //      FOUR OF THE ELEVEN ARE THE LEGACY-ENVELOPE MIGRATION'S, and they come
+  //      in a 2/2 split across the two packages because the deliverable is two
+  //      halves that may not meet: the adapter owns the bytes and the context
+  //      owns the rule and the control flow.
+  assert.equal(live.totalFiles, 514);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total.
-  // WIN-259 (M2.4) appends `+ 4 + 1 + 1`: the four suites of the new
+  // WIN-259 (M2.4) appends `+ 6 + 1 + 1 + 3`: the six suites of the new
   // `packages/adapters/keyring-envelope` row, the one
-  // `secrets-key-version.integration.test.ts` on the postgres row, and the one
-  // `probe-cache-eviction.test.ts` on `providers`. Each term stays its own
-  // slice's figure so a file deleted from one while another added cannot
-  // reach the same total.
-  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 4 + 1 + 1 + 1);
+  // `secrets-key-version.integration.test.ts` on the postgres row, the one
+  // `probe-cache-eviction.test.ts` on `providers`, and three on `secrets` — the
+  // sweep's, the legacy-envelope domain rule's and the migration use case's.
+  // Each term stays its own slice's figure so a file deleted from one while
+  // another added cannot reach the same total.
+  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 6 + 1 + 1 + 3);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -528,11 +535,12 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // `postgres-tenancy-repository` CI job running 109 files / 1054 tests is a
   // check on this split derived without it.
   //
-  // WIN-259 (M2.4) 503 -> 509 and 1483 -> 1488 on that row's own count; the
+  // WIN-259 (M2.4) 503 -> 514 and 1483 -> 1488 on that row's own count; the
   // integration term goes 1054 -> 1059 over 109 -> 110 files and the runnable
   // term is unmoved at 429, because the tranche's one addition here carries
-  // `.integration.` in its name. Its other 48 cases are in two OTHER rows.
-  assert.equal(files, 510);
+  // `.integration.` in its name. Its other 122 cases are in three OTHER rows,
+  // and every one of them runs on a laptop.
+  assert.equal(files, 514);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -546,16 +554,29 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   // re-baseline.
   assert.equal(EXPECTED["packages/kernel"].cases, 44);
   assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 318, "231 at 3ed8f3ce, +25 contract suite, +28 end-user read, +34 session cookie");
-  // WIN-259 (M2.4) 162 -> 178. `secrets` was one of the five asserted UNMOVED
-  // above and it moves now, so the reason is stated rather than the number
-  // adjusted: `sweep-root-key-reencryption.test.ts` adds sixteen cases for
-  // rotation as a JOB — bounded, resumable, idempotent, and never complete while
-  // a credential is still owed a rewrap. The file count moves with it, 16 -> 17,
-  // and both are asserted so a case deleted from an existing suite cannot hide
-  // behind the new file's arrival.
-  assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162 + 16);
-  assert.equal(EXPECTED["packages/contexts/secrets"].cases, 178);
-  assert.equal(EXPECTED["packages/contexts/secrets"].files, 17, "16 before WIN-259's sweep suite");
+  // WIN-259 (M2.4) 162 -> 209. `secrets` was one of the five asserted UNMOVED
+  // above and it moves now, so the reasons are stated rather than the number
+  // adjusted. THREE suites, in three terms so one shrinking while another grows
+  // cannot reach the same total:
+  //
+  //   +16 `sweep-root-key-reencryption.test.ts` — rotation as a JOB: bounded,
+  //       resumable, idempotent, and never complete while a credential is still
+  //       owed a rewrap.
+  //   +16 `domain/legacy-envelope.test.ts` — the format rules, including the
+  //       WIDTH rule judged from both sides and the three CHECK constraints the
+  //       canonical row refuses each legacy shape with.
+  //   +15 `application/migrate-legacy-envelope.test.ts` — the migration's
+  //       control flow, which its own header says proves nothing about bytes.
+  //
+  // The file count moves with them, 16 -> 19, and both are asserted so a case
+  // deleted from an existing suite cannot hide behind the new files' arrival.
+  assert.equal(EXPECTED["packages/contexts/secrets"].cases, 162 + 16 + 16 + 15);
+  assert.equal(EXPECTED["packages/contexts/secrets"].cases, 209);
+  assert.equal(
+    EXPECTED["packages/contexts/secrets"].files,
+    19,
+    "16 before WIN-259's sweep suite and its two legacy-envelope suites",
+  );
   assert.equal(EXPECTED["packages/contexts/tenancy"].cases, 207, "146 at 3ed8f3ce, +29 creation suites, +31 read models, +1 the project-order fix");
   assert.equal(EXPECTED["packages/contexts/files"].cases, 134);
   assert.equal(EXPECTED["packages/contexts/files"].files, 15, "the file count did NOT move; the case count did");
@@ -630,7 +651,7 @@ test("the providers context is pinned at what vitest prints", () => {
   // re-derivations below carries the same term, which is the property this
   // file exists for — a sum stated once can be edited once, and a sum stated
   // eleven ways cannot.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -657,11 +678,12 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   const untouched = {
     "packages/kernel": 44,
     "packages/contexts/identity-access": 318,
-    // WIN-259 (M2.4) 162 -> 178. `secrets` STOPS being untouched here too:
+    // WIN-259 (M2.4) 162 -> 209. `secrets` STOPS being untouched here too:
     // `sweep-root-key-reencryption.test.ts` adds sixteen cases for rotation as
-    // a job. Kept in the map rather than removed from it, for the reason the
-    // `providers` row above is.
-    "packages/contexts/secrets": 178,
+    // a job, and the legacy-envelope migration adds thirty-one more across its
+    // domain rule and its use case. Kept in the map rather than removed from it,
+    // for the reason the `providers` row above is.
+    "packages/contexts/secrets": 209,
     "packages/contexts/tenancy": 207,
     "packages/contexts/files": 134,
     // WIN-259 (M2.4) 375 -> 383. `providers` STOPS being untouched here:
@@ -712,12 +734,15 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   // context row above moves — every port those decoders sit behind already
   // existed, and four of the 48 went into a file this row already counted.
   assert.equal(
-    // WIN-259 (M2.4) appends `+ 40 + 5`: the new keyring-envelope row and the
-    // five postgres cases. Its EIGHT providers cases are NOT appended here —
-    // they are already inside `sum`, whose `untouched` map now carries 383
-    // rather than 375. Adding them twice is the exact mistake this
-    // re-derivation exists to make visible.
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5,
+    // WIN-259 (M2.4) appends `+ 67 + 5`: the new keyring-envelope row and the
+    // five postgres cases. Its EIGHT providers cases and its FORTY-SEVEN
+    // `secrets` cases are NOT appended here — both are already inside `sum`,
+    // whose `untouched` map now carries 383 rather than 375 and 209 rather than
+    // 162. Adding either twice is the exact mistake this re-derivation exists to
+    // make visible, and the legacy-envelope migration made it live: its
+    // thirty-one `secrets` cases move `sum` while its twenty-seven adapter cases
+    // move the trailing term, and only one of the two belongs in each place.
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
@@ -754,7 +779,7 @@ test("the memory context is pinned at what vitest prints", () => {
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -784,7 +809,7 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the privacy context is pinned at what vitest prints", () => {
@@ -822,7 +847,7 @@ test("the privacy context is pinned at what vitest prints", () => {
   // observability's 288 and agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the observability context is pinned at what vitest prints", () => {
@@ -855,7 +880,7 @@ test("the observability context is pinned at what vitest prints", () => {
   // agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
   assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the agents context is pinned at what vitest prints", () => {
@@ -898,7 +923,7 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the tools context is pinned at what vitest prints", () => {
@@ -927,7 +952,7 @@ test("the tools context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/tools"].files, 19);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 362);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the channels context is pinned at what vitest prints", () => {
@@ -962,7 +987,7 @@ test("the channels context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/channels"].files, 15);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 269);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the governance context is pinned at what vitest prints", () => {
@@ -988,7 +1013,7 @@ test("the governance context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 609);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1014,7 +1039,7 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -1104,7 +1129,7 @@ test("the conversations context is pinned at what vitest prints", () => {
   // above do NOT move for any of them: all four implement ports that already
   // existed and all four had their port entry point widened in place, which is
   // what this census distinguishes from an addition.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
 });
 
 test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
@@ -1397,7 +1422,7 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // `24 + 17 + 3 + 4` is four cases added to `agents-rows.test.ts`, a file this
   // row already counted, which is why that dimension's file tail gains 3 while
   // its case tail gains 48.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 40 + 5 + 8 + 16);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 67 + 5 + 8 + 47);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1445,18 +1470,24 @@ test("every V1 package has a pinned row, including the ones with no tests yet", 
 
 test("the key-management adapter is pinned at what vitest prints", () => {
   // WIN-259 (M2.4), and the FOURTH nonzero row under `packages/adapters`.
-  // `pnpm --filter @platos/adapter-keyring-envelope exec vitest run` prints 40
-  // across 4 files, and ALL 40 run there: real AES-256-GCM needs no daemon, so
+  // `pnpm --filter @platos/adapter-keyring-envelope exec vitest run` prints 67
+  // across 6 files, and ALL 67 run there: real AES-256-GCM needs no daemon, so
   // unlike the postgres row above this one contributes nothing to the
   // integration side of the split.
   //
-  // The four files are wire-compatibility (8), key-version-integrity (13),
-  // root-key-ring (11) and secret-hasher (8). One of the forty exists because
-  // the mutation sweep found a survivor rather than because a reviewer thought
-  // of it: sealing with `latin1` instead of `utf8` passed every case, because
-  // every plaintext this adapter SEALED was ASCII and the only non-ASCII bytes
-  // in the tree were in a fixture it opens and never writes.
-  assert.equal(EXPECTED["packages/adapters/keyring-envelope"].files, 4);
-  assert.equal(EXPECTED["packages/adapters/keyring-envelope"].cases, 8 + 13 + 11 + 8);
-  assert.equal(EXPECTED["packages/adapters/keyring-envelope"].cases, 40);
+  // The six files are wire-compatibility (8), key-version-integrity (13),
+  // root-key-ring (11), secret-hasher (8), legacy-wire-compatibility (15) and
+  // legacy-migration (12). One of the first forty exists because the mutation
+  // sweep found a survivor rather than because a reviewer thought of it: sealing
+  // with `latin1` instead of `utf8` passed every case, because every plaintext
+  // this adapter SEALED was ASCII and the only non-ASCII bytes in the tree were
+  // in a fixture it opens and never writes.
+  //
+  // THE TWENTY-SEVEN LEGACY CASES ARE THE ONLY ONES IN THE TREE THAT TOUCH REAL
+  // FORMAT-2 AND FORMAT-3 BYTES. `secrets` has thirty-one more about the same
+  // migration, but they drive a double whose own header says it is not
+  // cryptography, so the wire claim can be falsified here and nowhere else.
+  assert.equal(EXPECTED["packages/adapters/keyring-envelope"].files, 6);
+  assert.equal(EXPECTED["packages/adapters/keyring-envelope"].cases, 8 + 13 + 11 + 8 + 15 + 12);
+  assert.equal(EXPECTED["packages/adapters/keyring-envelope"].cases, 67);
 });

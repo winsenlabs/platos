@@ -2325,15 +2325,32 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *
  * WIN-259 (M2.4, tejas/secret-lifecycle) MOVES THREE ROWS AND ADDS ONE.
  *
- * A NEW ROW, `packages/adapters/keyring-envelope`: 0 -> 4 files, 0 -> 40 cases.
+ * A NEW ROW, `packages/adapters/keyring-envelope`: 0 -> 6 files, 0 -> 67 cases.
  * It is the thirteenth adapter directory and the first V1 package added since
  * this table was drawn — the key-management adapter that
  * `packages/adapters/postgres-tenancy/src/secrets-repository.ts` named when it
- * declined `secrets`' `KeyRing`, `AeadCipher` and `Hasher`. Its four suites are
- * `wire-compatibility` (10), `key-version-integrity` (13), `root-key-ring` (11)
- * and `secret-hasher` (8) — 10 + 13 + 11 + 8 = 40. NONE of the four needs a
- * container: real AES-256-GCM needs no daemon, which is why the whole 40 runs on
- * a laptop while the postgres row below does not.
+ * declined `secrets`' `KeyRing`, `AeadCipher` and `Hasher`. Its six suites are
+ * `wire-compatibility` (8), `key-version-integrity` (13), `root-key-ring` (11),
+ * `secret-hasher` (8), `legacy-wire-compatibility` (15) and `legacy-migration`
+ * (12) — 8 + 13 + 11 + 8 + 15 + 12 = 67. NONE of the six needs a container: real
+ * AES-256-GCM needs no daemon, which is why the whole 67 runs on a laptop while
+ * the postgres row below does not.
+ *
+ * TWENTY-SEVEN OF THE SIXTY-SEVEN ARE THE LEGACY-ENVELOPE MIGRATION, and they
+ * are in TWO files rather than one because they make two different claims.
+ * `legacy-wire-compatibility` (15) opens the six frozen legacy vectors and
+ * carries the negative controls — a format-3 payload read as format 2 fails by
+ * WIDTH and not by tag, the right payload under the wrong key fails distinctly,
+ * a flipped tag fails, and an absent legacy key is the fail-closed default.
+ * `legacy-migration` (12) is the deliverable end to end: an extraction-source
+ * ciphertext in, the ORDINARY runtime read path's plaintext out, with real
+ * cryptography on both sides and `secrets`' real use case between them.
+ *
+ * IT IS THE ONE PLACE THE END-TO-END CLAIM CAN LIVE. `secrets`' own suites drive
+ * `in-memory-crypto.ts`, whose header says "It is NOT cryptography", so a
+ * migration proven only there would be proven against a keystream derived from
+ * FNV-1a. This package holds the primitive, so the claim is falsifiable here and
+ * nowhere else.
  *
  * ONE OF THE FORTY EXISTS BECAUSE A MUTANT SURVIVED rather than because a rule
  * asked for it. "seals and re-opens multi-byte UTF-8, a newline and a tab" was
@@ -2378,27 +2395,45 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * rather than a case of its own, so the catalogue's "mints every declared code
  * and nothing else" assertion covers it without a census row moving twice.
  *
- *   packages/contexts/secrets            16 -> 17 files,  162 -> 178 cases
+ *   packages/contexts/secrets            16 -> 19 files,  162 -> 209 cases
  *
- * ONE FILE, SIXTEEN CASES: `sweep-root-key-reencryption.test.ts`, the bounded,
- * resumable re-encryption sweep — rotation as a JOB rather than as a
- * request-time loop. TWO of the sixteen exist because the sweep was WRONG and
- * a case caught it rather than a reviewer thinking of it: the first draft asked
+ * THREE FILES, FORTY-SEVEN CASES. The first is
+ * `sweep-root-key-reencryption.test.ts` (16), the bounded, resumable
+ * re-encryption sweep — rotation as a JOB rather than as a request-time loop.
+ * TWO of its sixteen exist because the sweep was WRONG and a case caught it
+ * rather than a reviewer thinking of it: the first draft asked
  * `needsReEncryption`, which is true only for the `prior` status, so a
  * credential whose root key had LEFT the ring was counted as already-done and
  * the environment was reported complete over it. A third replaced a case whose
  * own comment admitted its assertion was 'not observable'.
  *
- * `packages/contexts/secrets` GAINS NO SOURCE ROW HERE and its port entry point
- * gains no case: the seven values re-exported for the cryptography ports are
- * a widening of an existing file, and a widened file is not a new one.
+ * THE OTHER TWO ARE THE LEGACY-ENVELOPE MIGRATION: `domain/legacy-envelope.test.ts`
+ * (16) and `application/migrate-legacy-envelope.test.ts` (15). 16 + 16 + 15 = 47.
  *
- * The tree total is 503 + 4 + 1 + 1 + 1 = 510 files and
- * 7399 + 40 + 5 + 8 + 16 = 7468 cases. The adapters term of the three-way
- * identity carries five of the seven new files — four in `keyring-envelope`,
- * one in `postgres-tenancy` — and the contexts term carries the other two, in
- * `providers` and `secrets`: 151 + 5 = 156, 349 + 2 = 351, and
- * 351 + 3 + 156 = 510.
+ * THE DOMAIN SUITE IS SIXTEEN AND NOT SIX BECAUSE THE FORMAT RULES ARE WHERE A
+ * MIGRATION GOES WRONG SILENTLY. Six of them judge the WIDTH rule from both
+ * sides — format 2's nonce read as format 3's and the reverse — because a
+ * mis-declared column otherwise fails the tag check and looks exactly like a
+ * wrong key. Four assert which CHECK constraints the canonical row refuses each
+ * legacy shape with, and one is the control that format 1 is refused by NONE of
+ * them, which is what keeps the other four from being a list this file wrote
+ * about itself.
+ *
+ * THE USE-CASE SUITE SAYS IN ITS OWN HEADER WHAT IT CANNOT PROVE. It drives
+ * `in-memory-crypto.ts`'s double, so it proves the grant, the convergence
+ * branch, the revision, the audit row and the rollback — and nothing about
+ * bytes. The bytes are `keyring-envelope`'s twenty-seven, above.
+ *
+ * `packages/contexts/secrets` GAINS NO PORT-ENTRY-POINT CASE: the values
+ * re-exported for the cryptography ports are a widening of an existing file, and
+ * a widened file is not a new one.
+ *
+ * The tree total is 503 + 6 + 1 + 1 + 3 = 514 files and
+ * 7399 + 67 + 5 + 8 + 47 = 7526 cases. The adapters term of the three-way
+ * identity carries seven of the eleven new files — six in `keyring-envelope`,
+ * one in `postgres-tenancy` — and the contexts term carries the other four, one
+ * in `providers` and three in `secrets`: 151 + 7 = 158, 349 + 4 = 353, and
+ * 353 + 3 + 158 = 514.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2409,7 +2444,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/keyring-envelope": { files: 4, cases: 40 },
+  "packages/adapters/keyring-envelope": { files: 6, cases: 67 },
   "packages/adapters/postgres-tenancy": { files: 133, cases: 1488 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
@@ -2427,7 +2462,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 28, cases: 383 },
-  "packages/contexts/secrets": { files: 17, cases: 178 },
+  "packages/contexts/secrets": { files: 19, cases: 209 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
@@ -2704,30 +2739,37 @@ export const EXPECTED = Object.freeze({
  * files / 1054 tests is therefore a check on this split derived without it.
  */
 /*
- * WIN-259 (M2.4) 7399 -> 7468: +40 in the new `packages/adapters/keyring-envelope`
+ * WIN-259 (M2.4) 7399 -> 7526: +67 in the new `packages/adapters/keyring-envelope`
  * row, +5 in `packages/adapters/postgres-tenancy`, +8 in
- * `packages/contexts/providers` and +16 in `packages/contexts/secrets`.
- * 7399 + 40 + 5 + 8 + 16 = 7468.
+ * `packages/contexts/providers` and +47 in `packages/contexts/secrets`.
+ * 7399 + 67 + 5 + 8 + 47 = 7526.
+ *
+ * FIFTY-EIGHT OF THE HUNDRED-AND-TWENTY-SEVEN ARE THE LEGACY-ENVELOPE
+ * MIGRATION, split 27 / 31 across the two packages, and the split is the
+ * deliverable's own shape: the 27 in `keyring-envelope` are the only ones that
+ * touch real bytes, and the 31 in `secrets` are the domain rule and the control
+ * flow. Neither half can make the other's claim, which is why they are not one
+ * suite.
  *
  * THE RUNNABLE/INTEGRATION SPLIT MOVES ON BOTH SIDES, WHICH IS UNUSUAL FOR A
- * TRANCHE THAT TOUCHES THIS ADAPTER. Sixty-four of the sixty-nine are RUNNABLE
- * by `pnpm test:v1-packages` — the whole keyring-envelope row plus providers'
- * eight and secrets' sixteen — because real AES-256-GCM needs no daemon and
- * neither does an in-memory probe cache or an in-memory vault. Only the
- * remaining five carry `.integration.` in the name, so the cases this census
- * records that the script does not execute go 1054 -> 1059 over 109 -> 110
- * files, and the runnable side goes 429 -> 493 for the postgres row's own split
- * plus the three rows outside it.
+ * TRANCHE THAT TOUCHES THIS ADAPTER. A hundred and twenty-two of the
+ * hundred-and-twenty-seven are RUNNABLE by `pnpm test:v1-packages` — the whole
+ * keyring-envelope row plus providers' eight and secrets' forty-seven — because
+ * real AES-256-GCM needs no daemon and neither does an in-memory probe cache or
+ * an in-memory vault. Only the remaining five carry `.integration.` in the name,
+ * so the cases this census records that the script does not execute go
+ * 1054 -> 1059 over 109 -> 110 files, and the runnable side goes 429 -> 551 for
+ * the postgres row's own split plus the three rows outside it.
  *
  * The three-way file identity holds with the same shape:
- * packages.contexts.test 351 + packages.kernel.test 3 +
- * packages.adapters.test 156 = 510, which is this census's own totalFiles. The
- * adapters term moved 151 -> 156, of which FOUR are the new directory's suites
- * and ONE is the postgres row's; the contexts term moved 349 -> 351, one for
- * `providers` and one for `secrets`. The v1 ledger counts the same seven inside
- * its nineteen.
+ * packages.contexts.test 353 + packages.kernel.test 3 +
+ * packages.adapters.test 158 = 514, which is this census's own totalFiles. The
+ * adapters term moved 151 -> 158, of which SIX are the new directory's suites
+ * and ONE is the postgres row's; the contexts term moved 349 -> 353, one for
+ * `providers` and three for `secrets`. The v1 ledger counts the same eleven
+ * inside its twenty-seven.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7468;
+export const EXPECTED_RUNTIME_TOTAL = 7526;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
