@@ -64,7 +64,7 @@ export interface ToolsMcp {
  * row, `identityProviders` and `branding` deserialised, once per request. The
  * assertion `as McpConfigRow` is now a fact about the SELECT.
  */
-const CONFIG_SELECT = {
+export const CONFIG_SELECT = {
   entityId: true,
   enabled: true,
   identityMode: true,

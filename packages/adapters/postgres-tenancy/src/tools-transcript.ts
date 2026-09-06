@@ -88,7 +88,7 @@ export interface ToolsTranscript {
  * megabytes rather than as bytes. Both assertions below already named the
  * columns; the selects make them true of the statement.
  */
-const CALL_SELECT = {
+export const CALL_SELECT = {
   id: true,
   stepId: true,
   toolId: true,
@@ -105,7 +105,7 @@ const CALL_SELECT = {
   createdAt: true,
 } as const;
 
-const AUDIT_SELECT = {
+export const AUDIT_SELECT = {
   id: true,
   environmentId: true,
   toolId: true,

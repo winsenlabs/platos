@@ -92,7 +92,7 @@ export function readOutboxPayload(eventId: string, value: unknown): unknown {
  * cursor and the routing. Nothing else on `Event` is wanted, and naming that is
  * what stops the next column joining every page.
  */
-const EVENT_SELECT = {
+export const EVENT_SELECT = {
   id: true,
   environmentId: true,
   eventType: true,

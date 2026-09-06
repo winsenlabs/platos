@@ -18,7 +18,20 @@ import { resolve } from "node:path";
 
 import { describe, expect, test } from "vitest";
 
+import {
+  AGENT_COLUMNS,
+  BINDING_COLUMNS,
+  CLUSTER_COLUMNS,
+  MACRO_COLUMNS,
+  SKILL_COLUMNS,
+  TEMPLATE_COLUMNS,
+  VERSION_COLUMNS,
+} from "./agents-rows.js";
 import { JSON_COLUMNS, jsonColumnKey, type JsonRoot } from "./json-columns.js";
+import { EVENT_SELECT } from "./outbox-store.js";
+import { TOOL_SELECT } from "./tools-catalogue.js";
+import { CONFIG_SELECT } from "./tools-mcp.js";
+import { AUDIT_SELECT, CALL_SELECT } from "./tools-transcript.js";
 
 const packageRoot = process.cwd();
 const repositoryRoot = resolve(packageRoot, "../../..");
@@ -175,6 +188,48 @@ describe("every named decoder exists where the census says it does", () => {
     // pasted rather than argued for.
     const repeated = notes.filter((note, index) => notes.indexOf(note) !== index);
     for (const note of repeated) expect(note).toMatch(/the same (decoder|envelope|table|function)/u);
+  });
+});
+
+describe("the column maps are the SCHEMA's column list, not their own", () => {
+  // WIN-258 T7, AND THE SWEEP FOUND THIS ONE. The projection assertions in the
+  // integration suite compare the emitted SELECT list against the map, which is
+  // circular: dropping a column from a map shrinks BOTH sides and the assertion
+  // stays green. The map has to be joined to something that is not itself, and
+  // the schema is the only such thing. Dropping `environmentId` from
+  // `MACRO_COLUMNS` goes red HERE.
+  const models = new Set([...readFileSync(resolve(prismaRoot, "schema.prisma"), "utf8").matchAll(/^model\s+(\w+)\s*\{/gmu)].map((hit) => hit[1] ?? ""));
+
+  /** Every field of one model that is a COLUMN rather than a relation. */
+  function columnsOf(model: string): readonly string[] {
+    const body = new RegExp(`^model ${model} \\{$([\\s\\S]*?)^\\}$`, "mu").exec(
+      readFileSync(resolve(prismaRoot, "schema.prisma"), "utf8"),
+    )?.[1];
+    expect(body).toBeDefined();
+    return (body ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => /^\w+\s+\S/u.test(line) && !line.startsWith("@@"))
+      .map((line) => line.split(/\s+/u))
+      .filter(([, type = ""]) => !models.has(type.replace(/[?[\]]/gu, "")))
+      .map(([field = ""]) => field);
+  }
+
+  test.each([
+    ["Agent", AGENT_COLUMNS],
+    ["AgentBinding", BINDING_COLUMNS],
+    ["AgentCluster", CLUSTER_COLUMNS],
+    ["AgentVersion", VERSION_COLUMNS],
+    ["AgentSkill", SKILL_COLUMNS],
+    ["Macro", MACRO_COLUMNS],
+    ["PostmanTemplate", TEMPLATE_COLUMNS],
+    ["Event", EVENT_SELECT],
+    ["Tool", TOOL_SELECT],
+    ["EntityMcpConfig", CONFIG_SELECT],
+    ["ToolCall", CALL_SELECT],
+    ["ToolCallAudit", AUDIT_SELECT],
+  ] as const)("%s's map names every column the model has", (model, map) => {
+    expect([...Object.keys(map)].sort()).toEqual([...columnsOf(model)].sort());
   });
 });
 

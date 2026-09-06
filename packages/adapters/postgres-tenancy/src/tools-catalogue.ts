@@ -72,7 +72,7 @@ export interface ToolsCatalogue {
  * agent's loadout; an unprojected one deserialises a JSON Schema per tool and
  * whatever the table grows next besides.
  */
-const TOOL_SELECT = {
+export const TOOL_SELECT = {
   id: true,
   name: true,
   description: true,

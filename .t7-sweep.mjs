@@ -23,14 +23,14 @@ const MUTATIONS = [
     name: "M-J02 a macro step must name a tool",
     file: "src/agents-rows.ts",
     from: `    if (step === null || typeof tool !== "string" || tool === "") {`,
-    to: `    if (step === null) {`,
+    to: `    if (step === null || typeof tool !== "string") {`,
     suites: ["unit:agents-rows", "integration:json-columns"],
   },
   {
     name: "M-J03 the steps column must be a JSON array",
     file: "src/agents-rows.ts",
-    from: `  if (!Array.isArray(value)) {\n    throw new UnreadableAgentsRowError(\n      MACRO_STEPS_NOT_AN_ARRAY,`,
-    to: `  if (false) {\n    throw new UnreadableAgentsRowError(\n      MACRO_STEPS_NOT_AN_ARRAY,`,
+    from: `  if (!Array.isArray(value)) {\n    throw new UnreadableAgentsRowError(\n      MACRO_STEPS_NOT_AN_ARRAY,\n      "Macro.steps",\n      \`Macro \${id} carries steps that are not an array\`,\n    );\n  }`,
+    to: `  if (!Array.isArray(value)) return [];`,
     suites: ["unit:agents-rows"],
   },
   {
@@ -87,7 +87,7 @@ const MUTATIONS = [
     file: "src/agents-rows.ts",
     from: `export const MACRO_COLUMNS = {\n  id: true,\n  environmentId: true,`,
     to: `export const MACRO_COLUMNS = {\n  id: true,`,
-    suites: ["integration:json-columns"],
+    suites: ["unit:json-columns", "integration:json-columns"],
   },
   {
     name: "M-J12 a macro read PROJECTS its columns",
