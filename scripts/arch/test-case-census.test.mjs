@@ -338,19 +338,22 @@ test("the census is not vacuous — it reads the real suites", () => {
   // context row moves, for the NINTH time — every port already existed, and
   // widening a port entry point is not a new file.
   //
-  // AND WIN-258 TRANCHE 7 ADDS THREE MORE to the SAME row, for the TENTH time
-  // with no context row moving: the JSON-column census, its real-database half,
-  // and the outbox payload reader. 490 + 3 = 493.
-  // AND WIN-258 TRANCHE 7 ADDS SIX MORE to the same row, for the TENTH time
-  // with no context row moving: the plan dimension implements no port at all.
-  // 490 + 6 = 496.
-  // AND TRANCHE 7 ADDS ONE, to that same row for the TENTH time:
-  // `upgrade-rollout.integration.test.ts`, the store half of the expand/contract
-  // rollout rehearsal. 490 + 1 = 491. Its two sibling suites are NOT here and
-  // cannot be: they rebuild the old releases' Prisma clients, which ADR M0.3 §4
-  // keeps in `internal-packages/tenancy-database`, a package with no row in this
-  // census at all.
-  // MERGED: 490 + 3 + 6 + 3 + 1 = 503. No dimension's own figure is right here.
+  // AND WIN-258 TRANCHE 7 ADDS THIRTEEN to the SAME row, for the TENTH time
+  // with no context row moving. FOUR dimensions landed together and each moves
+  // this one row and no other, so they compose by addition:
+  //   +3  the JSON-column census, its real-database half, and the outbox
+  //       payload reader
+  //   +6  the plan dimension's measurement kit, its unit suite, and its four
+  //       dense-fixture plan suites — it implements no port at all
+  //   +3  the concurrency dimension's pooling, optimistic-concurrency and
+  //       transaction-boundaries suites; it adds no source file anywhere
+  //   +1  `upgrade-rollout.integration.test.ts`, the store half of the
+  //       expand/contract rollout rehearsal. Its two sibling suites are NOT
+  //       here and cannot be: they rebuild the old releases' Prisma clients,
+  //       which ADR M0.3 §4 keeps in `internal-packages/tenancy-database`, a
+  //       package with no row in this census at all.
+  // 490 + 3 + 6 + 3 + 1 = 503. No dimension's own figure — 493, 496, 493 again
+  // or 491 — is right here, and neither is any pair of them.
   assert.equal(live.totalFiles, 503);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
@@ -485,26 +488,28 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // 663 + 51 + 75 + 79 + 37 + 39 = 944, and 366 + 944 = 1310 is the row's whole
   // case count over 119 files.
   //
-  // WIN-258 TRANCHE 7's JSON-COLUMN DIMENSION adds 31 runnable (the census's
-  // 24, the outbox reader's 3 and the four in `agents-rows.test.ts`) and 17
-  // that need the daemon: 48 over three new files.
+  // WIN-258 TRANCHE 7 SPLITS FOUR WAYS AND EVERY WAY LANDS HERE.
+  //   the JSON-column dimension: 31 runnable (the census's 24, the outbox
+  //     reader's 3, and the four added to `agents-rows.test.ts`) and 17 that
+  //     need the daemon — 48 over three new files
+  //   the plan dimension: 23 runnable and 60 that need the daemon — 83 over six
+  //     new files. `plans-probe.test.ts` is the largest of its six rather than
+  //     the smallest, deliberately: it is the measurement kit the five container
+  //     suites report their numbers from, so it is the one part of that
+  //     dimension no other part can check, and a container is exactly what it
+  //     must not need in order to be skippable
+  //   the concurrency dimension: 9 runnable, all in `client.test.ts`, and 27
+  //     that need the daemon — 26 in its three new container suites and ONE
+  //     added to `secrets-rules.integration.test.ts`, whose name carries
+  //     `.integration.` and which therefore lands on that side however small
+  //     the addition — 36
+  //   the rollout dimension: 6, all of them integration, in one new file
   //
-  // AND WIN-258 TRANCHE 7 SHIPS ONE PURE SUITE TOO, `plans-probe.test.ts` (23),
-  // and it is the largest of its five rather than the smallest: it is the
-  // measurement kit the four container suites report their numbers from, so it
-  // is the one part of that dimension no other part can check. The runnable term
-  // goes 366 + 23 = 389 and the integration term 944 + 60 = 1004, and
-  // 389 + 1004 = 1393 is the row's whole case count over 125 files.
-  //
-  // MERGED, the runnable term goes 366 + 31 + 23 = 420 and the integration term
-  // 944 + 17 + 60 = 1021, and 420 + 1021 = 1441 is the row's whole case count
-  // over 128 files.
-  // TRANCHE 7's six are all integration, so the runnable term stays at 366 and
-  // the integration term goes 944 + 6 = 950: 366 + 950 = 1316 over 120 files.
-  //
-  // MERGED, the runnable term is 366 + 31 + 23 + 10 = 430 and the integration
-  // term 944 + 17 + 60 + 26 + 6 = 1053, and 430 + 1053 = 1483 is the row's
-  // whole case count over 132 files.
+  // MERGED, the runnable term is 366 + 31 + 23 + 9 = 429 and the integration
+  // term 944 + 17 + 60 + 27 + 6 = 1054, and 429 + 1054 = 1483 is the row's
+  // whole case count over 23 + 109 = 132 files. The
+  // `postgres-tenancy-repository` CI job running 109 files / 1054 tests is a
+  // check on this split derived without it.
   assert.equal(files, 503);
 });
 
@@ -1331,9 +1336,9 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
       6,
   );
   assert.equal(EXPECTED["packages/adapters/postgres-tenancy"].cases, 1483);
-  // 430 of the 1483 run in `pnpm test:v1-packages`; the other 1053 need a Docker
+  // 429 of the 1483 run in `pnpm test:v1-packages`; the other 1054 need a Docker
   // daemon and run in the `postgres-tenancy-repository` CI job. A pin that
-  // counted only the runnable 430 would go green if the integration suites were
+  // counted only the runnable 429 would go green if the integration suites were
   // deleted, which is the one change this row exists to make visible.
   //
   // THE FOURTH TERM OF TRANCHE 7's FIRST GROUP IS THE ONE TO READ: the 4 in

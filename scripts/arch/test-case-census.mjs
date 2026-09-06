@@ -2214,9 +2214,12 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * selector nothing joins to the schema is the circular assertion the mutation
  * sweep found and killed.
  *
- * The tree total is 490 + 3 = 493 files and 7226 + 48 = 7274 cases. The adapters
- * term of the three-way identity carries all three, because every added file is
- * an adapter's: 138 + 3 = 141, and 349 + 3 + 141 = 493.
+ * THAT DIMENSION ALONE would put the tree total at 490 + 3 = 493 files and
+ * 7226 + 48 = 7274 cases, with the adapters term at 138 + 3 = 141. It is one of
+ * FOUR that landed together, so the merged figure is neither this one nor any
+ * other single dimension's; the arithmetic that stands is at the end of the
+ * fourth block below.
+ *
  * WIN-258 T7 — INDEXES, QUERY PLANS, PAGINATION AND COUNT TRUTH. Not a store:
  * every row this dimension touches already had one. What it adds is the
  * measurement no returned value can carry — the statements a read sent, the plan
@@ -2271,9 +2274,10 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * Four of the five suites report numbers the kit produced, so the kit is the one
  * thing in the dimension that cannot be checked by another part of it.
  *
- * The tree total is 490 + 6 = 496 files and 7226 + 83 = 7309 cases. The adapters
- * term of the three-way identity carries all six, because every added file is an
- * adapter's: 138 + 6 = 144, and 349 + 3 + 144 = 496.
+ * THIS DIMENSION ALONE would put the tree total at 490 + 6 = 496 files and
+ * 7226 + 83 = 7309 cases, with the adapters term at 138 + 6 = 144. Merged it is
+ * neither; see the arithmetic at the end of the next block.
+ *
  * WIN-258 TRANCHE 7 adds ONE file to this package, and the count is small for a
  * reason worth stating rather than apologising for.
  *
@@ -2300,9 +2304,24 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * eighteen entries were all killed by a named case and whose one unreachable
  * branch is DECLARED there instead of counted.
  *
- * The tree total is 466 + 1 = 467 files and 6945 + 6 = 6951 cases. The adapters
- * term of the three-way identity carries the file: 114 + 1 = 115, and
- * 349 + 3 + 115 = 467.
+ * THIS DIMENSION ALONE would move the tree total by ONE file and SIX cases.
+ *
+ * THE MERGED ARITHMETIC, WHICH IS THE ONE THAT STANDS. Four T7 dimensions
+ * landed together and every one of them moves this ONE package's row and no
+ * other, so the figures compose by addition and no dimension's own total
+ * survives the merge:
+ *
+ *   files   119 + 3 (JSON columns) + 6 (plans) + 3 (concurrency) + 1 (rollout)
+ *             = 132
+ *   cases  1310 + 48            + 83       + 36            + 6
+ *             = 1483
+ *
+ * The tree total is 490 + 13 = 503 files and 7226 + 173 = 7399 cases. The
+ * adapters term of the three-way identity carries all thirteen, because every
+ * added file this census counts is an adapter's: 138 + 13 = 151, and
+ * 349 + 3 + 151 = 503. The rollout dimension's other eight files are NOT in
+ * that thirteen and cannot be: they are in `internal-packages/tenancy-database`,
+ * which has no row here at all. The v1 ledger counts all twenty-eight.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2499,7 +2518,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  *
- * 7226 -> 7309: the 83 cases of WIN-258 tranche 7, the indexes/query-plans/
+ * +83: the cases of WIN-258 tranche 7's indexes/query-plans/
  * pagination/count-truth dimension, enumerated file by file in the block beside
  * the postgres-tenancy row. FIVE of its six suites carry `.integration.` in the
  * name and need a real PostgreSQL, so the cases this census records and
@@ -2511,7 +2530,7 @@ export const EXPECTED = Object.freeze({
  * is exactly what it must not need in order to be skippable.
  */
 /*
- * WIN-258 T7, concurrency / pooling / transaction boundaries — 7226 -> 7262.
+ * WIN-258 T7, concurrency / pooling / transaction boundaries — +36.
  *
  * THIRTY-SIX CASES OVER THREE NEW SUITES AND TWO EDITED ONES, all inside
  * `packages/adapters/postgres-tenancy`, whose row goes 119/1310 -> 122/1346:
@@ -2560,14 +2579,17 @@ export const EXPECTED = Object.freeze({
  *                                                   is free
  *                                                        subtotal = 10
  *
- * 26 + 10 = 36, and 1310 + 36 = 1346. NO OTHER PACKAGE MOVES: the fence, the
- * scoped DELETE and the domain refusal are edits in place in
- * `packages/contexts/secrets`, whose own suites still number what they did.
+ * 26 + 10 = 36, and THIS DIMENSION ALONE would read 1310 + 36 = 1346. NO OTHER
+ * PACKAGE MOVES: the fence, the scoped DELETE and the domain refusal are edits
+ * in place in `packages/contexts/secrets`, whose own suites still number what
+ * they did.
  *
- * The three-way file identity holds: packages.contexts.test 349 +
- * packages.kernel.test 3 + packages.adapters.test 141 = 493, which is this
- * census's own totalFiles. The adapters term moved 138 -> 141 for the same three
- * suites the v1 ledger counts.
+ * The three-way file identity holds, on the MERGED figure rather than this
+ * dimension's: packages.contexts.test 349 + packages.kernel.test 3 +
+ * packages.adapters.test 151 = 503, which is this census's own totalFiles. The
+ * adapters term moved 138 -> 151, of which THREE are this dimension's suites and
+ * the other ten belong to its three siblings; the v1 ledger counts the same
+ * thirteen.
  *
  * The cases this census records that `pnpm test:v1-packages` does not execute
  * are the ones whose file name carries `.integration.`; all three new suites do,
@@ -2575,13 +2597,33 @@ export const EXPECTED = Object.freeze({
  */
 
 /*
- * 7226 -> 7232: the 6 cases of WIN-258 tranche 7's store-level rollout
+ * +6: the cases of WIN-258 tranche 7's store-level rollout
  * rehearsal. All six carry `.integration.` in the name, so `pnpm
  * test:v1-packages` executes none of them — the file is one container and two
  * rebuilt old clients — and the cases this census records but that script does
  * not run go up by exactly six. The tranche's other 35 cases are not in this
  * total at all: they live in `internal-packages/tenancy-database`, which has no
  * row in this census, for the reason the postgres-tenancy block gives.
+ */
+
+/*
+ * THE MERGED RUNTIME TOTAL, WHICH IS THE ONE THIS CONSTANT HOLDS. The four T7
+ * dimensions land on the SAME adapter row and on no other, so their deltas
+ * compose by addition and each block above states its own contribution rather
+ * than a total: 7226 + 48 + 83 + 36 + 6 = 7399.
+ *
+ * The runnable/integration split composes the same way. Runnable goes
+ * 366 + 31 + 23 + 9 + 0 = 429; the cases this census records that
+ * `pnpm test:v1-packages` does not execute go 944 + 17 + 60 + 27 + 6 = 1054,
+ * over 99 + 1 + 5 + 3 + 1 = 109 files. THE CONCURRENCY DIMENSION IS THE ONE TO
+ * READ TWICE: nine of its thirty-six are runnable, in `client.test.ts`, and the
+ * other twenty-seven are not — twenty-six in its three new container suites and
+ * ONE added to `secrets-rules.integration.test.ts`, whose name carries
+ * `.integration.` and which therefore lands on that side however small the
+ * addition. 429 + 1054 = 1483 is the whole postgres-tenancy row and
+ * 23 + 109 = 132 is its file count, both of which the EXPECTED table above
+ * states independently. The `postgres-tenancy-repository` CI job running 109
+ * files / 1054 tests is therefore a check on this split derived without it.
  */
 export const EXPECTED_RUNTIME_TOTAL = 7399;
 
