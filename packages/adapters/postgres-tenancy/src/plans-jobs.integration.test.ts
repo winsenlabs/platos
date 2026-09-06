@@ -37,7 +37,6 @@ import type {
   ApprovalQuery,
   ApprovalRowId,
   EnvironmentScope,
-  RequesterId,
 } from "@platos/context-jobs/application/ports/index.js";
 import { asIdentifier } from "@platos/context-jobs/application/ports/index.js";
 
@@ -85,7 +84,7 @@ const DEFAULT_WINDOW_DAYS = 30;
 let now = new Date();
 const DAY = 86_400_000;
 
-const REQUESTER = asIdentifier<RequesterId>("operator-plans");
+const REQUESTER = "operator-plans";
 
 async function list(scope: EnvironmentScope, query: Partial<ApprovalQuery> = {}) {
   const result = await harness.stores.approvals.list(scope, {
