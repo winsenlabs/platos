@@ -364,23 +364,221 @@
     }
   ],
   "result": [
-    "SWEPT TWICE ON A REAL POSTGRESQL, on the Mac mini, against the suite set at",
-    "this branch's head. Baseline: 68 cases, 0 failing, and the driver refuses to",
-    "sweep a set that is not green or a mutated run in which the named case did",
-    "not execute.",
+    "SWEPT THREE TIMES ON A REAL POSTGRESQL, on the Mac mini, in a detached",
+    "worktree. Baseline: the suite set UNMUTATED, green, with cases executed —",
+    "the driver refuses to sweep a set that is not, and classifies a mutated run",
+    "in which the named case did not EXECUTE as VACUOUS rather than as a kill.",
     "",
-    "FIRST SWEEP: 20 of 22 killed. The two survivors were both defects in the",
-    "CASE rather than in the guard, and both are recorded above rather than",
-    "quietly re-anchored — M-Q02's case put the word in a projection the anchor",
-    "never reads, and M-Q16's case proved the pages PARTITION, which a reversed",
-    "order satisfies exactly as well as the right one.",
+    "FIRST SWEEP, 22 entries: 20 killed. Both survivors were defects in the CASE",
+    "rather than in the guard, and both are recorded above rather than quietly",
+    "re-anchored — M-Q02's case put the word in a projection the anchor never",
+    "reads, and M-Q16's case proved the pages PARTITION, which a reversed order",
+    "satisfies exactly as well as the right one.",
     "",
-    "SECOND SWEEP: 22 of 22 killed, none vacuous, none declared unfalsifiable.",
+    "SECOND SWEEP, the same 22: 22 killed, after the two cases were corrected.",
+    "",
+    "THIRD SWEEP, 25 entries with the three approvals guards added: baseline 83",
+    "cases, 0 failing; 25 killed, none vacuous, none declared unfalsifiable.",
     "",
     "AND ONE ENTRY ELSEWHERE IS SUPERSEDED. `mutations-tools.json` M09 is",
     "recorded there as SURVIVED and NOT counted as a guard; M-Q19 is the same",
-    "edit killed by a named case. The entry in that file is left as written —",
-    "it was an honest report of what its own suite set could see — and this one",
-    "names it as superseded rather than editing another tranche's ledger."
-  ]
+    "edit killed by a named case. That file is left as written — it was an honest",
+    "report of what its own suite set could see — and this one names it as",
+    "superseded rather than editing another tranche's ledger."
+  ],
+  "index-survey": {
+    "purpose": [
+      "EVERY PAGED READ THIS ADAPTER OWNS, against the index that would have to",
+      "serve it. Nineteen ports declare a `total`; this is the whole list, with",
+      "the WHERE it filters on, the ORDER it names, and the verdict.",
+      "",
+      "THE TWO COLUMNS THAT MATTER ARE `measured` AND `verdict`, AND THEY ARE",
+      "DIFFERENT CLAIMS. `measured: true` means a plan for the statement THIS",
+      "ADAPTER SENT was read back under `EXPLAIN (ANALYZE)` against a real",
+      "PostgreSQL 16 holding hundreds of rows, and the row count below is what",
+      "that plan touched. `measured: false` means the WHERE and the ORDER were",
+      "read out of the source and matched against the migrations by hand — a",
+      "reading, not a measurement, and it is labelled as one rather than",
+      "presented beside the measured rows as though it were the same thing.",
+      "",
+      "THE RECURRING SHAPE HAS A NAME AND IT IS WORTH STATING ONCE: an index",
+      "`(a, b, c)` cannot deliver `WHERE a = ? ORDER BY c` when `b` is",
+      "unconstrained. Five of the reads below are that shape, `Thread` was the",
+      "sixth and is fixed by this tranche's migration. It is the same defect",
+      "every time and it never shows up in a returned value."
+    ],
+    "reads": [
+      {
+        "read": "conversations pageThreads, no end user named",
+        "table": "Thread",
+        "where": "environmentId = ? [AND archivedAt IS NULL]",
+        "order": "updatedAt DESC, id DESC",
+        "index": "Thread_environmentId_updatedAt_id_idx",
+        "measured": true,
+        "verdict": "FIXED BY THIS TRANCHE. Before the migration: index scan on Thread_environmentId_endUserId_updatedAt_idx feeding a full Sort, 241 rows read for a page of 25, at every window. After: bounded by the window."
+      },
+      {
+        "read": "conversations pageThreads, end user named",
+        "table": "Thread",
+        "where": "environmentId = ? AND endUserId = ? [AND archivedAt IS NULL]",
+        "order": "updatedAt DESC, id DESC",
+        "index": "Thread_environmentId_endUserId_updatedAt_idx",
+        "measured": true,
+        "verdict": "ALREADY RIGHT. Incremental Sort over the index, 15 rows read. This is the read the store's prose was written about; the prose claimed it for the other one too."
+      },
+      {
+        "read": "conversations pageTurns",
+        "table": "Turn",
+        "where": "threadId = ? AND thread.environmentId = ? [AND parentTurnId IS NULL]",
+        "order": "sequence ASC",
+        "index": "Turn_threadId_sequence_key",
+        "measured": true,
+        "verdict": "ALREADY RIGHT, and the control for the rest. No Sort node at all, fewer rows read than the transcript holds."
+      },
+      {
+        "read": "jobs approvals list, status named",
+        "table": "AgentApproval",
+        "where": "environmentId = ? AND status = ? AND createdAt >= ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "AgentApproval_environmentId_status_createdAt_idx",
+        "measured": true,
+        "verdict": "ALREADY RIGHT. All three leading columns constrained or ordered; bounded by the window, not by the scope's hundred pending rows."
+      },
+      {
+        "read": "jobs approvals list, NO status named",
+        "table": "AgentApproval",
+        "where": "environmentId = ? AND createdAt >= ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "AgentApproval_environmentId_status_createdAt_idx (scope clause only)",
+        "measured": true,
+        "verdict": "REPORTED, NOT FIXED. `status` sits between the equality column and the order column, so this is the same shape `Thread` had. It is bounded by one environment's window-filtered approvals rather than by the page, and adding a second three-column index has a write cost on every approval; that is a schema decision, not a test's."
+      },
+      {
+        "read": "agents pageBoundAgents",
+        "table": "AgentBinding joined to Agent",
+        "where": "environmentId = ? AND agent.projectId = ? [+ active/search]",
+        "order": "agent.createdAt DESC, agent.id DESC",
+        "index": "AgentBinding_environmentId_agentId_key (scope clause only)",
+        "measured": true,
+        "verdict": "REPORTED, AND NO INDEX ON THIS TABLE CAN FIX IT. The order keys are columns of the JOINED row. 300 bindings read and 900 agent-row touches for a page of 25. A fix needs `Agent.createdAt` denormalised onto `AgentBinding`, which is a schema change with a write path behind it."
+      },
+      {
+        "read": "tools pageExposures",
+        "table": "EnvironmentEntityTool joined to Tool and Entity",
+        "where": "environmentId = ? [AND entityId = ?] [AND tool.name ILIKE ?]",
+        "order": "tool.name ASC, entity.externalId ASC, toolId ASC",
+        "index": "EnvironmentEntityTool_environmentId_entityId_toolId_key (scope clause only)",
+        "measured": true,
+        "verdict": "REPORTED, SAME REASON AS pageBoundAgents. Two of the three order keys are on joined rows. 300 exposures read for a page of 25."
+      },
+      {
+        "read": "cost-monitoring pageBudgets",
+        "table": "Budget",
+        "where": "environmentId = ? AND ancestry AND deletedAt IS NULL",
+        "order": "NONE IN SQL — sorted and sliced over the decoded rows",
+        "index": "Budget_environmentId_deletedAt_enabled_idx serves the WHERE",
+        "measured": true,
+        "verdict": "DELIBERATE FULL HYDRATION, PINNED AS A COST. The leading sort key is `target.subject`, decoded out of the encoded `scope` text together with `agentId`; SQL cannot order by a value the database does not hold. 255 rows read for a page of 25 AND for a page of 1."
+      },
+      {
+        "read": "providers pageProviderKeys",
+        "table": "ProviderKey",
+        "where": "environmentId = ? [AND provider = ?]",
+        "order": "NONE IN SQL — sorted, SEARCHED and sliced over the decoded rows",
+        "index": "ProviderKey_environmentId_provider_isDefault_idx serves the WHERE",
+        "measured": false,
+        "verdict": "READ FROM SOURCE, NOT MEASURED. The same design as pageBudgets and for a second reason too: the search runs over decoded rows because Prisma's `contains` builds an unescaped ILIKE, so `100%` would match everything. Its cost is the size of the environment's key set, which is bounded by how many provider keys an operator has configured — tens, not thousands. Named here rather than measured, because a suite for it would pin the same finding a third time."
+      },
+      {
+        "read": "governance pageSafetyEvents",
+        "table": "SafetyEvent",
+        "where": "environmentId = ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "SafetyEvent_environmentId_createdAt_idx",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: the index leads on the equality column and continues with the order column, so it can serve this read; only the `id` tie-break needs resolving above it."
+      },
+      {
+        "read": "governance pageEvals",
+        "table": "AgentEval",
+        "where": "environmentId = ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "AgentEval_environmentId_createdAt_idx",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: same shape as pageSafetyEvents, same verdict."
+      },
+      {
+        "read": "conversations pagePostmanExecutions",
+        "table": "PostmanExecution",
+        "where": "environmentId = ? [+ filters]",
+        "order": "createdAt DESC, id DESC",
+        "index": "PostmanExecution_environmentId_createdAt_idx",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: same shape, same verdict."
+      },
+      {
+        "read": "governance pageCriteria",
+        "table": "EvalCriterion",
+        "where": "environmentId = ?",
+        "order": "createdAt ASC, id ASC",
+        "index": "EvalCriterion_environmentId_name_key leads on the scope; NOTHING carries createdAt",
+        "measured": false,
+        "verdict": "REPORTED: no index provides this order. The read is bounded by one environment's criteria, which an operator writes by hand, so the set is small by construction — but the shape is the one this tranche exists to name."
+      },
+      {
+        "read": "governance pageGoldenSets",
+        "table": "GoldenSet",
+        "where": "environmentId = ? [AND agentId = ?]",
+        "order": "createdAt ASC, id ASC",
+        "index": "GoldenSet_environmentId_agentId_name_key leads on the scope; NOTHING carries createdAt",
+        "measured": false,
+        "verdict": "REPORTED: same as pageCriteria, same bound, same shape."
+      },
+      {
+        "read": "memory pageMemories",
+        "table": "Memory",
+        "where": "environmentId = ? AND endUserId = ? [+ archivedAt, agentId, cluster]",
+        "order": "createdAt ASC, id ASC",
+        "index": "Memory_environmentId_endUserId_archivedAt_idx and two siblings; NONE carries createdAt",
+        "measured": false,
+        "verdict": "REPORTED, AND THE ONE ON THIS LIST MOST LIKELY TO MATTER. A subject's memory set is the thing that grows without an operator doing anything, and no index here delivers the listing's order. An index on `(environmentId, endUserId, archivedAt, createdAt, id)` would; declaring it is a schema decision this tranche does not take unmeasured."
+      },
+      {
+        "read": "memory listEntities",
+        "table": "MemoryEntity",
+        "where": "environmentId = ? AND endUserId = ? [+ agentId IN, cluster]",
+        "order": "entityKey ASC, id ASC",
+        "index": "MemoryEntity_environmentId_endUserId_agentId_entityKey_key",
+        "measured": false,
+        "verdict": "REPORTED: `agentId` sits between the subject and the order key, and the read filters it with `IN` rather than equality, so this is the `Thread` shape again. Bounded by one subject's entity set."
+      },
+      {
+        "read": "skills pageSkills",
+        "table": "Skill",
+        "where": "the visibility clause: organization, project adoption and environment binding",
+        "order": "isOfficial DESC, slug ASC, version DESC, id ASC",
+        "index": "Skill_organizationId_slug_version_key",
+        "measured": false,
+        "verdict": "REPORTED: the index carries slug and version but not `isOfficial`, which is the LEADING key, so it cannot deliver the order. The catalogue is bounded by an organization's skills."
+      },
+      {
+        "read": "agents pageVersions",
+        "table": "AgentVersion",
+        "where": "agentId = ?",
+        "order": "versionNumber DESC, id DESC",
+        "index": "AgentVersion_agentId_versionNumber_key",
+        "measured": false,
+        "verdict": "READ FROM SOURCE: the unique index is exactly the equality column and the order column. Right by construction."
+      },
+      {
+        "read": "agents pageTemplates",
+        "table": "PostmanTemplate",
+        "where": "environmentId = ? [AND agentId = ?] [+ search]",
+        "order": "isDefault DESC, updatedAt DESC, id DESC",
+        "index": "PostmanTemplate_environmentId_agentId_name_key",
+        "measured": false,
+        "verdict": "REPORTED: the index carries the scope but neither order key. Bounded by an environment's templates, which an operator writes by hand."
+      }
+    ]
+  }
 }
