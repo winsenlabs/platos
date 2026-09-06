@@ -39,16 +39,17 @@
     "entries below are the three conjuncts of that walk, and three more are the",
     "three clauses of the erasure's containment join.",
     "",
-    "SEVEN NAMED CASES EXIST BECAUSE THIS LEDGER WAS ENUMERATED FIRST. Five",
-    "guards had no case anywhere that could go red: the PROJECT clause of the",
-    "erasure join (one project held every row the organization held), the",
-    "`createdBy` clause (one operator held every rule), the ENVIRONMENT clause",
-    "(the scenario only ever erased at the organization), the NUL guard on the",
-    "`findRuleByName` LOOKUP, and the NUL guard on the erasure's REPLACEMENT.",
-    "Two more were found the same way: `updateRule` addressed with another",
-    "environment's scope, and the two vacuous-selector short-circuits, which are",
-    "indistinguishable from falling through to a query that answers zero anyway",
-    "unless the STATEMENT COUNT is what is pinned."
+    "EIGHT NAMED CASES EXIST BECAUSE THIS LEDGER WAS ENUMERATED FIRST — seven of",
+    "them written before the sweep and one out of it. Five guards had no case",
+    "anywhere that could go red: the PROJECT clause of the erasure join (one",
+    "project held every row the organization held), the `createdBy` clause (one",
+    "operator held every rule), the ENVIRONMENT clause (the scenario only ever",
+    "erased at the organization), the NUL guard on the `findRuleByName` LOOKUP,",
+    "and the NUL guard on the erasure REPLACEMENT. Two more were found the same",
+    "way: `updateRule` addressed with another environment’s scope, and the",
+    "vacuous-selector short-circuit on the SCRUB, which is indistinguishable from",
+    "falling through unless the STATEMENT COUNT is what is pinned. The eighth came",
+    "out of the sweep itself — see `sweep` below."
   ],
   "procedure": [
     "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
@@ -88,7 +89,12 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-rules.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "readNotificationRule a stored `name` past 120 characters is REFUSED — the column bounds nothing"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V02 rows: NotificationRule.filters is parsed, not cast",
@@ -99,7 +105,12 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-rules.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "readNotificationRule the refusal names the COLUMN, so an operator can find the row"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V03 rows: an unparseable filters column REFUSES rather than returning empty",
@@ -110,7 +121,13 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-rules.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "readNotificationRule a `filters` with no `eventTypes` is REFUSED, not cast",
+        "readNotificationRule the refusal names the COLUMN, so an operator can find the row"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V04 rows: an unrecognised delivery type REFUSES rather than passing through",
@@ -121,7 +138,12 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-rules.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "readNotificationRule a `delivery` outside the union is REFUSED, not passed through"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V05 rows: scopedWhere narrows on the ENVIRONMENT",
@@ -132,7 +154,12 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the where shapes `scopedWhere` narrows on the WHOLE ancestry, not on the leaf column"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V06 rows: scopedWhere narrows on the PROJECT",
@@ -142,7 +169,12 @@
       "note": "The clause that makes the ECHOED scope truthful. Without it a caller holding the right environment id under the wrong project gets a rule tagged with an ancestry it does not have.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the where shapes `scopedWhere` narrows on the WHOLE ancestry, not on the leaf column"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V07 rows: scopedWhere narrows on the ORGANIZATION",
@@ -152,7 +184,12 @@
       "note": "The outermost conjunct of the ancestry walk the legacy `environmentScopeWhere` performs.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the where shapes `scopedWhere` narrows on the WHOLE ancestry, not on the leaf column"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V08 rows: a PROJECT-level erasure selector still carries its organization",
@@ -162,7 +199,13 @@
       "note": "A project id alone would reach a project of ANOTHER organization. Project ids are uuids so a collision is not the risk; a caller passing a project it does not own is.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the where shapes `tenantWhere` widens by LEVEL, and each level drops exactly one clause",
+        "the where shapes a PROJECT-level selector still carries its organization"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V09 rows: tenantWhere's ENVIRONMENT arm is the full scoped predicate",
@@ -173,7 +216,12 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the where shapes `tenantWhere` widens by LEVEL, and each level drops exactly one clause"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V10 guards: a non-uuid identifier is refused",
@@ -184,7 +232,13 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the uuid guard accepts the canonical form and refuses the shapes PostgreSQL would take",
+        "the uuid guard `guardScope` checks exactly the ids the level actually names"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V11 guards: the uuid predicate is ANCHORED at both ends",
@@ -194,7 +248,12 @@
       "note": "An unanchored pattern admits `{...}`, which PostgreSQL's own `uuid` input accepts and stores under a DIFFERENT spelling — so a row would be written under one string and read back under another, and every rule-id comparison in this context is a string comparison in TypeScript.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the uuid guard accepts the canonical form and refuses the shapes PostgreSQL would take"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V12 guards: guardScope checks the ORGANIZATION id",
@@ -205,7 +264,12 @@
       "suites": [
         "src/eventing-rows.test.ts",
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the uuid guard `guardScope` checks exactly the ids the level actually names"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V13 guards: guardScope checks the PROJECT id",
@@ -215,7 +279,12 @@
       "note": "The middle conjunct of the ancestry filter, and the one no environment-level caller can reach through a scope it did not build itself.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the uuid guard `guardScope` checks exactly the ids the level actually names"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V14 guards: guardScope checks the ENVIRONMENT id",
@@ -225,7 +294,12 @@
       "note": "The leaf id, which is also the only tenancy COLUMN the row carries.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the uuid guard `guardScope` checks exactly the ids the level actually names"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V15 guards: a NUL byte in a text value is refused",
@@ -235,7 +309,15 @@
       "note": "PostgreSQL cannot store U+0000 in a TEXT column or inside a jsonb string, and NOTHING in this context refuses one: `parseRuleName` trims nothing and bounds by code units, `nonEmptyString` asks only for length, and the email rule really is just \"contains @\".",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "a NUL byte in the name is refused, and the driver would have refused it too",
+        "a NUL byte inside the delivery JSON is refused, and it is a DIFFERENT column",
+        "a NUL in a LOOKUP is refused too — the read path binds text as surely as the write",
+        "the REPLACEMENT an erasure writes is guarded like any other text"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V16 guards: an Invalid Date is refused before it reaches timestamp(3)",
@@ -245,7 +327,12 @@
       "note": "`createNotificationRule` and `editNotificationRule` stamp both instants from the context's `Clock`, and a clock that answers `new Date(NaN)` produces a driver error naming neither the column nor the port call.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "an Invalid Date is refused before it reaches a `timestamp(3)` column"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V17 guards: the DELIVERY union's url arm is walked for NULs",
@@ -255,7 +342,12 @@
       "note": "Each arm of the destination union carries exactly one string and each is a TEXT-shaped value inside the `delivery` JSONB. The url arm is the one the SSRF screen also looks at, so it is the one an operator is most likely to paste into.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "a NUL byte inside the delivery JSON is refused, and it is a DIFFERENT column"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V18 guards: the filters JSON root is checked",
@@ -265,7 +357,12 @@
       "note": "Restates `NotificationRule_filters_json_root`. UNREACHABLE through the port — `toRuleFilterInput` returns an object on every path — so the case calls it directly, which is the only honest way to build the input.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the guards no port call can reach `guardFiltersJsonRoot` refuses an array, a scalar and a null"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V19 guards: the delivery JSON root is checked, under its OWN code",
@@ -275,7 +372,12 @@
       "note": "TWO CHECKS, TWO CODES. `NotificationRule_filters_json_root` and `NotificationRule_delivery_json_root` are separate constraints on separate columns, and a shared code would make an operator read one incident as the other.",
       "suites": [
         "src/eventing-rows.test.ts"
-      ]
+      ],
+      "kills": [
+        "the guards no port call can reach `guardDeliveryJsonRoot` refuses the same, under its OWN code"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 17
     },
     {
       "name": "M-V20 guards: the LOOKUP name is guarded, not only the written one",
@@ -285,7 +387,12 @@
       "note": "`findRuleByName` sends the name as a bind parameter of a SELECT, and a NUL in a bind parameter is refused before any row is compared — inside whatever transaction the caller has open. Guarding only the write path keeps the 25P02 out of an insert and lets a lookup put it there instead.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "a NUL in a LOOKUP is refused too — the read path binds text as surely as the write"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V21 guards: the erasure REPLACEMENT is guarded like any other text",
@@ -295,7 +402,12 @@
       "note": "The replacement comes from the CALLER — the erasure target passes a fixed sentinel, but the port does not require one — and it lands in a TEXT column inside the multi-context transaction `privacy` opened. It is the one place in this store where a refusal costs somebody else's work.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the REPLACEMENT an erasure writes is guarded like any other text"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V22 refusal: a TransactionScopeError is RETHROWN, not turned into a Result",
@@ -305,7 +417,14 @@
       "note": "The three scope refusals are the property tranche 1 built. Converting them to a `Result` would let a use case that lost its transaction carry on as though a row had merely failed to write.",
       "suites": [
         "src/eventing-transaction.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the three scope refusals are three distinct codes a write with NO open transaction is `not_open`",
+        "the three scope refusals are three distinct codes a write with a FINISHED transaction's token is `scope_unknown`",
+        "the three scope refusals are three distinct codes a write with ANOTHER LIVE transaction's token is `scope_foreign`"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 9
     },
     {
       "name": "M-V23 refusal: a foreign key violation gets its OWN reason code",
@@ -315,7 +434,12 @@
       "note": "\"that environment does not exist\" and \"a table is down\" are separate incidents behind one published code, so the distinction lives in `details.reason` — and a reason that fell back to the driver's own message would name neither.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "`NotificationRule_environmentId_fkey` is reported under its OWN reason code"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V24 refusal: a refusal's reason LEADS with its distinct code",
@@ -325,7 +449,20 @@
       "note": "`domain/errors.ts` mints ONE code for a store failure, so the only thing separating five guards in a log is the code at the front of the reason string.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "`@db.Uuid` — the rule id the context's OWN generator mints is refused",
+        "`@db.Uuid` — the scope triple the context's OWN fixture mints is refused",
+        "`@db.Uuid` — a malformed id refuses on the READ path too, which the double does not",
+        "a NUL byte in the name is refused, and the driver would have refused it too",
+        "a NUL byte inside the delivery JSON is refused, and it is a DIFFERENT column",
+        "an Invalid Date is refused before it reaches a `timestamp(3)` column",
+        "a NUL in a LOOKUP is refused too — the read path binds text as surely as the write",
+        "an ERASURE selector is guarded too, at exactly the ids its level names",
+        "the REPLACEMENT an erasure writes is guarded like any other text"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V25 refusal: a name clash is recognised by the ORM's own code",
@@ -336,7 +473,13 @@
       "suites": [
         "src/eventing-conformance.integration.test.ts",
         "src/eventing-transaction.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V26 rules: every read is SCOPED",
@@ -346,7 +489,13 @@
       "note": "The port's own instruction: \"There is no findRule(id). There is findRule(scope, id), and an implementation MUST return null — not a row from another environment — when the id exists elsewhere.\"",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V27 rules: insertRule writes the DOMAIN's id, not the column default",
@@ -356,7 +505,14 @@
       "note": "`NotificationRule.id` has `@default(uuid())`, so omitting it writes a row the caller cannot address: `registerNotificationRule` returns the rule it built and the store would have stored a different one.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V28 rules: only a NAME CLASH is turned into a conflict on insert",
@@ -366,7 +522,12 @@
       "note": "The catch sits over EVERY driver failure the insert can raise, and the foreign key is one of them. Swallowing it would report \"that name is taken\" for an environment that does not exist.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "`NotificationRule_environmentId_fkey` is reported under its OWN reason code"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V29 rules: updateRule is addressed by the whole ancestry, not by the id",
@@ -376,7 +537,12 @@
       "note": "The legacy `updateRule` writes with an UNSCOPED where and is safe only because of the read before it. Here the scope travels on the rule, so a synthesised one must match no row rather than update somebody else's.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "`updateRule` addressed with ANOTHER environment's scope updates nothing"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V30 rules: an update that matched NOTHING is reported, not invented",
@@ -386,7 +552,12 @@
       "note": "`updateManyAndReturn` answers an empty array rather than raising, so without this the method would return the row it did not write — which is exactly the upsert the in-memory double performs and this store deliberately does not.",
       "suites": [
         "src/eventing-constraints.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "`updateRule` addressed with ANOTHER environment's scope updates nothing"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 15
     },
     {
       "name": "M-V31 rules: updatedAt is written EXPLICITLY, against the @updatedAt stamp",
@@ -396,7 +567,13 @@
       "note": "The column carries `@updatedAt`, so the client stamps it on every update unless a value is supplied — and `editNotificationRule` already computed one from the context's Clock. Letting the client win makes `updateNotificationRule` return a rule that disagrees with the row it just wrote.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V32 rules: deleteRule reports whether a row actually went",
@@ -406,7 +583,13 @@
       "note": "`deleteNotificationRule` turns the boolean into the caller's answer, so a store that always said `true` would report a rule removed from an environment that never held it.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V33 rules: the DELETE is scoped",
@@ -416,7 +599,13 @@
       "note": "An unscoped delete addressed by id alone removes another environment's standing order, and the caller is told it succeeded.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V34 rules: listRules is NEWEST FIRST",
@@ -426,7 +615,12 @@
       "note": "The port promises it and the legacy `orderBy: { createdAt: \"desc\" }` is where it comes from. The double sorts the same way, so the differential compares two ordered lists rather than two sets.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V35 rules: the routing read is narrowed to ENABLED rules in the STORE",
@@ -436,7 +630,13 @@
       "note": "The port says why: \"a routing pass over a busy environment must not load every disabled rule to discard it in memory\". `ruleAdmits` re-checks `enabled`, so the delivery would still be correct and the read would still be wrong.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V36 erasure: a vacuous selector costs NO statement on the count",
@@ -447,7 +647,13 @@
       "suites": [
         "src/eventing-conformance.integration.test.ts",
         "src/eventing-statements.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V37 erasure: a vacuous selector costs NO statement on the scrub either",
@@ -457,7 +663,13 @@
       "note": "The same shortcut on the write half, and it matters more: the erasure path runs inside `privacy`'s transaction, so a statement per vacuous target is a statement per target on every erasure of a non-operator subject.",
       "suites": [
         "src/eventing-statements.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "every statement count is pinned and NONE of them moves with the number of rows",
+        "the two ZERO pins are the only ones, and every other method sends a statement"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 5
     },
     {
       "name": "M-V38 erasure: the containment join carries the ORGANIZATION clause",
@@ -467,7 +679,14 @@
       "note": "The outermost clause. Without it the statement scrubs every matching row in the INSTALLATION, and every other assertion about the erasure still passes.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V39 erasure: the containment join carries the PROJECT clause",
@@ -477,7 +696,14 @@
       "note": "A project-level erasure that widened to the organization would scrub a second project's standing orders. It is unfalsifiable in a tenant with ONE project, which is why the harness has a COUSIN.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V40 erasure: the containment join carries the ENVIRONMENT clause",
@@ -487,7 +713,14 @@
       "note": "The narrowest clause, and the one the scenario could not see until the erasure widened in three steps rather than one.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V41 erasure: the scrub is restricted to the SUBJECT's own rows",
@@ -497,7 +730,14 @@
       "note": "An erasure that scrubbed every row in the scope would destroy the attribution of every OTHER operator's standing orders, and would report a count that looked like a thorough job.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V42 erasure: the scrub does NOT move updatedAt",
@@ -507,7 +747,13 @@
       "note": "The whole reason this write is raw SQL rather than an `updateMany`. `updatedAt` is when the standing ORDER last changed, the DOMAIN computes it, and the in-memory double leaves it alone — so a client-stamped column is a difference the differential compares verbatim.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V43 erasure: the count and the scrub agree on the level",
@@ -517,7 +763,14 @@
       "note": "The count goes through the delegate with `tenantWhere` and the scrub through a hand-written join; TWO spellings of one containment rule can drift, so the scenario asserts at every level that the number planned is the number erased.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     },
     {
       "name": "M-V44 erasure: the ENVIRONMENT id is bound only when the level names it",
@@ -527,20 +780,55 @@
       "note": "The converse of M-V43: binding NULL where the level DOES name an environment widens an environment-level erasure to its whole project.",
       "suites": [
         "src/eventing-conformance.integration.test.ts"
-      ]
+      ],
+      "kills": [
+        "the in-memory double and PostgreSQL answer the SAME scenario identically",
+        "the scenario is not vacuous: every method of the port changed an answer",
+        "the erasure does NOT move `updatedAt`, and each level stops where it should"
+      ],
+      "verdict": "KILLED",
+      "executedCases": 3
     }
   ],
   "sweep": [
     "MEASURED on a real PostgreSQL, in a container, on the machine that has a",
-    "daemon. Filled in from the run; every `kills` entry is the FULL NAME of a",
-    "case this driver watched go red, copied from the run rather than predicted.",
+    "daemon. SECOND AND FINAL RUN at 7ea8a038: 44 entries, 44 KILLED, 0 SURVIVED,",
+    "0 VACUOUS, 0 UNAPPLIED. Every `kills` entry above is the FULL NAME of a case",
+    "this driver watched go red, copied from the run rather than predicted.",
     "",
     "THE BASELINE IS PROVED FIRST AND THE DRIVER REFUSES TO SCORE WITHOUT IT.",
-    "Each of the six suites is run UNMUTATED and has to exit zero with a",
-    "non-zero executed case count before any mutation is applied, and a run with",
-    "no executed cases is classified VACUOUS rather than as a kill. That is the",
-    "failure tranche 1's first sweep hit, where a cleaned `dist` made every suite",
-    "fail to LOAD and 22 mutations 'died' against a tree that would have died",
-    "against none."
+    "Each of the six suites was run UNMUTATED and had to exit zero with a",
+    "non-zero executed case count — 3, 15, 17, 7, 5 and 9 — before any mutation",
+    "was applied, and a run with no executed cases is classified VACUOUS rather",
+    "than as a kill. That is the failure tranche 1's first sweep hit, where a",
+    "cleaned `dist` made every suite fail to LOAD and 22 mutations 'died' against",
+    "a tree that would have died against none.",
+    "",
+    "THE FIRST RUN WAS NOT ALL GREEN AND THAT IS THE POINT OF RUNNING IT.",
+    "44 entries, 42 KILLED, 2 SURVIVED. Both survivors were gaps in the SUITES",
+    "rather than weak guards, and the second is the more interesting.",
+    "",
+    "M-V14 — `guardScope` checks the ENVIRONMENT id. The guard returns EARLY at",
+    "each level, so a check deleted from the LAST arm is invisible to every case",
+    "whose scope stops at the first, and the case that owned that guard passed an",
+    "organization scope and a project scope and no environment one. One assertion",
+    "closed it.",
+    "",
+    "M-V36 — the vacuous-selector short-circuit on the COUNT, and this one",
+    "corrected a NOTE rather than only a suite list. The entry claimed falling",
+    "through would still ANSWER zero, because `createdBy` is NOT NULL. It does",
+    "not: `createdBy` is a NON-NULLABLE String, so `where: { createdBy: null }` is",
+    "a CLIENT VALIDATION error rather than a query matching nothing — the delegate",
+    "never sends a statement, so the ZERO statement pin cannot see it, and the",
+    "caller gets a refusal where the port promises a count. Its twin M-V37, on the",
+    "SCRUB, was killed by the statement pin on the first run precisely because",
+    "that half is RAW SQL: raw SQL validates nothing, so it does send the",
+    "statement the pin counts. The differential is what catches the count half,",
+    "because the double answers zero.",
+    "",
+    "SEVEN NAMED CASES WERE WRITTEN BEFORE THE SWEEP, while enumerating this",
+    "ledger, and the EIGHTH came out of the sweep itself. Enumerating first is",
+    "what found the five guards nothing could kill; running it is what found the",
+    "sixth and corrected the claim in M-V36."
   ]
 }
