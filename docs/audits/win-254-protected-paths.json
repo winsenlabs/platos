@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "186f6d5398b9006e8b2e0558f3a46b5093ec69b5ba313805f86b325d04c93b27"
+      "sha256": "1f0031a481c0317a11466646d9c5abc83a01b542f7e2d033f1d90fdac5e5d171"
     },
     {
       "path": "LICENSE",
@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "56974df51500053da7abec1956e64e334359c4440a3494070ddbbcfd18f4aa17"
+      "sha256": "72f7c13b6810385a5e234305a18f6cc1ba3b61e8fb17dfd2dbc45de6028a3aae"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "9beb3714e1a6afe7d9ebaceb179ffd86257fc80400d34443830e05ae7c18e6c9"
+      "sha256": "011697760f0cee1a053a686ae1e5aa411e7467858f6dd67450825003e38f27b9"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "be1d2d0e31d2ca2b8bc84a0fbed975698c6f4d8fe82315611d63abc6154b883d"
+      "sha256": "a4ed200459340a88e8bd37ace6ecf97c87c56feb30f2cf6a736e943c758e35ea"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1053,7 +1053,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "282ad16a6ff36901aa9a790f16217370d9487986d7ce851ab8ee24f002158be6"
+      "sha256": "a6a9714f14e846c29780570b6f3944dca6e1a24bd408f4ea7bc0c82c89ee45e7"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "8b80b37979c75c94e07ed5429a7a6dd26bd6c2a4ebeb636c25eaa8804ec80197"
+      "sha256": "eadb5fc0cd3675f5493fe241e27e03a763119987fd0ce8c7beb0a2e279b6939e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3468,7 +3468,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "403de6cbc7ef256bc63ff96ae2a7a6a716375f20c92713b840998e080d5f379e"
+      "sha256": "964d19761c7fcd64acd684f75ed0480c3295a7c76f6fb0a07604d72327ba70f6"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3643,7 +3643,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "c78c6731193be1bb42f0533edb804d20855c96ad038157b1f040a0cc03542da9"
+      "sha256": "afa17873143bb8d95ed43bdf59392bc6f1951a5389e368c384411f9d253577a2"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",

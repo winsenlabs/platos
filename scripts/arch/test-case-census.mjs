@@ -1724,9 +1724,9 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * of four rows in the same PostgreSQL database, so its repository is the same
  * client, the same transaction and the same directory.
  *
- *   packages/adapters/postgres-tenancy   60 -> 67 files,  604 -> 675 cases
+ *   packages/adapters/postgres-tenancy   60 -> 67 files,  604 -> 681 cases
  *
- * WHAT THE 71 ARE, file by file, so the total cannot absorb a loss elsewhere:
+ * WHAT THE 77 ARE, file by file, so the total cannot absorb a loss elsewhere:
  *
  *   providers-rows.test.ts                     17  the crossing in both
  *                                                  directions, the three column
@@ -1742,21 +1742,21 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                  unique refusals told apart,
  *                                                  the Decimal(24, 12) round
  *                                                  trip and the model identity
- *   providers-constraints.integration.test.ts  11  `ProviderKey`'s five database
+ *   providers-constraints.integration.test.ts  13  `ProviderKey`'s five database
  *                                                  rules, each guard beside the
  *                                                  rule it restates and each
  *                                                  rule shown refusing a raw
  *                                                  statement that steps around
  *                                                  the guard
  *   providers-catalogue-constraints
- *     .integration.test.ts                     11  the same pairing for `Model`
+ *     .integration.test.ts                     12  the same pairing for `Model`
  *                                                  and `ModelPrice`: the rate
  *                                                  CHECK in both directions, the
  *                                                  append-only rules, the
  *                                                  SECOND identity the port does
  *                                                  not model, and the INTEGER
  *                                                  columns
- *   providers-rules.integration.test.ts         7  the rules NO port method
+ *   providers-rules.integration.test.ts        10  the rules NO port method
  *                                                  restates: the delete rule
  *                                                  in BOTH places a version can
  *                                                  pin a key, its own provider
@@ -1776,7 +1776,7 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  *                                                  anchor, and the three writes
  *                                                  whose count is the contract
  *
- * 17 + 11 + 11 + 11 + 7 + 7 + 7 = 71. Six of the seven need a real PostgreSQL
+ * 17 + 11 + 13 + 12 + 10 + 7 + 7 = 77. Six of the seven need a real PostgreSQL
  * and are run by the `postgres-tenancy-repository` CI job, not by
  * `pnpm test:v1-packages`; they are counted here because this census measures
  * the suites a package SHIPS.
@@ -1796,8 +1796,8 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * beside the package is where those guards are held falsifiable.
  *
  * WITH `providers` THE PACKAGE'S ROW IS 20 + 6 + 6 + 7 + 6 + 6 + 9 + 7 = 67
- * files and 199 + 59 + 60 + 65 + 72 + 66 + 83 + 71 = 675 cases. The tree total
- * is 431 + 7 = 438 files and 6520 + 71 = 6591 cases. The adapters term of the
+ * files and 199 + 59 + 60 + 65 + 72 + 66 + 83 + 77 = 681 cases. The tree total
+ * is 431 + 7 = 438 files and 6520 + 77 = 6597 cases. The adapters term of the
  * three-way identity carries all seven, because every added file is an
  * adapter's: 79 + 7 = 86, and 349 + 3 + 86 = 438.
  */
@@ -1810,7 +1810,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 67, cases: 675 },
+  "packages/adapters/postgres-tenancy": { files: 67, cases: 681 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -1987,16 +1987,16 @@ export const EXPECTED = Object.freeze({
  * of cases stated in prose beside an asserted one is exactly the drift this file
  * exists to catch.
  *
- * 6520 -> 6591: the 71 cases of WIN-258 tranche 5's `providers` canonical store,
+ * 6520 -> 6597: the 77 cases of WIN-258 tranche 5's `providers` canonical store,
  * enumerated file by file in the block beside the postgres-tenancy row. Six of
  * its seven suites carry `.integration.` in the name, so the cases this census
  * records and `pnpm test:v1-packages` does not execute go from 422 over 49 files
- * to 476 over 55; the seventh, `providers-rows.test.ts`, runs in the ordinary
+ * to 482 over 55; the seventh, `providers-rows.test.ts`, runs in the ordinary
  * package test script for the reason the other three row suites do — it has no
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6591;
+export const EXPECTED_RUNTIME_TOTAL = 6597;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
