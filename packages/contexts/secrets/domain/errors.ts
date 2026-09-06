@@ -32,6 +32,7 @@ export const SECRETS_ERROR_CODES = [
   "INVALID_PURGE_REQUEST",
   "INVALID_RETENTION_REQUEST",
   "ENVELOPE_FORMAT_UNWRITABLE",
+  "LEGACY_ENVELOPE_UNREADABLE",
   "ENVIRONMENT_VARIABLE_UNAVAILABLE",
   "ENVIRONMENT_VARIABLE_KEY_INVALID",
   "ENVIRONMENT_VARIABLE_VALUE_REQUIRED",
@@ -59,6 +60,29 @@ export type CredentialUnavailableReason =
   | "envelope_open_failed"
   | "envelope_format_unreadable"
   | "scope_mismatch";
+
+/**
+ * Why a legacy envelope could not be read for migration.
+ *
+ * Distinct values throughout, because two guards answering with one reason
+ * cannot be told apart in an operator's log — and every one of these names a
+ * different repair. The three encoding reasons are separate from the three width
+ * reasons for the same cause: "this column does not hold what you think" and
+ * "this column holds the other legacy format" are not the same finding.
+ */
+export type LegacyEnvelopeUnreadableReason =
+  | "format_not_a_known_version"
+  | "format_is_already_canonical"
+  | "legacy_format_carries_no_salt"
+  | "nonce_width_disagrees_with_format"
+  | "auth_tag_width_disagrees_with_format"
+  | "ciphertext_is_empty"
+  | "payload_is_not_a_dotted_base64url_triple"
+  | "payload_is_not_base64"
+  | "payload_is_shorter_than_its_own_header"
+  | "legacy_key_absent_for_format"
+  | "legacy_key_is_not_32_bytes"
+  | "legacy_envelope_open_failed";
 
 function withReason(reason: string, extra: Readonly<Record<string, JsonValue>> = {}): Readonly<Record<string, JsonValue>> {
   return { reason, ...extra };
@@ -119,6 +143,32 @@ export function envelopeFormatUnwritable(formatVersion: number): DomainError {
     "precondition_failed",
     "envelope format is read-only and may not be written",
     { details: withReason("legacy_format", { formatVersion }) },
+  );
+}
+
+/**
+ * A legacy envelope could not be read for migration.
+ *
+ * WHY THIS IS ITS OWN CODE AND NOT A TENTH `credentialUnavailable` REASON.
+ * `credentialUnavailable` collapses its reasons because its caller may be a
+ * client probing the vault, and telling a prober "wrong key" apart from "no such
+ * credential" hands it an oracle for free. This code's caller is never a client:
+ * a legacy migration is driven by an operator over material read out of a column
+ * this context does not own, and the only useful answer is WHICH part of the
+ * payload failed. Collapsing it would leave an operator holding an unreadable
+ * `OperatorMfaTotp` row with no way to learn whether the fault was the encoding,
+ * a width, or the key — three findings with three different repairs.
+ *
+ * It is `invalid_input` and not `not_found`: the row exists, and what is wrong
+ * is the material the caller presented. It names no payload, no key and no
+ * plaintext, for the reason every message in this file names none.
+ */
+export function legacyEnvelopeUnreadable(reason: LegacyEnvelopeUnreadableReason): DomainError {
+  return domainError(
+    "LEGACY_ENVELOPE_UNREADABLE",
+    "invalid_input",
+    "legacy envelope could not be read for migration",
+    { details: withReason(reason) },
   );
 }
 

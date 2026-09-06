@@ -22,6 +22,15 @@ import type {
   SecretRevision,
 } from "./ids.js";
 
+// `MIGRATE` is the seventh, and it is not a synonym for `CREATE`. A credential
+// whose material arrived from a legacy column was protected by a raw single key
+// bound to no context — `domain/envelope.ts` catalogues exactly how weak both
+// legacy shapes are — and an operator auditing the vault has to be able to find
+// those credentials AFTER the legacy column has been dropped and the only
+// remaining evidence is this row. Recording them as `CREATE` would have made that
+// provenance unrecoverable. It is also the one action that writes a
+// `toRootKeyVersion` with no `fromRootKeyVersion`, because the material entered
+// the ring rather than moving within it.
 export const CREDENTIAL_AUDIT_ACTIONS = [
   "CREATE",
   "READ",
@@ -29,6 +38,7 @@ export const CREDENTIAL_AUDIT_ACTIONS = [
   "REWRAP",
   "REVOKE",
   "PURGE",
+  "MIGRATE",
 ] as const;
 
 export type CredentialAuditAction = (typeof CREDENTIAL_AUDIT_ACTIONS)[number];

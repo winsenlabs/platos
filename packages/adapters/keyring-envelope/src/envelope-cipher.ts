@@ -98,7 +98,19 @@ function requireHandleMatchesBinding(
   return ok(null);
 }
 
-export function createEnvelopeCipher(ring: RootKeyRingResolver): AeadCipher {
+/**
+ * The CANONICAL half of `AeadCipher` — the two verbs that touch format 1.
+ *
+ * It is a `Pick` rather than the whole port because this module cannot honestly
+ * satisfy the whole port. `openLegacy` reads formats sealed under raw single keys
+ * that are not in the ring at all, and giving it a home here would put those keys
+ * one closure away from `seal`. `legacy-envelope-reader.ts` holds that verb, and
+ * `adapter.ts` is the one place the two halves become one `AeadCipher` — which is
+ * the same reason the ring, the cipher and the hasher share one custodian.
+ */
+export type CanonicalEnvelopeCipher = Pick<AeadCipher, "seal" | "open">;
+
+export function createEnvelopeCipher(ring: RootKeyRingResolver): CanonicalEnvelopeCipher {
   return {
     async seal(request: SealRequest): Promise<Result<SealedEnvelope>> {
       const matched = requireHandleMatchesBinding(request.key.rootKeyVersion, request.binding);

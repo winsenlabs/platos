@@ -18,14 +18,23 @@ import type { Clock, IdGenerator, Result, TransactionScope, Ulid, UnitOfWork, Uu
 
 import { envelopeAad, envelopeKeyInfo } from "../domain/envelope.js";
 import type { SealedEnvelope } from "../domain/envelope.js";
-import { credentialUnavailable, invalidKeyRing } from "../domain/errors.js";
+import { credentialUnavailable, invalidKeyRing, legacyEnvelopeUnreadable } from "../domain/errors.js";
+import { requireLegacyEnvelopeShape, requireMigratableFormat } from "../domain/legacy-envelope.js";
 import { rootKeyVersion } from "../domain/ids.js";
 import type { RootKeyVersion } from "../domain/ids.js";
 import { rootKeyRingState } from "../domain/key-ring.js";
 import type { RootKeyRingState } from "../domain/key-ring.js";
 import { secretMaterial } from "../domain/secret-material.js";
 import type { SecretMaterial } from "../domain/secret-material.js";
-import type { AeadCipher, Hasher, KeyRing, OpenRequest, RootKeyHandle, SealRequest } from "./ports/index.js";
+import type {
+  AeadCipher,
+  Hasher,
+  KeyRing,
+  LegacyOpenRequest,
+  OpenRequest,
+  RootKeyHandle,
+  SealRequest,
+} from "./ports/index.js";
 
 function version(value: number): RootKeyVersion {
   const parsed = rootKeyVersion(value);
@@ -164,7 +173,65 @@ export function inMemoryAeadCipher(ring: InMemoryKeyRing): AeadCipher {
       }
       return ok(secretMaterial(plaintext));
     },
+
+    // THE LEGACY DOUBLE IS A DOUBLE OF THE FORMAT, NOT OF THE CIPHER, AND THAT
+    // IS THE HONEST LIMIT OF WHAT IT CAN PROVE.
+    //
+    // A legacy payload's plaintext is recoverable here only because this double
+    // and `legacyPayload` below share a fake serialisation: the pair exists so
+    // `migrate-legacy-envelope.ts`'s CONTROL FLOW — the grant, the convergence
+    // branch, the revision, the audit row, the transaction — is exercisable with
+    // nothing running. It says NOTHING about whether real format-2 and format-3
+    // bytes open, and it must not be read as saying so.
+    //
+    // That claim is made where it can be falsified: `keyring-envelope`'s
+    // `legacy-wire-vectors.ts` holds ciphertexts produced BY the two extraction
+    // sources, and its suites open them with real AES-256-GCM. This double
+    // deliberately reproduces the FORMAT rules — it routes the payload through
+    // the same `requireMigratableFormat` and `requireLegacyEnvelopeShape` the
+    // real adapter uses — so a widths change breaks both, and the one thing it
+    // fakes is the primitive.
+    async openLegacy(request: LegacyOpenRequest): Promise<Result<SecretMaterial>> {
+      const format = requireMigratableFormat(request.formatVersion);
+      if (!format.ok) return err(format.error);
+      const parts = request.payload.split("|");
+      if (parts.length !== 4 || parts[0] !== LEGACY_DOUBLE_PREFIX) {
+        return err(legacyEnvelopeUnreadable("payload_is_not_base64"));
+      }
+      const [, declaredFormat, plaintext, tag] = parts;
+      const shaped = requireLegacyEnvelopeShape(format.value, {
+        nonce: stream(`legacy-nonce|${plaintext}`, format.value.nonceBytes),
+        ciphertext: encodeUtf8(plaintext ?? ""),
+        authTag: stream(`legacy-tag|${plaintext}`, TAG_BYTES),
+      });
+      if (!shaped.ok) return err(shaped.error);
+      if (declaredFormat !== String(request.formatVersion)) {
+        return err(legacyEnvelopeUnreadable("nonce_width_disagrees_with_format"));
+      }
+      if (tag !== legacyTag(plaintext ?? "")) {
+        return err(legacyEnvelopeUnreadable("legacy_envelope_open_failed"));
+      }
+      return ok(secretMaterial(plaintext ?? ""));
+    },
   };
+}
+
+/** The double's own serialisation marker. Nothing real ever writes this. */
+const LEGACY_DOUBLE_PREFIX = "in-memory-legacy";
+
+function legacyTag(plaintext: string): string {
+  return mix(`legacy|${plaintext}`).toString(16);
+}
+
+/**
+ * Build a payload `inMemoryAeadCipher.openLegacy` accepts.
+ *
+ * A test double needs a way to MINT its inputs as well as read them, and minting
+ * them in each suite by hand is how two suites end up disagreeing about the
+ * double's own shape.
+ */
+export function legacyPayload(formatVersion: number, plaintext: string): string {
+  return [LEGACY_DOUBLE_PREFIX, String(formatVersion), plaintext, legacyTag(plaintext)].join("|");
 }
 
 export function inMemoryHasher(): Hasher {

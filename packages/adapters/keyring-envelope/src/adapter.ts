@@ -34,6 +34,8 @@ import type {
 } from "@platos/context-secrets/application/ports/index.js";
 
 import { createEnvelopeCipher } from "./envelope-cipher.js";
+import type { LegacyKeyInput } from "./legacy-envelope-reader.js";
+import { createLegacyEnvelopeReader } from "./legacy-envelope-reader.js";
 import type { RootKeyRingInput, RootKeyRingResolver } from "./root-key-ring.js";
 import { createRootKeyRing } from "./root-key-ring.js";
 import { createSecretHasher } from "./secret-hasher.js";
@@ -50,8 +52,23 @@ export interface KeyringEnvelopeAdapter extends KeyRing, AeadCipher, Hasher {
  * on, not a runtime `Result` every later call re-discovers. `buildKeyringEnvelope`
  * below is the one-call form for a composition root that wants both.
  */
-export function createKeyringEnvelopeAdapter(ring: RootKeyRingResolver): KeyringEnvelopeAdapter {
+export function createKeyringEnvelopeAdapter(
+  ring: RootKeyRingResolver,
+  // WIN-259 M2.4. The LEGACY keys are a second, optional argument rather than a
+  // second constructor, and they are optional because they SHOULD stop being
+  // configured. An installation that has finished migrating drops them, and from
+  // that day every `openLegacy` call answers `legacy_key_absent_for_format` — the
+  // fail-closed default, reached by deleting configuration rather than by
+  // shipping code. Defaulting to an empty ring is what makes that the default.
+  //
+  // They are NOT in `RootKeyRingInput`. A legacy key has no version, may never
+  // seal, and must never be mintable as a `RootKeyHandle`; putting it in the ring
+  // would make `seal` able to reach it, which is the one thing that must stay
+  // impossible.
+  legacy: LegacyKeyInput = { keys: {} },
+): KeyringEnvelopeAdapter {
   const cipher = createEnvelopeCipher(ring);
+  const legacyReader = createLegacyEnvelopeReader(legacy);
   const hasher = createSecretHasher();
   return {
     adapterName: "keyring-envelope",
@@ -72,13 +89,27 @@ export function createKeyringEnvelopeAdapter(ring: RootKeyRingResolver): Keyring
 
     seal: cipher.seal,
     open: cipher.open,
+    openLegacy: legacyReader.openLegacy,
     hash: hasher.hash,
     verify: hasher.verify,
   };
 }
 
-/** Parse a ring and build the adapter, or refuse with the parse failure. */
-export function buildKeyringEnvelope(input: RootKeyRingInput): Result<KeyringEnvelopeAdapter> {
+/**
+ * Parse a ring and build the adapter, or refuse with the parse failure.
+ *
+ * The legacy keys are NOT parsed here and NOT refused here, and the asymmetry is
+ * deliberate. A malformed ROOT key ring is a configuration failure the process
+ * must refuse to start on: nothing can be sealed or read without it. A malformed
+ * LEGACY key blocks only migration of one legacy format, and a vault that refused
+ * to boot over it would take a running installation down to protect an operation
+ * nobody had asked it to perform yet. So it is judged per call, and answers
+ * `legacy_key_is_not_32_bytes` to the operator who asked for the migration.
+ */
+export function buildKeyringEnvelope(
+  input: RootKeyRingInput,
+  legacy: LegacyKeyInput = { keys: {} },
+): Result<KeyringEnvelopeAdapter> {
   const ring = createRootKeyRing(input);
-  return ring.ok ? { ok: true, value: createKeyringEnvelopeAdapter(ring.value) } : ring;
+  return ring.ok ? { ok: true, value: createKeyringEnvelopeAdapter(ring.value, legacy) } : ring;
 }

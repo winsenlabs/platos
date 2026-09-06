@@ -9,6 +9,7 @@ export type {
   AeadCipher,
   Hasher,
   KeyRing,
+  LegacyOpenRequest,
   OpenRequest,
   RootKeyHandle,
   SealRequest,
@@ -81,6 +82,7 @@ export type {
   CredentialSecretVersion,
   CredentialSecretVersionDraft,
   EnvelopeBinding,
+  EnvelopeFormatDescriptor,
   EnvelopeFormatVersion,
   EnvironmentVariable,
   EnvironmentVariableId,
@@ -152,4 +154,37 @@ export {
   rootKeyRingState,
   rootKeyVersion,
   secretMaterial,
+} from "../../domain/index.js";
+
+// WIN-259 M2.4, second half — what `openLegacy` needs, and the FOURTH time this
+// exact omission has been found on this issue.
+//
+// The block above made `AeadCipher.seal` and `.open` implementable outside this
+// package. `openLegacy` is implementable only with three more names, and each is
+// there for the reason the block above gives for `envelopeKeyInfo`: the adapter
+// must ask the DOMAIN what a legacy format is, never decide for itself.
+//
+// `requireMigratableFormat` is the closed rule about which formats may be read
+// at all. An adapter carrying its own `version === 2 || version === 3` would be a
+// second opinion about a set `envelope.ts` derives from `writable`, and the day a
+// fourth legacy format is catalogued the two would disagree silently — the
+// adapter would refuse material the domain says is migratable.
+//
+// `requireLegacyEnvelopeShape` is the width rule, and it is the one an adapter is
+// most tempted to inline. Format 2's nonce is 12 bytes and format 3's is 16; an
+// adapter that hard-coded either would open one format and mis-slice the other,
+// and a mis-sliced payload fails the tag check — which looks exactly like a wrong
+// key. `AUTH_TAG_BYTES` travels with it for the same reason.
+//
+// `legacyEnvelopeUnreadable` is the one refusal `domain/errors.ts` reserves for
+// this operation. An adapter minting its own would put a sixteenth code in a
+// closed set of fifteen, and `contracts/index.test.ts` pins that set.
+export type { LegacyEnvelopeParts, LegacySecretPayload } from "../../domain/index.js";
+export {
+  AUTH_TAG_BYTES,
+  MIGRATABLE_ENVELOPE_FORMATS,
+  canonicalRowRefusals,
+  legacyEnvelopeUnreadable,
+  requireLegacyEnvelopeShape,
+  requireMigratableFormat,
 } from "../../domain/index.js";

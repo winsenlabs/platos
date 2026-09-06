@@ -22,8 +22,19 @@
 //
 // The two legacy shapes are READ-ONLY here. They carry no root key version, so
 // they cannot participate in rotation, and they bind no context, so an envelope
-// lifted from one row would decrypt happily in another. Reconciling them onto
-// format 1 is WIN-259's work; this file is the target that work aims at.
+// lifted from one row would decrypt happily in another.
+//
+// RECONCILING THEM ONTO FORMAT 1 IS DONE, AND IT IS NOT A COLUMN UPDATE.
+// `legacy-envelope.ts` carries the reason: reading the MIGRATIONS rather than
+// `schema.prisma` shows that `CredentialSecretVersion` REFUSES both legacy
+// shapes outright — three CHECK constraints (salt exactly 32 bytes, nonce
+// exactly 12, rootKeyVersion > 0) are each violated by the descriptors below, so
+// no format-2 or format-3 envelope has ever been storable in the canonical row.
+// The legacy ciphertexts live as STRINGS in their own modules' columns, and
+// migration therefore opens one under its legacy key and seals the material
+// AFRESH as a format-1 row. `migrate-legacy-envelope.ts` is that operation, and
+// `openSecret` still refuses a legacy format for the reason it always did: after
+// the migration there is no legacy row left to open.
 
 import { err, ok } from "@platos/kernel";
 import type { EnvironmentId, Result } from "@platos/kernel";
@@ -55,7 +66,10 @@ export interface EnvelopeFormatDescriptor {
   readonly versionedRootKey: boolean;
   /** False for every legacy format: they may be read for migration, never written. */
   readonly writable: boolean;
-  /** Where the pre-V1 codebase writes this shape, for the WIN-259 migration. */
+  /**
+   * Which pre-V1 module writes this shape. It is the module a migration's wire
+   * vectors must be produced BY, so the path is data rather than a comment.
+   */
   readonly legacyOrigin: string | null;
 }
 
