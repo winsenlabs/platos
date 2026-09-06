@@ -1,0 +1,473 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `privacy`'s canonical store, the",
+    "THIRTEENTH owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM.",
+    "One entry per guard: per shape check that stands where a migration-only",
+    "constraint or a column type stands, per vocabulary check that keeps a row an",
+    "older or newer binary wrote READABLE, per scope predicate, per clause of the",
+    "compare-and-set the port requires to be one statement, and per statement the",
+    "port's contract says must NOT be sent. Each carries the file it lives in, the",
+    "EXACT text that implements it (`from`), the edit that removes it (`to`), and",
+    "the NAMED cases that were seen to go red (`kills`).",
+    "",
+    "IT IS AN ELEVENTH FILE beside mutations.json, mutations-identity.json,",
+    "mutations-ports.json, mutations-outbox.json, mutations-tools.json,",
+    "mutations-agents.json, mutations-cost.json, mutations-channels.json,",
+    "mutations-governance.json, mutations-secrets.json, mutations-skills.json,",
+    "mutations-providers.json, mutations-conversations.json and",
+    "mutations-memory.json rather than an extension of any of them, for the reason",
+    "the fourth was: each tranche is a separate claim about a separate port",
+    "surface, and a reader checking one should not have to read past the others.",
+    "All are hashed by the same packages.adapters.config rule and counted together",
+    "by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP, and it is the sharpest reason any of",
+    "them has had. FOUR of the guards below cannot be exercised without TWO OPEN",
+    "TRANSACTIONS at once, and the in-memory double this store is measured against",
+    "is a map in a single-threaded process that cannot lose a race at all. TWO",
+    "MORE are about a statement that must NOT be sent: the barrier's",
+    "insert-then-extend forbids a DELETE, and 'the row is there afterwards' is",
+    "satisfied by exactly the delete-then-insert the port rules out. A conformance",
+    "differential cannot see either kind, and every one of the six would have",
+    "survived a suite written only against the double."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to sweep",
+    "unless it is green with a non-zero executed case count, and classifies a run",
+    "with no executed cases as VACUOUS rather than as a kill.",
+    "",
+    "THE INTEGRATION SUITES RUN ON A REAL POSTGRESQL, in a container, on the",
+    "machine that has a daemon. `privacy-rows.test.ts` is the only suite here that",
+    "runs without one, and it is the one that reaches the mapping branches a",
+    "container suite cannot: a container only ever reads rows THIS binary wrote,",
+    "and two of the four unreadable-row branches cannot even be PLANTED, because",
+    "`ErasureOperation.status` is a PostgreSQL ENUM and `scopes` and `stores` carry",
+    "`_json_root` CHECKs.",
+    "",
+    "THE STORE IS REBUILT BETWEEN MUTATIONS. `pnpm test:v1-foundation` runs",
+    "`test:clean-v1`, which removes every V1 project's dist; a sweep run after a",
+    "gate sweep without rebuilding reproduces exactly the condition that made",
+    "tranche 1's first sweep report 22 vacuous kills."
+  ],
+  "mutations": [
+    {
+      "name": "M-P01 guards: the @db.Uuid check on every identifier",
+      "file": "src/privacy-guards.ts",
+      "from": "  if (!UUID.test(value)) refuse(PRIVACY_IDENTIFIER_NOT_UUID, `${label} is not a uuid`);",
+      "to": "  if (false) refuse(PRIVACY_IDENTIFIER_NOT_UUID, `${label} is not a uuid`);",
+      "note": "`SequenceIdGenerator` in the context's own testing fixtures mints `id-0001` for every uuid the kernel is asked for and `TEST_ORGANIZATION` is `org-1`. Both are accepted by `InMemoryPrivacyRepository`, both are refused by PostgreSQL with 22P02 INSIDE the caller's transaction, and every use-case suite in the context passes with them.",
+      "suites": ["src/privacy-rows.test.ts", "src/privacy-constraints.integration.test.ts"],
+      "kills": [
+        "the id the context's own fixtures mint is refused for a @db.Uuid column",
+        "a malformed tombstone id or operationId is refused",
+        "the store refuses `id-0001` and the caller's transaction survives it"
+      ]
+    },
+    {
+      "name": "M-P02 guards: an Invalid Date on any timestamp(3) column",
+      "file": "src/privacy-guards.ts",
+      "from": "  if (Number.isNaN(value.getTime())) {\n    refuse(PRIVACY_INSTANT_NOT_REPRESENTABLE, `${label} is not a representable instant`);",
+      "to": "  if (false) {\n    refuse(PRIVACY_INSTANT_NOT_REPRESENTABLE, `${label} is not a representable instant`);",
+      "note": "`backoffMs` caps its exponent precisely because `2 ** 1024` is `Infinity` and `Infinity * 0` is `NaN`. This guard is what stops a caller that did not go through that rule from putting an `Invalid Date` in `nextRetryAt`, which the driver cannot serialise.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["an Invalid Date is refused on every instant column"]
+    },
+    {
+      "name": "M-P03 guards: listDueOperations' page size is a NON-NEGATIVE int32",
+      "file": "src/privacy-guards.ts",
+      "from": "  if (!Number.isInteger(limit) || limit < 0 || limit > INT32_MAX) {",
+      "to": "  if (false) {",
+      "note": "The double clamps with `Math.max(0, limit)`. Prisma REVERSES the order on a negative `take` and returns rows, so the queue would re-drive the furthest FUTURE operations first with nothing failing anywhere.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a negative page limit is REFUSED rather than clamped"]
+    },
+    {
+      "name": "M-P04 guards: a lease is a PAIR of columns or neither",
+      "file": "src/privacy-guards.ts",
+      "from": "  if ((token === null) !== (expiresAt === null)) {",
+      "to": "  if (false) {",
+      "note": "Neither column is NOT NULL and there is no CHECK over the pair, so PostgreSQL stores a lease that names no holder — proved by a planted row in the constraints suite. `claimLease`'s free-lease predicate would then refuse every resume until an instant nobody set.",
+      "suites": ["src/privacy-rows.test.ts", "src/privacy-constraints.integration.test.ts"],
+      "kills": [
+        "half a lease is refused in both directions",
+        "a lease pair with only one half set is refused, though both columns are nullable"
+      ]
+    },
+    {
+      "name": "M-P05 guards: the two _json_root CHECKs, which exist only in the migrations",
+      "file": "src/privacy-guards.ts",
+      "from": "  if (!Array.isArray(value)) refuse(code, `${label} must be a JSON array at its root`);",
+      "to": "  if (false) refuse(code, `${label} must be a JSON array at its root`);",
+      "note": "`ErasureOperation_scopes_json_root` and `ErasureOperation_stores_json_root` are both `jsonb_typeof(...) = 'array'`, and both exist ONLY in the migration. The guard stands for the value that arrives through a transport boundary with the type assertion already spent.",
+      "suites": ["src/privacy-rows.test.ts", "src/privacy-constraints.integration.test.ts"],
+      "kills": [
+        "a scopes or stores value whose root is not an array is refused, per CHECK",
+        "the store refuses a scopes value whose root is not an array",
+        "the store refuses an outcomes value whose root is not an array, under a DIFFERENT code"
+      ]
+    },
+    {
+      "name": "M-P06 guards: the WorkStatus enum is FIVE labels, not a string",
+      "file": "src/privacy-guards.ts",
+      "from": "  return Object.hasOwn(WORK_STATUSES, value);",
+      "to": "  return true;",
+      "note": "The column is a PostgreSQL ENUM, so a sixth label is refused by the column itself — inside the caller's transaction, which `request-erasure.ts` is also using to append the INTENT event.",
+      "suites": ["src/privacy-rows.test.ts", "src/privacy-constraints.integration.test.ts"],
+      "kills": [
+        "a workStatus outside the enum's five labels is refused",
+        "all five of the enum's labels are readable, so the refusal is not blanket",
+        "a status label this binary has never heard of is REFUSED, not cast past",
+        "the store refuses a sixth label and the caller's transaction survives it"
+      ]
+    },
+    {
+      "name": "M-P07 guards: retryCount is an Int4 column",
+      "file": "src/privacy-guards.ts",
+      "from": "    !Number.isInteger(progress.retryCount) ||\n    progress.retryCount < 0 ||\n    progress.retryCount > INT32_MAX",
+      "to": "    false",
+      "note": "`Int4` is narrower than `number`, and a fractional or out-of-range count reaches the driver as a value it cannot bind. Nothing in the domain clamps it on the way into `updateProgress`.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a retryCount that is not a non-negative int32 is refused"]
+    },
+    {
+      "name": "M-P08 guards: one seal may not span two organizations",
+      "file": "src/privacy-guards.ts",
+      "from": "    if (draft.organizationId !== organizationId) {",
+      "to": "    if (false) {",
+      "note": "Unreachable from `draftTombstones`, which builds every draft from one organization — and the one shape that would make this store's scoped read-then-split UNSOUND, because the read is scoped to the first draft's organization and would classify every other tenant's alias as missing.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a batch spanning two organizations is refused"]
+    },
+    {
+      "name": "M-P09 guards: a retention window may not end before it begins",
+      "file": "src/privacy-guards.ts",
+      "from": "    if (draft.expiresAt.getTime() < draft.sealedAt.getTime()) {",
+      "to": "    if (false) {",
+      "note": "There is no CHECK over the pair, so PostgreSQL stores a tombstone that has already lapsed at the instant it is written — a barrier that was never up. The transaction suite uses this refusal as its second failure injection, so the mutation ALSO takes an unrelated-looking case with it, which is the point of naming both.",
+      "suites": ["src/privacy-rows.test.ts", "src/privacy-transaction.integration.test.ts"],
+      "kills": [
+        "a retention window that ends before it begins is refused",
+        "an operation inserted beside a doomed seal does not survive either"
+      ]
+    },
+    {
+      "name": "M-P10 guards: fewer minted ids than drafts to seal",
+      "file": "src/privacy-guards.ts",
+      "from": "  if (drafts.length > ids.length) {",
+      "to": "  if (false) {",
+      "note": "`InMemoryPrivacyRepository` `continue`s past a draft with no id, so an alias goes UNSEALED and the reported count is short with NO error. On this port that means the barrier has a hole in it exactly where the caller believes it does not.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["fewer minted ids than drafts is refused rather than silently dropping a row"]
+    },
+    {
+      "name": "M-P11 guards: a stored SCOPE's organizationId is a uuid too",
+      "file": "src/privacy-guards.ts",
+      "from": "    requireUuid(\"ErasureOperation.scopes[].organizationId\", scope.organizationId);",
+      "to": "",
+      "note": "`scopes` is JSONB, so PostgreSQL stores this happily — and `resolvePath` then produces a key naming an organization that cannot exist. The guard is about the VALUE being a tenant reference, not about the column's type, which is why deleting it leaves every other uuid guard standing.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a scope whose organizationId is not a uuid is refused, though it is JSON"]
+    },
+    {
+      "name": "M-P12 rows: a stored WorkStatus this binary has never heard of",
+      "file": "src/privacy-rows.ts",
+      "from": "  if (!isStorableWorkStatus(value)) {",
+      "to": "  if (false) {",
+      "note": "The expand/contract branch, and the one where a cast is worst. `receiptStatusFor` has four branches and a fifth label matches none of them, so a cast reports a FINISHED operation as `pending` — a receipt saying an erasure has not started when it has.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a status label this binary has never heard of is REFUSED, not cast past"]
+    },
+    {
+      "name": "M-P13 rows: a stored scopes or stores column whose root is not an array",
+      "file": "src/privacy-rows.ts",
+      "from": "  if (!Array.isArray(value)) unreadable(UNREADABLE_JSON_ARRAY, column, \"is not a JSON array\");",
+      "to": "  if (false) unreadable(UNREADABLE_JSON_ARRAY, column, \"is not a JSON array\");",
+      "note": "The READ side of M-P05. A CHECK the migration installs can be dropped by a later one, and `.map` on a non-array is a TypeError inside a read path rather than a reported outcome.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a scopes column whose root is not an array is refused"]
+    },
+    {
+      "name": "M-P14 rows: a stored scope LEVEL outside the kernel's three",
+      "file": "src/privacy-rows.ts",
+      "from": "  if (typeof level !== \"string\" || !Object.hasOwn(SCOPE_LEVELS, level)) {",
+      "to": "  if (false) {",
+      "note": "Every kernel consumer switches on the discriminant, so a stored fourth level reaches `resolvePath` and produces a key that silently addresses the wrong subtree — a cache namespace, a rate-limit bucket or an object-storage prefix for a tenant that does not exist.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a scope level outside the kernel's three is refused"]
+    },
+    {
+      "name": "M-P15 rows: a stored scope missing the id its level requires",
+      "file": "src/privacy-rows.ts",
+      "from": "  if (level !== \"organization\" && typeof scope[\"projectId\"] !== \"string\") {",
+      "to": "  if (false) {",
+      "note": "A `project` scope with no `projectId` is read as `undefined` inside a template string, which produces the key `org/x/proj/undefined` and no error anywhere.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": [
+        "a project scope with no projectId is refused, and so is an environment scope with no environmentId"
+      ]
+    },
+    {
+      "name": "M-P16 rows: a stored target outcome with no target NAME",
+      "file": "src/privacy-rows.ts",
+      "from": "  if (typeof outcome[\"target\"] !== \"string\" || outcome[\"target\"] === \"\") {",
+      "to": "  if (false) {",
+      "note": "`mergeOutcomes` and `targetsNeedingRetry` both KEY on `target`, so an outcome without one silently collapses into whichever other outcome shares its `undefined` — and a retry then re-runs the wrong target or skips one that never reported.",
+      "suites": ["src/privacy-rows.test.ts"],
+      "kills": ["a stores element with no target name is refused"]
+    },
+    {
+      "name": "M-P17 operations: findOperation's ORGANIZATION predicate",
+      "file": "src/privacy-operations.ts",
+      "from": "        const row = (await transactions.reader().erasureOperation.findFirst({\n          where: { id: operationId, organizationId },",
+      "to": "        const row = (await transactions.reader().erasureOperation.findFirst({\n          where: { id: operationId },",
+      "note": "The port is explicit: an implementation MUST return `null` — not another tenant's row — when the id exists elsewhere. A scope predicate deleted from a read is a SILENT WIDENING that returns MORE rows and fails no type, which is the shape a suite written by the store's own author is least likely to notice.",
+      "suites": [
+        "src/privacy-rules.integration.test.ts",
+        "src/privacy-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "an operation id that exists in another tenant reads as null, not as a row",
+        "the in-memory double and the PostgreSQL store answer identically"
+      ]
+    },
+    {
+      "name": "M-P18 operations: updateProgress' ORGANIZATION predicate",
+      "file": "src/privacy-operations.ts",
+      "from": "        const written = (await transactions.writer(transaction).erasureOperation.updateManyAndReturn({\n          where: { id: operationId, organizationId },",
+      "to": "        const written = (await transactions.writer(transaction).erasureOperation.updateManyAndReturn({\n          where: { id: operationId },",
+      "note": "The WRITE half of M-P17, and worse: a cross-tenant read returns a row, a cross-tenant WRITE overwrites one. The receipt of one organization's erasure would be advanced by another organization's pass.",
+      "suites": ["src/privacy-rules.integration.test.ts"],
+      "kills": ["an update addressed with the WRONG organization is `not_found`, not a silent no-op"]
+    },
+    {
+      "name": "M-P19 operations: listOperationsForSubject's ORGANIZATION predicate",
+      "file": "src/privacy-operations.ts",
+      "from": "          where: { organizationId, subjectKeyHash },",
+      "to": "          where: { subjectKeyHash },",
+      "note": "The digests are organization-salted, so a cross-tenant match is improbable rather than impossible — and 'improbable' is not the property the port asks for. This is the read an operator uses as the subject's whole history.",
+      "suites": ["src/privacy-rules.integration.test.ts"],
+      "kills": ["a subject digest that exists in another tenant lists nothing"]
+    },
+    {
+      "name": "M-P20 operations: the FREE-LEASE clause of the compare-and-set",
+      "file": "src/privacy-operations.ts",
+      "from": "            OR: [{ leaseExpiresAt: null }, { leaseExpiresAt: { lte: now } }],",
+      "to": "",
+      "note": "THE ONE THE DOUBLE CANNOT SEE. Without this clause every claim wins, so two concurrent resumes both sweep the same subject — and `InMemoryPrivacyRepository` is a map in a single-threaded process, so no suite written against it can lose the race that makes this visible.",
+      "suites": [
+        "src/privacy-rules.integration.test.ts",
+        "src/privacy-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "two concurrent transactions claim, and precisely one wins",
+        "an EXPIRED lease is reclaimable, at the exact instant it lapses",
+        "the in-memory double and the PostgreSQL store answer identically"
+      ]
+    },
+    {
+      "name": "M-P21 operations: the free-lease boundary is <=, not <",
+      "file": "src/privacy-operations.ts",
+      "from": "{ leaseExpiresAt: { lte: now } }",
+      "to": "{ leaseExpiresAt: { lt: now } }",
+      "note": "`isLeaseFree` is `leaseExpiresAt <= now` — the exact complement of `leaseUntil`, which always returns an instant strictly after `now`. Reversing it leaves a crashed pass's lease held for one extra tick, which is a boundary no wall-clock test can hit and an exact-instant test can.",
+      "suites": ["src/privacy-rules.integration.test.ts"],
+      "kills": ["an EXPIRED lease is reclaimable, at the exact instant it lapses"]
+    },
+    {
+      "name": "M-P22 operations: the not-found probe on the lease's LOSING path",
+      "file": "src/privacy-operations.ts",
+      "from": "        return present === null ? err(operationNotFound(operationId)) : ok(false);",
+      "to": "        return ok(false);",
+      "note": "Zero affected rows is TWO facts — the lease is held, or the operation is not here — and the port answers them differently: `ok(false)` is a normal outcome and `operationNotFound` is an error. Collapsing them tells a queue that a deleted operation is merely busy, forever.",
+      "suites": ["src/privacy-conformance.integration.test.ts"],
+      "kills": ["the in-memory double and the PostgreSQL store answer identically"]
+    },
+    {
+      "name": "M-P23 operations: the queue's page is OLDEST DUE FIRST",
+      "file": "src/privacy-operations.ts",
+      "from": "          orderBy: { nextRetryAt: \"asc\" },",
+      "to": "          orderBy: { nextRetryAt: \"desc\" },",
+      "note": "The port says 'oldest due first'. Reversed, a saturated queue re-drives the newest operations forever and the oldest — the ones that have failed most often — are never reached again.",
+      "suites": ["src/privacy-conformance.integration.test.ts"],
+      "kills": ["the in-memory double and the PostgreSQL store answer identically"]
+    },
+    {
+      "name": "M-P24 operations: a subject's history is NEWEST FIRST",
+      "file": "src/privacy-operations.ts",
+      "from": "          orderBy: { requestedAt: \"desc\" },",
+      "to": "          orderBy: { requestedAt: \"asc\" },",
+      "note": "The port says 'newest first'. An operator reading a subject's history gets the oldest receipt at the top, which for a person erased twice is the one that has since been superseded.",
+      "suites": [
+        "src/privacy-conformance.integration.test.ts",
+        "src/privacy-statements.integration.test.ts"
+      ],
+      "kills": [
+        "the in-memory double and the PostgreSQL store answer identically",
+        "a subject's whole history is ONE statement, for one operation and for twenty-two"
+      ]
+    },
+    {
+      "name": "M-P25 operations: the unique violation becomes an IDEMPOTENCY CONFLICT",
+      "file": "src/privacy-operations.ts",
+      "from": "          if (!isUniqueViolation(error)) throw error;",
+      "to": "          throw error;",
+      "note": "The port REQUIRES the conflict to surface as `PRIVACY_IDEMPOTENCY_KEY_CONFLICT`. Rethrown instead, it leaves the port's contract — every method returns a `Result`, a rejected promise is a defect — and a caller racing its own retry sees a driver error rather than the first answer.",
+      "suites": ["src/privacy-constraints.integration.test.ts"],
+      "kills": [
+        "a second insert at an occupied key is PRIVACY_IDEMPOTENCY_KEY_CONFLICT, naming the winner",
+        "a repeated PRIMARY KEY is a DIFFERENT refusal, because there is no winner to name"
+      ]
+    },
+    {
+      "name": "M-P26 operations: the winner is named from the POOL, not the aborted transaction",
+      "file": "src/privacy-operations.ts",
+      "from": "    return (await transactions.pool().erasureOperation.findUnique({",
+      "to": "    return (await transactions.reader().erasureOperation.findUnique({",
+      "note": "`reader()` resolves to the AMBIENT transaction, which is exactly the one PostgreSQL has already aborted with 23505 — so the probe that names the winner is refused with 25P02 rather than answering. This is the one place in this package whose port requires a read to be OUTSIDE the caller's unit of work, and the only reason it is not an escape hatch is that the unit of work is already dead.",
+      "suites": ["src/privacy-constraints.integration.test.ts"],
+      "kills": [
+        "a second insert at an occupied key is PRIVACY_IDEMPOTENCY_KEY_CONFLICT, naming the winner"
+      ]
+    },
+    {
+      "name": "M-P27 tombstones: the barrier's read-time expiry",
+      "file": "src/privacy-tombstones.ts",
+      "from": "            expiresAt: { gt: now },",
+      "to": "",
+      "note": "The port: 'a row past its `expiresAt` MUST NOT be returned even when it is still in the table'. Without the clause the barrier refuses writes for a subject whose tombstone lapsed a month ago — an erasure that never ends, for a person who is entitled to be forgotten AND to come back.",
+      "suites": [
+        "src/privacy-rules.integration.test.ts",
+        "src/privacy-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "a lapsed row is still in the table and is NOT returned",
+        "the purge deletes precisely the rows the read already refuses",
+        "the in-memory double and the PostgreSQL store answer identically"
+      ]
+    },
+    {
+      "name": "M-P28 tombstones: read-time expiry is STRICTLY greater",
+      "file": "src/privacy-tombstones.ts",
+      "from": "            expiresAt: { gt: now },",
+      "to": "            expiresAt: { gte: now },",
+      "note": "`isActive` is `expiresAt.getTime() > now.getTime()` and `hasElapsed` is its exact complement, so the read rule and the sweep rule cannot disagree about the boundary instant — unless one of them is off by one tick, which is what this is. A row would then be both ACTIVE to the barrier and ELIGIBLE to the purge.",
+      "suites": ["src/privacy-conformance.integration.test.ts"],
+      "kills": ["the in-memory double and the PostgreSQL store answer identically"]
+    },
+    {
+      "name": "M-P29 tombstones: the barrier's ORGANIZATION predicate",
+      "file": "src/privacy-tombstones.ts",
+      "from": "          where: {\n            organizationId,\n            aliasHash: { in: [...aliasHashes] },",
+      "to": "          where: {\n            aliasHash: { in: [...aliasHashes] },",
+      "note": "The digests are organization-salted so a cross-tenant match is improbable, and the port's own header says the method is scoped for a SECOND reason as well: 'a method that appeared to allow one would invite an implementation that tried'. This is that implementation.",
+      "suites": ["src/privacy-conformance.integration.test.ts"],
+      "kills": ["the in-memory double and the PostgreSQL store answer identically"]
+    },
+    {
+      "name": "M-P30 tombstones: the retention sweep's boundary is <=, not <",
+      "file": "src/privacy-tombstones.ts",
+      "from": "          where: { expiresAt: { lte: now } },",
+      "to": "          where: { expiresAt: { lt: now } },",
+      "note": "`hasElapsed` is `!(expiresAt > now)`, so the purge must collect a row whose expiry IS the current instant. One tick out and the sweep leaves behind exactly the rows the read has already stopped honouring — which is harmless for correctness and is the whole reason the two rules are written as complements.",
+      "suites": ["src/privacy-conformance.integration.test.ts"],
+      "kills": ["the in-memory double and the PostgreSQL store answer identically"]
+    },
+    {
+      "name": "M-P31 tombstones: the EXTEND half of insert-then-extend",
+      "file": "src/privacy-tombstones.ts",
+      "from": "        for (const group of extendGroups(extends_).values()) {",
+      "to": "        for (const group of [].values()) {",
+      "note": "A re-seal on retry legitimately creates nothing and must still push the expiry out. Without the extend, a subject sealed on the first pass has their barrier lapse on the ORIGINAL schedule however many times the erasure is retried.",
+      "suites": [
+        "src/privacy-rules.integration.test.ts",
+        "src/privacy-statements.integration.test.ts",
+        "src/privacy-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "an extend moves the expiry and keeps the row's own identity and seal instant",
+        "a seal is THREE statements, for three aliases and for thirty",
+        "the in-memory double and the PostgreSQL store answer identically"
+      ]
+    },
+    {
+      "name": "M-P32 tombstones: the empty alias set costs no statement",
+      "file": "src/privacy-tombstones.ts",
+      "from": "        if (aliasHashes.length === 0) return ok([]);",
+      "to": "",
+      "note": "Not an optimisation. `guard-subject-write.ts` returns early on an empty set, so the caller that reaches this port with one is the outbox drain's BATCH form — and without the early return every anonymous request in the installation sends `aliasHash IN ()` on the hot path.",
+      "suites": ["src/privacy-statements.integration.test.ts"],
+      "kills": ["an EMPTY alias set costs ZERO statements"]
+    },
+    {
+      "name": "M-P33 refusal: the register's outage is its OWN error, not the operation store's",
+      "file": "src/privacy-refusal.ts",
+      "from": "    if (isOutcome(error)) return err(erasureRegisterUnavailable(reasonOf(error, label)));",
+      "to": "    if (isOutcome(error)) return err(operationStoreUnavailable(reasonOf(error, label)));",
+      "note": "`guard-subject-write.ts` REFUSES A WRITE on `PRIVACY_ERASURE_REGISTER_UNAVAILABLE`, and an operator has to be able to tell 'we blocked a resurrection' from 'we lost the ability to tell'. Two stores sharing one outage code puts both facts under one name on the hot path of every identity chokepoint in the system.",
+      "suites": ["src/privacy-transaction.integration.test.ts"],
+      "kills": ["an operation inserted beside a doomed seal does not survive either"]
+    },
+    {
+      "name": "M-P34 refusal: a TransactionScopeError is RETHROWN, never folded into a Result",
+      "file": "src/privacy-refusal.ts",
+      "from": "function isOutcome(error: unknown): boolean {\n  return (\n    error instanceof PrivacyWriteRefused ||",
+      "to": "function isOutcome(error: unknown): boolean {\n  return (\n    true ||\n    error instanceof PrivacyWriteRefused ||",
+      "note": "The three scope refusals are the property tranche 1 built and every tranche since has relied on. Folded into a `Result`, a use case that LOST ITS TRANSACTION carries on as though a row had merely failed to write — which in this context means carrying on with a destruction whose barrier is not committed.",
+      "suites": ["src/privacy-transaction.integration.test.ts"],
+      "kills": [
+        "a write with NO transaction open is refused `not_open`",
+        "a write carrying a FINISHED transaction's token is refused `scope_unknown`",
+        "a write carrying ANOTHER LIVE transaction's token is refused `scope_foreign`"
+      ]
+    }
+  ],
+  "survivors": [
+    {
+      "name": "S-P01 tombstones: `skipDuplicates: true` on the seal's createMany",
+      "file": "src/privacy-tombstones.ts",
+      "from": "            skipDuplicates: true,",
+      "to": "            skipDuplicates: false,",
+      "note": [
+        "SURVIVED, AND IS REPORTED RATHER THAN WORKED AROUND. The clause guards a",
+        "window this suite cannot produce deterministically: a concurrent seal of the",
+        "SAME subject committing between this store's own scoped read and its own",
+        "`createMany`. The constraints suite gets as close as a test can — it commits",
+        "the winner out of band from INSIDE the loser's transaction — and READ",
+        "COMMITTED means the loser's read sees it, so the loser takes the EXTEND",
+        "branch and never sends a conflicting INSERT at all. That is exactly why the",
+        "case observes `{ sealed: 0, extended: 1 }` and says so.",
+        "",
+        "THE WINDOW IS REAL AND IS MICROSECONDS WIDE. Closing it with a test would",
+        "need a fault-injection point inside the store between the two statements,",
+        "which would be a seam that exists only for the test. The clause stays, the",
+        "mutation is recorded as a survivor, and the case that gets nearest names the",
+        "shape it could not reach."
+      ]
+    },
+    {
+      "name": "S-P02 tombstones: the `seen` set that mirrors draftTombstones' de-duplication",
+      "file": "src/privacy-tombstones.ts",
+      "from": "          if (seen.has(draft.aliasHash)) continue;",
+      "to": "          if (false) continue;",
+      "note": [
+        "SURVIVED, AND THE REASON IS THAT POSTGRESQL ALREADY HOLDS THE PROPERTY.",
+        "`ON CONFLICT DO NOTHING` skips a row that conflicts with one inserted",
+        "earlier in the SAME statement, so a repeated alias in one batch is stored",
+        "once and `createMany` reports a count of one either way. The `seen` set is",
+        "therefore belt rather than braces here — it keeps the store's own reported",
+        "split honest without depending on that behaviour, and it mirrors",
+        "`draftTombstones`, which drops a repeated alias before the port is ever",
+        "called.",
+        "",
+        "IT IS NOT REMOVED. A guard whose property another layer happens to hold is",
+        "not a guard that is doing nothing: the day `skipDuplicates` is reconsidered",
+        "(see S-P01) this is what stops one batch aborting the caller's transaction",
+        "on its own duplicate."
+      ]
+    }
+  ]
+}
