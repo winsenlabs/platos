@@ -23,7 +23,7 @@
 // for the same reason — telling a caller that a memory exists but is not theirs
 // discloses the memory.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   archive as archiveMemory,
@@ -80,7 +80,7 @@ export async function forget(
 ): Promise<Result<boolean>> {
   const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const deleted = await dependencies.repository.deleteMemories(
       scope.value.subject,
       scope.value.agentIds,
@@ -103,7 +103,7 @@ export async function forgetMany(
 
   const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
-  return dependencies.unitOfWork.run(async (transaction) =>
+  return runResult(dependencies.unitOfWork, async (transaction) =>
     dependencies.repository.deleteMemories(scope.value.subject, scope.value.agentIds, ids, transaction),
   );
 }
@@ -129,7 +129,7 @@ async function transition(
   if (!next.ok) return err(next.error);
   if (next.value === found.value) return ok({ changed: false, memory: found.value });
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     // The vector is untouched: archiving hides a row from the default read, it
     // does not un-embed it, and restoring must not have to pay a model call.
     const written = await dependencies.repository.updateMemory(

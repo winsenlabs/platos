@@ -1,4 +1,4 @@
-import { asIdentifier } from "@platos/kernel";
+import { asIdentifier, runResult } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import type { ActorId, AgentId, EvalCriterionId } from "../domain/index.js";
@@ -96,7 +96,7 @@ describe("createCriterion", () => {
     // The pre-check is a better error message, not the guarantee: the store
     // holds the constraint, so a lost race still cannot write a duplicate.
     await create({ name: "grounded" });
-    const direct = await context.dependencies.unitOfWork.run((transaction) =>
+    const direct = await runResult(context.dependencies.unitOfWork, (transaction) =>
       context.criteria.create(
         context.scope,
         {

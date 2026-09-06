@@ -17,7 +17,7 @@
 // read-path predicate), because this is a read deciding whether a decision still
 // matters. See `domain/approval.ts` for why the sweep uses a different one.
 
-import { err, ok, type EnvironmentScope, type JsonValue, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type JsonValue, type Result } from "@platos/kernel";
 
 import {
   approvalElapsed,
@@ -90,7 +90,7 @@ export async function resolveApprovalDecision(
   });
   if (!decided.ok) return err(decided.error);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.approvals.resolve(command.scope, decided.value, transaction),
   );
   if (!written.ok) return err(written.error);

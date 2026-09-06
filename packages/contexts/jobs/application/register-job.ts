@@ -11,7 +11,7 @@
 // `registration-failed` and the parse error is returned alongside it. Discarding
 // the row instead would leave an author with an error message and nothing to fix.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitJobDefinition,
@@ -69,7 +69,7 @@ export async function registerJob(
     updatedAt: now,
   };
 
-  const inserted = await dependencies.unitOfWork.run((transaction) =>
+  const inserted = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.jobs.insertJob(command.scope, job, transaction),
   );
   if (!inserted.ok) return err(inserted.error);

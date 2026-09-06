@@ -26,7 +26,7 @@
 // that resolved nobody is the case most worth keeping — it usually means the
 // handle names something this installation does not key on.
 
-import { asIdentifier, err, ok, type Result } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   idempotencyKeyConflict,
@@ -91,7 +91,7 @@ async function openOperation(
     leaseExpiresAt: settled ? null : leaseUntil(now, dependencies.policy.retry),
   };
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const inserted = await dependencies.repository.insertOperation(row, transaction);
     if (!inserted.ok) return err(inserted.error);
 
@@ -146,7 +146,7 @@ async function existingAnswer(
   }
 
   const refusal = idempotencyKeyConflict(row.operationId);
-  await dependencies.unitOfWork.run((transaction) =>
+  await runResult(dependencies.unitOfWork, (transaction) =>
     appendPrivacyEvent(dependencies, {
       name: PRIVACY_EVENT_NAMES.erasureRefused,
       organizationId: command.organizationId,

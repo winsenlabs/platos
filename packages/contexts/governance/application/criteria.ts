@@ -45,7 +45,7 @@
 // taken — and `read-evals.ts` keeps the bucket rather than dropping it, because
 // dropping it would improve the average exactly when the names stopped resolving.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitCriterion,
@@ -112,7 +112,7 @@ export async function createCriterion(
   if (taken.value !== null) {
     return err(criterionAlreadyExists(scope.environmentId, admitted.value.name));
   }
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.criteria.create(scope, admitted.value, command.createdBy, transaction),
   );
 }
@@ -143,7 +143,7 @@ export async function updateCriterion(
       return err(criterionAlreadyExists(scope.environmentId, patched.value.name));
     }
   }
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.criteria.update(scope, patched.value, transaction),
   );
 }
@@ -154,7 +154,7 @@ export async function removeCriterion(
 ): Promise<Result<boolean>> {
   const grant = verifyOperator(dependencies, query.authorization);
   if (!grant.ok) return err(grant.error);
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.criteria.remove(grant.value.scope, query.criterionId, transaction),
   );
 }

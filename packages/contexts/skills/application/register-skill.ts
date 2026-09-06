@@ -25,7 +25,7 @@
 // and what stops an operator re-uploading a skill from accumulating rows that
 // all answer to the same slug.
 
-import { err, ok, type OrganizationScope, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type OrganizationScope, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   draftFrom,
@@ -89,7 +89,7 @@ export async function registerSkill(
   dependencies: SkillsDependencies,
   command: RegisterSkillCommand,
 ): Promise<Result<RegisteredSkill>> {
-  return dependencies.unitOfWork.run((transaction) => upsertAndInstall(dependencies, command, transaction));
+  return runResult(dependencies.unitOfWork, (transaction) => upsertAndInstall(dependencies, command, transaction));
 }
 
 /** Parse raw source, then register it. The parse failure surfaces unchanged. */
@@ -124,7 +124,7 @@ export async function registerOfficialSkill(
   command: RegisterOfficialCommand,
 ): Promise<Result<CatalogueEntry>> {
   const draft = draftFrom(command.organization, command.parsed, { origin: "official", isOfficial: true });
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.upsertSkill(draft, transaction),
   );
 }

@@ -21,7 +21,7 @@
 // revision to check because the row it would have read is gone). Both end in the
 // same recomputation over the same turns.
 
-import { err, ok, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   isUsableRevision,
@@ -74,7 +74,7 @@ export async function reconcileFromRating(
     return err(queryInvalid("a rating revision must be a positive whole number", "expectedRevision"));
   }
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const rating = await dependencies.repository.findRatingRevision(command.ratingId);
     if (!rating.ok) return err(rating.error);
 
@@ -104,7 +104,7 @@ export async function reconcileFromTurn(
 ): Promise<Result<ReconciliationReport>> {
   const granted = verifyGrant(dependencies, command.authorization);
   if (!granted.ok) return err(granted.error);
-  return dependencies.unitOfWork.run(async (transaction) =>
+  return runResult(dependencies.unitOfWork, async (transaction) =>
     recompute(
       dependencies,
       { environment: command.environment, endUserId: command.endUserId, turnId: command.turnId },

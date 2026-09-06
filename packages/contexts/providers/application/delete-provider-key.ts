@@ -13,7 +13,7 @@
 // first and a non-zero one refuses, carrying the number so an operator is told
 // how much work the fix is.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   providerKeyNotFound,
@@ -50,7 +50,7 @@ export async function deleteProviderKey(
     return err(providerKeyPinnedByAgents(key.providerKeyId, pinned.value));
   }
 
-  const removed = await dependencies.unitOfWork.run((transaction) =>
+  const removed = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
   );
   if (!removed.ok) return err(removed.error);

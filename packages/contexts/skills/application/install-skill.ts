@@ -24,7 +24,7 @@
 // actually happened and why; preserving the wire shape, if that is wanted, is
 // the transport's decision to make with the truth in hand rather than without it.
 
-import { err, ok, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   mayUninstall,
@@ -73,7 +73,7 @@ export async function installSkill(
 ): Promise<Result<Installation>> {
   const entry = await findVisibleSkill(dependencies, command.scope, command.reference);
   if (!entry.ok) return err(entry.error);
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     installSkillInTransaction(dependencies, command.scope, entry.value, transaction),
   );
 }
@@ -101,7 +101,7 @@ export async function uninstallSkill(
   if (!mayUninstall(entry.value.isOfficial)) {
     return ok({ uninstalled: false, refusedBecause: officialSkillImmutable(command.reference).code });
   }
-  const removed = await dependencies.unitOfWork.run((transaction) =>
+  const removed = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.deleteEnvironmentInstallation(command.scope, entry.value.skillId, transaction),
   );
   if (!removed.ok) return err(removed.error);

@@ -19,7 +19,7 @@
 // other direction.
 
 import type { EnvironmentId, Result } from "@platos/kernel";
-import { err, ok } from "@platos/kernel";
+import { err, ok, runResult } from "@platos/kernel";
 
 import { accessKeyGenerationSuperseded, tenantNotFound } from "../domain/index.js";
 
@@ -49,7 +49,7 @@ export function createRevokeAccessKeyGeneration(
 ): RevokeAccessKeyGeneration {
   const { accessKeyRevocation, locks, unitOfWork } = dependencies;
   return async (command) =>
-    unitOfWork.run(async (transaction) => {
+    runResult(unitOfWork, async (transaction) => {
       const locked = await locks.lockEnvironmentForUpdate(command.environmentId, transaction);
       if (!locked) return err(tenantNotFound("environment"));
 

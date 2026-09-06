@@ -20,7 +20,7 @@
 // harmless garbage; an exposure pointing at a `Tool` that was rolled back is a
 // foreign key violation on the next read, so the boundary wraps both.
 
-import { err, ok, type EntityId, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EntityId, type Result } from "@platos/kernel";
 
 import {
   admitDeclaration,
@@ -88,7 +88,7 @@ export async function registerTools(
     const previous = await dependencies.repository.listEntityExposures(scope, command.entityId);
     if (!previous.ok) return err(previous.error);
 
-    return dependencies.unitOfWork.run(async () => {
+    return runResult(dependencies.unitOfWork, async () => {
       const toolIds: ToolId[] = [];
       for (const tool of declaration.value) {
         const minted = await mintTool(dependencies, tool);

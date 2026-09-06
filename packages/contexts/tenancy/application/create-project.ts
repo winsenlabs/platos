@@ -37,7 +37,7 @@
 // an organization admin. No stricter rule is invented here.
 
 import type { EnvironmentId, OrganizationId, ProjectId, Result } from "@platos/kernel";
-import { asIdentifier, err, ok } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult } from "@platos/kernel";
 
 import {
   ProjectRole,
@@ -159,7 +159,7 @@ export function createCreateProject(dependencies: Dependencies): CreateProject {
     const membership = checkProjectMembershipIntegrity(candidate, project, member);
     if (!membership.ok) return err(membership.error);
 
-    return unitOfWork.run(async (transaction) => {
+    return runResult(unitOfWork, async (transaction) => {
       await repository.saveProject(project, transaction);
       await repository.saveEnvironment(environment, transaction);
       await repository.saveProjectMembership(membership.value, transaction);

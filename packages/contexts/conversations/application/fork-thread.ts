@@ -19,7 +19,7 @@
 // conversation with borrowed history, and giving it the parent's ancestry array
 // would attribute another agent's turns to it on every later read.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   applyFork,
@@ -99,7 +99,7 @@ export async function forkConversation(
   if (!drafted.ok) return err(drafted.error);
 
   const child = applyFork(drafted.value, plan.value);
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const created = await dependencies.threads.createThread(command.scope, child);
     if (!created.ok) return err(created.error);
     await dependencies.outbox.append(

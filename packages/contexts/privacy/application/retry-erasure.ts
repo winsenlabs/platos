@@ -22,7 +22,7 @@
 // pass whose process died leaves an expiring lease the next pass reclaims,
 // rather than a row nobody dares touch.
 
-import { asIdentifier, err, ok, type DomainError, type Result } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type DomainError, type Result } from "@platos/kernel";
 
 import {
   canRetry,
@@ -70,7 +70,7 @@ async function refuse(
     readonly refusal: DomainError;
   },
 ): Promise<Result<never>> {
-  await dependencies.unitOfWork.run((transaction) =>
+  await runResult(dependencies.unitOfWork, (transaction) =>
     appendPrivacyEvent(dependencies, {
       name: PRIVACY_EVENT_NAMES.erasureRefused,
       organizationId: args.row.organizationId,
@@ -95,7 +95,7 @@ async function claim(
 ): Promise<Result<void>> {
   const now = dependencies.clock.now();
   const token = asIdentifier<LeaseToken>(dependencies.ids.uuid());
-  const claimed = await dependencies.unitOfWork.run((transaction) =>
+  const claimed = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.claimLease(
       row.organizationId,
       row.operationId,
@@ -181,7 +181,7 @@ export async function retryErasure(
   if (only.length === 0) return ok(record);
 
   const cause = command.cause ?? "operator-retry";
-  const intent = await dependencies.unitOfWork.run((transaction) =>
+  const intent = await runResult(dependencies.unitOfWork, (transaction) =>
     appendPrivacyEvent(dependencies, {
       name: PRIVACY_EVENT_NAMES.erasureRequested,
       organizationId: row.organizationId,

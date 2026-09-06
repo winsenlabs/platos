@@ -16,7 +16,7 @@
 //              new row still gets its OWN key, so one row still owns one blob
 //              and destruction stays 1:1 with no reference counting.
 
-import { asIdentifier, err, ok, type Result } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitAgainstQuota,
@@ -166,7 +166,7 @@ export async function presignAttachmentUpload(
   const drafted = draftAttachment(command, gate.value.admitted, attachmentId, dependencies.clock.now(), dependencies);
   if (!drafted.ok) return err(drafted.error);
 
-  const inserted = await dependencies.unitOfWork.run((transaction) =>
+  const inserted = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.insertAttachment(drafted.value, transaction),
   );
   if (!inserted.ok) return err(inserted.error);

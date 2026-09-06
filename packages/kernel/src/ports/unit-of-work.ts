@@ -26,11 +26,30 @@
 //
 // The shape is not a mistake anyone makes once. It is what the ordinary reading
 // of both contracts produces: "return the error" is right everywhere else in the
-// codebase, and it is wrong here and only here. So the fix is not vigilance, it
-// is a second entry point whose signature says a `Result` is what it takes and
-// whose implementation REJECTS on the failing branch. Inside `runResult` there
-// is no way to spell "commit with an error", because the failing branch never
-// reaches a `return`.
+// codebase, and it is wrong here and only here. Three contexts had each built
+// their own escape from it before this port owned one — `cost-monitoring`'s
+// `CrossingFanOutFailed`, `secrets`' `TransactionRollback`, and the pattern
+// itself in one hundred and eleven further call sites that had built no escape at
+// all. So the fix is not vigilance, it is a second entry point whose signature
+// says a `Result` is what it takes and whose implementation REJECTS on the
+// failing branch. Inside `runResult` there is no way to spell "commit with an
+// error", because the failing branch never reaches a `return`.
+//
+// AND `run` NOW REFUSES THE SHAPE OUTRIGHT. A second entry point that a caller
+// has to KNOW ABOUT is documentation, not a mechanism: `runResult` shipped and
+// reached exactly one of the seventeen contexts, the one that had already paid
+// for the defect. `run`'s callback return position is therefore
+// `NotResult<Value>` — `never` when `Value` is a `Result` — so a callback that
+// answers with one is a COMPILE ERROR at the call site rather than a rollback
+// that silently does not happen. `runResult` is now the only way to end a unit of
+// work with a `Result`, because it is the only way the compiler leaves open.
+//
+// WHAT THAT COSTS, MEASURED RATHER THAN ASSUMED. `NotResult` discriminates
+// STRUCTURALLY, on `{ readonly ok: boolean }`. A callback answering with a domain
+// value that merely HAS an `ok` field would be refused too, and would have to be
+// spelled another way. No such callback exists in this tree — the refusal lands
+// on 112 sites and every one of them is a `Result` — but the cost is real and is
+// named here rather than discovered later.
 //
 // WHAT THE GUARANTEE IS, EXACTLY, INCLUDING THE NESTED CASE.
 //
@@ -75,21 +94,25 @@ export interface UnitOfWork {
    * back when it rejects. Nesting joins the outer transaction rather than opening
    * a second one, so a use case composed of two smaller ones stays atomic.
    *
-   * A callback that resolves with a failing `Result` COMMITS. Use `runResult`
-   * whenever the callback's answer is a `Result`; the header of this file says
-   * what happens when you do not.
+   * A callback that resolves with a failing `Result` would COMMIT, so this
+   * signature does not accept one: `NotResult<Value>` collapses to `never` for a
+   * `Result`, and the call site fails to compile. Use `runResult` when the
+   * callback's answer is a `Result` — it is not the polite alternative, it is the
+   * only one the type leaves.
    */
-  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+  run<Value>(work: (transaction: TransactionScope) => Promise<NotResult<Value>>): Promise<Value>;
 }
 
 /**
- * The type-level statement of the same rule.
+ * The type-level statement of the rule, and the one `run` is written in.
  *
- * `NotResult<Value>` is `never` when `Value` is a `Result`. It is the shape a
- * future signature can use to refuse the mistake outright; today it is the
- * machine-checkable spelling of "this value must not be a Result", which the
- * kernel's own suite uses to prove the discrimination is exact rather than a
- * guess about the structural shape of `Result`.
+ * `NotResult<Value>` is `never` when `Value` is a `Result`, and `Value`
+ * otherwise. In `run`'s callback return position that makes a `Result`-valued
+ * callback unassignable, which is what turns the rule from prose into a compile
+ * error. The kernel's own suite pins the discrimination as EXACT — `void`,
+ * `undefined`, `null`, arrays, unions with `null` and ordinary records all pass
+ * through untouched — so the refusal is known to land on `Result` rather than on
+ * a guess about its structural shape.
  */
 export type NotResult<Value> = Value extends { readonly ok: boolean } ? never : Value;
 
@@ -126,6 +149,25 @@ export function isTransactionAbort(value: unknown): value is TransactionAbort {
 }
 
 /**
+ * The unconstrained view of `run`, and the ONLY place in the tree entitled to it.
+ *
+ * `UnitOfWork.run` refuses a `Result`-valued callback by type; that refusal is
+ * the mechanism. `runResult` is the one caller whose `Value` the compiler cannot
+ * discharge the refusal for, because `Value` is a bare type parameter and
+ * `NotResult<Value>` stays DEFERRED on one — `Value` is not assignable to
+ * `NotResult<Value>` until `Value` is known, and here it never is.
+ *
+ * So the escape is this alias rather than an `any`: the transaction argument and
+ * the callback's answer stay fully typed, and the single clause dropped is the
+ * `NotResult` one. Every other caller in the tree keeps the refusal, which is
+ * why `runResult` — the function whose whole purpose is to make an error `Result`
+ * roll back — is allowed to be the one that spells it.
+ */
+interface UnconstrainedUnitOfWork {
+  run<Value>(work: (transaction: TransactionScope) => Promise<Value>): Promise<Value>;
+}
+
+/**
  * Run `work` in one transaction and let its `Result` decide the outcome.
  *
  * `ok` commits. `err` ROLLS BACK and is returned unchanged — the same error
@@ -137,7 +179,7 @@ export async function runResult<Value>(
   work: (transaction: TransactionScope) => Promise<Result<Value>>,
 ): Promise<Result<Value>> {
   try {
-    const value = await unitOfWork.run<Value>(async (transaction) => {
+    const value = await (unitOfWork as UnconstrainedUnitOfWork).run<Value>(async (transaction) => {
       const outcome = await work(transaction);
       // THE WHOLE MECHANISM IS THIS BRANCH ORDER. The failing branch throws
       // before any `return` is reachable, so "resolve with an error" cannot be

@@ -18,7 +18,7 @@
 // hold, the fallback and the boundary percentages testable rather than
 // statistical.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitCanary,
@@ -82,7 +82,7 @@ export async function setCanary(
   }
 
   const now = dependencies.clock.now();
-  const moved = await dependencies.unitOfWork.run((transaction) =>
+  const moved = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.updateBinding(applyCanary(bound.value.binding, admitted, now), transaction),
   );
   if (!moved.ok) return err(moved.error);
@@ -111,7 +111,7 @@ export async function promoteCanary(
   const promoted = promoteCanaryBinding(bound.value, dependencies.clock.now());
   if (!promoted.ok) return err(promoted.error);
 
-  const moved = await dependencies.unitOfWork.run((transaction) =>
+  const moved = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.updateBinding(promoted.value.binding, transaction),
   );
   if (!moved.ok) return err(moved.error);

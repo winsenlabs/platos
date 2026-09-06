@@ -13,7 +13,7 @@
 // here, at the fold, because it is a statement about two passes rather than
 // about one — and because this is the only place both are in scope.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   deriveStatus,
@@ -82,7 +82,7 @@ export async function recordPass(
     leaseExpiresAt: null,
   };
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const written = await dependencies.repository.updateProgress(
       command.operation.organizationId,
       command.operation.operationId,

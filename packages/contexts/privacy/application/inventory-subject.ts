@@ -20,7 +20,7 @@
 // nothing to block; surfacing the reference lets an operator find out that an
 // erasure would be refused before they fire one.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import { plannedRowCount, subjectNotResolved } from "../domain/index.js";
 import { PRIVACY_EVENT_NAMES } from "../contracts/events.js";
@@ -55,7 +55,7 @@ export async function inventorySubject(
     legalHoldPolicyId: context.value.legalHoldPolicyId,
   };
 
-  const appended = await dependencies.unitOfWork.run((transaction) =>
+  const appended = await runResult(dependencies.unitOfWork, (transaction) =>
     appendPrivacyEvent(dependencies, {
       name: PRIVACY_EVENT_NAMES.subjectInventoried,
       organizationId: query.organizationId,

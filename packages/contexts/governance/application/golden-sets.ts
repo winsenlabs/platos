@@ -12,7 +12,7 @@
 // `GOVERNANCE_AGENT_NOT_VISIBLE`, which is its own code because "no such agent
 // here" and "no such golden set here" are different mistakes.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitGoldenSet,
@@ -80,7 +80,7 @@ export async function createGoldenSet(
   if (taken.value !== null) {
     return err(goldenSetAlreadyExists(scope.environmentId, admitted.value.agentId, admitted.value.name));
   }
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.goldenSets.create(scope, admitted.value, command.createdBy, transaction),
   );
 }
@@ -111,7 +111,7 @@ export async function updateGoldenSet(
       return err(goldenSetAlreadyExists(scope.environmentId, patched.value.agentId, patched.value.name));
     }
   }
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.goldenSets.update(scope, patched.value, transaction),
   );
 }
@@ -122,7 +122,7 @@ export async function removeGoldenSet(
 ): Promise<Result<boolean>> {
   const grant = verifyOperator(dependencies, query.authorization);
   if (!grant.ok) return err(grant.error);
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.goldenSets.remove(grant.value.scope, query.goldenSetId, transaction),
   );
 }

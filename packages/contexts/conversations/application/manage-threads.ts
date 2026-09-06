@@ -25,7 +25,7 @@
 // back a committed turn. An outbox append inside the transaction has that
 // property by construction rather than by rescue.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   openThread,
@@ -85,7 +85,7 @@ export async function openConversation(
   );
   if (!drafted.ok) return err(drafted.error);
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const created = await dependencies.threads.createThread(command.scope, drafted.value);
     if (!created.ok) return err(created.error);
     await dependencies.outbox.append(

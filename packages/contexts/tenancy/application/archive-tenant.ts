@@ -9,7 +9,7 @@
 // own and which were archived by the cascade.
 
 import type { EnvironmentId, OrganizationId, ProjectId, Result } from "@platos/kernel";
-import { err, ok } from "@platos/kernel";
+import { err, ok, runResult } from "@platos/kernel";
 
 import {
   archiveEnvironment,
@@ -71,7 +71,7 @@ export function createArchiveOrganization(dependencies: Dependencies) {
     );
     if (!admitted.ok) return err(admitted.error);
     const archived = archiveOrganization(organization, dependencies.clock.now());
-    return dependencies.unitOfWork.run(async (transaction) => {
+    return runResult(dependencies.unitOfWork, async (transaction) => {
       await dependencies.repository.saveOrganization(archived, transaction);
       return ok(undefined);
     });
@@ -89,7 +89,7 @@ export function createArchiveProject(dependencies: Dependencies) {
     );
     if (!admitted.ok) return err(admitted.error);
     const archived = archiveProject(project, dependencies.clock.now());
-    return dependencies.unitOfWork.run(async (transaction) => {
+    return runResult(dependencies.unitOfWork, async (transaction) => {
       await dependencies.repository.saveProject(archived, transaction);
       return ok(undefined);
     });
@@ -107,7 +107,7 @@ export function createArchiveEnvironment(dependencies: Dependencies) {
     );
     if (!admitted.ok) return err(admitted.error);
     const archived = archiveEnvironment(ancestry.environment, dependencies.clock.now());
-    return dependencies.unitOfWork.run(async (transaction) => {
+    return runResult(dependencies.unitOfWork, async (transaction) => {
       await dependencies.repository.saveEnvironment(archived, transaction);
       return ok(undefined);
     });

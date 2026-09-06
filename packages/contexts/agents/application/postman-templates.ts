@@ -13,7 +13,7 @@
 // which is project-scoped, so the key alone would accept an agent that this
 // environment does not serve and produce a saved request that can never run.
 
-import { err, ok, type EnvironmentScope, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   admitTemplate,
@@ -131,7 +131,7 @@ export async function createTemplate(
     updatedAt: now,
   };
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     if (template.isDefault) {
       const demoted = await demoteIncumbents(dependencies, scope, command.agentId, null, now, transaction);
       if (!demoted.ok) return err(demoted.error);
@@ -155,7 +155,7 @@ export async function updateTemplate(
 
   const now = dependencies.clock.now();
   const patched = applyTemplatePatch(held, command, now);
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     if (command.isDefault === true) {
       const demoted = await demoteIncumbents(
         dependencies,
@@ -178,7 +178,7 @@ export async function removeTemplate(
   const granted = verifyOperator(dependencies, query.authorization);
   if (!granted.ok) return err(granted.error);
   const scope = granted.value.scope;
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.scaffolding.deleteTemplate(scope, query.templateId, transaction),
   );
 }

@@ -12,7 +12,7 @@
 // row they both have to demote, and the loser sees a constraint violation rather
 // than a second default.
 
-import { err, ok, type EnvironmentScope, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   defaultsToDemote,
@@ -77,7 +77,7 @@ export async function insertProviderKey(
   scope: EnvironmentScope,
   draft: ProviderKey,
 ): Promise<Result<ProviderKey>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     if (draft.isDefault) {
       const cleared = await demoteIncumbentDefault(dependencies, scope, draft, transaction);
       if (!cleared.ok) return err(cleared.error);
@@ -93,7 +93,7 @@ export async function saveProviderKey(
   updated: ProviderKey,
   claimsDefault: boolean,
 ): Promise<Result<ProviderKey>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     if (claimsDefault) {
       const cleared = await demoteIncumbentDefault(dependencies, scope, updated, transaction);
       if (!cleared.ok) return err(cleared.error);

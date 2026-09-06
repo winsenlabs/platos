@@ -18,7 +18,7 @@
 // exhausted. The domain offers both transitions and refuses to choose, because
 // which one is right is an operator decision, not a rule.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   claimEvent,
@@ -77,7 +77,7 @@ export async function claimNextChannelEvent(
   if (!candidates.ok) return err(candidates.error);
 
   for (const candidate of candidates.value) {
-    const claimed = await dependencies.unitOfWork.run(async (transaction) => {
+    const claimed = await runResult(dependencies.unitOfWork, async (transaction) => {
       const current = await currentEvent(dependencies, candidate.inboxId);
       if (!current.ok) return current;
       const next = claimEvent(current.value, leaseOwner, dependencies.policy.event.leaseMilliseconds, dependencies.clock.now());
@@ -97,7 +97,7 @@ export async function renewChannelEventLease(
   inboxId: ChannelEventInboxId,
   hold: LeaseHold,
 ): Promise<Result<ChannelEvent>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const current = await currentEvent(dependencies, inboxId);
     if (!current.ok) return current;
     const next = renewLease(current.value, hold, dependencies.policy.event.leaseMilliseconds, dependencies.clock.now());
@@ -112,7 +112,7 @@ export async function completeChannelEvent(
   inboxId: ChannelEventInboxId,
   hold: LeaseHold,
 ): Promise<Result<ChannelEvent>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const current = await currentEvent(dependencies, inboxId);
     if (!current.ok) return current;
     const next = completeEvent(current.value, hold, dependencies.clock.now());
@@ -133,7 +133,7 @@ export async function failChannelEvent(
   hold: LeaseHold,
   errorCode: string,
 ): Promise<Result<ChannelEvent>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const current = await currentEvent(dependencies, inboxId);
     if (!current.ok) return current;
     const now = dependencies.clock.now();
@@ -156,7 +156,7 @@ export async function discardChannelEvent(
   hold: LeaseHold,
   errorCode: string,
 ): Promise<Result<ChannelEvent>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const current = await currentEvent(dependencies, inboxId);
     if (!current.ok) return current;
     const next = discardEvent(current.value, hold, errorCode, dependencies.clock.now());

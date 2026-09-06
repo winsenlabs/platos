@@ -13,7 +13,7 @@
 // conflict (`domain/attachment.ts`). Delivery is at-least-once everywhere in
 // this system, so an idempotent repeat must not fail.
 
-import { err, ok, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   admitTurnTotal,
@@ -101,5 +101,5 @@ export async function bindAttachmentsToTurn(
   const bound = bindAll(resolved.value, command.turnId, boundExpiry(now, dependencies.policy.retention), now);
   if (!bound.ok) return err(bound.error);
 
-  return dependencies.unitOfWork.run((transaction) => persistBindings(dependencies, bound.value, transaction));
+  return runResult(dependencies.unitOfWork, (transaction) => persistBindings(dependencies, bound.value, transaction));
 }

@@ -27,7 +27,7 @@
 // is `@unique` and `contextExpiresAt` sits beside it; the source writes both and
 // checks neither, so a handle minted a month ago still names its execution.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   openPostmanExecution,
@@ -153,7 +153,7 @@ export async function settleExecution(
   });
   if (!settled.ok) return err(settled.error);
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const saved = await dependencies.postman.saveExecution(command.scope, settled.value);
     if (!saved.ok) return err(saved.error);
     await dependencies.outbox.append(

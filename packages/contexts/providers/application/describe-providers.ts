@@ -25,7 +25,7 @@
 // upstream call. That is a correct answer, not a degraded one, and it is the
 // answer that fails safe.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 import type { CredentialMetadata } from "@platos/context-secrets";
 
 import {
@@ -209,7 +209,7 @@ export async function setProviderAdoption(
         }
       : enable(existing.value, command.enabled, now);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.upsertProviderLink(link, transaction),
   );
   if (!written.ok) return err(written.error);
@@ -229,7 +229,7 @@ export async function unlinkProvider(
   const manifest = requireManifest(dependencies.catalogue, query.provider);
   if (!manifest.ok) return err(manifest.error);
 
-  const removed = await dependencies.unitOfWork.run((transaction) =>
+  const removed = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.deleteProviderLink(granted.value.scope, manifest.value.id, transaction),
   );
   if (!removed.ok) return err(removed.error);

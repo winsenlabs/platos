@@ -37,7 +37,7 @@
 // `recordUserSpend` and a Prometheus fan-out from inside the request, which are
 // three edges out of the deepest node in the graph.
 
-import { err, moneyToCentsString, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, moneyToCentsString, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   abandonTurn,
@@ -254,7 +254,7 @@ async function persist(
       ? "conversations.turn.failed"
       : "conversations.turn.settled";
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const saved = await dependencies.turns.saveSettlement(scope, { turn, steps });
     if (!saved.ok) return err(saved.error);
     await dependencies.outbox.append(

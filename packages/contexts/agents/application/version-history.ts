@@ -17,7 +17,7 @@
 // PRUNING RETURNS A PLAN AND DELETES NOTHING. See `domain/version.ts` for why
 // that half-step is the honest one.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitNote,
@@ -139,7 +139,7 @@ export async function rollbackToVersion(
   const restored = await dependencies.repository.listLoadout(target.agentVersionId);
   if (!restored.ok) return err(restored.error);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     writeVersion(
       dependencies,
       {

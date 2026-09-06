@@ -14,7 +14,7 @@
 // write a human may have approved it, and the repository's guarded update reports
 // that as `false`. The human won; the sweep counts it as untouched and moves on.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import { isSweepable, timeOutApproval, type Approval } from "../domain/index.js";
 import type { JobsDependencies } from "./dependencies.js";
@@ -42,7 +42,7 @@ async function timeOutOne(
   const expired = timeOutApproval(approval, now);
   if (!expired.ok) return { timedOut: false, reason: expired.error.code };
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.approvals.resolve(scope, expired.value, transaction),
   );
   if (!written.ok) return { timedOut: false, reason: written.error.code };

@@ -22,7 +22,7 @@
 // can no longer be verified, so verification cannot live behind a use case that
 // takes a parsed command.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitEvent,
@@ -86,7 +86,7 @@ export async function admitChannelEvent(
     now: dependencies.clock.now(),
   });
 
-  const inserted = await dependencies.unitOfWork.run((transaction) =>
+  const inserted = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.insertEvent(event, transaction),
   );
 

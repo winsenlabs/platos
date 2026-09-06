@@ -1,4 +1,4 @@
-import { asIdentifier, organizationScope } from "@platos/kernel";
+import { asIdentifier, organizationScope, runResult } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { parseSkillSource, type CatalogueScope } from "../domain/index.js";
@@ -161,7 +161,7 @@ describe("uninstallSkill", () => {
     // An official row cannot be uninstalled, so reach past the refusal and
     // delete the binding directly: the property under test is that removing one
     // environment's binding leaves the sibling's alone.
-    const removed = await context.dependencies.unitOfWork.run((transaction) =>
+    const removed = await runResult(context.dependencies.unitOfWork, (transaction) =>
       context.repository.deleteEnvironmentInstallation(
         staging,
         context.repository.allSkills()[0]!.skillId,

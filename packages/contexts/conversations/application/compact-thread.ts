@@ -29,7 +29,7 @@
 // nothing about whether the cursor a caller brings back is ahead of where the
 // thread already is — a replayed job, a late callback. Two guards, two codes.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   beginCompaction,
@@ -160,7 +160,7 @@ export async function completeConversationCompaction(
   );
   if (!completed.ok) return err(completed.error);
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const saved = await dependencies.threads.saveThread(command.scope, completed.value);
     if (!saved.ok) return err(saved.error);
     await dependencies.outbox.append(
