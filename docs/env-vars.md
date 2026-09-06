@@ -190,3 +190,142 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 The webapp and agent must use the same canonical `platos_control` database.
+
+## V1 core-api (`apps/core-api`)
+
+The V1 deployable reads a **separate, typed** configuration surface. It shares no
+variable name with the tables above: those are the legacy webapp and agent
+processes' inputs, and the V1 process is a different deployable with a different
+contract.
+
+Two properties hold for every row below, and both are gated:
+
+- **Nothing is read at first use.** `apps/core-api/src/config/environment.ts`
+  takes one frozen snapshot at startup and every section is a pure function over
+  it. A missing or malformed value fails the process with exit code **78**
+  (`EX_CONFIG`) before a port is bound, and the diagnostic names every bad
+  variable across every section in one run. A `secret` value is never echoed
+  back, not even when the complaint is that it is malformed.
+- **Sections are DECLARED or ABSENT.** Each group has an **anchor**: set it and
+  the group is wired, leave it unset and the group is absent, which is a
+  legitimate answer for an install part-way through wiring. Setting a member
+  without its anchor is an error (`is set but <ANCHOR> is not, so nothing reads
+  it`), because such a value silently configures nothing. Setting an anchor
+  without a required member is an error too.
+
+`scripts/arch/env-access.mjs` keeps this table honest from the other side: no
+file under `packages/kernel`, `packages/contexts`, `packages/adapters`,
+`apps/core-api` or `apps/mcp-stdio` may read the environment except the two
+declared readers, and `apps/core-api/src/config/sections.test.ts` reconciles the
+rows below against the field tables themselves, so a variable cannot be added to
+the code without appearing here.
+
+### Core — the process
+
+Anchored by nothing: `PLATOS_ENVIRONMENT` is required outright, because a process
+without one is not a process.
+
+| Variable | Default | Required | Purpose |
+|---|---|---|---|
+| `PLATOS_ENVIRONMENT` | — | Yes | `development` · `test` · `staging` · `production`. |
+| `PLATOS_CORE_API_HOST` | `127.0.0.1` | No | The interface the HTTP listener binds. |
+| `PLATOS_CORE_API_PORT` | `3030` | No | TCP port; `0` asks the kernel for a free one. |
+| `PLATOS_CORE_API_SHUTDOWN_TIMEOUT_MS` | `10000` | No | How long graceful shutdown waits for in-flight work. |
+| `PLATOS_CORE_API_DRAIN_GRACE_MS` | `0` | No | How long to keep serving, readiness-red, before the listener stops accepting. Set to at least one poll interval behind a load balancer that polls `/readyz`. |
+| `PLATOS_CORE_API_REQUEST_ID_HEADER` | `x-request-id` | No | Inbound header carrying an upstream correlation identifier. |
+| `PLATOS_LOG_LEVEL` | `info` | No | `debug` · `info` · `warn` · `error`. |
+| `PLATOS_CORE_API_ADMIN_HEALTH_TOKEN` | — | No | Bearer token gating the detailed readiness body. Minimum 16 characters. Omit to keep detail off entirely: the readiness detail names every unsatisfied binding, which is an inventory of what this install has not wired. |
+
+### Stores
+
+Four independent groups. Each anchor may be set alone.
+
+| Variable | Default | Required | Purpose |
+|---|---|---|---|
+| `PLATOS_STORE_POSTGRES_URL` | — | anchor | The canonical PostgreSQL database. Scheme must be `postgres:` or `postgresql:`. |
+| `PLATOS_STORE_POSTGRES_POOL_MAX` | `10` | No | Pooled connections this process may hold open (1–1000). |
+| `PLATOS_STORE_POSTGRES_STATEMENT_TIMEOUT_MS` | `15000` | No | How long one statement may run before the server cancels it. |
+| `PLATOS_STORE_POSTGRES_SCHEMA` | `public` | No | The schema the canonical tables live in. |
+| `PLATOS_STORE_REDIS_URL` | — | anchor | Redis behind the cache, rate limiter and event bus. Scheme `redis:` or `rediss:`. |
+| `PLATOS_STORE_REDIS_KEY_PREFIX` | `platos` | No | Keeps two installs on one instance apart. |
+| `PLATOS_STORE_REDIS_TLS` | `false` | No | Exactly `true` or `false`. |
+| `PLATOS_STORE_CLICKHOUSE_URL` | — | anchor | The span store endpoint. Scheme `http:` or `https:`. |
+| `PLATOS_STORE_CLICKHOUSE_DATABASE` | — | with anchor | The database spans are written into. No default on purpose: the vendor image ships one called `default`, so a typo would write every span somewhere that exists and nobody queries. |
+| `PLATOS_STORE_CLICKHOUSE_TIMEOUT_MS` | `5000` | No | How long a span write may take. |
+| `PLATOS_STORE_OBJECT_ENDPOINT` | — | anchor | S3-compatible endpoint for attachments and artifacts. |
+| `PLATOS_STORE_OBJECT_BUCKET` | — | with anchor | The bucket. |
+| `PLATOS_STORE_OBJECT_ACCESS_KEY_ID` | — | with anchor | Access key. |
+| `PLATOS_STORE_OBJECT_SECRET_ACCESS_KEY` | — | with anchor | Secret paired with the access key. |
+| `PLATOS_STORE_OBJECT_REGION` | `us-east-1` | No | Region the signing algorithm uses. |
+
+### Providers
+
+There is **no provider API key here, and that is the design.** Provider
+credentials are per-organisation rows in the `providers` context's canonical
+store, sealed under the security section's root key. A process-level variable
+holding one would be a tenant-scoped secret at a scope with no tenant: every
+organisation on the install would share it, the cost ledger would attribute its
+spend to nobody, and revoking it would be a redeploy rather than a row update.
+
+| Variable | Default | Required | Purpose |
+|---|---|---|---|
+| `PLATOS_PROVIDERS_DEFAULT_MODEL` | — | anchor | Vendor-qualified, `vendor:model` — e.g. `anthropic:claude-haiku-4-5-20251001`. Used when nothing else names a model. |
+| `PLATOS_PROVIDERS_REQUEST_TIMEOUT_MS` | `120000` | No | How long one provider call may take. |
+| `PLATOS_PROVIDERS_MAX_RETRIES` | `2` | No | `0` disables retrying. |
+| `PLATOS_PROVIDERS_EMBEDDING_MODEL` | — | No | Vendor-qualified. Omit to leave embedding unwired. |
+
+### Channels
+
+The inbound channel APP's identity, one per deployable — not the per-workspace
+INSTALLATION tokens, which are rows in the `channels` context's store.
+
+| Variable | Default | Required | Purpose |
+|---|---|---|---|
+| `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | — | anchor | Verifies every inbound channel request. Minimum 32 characters. Anchoring the group on the signing secret rather than on an outbound token means "the channel is wired" and "the channel can tell a real caller from a forged one" are the same statement. |
+| `PLATOS_CHANNELS_SLACK_REQUEST_MAX_AGE_S` | `300` | No | How old a signed request may be before it is refused as a replay. |
+| `PLATOS_CHANNELS_EMAIL_SMTP_URL` | — | anchor | Relay for budget notifications. Scheme `smtp:` or `smtps:`. |
+| `PLATOS_CHANNELS_EMAIL_FROM` | — | with anchor | Envelope sender. |
+| `PLATOS_CHANNELS_WEBHOOK_SIGNING_KEY` | — | anchor | Signs outbound notification bodies. Minimum 32 characters. |
+| `PLATOS_CHANNELS_WEBHOOK_TIMEOUT_MS` | `10000` | No | How long one delivery may take. |
+
+### Durable runtime
+
+Named after the port (ADR M0.3 §4 `DurableRuntime`) rather than after the
+supplier. Only what it takes to REACH the service: which work runs there is a
+`jobs` context decision and lives in rows.
+
+| Variable | Default | Required | Purpose |
+|---|---|---|---|
+| `PLATOS_DURABLE_RUNTIME_API_URL` | — | anchor | The durable execution service. |
+| `PLATOS_DURABLE_RUNTIME_SECRET_KEY` | — | with anchor | How this process authenticates to it. Minimum 16 characters. An endpoint with no key would boot, be refused on every dispatch, and present as "background work silently stopped happening". |
+| `PLATOS_DURABLE_RUNTIME_NAMESPACE` | `platos` | No | Keeps two installs on one service apart. |
+| `PLATOS_DURABLE_RUNTIME_DISPATCH_TIMEOUT_MS` | `15000` | No | Bounds handing work OVER, not the work — a durable service exists so the work can outlive this process. |
+
+### Security
+
+| Variable | Default | Required | Purpose |
+|---|---|---|---|
+| `PLATOS_SECURITY_SESSION_SECRET` | — | anchor | Signs operator session cookies. Minimum 32 characters. |
+| `PLATOS_SECURITY_SESSION_COOKIE_NAME` | `platos_session` | No | Must satisfy the cookie-name grammar; a space here produces a `Set-Cookie` the client silently discards. |
+| `PLATOS_SECURITY_SESSION_TTL_S` | `43200` | No | How long an operator session stays valid. |
+| `PLATOS_SECURITY_SESSION_SAME_SITE` | `lax` | No | `strict` · `lax` · `none`. |
+| `PLATOS_SECURITY_SESSION_COOKIE_SECURE` | `true` | No | Defaults to `true` deliberately: an install serving the operator surface over plain HTTP must say so out loud. |
+| `PLATOS_SECURITY_ENCRYPTION_KEY` | — | anchor | The active credential root, exactly 64 hexadecimal characters. |
+| `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | — | with anchor | Stamped on every credential sealed under the active root. Rotation without a version is a change you cannot roll back. |
+
+### The shortest environment that boots the V1 process
+
+```bash
+PLATOS_ENVIRONMENT=development
+```
+
+That is the whole of it, and it is not a simplification. Nothing is wired, so
+`/readyz` answers 503 with the exact list of unsatisfied adapter bindings, which
+is the honest answer for an install part-way through wiring. Add an anchor and
+its required members to wire one store at a time.
+
+### The stdio binary (`apps/mcp-stdio`)
+
+| Variable | Default | Required | Purpose |
+|---|---|---|---|
+| `PLATOS_MCP_STDIO_RUNTIME_MODULE` | — | Yes | Module the host install provides, exporting a factory that returns a `ToolsContract`. Unset, unloadable, or not exporting the factory: the process refuses to start. See `apps/mcp-stdio/src/runtime.ts` for why this binary cannot compose itself. |

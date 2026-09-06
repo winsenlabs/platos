@@ -151,6 +151,8 @@ jobs:
           pnpm test:sole-writer
           pnpm audit:composition-root
           pnpm test:composition-root
+          pnpm audit:env-access
+          pnpm test:env-access
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:advisory
