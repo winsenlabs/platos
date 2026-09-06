@@ -83,6 +83,25 @@ export interface TenancyTransactions {
   /** The client a READ must use: the open transaction if there is one, else the pool. */
   reader(): TenancyReader;
   /**
+   * The POOLED client, never the ambient transaction.
+   *
+   * WIN-258 T5. `ProvidersRepository.touchProviderKey` is the one method in this
+   * directory whose port says outright that it must NOT enlist in the caller's
+   * unit of work: "it is bookkeeping on a read path, and enlisting it in the
+   * caller's unit of work would make a failed write of this timestamp roll back
+   * the turn that succeeded". `reader()` cannot express that — inside a
+   * transaction it resolves to the transaction's own client, which is the whole
+   * point of the ambient frame — so a `lastUsedAt` written through it would be
+   * discarded with the turn that rolled back.
+   *
+   * It is deliberately NOT a general escape hatch, and the distinction is one a
+   * reader can check: `writer(scope)` refuses three ways precisely so a write
+   * cannot leave its transaction by accident, and every canonical WRITE in this
+   * package goes through it. This returns the pool for a write whose port
+   * requires it to be outside, and its one caller says so at the call site.
+   */
+  pool(): TenancyDatabaseClient;
+  /**
    * Run `work` inside a transaction, JOINING one that is already open.
    *
    * WIN-258 T2. `IdentityAccessRepository`'s methods take no `TransactionScope`
@@ -173,6 +192,12 @@ export function createTenancyTransactions(
 
     reader(): TenancyReader {
       return ambient.getStore()?.client ?? client;
+    },
+
+    pool(): TenancyDatabaseClient {
+      // The ambient frame is not consulted, and that is the whole difference
+      // between this and `reader()`.
+      return client;
     },
 
     async atomic<Value>(

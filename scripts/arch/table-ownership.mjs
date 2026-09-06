@@ -413,12 +413,59 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // while the rule that has to see it ran on another, and the rule would refuse
   // a row that is correct.
   //
-  // THE CONVERSE IS ALSO TRUE AND IS WHY `providers` IS ABSENT. The extraction
-  // source writes `ProviderKey` inside its secret store; ADR M0.3 §1 row 4 gives
-  // that row to `providers`, which has no entry here, so this directory cannot
-  // write it. `domain/credential.ts` already records that those three methods
-  // were deliberately not extracted for exactly that reason.
+  // THE CONVERSE IS ALSO TRUE AND IS WHY `ProviderKey` IS NOT GRANTED HERE. The
+  // extraction source writes `ProviderKey` inside its secret store; ADR M0.3 §1
+  // row 4 gives that row to `providers`, and `domain/credential.ts` records that
+  // those three methods were deliberately not extracted for exactly that reason.
+  // The `providers` entry below grants that row to its own owner — which is the
+  // split the ADR describes and not a widening of this one: `secrets` still owns
+  // the credential and its envelope, `providers` still owns the row that points
+  // at them, and `checkSoleWriter` still asks per WRITE which owner a row has.
   secrets: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The NINTH context to resolve to this directory, on the sentence
+  // the eight above stand on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the FOUR rows `providers` owns —
+  // `EnvironmentProvider`, `Model`, `ModelPrice` and `ProviderKey`. Nothing
+  // else. `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory` or to `Turn` from
+  // this package still fails, and a write to any of these four from anywhere
+  // else still fails. Nine owners resolving to one directory is not nine owners
+  // losing their boundaries: the boundary is the owner TAG on the row, and this
+  // entry moves no tag.
+  //
+  // IT IS THE ENTRY THE COMMENT ON `secrets` ABOVE SAID WAS MISSING, and the
+  // sentence it closes is worth keeping rather than deleting. That comment
+  // records that the extraction source writes `ProviderKey` inside its secret
+  // store, that ADR M0.3 §1 row 4 gives the row to `providers`, and that
+  // `providers` "has no entry here, so this directory cannot write it" — which
+  // is why `secrets/domain/credential.ts` records three methods as deliberately
+  // not extracted. With this entry the directory CAN write it, and the split is
+  // now the one the ADR describes: `secrets` owns the credential and its
+  // envelope, `providers` owns the row that points at them, and both halves of
+  // `register-provider-key.ts` are the same client and the same transaction.
+  //
+  // AND THAT IS WHAT MAKES `ProviderKey` WRITABLE AT ALL. `ProviderKey_credential
+  // _provider_integrity` is a BEFORE INSERT OR UPDATE trigger that RE-READS the
+  // `Credential` from inside the key's own write, demanding one in the same
+  // environment whose `provider` and `name` match the key's. A thirteenth adapter
+  // package holding only `providers`' repository would have had its own pool: the
+  // credential would be uncommitted on the `secrets` connection while the rule
+  // that has to see it ran on this one, and the rule would refuse a row that is
+  // correct. It is the `EnvironmentVariable` seam one tranche back, one table
+  // over.
+  //
+  // IT DOES NOT GRANT WHAT `providers` NEEDS AND DOES NOT OWN. `AgentVersion`,
+  // `AgentBinding` and `Agent` are `agents`' rows and `Credential` is `secrets`',
+  // and this store READS all four — `countAgentVersionsPinning` walks the first
+  // three to answer how many executable versions pin a key. Reads are
+  // unrestricted by design (§1 restricts WRITES), and the integration fixture
+  // seeds the versions it needs as SQL applied by `prisma db execute`, which is
+  // honest about the fact that those rows belong to another context.
+  providers: "packages/adapters/postgres-tenancy",
 });
 
 /**

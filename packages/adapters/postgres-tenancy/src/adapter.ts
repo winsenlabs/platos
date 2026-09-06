@@ -112,6 +112,29 @@
 // every inbox row — which is the one thing the process that stores them must not
 // hold.
 
+// AND SO DOES `providers`' `ProvidersRepository` (WIN-258 T5). The four rows of
+// ADR M0.3 §1 row 4 — `ProviderKey`, `EnvironmentProvider`, `Model` and
+// `ModelPrice` — are in that same database behind that same client, so Amendment
+// 15 puts them here rather than in a thirteenth package holding a second client.
+// Its eighteen method names collide with nothing above, so it is spread in like
+// the rest and `PORT_SATISFACTION` can resolve
+// `Satisfies<PostgresTenancyAdapter, ProvidersRepository>` at compile time.
+//
+// IT IS ALSO WHAT MAKES `register-provider-key.ts` ATOMIC. That use case creates
+// a credential through `secrets` and then writes the `ProviderKey` that points
+// at it, and `ProviderKey_credential_provider_integrity` RE-READS that
+// credential from inside the key's own INSERT. `secrets` resolves to this same
+// directory, so both halves are the same client and the same transaction; two
+// pools would have had the trigger looking for a row still uncommitted on the
+// other connection.
+//
+// The context's two OTHER ports are deliberately not here: `ModelRouter` is the
+// provider SDK boundary §5.1 rule (h) pins to
+// `packages/adapters/model-router-providers`, and `ProviderProbeCache` is a
+// five-minute memo of what a provider said — backing it with the canonical store
+// would put a provider's transient answers into the database the port exists to
+// keep them out of.
+
 import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
 import type {
   AgentsRepository,
@@ -126,6 +149,7 @@ import type {
   SafetyLedger,
 } from "@platos/context-governance/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
+import type { ProvidersRepository } from "@platos/context-providers/application/ports/index.js";
 import type {
   EnvironmentVariableRepository,
   SecretsRepository,
@@ -157,6 +181,7 @@ import { createMembershipRepository } from "./membership.js";
 import { createOperatorDirectory, createOperatorSessionRevoker } from "./operator-peers.js";
 import type { OutboxEventStorePort } from "./outbox-store.js";
 import { createOutboxEventStore } from "./outbox-store.js";
+import { createProvidersRepository } from "./providers-repository.js";
 import {
   createEnvironmentVariableRepository,
   createSecretsRepository,
@@ -174,6 +199,7 @@ export interface PostgresTenancyAdapter
     ScaffoldingRepository,
     BudgetRepository,
     ChannelsRepository,
+    ProvidersRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -338,6 +364,20 @@ export function buildPostgresTenancyAdapter(
     // composition root resolve `PostgresTenancyAdapter extends ChannelsRepository`
     // at compile time, which a nested property could not.
     ...createChannelsRepository(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The NINTH owner in this directory, on the same
+    // argument every owner above it stands on: `providers`' four rows are in the
+    // one PostgreSQL database, behind the one client. Its eighteen method names
+    // are disjoint from tenancy's thirty-one, identity-access's ten store
+    // properties, tools' twenty-five, agents' thirty-five, cost-monitoring's
+    // twenty-two, channels' seventeen and the outbox's two, so there is nothing
+    // to arbitrate; the spread is what lets `PORT_SATISFACTION` resolve
+    // `PostgresTenancyAdapter extends ProvidersRepository` at compile time.
+    //
+    // Built from the SAME `transactions` as `secrets` above, which is what makes
+    // "create the credential, then write the key that points at it" one
+    // transaction — and therefore what lets the trigger that re-reads the
+    // credential from inside the key's INSERT see it.
+    ...createProvidersRepository(transactions),
   };
 }
 

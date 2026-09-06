@@ -259,3 +259,36 @@ export {
   UNKNOWN_VARIABLE_KIND,
   UnreadableSecretsRowError,
 } from "./secrets-rows.js";
+
+// WIN-258 T5 — `providers`' canonical store. The factory leaves the package for
+// the reason `cost-monitoring`'s does: a composition root that wanted this
+// repository WITHOUT tenancy's — a catalogue ingest, say — has to be able to
+// build one over the same transactions rather than over a second client.
+//
+// THE REFUSAL CODES LEAVE IT BECAUSE THEY ARE DECISIONS, NOT MESSAGES, and on
+// this port the argument is sharper than usual in one direction and softer in
+// another. Softer, because `providers/domain/errors.ts` publishes a RICH
+// caller-facing vocabulary — `PROVIDERS_KEY_ALREADY_EXISTS`,
+// `PROVIDERS_PRICE_REVISION_CONFLICT`, `PROVIDERS_CREDENTIAL_UNAVAILABLE` — so
+// unlike `secrets`, most of what this store refuses is already sayable in the
+// context's own words and is said there. Sharper, because the seven codes below
+// are exactly the residue that is NOT: a write the SCHEMA will not hold, and a
+// row this binary cannot read. Minting a `PROVIDERS_*` code for either would put
+// an adapter's finding into a context's published vocabulary, so they are
+// carried out of band, where an operator reads them and a caller never does.
+export { createProvidersRepository } from "./providers-repository.js";
+export {
+  IDENTIFIER_NOT_UUID as PROVIDERS_IDENTIFIER_NOT_UUID,
+  INSTANT_NOT_REPRESENTABLE as PROVIDERS_INSTANT_NOT_REPRESENTABLE,
+  MODEL_INTEGER_OUT_OF_RANGE,
+  PAGE_WINDOW_INVALID,
+  ProvidersWriteRefused,
+  RATE_OUT_OF_DOMAIN,
+  RATE_PROVENANCE_MISSING,
+  RATE_SOURCE_UNKNOWN,
+} from "./providers-guards.js";
+export {
+  UNKNOWN_RATE_SOURCE,
+  UNREADABLE_RATE,
+  UnreadableProvidersRowError,
+} from "./providers-rows.js";
