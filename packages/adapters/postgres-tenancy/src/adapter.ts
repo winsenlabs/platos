@@ -112,6 +112,24 @@
 // every inbox row — which is the one thing the process that stores them must not
 // hold.
 
+// AND SO DOES `skills`' `SkillsRepository` (WIN-258 T5). The three rows of ADR
+// M0.3 §1 row 6 — `Skill`, `ProjectSkill` and `EnvironmentSkill` — are in that
+// same database behind that same client, so Amendment 15 puts them here rather
+// than in a thirteenth package holding a second one. It is a PROPERTY and not a
+// spread, and that is the SECOND collision this file has had to arbitrate rather
+// than a preference: `SkillsRepository.findInstallation(scope, skillId)` and
+// `ChannelsRepository.findInstallation(installationId)` are both top-level
+// members with different signatures, so `PostgresTenancyAdapter` cannot extend
+// both ports — exactly the shape `secrets` produced on `appendAudit`. The
+// composition root proves it by indexing the property that carries it. The
+// context's THREE other ports are deliberately absent and
+// `skills-repository.ts` says why for each: `SkillSourceFetcher` is an
+// SSRF-defence contract over sockets this package does not open,
+// `SkillSandbox` is the confined runtime ADR M0.3 §7 decision 10 puts behind
+// `durable-runtime`, and `EnvironmentKeyDirectory` reads `EnvironmentVariable`,
+// which §1 row 3 gives to `secrets` — a row this directory can physically read
+// and this port is not entitled to.
+
 import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
 import type {
   AgentsRepository,
@@ -130,6 +148,7 @@ import type {
   EnvironmentVariableRepository,
   SecretsRepository,
 } from "@platos/context-secrets/application/ports/index.js";
+import type { SkillsRepository } from "@platos/context-skills/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -161,6 +180,7 @@ import {
   createEnvironmentVariableRepository,
   createSecretsRepository,
 } from "./secrets-repository.js";
+import { createSkillsRepository } from "./skills-repository.js";
 import type { TenancyTransactions, TransactionTimeouts } from "./transaction.js";
 import { createTenancyTransactions } from "./transaction.js";
 import { createToolsRepository } from "./tools-repository.js";
@@ -225,6 +245,21 @@ export interface PostgresTenancyAdapter
    */
   readonly secrets: SecretsRepository;
   readonly secretsVariables: EnvironmentVariableRepository;
+  /**
+   * WIN-258 T5 — `skills`' one canonical-store port.
+   *
+   * A PROPERTY, and forced by the same kind of collision `secrets` produced.
+   * `SkillsRepository.findInstallation(scope, skillId)` and
+   * `ChannelsRepository.findInstallation(installationId)` are both top-level
+   * members with different signatures, so an interface cannot extend both ports
+   * and a spread would have let whichever composite came last answer BOTH — a
+   * channel installation resolved out of `EnvironmentSkill`, or the reverse,
+   * with every type in the file still checking. The name is
+   * `SkillsDependencies`' own slot spelled with its owner in front, because
+   * `repository` alone is not a name a directory serving nine owners can give to
+   * one of them.
+   */
+  readonly skills: SkillsRepository;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -273,6 +308,11 @@ export function buildPostgresTenancyAdapter(
     // whether to revoke sees the row the same transaction just wrote.
     secrets: createSecretsRepository(transactions),
     secretsVariables: createEnvironmentVariableRepository(transactions),
+    // WIN-258 T5. Built from the SAME `transactions` as everything else here, so
+    // an install — a `ProjectSkill` adoption and the `EnvironmentSkill` binding
+    // that hangs off its id — is ONE transaction across two tables, and a
+    // failure on the second leaves no adoption behind that nothing points at.
+    skills: createSkillsRepository(transactions),
     async close(): Promise<void> {
       await client.$disconnect();
     },

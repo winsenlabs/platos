@@ -259,3 +259,52 @@ export {
   UNKNOWN_VARIABLE_KIND,
   UnreadableSecretsRowError,
 } from "./secrets-rows.js";
+
+// WIN-258 T5 — `skills`' canonical store. The factory leaves the package for the
+// reason `createCostMonitoringRepository` does: a composition root that wanted
+// this repository WITHOUT tenancy's — an official-catalogue seeder, say — has to
+// be able to build one over the same transactions rather than over a second
+// client. `createSkillsStamps` leaves it with the factory because the store
+// STAMPS its own rows, and a root that wanted a deterministic clock or an id
+// source of its own has to be able to supply one without reimplementing the
+// monotonic instant the default carries.
+//
+// THE REFUSAL CODES LEAVE IT FOR THE REASON `secrets`' DO. `skills/domain/errors.ts`
+// publishes exactly ONE code a store may answer with —
+// `SKILLS_REPOSITORY_UNAVAILABLE` — so a caller cannot tell a manifest the schema
+// will not hold from a row this binary cannot read from a database that is down.
+// That collapse is right for a caller and useless for an operator, so the eight
+// write-shape refusals and the five unreadable-row refusals are named here and
+// carried out of band.
+//
+// THREE OF THEM ARE ALIASED, and each collision is real rather than cosmetic.
+// `cost-monitoring`, `channels` and `secrets` each already publish an
+// `IDENTIFIER_NOT_UUID`, `secrets` an `INSTANT_NOT_REPRESENTABLE`, and
+// `channels` a `TEXT_LIST_INVALID`; the strings differ per owner, because each
+// is the code its own tables' refusals travel under — `channels`' is the bare
+// `text_list_invalid` that travels inside `${operation}:${code}:${field}`, this
+// one is `skills.write.text_list_invalid`. Exporting two under one name is not
+// possible and would not be honest if it were, so the newcomer takes the prefix
+// its own context already puts on every code it mints.
+export { createSkillsRepository, createSkillsStamps } from "./skills-repository.js";
+export type { SkillsStamps } from "./skills-repository.js";
+export {
+  CONFIG_NOT_OBJECT,
+  IDENTIFIER_NOT_UUID as SKILLS_IDENTIFIER_NOT_UUID,
+  IDENTITY_SEGMENT_EMPTY,
+  INSTANT_NOT_REPRESENTABLE as SKILLS_INSTANT_NOT_REPRESENTABLE,
+  MANIFEST_NOT_OBJECT,
+  PROVIDED_TOOLS_NOT_ARRAY,
+  SCOPE_ANCESTRY_INCOHERENT,
+  SkillsWriteRefused,
+  TEXT_LIST_INVALID as SKILLS_TEXT_LIST_INVALID,
+} from "./skills-guards.js";
+export {
+  UNKNOWN_SKILL_ORIGIN,
+  UNREADABLE_INSTALL_CONFIG,
+  UNREADABLE_MANIFEST,
+  UNREADABLE_PROVIDED_TOOLS,
+  UNREADABLE_TEXT_LIST,
+  UnreadableSkillsRowError,
+} from "./skills-rows.js";
+export { ANONYMIZED_SKILL_AUTHOR } from "./skills-erasure.js";
