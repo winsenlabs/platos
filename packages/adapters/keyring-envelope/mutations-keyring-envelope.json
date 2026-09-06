@@ -1,0 +1,285 @@
+{
+  "issue": "WIN-259",
+  "milestone": "M2.4",
+  "dimension": "credential envelopes, key versions, rotation and re-encryption",
+  "branch": "tejas/secret-lifecycle",
+  "generatedFrom": "42e4baec9b3a974c5cbb831ce3934d314fc391a3",
+  "howToReproduce": "Apply the `from` -> `to` replacement in `file`, run `command`, and observe the named case fail. Restore. The three postgres entries run ON THE MAC MINI inside a detached worktree; the laptop's Docker daemon is unreachable by policy and a local run of those three MUST fail to start, which is correct rather than a defect.",
+  "summary": {
+    "entries": 24,
+    "killed": 24,
+    "survived": 0,
+    "declaredUnfalsifiable": 0
+  },
+  "notes": [
+    "One mutation SURVIVED on the first sweep and is recorded below as `cipher-latin1-plaintext`, with the case that was added to kill it. It found a real hole: this adapter opened three non-ASCII fixtures and had never SEALED one, so the write side's text encoding was untested and a mis-encoded seal round-trips inside a process that makes the same mistake twice.",
+    "No entry is killed by an assertion that compares two things this tranche controls. The six wire-format entries are killed by ciphertexts produced by `internal-packages/tenancy-database/src/secrets.ts`, which this issue does not edit; the three postgres entries are killed by what a real PostgreSQL returns."
+  ],
+  "mutations": [
+    {
+      "id": "cipher-open-drops-aad",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "decipher.setAAD(Buffer.from(envelopeAad(request.binding), \"utf8\"));",
+      "to": "(the line deleted)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 6,
+      "killedBy": "wire-compatibility.test.ts > format 1 wire compatibility with the extraction source > opens an envelope the extraction source sealed: revision 1 under root key version 1",
+      "why": "The associated data is what binds a ciphertext to its row. Without it the extraction source's envelopes fail the tag check, and — the sharper half — an envelope lifted to another credential would open."
+    },
+    {
+      "id": "cipher-hkdf-info-constant",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "Buffer.from(envelopeKeyInfo(binding), \"utf8\")",
+      "to": "Buffer.from(\"platos\", \"utf8\")",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "wire-compatibility.test.ts > opens an envelope the extraction source sealed: revision 7 under root key version 2, same key bytes as version 1",
+      "why": "The HKDF `info` is the envelope's whole slot identity. A constant derives one key per root key rather than one per envelope, so every stored ciphertext becomes unopenable and two envelopes share a key."
+    },
+    {
+      "id": "cipher-salt-width-16",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "const SALT_BYTES = 32;",
+      "to": "const SALT_BYTES = 16;",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "wire-compatibility.test.ts > seals an envelope this adapter can re-open at the same binding",
+      "why": "`CredentialSecretVersion_salt_length_check` in the canonical store refuses any other width, so a narrower salt is a row PostgreSQL will not accept."
+    },
+    {
+      "id": "cipher-nonce-width-16",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "const NONCE_BYTES = 12;",
+      "to": "const NONCE_BYTES = 16;",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "wire-compatibility.test.ts > seals an envelope this adapter can re-open at the same binding",
+      "why": "A 16-byte GCM IV is legal in the primitive and refused by `_nonce_length_check`. It is also the width legacy format 3 uses, so the confusion is one the tree has already had."
+    },
+    {
+      "id": "cipher-seal-skips-binding-guard",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "if (handleVersion !== binding.rootKeyVersion) { return err(invalidKeyRing(\"root_key_handle_disagrees_with_envelope_binding\")); }",
+      "to": "(the guard deleted)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "key-version-integrity.test.ts > one key version cannot silently open another's envelope > refuses a seal whose handle names a different version than its binding",
+      "why": "Silent, permanent data loss on a write that reported success: `open` derives from the BINDING, so an envelope sealed with v2's material under a v1 binding is unsealable forever."
+    },
+    {
+      "id": "cipher-latin1-plaintext",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "cipher.update(request.plaintext.reveal(), \"utf8\"),",
+      "to": "cipher.update(request.plaintext.reveal(), \"latin1\"),",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "wire-compatibility.test.ts > seals and re-opens multi-byte UTF-8, a newline and a tab",
+      "survivedFirstSweep": true,
+      "why": "SURVIVED the first sweep and is the reason its killing case exists. Every plaintext this adapter SEALED in a test was ASCII, where utf8 and latin1 agree byte for byte; the only non-ASCII bytes in the tree were in a fixture it opens and never writes. A mis-encoded seal round-trips inside a process that makes the same mistake twice and produces mojibake the day anything else reads the row."
+    },
+    {
+      "id": "ring-resolves-by-version-not-identity",
+      "file": "packages/adapters/keyring-envelope/src/root-key-ring.ts",
+      "from": "const key = minted.get(handle);",
+      "to": "const key = material.get(handle.rootKeyVersion);",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "root-key-ring.test.ts > root key handles > refuses to resolve a handle it did not mint",
+      "why": "THE OPACITY PROPERTY. `RootKeyHandle`'s brand is a `unique symbol` that is declared and never exported, so nobody can build one — but anybody can CAST `{ rootKeyVersion: 1 }`, which is structurally identical. Resolving by field hands key material to that forgery."
+    },
+    {
+      "id": "ring-accepts-any-hex-width",
+      "file": "packages/adapters/keyring-envelope/src/root-key-ring.ts",
+      "from": "const HEX_ROOT_KEY = /^[0-9a-fA-F]{64}$/u;",
+      "to": "const HEX_ROOT_KEY = /^[0-9a-fA-F]+$/u;",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "root-key-ring.test.ts > root key ring parsing > refuses a key of the right alphabet and the wrong width",
+      "why": "`ROOT_KEY_BYTE_LENGTH` is 32 because AES-256 keys are. A short key would be zero-padded into a weaker key by the decoder, silently."
+    },
+    {
+      "id": "ring-mints-absent-version",
+      "file": "packages/adapters/keyring-envelope/src/root-key-ring.ts",
+      "from": "if (key === undefined) return err(invalidKeyRing(\"root_key_version_absent_from_ring\"));",
+      "to": "if (key === undefined) return ok(Object.freeze({ rootKeyVersion: version }) as RootKeyHandle);",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "key-version-integrity.test.ts > a key removed before its envelopes were re-encrypted fails closed > cannot mint a handle for a version that has left the ring",
+      "why": "The fail-closed path. A rotated-out key must make its envelopes UNREADABLE, not readable by whatever the ring answers with instead."
+    },
+    {
+      "id": "ring-coerces-version-key",
+      "file": "packages/adapters/keyring-envelope/src/root-key-ring.ts",
+      "from": "if (!/^[0-9]+$/u.test(raw)) return err(invalidKeyRing(\"root_key_version_not_an_integer_literal\"));",
+      "to": "(the guard deleted)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "root-key-ring.test.ts > root key ring parsing > refuses a version key that is not an integer literal",
+      "why": "`Number(\" 1 \")` is 1 and `Number(\"1.0\")` is 1. A ring keyed by \" 1\" would seal under a version no envelope names."
+    },
+    {
+      "id": "hasher-constant-salt",
+      "file": "packages/adapters/keyring-envelope/src/secret-hasher.ts",
+      "from": "const salt = new Uint8Array(randomBytes(SALT_BYTES));",
+      "to": "const salt = new Uint8Array(SALT_BYTES).fill(7);",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "secret-hasher.test.ts > secret hashing > salts every digest, so the same secret hashes to different strings",
+      "why": "Without a per-digest salt, two tenants holding the same secret hold the same digest, and an operator reading the column learns it."
+    },
+    {
+      "id": "hasher-skips-digest-width-check",
+      "file": "packages/adapters/keyring-envelope/src/secret-hasher.ts",
+      "from": "if (digestBytes.length !== DIGEST_BYTES) return null;",
+      "to": "(the guard deleted)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "secret-hasher.test.ts > refuses a digest of the wrong width rather than throwing out of the port",
+      "why": "`timingSafeEqual` THROWS on mismatched lengths. A throw crossing a port boundary is a defect, not an outcome — a 500 where a refusal belongs."
+    },
+    {
+      "id": "hasher-unparseable-becomes-false",
+      "file": "packages/adapters/keyring-envelope/src/secret-hasher.ts",
+      "from": "if (parsed === null) return err(invalidKeyRing(\"secret_digest_unparseable\"));",
+      "to": "if (parsed === null) return ok(false);",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "secret-hasher.test.ts > refuses an unparseable digest instead of answering false",
+      "why": "`false` says the secret is wrong, and a caller acting on it rotates a credential that was never wrong. An unreadable row is a different fact."
+    },
+    {
+      "id": "hasher-ignores-stored-cost",
+      "file": "packages/adapters/keyring-envelope/src/secret-hasher.ts",
+      "from": "parsed.cost, parsed.blockSize, parsed.parallelisation,",
+      "to": "COST, BLOCK_SIZE, PARALLELISATION,",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "secret-hasher.test.ts > carries the cost parameters in the digest so an older one still verifies",
+      "why": "The cost is IN the digest so a row written before the parameters were raised still verifies. A verifier assuming today's constants rejects every older row, and the rejection is indistinguishable from a wrong secret."
+    },
+    {
+      "id": "fingerprint-back-to-row-id",
+      "file": "packages/contexts/providers/domain/health.ts",
+      "from": "return `${key.providerKeyId}.${key.credentialId}.${key.updatedAt.getTime()}`;",
+      "to": "return `${key.providerKeyId}`;",
+      "command": "pnpm --filter @platos/context-providers test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "probe-cache-eviction.test.ts > the cache key moves when the material does > changes on a rotation even though the row identifier does not",
+      "why": "THIS MUTATION IS THE DEFECT AS FOUND. It restores exactly what `check-provider-health.ts` and `discover-models.ts` passed before WIN-259, and the three failures are the staleness that was live: a key rotated because it leaked kept answering `healthy` from a probe made against the leaked material."
+    },
+    {
+      "id": "fingerprint-drops-updatedAt",
+      "file": "packages/contexts/providers/domain/health.ts",
+      "from": "return `${key.providerKeyId}.${key.credentialId}.${key.updatedAt.getTime()}`;",
+      "to": "return `${key.providerKeyId}.${key.credentialId}`;",
+      "command": "pnpm --filter @platos/context-providers test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "probe-cache-eviction.test.ts > a rotated key does not serve the old key's verdict > re-probes after a rotation even when the eviction did nothing",
+      "why": "A ROTATION changes neither identifier — it changes the material behind the same credential — so `updatedAt` is the only field that moves. Dropping it re-opens the whole defect for the rotation case while leaving relink covered."
+    },
+    {
+      "id": "fingerprint-drops-credentialId",
+      "file": "packages/contexts/providers/domain/health.ts",
+      "from": "return `${key.providerKeyId}.${key.credentialId}.${key.updatedAt.getTime()}`;",
+      "to": "return `${key.providerKeyId}.${key.updatedAt.getTime()}`;",
+      "command": "pnpm --filter @platos/context-providers test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "probe-cache-eviction.test.ts > a rotated key does not serve the old key's verdict > re-probes after a relink even when the eviction did nothing",
+      "why": "The mirror of the entry above, and the reason the fingerprint carries all three: a relink at the same instant moves only the credential."
+    },
+    {
+      "id": "eviction-failure-swallowed-again",
+      "file": "packages/contexts/providers/application/evict-probe-cache.ts",
+      "from": "const evicted = await dependencies.probeCache.forgetProvider(provider); if (evicted.ok) return ok(value);",
+      "to": "await dependencies.probeCache.forgetProvider(provider); return ok(value);",
+      "command": "pnpm --filter @platos/context-providers test",
+      "outcome": "KILLED",
+      "failingCases": 4,
+      "killedBy": "probe-cache-eviction.test.ts > an eviction that failed is reported and not swallowed > refuses a rotation, naming the provider and a window that clears the staleness",
+      "why": "THE SECOND DEFECT AS FOUND. This is the `await`-and-discard line that stood at all six call sites: an eviction that failed was indistinguishable from one that worked, and the write reported success either way."
+    },
+    {
+      "id": "eviction-retry-window-too-short",
+      "file": "packages/contexts/providers/application/evict-probe-cache.ts",
+      "from": "Math.max(healthySeconds, unhealthySeconds)",
+      "to": "dependencies.policy.health.unhealthySeconds",
+      "command": "pnpm --filter @platos/context-providers test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "probe-cache-eviction.test.ts > refuses a rotation, naming the provider and a window that clears the staleness",
+      "why": "A caller told to retry after 60 seconds when a `healthy` verdict is servable for 300 has been handed a number that does not clear the staleness it was warned about."
+    },
+    {
+      "id": "link-stops-evicting-entirely",
+      "file": "packages/contexts/providers/application/link-provider-key.ts",
+      "from": "void (await dependencies.probeCache.forgetProvider(draft.provider));",
+      "to": "(the line deleted)",
+      "command": "pnpm --filter @platos/context-providers test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "probe-cache-eviction.test.ts > still adds a key when the eviction fails, because nothing stale is reachable",
+      "why": "The two ADD paths deliberately keep discarding the `Result`, and this proves the discard is not a licence to stop calling: the port's header names the case only this call covers — \"adding the FIRST key for a provider changes an answer that was cached under no key at all\"."
+    },
+    {
+      "id": "rotate-discards-eviction-result",
+      "file": "packages/contexts/providers/application/rotate-provider-key.ts",
+      "from": "return evictProbeCache(dependencies, key.value.provider, written.value);",
+      "to": "void (await dependencies.probeCache.forgetProvider(key.value.provider)); return ok(written.value);",
+      "command": "pnpm --filter @platos/context-providers test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "probe-cache-eviction.test.ts > refuses a rotation, naming the provider and a window that clears the staleness",
+      "why": "Site-level rather than helper-level: it proves the ROTATION path in particular is wired to the refusal, so a future edit that reverts one of the four call sites is caught even while the helper stays correct."
+    },
+    {
+      "id": "pg-readBytes-truncates",
+      "file": "packages/adapters/postgres-tenancy/src/secrets-rows.ts",
+      "from": "return Uint8Array.from(value);",
+      "to": "return Uint8Array.from(value).slice(0, 16);",
+      "command": "REAL POSTGRESQL, ON THE MAC MINI: pnpm --filter @platos/adapter-postgres-tenancy exec vitest run secrets-key-version.integration --no-file-parallelism",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "secrets-key-version.integration.test.ts > a real envelope survives a real PostgreSQL round trip > returns every byte of a format-1 envelope unchanged",
+      "why": "A truncating decoder makes every stored envelope permanently unopenable, and NOTHING in the crypto suite — which never touches a database — could tell. This is the join the two halves of the proof meet on."
+    },
+    {
+      "id": "pg-ciphertext-reads-salt",
+      "file": "packages/adapters/postgres-tenancy/src/secrets-rows.ts",
+      "from": "ciphertext: readBytes(row.ciphertext),",
+      "to": "ciphertext: readBytes(row.salt),",
+      "command": "REAL POSTGRESQL, ON THE MAC MINI: pnpm --filter @platos/adapter-postgres-tenancy exec vitest run secrets-key-version.integration --no-file-parallelism",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "secrets-key-version.integration.test.ts > returns every byte of a format-1 envelope unchanged",
+      "why": "The column-swap this suite exists to catch. Every other secrets suite in the directory fills its envelope with `bytes(32, fill)` — a width, not an envelope — and a swap between two same-width fields would compare equal there."
+    },
+    {
+      "id": "pg-rootKeyVersion-defaults-to-one",
+      "file": "packages/adapters/postgres-tenancy/src/secrets-rows.ts",
+      "from": "rootKeyVersion: row.rootKeyVersion as RootKeyVersion,",
+      "to": "rootKeyVersion: 1 as RootKeyVersion,",
+      "command": "REAL POSTGRESQL, ON THE MAC MINI: pnpm --filter @platos/adapter-postgres-tenancy exec vitest run secrets-key-version.integration --no-file-parallelism",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "secrets-key-version.integration.test.ts > stores a 35-byte ciphertext beside a 25-byte one without padding either",
+      "why": "`rootKeyVersion` is inside the HKDF info AND the associated data, so a store that defaulted it produces a row nothing can open even though every ciphertext byte survived. Every other suite in the directory writes 1 or 2, so a default of 1 would pass all of them; this one writes NINE."
+    }
+  ]
+}
