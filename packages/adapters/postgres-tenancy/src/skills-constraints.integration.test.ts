@@ -182,7 +182,16 @@ describe("the six constraints that exist ONLY in the migrations are really insta
         transaction,
       ),
     );
-    const sibling = await seedInstalled("acme.onupdate-sibling");
+    // A skill in the SAME organization that NOTHING has adopted. It has to be
+    // un-adopted: `@@unique([projectId, skillId])` would refuse a re-point onto
+    // a pair the project already holds, and the refusal would look like the
+    // ancestry rule while being the index.
+    const sibling = await harness.run((transaction) =>
+      harness.repository.upsertSkill(
+        conformanceDraft(tenant.scope, "acme.onupdate-free", "1.0.0"),
+        transaction,
+      ),
+    );
     const raises = (sql: string): boolean => {
       try {
         harness.applyRows(sql);
@@ -204,7 +213,7 @@ describe("the six constraints that exist ONLY in the migrations are really insta
     // rule rather than the column being frozen.
     expect(
       raises(
-        `UPDATE "ProjectSkill" SET "skillId" = '${sibling.skillId}' WHERE "id" = '${owned.projectSkillId}';`,
+        `UPDATE "ProjectSkill" SET "skillId" = '${sibling.ok ? sibling.value.skillId : ""}' WHERE "id" = '${owned.projectSkillId}';`,
       ),
     ).toBe(false);
   });
