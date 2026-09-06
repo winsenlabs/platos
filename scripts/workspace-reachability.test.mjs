@@ -209,34 +209,37 @@ test("lockfile importer parser rejects malformed and duplicate keys", () => {
   );
 });
 
+// WIN-259 (M2.4) MOVES FOUR OF THE SEVEN COUNTS BELOW BY EXACTLY ONE, and the
+// one is `packages/adapters/keyring-envelope` — the thirteenth adapter directory
+// and the first V1 project added since this baseline was drawn.
+//
+// THIS GATE WAS RED ON THE BRANCH THAT ADDED THAT PACKAGE, and the numbers are
+// stated here rather than quietly adjusted because that is how it stayed red:
+// the branch regenerated the ARTIFACT (`docs/audits/win-253-workspace-reachability.json`,
+// in a commit whose own subject reads "60 -> 61 registered packages") and never
+// moved the pin that reads it back. The artifact and the pin are two independent
+// statements of one fact, which is the whole point of the pair, and only one of
+// them had been updated.
+//
+//   registered                60 -> 61  the new package is in pnpm-workspace
+//   applicationDeployable     37 -> 38  it is reachable from a root TypeScript
+//                                       reference, because `tsconfig.json` lists it
+//   union                     38 -> 39  the union carries it for the same reason
+//   installTraversal          60 -> 61  the lockfile has an importer for it
+//
+// THE OTHER THREE DO NOT MOVE, and each absence is a fact rather than an
+// oversight. The OCI image count stays 6: this adapter ships INSIDE the agent
+// image's closure and builds no image of its own. The repository-dev count stays
+// 10: it is production code, not tooling. The review-candidate count stays 22: a
+// candidate is a workspace reachable from NO root, and this one is reachable from
+// two.
+//
+// THE COMMENT SITS OUTSIDE THE CASE ON PURPOSE. Two of the identifiers below
+// carry a word the vocabulary boundary reserves, each with a reviewed exception
+// anchored to the lines around it, and a comment inserted INSIDE the body moves
+// those anchors into a context nobody has reviewed. Out here the reviewed
+// surroundings are untouched and the gate relocates them by line alone.
 test("committed baseline independently captures OCI, application/deployable, and migrations-union closures", () => {
-  // WIN-259 (M2.4) MOVES FOUR OF THESE SEVEN BY EXACTLY ONE, and the one is
-  // `packages/adapters/keyring-envelope` — the thirteenth adapter directory and
-  // the first V1 project added since this baseline was drawn.
-  //
-  // THIS GATE WAS RED ON THE BRANCH THAT ADDED THAT PACKAGE, and the numbers are
-  // stated here rather than adjusted because that is how it stayed red: the
-  // branch regenerated the ARTIFACT (`docs/audits/win-253-workspace-reachability.json`,
-  // in a commit whose own subject reads "60 -> 61 registered packages") and never
-  // moved the pin that reads it back. The artifact and the pin are two
-  // independent statements of one fact, which is the whole point of the pair,
-  // and only one of them had been updated.
-  //
-  //   registeredWorkspaceCount          60 -> 61  the new package is in pnpm-workspace
-  //   applicationDeployableWorkspaceCount 37 -> 38 it is reachable from a root
-  //                                                TypeScript reference, because
-  //                                                `tsconfig.json` lists it
-  //   deploymentUnionWorkspaceCount     38 -> 39  the union carries it for the
-  //                                                same reason
-  //   installTraversalWorkspaceCount    60 -> 61  the lockfile has an importer
-  //                                                for it
-  //
-  // THE OTHER THREE DO NOT MOVE, and each absence is a fact rather than an
-  // oversight. `ociImageWorkspaceCount` stays 6: this adapter ships INSIDE the
-  // agent image's closure and builds no image of its own. `repositoryDevWorkspaceCount`
-  // stays 10: it is production code, not tooling. `reviewCandidateCount` stays 22:
-  // a candidate is a workspace reachable from NO root, and this one is reachable
-  // from two.
   const report = repositoryReport();
   assert.equal(report.summary.registeredWorkspaceCount, 61);
   assert.equal(report.summary.ociImageWorkspaceCount, 6);

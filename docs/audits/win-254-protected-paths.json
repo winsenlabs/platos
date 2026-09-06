@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "292fba6f0a388565ed7b451904c6a038d9d59768f883a4ef88dd8168ff2c5c18"
+      "sha256": "290a5dae3106a9db3078fdffd60c9439f7e155cc31a5b746cb19ed6afa2119ea"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "1f4d6e7bfa7d805d71166eb8db5707f913ff71990198892d36af69936e6db7df"
+      "sha256": "46e06a60a95f09d4c73e5d54a9d7446675eddc89705a9c33de455eb2c0e053f5"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "118b4a0472a445ea3ca0dbc81edcd8f975d81e54e9c5d3fa1aa028634876c1da"
+      "sha256": "d38fe172180e7cd2462e4bd88f52c91c181c4f5d7d559128b25121a895d6e8df"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3493,7 +3493,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "e7e5387f0563f28360f1eda048bb9200e210d865ddacb8148feb3fcaf4b3599d"
+      "sha256": "61540a03b79f440842e122578283a5d698840a3373bcdd5206ae78bc420a9e2f"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3948,7 +3948,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "9a547fbc95896afb85d41fe4958d80dd90256ba0afef80fd935efeb41a44fcfa"
+      "sha256": "6b4ab853bf12272a9f75a0866a13b300a8caa817d1ab6570464e36599c8dce72"
     }
   ]
 }
