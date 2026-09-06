@@ -240,14 +240,20 @@ describe("the order is total, and the fixture ties four ways", () => {
 });
 
 describe("statement cost", () => {
-  test("a page is three statements over four rows and over three hundred", async () => {
+  test("a page costs the same over four exposures and over three hundred", async () => {
     const small = await measure(harness, () => exposures(sparse));
     const big = await measure(harness, () => exposures(dense));
-    // The count, the window, and the ONE binding fold `allowedAgentIds` needs.
-    // The fold is per CALL, never per row — reading it inside the row loop is
-    // an N+1 no returned value can see, because every value would be right.
-    expect(small.counted).toBe(3);
-    expect(big.counted).toBe(3);
+    // THE PROPERTY FIRST: the figure does not move with the number of rows.
+    // That is what an N+1 would break, and it is true at 4 rows and at 300.
+    expect(big.counted).toBe(small.counted);
+    // TEN, MEASURED, and every one of them is per CALL. The scope resolve, the
+    // binding fold `allowedAgentIds` needs, the count, the window, and the six
+    // set reads the client issues for the relations `EXPOSURE_SELECT` names —
+    // the tool, the entity, and the entity's client and config rows — each
+    // loaded with `IN (…)` over the ids already in hand. Reading any of them
+    // inside the row loop is an N+1 that no assertion on a returned value can
+    // see, because every value would still be right.
+    expect(big.counted).toBe(10);
     expect(big.total).toBeGreaterThanOrEqual(big.counted);
   });
 

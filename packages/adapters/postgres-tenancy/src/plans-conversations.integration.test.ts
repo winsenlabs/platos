@@ -306,9 +306,11 @@ describe("the plan", () => {
   });
 
   test("the thread listing is served by an index and needs no sort", async () => {
-    // WIN-258 T7 adds `Thread_environmentId_archivedAt_updatedAt_id_idx`, whose
-    // columns are the operator listing's whole predicate and its whole order.
-    expect(indexesUsed(unfiltered)).toContain("Thread_environmentId_archivedAt_updatedAt_id_idx");
+    // WIN-258 T7 adds `Thread_environmentId_updatedAt_id_idx`: the equality
+    // column, then the order, in the order's own direction. `archivedAt` is
+    // NOT in it — a filter between the equality column and the order column is
+    // the exact defect the old index had.
+    expect(indexesUsed(unfiltered)).toContain("Thread_environmentId_updatedAt_id_idx");
     expect(nodeTypesOf(unfiltered)).not.toContain("Sort");
   });
 
