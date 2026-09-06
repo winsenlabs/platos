@@ -63,6 +63,17 @@ export interface FilesChain {
   readonly organizationId: string;
   readonly projectId: string;
   readonly environmentId: string;
+  /**
+   * A SECOND environment of the SAME project, holding nothing.
+   *
+   * It exists so the ENVIRONMENT clause of the erasure predicate is falsifiable.
+   * An organization-level count and an environment-level count over a tenant with
+   * one environment are the same number, so a selector that had dropped its
+   * environment clause would answer correctly at both levels; naming an
+   * environment that holds none of the subject's rows is the only shape that can
+   * tell them apart.
+   */
+  readonly secondEnvironmentId: string;
   readonly agentId: string;
   readonly agentVersionId: string;
   readonly endUserId: string;
@@ -195,6 +206,25 @@ export async function startFilesHarness(): Promise<FilesHarness> {
         ),
       );
 
+      const secondEnvironmentId = asTenancyIdentifier<EnvironmentId>(base.freshId("003d"));
+      await base.adapter.unitOfWork.run((transaction) =>
+        base.adapter.saveEnvironment(
+          {
+            id: secondEnvironmentId,
+            projectId: projectId as ProjectId,
+            slug: asTenancyIdentifier<Slug>("staging"),
+            name: "staging",
+            archivedAt: null,
+            accessKeyRevocationVersion: 0,
+            memoryFeedbackBackfillCursor: null,
+            memoryFeedbackBackfillCompletedAt: null,
+            createdAt: AT,
+            updatedAt: AT,
+          },
+          transaction,
+        ),
+      );
+
       const agentId = base.freshId("0034");
       const agentVersionId = base.freshId("0035");
       const endUserId = base.freshId("0036");
@@ -236,6 +266,7 @@ export async function startFilesHarness(): Promise<FilesHarness> {
         organizationId,
         projectId,
         environmentId,
+        secondEnvironmentId,
         agentId,
         agentVersionId,
         endUserId,

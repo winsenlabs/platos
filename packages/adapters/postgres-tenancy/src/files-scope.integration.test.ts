@@ -19,6 +19,7 @@ import type { AttachmentId, ContentHash } from "@platos/context-files/applicatio
 import { asIdentifier } from "@platos/context-files/application/ports/index.js";
 
 import {
+  artifactFixture,
   attachmentFixture,
   envIdOf,
   organizationScopeOf,
@@ -302,5 +303,156 @@ describe("an organization holding no attachment sums to zero, not to null", () =
     // `sum()` over no rows is SQL NULL, and a quota input of `null` is not zero —
     // it is a crash one layer up, in a caller that subtracts it from a ceiling.
     expect(summed).toEqual({ ok: true, value: 0 });
+  }, 120_000);
+});
+
+describe("the uuid guard is ANCHORED, so a string that merely contains one is not one", () => {
+  test("a thread id with a uuid inside it is refused rather than matched", async () => {
+    const read = await harness.repository.findAttachment(
+      { environment: chain.environment, threadId: asIdentifier(`prefix-${chain.threadId}`) },
+      subject,
+    );
+    // Without `^` and `$` on the pattern this passes the shape guard, reaches the
+    // statement as a `::uuid` cast, and fails in the driver with a parameter error
+    // naming no column — which is the failure the guard exists to replace.
+    expect(refusalCode(read)).toBe("files.write.identifier_not_uuid");
+  }, 120_000);
+});
+
+describe("the artifact reads carry the same four clauses as the attachment reads", () => {
+  test("the latest revision is not visible from a foreign PROJECT of the right environment", async () => {
+    const key = "scope.artifact";
+    expect(
+      (await harness.run((transaction) =>
+        harness.repository.insertArtifactRevision(
+          artifactFixture(chain.thread, freshId(), { artifactKey: key }),
+          transaction,
+        ),
+      )).ok,
+    ).toBe(true);
+
+    expect(
+      await harness.repository.findLatestArtifactRevision(
+        {
+          environment: { ...chain.environment, projectId: projIdOf(foreign.projectId) },
+          threadId: chain.thread.threadId,
+        },
+        asIdentifier(key),
+      ),
+    ).toEqual({ ok: true, value: null });
+
+    expect(
+      await harness.repository.findLatestArtifactRevision(
+        {
+          environment: { ...chain.environment, organizationId: orgIdOf(foreign.organizationId) },
+          threadId: chain.thread.threadId,
+        },
+        asIdentifier(key),
+      ),
+    ).toEqual({ ok: true, value: null });
+
+    // And the exact read carries them too.
+    expect(
+      await harness.repository.findArtifactRevision(
+        {
+          environment: { ...chain.environment, projectId: projIdOf(foreign.projectId) },
+          threadId: chain.thread.threadId,
+        },
+        asIdentifier(key),
+        1,
+      ),
+    ).toEqual({ ok: true, value: null });
+  }, 120_000);
+});
+
+describe("the erasure predicate narrows on all three levels, each falsifiable alone", () => {
+  test("an ENVIRONMENT selector naming a sibling environment counts none of the subject's rows", async () => {
+    const wide = await harness.repository.countAttachmentsForSubject({
+      scope: organizationScopeOf(chain.organizationId),
+      endUserId: chain.endUserId,
+      principalId: null,
+    });
+    expect(wide.ok && wide.value).toBeGreaterThan(0);
+
+    // The organization and the project are BOTH this tenant's. Only the
+    // environment differs, and it holds nothing — so the environment clause is
+    // the only thing that can produce this zero.
+    const narrow = await harness.repository.countAttachmentsForSubject({
+      scope: { ...chain.environment, environmentId: envIdOf(chain.secondEnvironmentId) },
+      endUserId: chain.endUserId,
+      principalId: null,
+    });
+    expect(narrow).toEqual({ ok: true, value: 0 });
+  }, 120_000);
+
+  test("the subject clause holds: another subject's rows in the same organization are not the subject's", async () => {
+    const other = freshId();
+    expect(
+      (await harness.run((transaction) =>
+        harness.repository.insertAttachment(
+          attachmentFixture(chain.secondAttachment, other),
+          transaction,
+        ),
+      )).ok,
+    ).toBe(true);
+
+    const listed = await harness.repository.listAttachmentsForSubject({
+      scope: organizationScopeOf(chain.organizationId),
+      endUserId: chain.endUserId,
+      principalId: null,
+    });
+    expect(listed.ok).toBe(true);
+    expect(listed.ok && listed.value.some((row) => row.attachmentId === other)).toBe(false);
+    expect(listed.ok && listed.value.some((row) => row.attachmentId === subject)).toBe(true);
+  }, 120_000);
+
+  test("the principal clause holds: another author's revisions are counted out and left alone", async () => {
+    const mine = "user_scope_mine";
+    const theirs = "user_scope_theirs";
+    expect(
+      (await harness.run((transaction) =>
+        harness.repository.insertArtifactRevision(
+          artifactFixture(chain.thread, freshId(), { artifactKey: "mine.key", createdBy: mine }),
+          transaction,
+        ),
+      )).ok,
+    ).toBe(true);
+    expect(
+      (await harness.run((transaction) =>
+        harness.repository.insertArtifactRevision(
+          artifactFixture(chain.thread, freshId(), { artifactKey: "theirs.key", createdBy: theirs }),
+          transaction,
+        ),
+      )).ok,
+    ).toBe(true);
+
+    const counted = await harness.repository.countArtifactRevisionsForSubject({
+      scope: organizationScopeOf(chain.organizationId),
+      endUserId: null,
+      principalId: mine,
+    });
+    expect(counted).toEqual({ ok: true, value: 1 });
+
+    const removed = await harness.run((transaction) =>
+      harness.repository.deleteArtifactRevisionsForSubject(
+        {
+          scope: organizationScopeOf(chain.organizationId),
+          endUserId: null,
+          principalId: mine,
+        },
+        transaction,
+      ),
+    );
+    expect(removed).toEqual({ ok: true, value: 1 });
+
+    // THE OTHER AUTHOR'S REVISION IS STILL THERE. An erasure that took it would
+    // have destroyed a person's document while erasing somebody else.
+    expect(
+      await harness.repository.countArtifactRevisionsForSubject({
+        scope: organizationScopeOf(chain.organizationId),
+        endUserId: null,
+        principalId: theirs,
+      }),
+    ).toEqual({ ok: true, value: 1 });
   }, 120_000);
 });
