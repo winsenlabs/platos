@@ -953,7 +953,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "939974b83eb6c17345fd9121a729cd46478b5197cc23f4478f7009343dbbd944"
+      "sha256": "a46618e4f3382ece6f10f414c42a3928a032ed07f7b5443270e61bd819bcd69b"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "edd10b4025ce1ac69bcea22f2d89d2777c6d766b81761fa4f5785ac10750657f"
+      "sha256": "4e4133de5e3ea80e37b48ce26d8ef03e102967cb7c596a6f869ed98cdcfc6f90"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "c7938bf6160e430ae8623e683299d64bbd04c3502f9d518f5fe968d9d4064864"
+      "sha256": "75ce9154da8c4a20e23b1a4ba961d32e3ac32138efa9276002269ddc3e3fa3f5"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "373fb10298428b12a7ee20c2181bd6e15f3d4861a0a15fecce6b963c0144f644"
+      "sha256": "821179761cc79053fea293af34408c00477c43fb31de37410a01fccded66fab3"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1403,7 +1403,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "33309bf98b56d1690616d67baf46ca9b503b4c6cbd9f6d2c7f5770e86736ae99"
+      "sha256": "080118ef0e595e71027f720073d6fa8635d4965b14d8d4cbcad171fb2aa999d0"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -3473,7 +3473,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "3ee96496ffd09cda922de7737a3985a12e5cc2cd6d647bd8c5f5ddbfc517d9c0"
+      "sha256": "3165e4a5a81a3ac8b86a56627d6da53cd205977bcc7d0375b9a53d3b1dfe55ea"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3648,7 +3648,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "31120bf9a72f3b1ee444af1313fd7f3886a6c02bfea06621e0f334fc87dc0a02"
+      "sha256": "1f667a978e83a63afb4f462db27605dd0cad7eca4cb1c22f4ab2fa783db2a146"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3908,7 +3908,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "aceb45a4104a152a93c3f9e977d87e8481612b2753eef07e238494cb57b11849"
+      "sha256": "33f048865057f2639e6b87fdd8cd354899d5a6b7038d0bbfa119b5c97d3559f0"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

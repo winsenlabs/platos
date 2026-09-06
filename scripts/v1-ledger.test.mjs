@@ -964,7 +964,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // The three files WIN-260 widened to carry it -- the outbox adapter, the
     // transaction runner and the app's edge module -- add none: each was widened
     // in place, and a widened file is not a new one.
-    packages: 1399,
+    //
+    // 1399 -> 1406. WIN-260's SECOND half adds SEVEN, all seven under
+    // `packages/adapters/redis-cache`, which this issue adopts as the
+    // twenty-fourth V1 project:
+    //   src/client.ts               the ONE file that names `ioredis`, and an
+    //     interface named by INTENT rather than by command, so `claim` (NX) and
+    //     `write` (unconditional) cannot be confused for one another and neither
+    //     `KEYS` nor `FLUSHDB` is reachable from any other file here
+    //   src/idempotency-store.ts    the `jobs` port: reserve-once, the loser's
+    //     view, and the `XX` settle
+    //   src/cache.ts                the `memory` port, the second binding on the
+    //     same Redis connection under the ADR M0.3 s15 amendment
+    //   src/harness.ts              the container harness, which FAILS when
+    //     Docker is absent rather than skipping
+    //   three suites: idempotency-store.test.ts, cache.test.ts and
+    //     idempotency.integration.test.ts
+    // `src/adapter.ts` and `src/index.ts` were generated PLACEHOLDERS and are
+    // now real files: adoption releases a source tree, it does not add to it, so
+    // those two are rewritten rather than counted. The census records the same
+    // fact from the other side -- 88 placeholders released rather than 86.
+    packages: 1406,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1227,7 +1247,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 14,
     "root-infra": 43,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1489);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1496);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1266,10 +1286,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // across THREE areas, 2 in `apps-core-api`, 1 in `docs-content` and 2 in
     // `root-infra`, and none in `packages`, and WIN-260's correlation half +2 in
     // `packages`, the tenth kernel port and the suite that reads the identifier
-    // back out of PostgreSQL); this one re-derives it by
+    // back out of PostgreSQL, and its idempotency half +7 in `packages`, the
+    // whole of the newly adopted `redis-cache`); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
-    rulesDocument.baseline.totalFiles + 1489
+    rulesDocument.baseline.totalFiles + 1496
   );
 });
 

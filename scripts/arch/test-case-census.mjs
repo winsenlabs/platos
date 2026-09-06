@@ -2333,7 +2333,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 46 },
   "packages/adapters/postgres-tenancy": { files: 133, cases: 1492 },
-  "packages/adapters/redis-cache": { files: 0, cases: 0 },
+  "packages/adapters/redis-cache": { files: 3, cases: 40 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
@@ -2709,7 +2709,61 @@ export const EXPECTED = Object.freeze({
  * 6353 -> 6358 and the integration term 1054 -> 1063, over 109 -> 110 files.
  * 6358 + 1063 = 7421.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7421;
+/*
+ * WIN-260 DELTA (M2.5), the idempotency STORE. `packages/adapters/redis-cache`
+ * 0 -> 40 over THREE new files, and the twenty-fourth project adopted.
+ *
+ * WHY THIS DIRECTORY AND NOT `postgres-tenancy`. WIN-258 T5 declined to satisfy
+ * `IdempotencyStore` from the canonical store and wrote down why:
+ * `jobs-repository.ts` says every one of its three properties is "a property
+ * PostgreSQL does not have — an atomic claim-or-report in one round trip, a TTL
+ * the store enforces rather than a sweep, and an `XX` update that must not
+ * resurrect an expired key", and ADR M0.3 §13 puts a keyspace behind
+ * `redis-cache`. That skip has been right every time it has been made, so this
+ * dimension implemented the port where the tree already said it lived rather
+ * than where it would have been cheaper.
+ *
+ *   src/idempotency-store.test.ts   16  the branches a real server cannot be
+ *                                       persuaded to take on demand: a
+ *                                       connection that throws on the claim and
+ *                                       one that throws on the read of the
+ *                                       incumbent (two DIFFERENT answers, and
+ *                                       the second is not `absent`), a key
+ *                                       holding rubbish, a cached failure naming
+ *                                       an unpromised code and the negative
+ *                                       control that a PROMISED one is admitted,
+ *                                       settle's `XX` reaching `overwrite` and
+ *                                       never `claim` or `write`, the keyspace
+ *                                       carrying the environment, and the
+ *                                       round trip of all four reservation
+ *                                       shapes through the stored value
+ *   src/cache.test.ts               12  the four properties the `Cache` port's
+ *                                       header sets out, plus the two refusals
+ *                                       it asks an implementation to make: a
+ *                                       non-positive or fractional TTL, and the
+ *                                       blank namespace prefix the port calls "a
+ *                                       flush of the whole keyspace"
+ *   src/idempotency.integration.test.ts
+ *                                   12  the claim this issue exists to prove,
+ *                                       against a real Redis: two identical
+ *                                       requests racing over SEPARATE
+ *                                       connections leave one reservation and
+ *                                       the loser sees the winner's record;
+ *                                       EIGHT racing leave one; the work runs
+ *                                       ONCE and every later caller replays the
+ *                                       SAME result; a null result replays as a
+ *                                       value; the SERVER expires a reservation
+ *                                       and settle does not resurrect it; two
+ *                                       environments do not collide on one
+ *                                       request id
+ *
+ * ALL TWELVE INTEGRATION CASES CARRY `.integration.` and the project's generated
+ * `test` script excludes them by filename, exactly as `postgres-tenancy`'s does,
+ * so `pnpm test:v1-packages` runs the 28 unit cases and none of the twelve. The
+ * runnable term goes 6358 -> 6386 and the integration term 1063 -> 1075, over
+ * 110 -> 111 files. 6386 + 1075 = 7461.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7461;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

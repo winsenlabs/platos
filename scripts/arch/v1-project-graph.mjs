@@ -166,7 +166,13 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `ADAPTER_EXTRA_PROJECTS` exists rather than a seventeenth owner being invented
 // to hang it on. No cycle: the kernel imports nothing (`kernel-is-leaf`), so an
 // edge INTO it can never come back out.
-export const EXPECTED_EDGE_COUNT = 112;
+//
+// WIN-260 (M2.5): 112 -> 113. `packages/adapters/redis-cache` ->
+// `packages/contexts/jobs`, carrying `IdempotencyStore`. The SECOND multi-owner
+// directory in the layout, and the first entry `EXPECTED_MULTI_OWNER_ADAPTERS`
+// has gained since it was written — which is the whole point of that map being
+// a named, counted exception rather than a permission.
+export const EXPECTED_EDGE_COUNT = 113;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -224,6 +230,20 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   // disagree with the migrations the same commit ships.
   "packages/adapters/postgres-tenancy": {
     "@platos/tenancy-database": "workspace:*",
+  },
+  // WIN-260 (M2.5). The Redis client, declared in the ONE directory ADR M0.3 §4
+  // gives it — the same second half of the cutting rule the two entries around
+  // it state. The range is byte-identical to `apps/agent`'s, so pnpm resolves it
+  // to the entry already in pnpm-lock.yaml (ioredis@5.10.1) and adopting this
+  // adapter is not a supply-chain change: the lockfile gains a workspace link
+  // and a link to an already-resolved package, and no new resolution.
+  //
+  // The container library is deliberately NOT here. `@testcontainers/redis` is a
+  // devDependency, and this axis is about what SHIPS: a container library in the
+  // runtime set would follow the adapter into the production image and into the
+  // SBOM of a process that never starts a container.
+  "packages/adapters/redis-cache": {
+    ioredis: "^5.6.1",
   },
   "packages/adapters/model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
@@ -309,7 +329,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "clickhouse-observability": ["observability"],
   "objectstore-minio": ["files"],
   "redis-ratelimit": ["identity-access"],
-  "redis-cache": ["memory"],
+  "redis-cache": ["memory", "jobs"],
   "redis-streams": ["kernel"],
   "model-router-providers": ["providers"],
   "channel-slack": ["channels"],
@@ -325,7 +345,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 2 };
 
 /**
  * Edges an adapter has that are NOT owner edges, declared separately.

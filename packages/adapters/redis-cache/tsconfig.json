@@ -18,6 +18,9 @@
   "references": [
     {
       "path": "../../contexts/memory"
+    },
+    {
+      "path": "../../contexts/jobs"
     }
   ]
 }
