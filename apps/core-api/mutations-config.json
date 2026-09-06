@@ -1,0 +1,429 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-260 (M2.5) — the typed configuration sections and",
+    "the gate that keeps feature code out of the ambient environment. One entry",
+    "per refusal, carrying the file it lives in (repo-relative), the EXACT text",
+    "that implements it (`from`), the edit that removes it (`to`), the suites",
+    "run, and the NAMED cases that were SEEN to go red (`kills`).",
+    "",
+    "A guard nothing can turn red is a guard that is not there. Every entry",
+    "below was exercised before this dimension was proposed.",
+    "",
+    "ONE LEDGER, TWO HOMES, and the reason is that they are one dimension's",
+    "guards and one sweep. The configuration sections live under",
+    "apps/core-api/src/config/ and the containment gate that pins their single",
+    "environment read lives in scripts/arch/. Splitting them would mean two",
+    "ledgers whose entries only make sense read together: the gate's whole",
+    "subject is the reader those sections depend on, and two of the entries",
+    "below mutate a WIRING line in a main.ts and are killed by the GATE rather",
+    "than by any suite in the package that holds them.",
+    "",
+    "`file` is therefore REPOSITORY-relative, not package-relative. Every other",
+    "ledger in this tree is package-relative because every other ledger has one",
+    "home; saying `src/config/platform.ts` here would be a path that resolves",
+    "in one of the two homes and not the other.",
+    "",
+    "This lives here rather than in README.md because that file is emitted by",
+    "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
+    "scripts/arch/gen-v1-skeleton.mjs --check`."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. The driver runs each suite set UNMUTATED and",
+    "refuses to sweep unless it is green, and classifies a module-load failure",
+    "with no named failing case as VACUOUS rather than as a kill. WIN-258's",
+    "tranche 1 reported 22 kills that were every one of them vacuous, because",
+    "the package's dist/ had been cleaned and every suite failed to LOAD.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file, run the",
+    "suites it names, and confirm a NAMED case goes red. Then revert and",
+    "confirm green.",
+    "",
+    "  vitest   pnpm --filter @platos/core-api exec vitest run src/config",
+    "  node     node --test scripts/arch/env-access.test.mjs",
+    "  gate     node scripts/arch/env-access.mjs",
+    "",
+    "NONE of these entries needs a database, a container or a network. Every",
+    "guard here is a decision about a string, taken before anything is",
+    "constructed, which is the whole point of validating at startup."
+  ],
+  "sweep": {
+    "head": "the tree of the commit that carries this file, on tejas/typed-config (base tejas/win-258-postgres-ownership @ f88c8364)",
+    "entries": 27,
+    "killed": 26,
+    "equivalent": 1,
+    "vacuous": 0
+  },
+  "mutations": [
+    {
+      "name": "M01 boolean: a third spelling is accepted",
+      "file": "apps/core-api/src/config/load.ts",
+      "from": "    if (supplied !== \"true\" && supplied !== \"false\") {",
+      "to": "    if (supplied !== \"true\" && supplied !== \"false\" && supplied !== \"yes\") {",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > MALFORMED — an ordinary field failure refuses a boolean spelled any way but true or false"
+      ]
+    },
+    {
+      "name": "M02 url: the declared scheme list stops being checked",
+      "file": "apps/core-api/src/config/load.ts",
+      "from": "    if (schemes.length > 0 && !schemes.includes(parsed.protocol)) {",
+      "to": "    if (schemes.length > 100 && !schemes.includes(parsed.protocol)) {",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > MALFORMED — an ordinary field failure refuses a database URL whose scheme is not a PostgreSQL one",
+        "src/config/platform.test.ts > MALFORMED — an ordinary field failure refuses a value that is a host rather than a URL",
+        "src/config/platform.test.ts > secrets never appear in a startup failure refuses a malformed connection string without repeating its password"
+      ]
+    },
+    {
+      "name": "M03 url: a value that is not a URL at all is accepted",
+      "file": "apps/core-api/src/config/load.ts",
+      "from": "      diagnostics.push(diagnostic(field, \"must be an absolute URL with a scheme\", raw));\n      return null;",
+      "to": "      return supplied;",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/sections.test.ts > the redaction classification, joined to what the loader actually prints proves the mark is load-bearing: a secret's rejected value never reaches the diagnostic",
+        "src/config/sections.test.ts > the redaction classification, joined to what the loader actually prints proves the OPPOSITE half too: a non-secret's rejected value IS echoed"
+      ]
+    },
+    {
+      "name": "M04 pattern: the expression is no longer anchored, so a prefix match passes",
+      "file": "apps/core-api/src/config/load.ts",
+      "from": "    const whole = new RegExp(`^(?:${field.pattern})$`, \"u\");",
+      "to": "    const whole = new RegExp(`(?:${field.pattern})`, \"u\");",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > MALFORMED — an ordinary field failure refuses a cookie name carrying a character the header grammar forbids"
+      ]
+    },
+    {
+      "name": "M05 string: the minimum length stops being enforced",
+      "file": "apps/core-api/src/config/load.ts",
+      "from": "  if (supplied.length < minimumLength) {",
+      "to": "  if (supplied.length < 0) {",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/load.test.ts > startup diagnostics are redacted by classification, not by luck never renders a secret value, even though the field is named",
+        "src/config/platform.test.ts > every problem at once, across sections reports a core failure and a store failure and a security failure together",
+        "src/config/platform.test.ts > secrets never appear in a startup failure refuses the durable key by length without repeating it",
+        "src/config/sections.test.ts > the redaction classification, joined to what the loader actually prints proves the mark is load-bearing: a secret's rejected value never reaches the diagnostic"
+      ]
+    },
+    {
+      "name": "M06 group: INCOMPLETE stops being reported — an anchor with no required member boots",
+      "file": "apps/core-api/src/config/platform.ts",
+      "from": "      if (present(env[field.name])) continue;",
+      "to": "      continue;",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > INCOMPLETE — an anchor with a required member missing refuses a ClickHouse endpoint with no database name",
+        "src/config/platform.test.ts > INCOMPLETE — an anchor with a required member missing refuses a durable endpoint with no key, naming the key and not the endpoint",
+        "src/config/platform.test.ts > INCOMPLETE — an anchor with a required member missing names all three missing object-store members at once, not just the first",
+        "src/config/platform.test.ts > INCOMPLETE — an anchor with a required member missing refuses an encryption root with no version stamped beside it",
+        "src/config/platform.test.ts > every problem at once, across sections reports a core failure and a store failure and a security failure together"
+      ]
+    },
+    {
+      "name": "M07 group: ORPHANED stops being reported — the silent half of the anchor contract",
+      "file": "apps/core-api/src/config/platform.ts",
+      "from": "    if (!present(env[field.name])) continue;",
+      "to": "    continue;",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > ORPHANED — a member set with no anchor refuses a bucket name with no endpoint",
+        "src/config/platform.test.ts > ORPHANED — a member set with no anchor refuses a pool size with no database",
+        "src/config/platform.test.ts > ORPHANED — a member set with no anchor refuses a session cookie name with no session secret",
+        "src/config/platform.test.ts > ORPHANED — a member set with no anchor never echoes the orphaned value back, even for a field that is not a secret",
+        "src/config/platform.test.ts > every problem at once, across sections does not let a core failure suppress the sections below it",
+        "src/config/sections.test.ts > the redaction classification, joined to what the loader actually prints proves the mark is load-bearing: a secret's rejected value never reaches the diagnostic"
+      ]
+    },
+    {
+      "name": "M08 group: the ORPHANED diagnostic echoes the value back",
+      "file": "apps/core-api/src/config/platform.ts",
+      "from": "      shownValue: null,\n      presented: \"present\",",
+      "to": "      shownValue: env[field.name] ?? null,\n      presented: \"present\",",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > ORPHANED — a member set with no anchor never echoes the orphaned value back, even for a field that is not a secret",
+        "src/config/sections.test.ts > the redaction classification, joined to what the loader actually prints proves the mark is load-bearing: a secret's rejected value never reaches the diagnostic"
+      ]
+    },
+    {
+      "name": "M09 platform: a core failure suppresses every section below it",
+      "file": "apps/core-api/src/config/platform.ts",
+      "from": "  if (!core.ok) diagnostics.push(...core.diagnostics);",
+      "to": "  if (!core.ok) return { ok: false, diagnostics: core.diagnostics };",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > every problem at once, across sections reports a core failure and a store failure and a security failure together",
+        "src/config/platform.test.ts > every problem at once, across sections does not let a core failure suppress the sections below it"
+      ]
+    },
+    {
+      "name": "M10 platform: a BLANK anchor declares the group",
+      "file": "apps/core-api/src/config/platform.ts",
+      "from": "  return raw !== undefined && raw.trim() !== \"\";",
+      "to": "  return raw !== undefined;",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > a declared group treats a BLANK anchor as absent rather than as a declaration"
+      ]
+    },
+    {
+      "name": "M11 stores: an undeclared group is assembled with defaults instead of null",
+      "file": "apps/core-api/src/config/stores.ts",
+      "from": "    postgres: !declared(\"postgres\")\n      ? null",
+      "to": "    postgres: false\n      ? null",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > a process with nothing wired boots, and every section reports its groups as absent rather than defaulted",
+        "src/config/platform.test.ts > a declared group leaves the other three store groups absent when only one is declared"
+      ]
+    },
+    {
+      "name": "M12 platform: an unset optional reads back as empty string rather than null",
+      "file": "apps/core-api/src/config/platform.ts",
+      "from": "  const read = (name: string): string | null => resolved.get(name) ?? null;",
+      "to": "  const read = (name: string): string | null => resolved.get(name) ?? \"\";",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > a fully wired install parses each value into its declared type rather than leaving it a string"
+      ]
+    },
+    {
+      "name": "M13 environment: the snapshot is no longer frozen",
+      "file": "apps/core-api/src/config/environment.ts",
+      "from": "  return Object.freeze({ ...process.env });",
+      "to": "  return { ...process.env };",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > the one declared environment reader returns a FROZEN object, so nothing downstream can edit the configuration input"
+      ]
+    },
+    {
+      "name": "M14 environment: the LIVE view is returned instead of a snapshot",
+      "file": "apps/core-api/src/config/environment.ts",
+      "from": "  return Object.freeze({ ...process.env });",
+      "to": "  return process.env;",
+      "suites": [
+        "vitest"
+      ],
+      "kills": [
+        "src/config/platform.test.ts > the one declared environment reader returns a SNAPSHOT, so a later change to the environment cannot alter what booted",
+        "src/config/platform.test.ts > the one declared environment reader returns a FROZEN object, so nothing downstream can edit the configuration input"
+      ]
+    },
+    {
+      "name": "M15 gate: local and imported aliases of the process stop being followed",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "  if (ts.isIdentifier(node)) return node.text === \"process\" || aliases.has(node.text);",
+      "to": "  if (ts.isIdentifier(node)) return node.text === \"process\";",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "a local alias of the process carries the read with it",
+        "the module's default import is an alias of the process"
+      ]
+    },
+    {
+      "name": "M16 gate: the two global spellings stop being reads",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "    return ts.isIdentifier(node.expression) && (node.expression.text === \"globalThis\" || node.expression.text === \"global\");",
+      "to": "    return false;",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "both global spellings are reads"
+      ]
+    },
+    {
+      "name": "M17 gate: a computed key on the process object is silently ignored",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "        push(node, \"computed-process-key\");",
+      "to": "        void node;",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "a computed key on the process object is UNATTRIBUTABLE, not ignored"
+      ]
+    },
+    {
+      "name": "M18 gate: the module's named env export stops being collected",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "          if (imported === \"env\") namedEnvImports.add(element.name.text);",
+      "to": "          if (imported === \"environment\") namedEnvImports.add(element.name.text);",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "the module's named env export is a read at every use, not at the import"
+      ]
+    },
+    {
+      "name": "M19 gate: a pin may outlive its read — BELOW_PIN stops firing",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "    } else if (counted < declaration.reads) {",
+      "to": "    } else if (counted < 0) {",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "ENV-003: a declared file that LOSES a read fails too, so a pin cannot outlive its read"
+      ]
+    },
+    {
+      "name": "M20 gate: a declared file that no longer exists is ignored",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "    if (fileSet.has(entry.path)) continue;",
+      "to": "    continue;",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "ENV-004: a declared file that no longer exists fails rather than being ignored"
+      ]
+    },
+    {
+      "name": "M21 gate: the file census stops being read back from the scan",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "  if (files.length !== expectedFileCount) {",
+      "to": "  if (files.length !== files.length) {",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "ENV-005: a scan that read back a different number of files fails"
+      ]
+    },
+    {
+      "name": "M22 gate: a renamed destructured binding hides the read",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "      node.name.elements.some((element) => (element.propertyName ?? element.name).getText(source) === \"env\")",
+      "to": "      node.name.elements.some((element) => element.name.getText(source) === \"env\")",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "destructuring the environment off the process is a read"
+      ]
+    },
+    {
+      "name": "M23 gate: the bundler spelling stops being a read",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "  return ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ImportKeyword;",
+      "to": "  return ts.isMetaProperty(node) && node.keywordToken === ts.SyntaxKind.ExportKeyword;",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "the bundler spelling is a read"
+      ]
+    },
+    {
+      "name": "M24 gate: an undeclared read stops being reported — the headline property",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "        if (read.kind === \"computed-process-key\") continue;",
+      "to": "        if (read.kind !== \"computed-process-key\") continue;",
+      "suites": [
+        "node"
+      ],
+      "kills": [
+        "ENV-001: a read in a context that is not declared fails, and names the context file"
+      ]
+    },
+    {
+      "name": "M25 wiring: the core-api process reads the ambient environment inline again",
+      "file": "apps/core-api/src/main.ts",
+      "from": "    env: readProcessEnvironment(),",
+      "to": "    env: process.env,",
+      "suites": [
+        "node",
+        "gate"
+      ],
+      "note": "Killed by the GATE rather than by any suite in the package that holds the file. That is the point of the entry: the containment rule is what keeps the wiring honest, and a package-local suite could not see this edit at all.",
+      "kills": [
+        "the live tree has no environment-access violation",
+        "the live scan is non-vacuous and matches the pinned file census",
+        "the declared table is exactly the set of files that hold a read",
+        "env-access gate reported a violation"
+      ]
+    },
+    {
+      "name": "M26 wiring: the stdio process reads the ambient environment inline again",
+      "file": "apps/mcp-stdio/src/main.ts",
+      "from": "    code = await runStdio({ env: readProcessEnvironment(), io, input: process.stdin });",
+      "to": "    code = await runStdio({ env: process.env, io, input: process.stdin });",
+      "suites": [
+        "node",
+        "gate"
+      ],
+      "note": "This is the edit the gate found already IN the tree at f88c8364. It is here so the fix cannot be quietly reverted.",
+      "kills": [
+        "the live tree has no environment-access violation",
+        "the live scan is non-vacuous and matches the pinned file census",
+        "the declared table is exactly the set of files that hold a read",
+        "env-access gate reported a violation"
+      ]
+    }
+  ],
+  "declaredUnfalsifiable": [
+    {
+      "name": "E01 gate: the cheap pre-filter is narrowed from `env` to `process.env`",
+      "file": "scripts/arch/env-access.mjs",
+      "from": "    if (!text.includes(\"env\")) continue;",
+      "to": "    if (!text.includes(\"process.env\")) continue;",
+      "classification": "equivalent-on-this-tree",
+      "measurement": [
+        "Applied and swept: `node --test scripts/arch/env-access.test.mjs` stays 33/33",
+        "green and `node scripts/arch/env-access.mjs` stays green. It is not a",
+        "guard this dimension failed to falsify; it is a mutation with no",
+        "observable effect on THIS tree, and the measurement that says so is a",
+        "case that already exists.",
+        "",
+        "`the AST finds no file the text scan misses` asserts that every one of",
+        "the 22 declared reads also matches /process\\s*\\.\\s*env/. So no file in",
+        "the V1 tree today spells a read through an alias, a named import or the",
+        "bundler form, and the wider pre-filter admits exactly the same set of",
+        "files to the parser as the narrower one.",
+        "",
+        "The wider filter is kept because that case is a MEASUREMENT of today's",
+        "tree, not a property of it: the first alias-spelled read to arrive would",
+        "make the narrow filter wrong and the wide one right, and the narrow one",
+        "would fail silently — no violation, no census drift, just a read the",
+        "scan never parsed."
+      ]
+    }
+  ]
+}

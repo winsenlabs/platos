@@ -145,6 +145,12 @@ export const ALLOWED = Object.freeze([
     why: "The one environment read in the stdio deployable. Rule (j) makes apps/core-api the single composition root, so this binary may not import that tree; it takes its own frozen copy and hands it to loadStdioConfiguration.",
   }),
   Object.freeze({
+    path: "apps/core-api/src/config/platform.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "The declared reader's own evidence. Proving that it returns a frozen SNAPSHOT rather than the live view means changing the ambient environment after the call and reading the copy back, which cannot be done without one read of the real thing.",
+  }),
+  Object.freeze({
     path: "apps/core-api/src/process.test.ts",
     role: "test-support",
     reads: 2,

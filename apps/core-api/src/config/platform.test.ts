@@ -6,8 +6,9 @@
 // binary and a real exit code; these prove it against the function, which is
 // where the individual refusals can each be named.
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
+import { readProcessEnvironment } from "./environment.js";
 import { renderStartupFailure } from "./load.js";
 import { loadPlatformConfiguration, platformFieldNames, PLATFORM_SECTIONS } from "./platform.js";
 
@@ -16,6 +17,39 @@ const MINIMAL = { PLATOS_ENVIRONMENT: "test" } as const;
 
 const POSTGRES = "postgresql://platos:secret-password@db.internal:5432/platos_control";
 const ROOT_KEY = "a".repeat(64);
+
+// The declared reader itself. Both of its promises need a case, and both cases
+// have to touch the ambient environment to make them — which is why this file is
+// declared as `test-support` in `scripts/arch/env-access.mjs` with an exact pin
+// of one read, rather than exempted for being a test.
+describe("the one declared environment reader", () => {
+  const PROBE = "PLATOS_ENV_SNAPSHOT_PROBE";
+  // eslint-disable-next-line no-restricted-syntax -- the pinned read; see above.
+  const ambient = process.env;
+
+  afterEach(() => {
+    delete ambient[PROBE];
+  });
+
+  it("returns a SNAPSHOT, so a later change to the environment cannot alter what booted", () => {
+    ambient[PROBE] = "before";
+    const snapshot = readProcessEnvironment();
+    ambient[PROBE] = "after";
+    expect(snapshot[PROBE]).toBe("before");
+  });
+
+  it("returns a FROZEN object, so nothing downstream can edit the configuration input", () => {
+    const snapshot = readProcessEnvironment();
+    expect(Object.isFrozen(snapshot)).toBe(true);
+  });
+
+  it("carries the ambient values through, so the snapshot is not merely empty", () => {
+    // Without this, a reader that returned `Object.freeze({})` would satisfy
+    // both cases above and starve every section of its configuration.
+    ambient[PROBE] = "carried";
+    expect(readProcessEnvironment()[PROBE]).toBe("carried");
+  });
+});
 
 describe("a process with nothing wired", () => {
   it("boots, and every section reports its groups as absent rather than defaulted", () => {
@@ -58,6 +92,22 @@ describe("a declared group", () => {
     expect(outcome.value.declaredGroups).toEqual(["stores.postgres"]);
     // Declaring one group must not declare its neighbours.
     expect(outcome.value.stores.redis).toBeNull();
+  });
+
+  it("treats a BLANK anchor as absent rather than as a declaration", () => {
+    // A compose file that interpolates an unset variable writes an empty string,
+    // not nothing. If blank declared the group, every such install would be told
+    // its required members were missing — a startup refusal caused by a variable
+    // the operator never set.
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_STORE_CLICKHOUSE_URL: "   ",
+      PLATOS_DURABLE_RUNTIME_API_URL: "",
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.value.declaredGroups).toEqual([]);
+    expect(outcome.value.stores.clickhouse).toBeNull();
   });
 
   it("leaves the other three store groups absent when only one is declared", () => {
