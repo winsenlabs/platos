@@ -5,6 +5,9 @@ import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { canRemoveRootKey } from "../domain/key-ring.js";
+// M2 INTEGRATION: see migrate-legacy-envelope.test.ts — `plaintext` is a
+// branded `SecretMaterial` after the projection dimension's write-only inputs.
+import { secretMaterial } from "../domain/secret-material.js";
 import { createCredential } from "./create-credential.js";
 import { reportRootKeyUsage } from "./describe-credentials.js";
 import { inMemorySecrets } from "./in-memory-dependencies.js";
@@ -28,7 +31,7 @@ async function seed(count: number): Promise<readonly string[]> {
       await createCredential(context.dependencies, {
         authorization: grants.operator,
         name,
-        plaintext: `sk-live-${index}`,
+        plaintext: secretMaterial(`sk-live-${index}`),
       }),
     );
   }
@@ -216,7 +219,7 @@ describe("a credential the sweep cannot move", () => {
           await createCredential(context.dependencies, {
             authorization: grants.operator,
             name: "REVOKED_KEY",
-            plaintext: "sk-live-gone",
+            plaintext: secretMaterial("sk-live-gone"),
           }),
         ).id,
       }),
@@ -307,7 +310,7 @@ describe("who may run a sweep", () => {
       await createCredential(context.dependencies, {
         authorization: otherGrants.operator,
         name: "OTHER_KEY",
-        plaintext: "sk-live-other",
+        plaintext: secretMaterial("sk-live-other"),
       }),
     );
     context.keyRing.rotateTo(2);

@@ -233,6 +233,7 @@ export const VIOLATION_CODES = Object.freeze({
  * same 1513 back from its own scan of the same five roots, so the two can
  * DISAGREE and be caught.
  */
+/**
  * WIN-259 (M2.4) adds TWENTY-FOUR MORE, on top of WIN-260's 1503, and this pin
  * is the SECOND scan to read the same tree: `arch-boundaries.test.mjs` states
  * 1503 + 24 = 1527 from its own walk of the same five roots, and the two are
@@ -249,7 +250,7 @@ export const VIOLATION_CODES = Object.freeze({
  * catch, and the census moving without the table moving is the evidence that it
  * does not.
  */
- *
+/**
  * M2 INTEGRATION. Neither branch figure survives composition: the two dimensions
  * walk the SAME five roots and touch DISJOINT directories, so 1503 + 10 + 24 =
  * 1537, and `scripts/arch/arch-boundaries.test.mjs` reads the same 1537 back

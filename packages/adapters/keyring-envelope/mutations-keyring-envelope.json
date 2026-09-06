@@ -18,7 +18,8 @@
     "THE LEGACY-ENVELOPE MIGRATION ADDS 31 ENTRIES BELOW, and FOUR of them SURVIVED their first sweep. Each survival named a real hole and each is recorded with the cases that closed it: `legacy-shape-check-removed` (no payload ever reached the width rule, because the decoder refused every mis-declared one first), `legacy-packed-header-length-guard-removed` (`subarray` past the end yields empty slices rather than throwing, so a truncated column was refused for the wrong reason), `audit-action-migrate-removed` (a TYPE-level deletion, caught by tsc and by no case) and `double-format-rule-hardcoded` (the in-memory double's own format rule was unreachable from the only suite that drives it, because the use case refuses format 1 before the cipher is called).",
     "TWO ENTRIES ARE DECLARED UNFALSIFIABLE WITH A MEASURED REASON RATHER THAN COUNTED AS KILLS. `legacy-format2-alphabet-base64` cannot change behaviour because Node's base64 DECODER accepts the base64url alphabet — verified directly on this node (v24.3.0) against two format-2 vectors — and its encode-side twin IS killed, so the pair together shows exactly where the alphabets do and do not matter. `migrate-format-check-after-the-grant` moves a guard between two points that are both before `inTransaction`, past only a pure field read, so no observation distinguishes them; the reorder that DOES matter is `migrate-format-check-not-before-the-lock`, which is killed.",
     "NO LEGACY ENTRY IS KILLED BY AN ASSERTION COMPARING TWO THINGS THIS TRANCHE CONTROLS. Every wire entry is killed by ciphertexts produced by `internal-packages/tenancy-database/src/auth.ts` or `apps/agent/src/auth/secrets.service.ts` — the two modules `secrets/domain/envelope.ts` records as those formats' `legacyOrigin`, neither of which this issue edits. A reader that swapped a field order, a width or an alphabet would move only its own side; the frozen bytes do not move with it.",
-    "A FIFTH SURVIVOR WAS FOUND OUTSIDE THE NEW CODE, in a guard this issue did not write. `openSecret-legacy-refusal-removed` deletes the check that makes `openSecret` reject a legacy format — the exact refusal WIN-259 exists to make unreachable — and it survived, because no case in the tree had ever asserted `envelope_format_unreadable`. It is recorded here rather than left to the issue that wrote it: a deliverable whose whole subject is that refusal has to leave it falsifiable."
+    "A FIFTH SURVIVOR WAS FOUND OUTSIDE THE NEW CODE, in a guard this issue did not write. `openSecret-legacy-refusal-removed` deletes the check that makes `openSecret` reject a legacy format — the exact refusal WIN-259 exists to make unreachable — and it survived, because no case in the tree had ever asserted `envelope_format_unreadable`. It is recorded here rather than left to the issue that wrote it: a deliverable whose whole subject is that refusal has to leave it falsifiable.",
+    "M2 INTEGRATION appended seven entries (the last seven). They exist because composing the two WIN-259 dimensions created production code neither branch had: `sealHandle`/`openHandle` were added to `AeadCipher` by the projection dimension, which measured that no production `AeadCipher` existed, and the lifecycle dimension then built one. Merged, the adapter must satisfy the whole port, so the reference's cryptography is real for the first time. Four are KILLED by a named case; three are DECLARED unfalsifiable with a MEASURED reason rather than counted as kills."
   ],
   "mutations": [
     {
@@ -748,6 +749,83 @@
       "failingCases": 1,
       "killedBy": "migrate-legacy-envelope.test.ts > the refusal the migration exists to make unreachable > REFUSES to open a legacy-format row, which is what made the material unreachable",
       "why": "THE REFUSAL THIS WHOLE ISSUE IS ABOUT, AND NOTHING HAD EVER ASSERTED IT. The guard has been in `envelope-operations.ts` since the context was written; no case named `envelope_format_unreadable`, so it was a sentence rather than a measurement and this mutation would have survived silently. Removing it does not merely relax an error — it sends a legacy envelope's salt-less, context-unbound bytes to a cipher that derives its key from a binding the format never authenticated, so the read either fails opaquely or returns whatever the tag check lets through. A case was added that reproduces the legacy row and watches the runtime read path refuse it, and a second states why a real database could not hold that row at all."
+    },
+    {
+      "id": "handle-open-drops-auth-tag",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "decipher.setAuthTag(request.envelope.authTag);",
+      "to": "(the line deleted)",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "wire-compatibility.test.ts > the SECRET REFERENCE seals and opens under real AES-256-GCM > returns the claims body byte for byte after a round trip",
+      "why": "Without the tag GCM cannot finalise, so a reference no longer opens at all. It is the M2 INTEGRATION counterpart of cipher-open-drops-aad: the reference's authentication is the same primitive over a different label space."
+    },
+    {
+      "id": "handle-binding-drops-the-environment-from-BOTH-labels",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "secretHandleKeyInfo(binding) and secretHandleAad(request.binding)",
+      "to": "labels carrying only the root key version",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "wire-compatibility.test.ts > the SECRET REFERENCE seals and opens under real AES-256-GCM > does not open under ANOTHER environment, and fails at the tag rather than at a comparison",
+      "why": "The reference's environment binding is what stops a holder spending another environment's address. IT IS ENFORCED TWICE — in the HKDF expand info and in the AEAD associated data — so this entry moves BOTH sites deliberately, and its two single-site twins below are DECLARED unfalsifiable with the measurement that says so."
+    },
+    {
+      "id": "handle-key-info-drops-the-environment-ALONE",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "secretHandleKeyInfo(binding)",
+      "to": "a label carrying only the root key version",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
+      "outcome": "DECLARED-UNFALSIFIABLE",
+      "failingCases": 0,
+      "killedBy": "(none — measured, 13/13 still pass)",
+      "why": "MEASURED, not assumed: the environment is ALSO in the AEAD associated data, so removing it from the key derivation alone leaves the tag check refusing the foreign environment for the other reason. Defence in depth is not a defect, and counting this as a kill would be counting a kill that was not got. The joint entry above is the one that measures the property."
+    },
+    {
+      "id": "handle-aad-drops-the-environment-ALONE",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "secretHandleAad(request.binding)",
+      "to": "a label carrying only the root key version",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
+      "outcome": "DECLARED-UNFALSIFIABLE",
+      "failingCases": 0,
+      "killedBy": "(none — measured, 13/13 still pass)",
+      "why": "The mirror of the entry above, and unfalsifiable for the mirrored reason: the environment is still inside the HKDF expand info, so the derived key differs and the tag fails anyway."
+    },
+    {
+      "id": "handle-labels-collapsed-onto-the-envelope-label-space",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "secretHandleKeyInfo / secretHandleAad",
+      "to": "envelopeKeyInfo / envelopeAad",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
+      "outcome": "DECLARED-UNFALSIFIABLE",
+      "failingCases": 0,
+      "killedBy": "(none — measured, 13/13 still pass)",
+      "why": "MEASURED with a reason that is a fact about the TYPES rather than about the cases. `OpenHandleRequest` carries a `SecretHandleBinding`, which has an environment and a root key version and NOTHING ELSE — no credential id, no revision, no format version. `envelopeAad` needs all five, so the collapsed label can never equal a real envelope's label whatever this file does. The two spaces cannot be made to collide from inside this module, which is why the case that pins the refusal cannot be turned red from here; the labels themselves are pinned byte-for-byte by the domain suite that owns them."
+    },
+    {
+      "id": "handle-seal-reuses-a-constant-salt-and-nonce",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "randomBytes(SALT_BYTES) / randomBytes(NONCE_BYTES) in sealHandle",
+      "to": "zero-filled arrays of the same width",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "wire-compatibility.test.ts > the SECRET REFERENCE seals and opens under real AES-256-GCM > draws a fresh salt and nonce for every reference it seals",
+      "why": "A reused GCM nonce under one key is a total break, and two references to the same credential at the same revision would be byte-identical, so holding one would say something about another."
+    },
+    {
+      "id": "handle-seal-encodes-the-body-as-latin1",
+      "file": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
+      "from": "cipher.update(request.body, \"utf8\")",
+      "to": "cipher.update(request.body, \"latin1\")",
+      "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
+      "outcome": "DECLARED-UNFALSIFIABLE",
+      "failingCases": 0,
+      "killedBy": "(none — measured, 13/13 still pass)",
+      "why": "A claims body is a handle id, a UUID, a revision and two ISO instants: ASCII by construction, and latin1 and utf8 agree on every ASCII byte. The case's comment was corrected to say what it does pin — that the ciphertext is exactly the body's byte length — rather than an encoding claim it cannot make. The envelope half next door DOES pin encoding, with a non-ASCII vector."
     }
   ]
 }

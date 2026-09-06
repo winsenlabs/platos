@@ -35,10 +35,14 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:cr
 import type {
   AeadCipher,
   EnvelopeBinding,
+  OpenHandleRequest,
   OpenRequest,
   Result,
+  SealHandleRequest,
   SealRequest,
   SealedEnvelope,
+  SecretHandleBinding,
+  SecretHandleEnvelope,
   SecretMaterial,
 } from "@platos/context-secrets/application/ports/index.js";
 import {
@@ -48,6 +52,8 @@ import {
   err,
   invalidKeyRing,
   ok,
+  secretHandleAad,
+  secretHandleKeyInfo,
   secretMaterial,
 } from "@platos/context-secrets/application/ports/index.js";
 
@@ -63,14 +69,37 @@ const DERIVED_KEY_BYTES = 32;
 const SALT_BYTES = 32;
 const NONCE_BYTES = 12;
 
+function deriveKeyFor(rootKey: Uint8Array, salt: Uint8Array, info: string): Uint8Array {
+  return new Uint8Array(hkdfSync("sha256", rootKey, salt, Buffer.from(info, "utf8"), DERIVED_KEY_BYTES));
+}
+
 function deriveKey(rootKey: Uint8Array, salt: Uint8Array, binding: EnvelopeBinding): Uint8Array {
   // HKDF-SHA256 with the SALT as the extract salt and the binding as the expand
   // `info`. Both halves matter: the salt makes the key unique per envelope, and
   // the info makes it unique per SLOT, so a ciphertext moved to another
   // credential is decrypted with a key that was never used to encrypt it.
-  return new Uint8Array(
-    hkdfSync("sha256", rootKey, salt, Buffer.from(envelopeKeyInfo(binding), "utf8"), DERIVED_KEY_BYTES),
-  );
+  return deriveKeyFor(rootKey, salt, envelopeKeyInfo(binding));
+}
+
+/**
+ * The reference's key, over the SECOND label space.
+ *
+ * Everything about the construction is the envelope's: HKDF-SHA256 over a fresh
+ * 32-byte salt, AES-256-GCM under a 12-byte nonce, the label in the expand
+ * `info` and its sibling in the AAD. The ONE difference is which label, and that
+ * difference is the whole guarantee. `secretHandleKeyInfo` is
+ * `platos:secret-handle:v1:key:<environment>|<version>` and `envelopeKeyInfo` is
+ * `platos:credential-secret:v1:...`; the two can never collide, so a credential
+ * envelope presented as a reference derives a key that never sealed it and dies
+ * at the tag rather than at a comparison this file writes.
+ *
+ * THE ENVIRONMENT IS INSIDE THE KEY DERIVATION, NOT BESIDE IT. That is what
+ * makes a reference minted for one environment fail to DECRYPT under another
+ * rather than fail an `if` — there is no environment comparison anywhere on the
+ * exchange path, and there is no branch here that could be deleted to remove it.
+ */
+function deriveHandleKey(rootKey: Uint8Array, salt: Uint8Array, binding: SecretHandleBinding): Uint8Array {
+  return deriveKeyFor(rootKey, salt, secretHandleKeyInfo(binding));
 }
 
 /**
@@ -108,7 +137,7 @@ function requireHandleMatchesBinding(
  * `adapter.ts` is the one place the two halves become one `AeadCipher` — which is
  * the same reason the ring, the cipher and the hasher share one custodian.
  */
-export type CanonicalEnvelopeCipher = Pick<AeadCipher, "seal" | "open">;
+export type CanonicalEnvelopeCipher = Pick<AeadCipher, "seal" | "open" | "sealHandle" | "openHandle">;
 
 export function createEnvelopeCipher(ring: RootKeyRingResolver): CanonicalEnvelopeCipher {
   return {
@@ -164,6 +193,59 @@ export function createEnvelopeCipher(ring: RootKeyRingResolver): CanonicalEnvelo
         // which is the property `domain/errors.ts` collapses nine reasons to
         // protect.
         return err(credentialUnavailable("envelope_open_failed"));
+      }
+    },
+
+    async sealHandle(request: SealHandleRequest): Promise<Result<SecretHandleEnvelope>> {
+      // No `requireHandleMatchesBinding` twin here, and its absence is measured
+      // rather than overlooked: a `SecretHandleBinding` carries `rootKeyVersion`
+      // itself, so the guard next door — which exists because a `SealRequest`
+      // holds a handle AND a binding that could disagree — has nothing to
+      // compare. The version the key is minted for and the version the label is
+      // built from are read from the same field below.
+      const rootKey = ring.resolve(request.key);
+      if (!rootKey.ok) return err(rootKey.error);
+
+      const salt = new Uint8Array(randomBytes(SALT_BYTES));
+      const nonce = new Uint8Array(randomBytes(NONCE_BYTES));
+      const cipher = createCipheriv(
+        ALGORITHM,
+        deriveHandleKey(rootKey.value, salt, request.binding),
+        nonce,
+      );
+      cipher.setAAD(Buffer.from(secretHandleAad(request.binding), "utf8"));
+      const ciphertext = Buffer.concat([cipher.update(request.body, "utf8"), cipher.final()]);
+      return ok({
+        salt,
+        nonce,
+        ciphertext: new Uint8Array(ciphertext),
+        authTag: new Uint8Array(cipher.getAuthTag()),
+      });
+    },
+
+    async openHandle(request: OpenHandleRequest): Promise<Result<string>> {
+      const rootKey = ring.resolve(request.key);
+      if (!rootKey.ok) return err(rootKey.error);
+
+      try {
+        const decipher = createDecipheriv(
+          ALGORITHM,
+          deriveHandleKey(rootKey.value, request.envelope.salt, request.binding),
+          request.envelope.nonce,
+        );
+        decipher.setAAD(Buffer.from(secretHandleAad(request.binding), "utf8"));
+        decipher.setAuthTag(request.envelope.authTag);
+        return ok(
+          Buffer.concat([decipher.update(request.envelope.ciphertext), decipher.final()]).toString("utf8"),
+        );
+      } catch {
+        // ONE answer, produced by the primitive, for the reason `open` above
+        // gives — and for one more that is specific to a reference: a holder
+        // presenting one under another environment's grant must not be able to
+        // tell "wrong environment" from "expired" from "invented". Here it
+        // cannot be told at all, because the environment is in the derivation
+        // and the tag check is the only thing that ran.
+        return err(credentialUnavailable("handle_open_failed"));
       }
     },
   };

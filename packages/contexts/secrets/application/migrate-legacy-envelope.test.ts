@@ -18,6 +18,10 @@ import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import { envelopeFormat } from "../domain/envelope.js";
+// M2 INTEGRATION: the projection dimension made `plaintext` a branded
+// `SecretMaterial` rather than a bare string, so these suites mint it the one
+// way this context publishes. The compiler is what found them.
+import { secretMaterial } from "../domain/secret-material.js";
 import { asSecretsIdentifier } from "../domain/ids.js";
 import type { CredentialId, RootKeyVersion, SecretRevision, SecretVersionId } from "../domain/ids.js";
 import { canonicalRowRefusals } from "../domain/legacy-envelope.js";
@@ -217,7 +221,7 @@ describe("it converges rather than clobbering", () => {
       await createCredential(context.dependencies, {
         authorization: grants.operator,
         name: "ALREADY_CANONICAL",
-        plaintext: "sk-live-rotated-properly",
+        plaintext: secretMaterial("sk-live-rotated-properly"),
       }),
     ).id;
     const result = unwrap(
@@ -238,7 +242,7 @@ describe("it converges rather than clobbering", () => {
       await createCredential(context.dependencies, {
         authorization: grants.operator,
         name: "ALREADY_CANONICAL",
-        plaintext: "sk-live-rotated-properly",
+        plaintext: secretMaterial("sk-live-rotated-properly"),
       }),
     ).id;
     await migrateLegacyEnvelope(context.dependencies, {

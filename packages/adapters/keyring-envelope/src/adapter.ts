@@ -89,6 +89,13 @@ export function createKeyringEnvelopeAdapter(
 
     seal: cipher.seal,
     open: cipher.open,
+    // M2 INTEGRATION: the SECRET REFERENCE's two verbs, over the same ring and
+    // the same primitive as `seal`/`open` and a label space that can never
+    // collide with theirs. They come from the canonical cipher rather than from
+    // a fifth module, because a second module would need the ring resolver and
+    // that is a second custodian of the same key material.
+    sealHandle: cipher.sealHandle,
+    openHandle: cipher.openHandle,
     openLegacy: legacyReader.openLegacy,
     hash: hasher.hash,
     verify: hasher.verify,

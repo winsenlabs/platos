@@ -2458,7 +2458,14 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/keyring-envelope": { files: 6, cases: 71 },
+  // M2 INTEGRATION: 71 + 5. Composing the two WIN-259 dimensions gave this
+  // adapter production code neither branch had — the projection dimension put
+  // `sealHandle`/`openHandle` on `AeadCipher` having measured that no
+  // production cipher existed, and the lifecycle dimension then built one — so
+  // the SECRET REFERENCE has real AES-256-GCM for the first time and five cases
+  // in `wire-compatibility.test.ts` say what it does. The FILE count does not
+  // move: they were appended to a suite that already existed.
+  "packages/adapters/keyring-envelope": { files: 6, cases: 76 },
   // M2 INTEGRATION: 132 + 1 (projection's fence split) + 2 (lifecycle's two
   // legacy/key-version suites) = 135 files; 1483 + 2 + 12 = 1497 cases.
   "packages/adapters/postgres-tenancy": { files: 135, cases: 1497 },
@@ -2946,6 +2953,7 @@ export const EXPECTED = Object.freeze({
  * "Test Files 20 passed (20) / Tests 240 passed (240)" -- and
  * contracts/index.test.ts on its own prints 9, up from 8.
  */
+/*
  * WIN-259 (M2.4) 7399 -> 7543: +71 in the new `packages/adapters/keyring-envelope`
  * row, +12 in `packages/adapters/postgres-tenancy`, +8 in
  * `packages/contexts/providers` and +53 in `packages/contexts/secrets`.
@@ -2982,11 +2990,13 @@ export const EXPECTED = Object.freeze({
  * alone, and the two add DISJOINT suites -- projection none in
  * `keyring-envelope` (it did not exist for it) and lifecycle none in
  * `packages/kernel`. Per row the arithmetic is
- * keyring-envelope 0 + 0 + 71 = 71, postgres-tenancy 1483 + 2 + 12 = 1497,
+ * keyring-envelope 0 + 0 + 71 + 5 = 76 (the trailing five are the integration's
+ * own, for the production code the composition created), postgres-tenancy
+ * 1483 + 2 + 12 = 1497,
  * providers 375 + 3 + 8 = 386, secrets 162 + 78 + 53 = 293 and kernel
  * 44 + 16 + 0 = 60; every other row is untouched by both.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7642;
+export const EXPECTED_RUNTIME_TOTAL = 7647;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

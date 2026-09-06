@@ -160,6 +160,24 @@ export {
   secretMaterial,
 } from "../../domain/index.js";
 
+// M2 INTEGRATION — the FIFTH time this exact omission has been found on this
+// issue, and the first time the two halves of WIN-259 stood in one tree to make
+// it visible.
+//
+// `sealHandle` and `openHandle` were added to `AeadCipher` by the projection
+// dimension, which measured that no production `AeadCipher` existed and proved
+// the SECRET REFERENCE against `inMemoryAeadCipher`. The lifecycle dimension
+// then BUILT that production adapter. Composed, `packages/adapters/keyring-
+// envelope` must satisfy the whole port — and it could name
+// `SecretHandleBinding` and `SecretHandleEnvelope` above while being unable to
+// build either label. The two strings are the reference's wire format exactly as
+// `envelopeKeyInfo`/`envelopeAad` are the envelope's, and the paragraph above
+// gives the whole reason they belong here rather than being re-typed: an adapter
+// that spelled `platos:secret-handle:v1` itself would be a second opinion about
+// a format, and the label spaces' inability to collide is the ONLY thing keeping
+// a credential envelope from being presentable as a reference.
+export { secretHandleAad, secretHandleKeyInfo } from "../../domain/index.js";
+
 // WIN-259 M2.4, second half — what `openLegacy` needs, and the FOURTH time this
 // exact omission has been found on this issue.
 //
