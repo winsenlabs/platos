@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d4065a4f25ddce199d4b03ed419e3567a75dd3c66d3d96b21f77465a16f046be",
+  "evidenceSha256": "e2a099158d9ff772ba8f919aadbc1f5908b288dfc7b0c2a26245e2d88d74b1ae",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c869acebfea476634b8168ffe97e775f872a7245e81dac0a6a951281662dbeb0",
+    "aggregateSha256": "e28eca7c24caed73efb55df864d8fa2413ab154a541b698e195262669ba98026",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "acee4e5f9de329b97a48e2add3b4755ca70c0afe5dccebe06f855fc4518eb7db"
+        "sha256": "d510f4f5f512ae4be1a5e312538fc57e8b015904bcfaf0db507a1ae7cc069087"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -19189,7 +19189,7 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "0666d2f87b8444947cc45ad2a3620d6e833ae08f9bd167563931f42608bfc157"
+        "sha256": "d4ffc84e2ef3df1b325d3d43261b60d4a7941696cc359b215d357d0702ee2067"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
