@@ -153,7 +153,7 @@ export async function executeJob(
   if (!reserved.ok) return err(reserved.error);
 
   if (reserved.value.kind === "held") {
-    const replay = decideReplay(reserved.value.existing, digest);
+    const replay = decideReplay(reserved.value.held, digest);
     if (!replay.ok) return err(replay.error);
     if (replay.value.kind === "replay-success") {
       return ok({ value: replay.value.result, replayed: true });

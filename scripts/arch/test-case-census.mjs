@@ -2344,7 +2344,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 31, cases: 609 },
   "packages/contexts/identity-access": { files: 23, cases: 318 },
-  "packages/contexts/jobs": { files: 16, cases: 378 },
+  "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
@@ -2625,7 +2625,43 @@ export const EXPECTED = Object.freeze({
  * states independently. The `postgres-tenancy-repository` CI job running 109
  * files / 1054 tests is therefore a check on this split derived without it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7399;
+
+/*
+ * WIN-260 DELTA (M2.5), the idempotency-replay distinctness half.
+ *
+ * `packages/contexts/jobs` 378 -> 386 (+8), no new FILE. `decideReplay` used to
+ * leave through ONE `idempotencyConflict()` for four different facts — a record
+ * that was gone, a record that did not decode, a record whose cached failure
+ * code this major never promised, and the genuine "same id, different body" —
+ * so an operator reading `IDEMPOTENCY_CONFLICT` could not tell which had
+ * happened. The port now carries `HeldReservation` instead of
+ * `Reservation | null`, three codes are minted, and `readReservation` is the
+ * decode boundary that classifies a stored record into one of them.
+ *
+ *   domain/idempotency.test.ts   +7  two on `decideReplay` (the four codes are
+ *                                    distinct, asserted by SET SIZE as well as
+ *                                    by name, so a re-merge fails whichever code
+ *                                    survives; and all four stay `conflict`, so
+ *                                    the STATUS is unchanged and only the CODE
+ *                                    is finer) and five on `readReservation`
+ *                                    (round trip through JSON for all four
+ *                                    reservation shapes, absent, ten malformed
+ *                                    shapes, an unpromised code refused, and the
+ *                                    negative control that a PROMISED code is
+ *                                    admitted — without which the refusal proves
+ *                                    nothing)
+ *   application/execute-job.test.ts
+ *                                +1  the same four codes end to end through the
+ *                                    use case and its store double, which is
+ *                                    where a port that reported only `null`
+ *                                    would still collapse them
+ *
+ * All 8 are runnable: neither file carries `.integration.`, so
+ * `pnpm test:v1-packages` executes every one and the runnable term goes
+ * 7399 - 1054 = 6345 -> 6353, with the integration term unchanged at 1054.
+ * 6353 + 1054 = 7407.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7407;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
