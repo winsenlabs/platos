@@ -118,6 +118,19 @@ export const ADAPTERS = [
       // `PostgresTenancyAdapter["secretsVariables"]`.
       { port: "SecretsRepository", owner: "secrets" },
       { port: "EnvironmentVariableRepository", owner: "secrets" },
+      // WIN-258 T5 adds the NINTH. `skills` owns three canonical rows in that
+      // same database and publishes ONE canonical-store port over all three,
+      // because a catalogue entry, a project's adoption of it and an
+      // environment's binding of that adoption are one aggregate with one
+      // uniqueness key.
+      //
+      // IT IS SATISFIED BY A PROPERTY rather than by spread-in methods, and like
+      // `secrets`' two that was FORCED. `SkillsRepository.findInstallation` and
+      // `ChannelsRepository.findInstallation` are both top-level members with
+      // different signatures, so one interface cannot extend both — the
+      // composition root therefore proves this one as
+      // `PostgresTenancyAdapter["skills"]`.
+      { port: "SkillsRepository", owner: "skills" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -229,7 +242,7 @@ export function adapterOwnerPackages(adapter) {
 // needs is already there. What they add is JUDGEABILITY — five ports this
 // layout depends on that `reportAdapterSupply` could not previously see.
 //
-// 22 -> 30 (WIN-258 T5, three tranches of this wave landed together).
+// 22 -> 31 (WIN-258 T5, four tranches of this wave landed together).
 // `channels` adds ONE canonical-store binding (`ChannelsRepository`),
 // `governance` FIVE (`SafetyLedger`, `RatingsRepository`, `CriteriaRepository`,
 // `EvalsRepository`, `GoldenSetsRepository`) and `secrets` TWO
@@ -246,7 +259,7 @@ export function adapterOwnerPackages(adapter) {
 // separately: another owner is a row on an existing directory, not a thirteenth
 // package holding a second PostgreSQL client.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 30;
+export const EXPECTED_BINDING_COUNT = 31;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -309,7 +322,11 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // and nothing depends on it, so the 17-context DAG is again unchanged and no
 // cycle is possible.
 //
-// 99 -> 102 (WIN-258 T5, three tranches of this wave landed together).
+// 99 -> 103 (WIN-258 T5, four tranches of this wave landed together).
+// `packages/adapters/postgres-tenancy` -> `packages/contexts/skills` is the
+// fourth, carrying ONE binding. `skills` depends on `tenancy` and `files` and
+// nothing depends on it from an adapter, so the 17-context DAG is again
+// unchanged and no cycle is possible.
 // `packages/adapters/postgres-tenancy` -> `packages/contexts/channels`, ->
 // `packages/contexts/governance` and -> `packages/contexts/secrets`. THREE owner
 // edges carrying EIGHT bindings — one, five and two — because a project
@@ -321,7 +338,7 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `conversations` already depending on `secrets`. The independent expectation in
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 102;
+export const EXPECTED_EDGE_COUNT = 103;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -421,6 +438,18 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // alternative — a second double living in the adapter — would measure the
   // adapter against a copy of itself.
   "packages/contexts/secrets",
+  // WIN-258 T5 — imported by `packages/adapters/postgres-tenancy` for the third
+  // time and for the same fact about where a context keeps its doubles.
+  // `skills` publishes `InMemorySkillsRepository` from `application/index.js`,
+  // and that double's own header says it "is a REAL implementation of the port's
+  // contract" which "enforces the two properties a Postgres implementation would
+  // enforce with constraints". That is a claim about THIS adapter, so this
+  // adapter is what checks it: ONE conformance scenario, asked of the double and
+  // of PostgreSQL, with the two observation maps compared verbatim. Without this
+  // entry the differential cannot name the double at all, and the only
+  // alternative — a second double living in the adapter — would measure the
+  // adapter against a copy of itself.
+  "packages/contexts/skills",
 ];
 
 // ---------------------------------------------------------------------------

@@ -37,6 +37,7 @@ import type {
   TenancyLocks,
   TenancyRepository,
 } from "@platos/context-tenancy/application/ports/index.js";
+import type { SkillsRepository } from "@platos/context-skills/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
   EnvironmentVariableRepository,
@@ -87,7 +88,7 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, THIRTY BINDINGS (ADR M0.3 §15). An install wires a
+ * TWELVE SLOTS, THIRTY-ONE BINDINGS (ADR M0.3 §15). An install wires a
  * DIRECTORY — one process-lifetime object holding one vendor client — so this
  * table stays keyed by directory and keeps twelve entries. What a directory
  * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
@@ -222,6 +223,19 @@ interface PortSatisfaction {
     PostgresTenancyAdapter["secretsVariables"],
     EnvironmentVariableRepository
   >;
+  // WIN-258 T5. `skills`' one canonical-store port, proven through the PROPERTY
+  // that carries it — forced by the SECOND name collision this table has had to
+  // arbitrate. `SkillsRepository.findInstallation(scope, skillId)` and
+  // `ChannelsRepository.findInstallation(installationId)` are both top-level
+  // members with different signatures, so `PostgresTenancyAdapter` cannot extend
+  // both ports and `Satisfies<PostgresTenancyAdapter, SkillsRepository>` would
+  // resolve to `never` and fail a binding that holds. Indexing the property makes
+  // the obligation the true one — that `skills` IS a `SkillsRepository` — so the
+  // day the adapter renames or re-types it, `pnpm build:v1` fails here.
+  readonly "postgres-tenancy:SkillsRepository": Satisfies<
+    PostgresTenancyAdapter["skills"],
+    SkillsRepository
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -258,6 +272,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:OperatorDirectory": true,
   "postgres-tenancy:SecretsRepository": true,
   "postgres-tenancy:EnvironmentVariableRepository": true,
+  "postgres-tenancy:SkillsRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -291,7 +306,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
  * against `ADAPTER_BINDINGS` in both directions by
  * `scripts/arch/composition-root.mjs`, and `OutboxEventStore` is not a bound
  * PORT: no context and not the kernel owns it, nothing is wired to it by name,
- * and adding a row for it would claim a thirty-first binding the ADR does not
+ * and adding a row for it would claim a thirty-second binding the ADR does not
  * declare. It is an obligation between two adapters, so it is stated as one.
  */
 export const OUTBOX_STORE_SATISFACTION: Satisfies<PostgresTenancyAdapter, OutboxEventStore> = true;
@@ -400,8 +415,16 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "EnvironmentVariableRepository",
     owner: "secrets",
   }),
-  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the FIFTEENTH through
-  // NINETEENTH bindings of the same directory.
+  // WIN-258 T5 (ADR M0.3 §15). The FIFTEENTH binding of the same directory, and
+  // the NINTH owner of the one PostgreSQL client. ONE row and not three, because
+  // `skills` publishes ONE canonical-store port over its three tables: a
+  // catalogue entry, the project adoption of one and the environment binding of
+  // that adoption are one aggregate with one uniqueness key, and the port's own
+  // header says there is deliberately no generic `save(row)` through which
+  // another context could reach any of them from the side.
+  Object.freeze({ adapter: "postgres-tenancy", port: "SkillsRepository", owner: "skills" }),
+  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the SIXTEENTH through
+  // TWENTIETH bindings of the same directory.
   //
   // They are a different KIND of binding from the seven above and that is why
   // they sit together at the end rather than beside `TenancyRepository`: each of
@@ -442,10 +465,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirty rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-one rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` NINETEEN times and open
- * nineteen pools over the one database.
+ * adapters would otherwise build `postgres-tenancy` TWENTY times and open
+ * twenty pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),

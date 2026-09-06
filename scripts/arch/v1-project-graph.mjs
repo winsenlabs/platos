@@ -72,7 +72,15 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // `tenancy` and `identity-access`, `governance` on `tenancy` and `agents`, and
 // `secrets` on the kernel alone — so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // unchanged.
-export const EXPECTED_EDGE_COUNT = 102;
+//
+// 102 -> 103 (WIN-258 T5, the fourth tranche of the wave).
+// `packages/adapters/postgres-tenancy` -> `packages/contexts/skills`, a FOURTH
+// owner edge carrying ONE binding, on the same rule: a project reference is per
+// package and `SkillsRepository` is one port over three tables. `skills` depends
+// on `tenancy` and `files` and `agents` depends on `skills`, all of which the
+// 17-context DAG already carries; an adapter is a leaf of that DAG, so no cycle
+// is possible and `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged again.
+export const EXPECTED_EDGE_COUNT = 103;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -199,6 +207,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "channels",
     "governance",
     "secrets",
+    "skills",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -221,7 +230,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 8 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 9 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.
