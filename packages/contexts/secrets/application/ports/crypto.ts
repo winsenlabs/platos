@@ -71,8 +71,9 @@ export interface OpenRequest {
  * WIN-259 — sealing a SECRET REFERENCE.
  *
  * A SECOND AAD SHAPE ON THE SAME PORT, NOT A SECOND PORT, and the distinction is
- * worth stating. ADR M0.3 §6 budgets this context's injected collaborators at
- * eight and it already holds eight; a ninth would have bought a name for
+ * worth stating. ADR M0.3 §6 budgets constructor-injected dependencies at 6
+ * (warn) / 8 (hard), and `SecretsDependencies` already holds eight — it is AT
+ * the hard ceiling, not near it. A ninth would have bought a name for
  * something that is the same primitive — authenticated encryption with
  * associated data — over a different label space. What makes a reference safe
  * is not a separate cipher, it is that `secretHandleAad` and `envelopeAad` can
