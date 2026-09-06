@@ -334,13 +334,17 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
   }, 600_000);
 
   test("the legacy binary's INSERT is refused, by the guard the database actually reaches", async () => {
-    // WHICH GUARD REFUSES IS THE MEASUREMENT. The declared operations say these
-    // two columns became mandatory, and a case that only asserted "the write
-    // fails" would pass on any refusal at all — a foreign key, a unique index, a
-    // typo. Both SQLSTATEs are captured and pinned, and the two are DIFFERENT,
-    // which is the finding: `MessageAttachment` never reaches its NOT NULL
-    // because a row-level ancestry rule installed by the same migration runs
-    // first and refuses with a domain message of its own.
+    // WHICH GUARD REFUSES IS THE MEASUREMENT. The declared operations say three
+    // columns became mandatory, and a case that only asserted "the write fails"
+    // would pass on any refusal at all — a foreign key, a unique index, a typo.
+    //
+    // NEITHER WRITE EVER REACHES ITS NOT NULL, and that is the finding. The same
+    // migration installs a BEFORE-INSERT ancestry rule on both tables, and it
+    // runs first: both refusals are 23514 from `% crosses its canonical owner
+    // ancestry`, not the 23502 a missing mandatory column would give. One
+    // SQLSTATE covering two guards is exactly the shape that cannot be told
+    // apart, so the ancestry rule's own message — which interpolates the table
+    // it fired on — is what separates them, and both are pinned in full.
     const attachment = await refusal(() =>
       delegateOf(legacyClient, "MessageAttachment").create({
         data: {
@@ -370,8 +374,12 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
         },
       }),
     );
-    expect(policy.sqlstate).toBe("23502");
-    expect(policy.message).toContain("environmentId");
+    expect(policy.sqlstate).toBe("23514");
+    expect(policy.message).toContain("EntityToolPolicy crosses its canonical owner ancestry");
+    // The two refusals share a SQLSTATE and differ only in the table the rule
+    // named. Asserting that here is what stops the pair collapsing into one.
+    expect(attachment.sqlstate).toBe(policy.sqlstate);
+    expect(attachment.message).not.toContain("EntityToolPolicy");
 
     // Neither row landed. A refusal that had already written would be a
     // different defect from the one this case is about.
