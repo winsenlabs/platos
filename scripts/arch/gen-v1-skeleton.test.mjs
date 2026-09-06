@@ -76,10 +76,10 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // 98 -> 99 (WIN-258 T5): packages/adapters/postgres-tenancy ->
   // packages/contexts/cost-monitoring, the fifth owner of the one PostgreSQL
   // client (ADR M0.3 §15).
-  // 99 -> 100 (WIN-258 T5): packages/adapters/postgres-tenancy ->
-  // packages/contexts/channels, the sixth owner of that same client. The count
-  // is READ BACK from the generator here rather than computed, which is the
-  // whole point of this case.
+  // 99 -> 101 (WIN-258 T5): packages/adapters/postgres-tenancy ->
+  // packages/contexts/channels and -> packages/contexts/governance, the sixth
+  // and seventh owners of that same client. The count is READ BACK from the
+  // generator here rather than computed, which is the whole point of this case.
   assert.match(output, /32 V1 projects and 100 project edges/u);
 });
 
@@ -495,9 +495,17 @@ const LIVE_ADAPTERS = [
       { port: "BudgetRepository", owner: "cost-monitoring" },
       // WIN-258 T5. The SEVENTH, `channels`'.
       { port: "ChannelsRepository", owner: "channels" },
+      // WIN-258 T5: `governance` publishes FIVE canonical-store ports and one
+      // directory satisfies all five, because five separate rows in the one
+      // PostgreSQL database are five repositories behind one client.
+      { port: "SafetyLedger", owner: "governance" },
+      { port: "RatingsRepository", owner: "governance" },
+      { port: "CriteriaRepository", owner: "governance" },
+      { port: "EvalsRepository", owner: "governance" },
+      { port: "GoldenSetsRepository", owner: "governance" },
       // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, which now
       // carry binding slots of their own on the directory that already
-      // satisfied them. Twelve bindings on one row.
+      // satisfied them. SEVENTEEN bindings on one row.
       { port: "TenancyLocks", owner: "tenancy" },
       { port: "OperatorSessionRevoker", owner: "tenancy" },
       { port: "EnvironmentAccessKeyRevocationCounter", owner: "tenancy" },
@@ -532,14 +540,14 @@ test("§15 refusal: a THIRTEENTH adapter directory fails, even though bindings m
   assert.ok(errors.some((error) => error.includes("names 12 concrete adapter directories; ADAPTERS has 13")));
 });
 
-test("§15 refusal: a TWENTY-FOURTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a TWENTY-NINTH binding fails, even though a directory may hold more than one", () => {
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 23 adapter bindings; ADAPTERS flattens to 24")));
+  assert.ok(errors.some((error) => error.includes("declares 28 adapter bindings; ADAPTERS flattens to 29")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

@@ -85,6 +85,26 @@ export const ADAPTERS = [
       { port: "ScaffoldingRepository", owner: "agents" },
       { port: "BudgetRepository", owner: "cost-monitoring" },
       { port: "ChannelsRepository", owner: "channels" },
+      // WIN-258 T5 — `governance`'s FIVE canonical-store ports, the SIXTH owner
+      // of the one PostgreSQL client. `SafetyEvent`, `MessageRating`,
+      // `EvalCriterion`, `AgentEval` and `GoldenSet` live in that same database,
+      // so by §15 they are written from the same directory behind the same
+      // client. The context publishes five SEPARATE ports rather than one
+      // composite, and that is deliberate on its side: an eval is append-only
+      // and a criterion is edited, a rating flips in place and a safety event is
+      // never touched again. Five ports are five bindings.
+      //
+      // They are PROPERTIES on the adapter rather than spread-in methods, like
+      // tenancy's five below — but for a stronger reason. Tenancy's are
+      // properties so a composition root can hand each over under its own name;
+      // these five COLLIDE with each other on `findById`, `page`, `create`,
+      // `update` and `remove`, so a flat spread would answer four ports from one
+      // table.
+      { port: "SafetyLedger", owner: "governance" },
+      { port: "RatingsRepository", owner: "governance" },
+      { port: "CriteriaRepository", owner: "governance" },
+      { port: "EvalsRepository", owner: "governance" },
+      { port: "GoldenSetsRepository", owner: "governance" },
       // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS GET SLOTS.
       //
       // `TenancyDependencies` names six driven ports and only one of them is
@@ -196,13 +216,20 @@ export function adapterOwnerPackages(adapter) {
 // needs is already there. What they add is JUDGEABILITY — five ports this
 // layout depends on that `reportAdapterSupply` could not previously see.
 //
-// 22 -> 23 (WIN-258 T5). `channels:ChannelsRepository`, the SEVENTH
-// canonical-store binding and the sixth CONTEXT owner of the one directory §15
-// gives the ORM. The DIRECTORY count is deliberately unmoved a fourth time, and
-// for the fourth time that is the point: another owner is a row on an existing
-// directory, not a thirteenth package holding a second PostgreSQL client.
+// 22 -> 28 (WIN-258 T5, two tranches of this wave so far). `channels` adds ONE
+// canonical-store binding (`ChannelsRepository`) and `governance` adds FIVE
+// (`SafetyLedger`, `RatingsRepository`, `CriteriaRepository`, `EvalsRepository`,
+// `GoldenSetsRepository`), because that context publishes five SEPARATE ports:
+// an eval is append-only and a criterion is edited, a rating flips in place and
+// a safety event is never touched again. Five ports are five bindings, and they
+// are PROPERTIES rather than spread-in methods because they COLLIDE with each
+// other on `findById`, `page`, `create`, `update` and `remove` — a flat spread
+// would answer four ports from one table. EXPECTED_ADAPTER_COUNT is deliberately
+// unmoved again, which is the whole point of pinning the two separately: another
+// owner is a row on an existing directory, not a thirteenth package holding a
+// second PostgreSQL client.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 23;
+export const EXPECTED_BINDING_COUNT = 28;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -265,12 +292,18 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // and nothing depends on it, so the 17-context DAG is again unchanged and no
 // cycle is possible.
 //
-// 99 -> 100 (WIN-258 T5, a fourth time). `packages/adapters/postgres-tenancy` ->
-// `packages/contexts/channels`. A SIXTH owner edge, for that context's
-// `ChannelsRepository`. `channels` depends on `tenancy` and `identity-access`
-// and nothing depends on it, so the 17-context DAG is again unchanged and no
-// cycle is possible.
-export const EXPECTED_EDGE_COUNT = 100;
+// 99 -> 101 (WIN-258 T5, two tranches of this wave so far).
+// `packages/adapters/postgres-tenancy` -> `packages/contexts/channels` and ->
+// `packages/contexts/governance`. TWO owner edges carrying SIX bindings —
+// `ChannelsRepository` on the first, and `governance`'s five on the second —
+// because a project reference is per PACKAGE, not per port; that is the same
+// one-edge-many-bindings shape `agents` introduced at two. `channels` depends on
+// `tenancy` and `identity-access`, `governance` on `tenancy` and `agents`, and
+// nothing depends on either, so the 17-context DAG is again unchanged and no
+// cycle is possible. The independent expectation in
+// scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
+export const EXPECTED_EDGE_COUNT = 101;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -391,14 +424,23 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/tools", // WIN-258 T5 — compared against the PostgreSQL ToolsRepository by packages/adapters/postgres-tenancy
   "packages/contexts/cost-monitoring", // WIN-258 T5 — measured against InMemoryBudgetRepository by packages/adapters/postgres-tenancy
   "packages/contexts/channels", // WIN-258 T5 — measured against InMemoryChannelsRepository by packages/adapters/postgres-tenancy
+  "packages/contexts/governance", // WIN-258 T5 — its FIVE doubles are the differential packages/adapters/postgres-tenancy is measured against
 ];
 
-// BOTH TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
+// THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,
 // which merged as TWO declarations of the same constant — a duplicate the
 // module loader rejects outright, and the one kind of silent merge damage that
-// cannot ship. The two entries are one list here. `agents` is absent on purpose:
-// it publishes its doubles from `application/index.js`, so it is on
+// cannot ship. The entries are ONE list here, and a fourth branch adding the
+// list again would reproduce exactly that. `agents` is absent on purpose: it
+// publishes its doubles from `application/index.js`, so it is on
 // APPLICATION_ENTRY_PROJECTS above instead.
+//
+// `governance` is the third, and it needs the entry more than either: its
+// conformance differential is measured against FIVE doubles at once —
+// `InMemorySafetyLedger`, `InMemoryRatingsRepository`,
+// `InMemoryCriteriaRepository`, `InMemoryEvalsRepository` and
+// `InMemoryGoldenSetsRepository` — and without the subpath the adapter's suites
+// do not fail an assertion, they fail to LOAD.
 //
 // Every entry must be an adopted project: an unadopted one's `application/`
 // tree is generated placeholders, so `selfCheck` fails on it.

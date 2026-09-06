@@ -54,6 +54,13 @@ import type {
   BudgetRepository,
   Notifier,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
+import type {
+  CriteriaRepository,
+  EvalsRepository,
+  GoldenSetsRepository,
+  RatingsRepository,
+  SafetyLedger,
+} from "@platos/context-governance/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
 import type { OutboxAdapter, OutboxEventStore } from "@platos/adapter-outbox";
@@ -76,7 +83,7 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, TWENTY-TWO BINDINGS (ADR M0.3 §15). An install wires a
+ * TWELVE SLOTS, TWENTY-EIGHT BINDINGS (ADR M0.3 §15). An install wires a
  * DIRECTORY — one process-lifetime object holding one vendor client — so this
  * table stays keyed by directory and keeps twelve entries. What a directory
  * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
@@ -142,6 +149,32 @@ interface PortSatisfaction {
     PostgresTenancyAdapter,
     ChannelsRepository
   >;
+  // WIN-258 T5. `governance` publishes FIVE canonical-store ports and every one
+  // is proven through the PROPERTY that carries it rather than through the
+  // adapter itself — the same shape tenancy's five non-repository ports use
+  // below, and for a STRONGER reason. Tenancy's five are properties because a
+  // composition root has to hand each one over under its own name; these five
+  // are properties because they COLLIDE. `findById` is declared on four of them,
+  // `page` on four, and `create`, `update` and `remove` on two apiece, so a flat
+  // spread would keep whichever composite came last and answer four ports from
+  // one table. Indexing the property is what makes each obligation the true one.
+  readonly "postgres-tenancy:SafetyLedger": Satisfies<PostgresTenancyAdapter["safety"], SafetyLedger>;
+  readonly "postgres-tenancy:RatingsRepository": Satisfies<
+    PostgresTenancyAdapter["ratings"],
+    RatingsRepository
+  >;
+  readonly "postgres-tenancy:CriteriaRepository": Satisfies<
+    PostgresTenancyAdapter["criteria"],
+    CriteriaRepository
+  >;
+  readonly "postgres-tenancy:EvalsRepository": Satisfies<
+    PostgresTenancyAdapter["evals"],
+    EvalsRepository
+  >;
+  readonly "postgres-tenancy:GoldenSetsRepository": Satisfies<
+    PostgresTenancyAdapter["goldenSets"],
+    GoldenSetsRepository
+  >;
   // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, proven through the
   // PROPERTY that carries each one rather than through the adapter itself.
   //
@@ -192,6 +225,11 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:ScaffoldingRepository": true,
   "postgres-tenancy:BudgetRepository": true,
   "postgres-tenancy:ChannelsRepository": true,
+  "postgres-tenancy:SafetyLedger": true,
+  "postgres-tenancy:RatingsRepository": true,
+  "postgres-tenancy:CriteriaRepository": true,
+  "postgres-tenancy:EvalsRepository": true,
+  "postgres-tenancy:GoldenSetsRepository": true,
   "postgres-tenancy:TenancyLocks": true,
   "postgres-tenancy:OperatorSessionRevoker": true,
   "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": true,
@@ -230,7 +268,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
  * against `ADAPTER_BINDINGS` in both directions by
  * `scripts/arch/composition-root.mjs`, and `OutboxEventStore` is not a bound
  * PORT: no context and not the kernel owns it, nothing is wired to it by name,
- * and adding a row for it would claim a twenty-third binding the ADR does not
+ * and adding a row for it would claim a twenty-ninth binding the ADR does not
  * declare. It is an obligation between two adapters, so it is stated as one.
  */
 export const OUTBOX_STORE_SATISFACTION: Satisfies<PostgresTenancyAdapter, OutboxEventStore> = true;
@@ -305,8 +343,27 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "ChannelsRepository",
     owner: "channels",
   }),
-  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the EIGHTH through
-  // TWELFTH bindings of the same directory.
+  // WIN-258 T5 (ADR M0.3 §15). The EIGHTH through TWELFTH bindings of the same
+  // directory, and the SEVENTH owner of the one PostgreSQL client. They are FIVE
+  // rows and not one because `governance` publishes five separate ports over
+  // five separate rows, and folding them into one composite is precisely what
+  // would let a method acquire an invariant it has no business having: an eval
+  // is APPEND-ONLY and a criterion is edited, a rating FLIPS in place and a
+  // safety event is never touched again, and a golden set is a pinned sample
+  // that shares no invariant with any of them.
+  //
+  // The context's other five ports get no row here, and that is a claim rather
+  // than an omission: `read-seams.ts` declares three READERS of rows
+  // `conversations`, `tools` and `jobs` own, `judge.ts` is a provider transport,
+  // and `eval-run-queue.ts` is durable work whose own refusal code exists to
+  // stay separable from a store outage.
+  Object.freeze({ adapter: "postgres-tenancy", port: "SafetyLedger", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "RatingsRepository", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "CriteriaRepository", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "EvalsRepository", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "GoldenSetsRepository", owner: "governance" }),
+  // WIN-258 M2.3 — TENANCY'S FIVE NON-REPOSITORY PORTS, the THIRTEENTH through
+  // SEVENTEENTH bindings of the same directory.
   //
   // They are a different KIND of binding from the seven above and that is why
   // they sit together at the end rather than beside `TenancyRepository`: each of
@@ -347,10 +404,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds twenty-three rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds twenty-eight rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` TWELVE times and open twelve
- * pools over the one database.
+ * adapters would otherwise build `postgres-tenancy` SEVENTEEN times and open
+ * seventeen pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),

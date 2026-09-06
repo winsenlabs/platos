@@ -244,14 +244,18 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/cost-monitoring",
     "packages/adapters/postgres-tenancy",
   ]);
-  // WIN-258 T5. `channels` moved from the undelegated list below to this one,
-  // the SIXTH context to do so; the list it left still has to contain somebody,
-  // or the case stops saying anything.
+  // WIN-258 T5. `channels` and `governance` both moved from the undelegated list
+  // below to this one, the SIXTH and SEVENTH contexts to do so; the list they
+  // left still has to contain somebody, or the case stops saying anything.
   assert.deepEqual(ownerDirectories("channels"), [
     "packages/contexts/channels",
     "packages/adapters/postgres-tenancy",
   ]);
-  for (const owner of ["memory", "secrets", "governance", "files"]) {
+  assert.deepEqual(ownerDirectories("governance"), [
+    "packages/contexts/governance",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  for (const owner of ["memory", "secrets", "files"]) {
     assert.deepEqual(ownerDirectories(owner), [`packages/contexts/${owner}`]);
   }
 });
@@ -382,6 +386,79 @@ test("only channels' own two directories may write its six rows", () => {
       `${model} must be refused from the context's own vendor adapter`,
     );
   }
+});
+
+test("only governance's own two directories may write its five rows", () => {
+  // WIN-258 T5. The delegation added for `governance` is a permission, and a
+  // permission is only worth anything if the thing it does NOT permit goes red.
+  // Every one of the five rows is checked, not a representative one, because the
+  // grant is per row and a map entry lost for a single model would otherwise sit
+  // here unnoticed behind a green case for `SafetyEvent`.
+  const FIVE = [
+    ["safetyEvent", "SafetyEvent"],
+    ["messageRating", "MessageRating"],
+    ["evalCriterion", "EvalCriterion"],
+    ["agentEval", "AgentEval"],
+    ["goldenSet", "GoldenSet"],
+  ];
+
+  for (const [delegate, model] of FIVE) {
+    // The delegate directory: legal, and the reason the five repositories can
+    // exist at all.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/postgres-tenancy/src/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its canonical-store adapter`,
+    );
+    // The owning context itself: also legal, and never exercised in the live
+    // tree, because ADR M0.3 §2 forbids that package from holding the client.
+    assert.deepEqual(
+      checkWriteEnforcement(
+        fixture({ [`packages/contexts/governance/application/x.ts`]: write(delegate, "create") }),
+      ).violations,
+      [],
+      `${model} must be writable from its owning context`,
+    );
+    // ANY THIRD PLACE: refused. `conversations` is the pointed choice — it owns
+    // the `Thread` and the `Turn` that three of these five rows hang off, it
+    // cascades them away when a thread is deleted, and it is exactly as refused
+    // from writing one as anything else is.
+    const trespass = checkWriteEnforcement(
+      fixture({ [`packages/contexts/conversations/application/x.ts`]: write(delegate, "create") }),
+    );
+    assert.equal(trespass.violations.length, 1, `a foreign write to ${model} must be refused`);
+    assert.equal(trespass.violations[0].model, model);
+    assert.equal(trespass.violations[0].actual, "packages/contexts/conversations");
+    assert.deepEqual(trespass.violations[0].permitted, [
+      "packages/contexts/governance",
+      "packages/adapters/postgres-tenancy",
+    ]);
+    // And a SIBLING canonical-store adapter is not a loophole either: being an
+    // adapter is not the qualification, being THIS owner's declared store is.
+    assert.equal(
+      checkWriteEnforcement(
+        fixture({ [`packages/adapters/outbox/src/x.ts`]: write(delegate, "create") }),
+      ).violations.length,
+      1,
+      `${model} must be refused from an adapter that is not its canonical store`,
+    );
+  }
+
+  // AND RAW SQL IS NOT A WAY ROUND IT. The gate attributes a raw statement to
+  // the table its SQL names, so a context reaching for the ledger through
+  // `$executeRaw` is refused on the same terms as one reaching for the delegate.
+  const raw = checkWriteEnforcement(
+    fixture({
+      "packages/contexts/observability/application/steal.ts":
+        `export async function run(db) {\n` +
+        `  await db.$executeRaw\`insert into "public"."SafetyEvent" (id) values ('x')\`;\n` +
+        `}\n`,
+    }),
+  );
+  assert.equal(raw.violations.length, 1);
+  assert.equal(raw.violations[0].model, "SafetyEvent");
 });
 
 test("the shared directory is not a blanket licence over the whole schema", () => {
@@ -872,10 +949,47 @@ test("an element-access member that is not a delegate is still not a write", () 
 // `CANONICAL_STORE_ADAPTERS`. It seeds them the same way, rather than routing
 // around a refusal this gate is right to make.
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 = 157. All FOUR tranche-5 stores landed in
-// the one directory, so the pin is the SUM of the four enumerations above and
-// no branch's own figure — 86, 96, 106 or 76 — survives the merge.
-const LIVE_TREE_WRITE_COUNT = 157;
+//
+// WIN-258 TRANCHE 5, `governance` adds 13, all from the SAME directory and all
+// on a row its own owner holds. Each line was read back from the enforcer rather
+// than counted by eye:
+//
+//   src/governance-safety.ts        safetyEvent.createManyAndReturn, and the
+//                                   ONE updateMany that exists to anonymise      2
+//   src/governance-ratings.ts       messageRating.updateMany (the flip),
+//                                   .createManyAndReturn (the first vote) and
+//                                   .deleteMany TWICE -- a withdrawal and an
+//                                   erasure are different operations on the
+//                                   same table and the port names them
+//                                   separately                                   4
+//   src/governance-criteria.ts      evalCriterion.createManyAndReturn,
+//                                   .updateMany, .deleteMany                     3
+//   src/governance-evals.ts         agentEval.createManyAndReturn, and NOTHING
+//                                   else: the port has no update and no delete,
+//                                   and the rows that do go are taken by the
+//                                   thread's and the criterion's cascades        1
+//   src/governance-golden-sets.ts   goldenSet.createManyAndReturn, .updateMany,
+//                                   .deleteMany                                  3
+//                                                                       total = 13
+//
+// THE FIVE SUITES CONTRIBUTE ZERO, and that is the line worth reading. Two of
+// them plant `SafetyEvent` rows the way the LEGACY source wrote them -- a bare
+// attribute bag, and a detector outside the closed set -- and the harness seeds
+// an `Agent`, two `AgentVersion`s, an `EndUser`, a `Thread` and two `Turn`s that
+// every one of these five tables points at. None of it is counted here, because
+// none of it goes through the ORM: `Thread` and `Turn` belong to `conversations`,
+// which has NO entry in `CANONICAL_STORE_ADAPTERS`, so this gate refuses a write
+// to either from this directory -- and rather than route around the refusal the
+// harness applies the whole chain out of band through the ORM's own CLI
+// (`prisma db execute`), which is runtime and therefore out of this scanner's
+// scope by construction.
+//
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 = 170. All the tranche-5 stores landed
+// in the ONE directory, so this pin is the SUM of every enumeration above and no
+// single branch's own figure — 157 for `channels` alone, 163 for `governance`
+// alone — survives the merge.
+const LIVE_TREE_WRITE_COUNT = 170;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1043,6 +1157,32 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     "ToolCallAudit",
     "ToolHealth",
   ]);
+  // WIN-258 T5: `governance` is delegated to that SAME directory, the SIXTH
+  // owner to be, and the grant is exactly the FIVE rows ADR M0.3 §1 row 14 gives
+  // it. Pinned as a SET rather than a count, because a count is satisfied by any
+  // five rows and the point of the entry is WHICH five.
+  assert.deepEqual(ownerDirectories("governance"), [
+    "packages/contexts/governance",
+    "packages/adapters/postgres-tenancy",
+  ]);
+  assert.equal(CANONICAL_STORE_ADAPTERS.governance, "packages/adapters/postgres-tenancy");
+  const governanceRows = Object.entries(OWNER)
+    .filter(([, owner]) => owner === "governance")
+    .map(([model]) => model)
+    .sort();
+  assert.deepEqual(governanceRows, [
+    "AgentEval",
+    "EvalCriterion",
+    "GoldenSet",
+    "MessageRating",
+    "SafetyEvent",
+  ]);
+  // And the rows `governance` READS through its inverted read-seam ports are
+  // NOT in the grant. `Turn` and `Thread` are `conversations`', and three of
+  // these five tables hang off one -- so the entry that lets this directory
+  // write an eval still does not let it write the conversation the eval scored.
+  assert.equal(CANONICAL_STORE_ADAPTERS.conversations, undefined);
+  assert.deepEqual(ownerDirectories("conversations"), ["packages/contexts/conversations"]);
 });
 
 test("a THIRD directory writing a `tools` row is refused, and the refusal names it", () => {

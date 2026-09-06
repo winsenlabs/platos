@@ -771,12 +771,36 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               and the arithmetic is the point: a thirteenth adapter
     //               package for a sixth owner would have broken it exactly as a
     //               second ORM home for the outbox would have.
-    // ALL FOUR TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 = 1291. No branch's own
-    //               figure is right merged, and taking any one alone
-    //               under-counts the others by their whole tranche.
-    assert.equal(result.fileCount, 1291, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15);
+    //  1276 -> 1294 +18: WIN-258 TRANCHE 5, `governance`'s canonical store, in
+    //               that SAME one ORM home and for the fourth time on the same
+    //               sentence. Seventeen files, all under
+    //               `packages/adapters/postgres-tenancy/src/`: eleven source
+    //               (five stores, their row mapping, their write guards, the
+    //               refusal adapter, the composite, the fixture harness and the
+    //               shared conformance scenario IN TWO HALVES) and six suites.
+    //               THE SCENARIO IS TWO FILES BECAUSE THE §6 BUDGET SAID SO:
+    //               one scenario over five ports measured 716 effective lines,
+    //               past the 500-line hard error, and the seam it pointed at is
+    //               real — the safety ledger and the ratings table share a
+    //               SUBJECT, the other three share a CRITERION, and nothing
+    //               crosses. The
+    //               `mutations-governance.json` beside them is not source and is
+    //               not counted here; the v1 ledger counts it and its own delta
+    //               says 18.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A FOURTH TIME.
+    //               `governance` owns five rows in the same database, so a
+    //               per-context adapter package would have been a second ORM
+    //               home; the five ports went to the one home instead,
+    //               owner-tagged, and `src/client.ts` is still the only file in
+    //               the layout that imports the ORM — this tranche added nothing
+    //               to it at all.
+    // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 = 1309. No branch's
+    //               own figure is right merged — 1291 for `channels` alone and
+    //               1294 for `governance` alone each under-count the other by
+    //               its whole tranche.
+    assert.equal(result.fileCount, 1309, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

@@ -456,26 +456,40 @@ test("the live selectors scan an exact nonzero source census", () => {
   // one scenario of thirty-five observations rather than a module that could be
   // split by lifecycle.
   //
-  // THE FOUR TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 = 1266. All four
+  //
+  // 1251 -> 1269 (WIN-258 T5, `governance`): eighteen files in the same ORM
+  // home — twelve source and six suites.
+  //
+  // AND THIS TIME THE BUDGET BIT AGAIN, at the HARD error rather than the
+  // warning band. The shared conformance scenario over five ports measured 716
+  // effective lines, so it is two files: `governance-conformance.ts` drives the
+  // safety ledger and the ratings table — the two that share a SUBJECT and are
+  // erased on one person's behalf — and `governance-conformance-evals.ts`
+  // drives the three that share a CRITERION, which cascades. Both write into
+  // ONE observation map, so the differential still compares one object per
+  // store. The FIVE stores were five files from the start for the same reason.
+  //
+  //
+  // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 = 1284. All the
   // stores are in the one adapter directory, so no branch's own figure survives
-  // the merge.
-  assert.equal(result.fileCount, 1266);
+  // the merge — 1266 for `channels` alone, 1269 for `governance` alone.
+  assert.equal(result.fileCount, 1284);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
   // the one directory and then swept one of them again: 88 + 11 (tranche 3) +
   // 15 (tranche 4) + 18 (tools) + 16 (agents) + 16 (cost-monitoring) + 1
-  // (cost-monitoring's second sweep) + 15 (channels) = 180. The contexts, kernel
-  // and app rows are untouched, which is the claim worth making: no tranche-5
-  // store adds a file to a context at all — each implements a port that already
-  // existed rather than widening one.
-  assert.equal(result.fileCount, 20 + 1060 + 180 + 6);
+  // (cost-monitoring's second sweep) + 15 (channels) + 18 (governance) = 198.
+  // The contexts, kernel and app rows are untouched, which is the claim worth
+  // making: no tranche-5 store adds a file to a context at all — each implements
+  // a port that already existed rather than widening one.
+  assert.equal(result.fileCount, 20 + 1060 + 198 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -516,6 +530,17 @@ test("the live selectors scan an exact nonzero source census", () => {
   // rows were split by lifecycle — connections and apps, installations, links,
   // the inbox — when they were written, which is the same discipline the note
   // above records for `cost-*`.
+  //
+  // WIN-258 T5 (`governance`) BROUGHT TWO MORE, AND ONE OF THEM IS THE RESIDUE
+  // OF A SPLIT THE HARD ERROR FORCED. The shared conformance scenario over five
+  // ports measured 716 effective lines; halved along the subject/criterion seam
+  // it is 418 here and its sibling is below the band entirely. The other,
+  // `governance-rules.integration.test.ts`, is long because each database rule
+  // NO port method restates is stood beside the rule it measures -- a cascade, a
+  // ancestry rule that runs on UPDATE, an index the double does not hold, two
+  // rows an older binary wrote, and a cross-environment control writing all five
+  // tables in a second tenant. A table-driven loop would not be counted as cases
+  // at all.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
@@ -535,6 +560,16 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/adapters/postgres-tenancy/src/cost-rows.ts",
       effectiveLines: 465,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/governance-conformance.ts",
+      effectiveLines: 418,
+      severity: "warning",
+    },
+    {
+      path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
+      effectiveLines: 424,
       severity: "warning",
     },
     {

@@ -189,3 +189,38 @@ export {
   UNREADABLE_ROUTING,
   UNRESOLVED_SCOPE_ANCESTRY as CHANNELS_UNRESOLVED_SCOPE_ANCESTRY,
 } from "./channels-rows.js";
+
+// WIN-258 T5 — `governance`'s five canonical stores. The factory leaves the
+// package for the reason `createCostMonitoringRepository` does: a composition
+// root that wanted these five WITHOUT tenancy's — an erasure worker, say — has
+// to be able to build them over the same transactions. The refusal codes leave
+// it because a root has to tell a value the schema will not hold from a row this
+// binary cannot read, without matching on a message.
+//
+// The five stores behind it add nothing here, deliberately. Building one alone
+// would give it a `TenancyTransactions` of its own, and a plan counted on one
+// ambient frame would then be invisible to the erasure serialised on another;
+// `createGovernanceStores` is the only door, and it takes the transactions
+// rather than a client so there is no second one to build.
+export type { GovernanceStores } from "./governance-repository.js";
+export { createGovernanceStores, createInstantSource } from "./governance-repository.js";
+export {
+  CRITERION_SCALE_NOT_REPRESENTABLE,
+  EVAL_COST_NOT_REPRESENTABLE,
+  EVAL_LATENCY_INVALID,
+  EVAL_SCORE_NOT_FINITE,
+  GOVERNANCE_IDENTIFIER_NOT_UUID,
+  GovernanceWriteRefused,
+  RATING_NOT_THUMBS,
+  RATING_REVISION_INVALID,
+  SAFETY_METADATA_RESERVED,
+} from "./governance-guards.js";
+export {
+  SAFETY_METADATA_MARKER,
+  UNKNOWN_SAFETY_ACTION,
+  UNKNOWN_SAFETY_DETECTOR,
+  UNKNOWN_SAFETY_SEVERITY,
+  UNREADABLE_CRITERION_SNAPSHOT,
+  UNREADABLE_EVAL_COST,
+  UNREADABLE_SAFETY_METADATA,
+} from "./governance-rows.js";

@@ -33,6 +33,9 @@
     },
     {
       "path": "../../contexts/channels"
+    },
+    {
+      "path": "../../contexts/governance"
     }
   ]
 }

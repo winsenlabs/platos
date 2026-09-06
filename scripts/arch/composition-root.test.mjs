@@ -71,18 +71,20 @@ test("the live repository satisfies both the boundary rules and the composition-
 
   const audit = auditCompositionRoot(repositoryRoot);
   assert.deepEqual(audit.problems, []);
-  // TWENTY-THREE bindings across TWELVE directories (ADR M0.3 §15). Both are
+  // TWENTY-EIGHT bindings across TWELVE directories (ADR M0.3 §15). Both are
   // asserted, so a change that collapsed them back to one number fails here.
   // 13 -> 17 (WIN-258 T5, three stores): `tools:ToolsRepository`,
   // `agents:AgentsRepository`, `agents:ScaffoldingRepository` and
   // `cost-monitoring:BudgetRepository`, so one directory now carries six.
   // 17 -> 22 (WIN-258 M2.3): tenancy's five NON-REPOSITORY driven ports get
   // slots, so that directory carries eleven.
-  // 22 -> 23 (WIN-258 T5, a fourth store): `channels:ChannelsRepository`, so
-  // that directory carries twelve. The DIRECTORY count deliberately does not
-  // move through any of it, which is the whole content of the amendment.
+  // 22 -> 28 (WIN-258 T5, two stores landing together): `channels` adds
+  // `ChannelsRepository` and `governance` adds its FIVE canonical-store ports
+  // over five canonical rows, so that directory carries SEVENTEEN. The DIRECTORY
+  // count deliberately does not move through any of it, which is the whole
+  // content of the amendment.
   assert.equal(audit.bindingCount, adapterBindings().length);
-  assert.equal(audit.bindingCount, 23);
+  assert.equal(audit.bindingCount, 28);
   assert.equal(ADAPTERS.length, 12);
 });
 
@@ -229,7 +231,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 22 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 27 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -284,12 +286,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all TWENTY-THREE bindings, across twelve directories", () => {
+test("the binding-table parser reads all TWENTY-EIGHT bindings, across twelve directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 23);
+  assert.equal(bindings.length, 28);
   assert.equal(ADAPTERS.length, 12);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -299,16 +301,16 @@ test("the binding-table parser reads all TWENTY-THREE bindings, across twelve di
     parseSatisfactionKeys(source).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
   );
-  // A directory with twelve bindings appears TWELVE TIMES in the flattening and
-  // once in the directory set. Both halves are asserted so a change that
-  // collapsed the table back to one row per directory cannot pass here. It is
-  // twelve rather than two because WIN-258 T5 landed all FOUR of tranche 5's
-  // canonical stores in this one directory — `tools` publishes one port,
-  // `agents` two, `cost-monitoring` one and `channels` one, all over the same
-  // client as tenancy's and identity-access's — and WIN-258 M2.3 then gave
-  // tenancy's five NON-REPOSITORY ports slots on the same directory that already
-  // satisfied them.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 12);
+  // A directory with seventeen bindings appears SEVENTEEN TIMES in the
+  // flattening and once in the directory set. Both halves are asserted so a
+  // change that collapsed the table back to one row per directory cannot pass
+  // here. It is seventeen rather than two because WIN-258 T5 landed all of
+  // tranche 5's canonical stores in this one directory — `tools` publishes one
+  // port, `agents` two, `cost-monitoring` one, `channels` one and `governance`
+  // FIVE, all over the same client as tenancy's and identity-access's — and
+  // WIN-258 M2.3 then gave tenancy's five NON-REPOSITORY ports slots on the same
+  // directory that already satisfied them. 1 + 1 + 1 + 2 + 1 + 1 + 5 + 5 = 17.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 17);
   assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 12);
 });
 
@@ -354,7 +356,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 23 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 28 declared bindings")
     )
   );
 });
@@ -385,7 +387,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 22 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 27 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

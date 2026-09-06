@@ -61,6 +61,19 @@
 // each other by construction and share no method name with tenancy's,
 // identity-access's, tools' or the outbox's.
 //
+// AND SO DO `governance`'s FIVE CANONICAL-STORE PORTS (WIN-258 T5). `SafetyEvent`,
+// `MessageRating`, `EvalCriterion`, `AgentEval` and `GoldenSet` are in that same
+// database behind that same client, so by Amendment 15 they are written from this
+// directory too — the SIXTH owner delegated to it. They are the one delegation
+// here that CANNOT be spread in: the five ports collide with each other on
+// `findById`, `page`, `create`, `update` and `remove`, so they arrive as five
+// named properties and `PORT_SATISFACTION` proves each through the property that
+// carries it, exactly as it does for tenancy's five non-repository ports. The
+// context's other five ports are deliberately absent: `read-seams.ts` declares
+// three READERS of rows four OTHER contexts own, `judge.ts` is a provider
+// transport, and `eval-run-queue.ts` is durable work whose own refusal code
+// exists to stay separable from a store outage.
+//
 // AND SO DOES `cost-monitoring`'s `BudgetRepository` (WIN-258 T5). Its six rows
 // are in that same database behind that same client, so by Amendment 15 they
 // are written from this directory too — the FIFTH owner delegated to it. Its
@@ -94,6 +107,13 @@ import type {
   ScaffoldingRepository,
 } from "@platos/context-agents/application/ports/index.js";
 import type { BudgetRepository } from "@platos/context-cost-monitoring/application/ports/index.js";
+import type {
+  CriteriaRepository,
+  EvalsRepository,
+  GoldenSetsRepository,
+  RatingsRepository,
+  SafetyLedger,
+} from "@platos/context-governance/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
@@ -113,6 +133,7 @@ import type { TenancyClientOptions, TenancyDatabaseClient } from "./client.js";
 import { createTenancyDatabaseClient } from "./client.js";
 import { createChannelsRepository } from "./channels-repository.js";
 import { createCostMonitoringRepository } from "./cost-repository.js";
+import { createGovernanceStores } from "./governance-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createInvitationTokenIssuer } from "./invitation-token.js";
@@ -153,6 +174,22 @@ export interface PostgresTenancyAdapter
   readonly accessKeyRevocation: EnvironmentAccessKeyRevocationCounter;
   readonly invitationTokens: InvitationTokenIssuer;
   readonly operators: OperatorDirectory;
+  /**
+   * WIN-258 T5 — `governance`'s FIVE canonical-store ports.
+   *
+   * Properties rather than spread-in methods, and unlike tenancy's five that is
+   * FORCED rather than preferred: these five ports collide with each other.
+   * `findById` is declared on four of them, `page` on four, and `create`,
+   * `update` and `remove` on two apiece — so a flat spread would keep whichever
+   * composite came last and answer four ports from one table. The names are
+   * `GovernanceDependencies`' own slot names, so the bundle a composition root
+   * assembles is these keys and cannot put one port in another's slot.
+   */
+  readonly safety: SafetyLedger;
+  readonly ratings: RatingsRepository;
+  readonly criteria: CriteriaRepository;
+  readonly evals: EvalsRepository;
+  readonly goldenSets: GoldenSetsRepository;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -189,6 +226,11 @@ export function buildPostgresTenancyAdapter(
     accessKeyRevocation: createAccessKeyRevocationCounter(transactions),
     invitationTokens: createInvitationTokenIssuer(),
     operators: createOperatorDirectory(identity.users),
+    // WIN-258 T5 (ADR M0.3 §15). The SIXTH owner delegated to this directory.
+    // Built from the same `transactions` as everything above, so the erasure
+    // target that counts a subject's safety events and ratings and then
+    // anonymises the first and destroys the second is ONE transaction.
+    ...createGovernanceStores(transactions),
     async close(): Promise<void> {
       await client.$disconnect();
     },

@@ -386,6 +386,17 @@ jobs:
         # all ten cases of a suite and the run reported nothing failing.
         run: pnpm --filter "@platos/context-channels..." build
 
+      - name: Build the governance context
+        # WIN-258 T5. The SIXTH owner delegated to this directory, and the one
+        # whose suites need the most from its context: the five canonical-store
+        # ports and the domain values their signatures name come from
+        # `application/ports/index.js`, and all FIVE in-memory doubles the
+        # conformance differential is measured against come from
+        # `application/testing/index.js`. Both are dist/. Without this step the
+        # five suites do not fail an assertion — they fail to LOAD, which is the
+        # vacuity the mutation driver beside this package refuses to score.
+        run: pnpm --filter "@platos/context-governance..." build
+
       - name: PostgreSQL repository integration suites
         # All FOUR quarters of the one directory (ADR M0.3 §15): the tenancy
         # repository, the identity-access canonical store, the kernel outbox's

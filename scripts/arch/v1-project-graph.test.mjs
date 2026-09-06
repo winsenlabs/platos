@@ -387,11 +387,12 @@ test("NodeNext consumers resolve bare roots and the explicit exported adapter-po
 test("the live owner map passes its own check", () => {
   // Non-vacuity for everything below.
   assert.deepEqual(checkAdapterOwnerCounts(), []);
-  // 2 -> 6 (WIN-258 T5, four times). `tools` is the THIRD owner delegated to
-  // this one directory, `agents` the FOURTH, `cost-monitoring` the FIFTH and
-  // `channels` the SIXTH. `agents` is one owner edge and not two even though it
-  // publishes two ports: this map counts OWNERS, and the project reference the
-  // adapter needs is per package, not per port.
+  // 2 -> 7 (WIN-258 T5, five times). `tools` is the THIRD owner delegated to
+  // this one directory, `agents` the FOURTH, `cost-monitoring` the FIFTH,
+  // `channels` the SIXTH and `governance` the SEVENTH. Neither `agents` nor
+  // `governance` is more than one owner edge even though they publish two ports
+  // and five: this map counts OWNERS, and the project reference the adapter
+  // needs is per package, not per port.
   assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 6 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 12);
 });
