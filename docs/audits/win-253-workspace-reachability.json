@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "57eaf9bb44daceadcb45c82f626ca088f9ed6435c26a0ed25b22fb2ab8fc3ab2",
+  "evidenceSha256": "650fd9539496c4654723750c22d8fa122e0d93200d390abfda3598b53af33845",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "e9a62752bd459ca224d562bbcbef7599377e23cb121a88a64b238dfa01e3f522",
+    "aggregateSha256": "f3683a0513c4fbdd30a3542cc6b4f61d8cac753ee19f446124fe898ea68ff319",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "aebe3674a588cb6d003808375b4cded6589baeb407a1b71f79d48901a82e46f0"
+        "sha256": "af0942bde751c0f61ba6a4cf31d4492d82e2d9b96baddad1b14189f9c629d79e"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -11221,7 +11221,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-skills.json",
-        "sha256": "3bdc68dbac4dedcb88b9e110aa5b0fd36f192bd6cddbd3934b4e92d3cafe910a"
+        "sha256": "ed62c4317d9c2b38f7a2b5d47bca1ead8eb57a2a0f190161f35e09be1a8270dd"
       },
       {
         "path": "packages/adapters/postgres-tenancy/mutations-tools.json",
@@ -18565,7 +18565,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "005ec5a6e07a3062800ae186ffaf69457a90c942f92d1f9739828a7d40c0cf3a"
+        "sha256": "27f1ee2af24d3ef0982603fc0df3e468e9807490ad7024d870f64d41ac75c2aa"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
