@@ -35,6 +35,40 @@ import type { TenancyContract } from "@platos/context-tenancy";
 import type { ProviderCatalogue, ProvidersPolicy } from "../domain/index.js";
 import type { ModelRouter, ProviderProbeCache, ProvidersRepository } from "./ports/index.js";
 
+/**
+ * The whole of `secrets` this context depends on, named by `providers`.
+ *
+ * WIN-258 M2.3. It was `SecretsContract` — the neighbour's ENTIRE published
+ * surface, fifteen methods — and the double behind it was the LAST
+ * whole-peer-contract double in the tree. That shape broke `build:v1` three
+ * times on this issue, because a double typed as a whole contract has to grow a
+ * stub for every method its owner adds, and a stub that returns "not offered" is
+ * a test passing against a peer that would have refused.
+ *
+ * SEVEN MEMBERS, and each one is a call this context actually makes: the vault
+ * hand-off `secrets/domain/credential.ts` records — `createCredential` and
+ * `rotateCredential` composed with this context's own `ProviderKey` write, and
+ * `revokeCredential` when that write fails — plus `describeCredential`,
+ * `listCredentials` and the `readSecret` every runtime path ends at. The other
+ * eight are environment variables, re-encryption, root-key reporting and version
+ * purging, every one of them another context's business to call.
+ *
+ * It is a `Pick` rather than a restatement, on the rule `SkillsPeer` states:
+ * narrowing WHICH methods this context depends on does not licence it to
+ * restate its neighbour's vocabulary, and re-declaring a credential's shape here
+ * would put a second definition of a `secrets` row in a package that owns none.
+ */
+export type SecretsPeer = Pick<
+  SecretsContract,
+  | "name"
+  | "createCredential"
+  | "describeCredential"
+  | "listCredentials"
+  | "readSecret"
+  | "revokeCredential"
+  | "rotateCredential"
+>;
+
 export interface ProvidersDependencies {
   readonly repository: ProvidersRepository;
   readonly modelRouter: ModelRouter;
@@ -44,7 +78,8 @@ export interface ProvidersDependencies {
   readonly unitOfWork: UnitOfWork;
   readonly policy: ProvidersPolicy;
   readonly catalogue: ProviderCatalogue;
-  readonly secrets: SecretsContract;
+  /** Opaque by design, and narrow by design: see the note above. */
+  readonly secrets: SecretsPeer;
   readonly tenancy: TenancyContract;
 }
 

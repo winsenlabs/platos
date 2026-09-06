@@ -17,7 +17,6 @@ import {
   type UnitOfWork,
   type Uuid,
 } from "@platos/kernel";
-import type { SecretsContract } from "@platos/context-secrets";
 import type { TenancyContract } from "@platos/context-tenancy";
 
 import {
@@ -133,7 +132,7 @@ export function buildProvidersTestContext(
       unitOfWork,
       policy: options.policy ?? DEFAULT_PROVIDERS_POLICY,
       catalogue: options.catalogue ?? DEFAULT_PROVIDER_CATALOGUE,
-      secrets: secrets as unknown as SecretsContract,
+      secrets,
       tenancy: tenancy as unknown as TenancyContract,
     }),
     repository,
