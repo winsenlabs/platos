@@ -75,9 +75,13 @@ const MIGRATION_NAME = /^(\d{14})_[a-z0-9]+(?:_[a-z0-9]+)*$/u;
  * asserted in a suite, because the SAME function is what a suite compares the
  * live `_prisma_migrations` table against — a validator the runner disagreed
  * with would report a healthy set on a database that skipped one.
+ *
+ * `root` is injectable so each refusal below has a NAMED case that can reach it.
+ * A validator whose only input is the repository's own — correct — migration set
+ * is a validator none of whose branches can be shown to do anything.
  */
-export function orderedMigrations(): readonly OrderedMigration[] {
-  const entries = readdirSync(migrationsRoot, { withFileTypes: true });
+export function orderedMigrations(root: string = migrationsRoot): readonly OrderedMigration[] {
+  const entries = readdirSync(root, { withFileTypes: true });
   const files = entries.filter((entry) => !entry.isDirectory()).map((entry) => entry.name);
   const unexpected = files.filter((name) => name !== "migration_lock.toml");
   if (unexpected.length > 0) {
@@ -100,7 +104,7 @@ export function orderedMigrations(): readonly OrderedMigration[] {
           `migration directory ${name} is not <14-digit stamp>_<snake_case label>`,
         );
       }
-      const body = readFileSync(resolve(migrationsRoot, name, "migration.sql"), "utf8");
+      const body = readFileSync(resolve(root, name, "migration.sql"), "utf8");
       return {
         name,
         stamp: matched[1] as string,

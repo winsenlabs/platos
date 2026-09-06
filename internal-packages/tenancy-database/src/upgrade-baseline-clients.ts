@@ -219,6 +219,40 @@ export function soleStoredFieldOnlyIn(
 const OUTPUT_LINE = /^(\s*output\s*=\s*)"[^"]*"/m;
 
 /**
+ * Check a frozen release schema and hand back the copy that may be generated.
+ *
+ * PURE, AND EXPORTED, so both refusals have a NAMED case that can reach them. A
+ * digest check whose only input is the file it guards can never be seen to do
+ * anything: the file is correct, so the branch is never taken, and a sweep that
+ * removed the branch would find nothing red.
+ *
+ * The redirect is the second half rather than a separate step because the two
+ * are one decision. Both frozen schemas say `output = "../generated/control"`,
+ * which is where the LIVE client goes; generating either one unchanged would
+ * overwrite the client the rest of the package imports, and generating the
+ * second would overwrite the first. A rewrite that silently matched nothing
+ * would do exactly that, so a miss is a refusal and not a fallback.
+ */
+export function verifyFrozenSchema(source: string, release: UpgradeBaselineRelease): string {
+  const digest = createHash("sha256").update(source).digest("hex");
+  if (digest !== release.schemaSha256) {
+    throw new UpgradeBaselineError(
+      UPGRADE_BASELINE_SCHEMA_DRIFT,
+      `the frozen ${release.name} schema hashes to ${digest}, not the pinned ` +
+        `${release.schemaSha256}; it is ${release.commit} verbatim and may not be edited`,
+    );
+  }
+  if (!OUTPUT_LINE.test(source)) {
+    throw new UpgradeBaselineError(
+      UPGRADE_BASELINE_OUTPUT_UNPINNED,
+      `the frozen ${release.name} schema has no generator output line to redirect; ` +
+        "generating it unchanged would overwrite the live client",
+    );
+  }
+  return source.replace(OUTPUT_LINE, '$1"./client"');
+}
+
+/**
  * Rebuild one old binary's client.
  *
  * Generation happens on demand rather than in `pnpm generate`, because these two
@@ -237,24 +271,7 @@ export async function rebuildUpgradeBaseline(name: string): Promise<UpgradeBasel
   }
 
   const frozenPath = resolve(packageRoot, `prisma/upgrade-baselines/${release.name}/schema.prisma`);
-  const frozen = readFileSync(frozenPath, "utf8");
-  const digest = createHash("sha256").update(frozen).digest("hex");
-  if (digest !== release.schemaSha256) {
-    throw new UpgradeBaselineError(
-      UPGRADE_BASELINE_SCHEMA_DRIFT,
-      `${frozenPath} hashes to ${digest}, not the pinned ${release.schemaSha256}; ` +
-        `a frozen release schema may not be edited — it is ${release.commit} verbatim`,
-    );
-  }
-
-  if (!OUTPUT_LINE.test(frozen)) {
-    throw new UpgradeBaselineError(
-      UPGRADE_BASELINE_OUTPUT_UNPINNED,
-      `${frozenPath} has no generator output line to redirect; generating it unchanged ` +
-        "would overwrite the live client",
-    );
-  }
-  const redirected = frozen.replace(OUTPUT_LINE, '$1"./client"');
+  const redirected = verifyFrozenSchema(readFileSync(frozenPath, "utf8"), release);
 
   const workspace = resolve(packageRoot, "generated/upgrade", release.name);
   rmSync(workspace, { recursive: true, force: true });
