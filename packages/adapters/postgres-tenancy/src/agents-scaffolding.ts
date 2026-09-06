@@ -53,7 +53,7 @@ import {
 } from "./agents-guards.js";
 import { nullableJson } from "./client.js";
 import type { MacroRow, PostmanTemplateRow } from "./agents-rows.js";
-import { toMacro, toTemplate } from "./agents-rows.js";
+import { MACRO_COLUMNS, TEMPLATE_COLUMNS, toMacro, toTemplate } from "./agents-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
 /** `byMacroOrder`: most recently updated first, then by id descending. */
@@ -119,6 +119,7 @@ export function createScaffoldingRepository(
       const rows = (await transactions.reader().macro.findMany({
         where: { environmentId: scope.environmentId, ...visible },
         orderBy: [...MACRO_ORDER],
+        select: MACRO_COLUMNS,
         take: query.limit,
       })) as MacroRow[];
       return ok(rows.map(toMacro));
@@ -127,7 +128,10 @@ export function createScaffoldingRepository(
     async findMacro(scope: EnvironmentScope, macroId: MacroId): Promise<Result<Macro | null>> {
       const row = (await transactions
         .reader()
-        .macro.findFirst({ where: { id: macroId, environmentId: scope.environmentId } })) as MacroRow | null;
+        .macro.findFirst({
+          where: { id: macroId, environmentId: scope.environmentId },
+          select: MACRO_COLUMNS,
+        })) as MacroRow | null;
       return ok(row === null ? null : toMacro(row));
     },
 
@@ -170,6 +174,7 @@ export function createScaffoldingRepository(
     ): Promise<Result<PostmanTemplate | null>> {
       const row = (await transactions.reader().postmanTemplate.findFirst({
         where: { id: templateId, environmentId: scope.environmentId },
+        select: TEMPLATE_COLUMNS,
       })) as PostmanTemplateRow | null;
       return ok(row === null ? null : toTemplate(row));
     },
@@ -195,6 +200,7 @@ export function createScaffoldingRepository(
         transactions.reader().postmanTemplate.findMany({
           where,
           orderBy: [...TEMPLATE_ORDER],
+          select: TEMPLATE_COLUMNS,
           skip: query.offset,
           take: query.limit,
         }) as Promise<PostmanTemplateRow[]>,
@@ -210,6 +216,7 @@ export function createScaffoldingRepository(
       const rows = (await transactions.reader().postmanTemplate.findMany({
         where: { environmentId: scope.environmentId, agentId },
         orderBy: [...TEMPLATE_ORDER],
+        select: TEMPLATE_COLUMNS,
       })) as PostmanTemplateRow[];
       return ok(rows.map(toTemplate));
     },

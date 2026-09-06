@@ -1,0 +1,190 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 7, dimension `typed JSON columns;",
+    "selectors and projections`. It is a TWENTIETH file beside mutations.json and",
+    "the eighteen per-context ledgers, for the reason each of those was its own:",
+    "a tranche is a separate claim about a separate surface, and a reader checking",
+    "one should not have to read past the others. All are hashed by the same",
+    "packages.adapters.config rule and counted together by the v1 ledger.",
+    "",
+    "WHAT THIS DIMENSION FOUND, AND WHY THE LEDGER IS SPLIT IN TWO.",
+    "",
+    "The forty-nine JSONB columns behind this package each carry a",
+    "`<Model>_<column>_json_root` CHECK, and every one of them is VALIDATED in the",
+    "live catalog. That is a stronger fact than any decoder: a scalar, or an array",
+    "in an object column, CANNOT BE COMMITTED — not by this adapter, not by another",
+    "binary, and not by `prisma db execute`. So a root guard in TypeScript cannot",
+    "be turned red by a stored row, and this ledger says so rather than counting a",
+    "kill it did not get. Each such guard is falsified DIRECTLY (a call with a bad",
+    "value) and PAIRED with the database refusing the same shape out of band, in",
+    "`json-columns.integration.test.ts`.",
+    "",
+    "The INTERIOR is a different matter, and that is where the defect was. The",
+    "CHECK on `Macro.steps` pins the ROOT to an array and says NOTHING about an",
+    "element's members, so `{\"tool\":\"send\",\"params\":[\"a\"]}` is storable by any",
+    "writer. The old reader answered `{}` for it: the macro replayed `send` WITH NO",
+    "PARAMETERS and the read reported success. That is M-J01, it is written out of",
+    "band with `prisma db execute`, and it is the one coercion in this package that",
+    "a committed row could reach."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST, THEN REBUILD BETWEEN EVERY MUTATION.",
+    "`pnpm test:v1-foundation` runs `test:clean-v1`, which removes every V1",
+    "project's dist; a sweep run after it without rebuilding reports kills that are",
+    "VACUOUS. The sweep driver rebuilds before each measurement and again after",
+    "reverting, and a mutation that fails to COMPILE is not counted as killed —",
+    "two of the entries below were rewritten because their first form was a type",
+    "error rather than a behaviour change, and a type error kills nothing.",
+    "",
+    "RUN ON THE MAC MINI, over ssh, in a detached worktree. Docker may not run on",
+    "the laptop. Container socket: unix:///Users/tejassuds/.colima/default/docker.sock",
+    "with TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock."
+  ],
+  "result": [
+    "THIRTEEN mutations. ELEVEN killed by a named case. TWO SURVIVED and are",
+    "declared below rather than removed, because the reason they survive is a",
+    "MEASUREMENT and not an oversight.",
+    "",
+    "THE SWEEP FOUND A CIRCULAR ASSERTION AND IT WAS FIXED. M-J11 first survived:",
+    "the projection cases compared the emitted SELECT list against the column map,",
+    "so dropping a column from the map shrank BOTH sides and the case stayed green.",
+    "The maps are now reconciled against `schema.prisma`, which is not themselves,",
+    "and M-J11 goes red there. An assertion that cannot fail is not evidence, and a",
+    "sweep is the only thing that finds one."
+  ],
+  "mutations": [
+    {
+      "name": "M-J01 rows: a macro step's params must be an object when present",
+      "file": "src/agents-rows.ts",
+      "from": "    if (typeof params !== \"object\" || Array.isArray(params)) {",
+      "to": "    if (false) {",
+      "note": "THE DEFECT THIS DIMENSION FOUND. `Macro_steps_json_root` pins the column's ROOT to an array and says nothing about an element's members, so a step carrying `params: [\"a\",\"b\"]` is storable by any writer and was read back as `{}` — the macro replayed the tool with NO PARAMETERS and reported success. The malformed row is written by `prisma db execute` on a connection this adapter's pool never touches, so no write path can have sanitised it.",
+      "suites": ["src/agents-rows.test.ts", "src/json-columns.integration.test.ts"],
+      "kills": [
+        "REFUSES a step whose params are present and are not an object",
+        "a step whose params are an ARRAY is stored, and is REFUSED on the way back",
+        "a step whose params are a STRING reads back as a refusal, not as no parameters",
+        "a LISTING refuses the page rather than answering with one blank macro"
+      ]
+    },
+    {
+      "name": "M-J02 rows: a macro step must name a NON-EMPTY tool",
+      "file": "src/agents-rows.ts",
+      "from": "    if (step === null || typeof tool !== \"string\" || tool === \"\") {",
+      "to": "    if (step === null || typeof tool !== \"string\") {",
+      "note": "An empty tool name replays as a no-op that reports success. The integration case stays GREEN under this mutation and that is recorded rather than hidden: the out-of-band row it writes has no `tool` key at all, so the `typeof` arm still fires. The empty-string arm is falsified by the unit suite alone, which is what the `suites` list says.",
+      "suites": ["src/agents-rows.test.ts"],
+      "kills": ["REFUSES a step that names no tool"]
+    },
+    {
+      "name": "M-J03 rows: the steps column must hold a JSON array",
+      "file": "src/agents-rows.ts",
+      "from": "  if (!Array.isArray(value)) {\n    throw new UnreadableAgentsRowError(\n      MACRO_STEPS_NOT_AN_ARRAY,\n      \"Macro.steps\",\n      `Macro ${id} carries steps that are not an array`,\n    );\n  }",
+      "to": "  if (!Array.isArray(value)) return [];",
+      "note": "Mutated to the COERCION rather than to `if (false)`, because `if (false)` leaves `value` unnarrowed and is a type error — and a type error kills nothing. The database refuses the stored shape (`Macro.steps cannot hold a scalar root` proves it), so this guard is falsifiable only by a direct call.",
+      "suites": ["src/agents-rows.test.ts"],
+      "kills": ["REFUSES a steps column that is not an array"]
+    },
+    {
+      "name": "M-J04 rows: an object-rooted agents column must hold an object",
+      "file": "src/agents-rows.ts",
+      "from": "  if (typeof value !== \"object\" || Array.isArray(value)) {\n    throw new UnreadableAgentsRowError(\n      AGENTS_COLUMN_NOT_AN_OBJECT,",
+      "to": "  if (false) {\n    throw new UnreadableAgentsRowError(\n      AGENTS_COLUMN_NOT_AN_OBJECT,",
+      "note": "The reader used to answer `null` here, which `toSkill` turned into `{}` and `toTemplate` into a null session context. At the TOP of a column the refusal is unreachable — four CHECKs say so and the integration suite makes the database refuse all four — but the same function reads the INTERIOR value `toMacroSteps` hands it, where no CHECK reaches.",
+      "suites": ["src/agents-rows.test.ts"],
+      "kills": ["REFUSES an array and a scalar rather than answering null"]
+    },
+    {
+      "name": "M-J05 rows: the four agents refusals carry four different codes",
+      "file": "src/agents-rows.ts",
+      "from": "export const MACRO_STEP_PARAMS_NOT_AN_OBJECT = \"agents.adapter.macro_step_params_not_an_object\";",
+      "to": "export const MACRO_STEP_PARAMS_NOT_AN_OBJECT = \"agents.adapter.macro_steps_not_an_array\";",
+      "note": "Before T7 this module carried ONE code and a column name, and two of its refusals were `unreadable_row` on column `Macro.steps` — a column written by something that is not this store, and one bad element in an otherwise readable table, arriving as the same fact. An operator cannot act on the pair.",
+      "suites": ["src/agents-rows.test.ts"],
+      "kills": ["the four refusals this module raises carry four different codes"]
+    },
+    {
+      "name": "M-J06 outbox: Event.payload must hold an object root",
+      "file": "src/outbox-store.ts",
+      "from": "  if (typeof value !== \"object\" || value === null || Array.isArray(value)) {",
+      "to": "  if (false) {",
+      "note": "The drain used to cast this column to `unknown`, so a payload that was not an envelope failed inside whichever projection the event type routes to, on every pass over the same row, for as long as the row is in the outbox. `Event_payload_json_root` makes a committed bad payload impossible and the integration suite has the database refuse the INSERT, so the guard is falsified by a direct call and PAIRED with that refusal.",
+      "suites": ["src/outbox-store.test.ts", "src/json-columns.integration.test.ts"],
+      "kills": [
+        "REFUSES every root the column's CHECK also refuses",
+        "Event.payload cannot be INSERTED with an array root"
+      ]
+    },
+    {
+      "name": "M-J07 census: a column's root is the migration's and the catalog's",
+      "file": "src/json-columns.ts",
+      "from": "    model: \"Macro\", column: \"steps\", root: \"array\", nullable: false,",
+      "to": "    model: \"Macro\", column: \"steps\", root: \"object\", nullable: false,",
+      "note": "The census is only worth having if it cannot drift from the thing it describes. It is joined THREE ways: to the migrations' CHECK text, to `pg_constraint` on a live container, and to the schema's own optionality.",
+      "suites": ["src/json-columns.test.ts", "src/json-columns.integration.test.ts"],
+      "kills": [
+        "Macro.steps: the census root and null arm are the CHECK's own",
+        "every `_json_root` CHECK the census names is IN the database, and no other is"
+      ]
+    },
+    {
+      "name": "M-J08 census: a named decoder is a symbol that exists",
+      "file": "src/json-columns.ts",
+      "from": "    owner: \"privacy\", decoder: \"privacy-rows.readTenantScope\", disposition: \"refuse\",",
+      "to": "    owner: \"privacy\", decoder: \"privacy-rows.readTenantScopeGone\", disposition: \"refuse\",",
+      "note": "Resolved against the TEXT of the named module rather than by importing it, because an import would pass on a symbol re-exported from somewhere else — and where the decode boundary LIVES is the whole of what the census claims.",
+      "suites": ["src/json-columns.test.ts"],
+      "kills": ["ErasureOperation.scopes is decoded by privacy-rows.readTenantScope"]
+    },
+    {
+      "name": "M-J09 census: a disposition and a decoder agree",
+      "file": "src/json-columns.ts",
+      "from": "    owner: \"-\", decoder: \"\", disposition: \"unowned\",\n    note: \"No store here names endUserIdentity",
+      "to": "    owner: \"-\", decoder: \"\", disposition: \"refuse\",\n    note: \"No store here names endUserIdentity",
+      "note": "`EndUserIdentity.profile` and `ObservabilityOutbox.payload` are the two columns NO store in this package reads or writes, and recording them as refused would be the census claiming a boundary that is not there.",
+      "suites": ["src/json-columns.test.ts"],
+      "kills": [
+        "a decoder is named exactly when the disposition implies one",
+        "an owner is named exactly when a store owns the write"
+      ]
+    },
+    {
+      "name": "M-J10 census: every Json column in the schema is in the census",
+      "file": "src/json-columns.ts",
+      "from": "  {\n    model: \"Turn\", column: \"output\", root: \"object\", nullable: true,",
+      "to": "  {\n    model: \"Turn\", column: \"outputGone\", root: \"object\", nullable: true,",
+      "note": "Adding a `Json` column without adding a row here fails, and so does naming a column the schema does not have. Both halves are asserted, over `schema.prisma` and `end-user.prisma` joined.",
+      "suites": ["src/json-columns.test.ts"],
+      "kills": [
+        "it agrees with schema.prisma and end-user.prisma, joined",
+        "every Json column carries a `_json_root` CHECK"
+      ]
+    },
+    {
+      "name": "M-J11 rows: a column map is the model's own column list",
+      "file": "src/agents-rows.ts",
+      "from": "export const MACRO_COLUMNS = {\n  id: true,\n  environmentId: true,",
+      "to": "export const MACRO_COLUMNS = {\n  id: true,",
+      "note": "THIS ONE SURVIVED THE FIRST SWEEP, and the survival was the finding. The projection cases compared the emitted SELECT list against the map, which is circular — dropping a column shrinks both sides. The maps are now joined to `schema.prisma`. The integration case still reports green under this mutation, which is recorded rather than hidden: it is the statement pin, and the schema join is the guard.",
+      "suites": ["src/json-columns.test.ts"],
+      "kills": ["Macro's map names every column the model has"]
+    }
+  ],
+  "survivors": [
+    {
+      "name": "M-J12 scaffolding: a macro read PROJECTS its columns",
+      "file": "src/agents-scaffolding.ts",
+      "from": "          where: { id: macroId, environmentId: scope.environmentId },\n          select: MACRO_COLUMNS,",
+      "to": "          where: { id: macroId, environmentId: scope.environmentId },",
+      "why": "DECLARED, NOT KILLED, and the reason is measured rather than argued. The client does not send `SELECT *`: with no `select` it names the columns its own schema knows, and for every model this dimension projected that list is ALREADY exactly the row interface's. So removing the selector changes no statement today and no assertion can see it. What the selector buys is the NEXT migration: a column added to `Macro` joins an unprojected read on every page and is carried into the domain object by nothing, and the `as MacroRow` assertion — which is how every read in this context is written — goes on claiming otherwise. The guard bites then, and the map-to-schema join (M-J11) is what will notice."
+    },
+    {
+      "name": "M-J13 catalog: the bound read PROJECTS every relation",
+      "file": "src/agents-catalog.ts",
+      "from": "  activeAgentVersion: { select: VERSION_COLUMNS },",
+      "to": "  activeAgentVersion: true,",
+      "why": "DECLARED for the same measured reason as M-J12, and worth stating separately because this is the read where widening would cost most: a bound agent carries TWO `AgentVersion` rows, six JSONB documents each, and a page of twenty is forty of them. `include: true` and `select: VERSION_COLUMNS` emit the same list today; the difference is whether the next column on `AgentVersion` joins that page."
+    }
+  ]
+}

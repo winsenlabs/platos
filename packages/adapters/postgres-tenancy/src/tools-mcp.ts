@@ -55,6 +55,29 @@ export interface ToolsMcp {
   saveMcpClient(scope: EnvironmentScope, client: EntityMcpClient): Promise<Result<EntityMcpClient>>;
 }
 
+/**
+ * The eleven columns `McpConfigRow` declares.
+ *
+ * WIN-258 T7. `findMcpConfig` is on the hosted MCP surface's REQUEST path — the
+ * comment on `toolAllowlist` below says the column exists because that surface
+ * reads it on every request — so an unprojected read there pays for the whole
+ * row, `identityProviders` and `branding` deserialised, once per request. The
+ * assertion `as McpConfigRow` is now a fact about the SELECT.
+ */
+export const CONFIG_SELECT = {
+  entityId: true,
+  enabled: true,
+  identityMode: true,
+  identityProviders: true,
+  branding: true,
+  toolAllowlist: true,
+  redirectUriAllowlist: true,
+  rateLimitPerMinute: true,
+  injectMcpContext: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 /** The client row plus the credential name the record carries and it lacks. */
 const CLIENT_SELECT = {
   entityId: true,
@@ -84,6 +107,7 @@ export function createToolsMcp(transactions: TenancyTransactions): ToolsMcp {
       return inScope(transactions, scope, "findMcpConfig", async () => {
         const row = (await transactions.reader().entityMcpConfig.findFirst({
           where: { entityId, entity: { projectId: scope.projectId } },
+          select: CONFIG_SELECT,
         })) as McpConfigRow | null;
         return ok(row === null ? null : toMcpConfig(row));
       });

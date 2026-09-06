@@ -79,6 +79,51 @@ export interface ToolsTranscript {
 }
 
 /**
+ * The fourteen columns `ToolCallRow` declares, and the sixteen `AuditRow` does.
+ *
+ * WIN-258 T7. Both tables carry TWO JSONB columns, and `ToolCallAudit.result`
+ * holds whatever a tool returned — the largest documents this schema stores.
+ * `pageAudit` reads a window of them per page, so an unprojected read there is
+ * the one place in this package where widening the table would be felt as
+ * megabytes rather than as bytes. Both assertions below already named the
+ * columns; the selects make them true of the statement.
+ */
+export const CALL_SELECT = {
+  id: true,
+  stepId: true,
+  toolId: true,
+  sequence: true,
+  toolName: true,
+  arguments: true,
+  result: true,
+  status: true,
+  retryCount: true,
+  error: true,
+  latencyMs: true,
+  startedAt: true,
+  completedAt: true,
+  createdAt: true,
+} as const;
+
+export const AUDIT_SELECT = {
+  id: true,
+  environmentId: true,
+  toolId: true,
+  toolName: true,
+  agentId: true,
+  threadId: true,
+  endUserId: true,
+  traceId: true,
+  arguments: true,
+  result: true,
+  error: true,
+  status: true,
+  latencyMs: true,
+  costCents: true,
+  createdAt: true,
+} as const;
+
+/**
  * A value the client will accept for a NULLABLE `Json` column.
  *
  * `null` is not one: the client refuses it as a validation error rather than
@@ -101,6 +146,7 @@ export function createToolsTranscript(transactions: TenancyTransactions): ToolsT
         const rows = (await transactions.reader().toolCall.findMany({
           where: { stepId, step: stepInScope(scope) },
           orderBy: { sequence: "asc" },
+          select: CALL_SELECT,
         })) as unknown as readonly ToolCallRow[];
         return ok(rows.map(toToolCall));
       });
@@ -228,6 +274,7 @@ export function createToolsTranscript(transactions: TenancyTransactions): ToolsT
           // parallel, so several rows sharing a millisecond is the common case,
           // and a paged listing whose order is not total drops and repeats.
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: AUDIT_SELECT,
           skip: query.offset,
           take: query.limit,
         })) as unknown as readonly AuditRow[];

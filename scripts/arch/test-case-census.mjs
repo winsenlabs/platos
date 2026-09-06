@@ -2176,6 +2176,47 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * The tree total is 459 + 7 = 466 files and 6845 + 100 = 6945 cases. The adapters
  * term of the three-way identity carries all seven, because every added file is
  * an adapter's: 107 + 7 = 114, and 349 + 3 + 114 = 466.
+ *
+ * 119 -> 122 FILES AND 1310 -> 1358 CASES (WIN-258 T7, typed JSON columns and
+ * projections). THREE files and FORTY-EIGHT cases, every number READ BACK from
+ * the counter in this file:
+ *
+ *   json-columns.test.ts                   24  the census of all forty-nine
+ *                                              JSONB columns, joined to
+ *                                              schema.prisma, to the migrations'
+ *                                              CHECK text and to the decoder
+ *                                              symbols on disk; twelve of the
+ *                                              twenty-four are the column maps
+ *                                              reconciled model by model
+ *   json-columns.integration.test.ts       17  the same census joined to
+ *                                              `pg_constraint` on a live
+ *                                              container, the malformed
+ *                                              interiors written by
+ *                                              `prisma db execute`, the five
+ *                                              roots the database itself refuses
+ *                                              and the projected SELECT lists
+ *   outbox-store.test.ts                    3  `Event.payload`'s reader
+ *
+ * 24 + 17 + 3 = 44, plus FOUR added to the existing `agents-rows.test.ts` — the
+ * params refusal this tranche found, the four-distinct-codes case, and the two
+ * for `readObjectColumn` — is 48 over 3 new files.
+ *
+ * TWO CASES IN THIS BLOCK ARE ONE CASE OVER FORTY-NINE COLUMNS, DELIBERATELY.
+ * The roots reconciliation and the decoder resolution were first written as
+ * `test.each` over a computed table, which this census REFUSES and is right to:
+ * a table it cannot count statically is a suite whose disappearing case it
+ * cannot notice. They are loops inside one case, each assertion carrying the
+ * column name so a failure still says which column failed.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 12 in the column-map reconciliation.
+ * It is an array literal of MODEL NAMES, one per projected read, so adding a
+ * projection adds a row here and moves this count — which is the point: a
+ * selector nothing joins to the schema is the circular assertion the mutation
+ * sweep found and killed.
+ *
+ * The tree total is 490 + 3 = 493 files and 7226 + 48 = 7274 cases. The adapters
+ * term of the three-way identity carries all three, because every added file is
+ * an adapter's: 138 + 3 = 141, and 349 + 3 + 141 = 493.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2186,7 +2227,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 119, cases: 1310 },
+  "packages/adapters/postgres-tenancy": { files: 122, cases: 1358 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2372,7 +2413,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7226;
+export const EXPECTED_RUNTIME_TOTAL = 7274;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

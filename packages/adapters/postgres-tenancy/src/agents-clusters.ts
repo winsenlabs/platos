@@ -39,7 +39,7 @@ import {
 } from "./agents-guards.js";
 import { nullableJson } from "./client.js";
 import type { AgentClusterRow } from "./agents-rows.js";
-import { toCluster } from "./agents-rows.js";
+import { CLUSTER_COLUMNS, toCluster } from "./agents-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
 /** `byClusterOrder`: newest first, then by id descending. */
@@ -75,6 +75,7 @@ export function createAgentClusters(transactions: TenancyTransactions) {
     ): Promise<Result<AgentCluster | null>> {
       const row = (await transactions.reader().agentCluster.findFirst({
         where: { id: clusterId, environmentId: scope.environmentId },
+        select: CLUSTER_COLUMNS,
       })) as AgentClusterRow | null;
       return ok(row === null ? null : toCluster(row));
     },
@@ -83,6 +84,7 @@ export function createAgentClusters(transactions: TenancyTransactions) {
       const rows = (await transactions.reader().agentCluster.findMany({
         where: { environmentId: scope.environmentId },
         orderBy: [...CLUSTER_ORDER],
+        select: CLUSTER_COLUMNS,
       })) as AgentClusterRow[];
       return ok(rows.map(toCluster));
     },

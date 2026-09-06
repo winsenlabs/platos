@@ -875,7 +875,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages` and nowhere else, so this slice is the SUM; no branch's own
     // figure — 1129, 1127, 1127 again, 1125, 1181, 1184 or 1185 — is right
     // merged.
-    packages: 1378,
+    //
+    // WIN-258 TRANCHE 7, the `typed JSON columns; selectors and projections`
+    // dimension, adds FIVE and all five to `packages`, none to any other area:
+    //   source  packages/adapters/postgres-tenancy/src/json-columns.ts
+    //             the census of all forty-nine JSONB columns, their pinned roots
+    //             and the decoder standing at each one
+    //   test    packages/adapters/postgres-tenancy/src/json-columns.test.ts
+    //             the census joined to schema.prisma, to the migrations' CHECK
+    //             text, and to the decoder symbols on disk
+    //   test    packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts
+    //             the same census joined to `pg_constraint` on a live container,
+    //             plus the malformed interiors written by `prisma db execute`
+    //   test    packages/adapters/postgres-tenancy/src/outbox-store.test.ts
+    //             `Event.payload`'s reader, falsified directly because the
+    //             column's CHECK makes a committed bad payload impossible
+    //   config  packages/adapters/postgres-tenancy/mutations-json.json
+    //             the tranche's guard ledger, on the `packages.adapters.config`
+    //             rule that already carries nineteen siblings
+    // 1378 + 5 = 1383. No ledger rule changed: all five land on rules that
+    // already existed.
+    packages: 1383,
     "internal-packages": 0,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1125,7 +1145,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1454);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1459);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1150,9 +1170,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `governance` +19, `secrets` +20, `providers` +17, `conversations` +21,
     // `skills` +18, `memory` +22, `privacy` +15, `jobs` +18, `files` +19,
     // `observability` +13 and `eventing` +15, all in ONE, plus that tranche's
-    // second sweep +1); this one re-derives it by summing the per-area counts
+    // second sweep +1, and WIN-258 tranche 7's JSON-column census +5); this one
+    // re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1454
+    rulesDocument.baseline.totalFiles + 1459
   );
 });
 
