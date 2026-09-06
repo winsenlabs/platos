@@ -149,6 +149,31 @@
 // would put a provider's transient answers into the database the port exists to
 // keep them out of.
 //
+// AND SO DOES `privacy`'s `PrivacyRepository` (WIN-258 T5). The two rows of ADR
+// M0.3 §1 row 18 — `ErasureOperation` and `ErasureTombstone` — are in that same
+// database behind that same client, so Amendment 15 puts them here rather than in
+// a thirteenth package holding a second one. Its ten method names collide with
+// nothing above, so it is spread in like the rest and `PORT_SATISFACTION` can
+// resolve `Satisfies<PostgresTenancyAdapter, PrivacyRepository>` at compile time.
+//
+// IT IS THE ENTRY THAT MAKES A MULTI-CONTEXT ERASURE ATOMIC AT ALL, which is a
+// sharper argument than any other owner in this file has. `run-erasure-pass.ts`
+// opens ONE unit of work and asks every injected `ErasureTarget` to carry out its
+// plan inside it, then writes this context's own progress row. Those targets are
+// `conversations`' erasure store, `memory`'s two stores, `governance`'s ledger
+// and `skills`' anonymiser — every one of them already in this directory, on this
+// `TenancyTransactions`. A separate package for `privacy` would have minted the
+// `TransactionScope` on a second ambient frame, and every target would have
+// refused it `scope_unknown`: the erasure would not have been non-atomic, it
+// would not have run.
+//
+// The context's THREE other ports are deliberately absent and
+// `privacy-repository.ts` says why for each: `SubjectDirectory` reads
+// `identity-access`' identity graph, which this directory can physically read and
+// this port is not entitled to; `SubjectHasher` is a synchronous salted digest
+// whose secret has no business behind a database client; and `LegalHoldRegister`
+// is installation configuration with no canonical row in the schema at all.
+//
 // AND SO DOES `skills`' `SkillsRepository` (WIN-258 T5). The three rows of ADR
 // M0.3 §1 row 6 — `Skill`, `ProjectSkill` and `EnvironmentSkill` — are in that
 // same database behind that same client, so Amendment 15 puts them here rather
@@ -191,6 +216,7 @@ import type {
   SafetyLedger,
 } from "@platos/context-governance/application/ports/index.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
+import type { PrivacyRepository } from "@platos/context-privacy/application/ports/index.js";
 import type { ProvidersRepository } from "@platos/context-providers/application/ports/index.js";
 import type {
   EnvironmentVariableRepository,
@@ -226,6 +252,7 @@ import { createMembershipRepository } from "./membership.js";
 import { createOperatorDirectory, createOperatorSessionRevoker } from "./operator-peers.js";
 import type { OutboxEventStorePort } from "./outbox-store.js";
 import { createOutboxEventStore } from "./outbox-store.js";
+import { createPrivacyRepository } from "./privacy-repository.js";
 import { createProvidersRepository } from "./providers-repository.js";
 import {
   createEnvironmentVariableRepository,
@@ -246,6 +273,7 @@ export interface PostgresTenancyAdapter
     BudgetRepository,
     ChannelsRepository,
     ProvidersRepository,
+    PrivacyRepository,
     OutboxEventStorePort {
   readonly adapterName: "postgres-tenancy";
   /** The transaction boundary every write of this repository must run inside. */
@@ -499,6 +527,16 @@ export function buildPostgresTenancyAdapter(
     // `TransactionScope` minted by THIS ambient frame rather than by a second
     // one that would refuse it as `scope_unknown`.
     ...createConversationsStores(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The THIRTEENTH owner in this directory, and the
+    // one whose correctness depends on the shared `transactions` more than any
+    // other above it. `run-erasure-pass.ts` opens ONE unit of work, asks every
+    // injected `ErasureTarget` to erase inside it, and writes this context's own
+    // progress row in the same breath. Four of those targets — `conversations`',
+    // `memory`'s, `governance`'s and `skills`' — are spread into this very
+    // object, so the `TransactionScope` the pass mints is a token THIS ambient
+    // frame issued and every one of them accepts. A second pool would have made
+    // it `scope_unknown` at each target in turn.
+    ...createPrivacyRepository(transactions),
   };
 }
 

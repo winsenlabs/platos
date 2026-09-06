@@ -48,6 +48,7 @@ import type {
   ScaffoldingRepository,
 } from "@platos/context-agents/application/ports/index.js";
 import type { ObjectStore } from "@platos/context-files/application/ports/index.js";
+import type { PrivacyRepository } from "@platos/context-privacy/application/ports/index.js";
 import type { ObservabilitySink } from "@platos/context-observability/application/ports/index.js";
 import type {
   Cache,
@@ -101,7 +102,7 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, THIRTY-EIGHT BINDINGS (ADR M0.3 §15). An install wires a
+ * TWELVE SLOTS, THIRTY-NINE BINDINGS (ADR M0.3 §15). An install wires a
  * DIRECTORY — one process-lifetime object holding one vendor client — so this
  * table stays keyed by directory and keeps twelve entries. What a directory
  * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
@@ -308,6 +309,18 @@ interface PortSatisfaction {
     PostgresTenancyAdapter["memoryGraph"],
     KnowledgeGraphRepository
   >;
+  // WIN-258 T5. `privacy`'s ONE canonical-store port, proven through the adapter
+  // ITSELF rather than through a property — the shape `tools`, `agents`,
+  // `cost-monitoring`, `channels` and `providers` have, and the shape `secrets`,
+  // `skills` and `memory` were denied by a name collision. `PrivacyRepository` is
+  // one interface extending `OperationRepository` and `TombstoneRepository`, and
+  // its ten method names collide with nothing the adapter already publishes
+  // across twelve owners, so the adapter EXTENDS the port and this resolves
+  // directly.
+  readonly "postgres-tenancy:PrivacyRepository": Satisfies<
+    PostgresTenancyAdapter,
+    PrivacyRepository
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -352,6 +365,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:SkillsRepository": true,
   "postgres-tenancy:MemoryRepository": true,
   "postgres-tenancy:KnowledgeGraphRepository": true,
+  "postgres-tenancy:PrivacyRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -603,6 +617,27 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "KnowledgeGraphRepository",
     owner: "memory",
   }),
+  // WIN-258 T5 (ADR M0.3 §15). The TWENTY-EIGHTH binding of the same directory,
+  // and the THIRTEENTH owner of the one PostgreSQL client. ONE row and not two,
+  // because `privacy` publishes ONE canonical-store port over its two tables:
+  // `PrivacyRepository` is `OperationRepository` and `TombstoneRepository`
+  // composed, and the port's own header says there is deliberately no generic
+  // `save(row)` or `query(where)` "through which another context could reach the
+  // tables sideways".
+  //
+  // IT APPENDS, like `memory`'s pair above it, so every ordinal already stated in
+  // this table stays true.
+  //
+  // The context's THREE other ports get no row here, and that is a claim rather
+  // than an omission. `SubjectDirectory` resolves a handle into every scope and
+  // alias a person occupies by reading `identity-access`' identity graph — rows
+  // this directory can physically read and that port is not entitled to, because
+  // its own header says it is the COMPOSITION ROOT, not the adapter, that is
+  // allowed to know identity-access exists. `SubjectHasher` is a synchronous
+  // salted digest whose secret has no business behind a database client, and
+  // `LegalHoldRegister` is installation configuration with no canonical row in
+  // the schema at all.
+  Object.freeze({ adapter: "postgres-tenancy", port: "PrivacyRepository", owner: "privacy" }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
@@ -619,10 +654,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-eight rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-nine rows across
  * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` TWENTY-SEVEN times and
- * open twenty-seven pools over the one database.
+ * adapters would otherwise build `postgres-tenancy` TWENTY-EIGHT times and
+ * open twenty-eight pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),

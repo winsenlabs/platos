@@ -202,6 +202,34 @@ export const ADAPTERS = [
       // synchronous host hash with no failure channel and no row.
       { port: "MemoryRepository", owner: "memory" },
       { port: "KnowledgeGraphRepository", owner: "memory" },
+      // WIN-258 T5 adds the THIRTEENTH owner. `privacy` owns two canonical rows
+      // in that same database — `ErasureOperation` and `ErasureTombstone` — and
+      // publishes ONE canonical-store port over them: `PrivacyRepository` is
+      // `OperationRepository` and `TombstoneRepository` composed, because the
+      // receipt and the barrier it leaves behind are one aggregate written under
+      // one unit of work.
+      //
+      // IT IS SATISFIED BY THE ADAPTER ITSELF rather than by a property, which is
+      // `providers`' shape and not `secrets`', `skills`' or `memory`'s: its ten
+      // method names collide with nothing the directory already publishes across
+      // the twelve owners above, so `PostgresTenancyAdapter` extends the port and
+      // the composition root proves `Satisfies<PostgresTenancyAdapter,
+      // PrivacyRepository>` directly.
+      //
+      // IT IS THE BINDING THAT MAKES A MULTI-CONTEXT ERASURE ATOMIC. A pass opens
+      // ONE unit of work and asks every injected `ErasureTarget` to erase inside
+      // it — and those targets are `conversations`', `memory`'s, `governance`'s
+      // and `skills`', every one already on this directory's ambient frame. A
+      // thirteenth directory for `privacy` would have minted the scope on a frame
+      // of its own and had every target refuse it `scope_unknown`.
+      //
+      // The context's three OTHER ports get no binding on this directory.
+      // `SubjectDirectory` reads `identity-access`' identity graph and its own
+      // header says the composition root, not the adapter, is what may know that
+      // context exists; `SubjectHasher` is a synchronous salted digest whose
+      // secret has no business behind a database client; and `LegalHoldRegister`
+      // is installation configuration with no canonical row in the schema at all.
+      { port: "PrivacyRepository", owner: "privacy" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -336,8 +364,19 @@ export function adapterOwnerPackages(adapter) {
 // signature, so one interface cannot extend both. EXPECTED_ADAPTER_COUNT is
 // deliberately unmoved a TWELFTH time, which is the point of pinning the two
 // separately.
+//
+// AND `privacy` adds ONE canonical-store binding, `PrivacyRepository`, and is the
+// THIRTEENTH owner of the one PostgreSQL client. It publishes ONE port over its
+// two rows because the receipt and the barrier it leaves behind are written under
+// one unit of work, and the port's own header says there is deliberately no
+// generic `save(row)` through which another context could reach either table from
+// the side. It is proven against the ADAPTER rather than through a property —
+// `providers`' shape, not `secrets`', `skills`' or `memory`'s — because its ten
+// method names collide with nothing the other twelve owners publish, so nothing
+// forces the indirection. EXPECTED_ADAPTER_COUNT is deliberately unmoved a
+// THIRTEENTH time, which is the point of pinning the two separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 38;
+export const EXPECTED_BINDING_COUNT = 39;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -448,7 +487,26 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // nothing in the 17-context DAG depends on `memory`. The independent expectation
 // in scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 106;
+//
+// 106 -> 107 (WIN-258 T5, a THIRTEENTH owner). `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/privacy`, for that context's `PrivacyRepository` over the
+// two rows of §1 row 18: ONE edge carrying ONE binding, because `privacy`
+// publishes a single canonical-store port over both tables and its other three
+// ports belong elsewhere — `SubjectDirectory` to a peer-read adapter the
+// composition root assembles, `SubjectHasher` to a host capability with a secret
+// in it, and `LegalHoldRegister` to installation configuration with no canonical
+// row at all.
+//
+// IT CANNOT CREATE A CYCLE, and here that is worth checking rather than
+// asserting, because this context is the one every other context's erasure runs
+// THROUGH. ADR M0.3 §1 permits `privacy` exactly two dependencies — `tenancy` and
+// the kernel — and the §3 graft is what keeps it that way: the contexts whose rows
+// it erases are reached through the KERNEL's `ErasureTarget`, injected as an array
+// at the composition root, so `privacy` names none of them and none of them names
+// `privacy`. The one adapter edge is a leaf edge like the twelve before it. The
+// independent expectation in scripts/arch/v1-project-graph.mjs carries the same
+// delta and is maintained separately on purpose.
+export const EXPECTED_EDGE_COUNT = 107;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -596,6 +654,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/providers", // WIN-258 T5 — measured against InMemoryProvidersRepository by packages/adapters/postgres-tenancy
   "packages/contexts/conversations", // WIN-258 T5 — InMemoryConversations satisfies all FOUR of its ports and is the differential
   "packages/contexts/memory", // WIN-258 T5 — InMemoryMemoryRepository and InMemoryKnowledgeGraphRepository are the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/privacy", // WIN-258 T5 — InMemoryPrivacyRepository is the differential packages/adapters/postgres-tenancy is measured against
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,

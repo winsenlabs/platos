@@ -103,7 +103,20 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // per port. `memory` depends on `tenancy` and `providers` and nothing in the
 // 17-context DAG depends on `memory`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // again unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 106;
+//
+// AND a THIRTEENTH owner edge, to `packages/contexts/privacy`, whose two
+// canonical rows — `ErasureOperation` and `ErasureTombstone` — are in that same
+// PostgreSQL database. It is ONE edge carrying ONE binding, `PrivacyRepository`,
+// because that context publishes a single canonical-store port over both tables.
+//
+// NO CYCLE IS POSSIBLE, and this is the owner where that is worth stating rather
+// than assuming: `privacy` is the context every OTHER context's erasure runs
+// through. ADR M0.3 §1 permits it exactly two dependencies, `tenancy` and the
+// kernel, and the §3 graft is what keeps it that way — the contexts whose rows it
+// erases are reached through the KERNEL's `ErasureTarget`, injected as an array at
+// the composition root, so `privacy` names none of them and none names `privacy`.
+// `EXPECTED_CONTEXT_DEPENDS_ON` below is unchanged for a fifth time.
+export const EXPECTED_EDGE_COUNT = 107;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -234,6 +247,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "conversations",
     "skills",
     "memory",
+    "privacy",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -256,7 +270,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 12 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 13 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

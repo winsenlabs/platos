@@ -101,7 +101,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // `ConversationsDependencies` names four SLOTS and a root has to hand each port
   // over under its own name.
   assert.equal(audit.bindingCount, adapterBindings().length);
-  assert.equal(audit.bindingCount, 38);
+  assert.equal(audit.bindingCount, 39);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -110,6 +110,16 @@ test("the live repository satisfies both the boundary rules and the composition-
   // `TenancyRepository` both declare a top-level `findEntity` with different
   // signatures, so one interface cannot extend both. The DIRECTORY count is
   // unmoved a fourth time.
+  //
+  // 38 -> 39 (WIN-258 T5, the THIRTEENTH owner): `privacy` adds
+  // `PrivacyRepository`, its ONE canonical-store port over the two rows of §1
+  // row 18, so that directory carries TWENTY-EIGHT. It is proven against the
+  // ADAPTER rather than through a property — like `providers`', and unlike
+  // `secrets`', `skills`' and `memory`'s: `PrivacyRepository` is declared as
+  // `OperationRepository` and `TombstoneRepository` composed into ONE interface,
+  // and its ten method names collide with nothing the directory already
+  // publishes, so nothing here forces a property. The DIRECTORY count is unmoved
+  // a fifth time.
   assert.equal(ADAPTERS.length, 12);
 });
 
@@ -311,12 +321,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all THIRTY-EIGHT bindings, across twelve directories", () => {
+test("the binding-table parser reads all THIRTY-NINE bindings, across twelve directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 38);
+  assert.equal(bindings.length, 39);
   assert.equal(ADAPTERS.length, 12);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -384,7 +394,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 38 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 39 declared bindings")
     )
   );
 });

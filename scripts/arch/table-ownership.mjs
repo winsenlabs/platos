@@ -575,6 +575,52 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // this entry the one package permitted to write the row would be issuing a
   // statement the gate refuses.
   memory: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The THIRTEENTH context to resolve to this directory, on the
+  // sentence every entry above stands on: one PostgreSQL database is one client
+  // is one adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the TWO rows `privacy` owns — `ErasureOperation`
+  // and `ErasureTombstone`. Nothing else, and here that is the whole point.
+  // `checkSoleWriter` asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Memory`, to `Turn` or to
+  // `EndUser` from this package still fails — and those three matter more here
+  // than the usual pair, because a right-to-erasure is a sweep across exactly
+  // those tables. It does NOT get to make it: each of those rows is destroyed by
+  // its own owner's `ErasureTarget`, tagged with that owner, and this entry moves
+  // no tag.
+  //
+  // IT IS WHAT MAKES A MULTI-CONTEXT ERASURE ATOMIC, and that argument is
+  // stronger for this owner than for any of the twelve above. `run-erasure-pass.ts`
+  // opens ONE unit of work, asks every injected `ErasureTarget` to carry out its
+  // plan inside it, and writes this context's own progress row in the same
+  // breath. Those targets are `conversations`', `memory`'s, `governance`'s and
+  // `skills`' — every one already delegated to this directory. A thirteenth
+  // adapter package holding only `privacy`'s repository would have had its own
+  // pool and its own `AsyncLocalStorage` frame, so the `TransactionScope` the
+  // pass minted would have reached each target as a token their frame had never
+  // issued and been refused `scope_unknown`. The erasure would not have been
+  // non-atomic; it would not have run at all.
+  //
+  // AND IT IS WHAT LETS THE BARRIER BE SEALED SEPARATELY AND STILL BE SEEN.
+  // `seal-subject.ts` writes the tombstones in their OWN unit of work, before the
+  // destruction, because a barrier that committed with the destruction would be
+  // open for exactly as long as the destruction takes. Both units of work are
+  // this one client, so the seal is a committed fact the destructive transaction
+  // reads; two pools would have made it invisible to the pass it exists to
+  // protect.
+  //
+  // IT DOES NOT GRANT WHAT `privacy` NEEDS AND DOES NOT OWN, and for this context
+  // that withholding is a design property rather than an inconvenience.
+  // `SubjectDirectory` resolves a handle into every scope and alias a person
+  // occupies by reading `EndUser`, `EndUserIdentity` and `EndUserSession` — ADR
+  // M0.3 §1 row 1, `identity-access`'. Reads are unrestricted by design (§1
+  // restricts WRITES), so this directory could physically answer that port; it is
+  // deliberately not implemented here, because the port's own header says it is
+  // the composition root — not this package — that is allowed to know
+  // identity-access exists.
+  privacy: "packages/adapters/postgres-tenancy",
 });
 
 /**
