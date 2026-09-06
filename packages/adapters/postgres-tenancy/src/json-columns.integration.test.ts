@@ -131,8 +131,10 @@ describe("the census, reconciled against the live catalog", () => {
     for (const row of rows) {
       const roots = [...new Set([...row.body.matchAll(/'(object|array)'/gu)].map((hit) => hit[1]))];
       const column = row.name.slice(row.model.length + 1, -"_json_root".length);
+      // NOT sorted: the catalog reproduces the CHECK's own order, and the census
+      // spells `object|array` because `IN ('object', 'array')` is what is stored.
       live.set(`${row.model}.${column}`, {
-        root: roots.sort().join("|") as JsonRoot,
+        root: roots.join("|") as JsonRoot,
         nullable: /IS NULL/u.test(row.body),
       });
     }

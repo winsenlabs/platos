@@ -61,9 +61,10 @@ function jsonRootChecks(): Map<string, { readonly root: JsonRoot; readonly nulla
     for (const match of sql.matchAll(pattern)) {
       const [, model = "", column = "", body = ""] = match;
       const roots = [...body.matchAll(/'(object|array)'/gu)].map((hit) => hit[1]);
-      const unique = [...new Set(roots)].sort();
+      // NOT sorted: the CHECK's own order is the contract's order, and
+      // `IN ('object', 'array')` is how the two dual-root columns are written.
       found.set(`${model}.${column}`, {
-        root: unique.join("|") as JsonRoot,
+        root: [...new Set(roots)].join("|") as JsonRoot,
         nullable: body.includes("IS NULL"),
       });
     }
@@ -84,8 +85,17 @@ describe("the census names every Json column and nothing else", () => {
     expect(new Set(censusKeys).size).toBe(censusKeys.length);
   });
 
-  test("it is ordered by model then column, so a reader can find a row", () => {
-    expect([...censusKeys]).toEqual([...censusKeys].sort((left, right) => left.localeCompare(right)));
+  // Grouped and not alphabetised WITHIN a model: `AdminAudit.before` is declared
+  // ahead of `AdminAudit.after` because that is the order the pair is written and
+  // read in, and a reader looking for one of them finds the other beside it.
+  test("it is grouped by model, models in order, each model's rows contiguous", () => {
+    const models = JSON_COLUMNS.map((contract) => contract.model);
+    const firstSeen = models.filter((model, index) => models.indexOf(model) === index);
+    expect(firstSeen).toEqual([...firstSeen].sort((left, right) => left.localeCompare(right)));
+    for (const model of firstSeen) {
+      const positions = models.flatMap((seen, index) => (seen === model ? [index] : []));
+      expect(positions.at(-1)! - positions[0]!).toBe(positions.length - 1);
+    }
   });
 });
 
@@ -176,8 +186,8 @@ describe("the counts the census is quoted by", () => {
       split[contract.disposition] = (split[contract.disposition] ?? 0) + 1;
     }
     expect(split).toEqual({
-      refuse: 25,
-      carry: 14,
+      refuse: 26,
+      carry: 13,
       delegate: 6,
       unprojected: 2,
       unowned: 2,
