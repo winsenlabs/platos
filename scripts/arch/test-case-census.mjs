@@ -2016,6 +2016,44 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * and 6520 + 325 = 6845 cases. The adapters term of the three-way identity
  * carries all twenty-eight, because every added file is an adapter's:
  * 79 + 28 = 107, and 349 + 3 + 107 = 459.
+ *
+ * 88 -> 95 FILES AND 929 -> 1024 CASES (WIN-258 T5, `files`). SEVEN files and
+ * NINETY-FIVE cases, every number READ BACK from the counter in this file:
+ *
+ *   files-rows.test.ts                        20  the mapping boundary, and the
+ *                                                 only one of the seven that
+ *                                                 needs no container
+ *   files-conformance.integration.test.ts      2  ONE scenario of forty-four
+ *                                                 observations, plus its
+ *                                                 negative control
+ *   files-constraints.integration.test.ts     15  what the columns refuse, and
+ *                                                 the two they ACCEPT
+ *   files-rules.integration.test.ts           16  the five rules that live only
+ *                                                 in the migrations, and the two
+ *                                                 referential actions
+ *   files-scope.integration.test.ts           27  one case per clause of every
+ *                                                 scoped read, one wrong id each
+ *   files-transaction.integration.test.ts      9  failure injection and the three
+ *                                                 scope refusals
+ *   files-statements.integration.test.ts       6  the measured counts
+ *
+ * 20 + 2 + 15 + 16 + 27 + 9 + 6 = 95, over 7 files. Six of the seven need a real
+ * PostgreSQL and are run by the `postgres-tenancy-repository` CI job;
+ * `files-rows.test.ts` is not, and it is the one that reaches the two
+ * unreadable-row branches a container cannot — an unresolved ancestry, which the
+ * schema's own foreign keys make unreachable from a live database, and a summed
+ * byte total past 2^53, which would need nine petabytes of attachments in one
+ * organization.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 2 in the conformance suite, for the
+ * reason every tranche before it gives: it is ONE scenario compared verbatim, so
+ * adding an observation strengthens the differential and moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-files.json` is where those
+ * guards are held falsifiable instead.
+ *
+ * The tree total is 459 + 7 = 466 files and 6845 + 95 = 6940 cases. The adapters
+ * term of the three-way identity carries all seven, because every added file is
+ * an adapter's: 107 + 7 = 114, and 349 + 3 + 114 = 466.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2026,7 +2064,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 88, cases: 929 },
+  "packages/adapters/postgres-tenancy": { files: 95, cases: 1024 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2211,8 +2249,14 @@ export const EXPECTED = Object.freeze({
  * package test script for the reason the other three row suites do — it has no
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
+ *
+ * 6845 -> 6940: the 95 cases of WIN-258 tranche 5's `files` canonical store,
+ * enumerated file by file in the block beside the postgres-tenancy row. Six of
+ * its seven suites carry `.integration.` in the name; the seventh,
+ * `files-rows.test.ts`, runs in the ordinary package test script for the reason
+ * every other row suite does.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6845;
+export const EXPECTED_RUNTIME_TOTAL = 6940;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
