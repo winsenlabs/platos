@@ -471,4 +471,4 @@ export {
   OBSERVABILITY_IDENTIFIER_NOT_UUID,
   ObservabilityStoreRefused,
 } from "./observability-guards.js";
-export { AUDIT_STATE_NOT_AN_OBJECT } from "./observability-rows.js";
+export { AUDIT_ROW_OUTSIDE_SCOPE, AUDIT_STATE_NOT_AN_OBJECT } from "./observability-rows.js";

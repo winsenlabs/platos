@@ -147,7 +147,10 @@ export function createObservabilityRepository(
           },
           select: AUDIT_COLUMNS,
         });
-        return ok(readAdminAudit(row as AdminAuditRow));
+        // The scope handed back is the one the statement above PROVED, not the
+        // one the caller asserted: `environment` is null unless all three levels
+        // matched, and the refusal is the branch immediately before this.
+        return ok(readAdminAudit(row as AdminAuditRow, record.scope));
       }, "admin audit record");
     },
 
@@ -155,8 +158,11 @@ export function createObservabilityRepository(
       return refuseObservability(async () => {
         requireAuditLimit(query.limit);
         // ONE statement, and the SAME one statement for a page of three and a
-        // page of three hundred. The ancestry is a join the database resolves in
-        // it, not a second read of the tenancy tree.
+        // page of three hundred. The two ancestry clauses are subqueries the
+        // database resolves inside it, not a second read of the tenancy tree —
+        // and the scope handed back on each row is what they proved rather than
+        // a relation this store loaded. `observability-rows.ts` says why that
+        // shape replaced the loaded one.
         const rows = await transactions.reader().adminAudit.findMany({
           where: { ...environmentWhere(query.scope), ...auditFilters(query) },
           select: AUDIT_COLUMNS,
@@ -167,7 +173,7 @@ export function createObservabilityRepository(
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: query.limit,
         });
-        return ok(rows.map((row) => readAdminAudit(row as AdminAuditRow)));
+        return ok(rows.map((row) => readAdminAudit(row as AdminAuditRow, query.scope)));
       }, "admin audit list");
     },
 

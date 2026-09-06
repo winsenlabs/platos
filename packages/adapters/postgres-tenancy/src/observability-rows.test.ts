@@ -15,7 +15,10 @@
 
 import { describe, expect, test } from "vitest";
 
-import { DEFAULT_AUDIT_SOURCE } from "@platos/context-observability/application/ports/index.js";
+import {
+  DEFAULT_AUDIT_SOURCE,
+  type EnvironmentScope,
+} from "@platos/context-observability/application/ports/index.js";
 
 import { UnreadableRowError } from "./mapping.js";
 import {
@@ -32,6 +35,7 @@ import {
   requireAuditUuid,
 } from "./observability-guards.js";
 import {
+  AUDIT_ROW_OUTSIDE_SCOPE,
   AUDIT_STATE_NOT_AN_OBJECT,
   readAdminAudit,
   readAuditSnapshot,
@@ -42,6 +46,13 @@ import {
 } from "./observability-rows.js";
 
 const AT = new Date("2026-05-01T09:00:00.000Z");
+
+const SCOPE = {
+  level: "environment",
+  organizationId: "bbbbbbbb-0000-4000-8000-000000000000",
+  projectId: "bbbbbbbb-0002-4000-8000-000000000002",
+  environmentId: "bbbbbbbb-0003-4000-8000-000000000003",
+} as unknown as EnvironmentScope;
 
 function row(overrides: Partial<AdminAuditRow> = {}): AdminAuditRow {
   return {
@@ -56,23 +67,33 @@ function row(overrides: Partial<AdminAuditRow> = {}): AdminAuditRow {
     reason: "retired",
     source: "ui",
     createdAt: AT,
-    environment: {
-      projectId: "bbbbbbbb-0002-4000-8000-000000000002",
-      project: { organizationId: "bbbbbbbb-0000-4000-8000-000000000000" },
-    },
     ...overrides,
   };
 }
 
 describe("the scope a row does not carry", () => {
-  test("the record's scope is rebuilt from the JOINED ancestry, not from the environment column", () => {
-    const record = readAdminAudit(row());
-    expect(record.scope).toEqual({
-      level: "environment",
-      organizationId: "bbbbbbbb-0000-4000-8000-000000000000",
-      projectId: "bbbbbbbb-0002-4000-8000-000000000002",
-      environmentId: "bbbbbbbb-0003-4000-8000-000000000003",
-    });
+  test("the record's scope is the one the read's own predicate proved", () => {
+    // The table has one scope column, so two thirds of an `EnvironmentScope` is
+    // not in the row. It comes from the WHERE that found the row, which names
+    // all three levels — not from a relation load, which the client resolves as
+    // two extra statements.
+    expect(readAdminAudit(row(), SCOPE).scope).toBe(SCOPE);
+  });
+
+  test("a row from a DIFFERENT environment is refused rather than relabelled", () => {
+    // The backstop for a widened predicate. Two environments under one project
+    // both satisfy the relation clauses, so dropping `environmentId` from
+    // `environmentWhere` would return a sibling's rows — and without this they
+    // would come back wearing the caller's environment id.
+    try {
+      readAdminAudit(row({ environmentId: "bbbbbbbb-0009-4000-8000-000000000009" }), SCOPE);
+      expect.unreachable("a row outside the scope must be refused");
+    } catch (error) {
+      expect((error as UnreadableRowError).code).toBe(AUDIT_ROW_OUTSIDE_SCOPE);
+    }
+    // ITS OWN CODE. A row this store cannot READ and a row it should never have
+    // SEEN are two incidents, and the second one is a cross-tenant read.
+    expect(AUDIT_ROW_OUTSIDE_SCOPE).not.toBe(AUDIT_STATE_NOT_AN_OBJECT);
   });
 
   test("an environment read names all THREE levels, so a mismatched scope matches nothing", () => {
@@ -100,7 +121,7 @@ describe("the scope a row does not carry", () => {
 
 describe("the two snapshot columns", () => {
   test("SQL NULL is absence on both columns", () => {
-    const record = readAdminAudit(row({ before: null, after: null }));
+    const record = readAdminAudit(row({ before: null, after: null }), SCOPE);
     expect(record.before).toBeNull();
     expect(record.after).toBeNull();
   });
@@ -136,7 +157,7 @@ describe("the source column", () => {
     // `DEFAULT_AUDIT_SOURCE` is the domain's own published answer to "what
     // `source` becomes when a caller does not say".
     expect(readAuditSource(null)).toBe(DEFAULT_AUDIT_SOURCE);
-    expect(readAdminAudit(row({ source: null })).source).toBe("api");
+    expect(readAdminAudit(row({ source: null }), SCOPE).source).toBe("api");
   });
 
   test("a stated source is never overwritten by the default", () => {

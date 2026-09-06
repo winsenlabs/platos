@@ -5,25 +5,39 @@
 // `AdminAudit` stores ONE scope column, `environmentId`. The port's
 // `AdminAuditRecord` carries an `EnvironmentScope` — organization, project and
 // environment — so two thirds of the scope on every record this store returns is
-// NOT in the row and has to come from somewhere. It comes from the tenancy tree,
-// through a relation filter resolved by the database in the SAME statement:
-// `environmentWhere` below is the full chain, so a read that returns a row has
-// already proved that row's environment sits under the project and organization
-// the caller named, and the scope handed back is therefore a fact about the tree
-// rather than an echo of the request.
+// NOT in the row. It comes from the PREDICATE the row was found by:
+// `environmentWhere` below is the full chain, resolved by the database as
+// correlated subqueries in the same statement, so a row that comes back has
+// already been proved to sit under the project and organization the caller
+// named, and handing that scope back is a consequence of the WHERE rather than
+// an echo of the request.
+//
+// AND IT IS A CONSEQUENCE ONLY WHILE THE WHERE IS WHOLE, which is why the two
+// relation clauses are in one function that every read shares and why two named
+// cases in `observability-constraints.integration.test.ts` read a foreign tenant
+// and require an EMPTY page. Drop either clause and the scope handed back stops
+// being a fact.
+//
+// WHY NOT LOAD THE ANCESTRY AND READ IT OFF THE ROW. That was the first shape,
+// and the statement counter refused it: the client resolves a nested relation
+// `select` as SEPARATE queries — one for `AdminAudit`, one for `Environment`,
+// one for `Project` — so a one-statement listing became three and an append
+// became five. The cost is constant rather than per row, so it was not an N+1;
+// it was two round trips buying a fact the WHERE had already established.
 //
 // `AdminAudit` HAS NO ANCESTRY RULE, which is why the chain has to be in the
-// WHERE. Thirty-eight tables in `00000000000000_initial/migration.sql` carry
-// `enforce_domain_ancestry`; this one does not. Its only structural guarantee is
-// `AdminAudit_environmentId_fkey`, which proves the environment EXISTS and says
-// nothing about whose it is. Without the relation clauses below, an audit trail
-// read for organization A would return rows belonging to organization B whenever
-// a caller passed an environment id from B — the row would still be one row, and
-// every count in this package would still be internally consistent.
+// WHERE at all. Thirty-eight tables in `00000000000000_initial/migration.sql`
+// carry `enforce_domain_ancestry`; this one does not. Its only structural
+// guarantee is `AdminAudit_environmentId_fkey`, which proves the environment
+// EXISTS and says nothing about whose it is. Without the relation clauses below,
+// an audit trail read for organization A would return rows belonging to
+// organization B whenever a caller passed an environment id from B — the row
+// would still be one row, and every count in this package would still be
+// internally consistent.
 //
 // THE TWO JSON COLUMNS ARE OBJECT ROOTS OR SQL NULL, and the migration says so
 // twice: `AdminAudit_before_json_root` and `AdminAudit_after_json_root` are both
-// `IS NULL OR jsonb_typeof(...) = 'object'`. Not `IN ('object','array')`, which
+// `IS NULL OR jsonb_typeof(...) = 'object'`. Not `IN ('object', 'array')`, which
 // is the shape every other `*_json_root` in that file uses — an array is refused
 // here. `domain/admin-audit.ts` already refuses a non-object on the way in, so
 // the reader below is what stands between a row an OLDER binary wrote and a
@@ -31,17 +45,13 @@
 
 import {
   asIdentifier,
-  environmentScope,
   asObject,
   DEFAULT_AUDIT_SOURCE,
   type AdminAuditId,
   type AdminAuditRecord,
   type AuditState,
-  type EnvironmentId,
   type EnvironmentScope,
-  type OrganizationId,
   type PrincipalId,
-  type ProjectId,
 } from "@platos/context-observability/application/ports/index.js";
 
 import { UnreadableRowError } from "./mapping.js";
@@ -49,13 +59,17 @@ import { UnreadableRowError } from "./mapping.js";
 /** `AdminAudit.before` or `.after` holds something that is not an object root. */
 export const AUDIT_STATE_NOT_AN_OBJECT = "observability.row.audit_state_not_an_object";
 
-/** The joined `Environment` row a read has to carry to rebuild the scope. */
-export interface AuditAncestryRow {
-  readonly projectId: string;
-  readonly project: { readonly organizationId: string };
-}
+/**
+ * A row came back from a read whose predicate should have excluded it.
+ *
+ * ITS OWN CODE, because it is a different incident from an unreadable column: a
+ * row this store cannot READ is an expand/contract event, and a row this store
+ * should never have SEEN is a widened predicate — and the second one is a
+ * cross-tenant read. Sharing a code would make the two one line in a log.
+ */
+export const AUDIT_ROW_OUTSIDE_SCOPE = "observability.row.audit_row_outside_scope";
 
-/** Exactly the columns a full read selects, plus the joined ancestry. */
+/** Exactly the columns a full read selects. No relation is loaded: see the header. */
 export interface AdminAuditRow {
   readonly id: string;
   readonly environmentId: string;
@@ -68,17 +82,17 @@ export interface AdminAuditRow {
   readonly reason: string | null;
   readonly source: string | null;
   readonly createdAt: Date;
-  readonly environment: AuditAncestryRow;
 }
 
 /**
  * Restrict a read to ONE environment, under the project and organization the
  * caller named.
  *
- * All three clauses, in one statement. `environmentId` alone would be the
+ * ALL THREE CLAUSES, IN ONE STATEMENT. `environmentId` alone would be the
  * cross-tenant read described in the header; the two relation clauses are what
- * make the returned scope true, and they cost no extra round trip because the
- * database resolves them as joins on the read it was already doing.
+ * make the scope this store hands back true, and they cost no extra round trip
+ * because the database resolves them as subqueries on the read it was already
+ * doing.
  */
 export function environmentWhere(scope: EnvironmentScope): Record<string, unknown> {
   return {
@@ -95,20 +109,15 @@ export function environmentWhere(scope: EnvironmentScope): Record<string, unknow
  *
  * `AdminAuditActorSelector` names an organization and an actor and no
  * environment, because an erasure is organization-scoped. The containment is a
- * relation filter through `Environment` and `Project` rather than a widening
- * read of the tree followed by an `IN` list — which is the N+1 this shape is
- * easy to write by accident, and which `observability-statements.integration.test.ts`
- * pins at a fixed count for a small fixture and a large one.
+ * relation filter through `Environment` and `Project`, resolved by the database
+ * in the SAME statement — not a widening read of the tree followed by an `IN`
+ * list, which is the N+1 this shape is easy to write by accident, and which
+ * `observability-statements.integration.test.ts` pins at a fixed count for a
+ * small fixture and a large one.
  */
 export function organizationWhere(organizationId: string): Record<string, unknown> {
   return { environment: { project: { organizationId } } };
 }
-
-/** The joined ancestry every full read selects. One place, so no read is wider. */
-export const AUDIT_ANCESTRY_SELECT = {
-  projectId: true,
-  project: { select: { organizationId: true } },
-} as const;
 
 /** The columns every full read selects. One place, so no read is wider. */
 export const AUDIT_COLUMNS = {
@@ -123,7 +132,6 @@ export const AUDIT_COLUMNS = {
   reason: true,
   source: true,
   createdAt: true,
-  environment: { select: AUDIT_ANCESTRY_SELECT },
 } as const;
 
 /**
@@ -143,7 +151,7 @@ export function readAuditSnapshot(value: unknown, column: "before" | "after"): A
     throw new UnreadableRowError(
       AUDIT_STATE_NOT_AN_OBJECT,
       `AdminAudit.${column}`,
-      typeof value === "string" ? value : JSON.stringify(value) ?? String(value),
+      typeof value === "string" ? value : (JSON.stringify(value) ?? String(value)),
     );
   }
   return object;
@@ -166,19 +174,21 @@ export function readAuditSource(value: string | null): string {
 /**
  * A stored row as the record its port publishes.
  *
- * The scope is rebuilt from the JOINED ancestry, never from the caller's query.
- * The two are equal on every row a full-chain read returns — that is what the
- * chain proves — and building it from the row is what keeps them equal the day
- * somebody widens a WHERE.
+ * `scope` is the scope the row was PROVED to be in — `environmentWhere`'s three
+ * clauses on a read, and the ancestry statement `recordAdminAudit` sends before
+ * its INSERT on a write. It is a parameter rather than a column because the
+ * table has no column for two thirds of it; it is not the caller's unchecked
+ * claim because nothing reaches this function until the database has agreed with
+ * it. `environmentId` is asserted against it below, so a row that somehow
+ * arrived from outside the predicate is refused rather than relabelled.
  */
-export function readAdminAudit(row: AdminAuditRow): AdminAuditRecord {
+export function readAdminAudit(row: AdminAuditRow, scope: EnvironmentScope): AdminAuditRecord {
+  if (row.environmentId !== scope.environmentId) {
+    throw new UnreadableRowError(AUDIT_ROW_OUTSIDE_SCOPE, "AdminAudit.environmentId", row.environmentId);
+  }
   return {
     adminAuditId: asIdentifier<AdminAuditId>(row.id),
-    scope: environmentScope(
-      asIdentifier<OrganizationId>(row.environment.project.organizationId),
-      asIdentifier<ProjectId>(row.environment.projectId),
-      asIdentifier<EnvironmentId>(row.environmentId),
-    ),
+    scope,
     actorUserId: row.actorUserId === null ? null : asIdentifier<PrincipalId>(row.actorUserId),
     action: row.action,
     subjectType: row.subjectType,

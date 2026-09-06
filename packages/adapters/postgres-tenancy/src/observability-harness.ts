@@ -55,6 +55,16 @@ export interface ObservabilityHarness {
   readonly stores: ObservabilityStores;
   /** A brand-new organization, project and environment, through the tenancy port. */
   freshScope(): Promise<AuditScope>;
+  /**
+   * A SECOND environment under an existing project.
+   *
+   * The sharpest cross-tenant fixture this table has. A sibling environment
+   * satisfies BOTH relation clauses of `environmentWhere` — same project, same
+   * organization — so it is the only shape that can tell the `environmentId`
+   * clause from the two around it. Two tenants cannot: they fail every clause at
+   * once.
+   */
+  siblingEnvironment(parent: AuditScope): Promise<AuditScope>;
   stop(): Promise<void>;
 }
 
@@ -98,6 +108,39 @@ export async function startObservabilityHarness(): Promise<ObservabilityHarness>
         ),
         organizationId,
         projectId,
+        environmentId,
+      };
+    },
+
+    async siblingEnvironment(parent: AuditScope): Promise<AuditScope> {
+      const environmentId = asTenancyIdentifier<EnvironmentId>(base.freshId("0024"));
+      await base.adapter.unitOfWork.run((transaction) =>
+        base.adapter.saveEnvironment(
+          {
+            id: environmentId,
+            projectId: parent.projectId as ProjectId,
+            // `@@unique([projectId, slug])` on `Environment`, so a sibling under
+            // the same project needs a slug of its own.
+            slug: asTenancyIdentifier<Slug>(`staging-${environmentId.slice(-6)}`),
+            name: "staging",
+            archivedAt: null,
+            accessKeyRevocationVersion: 0,
+            memoryFeedbackBackfillCursor: null,
+            memoryFeedbackBackfillCompletedAt: null,
+            createdAt: AT,
+            updatedAt: AT,
+          },
+          transaction,
+        ),
+      );
+      return {
+        scope: environmentScope(
+          asIdentifier(parent.organizationId),
+          asIdentifier(parent.projectId),
+          asIdentifier(environmentId),
+        ),
+        organizationId: parent.organizationId,
+        projectId: parent.projectId,
         environmentId,
       };
     },

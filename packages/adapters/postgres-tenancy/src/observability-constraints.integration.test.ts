@@ -259,6 +259,48 @@ test("an environment outside the record's own organization is refused by THIS st
   expect(accepted.ok).toBe(true);
 });
 
+test("a SIBLING environment under the same project is excluded, which only the environment clause can do", async () => {
+  // The sharpest cross-tenant case this table has. A sibling environment
+  // satisfies BOTH relation clauses — same project, same organization — so this
+  // is the only fixture that can tell the `environmentId` clause from the two
+  // around it. Two tenants cannot: they fail every clause at once.
+  const sibling = await harness.siblingEnvironment(home);
+  const siblingAudit = id("004c");
+  await write((transaction) =>
+    harness.stores.observability.recordAdminAudit(
+      auditRecord(sibling.scope, siblingAudit, { action: "sibling.only" }),
+      transaction,
+    ),
+  );
+
+  const here = await harness.stores.observability.listAdminAudit({
+    scope: home.scope,
+    action: "sibling.only",
+    limit: 50,
+  });
+  expect(here.ok).toBe(true);
+  if (here.ok) expect(here.value).toEqual([]);
+
+  // And it IS readable from its own environment, so the exclusion above is the
+  // predicate rather than the row being unwritable.
+  const there = await harness.stores.observability.listAdminAudit({
+    scope: sibling.scope,
+    action: "sibling.only",
+    limit: 50,
+  });
+  expect(there.ok).toBe(true);
+  if (there.ok) expect(there.value.map((record) => record.adminAuditId)).toEqual([siblingAudit]);
+
+  // THE ORGANIZATION COUNT DOES REACH IT, and that is not an inconsistency: an
+  // erasure is organization-scoped, so `organizationWhere` walks to the
+  // organization on purpose and both environments are inside it.
+  const counted = await harness.stores.observability.countAdminAuditForActor({
+    organizationId: home.organizationId,
+    actorUserId: OPERATOR,
+  });
+  expect(counted.ok && counted.value).toBeGreaterThanOrEqual(1);
+});
+
 test("a listing scoped to the wrong project returns NOTHING rather than another tenant's trail", async () => {
   const auditId = id("0047");
   await write((transaction) =>
