@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
 
-import { CATEGORY_STATUSES, RULES, checkTaxonomy, scanSource } from "./error-taxonomy.mjs";
+import { CATEGORY_STATUSES, RULES, SOURCE_ROOTS, checkTaxonomy, scanSource } from "./error-taxonomy.mjs";
 
 const KERNEL = `export type ErrorCategory =
   | "invalid_input"
@@ -419,4 +419,29 @@ test("the real repository's scan finds codes in every context that declares them
   for (const row of inventory) {
     assert.equal(row.categories.length, 1, `${row.code} carries ${row.categories.length} categories`);
   }
+});
+
+test("the scan reaches the TRANSPORT EDGE, not the seventeen contexts alone", () => {
+  // WIN-260 (M2.5). `SOURCE_ROOTS` was `packages/contexts` alone, and that was a
+  // hole rather than a scope: a code minted anywhere else was invisible to E1
+  // (no taxonomy entry demanded), to E4 (no status checked) and to E6 (two
+  // guards refusing identically, unnoticed). M0.4 §2's `Idempotency-Key`
+  // refusals belong to the transport — no context knows a header exists — so
+  // they are exactly the codes that would have fallen through it.
+  //
+  // The case is written against the LIVE tree and names the code the ADR names,
+  // so narrowing the roots back fails here rather than only in the gate's own
+  // E2 arithmetic.
+  const { inventory } = scanSource();
+  const required = inventory.find((row) => row.code === "IDEMPOTENCY_KEY_REQUIRED");
+  assert.ok(required !== undefined, "IDEMPOTENCY_KEY_REQUIRED is minted and must be scanned");
+  assert.deepEqual(required.contexts, ["core-api"]);
+  assert.equal(required.categories[0], "invalid_input");
+  // And the edge is not the only non-context root that is reachable: the scan
+  // covers every root ADR M0.3 §5.1 owns, so an adapter or the kernel minting a
+  // code is held to the taxonomy too.
+  assert.ok(
+    SOURCE_ROOTS.includes("packages/adapters") && SOURCE_ROOTS.includes("packages/kernel/src"),
+    `SOURCE_ROOTS must cover every owned root; it is ${SOURCE_ROOTS.join(", ")}`,
+  );
 });

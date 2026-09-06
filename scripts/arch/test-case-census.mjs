@@ -2333,7 +2333,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 46 },
   "packages/adapters/postgres-tenancy": { files: 133, cases: 1492 },
-  "packages/adapters/redis-cache": { files: 3, cases: 40 },
+  "packages/adapters/redis-cache": { files: 4, cases: 65 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
@@ -2763,7 +2763,39 @@ export const EXPECTED = Object.freeze({
  * runnable term goes 6358 -> 6386 and the integration term 1063 -> 1075, over
  * 110 -> 111 files. 6386 + 1075 = 7461.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7461;
+/*
+ * WIN-260 DELTA (M2.5), the ERRORS-AND-IDEMPOTENCY dimension.
+ * `packages/adapters/redis-cache` 40 -> 65 over ONE new file, and it is the only
+ * row in this census that moves.
+ *
+ *   src/request-idempotency.test.ts  25  the kernel `RequestIdempotency` port's
+ *                                       Redis implementation, over a connection
+ *                                       whose every answer the case chooses: the
+ *                                       keyspace disjoint from the jobs one and
+ *                                       carrying the scope; `reserve` as ONE
+ *                                       command when it wins; `absent` versus
+ *                                       `malformed` versus a store that threw,
+ *                                       which are three different incidents; the
+ *                                       digest checked BEFORE the state, so a
+ *                                       settled record under a reused key is a
+ *                                       mismatch rather than a replayed secret;
+ *                                       `record` reaching `overwrite` and never
+ *                                       `claim` or `write`; and `release`
+ *                                       refusing to delete a record carrying
+ *                                       somebody else's digest
+ *
+ * THE OTHER SUITES THIS DIMENSION ADDED ARE NOT COUNTED HERE, and that is the
+ * census's own rule rather than an omission: `apps/core-api` is outside
+ * PACKAGE_ROOTS, so its four new files — the policy table joined to the frozen
+ * operation manifest, the gate's decisions, the failure envelope and the
+ * end-to-end race — are counted by the v1 ledger and not by this file. The same
+ * boundary carried every core-api suite before them.
+ *
+ * All 25 are runnable, so the runnable term goes 6386 -> 6411 and the
+ * integration term is unmoved at 1075, over 111 -> 112 files.
+ * 6411 + 1075 = 7486.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7486;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

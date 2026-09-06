@@ -71,7 +71,7 @@ export interface RecordedResponse {
 }
 
 /**
- * What a reservation attempt found.
+ * What claiming a reservation found.
  *
  * `reserved` is the ONLY outcome that admits a caller to the handler. Every
  * other one is a fact about a twin, and the edge turns each into its own code —

@@ -2081,15 +2081,15 @@
     ]
   },
   "expected": {
-    "totalFiles": 4979,
+    "totalFiles": 4991,
     "areaCounts": {
       "apps-agent": 514,
-      "apps-core-api": 42,
+      "apps-core-api": 51,
       "apps-mcp-stdio": 8,
       "apps-webapp": 183,
       "docs-content": 735,
       "internal-packages": 1173,
-      "packages": 2043,
+      "packages": 2046,
       "root-infra": 281
     },
     "kindCounts": {
@@ -2101,14 +2101,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 895,
-      "source": 1983,
-      "test": 978
+      "source": 1990,
+      "test": 983
     },
     "dispositionCounts": {
       "archive": 7,
       "move-refactor": 1616,
       "regenerate": 38,
-      "retain": 3316,
+      "retain": 3328,
       "unresolved": 2
     },
     "protectedCount": 1630,
@@ -2126,9 +2126,9 @@
       "apps-core-api.config.package": 3,
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
-      "apps-core-api.source.process": 19,
+      "apps-core-api.source.process": 24,
       "apps-core-api.source.transports": 7,
-      "apps-core-api.test.suites": 10,
+      "apps-core-api.test.suites": 14,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2202,8 +2202,8 @@
       "packages.adapters.config": 48,
       "packages.adapters.doc": 12,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 235,
-      "packages.adapters.test": 155,
+      "packages.adapters.source": 236,
+      "packages.adapters.test": 156,
       "packages.config.build": 28,
       "packages.contexts.config": 36,
       "packages.contexts.doc": 17,
@@ -2213,7 +2213,7 @@
       "packages.generated.release-history": 5,
       "packages.kernel.config": 2,
       "packages.kernel.doc": 1,
-      "packages.kernel.source": 18,
+      "packages.kernel.source": 19,
       "packages.kernel.test": 3,
       "packages.legal.attribution": 11,
       "packages.python.metadata": 4,
@@ -2249,6 +2249,6 @@
       "root-infra.tooling.scripts": 78,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "226dff6c51d8f36eabee0fba7c62f0052433dde97c28b12c66b08f110c26c5f6"
+    "classificationSha256": "a40d9bd952e58b40935e780879319cd3e99ef74565844c4ab63710fdea5ca8be"
   }
 }

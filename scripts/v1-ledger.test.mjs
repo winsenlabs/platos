@@ -544,8 +544,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 6 -> 7 and the core-api suite rule 9 -> 10. It is under transports/ rather
     // than runtime/ because ADR M0.3 §2 makes an HTTP status transport
     // vocabulary: a context says `not_found`, and only that file knows it means
-    // 404.
-    "apps-core-api": 31,
+    // 404. 29 + 2 = 31.
+    //
+    // 31 -> 40. The rest of that dimension's edge: FIVE source modules under
+    // `src/http/` — the operation-policy table, the seven codes the gate mints,
+    // the gate itself, the middleware that runs it on a socket, and the failure
+    // writer that executes the code-to-status mapping — and FOUR suites, the
+    // last of which is the end-to-end race against a real Redis. All nine land
+    // on rules WIN-297 already wrote (`apps-core-api.source.process` 19 -> 24
+    // and `apps-core-api.test.suites` 10 -> 14), so NO LEDGER RULE CHANGED.
+    // 31 + 9 = 40.
+    "apps-core-api": 40,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1002,7 +1011,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // now real files: adoption releases a source tree, it does not add to it, so
     // those two are rewritten rather than counted. The census records the same
     // fact from the other side -- 88 placeholders released rather than 86.
-    packages: 1406,
+    // 1406 -> 1409. WIN-260's errors-and-idempotency dimension adds THREE:
+    // `packages/kernel/src/ports/request-idempotency.ts`, the eleventh kernel
+    // port, and `packages/adapters/redis-cache/src/request-idempotency.ts` with
+    // its suite — the Redis implementation of that port, the forty-sixth
+    // binding. Three files on three rules that already existed.
+    packages: 1409,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1266,7 +1280,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // on root-infra.test.script-suites, so neither rule is new here either.
     "root-infra": 45,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1510);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1522);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1318,7 +1332,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and CHANGES NO LEDGER RULE: every one of the thirteen is classified by a
     // rule that already existed, which is why the delta is purely additive and
     // sums with every one above it.
-    rulesDocument.baseline.totalFiles + 1510
+    // and WIN-260's errors-and-idempotency dimension +12 across TWO areas,
+    // `apps-core-api` +9 and `packages` +3, and none in `docs-content` or
+    // `root-infra`: this half of the dimension adds no document and no script.
+    // 1510 + 12 = 1522.
+    rulesDocument.baseline.totalFiles + 1522
   );
 });
 

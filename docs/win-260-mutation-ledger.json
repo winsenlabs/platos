@@ -1,14 +1,14 @@
 {
   "$schema-note": "WIN-260 (M2.5). Every guard this dimension added, and the exact edit that must break it. Same shape as the per-adapter `mutations-*.json` ledgers under packages/adapters/*: `from` is the committed text, `to` is the mutant, `suites` are the files that must be run, and `kills` names the CASE that has to fail. An entry whose mutant leaves every suite green is a guard that is not a guard.",
   "purpose": "ONE file rather than five, and that is the departure from the per-package convention. WIN-260's guards span three adapter directories (redis-cache, postgres-tenancy, outbox), two contexts (jobs, memory), the kernel and a gate script, because the dimension is a cross-cutting one: a request identifier that reaches the store, a code that maps to a status, and a reservation that survives a race. A sweep split five ways could not be re-run as one thing, and the whole value of a ledger is that somebody else can re-run it.",
-  "procedure": "For each entry: apply `to` in place of `from`, run `pnpm build:v1` (cross-package imports resolve through dist, so a mutation in a context is invisible to an adapter suite until the solution is rebuilt), run every file in `suites`, and record which named case failed. Revert. The container suites run ON THE MAC MINI under colima; nothing here starts a daemon on a laptop. A mutant the COMPILER refuses is not a kill for this purpose: it proves the types hold, not that a suite catches a behaviour change, so three entries were rewritten into mutants that compile. Recorded result on the Mac mini at 25568a20 (and the three rewrites re-run separately): 15 entries, 15 killed by a named case, 0 declared unfalsifiable.",
+  "procedure": "For each entry: apply `to` in place of `from`, run `pnpm build:v1` (cross-package imports resolve through dist, so a mutation in a context is invisible to an adapter suite until the solution is rebuilt), run every file in `suites`, and record which named case failed. Revert. The container suites run ON THE MAC MINI under colima; nothing here starts a daemon on a laptop. A mutant the COMPILER refuses is not a kill for this purpose: it proves the types hold, not that a suite catches a behaviour change, so three entries were rewritten into mutants that compile. Recorded result on the Mac mini at 25568a20 (and the three rewrites re-run separately): 15 entries, 15 killed by a named case, 0 declared unfalsifiable. RE-RUN IN FULL after the rebase onto v1 @ 2abd19b4, which moved the base under every one of them, and after the errors-and-idempotency dimension added fifteen more: all THIRTY applied one at a time on the Mac mini under colima, each followed by `pnpm build:v1` where the mutation and its suites are in different packages, each suite run to completion and reverted. 30 entries, 30 killed by a named case, 0 survived, 0 declared unfalsifiable. The container suites -- the redis-cache reserve-once race, the postgres-tenancy correlation suite and the end-to-end Idempotency-Key gate -- ran against real servers; nothing started a daemon on a laptop.",
   "mutations": [
     {
       "name": "M-260-01 reserve: the claim loses its NX",
       "file": "packages/adapters/redis-cache/src/client.ts",
       "from": "      return (await client.set(key, value, \"EX\", ttlSeconds, \"NX\")) === \"OK\";",
       "to": "      return (await client.set(key, value, \"EX\", ttlSeconds)) === \"OK\";",
-      "note": "The whole reserve-once property, deleted by two characters. It still compiles, and it still passes every in-memory test in the tree \u2014 which is why `client.ts` names the command by intent rather than by spelling, and why the racing suite exists.",
+      "note": "The whole reserve-once property, deleted by two characters. It still compiles, and it still passes every in-memory test in the tree — which is why `client.ts` names the command by intent rather than by spelling, and why the racing suite exists.",
       "suites": [
         "packages/adapters/redis-cache/src/idempotency.integration.test.ts"
       ],
@@ -80,7 +80,7 @@
       "file": "packages/contexts/jobs/domain/idempotency.ts",
       "from": "      if (!isJobExecutionErrorCode(code)) return unreadableRecord(\"unpromised-code\");\n      return readableRecord(failedReservation(branded, code));",
       "to": "      return readableRecord(failedReservation(branded, code as JobExecutionErrorCode));",
-      "note": "The READ side of the promise `execute-job.ts::settle` makes on the write side. Settle refuses to CACHE an unpromised code; without this, a record written by a peer on another contract version is replayed onto the wire under a contract that says the set is closed. The mutant CASTS rather than deletes, because deleting the guard alone does not compile \u2014 and a mutant the compiler refuses proves the types work, not that the suites do.",
+      "note": "The READ side of the promise `execute-job.ts::settle` makes on the write side. Settle refuses to CACHE an unpromised code; without this, a record written by a peer on another contract version is replayed onto the wire under a contract that says the set is closed. The mutant CASTS rather than deletes, because deleting the guard alone does not compile — and a mutant the compiler refuses proves the types work, not that the suites do.",
       "suites": [
         "packages/contexts/jobs/domain/idempotency.test.ts",
         "packages/adapters/redis-cache/src/idempotency-store.test.ts",
@@ -106,7 +106,7 @@
       "kills": [
         "gives each unreadable reason its OWN code, distinct from a real conflict",
         "tells the three unreadable reservations apart, and apart from a real CONFLICT",
-        "E6 \u2014 two identical raises in one function are refused unless registered"
+        "E6 — two identical raises in one function are refused unless registered"
       ]
     },
     {
@@ -114,7 +114,7 @@
       "file": "packages/adapters/redis-cache/src/cache.ts",
       "from": "      if (!Number.isInteger(entry.ttlSeconds) || entry.ttlSeconds <= 0) {\n        return err(cacheTtlInvalid(entry.ttlSeconds));\n      }",
       "to": "      // guard removed",
-      "note": "The port's second property. Without the guard the refusal arrives from the driver as MEMORY_CACHE_UNAVAILABLE \u2014 a caller defect reported as an outage, which a caller would retry forever.",
+      "note": "The port's second property. Without the guard the refusal arrives from the driver as MEMORY_CACHE_UNAVAILABLE — a caller defect reported as an outage, which a caller would retry forever.",
       "suites": [
         "packages/adapters/redis-cache/src/cache.test.ts"
       ],
@@ -168,7 +168,7 @@
       "file": "packages/adapters/postgres-tenancy/src/transaction.ts",
       "from": "              \"SELECT set_config('platos.request_id', $1, true)\",",
       "to": "              \"SELECT set_config('platos.request_id', $1, false)\",",
-      "note": "The reason this is not `application_name`. A per-session value stays attached to a pooled connection, so the NEXT request to borrow it is labelled with the previous request's identifier \u2014 worse than no label, because it is wrong rather than missing.",
+      "note": "The reason this is not `application_name`. A per-session value stays attached to a pooled connection, so the NEXT request to borrow it is labelled with the previous request's identifier — worse than no label, because it is wrong rather than missing.",
       "suites": [
         "packages/adapters/postgres-tenancy/src/correlation.integration.test.ts"
       ],
@@ -181,7 +181,7 @@
       "file": "packages/adapters/outbox/src/adapter.ts",
       "from": "    if (draft.requestId !== null) return draft;\n    const reference = correlation?.current() ?? null;\n    if (reference === null) return draft;\n    return { ...draft, requestId: reference.requestId };",
       "to": "    return draft;",
-      "note": "Every one of the eight drafts the tree appends supplies `requestId: null`, so without the stamp the envelope's correlation field is populated by nothing, ever. The mutant returns the draft untouched \u2014 the state before this issue \u2014 rather than nulling the reference, which does not compile.",
+      "note": "Every one of the eight drafts the tree appends supplies `requestId: null`, so without the stamp the envelope's correlation field is populated by nothing, ever. The mutant returns the draft untouched — the state before this issue — rather than nulling the reference, which does not compile.",
       "suites": [
         "packages/adapters/outbox/src/adapter.test.ts"
       ],
@@ -213,8 +213,213 @@
         "scripts/error-taxonomy.test.mjs"
       ],
       "kills": [
-        "E1 \u2014 a minted code with no taxonomy entry is refused",
+        "E1 — a minted code with no taxonomy entry is refused",
         "the rule list and the fixture agree on which rules exist"
+      ]
+    },
+    {
+      "name": "M-260-16 a one-time-secret mint is reclassified as exempt",
+      "file": "apps/core-api/src/http/idempotency-policy.ts",
+      "from": "    template: \"/api/v1/agent/access-key\",\n    class: \"required\",",
+      "to": "    template: \"/api/v1/agent/access-key\",\n    class: \"exempt\",",
+      "note": "The whole of M0.4 §2's `require` clause for the PAT mint, deleted by one word. The gate still runs, the header is still honoured when sent, and a client that forgets one mints a second live access key on every retry.",
+      "suites": [
+        "apps/core-api/src/http/idempotency-policy.test.ts",
+        "apps/core-api/src/http/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "the policy table against the frozen operation manifest: gives every row a reason, and every family M0.4 §2 names a required row",
+        "classifyRequest: requires a key on the access-key mint and not on its origins sibling"
+      ]
+    },
+    {
+      "name": "M-260-17 a vanished reservation is reported as a fresh claim",
+      "file": "packages/adapters/redis-cache/src/request-idempotency.ts",
+      "from": "      if (record === \"absent\") return { kind: \"absent\" };",
+      "to": "      if (record === \"absent\") return { kind: \"reserved\" };",
+      "note": "Fail-open, in one word. The claim was REFUSED and the incumbent then vanished; telling the caller it holds the key admits a request the server said it could not have.",
+      "suites": [
+        "packages/adapters/redis-cache/src/request-idempotency.test.ts"
+      ],
+      "kills": [
+        "reserve: reports `absent` when the incumbent has gone by the time it is read"
+      ]
+    },
+    {
+      "name": "M-260-18 the reservation scope drops the credential",
+      "file": "apps/core-api/src/http/idempotency.ts",
+      "from": "    [operationScope(facts.method, pathname), facts.authorization ?? \"\"].join(FIELD_SEPARATOR),",
+      "to": "    [operationScope(facts.method, pathname)].join(FIELD_SEPARATOR),",
+      "note": "The security property, removed. Two callers who happen to choose the same Idempotency-Key then share one reservation, and on a mint the second caller replays the first caller's secret.",
+      "suites": [
+        "apps/core-api/src/http/idempotency.test.ts",
+        "apps/core-api/src/http/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "fingerprintFor: gives two callers with the same key DIFFERENT scopes"
+      ]
+    },
+    {
+      "name": "M-260-19 the digest stops covering the body",
+      "file": "apps/core-api/src/http/idempotency.ts",
+      "from": "      facts.rawBody === null ? \"\" : Buffer.from(facts.rawBody).toString(\"base64\"),",
+      "to": "      \"\",",
+      "note": "A retry that reused a key for a DIFFERENT payload is then answered with the first payload's response instead of being refused — a silent wrong answer rather than a conflict.",
+      "suites": [
+        "apps/core-api/src/http/idempotency.test.ts",
+        "apps/core-api/src/http/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "fingerprintFor: changes the digest when the body changes"
+      ]
+    },
+    {
+      "name": "M-260-20 the request settle becomes NX instead of XX",
+      "file": "packages/adapters/redis-cache/src/request-idempotency.ts",
+      "from": "        const written = await connection.overwrite(",
+      "to": "        const written = await connection.claim(",
+      "note": "`claim` refuses every settle, because the key is always held by the reservation being settled. Nothing is ever recorded, so every later twin is told its twin is still running for a whole day.",
+      "suites": [
+        "packages/adapters/redis-cache/src/request-idempotency.test.ts"
+      ],
+      "kills": [
+        "record: uses XX, never NX and never an unconditional write",
+        "record: writes the response back verbatim, and a later reserve replays it"
+      ]
+    },
+    {
+      "name": "M-260-21 release stops checking whose reservation it is deleting",
+      "file": "packages/adapters/redis-cache/src/request-idempotency.ts",
+      "from": "      if (record.digest !== fingerprint.digest) return { kind: \"expired\" };\n      try {\n        const removed = await connection.remove([name]);",
+      "to": "      try {\n        const removed = await connection.remove([name]);",
+      "note": "A request that overran its own reservation then deletes the TWIN that claimed the key afterwards, and the twin runs a second time — the outcome the whole port exists to prevent.",
+      "suites": [
+        "packages/adapters/redis-cache/src/request-idempotency.test.ts"
+      ],
+      "kills": [
+        "release: does NOT delete a record carrying somebody else's digest"
+      ]
+    },
+    {
+      "name": "M-260-22 a 5xx is recorded rather than released",
+      "file": "apps/core-api/src/http/idempotency.ts",
+      "from": "  if (status >= 500) return \"release\";",
+      "to": "  if (status >= 600) return \"release\";",
+      "note": "A server fault is not an answer. Recording one turns every retry of that key into the same 500 for a day, which is the opposite of what a caller sent a key for.",
+      "suites": [
+        "apps/core-api/src/http/idempotency.test.ts"
+      ],
+      "kills": [
+        "settlementFor: RELEASES a 5xx, so the retry the caller sent a key for can run"
+      ]
+    },
+    {
+      "name": "M-260-23 a malformed key is accepted as a key",
+      "file": "apps/core-api/src/http/idempotency.ts",
+      "from": "  return ACCEPTABLE_IDEMPOTENCY_KEY.test(trimmed) ? { kind: \"key\", value: trimmed } : { kind: \"malformed\" };",
+      "to": "  return { kind: \"key\", value: trimmed };",
+      "note": "The shape guard removed. An attacker-controlled value then reaches a store key, a log field and a span attribute unescaped, and a 200KB header becomes a 200KB Redis key.",
+      "suites": [
+        "apps/core-api/src/http/idempotency.test.ts",
+        "apps/core-api/src/http/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "readIdempotencyKey: refuses a key carrying a character that is not safe in a log or a store key",
+        "decideIdempotency: mints IDEMPOTENCY_KEY_MALFORMED for a key that is not a key"
+      ]
+    },
+    {
+      "name": "M-260-24 two of the gate's refusals collapse onto one code",
+      "file": "apps/core-api/src/http/idempotency.ts",
+      "from": "      return { kind: \"refuse\", error: idempotencyRequestMismatch(operation) };",
+      "to": "      return { kind: \"refuse\", error: idempotencyRequestInFlight(operation) };",
+      "note": "The defect this whole issue is written around, reintroduced at the edge: `retry in a moment` and `this key is spoken for by a different request, retrying will never help` become one code, and both answer 409, so nothing at runtime tells them apart.",
+      "suites": [
+        "apps/core-api/src/http/idempotency.test.ts",
+        "apps/core-api/src/http/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "decideIdempotency: gives each of the five store facts its OWN code"
+      ]
+    },
+    {
+      "name": "M-260-25 the failure envelope leaks the log-only details",
+      "file": "apps/core-api/src/http/failure.ts",
+      "from": "  response.end(JSON.stringify({ error: envelope }));",
+      "to": "  response.end(JSON.stringify({ error: { ...envelope, details: error.details } }));",
+      "note": "The kernel calls `details` structured context for logs, never returned to a client. This is the layer that would leak it, and the store-unavailable refusal carries a driver message that names a host and a port.",
+      "suites": [
+        "apps/core-api/src/http/failure.test.ts"
+      ],
+      "kills": [
+        "writeFailure: never puts `details` on the wire",
+        "writeFailure: writes M0.4 §2's envelope and nothing outside it"
+      ]
+    },
+    {
+      "name": "M-260-26 the taxonomy stops scanning the transport edge",
+      "file": "scripts/error-taxonomy.mjs",
+      "from": "  \"apps/core-api/src\",\n",
+      "to": "",
+      "note": "The hole this dimension closed, reopened. The seven codes M0.4 §2's envelope mints become invisible: E1 stops demanding a taxonomy entry, E4 stops checking their statuses, and E6 stops noticing two of them refusing identically.",
+      "suites": [
+        "scripts/error-taxonomy.test.mjs"
+      ],
+      "kills": [
+        "the scan reaches the TRANSPORT EDGE, not the seventeen contexts alone"
+      ]
+    },
+    {
+      "name": "M-260-27 an exempt row stops matching the route it exempts",
+      "file": "apps/core-api/src/http/idempotency-policy.ts",
+      "from": "    method: \"POST\",\n    template: \"/oauth/token\",\n    class: \"exempt\",",
+      "to": "    method: \"POST\",\n    template: \"/oauth/tokens\",\n    class: \"exempt\",",
+      "note": "A row that names no real operation is a permission for nothing, and the route it was meant to exempt silently falls back to the default. Both halves of the manifest join fire.",
+      "suites": [
+        "apps/core-api/src/http/idempotency-policy.test.ts"
+      ],
+      "kills": [
+        "the policy table against the frozen operation manifest: classifies only operations the frozen surface actually serves",
+        "the policy table against the frozen operation manifest: leaves no side-effecting credential route unclassified"
+      ]
+    },
+    {
+      "name": "M-260-28 the gate stops replaying and re-runs the request instead",
+      "file": "apps/core-api/src/http/idempotency-middleware.ts",
+      "from": "          replay(response, decision.response);",
+      "to": "          next();",
+      "note": "M0.4 §2's third promise deleted: a settled twin runs again rather than returning the first answer. On a mint that is a second live secret for a caller that did everything right.",
+      "suites": [
+        "apps/core-api/src/http/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "replay: returns the first answer byte for byte, marked Idempotency-Replayed"
+      ]
+    },
+    {
+      "name": "M-260-29 the composition root stops resolving the RequestIdempotency port",
+      "file": "apps/core-api/src/app.module.ts",
+      "from": "    requestIdempotency: adapters[\"redis-cache\"]?.requests ?? null,",
+      "to": "    requestIdempotency: null,",
+      "note": "The binding is declared, the adapter is supplied, and the gate never sees it. Everything still COMPOSES — `reportAdapterSupply` reads the adapter bag, not this field — so the only thing that notices is a request.",
+      "suites": [
+        "apps/core-api/src/http/idempotency.integration.test.ts"
+      ],
+      "kills": [
+        "replay: returns the first answer byte for byte, marked Idempotency-Replayed"
+      ]
+    },
+    {
+      "name": "M-260-30 a template parameter swallows a slash",
+      "file": "apps/core-api/src/http/idempotency-policy.ts",
+      "from": "        ? \"[^/]+\"",
+      "to": "        ? \".+\"",
+      "note": "`:entityId` then matches `a/b`, so a route nobody classified is bound by somebody else's template — which for a `required` row means refusing a request the contract does not bind, and for an `exempt` row means silently dropping a key a caller sent.",
+      "suites": [
+        "apps/core-api/src/http/idempotency-policy.test.ts"
+      ],
+      "kills": [
+        "classifyRequest: does not let a parameter swallow a slash"
       ]
     }
   ]

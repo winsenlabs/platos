@@ -163,8 +163,8 @@ describe("decideIdempotency", () => {
       kind: "refuse",
       error: expect.objectContaining({ code: "IDEMPOTENCY_KEY_REQUIRED", category: "invalid_input" }),
     });
-    // ...and the store was never asked. A mint with no key is refused BEFORE a
-    // reservation is attempted, so a store outage cannot turn this into a 503.
+    // ...and the store was never asked. A mint with no key is refused BEFORE any
+    // reservation is claimed, so a store outage cannot turn this into a 503.
     expect(store.asked).toBe(0);
   });
 

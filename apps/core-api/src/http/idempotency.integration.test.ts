@@ -55,8 +55,17 @@ const ORDINARY = "/api/v1/agent/agents";
 
 let container: StartedRedisContainer;
 let url: string;
-let sweeper: RedisConnection;
-const opened: RedisConnection[] = [];
+/**
+ * The connection the harness sweeps with, and the one the process is composed
+ * over.
+ *
+ * ONE connection for both, and it is a deliberate choice rather than thrift:
+ * every case here is about the SERVER deciding a race, and a suite that opened a
+ * fresh socket per case would be asserting that a client can lose to itself. The
+ * contenders inside a case are separate HTTP requests through one process, which
+ * is exactly the shape production has — many requests, one pool.
+ */
+let driver: RedisConnection;
 let running: RunningCoreApi | null = null;
 let sequence = 0;
 
@@ -102,7 +111,7 @@ async function reservationCount(): Promise<number> {
   let cursor = "0";
   let total = 0;
   do {
-    const [next, keys] = await sweeper.scanPrefix(cursor, "platos:http:idem:*", 512);
+    const [next, keys] = await driver.scanPrefix(cursor, "platos:http:idem:*", 512);
     cursor = next;
     total += keys.length;
   } while (cursor !== "0");
@@ -116,12 +125,9 @@ async function startProcess(withStore: boolean): Promise<void> {
     PLATOS_CORE_API_SHUTDOWN_TIMEOUT_MS: "2000",
   });
   if (!outcome.ok) throw new Error("harness configuration must be valid");
-  let adapters: SuppliedAdapters | undefined;
-  if (withStore) {
-    const connection = createRedisConnection({ url });
-    opened.push(connection);
-    adapters = { "redis-cache": buildRedisCacheAdapter(connection) };
-  }
+  const adapters: SuppliedAdapters | undefined = withStore
+    ? { "redis-cache": buildRedisCacheAdapter(driver) }
+    : undefined;
   running = await startCoreApi({
     configuration: outcome.value,
     adapters,
@@ -132,16 +138,18 @@ async function startProcess(withStore: boolean): Promise<void> {
 beforeAll(async () => {
   container = await new RedisContainer("redis:7-alpine").start();
   url = container.getConnectionUrl();
-  sweeper = createRedisConnection({ url });
-  opened.push(sweeper);
+  driver = createRedisConnection({ url });
 }, 180_000);
 
 beforeEach(async () => {
+  // Through `scanPrefix` and `remove` rather than `FLUSHDB`, because `FLUSHDB`
+  // is deliberately not on `RedisConnection` — a harness that reached past the
+  // interface to call it would be the first step towards a store doing the same.
   let cursor = "0";
   do {
-    const [next, keys] = await sweeper.scanPrefix(cursor, "*", 512);
+    const [next, keys] = await driver.scanPrefix(cursor, "*", 512);
     cursor = next;
-    await sweeper.remove(keys);
+    await driver.remove(keys);
   } while (cursor !== "0");
   await startProcess(true);
 });
@@ -152,7 +160,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  await Promise.all(opened.map((connection) => connection.close()));
+  await driver.close();
   await container.stop();
 });
 
@@ -206,37 +214,75 @@ describe("the refusal M0.4 §2 names, on a real socket", () => {
   });
 });
 
+/**
+ * What happened to one contender.
+ *
+ * THE THREE ARE NOT TOLD APART BY STATUS, and that is the trap this helper
+ * exists to avoid. A contender that got past the gate reaches the framework's
+ * 404, and so does a contender that REPLAYED the winner's recorded 404 — the
+ * whole point of a replay being byte-identical. Counting by status alone would
+ * have called eight replays eight executions. The replay header and the failure
+ * envelope are what separate them.
+ */
+function outcomeOf(response: WireResponse): "admitted" | "replayed" | "refused" {
+  if (response.headers.get("idempotency-replayed") === "true") return "replayed";
+  return response.status === 404 ? "admitted" : "refused";
+}
+
+interface Tally {
+  admitted: number;
+  replayed: number;
+  refused: number;
+}
+
+function tally(responses: readonly WireResponse[]): Tally {
+  const counts: Tally = { admitted: 0, replayed: 0, refused: 0 };
+  for (const response of responses) counts[outcomeOf(response)] += 1;
+  return counts;
+}
+
 describe("two identical requests racing", () => {
   it("lets exactly ONE past the gate and refuses the other", async () => {
     const key = freshKey();
     // SEPARATE fetches, issued together. The ordering is the server's — Redis
     // decides who wins the `NX`, not this process.
-    const [first, second] = await Promise.all([
-      post(MINT, { key }),
-      post(MINT, { key }),
-    ]);
-    const outcomes = [first, second];
-    const admitted = outcomes.filter((response) => response.status === 404);
-    const refused = outcomes.filter((response) => response.status !== 404);
-    expect(admitted).toHaveLength(1);
-    expect(refused).toHaveLength(1);
-    // The loser is told its twin is running — a distinct code from every other
-    // 409 this gate can answer with.
-    const loser = refused[0];
-    if (loser === undefined) throw new Error("expected a refused contender");
-    expect(loser.status).toBe(committedStatus("IDEMPOTENCY_REQUEST_IN_FLIGHT"));
-    expect(codeOf(loser)).toBe("IDEMPOTENCY_REQUEST_IN_FLIGHT");
+    const contenders = await Promise.all([post(MINT, { key }), post(MINT, { key })]);
+    expect(tally(contenders).admitted).toBe(1);
+    const loser = contenders.find((response) => outcomeOf(response) !== "admitted");
+    if (loser === undefined) throw new Error("expected a second outcome");
+    // The loser either found the twin still running or found its settled record.
+    // Both are correct and which one happens is the server's timing; what must
+    // never happen is a SECOND execution.
+    if (outcomeOf(loser) === "refused") {
+      expect(loser.status).toBe(committedStatus("IDEMPOTENCY_REQUEST_IN_FLIGHT"));
+      expect(codeOf(loser)).toBe("IDEMPOTENCY_REQUEST_IN_FLIGHT");
+    } else {
+      expect(loser.status).toBe(404);
+    }
     // ONE reservation in the keyspace, not two. Read back from the server.
     expect(await reservationCount()).toBe(1);
   });
 
-  it("holds ONE reservation when eight contenders arrive at once", async () => {
+  it("admits exactly one of EIGHT contenders and holds one reservation", async () => {
     const key = freshKey();
     const contenders = await Promise.all(
       Array.from({ length: 8 }, async () => await post(MINT, { key })),
     );
-    expect(contenders.filter((response) => response.status === 404)).toHaveLength(1);
+    const counts = tally(contenders);
+    expect(counts.admitted).toBe(1);
+    expect(counts.admitted + counts.replayed + counts.refused).toBe(8);
     expect(await reservationCount()).toBe(1);
+  });
+
+  it("admits exactly one contender per key when eight DIFFERENT keys race", async () => {
+    // The control. If the gate were refusing everything after the first request
+    // for some reason unrelated to the key, the case above would still pass and
+    // this one would not.
+    const contenders = await Promise.all(
+      Array.from({ length: 8 }, async () => await post(MINT, { key: freshKey() })),
+    );
+    expect(tally(contenders)).toEqual({ admitted: 8, replayed: 0, refused: 0 });
+    expect(await reservationCount()).toBe(8);
   });
 });
 
