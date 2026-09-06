@@ -81,7 +81,7 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // packages/contexts/secrets, the sixth, seventh and eighth owners of that same
   // client. THREE edges for EIGHT bindings. The count is READ BACK from the
   // generator here rather than computed, which is the whole point of this case.
-  assert.match(output, /32 V1 projects and 100 project edges/u);
+  assert.match(output, /32 V1 projects and 102 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {

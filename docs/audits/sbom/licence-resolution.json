@@ -1890,8 +1890,8 @@
     "shippingSbomAbsence": [
       {
         "path": "docs/audits/sbom/platos-agent.cdx.json",
-        "sha256": "184fcbe33312b1304c9af9e2057ae5f802a24c291cf49787f4e622341a9320fe",
-        "size": 541849,
+        "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8",
+        "size": 541837,
         "packageName": "@platos/otlp-importer",
         "absent": true
       },
