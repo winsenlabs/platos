@@ -29,6 +29,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { EnvironmentId } from "@platos/context-tenancy/application/ports/index.js";
+// M2 INTEGRATION. Every unit of work in this suite RETURNS the repository's
+// `Result`, and the transaction-outcome dimension made that shape unwritable
+// through `run`: a callback that resolves with an error `Result` is a commit on
+// a failing branch. `runResult` is the spelling that rolls back, and its return
+// type is identical, so no caller below changed. `tsc` is what found these --
+// this suite was written on a branch where `run` still accepted a `Result`.
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import {
@@ -101,7 +108,7 @@ afterAll(async () => {
 });
 
 async function seedCredential(id: string, name: string): Promise<void> {
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.repository.insertCredential(
       credentialDraft({ id, environmentId, kind: "SERVICE_CREDENTIAL", name, provider: "openai" }),
       transaction,
@@ -116,7 +123,7 @@ describe("a real envelope survives a real PostgreSQL round trip", () => {
     const versionId = "bb000000-0000-4000-8000-00000000e001";
     await seedCredential(credentialId, "round-trip-v1");
 
-    const stored = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const stored = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           id: versionIdOf(versionId),
@@ -141,7 +148,7 @@ describe("a real envelope survives a real PostgreSQL round trip", () => {
     expect(hex(stored.value.ciphertext)).toBe(hex(ENVELOPE_V1.ciphertext));
     expect(hex(stored.value.authTag)).toBe(hex(ENVELOPE_V1.authTag));
 
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.setActiveSecretVersion(
         credentialIdOf(credentialId),
         versionIdOf(versionId),
@@ -193,7 +200,7 @@ describe("a real envelope survives a real PostgreSQL round trip", () => {
     const versionId = "bb000000-0000-4000-8000-00000000e009";
     await seedCredential(credentialId, "round-trip-v9");
 
-    const stored = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const stored = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           id: versionIdOf(versionId),
@@ -229,7 +236,7 @@ describe("a rotation and a re-encryption are two different rows", () => {
     const credentialId = "aa000000-0000-4000-8000-00000000e002";
     await seedCredential(credentialId, "reencrypted");
 
-    const first = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const first = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           id: versionIdOf("bb000000-0000-4000-8000-00000000e002"),
@@ -245,7 +252,7 @@ describe("a rotation and a re-encryption are two different rows", () => {
     );
     expect(first.ok).toBe(true);
 
-    const second = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const second = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           id: versionIdOf("bb000000-0000-4000-8000-00000000e003"),
@@ -276,7 +283,7 @@ describe("a rotation and a re-encryption are two different rows", () => {
     const credentialId = "aa000000-0000-4000-8000-00000000e004";
     await seedCredential(credentialId, "duplicate-version");
 
-    const first = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const first = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           id: versionIdOf("bb000000-0000-4000-8000-00000000e004"),
@@ -292,7 +299,7 @@ describe("a rotation and a re-encryption are two different rows", () => {
     );
     expect(first.ok).toBe(true);
 
-    const duplicate = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const duplicate = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           // A DIFFERENT primary key, so the refusal comes from the composite

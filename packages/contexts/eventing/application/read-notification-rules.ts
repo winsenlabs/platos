@@ -10,7 +10,7 @@
 // and a caller retrying after a timeout must not get an error for having
 // succeeded the first time.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import { ruleNotFound, type NotificationRule, type NotificationRuleId } from "../domain/index.js";
 import type { EventingDependencies } from "./dependencies.js";
@@ -41,7 +41,7 @@ export async function deleteNotificationRule(
   const found = await dependencies.repository.findRule(scope, ruleId);
   if (!found.ok) return err(found.error);
   if (found.value === null) return ok(false);
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.deleteRule(scope, ruleId, transaction),
   );
 }

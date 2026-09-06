@@ -23,7 +23,7 @@
 // caller retries. The ledger is what makes that safe — the retry skips the rows
 // that succeeded.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   EMPTY_SUMMARY,
@@ -127,7 +127,7 @@ async function sendOne(
   );
   if (settled === null) return skip(LOCAL_DELIVERY_FAILURES.staleClaim);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.finaliseDelivery(
       settled,
       retryRecord(settled, outcome, finishedAt),

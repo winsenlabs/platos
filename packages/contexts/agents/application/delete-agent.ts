@@ -19,7 +19,7 @@
 // history of an agent that another environment is still serving, saying nothing
 // about what changed for them.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import { deactivate, unbind, type AgentId, type UnbindOutcome } from "../domain/index.js";
 import { verifyOperator } from "./authorization.js";
@@ -44,7 +44,7 @@ export async function removeAgent(
   if (!bound.ok) return err(bound.error);
 
   const now = dependencies.clock.now();
-  const removed = await dependencies.unitOfWork.run(async (transaction) => {
+  const removed = await runResult(dependencies.unitOfWork, async (transaction) => {
     const deleted = await dependencies.repository.deleteBinding(scope, bound.value.binding, transaction);
     if (!deleted.ok) return err(deleted.error);
     const remaining = await dependencies.repository.countBindings(command.agentId, transaction);

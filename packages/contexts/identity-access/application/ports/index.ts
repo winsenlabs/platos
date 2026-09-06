@@ -58,15 +58,20 @@ export type { MfaSecretCipher } from "./mfa-secret-cipher.js";
 // same reason and for the same adapter. Nothing new is published: every name
 // below is already public from `../../domain/index.js` or from `@platos/kernel`.
 
-export { asIdentifier } from "@platos/kernel";
-export type {
-  Branded,
-  EnvironmentId,
-  OrganizationId,
-  PrincipalId,
-  ProjectId,
-  TenantScope,
-} from "@platos/kernel";
+// WIN-260 (M2.5): `domainError` and `err` join them. The real-PostgreSQL
+// transaction suites in `packages/adapters/postgres-tenancy` now assert that a
+// returned error `Result` ROLLS BACK — they used to assert it committed — and a
+// suite that cannot CONSTRUCT a `DomainError` cannot state the case.
+export { asIdentifier, domainError, err, runResult } from "@platos/kernel";
+export type { Branded, EnvironmentId, NotResult, OrganizationId, PrincipalId, ProjectId, Result, TenantScope } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
 export { environmentScope, organizationScope, projectScope } from "@platos/kernel";
 
 export { GLOBAL_SCOPE, tenantAuthorizationScope } from "../../domain/index.js";

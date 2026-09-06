@@ -26,6 +26,8 @@ import type {
   EnvironmentId,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
+import type { Result } from "@platos/context-secrets/application/ports/index.js";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import { AT, LATER, startSecretsHarness, variableIdOf } from "./secrets-harness.js";
@@ -39,10 +41,18 @@ function fresh(): string {
   return `5ec04444-0000-4000-8000-${String(sequence).padStart(12, "0")}`;
 }
 
+// M2 INTEGRATION. This helper was MOVED WHOLE out of
+// `secrets-rules.integration.test.ts` by the projection dimension, and the
+// transaction-outcome dimension then rewrote the ORIGINAL to go through
+// `runResult` -- a change git could not follow into the copy, because the copy
+// arrived as a new file. Composed, the two dimensions left a helper here whose
+// callbacks all answer a `Result` and whose `run` refuses one, and `tsc` said
+// so. That is the whole point of the constraint: a caller that RETURNS a
+// refusal must roll back, and `run` can no longer be handed one.
 function inTransaction<Value>(
-  work: (transaction: TransactionScope) => Promise<Value>,
-): Promise<Value> {
-  return harness.base.adapter.unitOfWork.run(work);
+  work: (transaction: TransactionScope) => Promise<Result<Value>>,
+): Promise<Result<Value>> {
+  return runResult(harness.base.adapter.unitOfWork, work);
 }
 
 beforeAll(async () => {

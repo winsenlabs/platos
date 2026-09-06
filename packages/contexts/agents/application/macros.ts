@@ -17,7 +17,7 @@
 // A RECORDING IS LOST ON RESTART AND THAT IS THE ADAPTER'S PROPERTY, NOT THIS
 // FILE'S. See the note on the `MacroRecorder` port.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   admitMacro,
@@ -149,7 +149,7 @@ export async function updateMacro(
   }
 
   const patched = applyMacroPatch(held.value, command, dependencies.clock.now());
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.scaffolding.updateMacro(patched, transaction),
   );
 }
@@ -173,7 +173,7 @@ export async function removeMacro(
   if (!macroIsEditableBy(held.value, scope.environmentId, actorId)) {
     return err(macroNotEditable(query.macroId));
   }
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.scaffolding.deleteMacro(scope, query.macroId, transaction),
   );
 }
@@ -267,7 +267,7 @@ export async function stopRecording(
     createdAt: now,
     updatedAt: now,
   };
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.scaffolding.insertMacro(macro, transaction),
   );
 }

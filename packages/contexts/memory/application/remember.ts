@@ -26,7 +26,7 @@
 // (`replaceProfileRevision`, `mergeRepeatedExtraction`); this file only chooses
 // which question to ask.
 
-import { asIdentifier, err, ok, type Result, type TransactionScope } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   admitContent,
@@ -113,7 +113,7 @@ export async function remember(
   const embedding = await embedForStorage(dependencies, admitted.value.kind, admitted.value.content);
   if (!embedding.ok) return err(embedding.error);
 
-  return dependencies.unitOfWork.run(async (transaction) =>
+  return runResult(dependencies.unitOfWork, async (transaction) =>
     commit(dependencies, scope.value, admitted.value, embedding.value, transaction),
   );
 }

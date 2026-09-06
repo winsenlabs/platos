@@ -25,7 +25,7 @@
 // replacing write there is the bug the merge exists for, and it is the same bug
 // as the tool-mode coercion in `domain/tools-config.ts` one layer down.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   admitAgentPatch,
@@ -110,7 +110,7 @@ export async function updateAgent(
   const changed = snapshotsDiffer(existing.value.activeVersion.snapshot, next.value);
   const renames = touchesAgentRow(patch.value);
 
-  const written = await dependencies.unitOfWork.run(async (transaction) => {
+  const written = await runResult(dependencies.unitOfWork, async (transaction) => {
     let bound = existing.value;
     if (renames) {
       const agent = await dependencies.repository.updateAgent(

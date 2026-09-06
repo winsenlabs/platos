@@ -12,7 +12,7 @@
 //     carried it is still live.
 
 import type { OrganizationId, Result, TransactionScope } from "@platos/kernel";
-import { err, ok } from "@platos/kernel";
+import { err, ok, runResult } from "@platos/kernel";
 
 import {
   decideMembershipDeactivation,
@@ -91,7 +91,7 @@ async function applyChange(
 
 export function createChangeMembershipRole(dependencies: Dependencies): ChangeMembershipRole {
   return async (command) =>
-    dependencies.unitOfWork.run(async (transaction) => {
+    runResult(dependencies.unitOfWork, async (transaction) => {
       const state = await readUnderLock(dependencies, command, transaction);
       const decision = decideMembershipRoleChange({
         ...state,
@@ -105,7 +105,7 @@ export function createChangeMembershipRole(dependencies: Dependencies): ChangeMe
 
 export function createDeactivateMembership(dependencies: Dependencies): DeactivateMembership {
   return async (command) =>
-    dependencies.unitOfWork.run(async (transaction) => {
+    runResult(dependencies.unitOfWork, async (transaction) => {
       const state = await readUnderLock(dependencies, command, transaction);
       if (state.target !== null && state.target.id === state.actor?.id) {
         // Self-removal would let the last owner strand the organization through

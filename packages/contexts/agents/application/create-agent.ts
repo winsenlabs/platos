@@ -20,7 +20,7 @@
 // fallback in one place, so it is the same rule everywhere rather than three
 // copies that drifted.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitAgent,
@@ -147,7 +147,7 @@ export async function createAgent(
     updatedAt: now,
   };
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const writtenAgent = await dependencies.repository.insertAgent(agent, transaction);
     if (!writtenAgent.ok) return err(writtenAgent.error);
     const writtenVersion = await dependencies.repository.insertVersion(version, transaction);

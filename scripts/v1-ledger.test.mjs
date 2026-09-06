@@ -524,7 +524,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // app.module.ts and the six transport seams were rewritten in place and add
     // no files. The transports rule stays at exactly 6 — the new rule is
     // declared ahead of it so process code does not inherit transport evidence.
-    // +10 (WIN-260, M2.5), and each of the ten is attributable:
+    // +10 (WIN-260, typed configuration), and each of the ten is attributable:
     //   +6  the five sibling configuration sections beside WIN-297's core one —
     //       stores, providers, channels, durable-runtime, security — and the
     //       platform aggregate that validates all six in ONE pass.
@@ -562,7 +562,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // M2 INTEGRATION: 29 + 1 (projection's redaction suite) + 11 (the errors
     // dimension's status mapping, its edge and their suites) = 41. The two
     // dimensions add DIFFERENT files under apps/core-api, so the counters add.
-    "apps-core-api": 41,
+    // +3 (WIN-260, M2.5 outbox/clock/retry): src/runtime/shutdown-drain.ts and
+    // its suite, plus mutations.json, which the existing
+    // apps-core-api.config.package rule already classifies. The admission gate
+    // and its wiring changed in-flight.ts, lifecycle.ts and their two suites IN
+    // PLACE and add no file. 29 + 3 = 32.
+    // M2 INTEGRATION, ALL FOUR: 29 + 1 + 11 + 3 = 44.
+    "apps-core-api": 44,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1092,7 +1098,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // correlation port, its PostgreSQL suite, the seven redis-cache files that
     // adopt that project, and the eleventh kernel port with its adapter and
     // suite) = 1447.
-    packages: 1447,
+    // 1397 -> 1404 (WIN-260, M2.5), and this is the FIRST dimension since
+    // tranche 2 that adds nothing to packages/adapters/postgres-tenancy:
+    //   +4 packages/kernel   — vo/retry.ts, vo/retry.test.ts,
+    //      ports/unit-of-work.test.ts and mutations.json, the kernel's first
+    //      guard ledger. ports/unit-of-work.ts and vo/index.ts were widened IN
+    //      PLACE and a widened file is not a new one.
+    //   +1 packages/contexts/eventing — the kernel-policy conformance suite.
+    //      domain/retry-schedule.ts is UNCHANGED.
+    //   +2 packages/adapters/outbox — src/flush.ts and its suite. The flush is
+    //      HERE and not under apps/core-api because composition-root.mjs rule
+    //      (C1) allows exactly one importer of an adapter package; index.ts and
+    //      mutations.json were widened in place.
+    // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
+    // M2 INTEGRATION, ALL FOUR: 1397 + 10 + 28 + 12 + 7 = 1454.
+    packages: 1454,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1369,13 +1389,25 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // scanner with its suite. Taking either side whole would have dropped two
     // tracked files and left every identity below still holding.
     // docs-content 13 + 1 + 2 = 16; root-infra 43 + 2 + 2 = 47.
-    "docs-content": 16,
-    "root-infra": 47,
+    // 13 -> 14 (WIN-260, M2.5 outbox/clock/retry):
+    // docs/audits/M2.5-transaction-outbox-clock-retry.md, pinned into
+    // docs-content.lifecycle.point-in-time-reports rather than left to the
+    // audit-notes bucket, so this rule and evidence-lifecycle.mjs classify the
+    // same file the same way.
+    // M2 INTEGRATION, ALL FOUR. root-infra IS THE COUNTER THAT WOULD HAVE LOST
+    // FILES SILENTLY TWICE: three of the four dimensions raise it, and TWO of
+    // them wrote the identical 45 and then the identical 47 for DIFFERENT files
+    // -- the secret-response scanner and its suite, the error-taxonomy scanner
+    // and its suite, and this dimension's ambient-time and transaction-outcome
+    // gates with their suites. Taking any side whole drops files and leaves
+    // every identity below still holding, which is why the rule here is to SUM.
+    // docs-content 13 + 1 + 2 + 1 = 17; root-infra 43 + 2 + 2 + 4 = 51.
+    "docs-content": 17,
+    "root-infra": 51,
   };
-  // M2 INTEGRATION: 1495 + 42 (WIN-259's two dimensions) + 27 (WIN-260's errors
-  // dimension) = 1564, and 3469 + 1564 = 5033, which is what the ledger
-  // fingerprint carries.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1564);
+  // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
+  // is what the ledger fingerprint carries.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1579);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1460,7 +1492,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // M2 INTEGRATION: 1495 + 42 + 27 = 1564. This assertion re-derives it by
     // summing the per-area counts independently of the assertion above, so the
     // two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1564
+    // and WIN-260 (typed configuration) +13 across THREE areas — `apps-core-api`
+    // +10 (seven configuration modules, two suites, and this dimension's guard
+    // ledger), `apps-mcp-stdio` +1 (the second deployable's own environment
+    // reader) and `root-infra` +2 (the containment gate and its test). It ADOPTS
+    // NO PROJECT and CHANGES NO LEDGER RULE: every one of the thirteen is
+    // classified by a rule that already existed, which is why the delta is
+    // purely additive and sums with every one above it.
+    //
+    // and WIN-260 (M2.5 outbox/clock/retry) +13 across FOUR areas —
+    // `apps-core-api` +3, `packages` +7, `docs-content` +1, `root-infra` +2 —
+    // the first dimension since tranche 2 that adds nothing to
+    // `packages/adapters/postgres-tenancy`. Its `root-infra` +2 and the typed
+    // configuration dimension's `root-infra` +2 are FOUR DISTINCT FILES, which
+    // is the one place where the two dimensions' arithmetic does not merge by
+    // agreement, and T8 adds a further +2 to the same area for the second gate
+    // this dimension builds (13 + 13 + 2 = 28 over the M2 integration figure);
+    // this one re-derives the total by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    //
+    // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
+    // per-area counts independently of the assertion above.
+    rulesDocument.baseline.totalFiles + 1579
   );
 });
 

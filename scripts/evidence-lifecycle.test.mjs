@@ -62,9 +62,26 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   //
   // No branch adds a POINT-IN-TIME, SUPERSEDED-BY or DRAFT entry, so those
   // three counts are deliberately unchanged.
-  assert.equal(manifest.entryCount, 251, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, and the WIN-259 secret-response census");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 226, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 20, DRAFT: 1 });
-  assert.equal(POINT_IN_TIME_PATHS.length, 20);
+  // Neither branch adds a POINT-IN-TIME, SUPERSEDED-BY or DRAFT entry, so
+  // those three counts were unchanged until WIN-260.
+  //
+  // WIN-260 (M2.5) +1 POINT-IN-TIME: docs/audits/M2.5-transaction-outbox-clock-retry.md,
+  // the milestone note for the transaction, clock, retry and shutdown contracts.
+  // POINT-IN-TIME on the same terms as the three M0 notes beside it, and for a
+  // reason the note itself states: its "what remains" section carries COUNTED
+  // figures (111 commit-on-resolve call sites across 67 files; three retry
+  // schedules not yet expressed over the kernel policy) and those numbers move
+  // as the remainder lands. The contracts it describes are held current by
+  // their own gates -- ambient-time, composition-root and three mutation
+  // ledgers -- so this file is the dated account of them, not the acceptance.
+  // 250 -> 251 and 20 -> 21; ACCEPTED, SUPERSEDED-BY and DRAFT are unchanged.
+  //
+  // M2 INTEGRATION: the two additions are DIFFERENT files and different
+  // categories, so both counts move: 250 -> 252, ACCEPTED 225 -> 226 and
+  // POINT-IN-TIME 20 -> 21. Either branch figure alone (251) is wrong merged.
+  assert.equal(manifest.entryCount, 252, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, and the WIN-260 M2.5 milestone note");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 226, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);
   assert.deepEqual(validateManifest(manifest, repositoryRoot), []);

@@ -45,9 +45,17 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // added: the selection protects the evidence a gate reads, not the gate, and the
 // exact-path list is where a governance script earns protection one decision at
 // a time.
-// M2 INTEGRATION: 788 + 1 + 2 = 791. All three fall inside the existing
-// `docs/**` selection rather than widening it, and none of the three scanners
-// beside them is added to SCRIPT_PREFIXES.
+// WIN-260 (M2.5) adds one, no removals and no content substitutions:
+//   docs/audits/M2.5-transaction-outbox-clock-retry.md   (milestone note)
+// It falls inside the existing `docs/**` selection rather than widening it. The
+// dimension's other new files are not protected paths: two live under
+// packages/, one under apps/core-api, and scripts/arch/ambient-time*.mjs and
+// scripts/arch/transaction-outcome*.mjs are already covered by the scripts/
+// prefix — 788 -> 789 is the one addition the selection actually gains, and it
+// stays 789 across this dimension's SECOND gate for exactly that reason.
+// M2 INTEGRATION: 788 + 1 + 2 + 1 = 792. All four fall inside the existing
+// `docs/**` selection rather than widening it, and none of the scanners beside
+// them is added to SCRIPT_PREFIXES.
 //
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is

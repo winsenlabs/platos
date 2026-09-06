@@ -35,6 +35,13 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { EnvironmentId } from "@platos/context-tenancy/application/ports/index.js";
+// M2 INTEGRATION. Every unit of work in this suite RETURNS the repository's
+// `Result`, and the transaction-outcome dimension made that shape unwritable
+// through `run`: a callback that resolves with an error `Result` is a commit on
+// a failing branch. `runResult` is the spelling that rolls back, and its return
+// type is identical, so no caller below changed. `tsc` is what found these --
+// this suite was written on a branch where `run` still accepted a `Result`.
+import { runResult } from "@platos/context-secrets/application/ports/index.js";
 
 import type { SecretsHarness } from "./secrets-harness.js";
 import {
@@ -121,7 +128,7 @@ afterAll(async () => {
 });
 
 async function seedCredential(id: string, name: string): Promise<void> {
-  const written = await harness.base.adapter.unitOfWork.run((transaction) =>
+  const written = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
     harness.repository.insertCredential(
       credentialDraft({ id, environmentId, kind: "ENTITY_SECRET", name, provider: "openai" }),
       transaction,
@@ -136,7 +143,7 @@ describe("what the migration produced is storable, byte for byte", () => {
     const versionId = "bb000000-0000-4000-8000-00000000f002";
     await seedCredential(credentialId, "migrated-from-format-2");
 
-    const stored = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const stored = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           id: versionIdOf(versionId),
@@ -153,7 +160,7 @@ describe("what the migration produced is storable, byte for byte", () => {
     expect(stored.ok).toBe(true);
     if (!stored.ok) return;
 
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.setActiveSecretVersion(
         credentialIdOf(credentialId),
         versionIdOf(versionId),
@@ -192,7 +199,7 @@ describe("what the migration produced is storable, byte for byte", () => {
     const versionId = "bb000000-0000-4000-8000-00000000f003";
     await seedCredential(credentialId, "migrated-from-format-3");
 
-    const stored = await harness.base.adapter.unitOfWork.run((transaction) =>
+    const stored = await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.insertSecretVersion(
         {
           id: versionIdOf(versionId),
@@ -211,7 +218,7 @@ describe("what the migration produced is storable, byte for byte", () => {
     expect(stored.value.ciphertext).toHaveLength(34);
     expect(MIGRATED_FROM_FORMAT_2.ciphertext).toHaveLength(16);
 
-    await harness.base.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.base.adapter.unitOfWork, (transaction) =>
       harness.repository.setActiveSecretVersion(
         credentialIdOf(credentialId),
         versionIdOf(versionId),

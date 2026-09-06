@@ -108,10 +108,18 @@ export interface MemoryConformanceStores {
   readonly memoryGraph: KnowledgeGraphRepository;
 }
 
-/** Opening one transaction per step is the caller's job; both sides get the same one. */
+/**
+ * Opening one transaction per step is the caller's job; both sides get the same
+ * one.
+ *
+ * WIN-260 (M2.5): declared over `Result`, which is `runResult`'s shape rather
+ * than `run`'s, because every step hands it a repository call and a repository
+ * call answers with a `Result` — a shape `run` now refuses, since resolving with
+ * an error COMMITS.
+ */
 export type ConformanceUnitOfWork = <Value>(
-  work: (transaction: TransactionScope) => Promise<Value>,
-) => Promise<Value>;
+  work: (transaction: TransactionScope) => Promise<Result<Value>>,
+) => Promise<Result<Value>>;
 
 const HASH_EXTRACTED = "b".repeat(64);
 const HASH_UNTHREADED = "c".repeat(64);

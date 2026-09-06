@@ -22,7 +22,7 @@
 // from the inbox id alone, so a redelivery that reaches this far produces the
 // same job rather than a second turn for one human message.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitChannelThreadKey,
@@ -121,7 +121,7 @@ async function resolveLink(
     now: dependencies.clock.now(),
   });
 
-  const inserted = await dependencies.unitOfWork.run((transaction) =>
+  const inserted = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.insertThreadLink(link, transaction),
   );
   if (inserted.ok) return ok({ link: inserted.value, agentId, startedConversation: true });

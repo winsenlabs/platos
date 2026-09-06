@@ -1032,12 +1032,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // MERGED: 1477 + 7 + 3 + 4 + 2 = 1493, read back from the scan itself. No
     //               dimension's own figure — 1484, 1480, or the 1477 the other
     //               two left untouched — is right here.
-    // WIN-260 (M2.5) +10: nine files under `apps/core-api/src/config` — the six
-    //               typed configuration sections, `environment.ts`, and the two
-    //               suites — and `apps/mcp-stdio/src/environment.ts`, the second
-    //               deployable's own reader. `mutations-config.json` is NOT in
-    //               this count: it is data at the package root, and this scan
-    //               reads source under `src/`. 1493 + 10 = 1503, and
+    // WIN-260 (typed configuration) +10: nine files under
+    //               `apps/core-api/src/config` — the six typed configuration
+    //               sections, `environment.ts`, and the two suites — and
+    //               `apps/mcp-stdio/src/environment.ts`, the second deployable's
+    //               own reader. `mutations-config.json` is NOT in this count: it
+    //               is data at the package root, and this scan reads source
+    //               under `src/`. 1493 + 10 = 1503, and
     //               `scripts/arch/composition-root.mjs` and
     //               `scripts/arch/env-access.mjs` read the same number back from
     //               their own scans of the same five roots, so the three can
@@ -1113,19 +1114,31 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // composition is the sum: 1503 + 10 + 24 + 23 = 1560. The addend lists below
     // are CONCATENATED, never replaced, so a file dropped from one dimension
     // while another added cannot reach the same total.
-    assert.equal(result.fileCount, 1560, "the generated V1 source census must stay exact");
+    // WIN-260 (M2.5 outbox/clock/retry) +8, and the first delta on this pin
+    //               since tranche 2 that is not all in one adapter directory:
+    //               THREE in `packages/kernel` (`vo/retry.ts` and the two
+    //               behaviour suites), ONE in `packages/contexts/eventing` (the
+    //               kernel-policy conformance suite), TWO in
+    //               `packages/adapters/outbox` (`src/flush.ts` and its suite)
+    //               and TWO under `apps/core-api/src/runtime`
+    //               (`shutdown-drain.ts` and its suite). The flush is in the
+    //               ADAPTER rather than at the process edge because
+    //               `composition-root.mjs` rule (C1) allows exactly one importer
+    //               of an adapter package, and this scan counts it either way.
+    //               `packages/adapters/postgres-tenancy` gains nothing.
+    //               1503 + 8 = 1511; the two dimensions touch DISJOINT roots, so
+    //               the addend lists concatenate rather than contend.
+    //
+    // M2 INTEGRATION, ALL FOUR DIMENSIONS: 1503 + 10 + 24 + 23 + 8 = 1568, with
+    // every addend list concatenated rather than replaced.
+    assert.equal(result.fileCount, 1568, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
-      // projection: kernel 2, secrets 2, postgres-tenancy 1, apps/core-api 1,
-      // and the fence split 4 lines below it in its own file.
+      // projection 10, lifecycle 24, errors-and-idempotency 23,
+      // outbox/transaction-outcome 8.
       2 + 2 + 1 + 1 + 4 +
-      // lifecycle: keyring-envelope 14, postgres-tenancy 2, providers 2,
-      // secrets 6.
       14 + 2 + 2 + 6 +
-      // errors-and-idempotency: 11 already in the tree at its first landing
-      // (the status map with its suite, the CorrelationSource port, seven
-      // redis-cache files and the postgres correlation suite) and 12 from the
-      // Idempotency-Key gate.
-      11 + 12);
+      11 + 12 +
+      3 + 1 + 2 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

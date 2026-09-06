@@ -17,7 +17,7 @@
 // elect on the first join, re-elect on the primary's departure, and clear the
 // key when the last member leaves.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   admitCluster,
@@ -141,7 +141,7 @@ export async function createCluster(
       ? cluster
       : electOnJoin(cluster, admitted.value.primaryAgentId, now);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.insertCluster(seeded, transaction),
   );
   if (!written.ok) return err(written.error);
@@ -170,7 +170,7 @@ export async function updateCluster(
   }
 
   const patched = applyClusterPatch(existing.value, command, dependencies.clock.now());
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.updateCluster(patched, transaction),
   );
   if (!written.ok) return err(written.error);
@@ -189,7 +189,7 @@ export async function removeCluster(
   if (!existing.ok) return err(existing.error);
   if (existing.value === null) return ok(false);
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const detached = await dependencies.repository.detachClusterMembers(
       scope,
       query.clusterId,
@@ -217,7 +217,7 @@ export async function addAgentToCluster(
   const binding = bound.value.binding;
 
   const now = dependencies.clock.now();
-  const joined = await dependencies.unitOfWork.run(async (transaction) => {
+  const joined = await runResult(dependencies.unitOfWork, async (transaction) => {
     const moved = await dependencies.repository.updateBinding(
       assignCluster(binding, command.clusterId, now),
       transaction,
@@ -251,7 +251,7 @@ export async function removeAgentFromCluster(
 
   const now = dependencies.clock.now();
   const remaining = members.value.filter((member) => member !== command.agentId);
-  const left = await dependencies.unitOfWork.run(async (transaction) => {
+  const left = await runResult(dependencies.unitOfWork, async (transaction) => {
     const moved = await dependencies.repository.updateBinding(
       assignCluster(binding, null, now),
       transaction,

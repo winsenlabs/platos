@@ -13,7 +13,7 @@
 // to retry at the next free revision. Two writers racing for revision 4 must
 // produce one revision 4 and one conflict, never two rows and never a silent 5.
 
-import { asIdentifier, err, ok, type JsonValue, type PrincipalId, type Result } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type JsonValue, type PrincipalId, type Result } from "@platos/kernel";
 
 import {
   admitRevisionSlot,
@@ -71,5 +71,5 @@ export async function writeArtifactRevision(
     createdAt: clock.now(),
   };
 
-  return unitOfWork.run((transaction) => repository.insertArtifactRevision(revision, transaction));
+  return runResult(unitOfWork, (transaction) => repository.insertArtifactRevision(revision, transaction));
 }

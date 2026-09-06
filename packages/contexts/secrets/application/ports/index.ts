@@ -68,8 +68,21 @@ export type {
 // method above, and an adapter that reached for `@platos/kernel` directly would
 // be a second import edge into the kernel from a package whose only declared
 // dependency is the context whose port it satisfies.
-export type { EnvironmentId, Result, TransactionScope } from "@platos/kernel";
-export { err, ok } from "@platos/kernel";
+export type { EnvironmentId, NotResult, Result, TransactionScope } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+// WIN-260 (M2.5): `domainError` joins them, for the reason `tenancy`'s and
+// `identity-access`' entry points state — the real-PostgreSQL transaction
+// boundary suite asserts that a returned error `Result` ROLLS BACK where it
+// used to assert that it committed, and a suite that cannot CONSTRUCT a
+// `DomainError` cannot state the case.
+export { domainError, err, ok, runResult } from "@platos/kernel";
 
 export type {
   ActorId,

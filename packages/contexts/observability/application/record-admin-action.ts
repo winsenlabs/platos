@@ -19,7 +19,7 @@
 // investigation depends on. Both functions here make the failure visible in the
 // return type, and the composition root decides what to do about it.
 
-import { asIdentifier, err, ok, type Result, type TransactionScope } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   buildAdminAuditRecord,
@@ -63,7 +63,7 @@ export async function recordAdminActionBestEffort(
     dependencies.clock.now(),
   );
   if (!built.ok) return err(built.error);
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.recordAdminAudit(built.value, transaction),
   );
   if (!written.ok) {

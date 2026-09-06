@@ -2457,8 +2457,9 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
-  // M2 INTEGRATION: outbox takes WIN-260's five replay cases and no file.
-  "packages/adapters/outbox": { files: 4, cases: 46 },
+  // M2 INTEGRATION: outbox 4 + 0 + 1 = 5 files, 41 + 5 (the replay codes) + 22
+  // (the flush suite) = 68 cases.
+  "packages/adapters/outbox": { files: 5, cases: 68 },
   // M2 INTEGRATION: 71 + 5. Composing the two WIN-259 dimensions gave this
   // adapter production code neither branch had — the projection dimension put
   // `sealHandle`/`openHandle` on `AeadCipher` having measured that no
@@ -2481,7 +2482,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/channels": { files: 15, cases: 269 },
   "packages/contexts/conversations": { files: 29, cases: 350 },
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
-  "packages/contexts/eventing": { files: 14, cases: 149 },
+  "packages/contexts/eventing": { files: 15, cases: 157 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 31, cases: 609 },
   "packages/contexts/identity-access": { files: 23, cases: 318 },
@@ -2498,7 +2499,9 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
-  "packages/kernel": { files: 4, cases: 60 },
+  // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
+  // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
+  "packages/kernel": { files: 6, cases: 129 },
 });
 
 /*
@@ -3172,7 +3175,8 @@ export const EXPECTED = Object.freeze({
  * 6411 + 1075 = 7486.
  */
 /*
- * M2 INTEGRATION, ALL THREE DIMENSIONS. 7399 + 248 + 87 = 7734 over
+ * M2 INTEGRATION, AFTER THREE OF THE FOUR (the fourth dimension's paragraph
+ * below supersedes these totals). 7399 + 248 + 87 = 7734 over
  * 503 + 18 + 5 = 526 files. Every row is a SUM of the dimensions that moved it
  * and no dimension's own total survives:
  *   keyring-envelope    0 + 76 + 0            = 76   over 6 files
@@ -3185,7 +3189,65 @@ export const EXPECTED = Object.freeze({
  *   jobs              378 + 0 + 8             = 386  over 16 files
  * and every other row is untouched by all three.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7734;
+/*
+ * WIN-260 DELTA (M2.5) — transaction and outbox semantics, clock and retry
+ * policies, graceful shutdown. THREE packages move, and no other:
+ *
+ *   packages/kernel            3 -> 5 files,  44 -> 113 cases  (+69)
+ *   packages/contexts/eventing 14 -> 15 files, 149 -> 157 cases (+8)
+ *   packages/adapters/outbox   4 -> 5 files,   41 -> 63 cases  (+22)
+ *
+ *   7399 + 69 + 8 + 22 = 7498, and 503 + 2 + 1 + 1 = 507 files.
+ *
+ * KERNEL +69, over two NEW files and no edits to the three that were there.
+ * `src/ports/unit-of-work.test.ts` (29) drives `runResult`: 4 cases that an
+ * `ok` answer commits, 5 that an `err` answer rolls back — the shape
+ * `cost-monitoring` shipped — 3 that a genuine exception is not relabelled as a
+ * business failure, 14 that `isTransactionAbort` discriminates exactly (11 of
+ * them one `it.each` row apiece), and 3 on the joined frame whose guarantee is
+ * the weaker one. `src/vo/retry.test.ts` (40) drives the bounded policy: 17 on
+ * the five refusals (10 of them `it.each` rows) plus the freeze and the
+ * default, 7 on growth and its ceiling, 6 on the send budget, 6 on jitter, 3 on
+ * the stated bound, 2 on `retryDueAtMs`. 29 + 40 = 69.
+ *
+ * EVENTING +8, one new file and no edits. `domain/retry-schedule.kernel-conformance.test.ts`
+ * declares the kernel policy to BE eventing's shipped schedule and sweeps 64
+ * retry numbers across every observable of both. The shipped module is
+ * UNCHANGED and its own suite is untouched, which is the point: if either side
+ * drifts this file goes red, and if someone "unifies" them by editing both,
+ * `retry-schedule.test.ts` — with its own hard-coded 2000/4000/give-up
+ * expectations — goes red instead.
+ *
+ * OUTBOX +22, one new file and no edits. `src/flush.test.ts` covers the
+ * shutdown flush: 4 that it drains to quiescence, 4 that it is bounded, 8 that
+ * it refuses and reports rather than guessing (4 of them `it.each` rows over
+ * page sizes), and 5 that the seam fits the adapter that ships — that last
+ * block builds the REAL `buildOutboxAdapter` over the REAL `createInMemoryOutbox`
+ * and is where a compile-time `Satisfies` stops being enough. 4+4+8+5 = 21 plus
+ * the `OUTBOX_FLUSH_SOURCE_SATISFACTION` case = 22.
+ *
+ * APPS/CORE-API IS NOT IN THIS TABLE, and this dimension's largest test
+ * addition lands there: 7 -> 8 files and 116 -> 155 cases, over
+ * `src/runtime/shutdown-drain.test.ts` (19 new) and additions to
+ * `in-flight.test.ts` (+8) and `lifecycle.test.ts` (+12). PACKAGE_ROOTS does
+ * not include apps/, so those 39 cases are pinned by
+ * docs/v1-ledger-rules.json's apps-core-api.test.suites FILE count and by
+ * apps/core-api/mutations.json, which names cases rather than counting them.
+ * They are recorded here so a reader reconciling this delta against the branch
+ * does not conclude the count is short.
+ *
+ * The runnable/integration split is unchanged in shape: every one of the 99 new
+ * cases is runnable by `pnpm test:v1-packages` (none carries `.integration.` in
+ * its filename), so the runnable side of the postgres-tenancy split is
+ * untouched at 429 over 23 files and the non-runnable side stays 1054 over 109.
+ */
+/*
+ * M2 INTEGRATION, ALL FOUR DIMENSIONS. 7399 + 248 + 87 + 99 = 7833 over
+ * 503 + 18 + 5 + 4 = 530 files. The rows the fourth dimension moves are
+ * kernel 60 -> 129, outbox 46 -> 68 and eventing 149 -> 157; every other row is
+ * carried from the composition of the first three.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7833;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

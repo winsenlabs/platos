@@ -19,7 +19,7 @@
 // still points at it. Two channels can share one signing secret, and revoking on
 // the first delete silently breaks the second.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitAlertChannel,
@@ -150,7 +150,7 @@ export async function createAlertChannel(
     createdAt: now,
     updatedAt: now,
   };
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.insertAlertChannel(draft, transaction),
   );
 }
@@ -175,7 +175,7 @@ export async function updateAlertChannel(
   if (isEmptyPatch(admitted.value)) return err(alertChannelUnchanged(command.channelId));
 
   const patched = applyChannelPatch(found.value, admitted.value, dependencies.clock.now());
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.updateAlertChannel(patched, transaction),
   );
 }
@@ -193,7 +193,7 @@ export async function removeAlertChannel(
   if (found.value === null) return err(alertChannelNotFound(command.channelId));
 
   const retired = retireChannel(found.value, dependencies.clock.now());
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.updateAlertChannel(retired, transaction),
   );
   if (!written.ok) return err(written.error);

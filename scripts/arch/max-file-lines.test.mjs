@@ -733,24 +733,31 @@ test("the live selectors scan an exact nonzero source census", () => {
   // reserve-once integration suite, comfortably under 400 effective lines.
   //
   // M2 INTEGRATION: 1468 + 9 (projection) + 24 (lifecycle) + 14 (errors) = 1515.
-  assert.equal(result.fileCount, 1515);
+  // WIN-260 (M2.5) adds SIX, and for the first time since tranche 2 none of them
+  // is in `packages/adapters/postgres-tenancy`: THREE in `packages/kernel`
+  // (`vo/retry.ts` and the two behaviour suites — the kernel is the FIRST
+  // selector in this list and had not moved it before), ONE in
+  // `packages/contexts/eventing` (the kernel-policy conformance suite) and TWO
+  // in `packages/adapters/outbox` (`src/flush.ts` and its suite).
+  // `apps/core-api/src/runtime/**` is NOT a selector, so this dimension's
+  // shutdown-drain pair is outside this scan even though it is inside the
+  // arch-boundaries one — the two censuses differ by exactly those two files,
+  // which is worth stating so a reader does not try to reconcile 1501 with 1474.
+  // 1468 + 6 = 1474, read back from the scan.
+  //
+  // M2 INTEGRATION, ALL FOUR: 1468 + 9 + 24 + 14 + 6 = 1521.
+  assert.equal(result.fileCount, 1521);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
     328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 +
-      // projection: kernel 2, secrets 2, the fence split 1, and the reference 4.
+      // projection 9, lifecycle 24, errors-and-idempotency 14, outbox 6.
       2 + 2 + 1 + 4 +
-      // lifecycle: keyring-envelope 14, postgres-tenancy 2, providers 2,
-      // secrets 6. The postgres term is TWO because the legacy-envelope finding
-      // needs a real database on both sides — one suite for the format-1
-      // envelope round trip and one for what the canonical row REFUSES.
       14 + 2 + 2 + 6 +
-      // errors-and-idempotency: the two kernel ports, and twelve adapter files.
-      // Its nine files under `apps/core-api/src/http/` are outside every
-      // selector, which is why this addend is 14 and the ledger's is 27.
-      2 + 12
+      2 + 12 +
+      3 + 1 + 2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -829,7 +836,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   // and only the errors dimension moves it, because the selector is
   // `apps/core-api/src/transports/**` and nothing wider.
   // 24 + 1074 + 409 + 8 = 1515.
-  assert.equal(result.fileCount, 24 + 1074 + 409 + 8);
+  // WIN-260 (M2.5) is the FIRST dimension to move the KERNEL term of this split:
+  // 20 -> 23 for `vo/retry.ts` and the two behaviour suites. Contexts 1060 ->
+  // 1061 (the eventing conformance suite), adapters 382 -> 384 (the outbox
+  // flush and its suite), and the core-api TRANSPORTS term stays 6 — this
+  // dimension's shutdown work is under `src/runtime/`, which is not a selector.
+  // 23 + 1061 + 384 + 6 = 1474.
+  //
+  // M2 INTEGRATION SUMS EACH TERM ACROSS ALL FOUR DIMENSIONS:
+  //   KERNEL   20 + 2 (redactor + suite) + 2 (the two WIN-260 ports) + 3 = 27
+  //   CONTEXTS 1060 + 6 + 8 (both WIN-259) + 1 = 1075
+  //   ADAPTERS 382 + 1 + 16 + 10 + 2 = 411
+  //   APPS     6 + 2 (error-status and its suite) = 8
+  // 27 + 1075 + 411 + 8 = 1521.
+  assert.equal(result.fileCount, 27 + 1075 + 411 + 8);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -936,6 +956,24 @@ test("the live selectors scan an exact nonzero source census", () => {
   // store modules beside them are all well inside the band, because the twenty
   // methods of `MemoryRepository` were split by whose rows they touch and by what
   // they do before any of them was written.
+  // WIN-260 (M2.5) MOVES TEN OF THESE EIGHTEEN, all in the WARNING band and none
+  // near the 500-line ERROR, and the arithmetic is one import line per file plus
+  // the comments that say why:
+  //   conversations-conformance.ts                  485 -> 486  (+1)
+  //   conversations-transaction.integration.test.ts 401 -> 403  (+2)
+  //   cost-constraints.integration.test.ts          453 -> 454  (+1)
+  //   files-scope.integration.test.ts               467 -> 468  (+1)
+  //   governance-conformance.ts                     418 -> 420  (+2)
+  //   governance-rules.integration.test.ts          424 -> 425  (+1)
+  //   memory-constraints.integration.test.ts        406 -> 409  (+3)
+  //   providers-conformance.ts                      421 -> 423  (+2)
+  //   secrets-rules.integration.test.ts             439 -> 441  (+2)
+  //   skills-constraints.integration.test.ts        438 -> 435  (-3)
+  // The last one SHRANK: two multi-line `.run(` chains became single-line
+  // `runResult(` calls. A dimension that only ever grew files would be one that
+  // never simplified anything, so the one negative is worth as much as the nine
+  // positives. EIGHT of the eighteen did not move at all, which is what says this
+  // list was measured rather than regenerated wholesale.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
@@ -944,17 +982,17 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/conversations-conformance.ts",
-      effectiveLines: 485,
+      effectiveLines: 486,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/conversations-transaction.integration.test.ts",
-      effectiveLines: 401,
+      effectiveLines: 403,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/cost-constraints.integration.test.ts",
-      effectiveLines: 453,
+      effectiveLines: 454,
       severity: "warning",
     },
     {
@@ -969,17 +1007,17 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/files-scope.integration.test.ts",
-      effectiveLines: 467,
+      effectiveLines: 468,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/governance-conformance.ts",
-      effectiveLines: 418,
+      effectiveLines: 420,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
-      effectiveLines: 424,
+      effectiveLines: 425,
       severity: "warning",
     },
     {
@@ -989,12 +1027,12 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/memory-constraints.integration.test.ts",
-      effectiveLines: 406,
+      effectiveLines: 409,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/providers-conformance.ts",
-      effectiveLines: 421,
+      effectiveLines: 423,
       severity: "warning",
     },
     // WIN-258 TRANCHE 7's FENCE PUT `secrets-rules.integration.test.ts` IN THE
@@ -1030,7 +1068,7 @@ test("the live selectors scan an exact nonzero source census", () => {
       // is already its own `describe`. A sixth case in that block takes it past
       // 500 and the split is that block, moved whole.
       path: "packages/adapters/postgres-tenancy/src/skills-constraints.integration.test.ts",
-      effectiveLines: 438,
+      effectiveLines: 435,
       severity: "warning",
     },
     {

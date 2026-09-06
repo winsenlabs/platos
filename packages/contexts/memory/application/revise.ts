@@ -28,7 +28,7 @@
 // are facts about how the row came to exist, and an editable provenance is a
 // provenance that proves nothing.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitContent,
@@ -113,7 +113,7 @@ export async function revise(
     lifecycle: { ...existing.lifecycle, updatedAt: now },
   };
 
-  return dependencies.unitOfWork.run(async (transaction) =>
+  return runResult(dependencies.unitOfWork, async (transaction) =>
     dependencies.repository.updateMemory({ memory: revised, embedding: embedding.value }, transaction),
   );
 }

@@ -18,6 +18,15 @@ import {
 } from "./testing/fixtures.js";
 import { deterministicEmbedding } from "./testing/in-memory-embedding-model.js";
 
+/**
+ * A FIXED instant, because a fixture that says `new Date()` is a fixture whose
+ * value depends on when the suite runs. `scripts/arch/ambient-time.mjs` rule T2
+ * refuses the ambient form here as it does in the code under test: the whole
+ * reason `Clock` is a port is that an instant is an input.
+ */
+const MARKED_AT = new Date("2026-01-01T00:00:00.000Z");
+
+
 function seed(
   context: MemoryHarness,
   id: string,
@@ -81,10 +90,10 @@ describe("recall", () => {
     const context = harness();
     seed(context, "mem-live", "tea");
     seed(context, "mem-archived", "tea", {
-      lifecycle: { ...memoryFixture().lifecycle, archivedAt: new Date() },
+      lifecycle: { ...memoryFixture().lifecycle, archivedAt: MARKED_AT },
     });
     seed(context, "mem-quarantined", "tea", {
-      lifecycle: { ...memoryFixture().lifecycle, quarantinedAt: new Date() },
+      lifecycle: { ...memoryFixture().lifecycle, quarantinedAt: MARKED_AT },
     });
     seed(context, "mem-rag", "tea", { source: "rag" });
     const recalled = await recall(context.dependencies, {

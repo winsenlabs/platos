@@ -286,7 +286,27 @@ export const VIOLATION_CODES = Object.freeze({
  * and be caught. The DECLARED table is unmoved by any of the three: not one of
  * the fifty-seven files reads the environment.
  */
-export const EXPECTED_FILE_COUNT = 1560;
+/**
+ * back over the same five roots. WIN-260's typed configuration adds TEN files:
+ * seven configuration modules and two suites under `apps/core-api/src/config/`,
+ * and one environment reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-260 (M2.5, outbox/clock/retry) adds EIGHT more, and this pin is what
+ * CAUGHT them: three in `packages/kernel` (`vo/retry.ts` and the two behaviour
+ * suites), one in `packages/contexts/eventing` (the kernel-policy conformance
+ * suite), two in `packages/adapters/outbox` (`src/flush.ts` and its suite) and
+ * two under `apps/core-api/src/runtime` (`shutdown-drain.ts` and its suite).
+ * 1503 + 8 = 1511. That dimension's transaction-outcome gate adds NOTHING here —
+ * it lives under `scripts/` and this scan reads the five roots — which is why the
+ * V1 LEDGER moves by two where this pin does not, and the two are allowed to
+ * disagree for a stated reason rather than by accident.
+ */
+/**
+ * M2 INTEGRATION, ALL FOUR: 1503 + 10 + 24 + 23 + 8 = 1568, read back from this
+ * gate's own scan and independently from `arch-boundaries.test.mjs`'s, so the
+ * two can DISAGREE and be caught. The DECLARED table is unmoved by all four.
+ */
+export const EXPECTED_FILE_COUNT = 1568;
 
 function listSourceFiles(root) {
   const found = [];

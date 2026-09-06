@@ -19,7 +19,7 @@
 // inviter as data and the transport keeps the duty until a decision is taken.
 
 import type { OrganizationId, Result, TransactionScope } from "@platos/kernel";
-import { asIdentifier, err, ok } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult } from "@platos/kernel";
 
 import {
   DEFAULT_INVITATION_TTL_MS,
@@ -71,7 +71,7 @@ export function createIssueInvitation(dependencies: IssueDependencies): IssueInv
     const minted = invitationTokens.mint();
     const expiresAt = command.expiresAt ?? new Date(now.getTime() + DEFAULT_INVITATION_TTL_MS);
 
-    return unitOfWork.run(async (transaction) => {
+    return runResult(unitOfWork, async (transaction) => {
       await locks.lockInvitationSlot(command.organizationId, email, transaction);
       const existing = await repository.findLiveInvitations(command.organizationId, email);
       const issued: OrganizationInvitationRecord = {
@@ -140,7 +140,7 @@ export function createAcceptInvitation(dependencies: AcceptDependencies): Accept
     });
     if (!decision.ok) return err(decision.error);
 
-    return unitOfWork.run(async (transaction) =>
+    return runResult(unitOfWork, async (transaction) =>
       consume(dependencies, decision.value.invitation, command.userId, now, transaction),
     );
   };
