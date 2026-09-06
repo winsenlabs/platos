@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "72abbfa9020792bc1620057da18b68f0e981c0d52ed0edd4ae7e0eb55c0744d7",
+  "evidenceSha256": "523a1fd81e653ad7aa4a220bf0c8978ce67b7569b0714ef8af5ecca74412633b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "a29c9b98b7abb6482ac2b093dac5ec741f74187dba918a0e800a69510d93cff9",
+    "aggregateSha256": "a3544fc70d156c1bfc7b4917b0931e3402c80154bcdf4e08cf44deb38e0a381b",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2441,7 +2441,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "c140b675ee55e9509e5f4b1a8ae255b835d44926cfdf0d34468fa656d4b6ac42"
+        "sha256": "d0ba011a9d8a7c0cf7b1b785902554aafa19d0721aa3590465d9246a326b90b8"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -2509,7 +2509,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "1c589edafa9a6c041ae2158fd6e9dc79d872bf12f91ed0204cbabd47a00bd82e"
+        "sha256": "cf9803d187f099bd015041ac78e578e596f4163e1c225ce7563fa964cc56c2be"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -26976,7 +26976,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 654
+              "line": 676
             },
             {
               "from": "apps/webapp/package.json",
@@ -27787,7 +27787,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "9e5d8a764017d3059e2ee3ce02048ee5fad6900d05f74ba46094c150cdcdd011",
+      "evidenceSha256": "17f147fcee97e00f880c72ffc924a126a6cd7bf00260f416d1211861777ccb71",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
