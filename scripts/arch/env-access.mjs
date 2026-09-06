@@ -257,7 +257,36 @@ export const VIOLATION_CODES = Object.freeze({
  * from its own independently written scan of those roots, so the two can
  * DISAGREE and be caught.
  */
-export const EXPECTED_FILE_COUNT = 1537;
+/**
+ * ---
+ * back over the same five roots. WIN-260's configuration dimension adds TEN
+ * files: seven configuration modules and two suites under
+ * `apps/core-api/src/config/`, and one environment reader under
+ * `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-260's errors-and-idempotency dimension adds ELEVEN more, none of which
+ * reads the environment: the code-to-status map and its suite under
+ * `apps/core-api/src/transports/`, the `CorrelationSource` port under
+ * `packages/kernel/src/ports/`, seven files under
+ * `packages/adapters/redis-cache/src/` (the client, the two stores, the harness
+ * and three suites), and the correlation integration suite under
+ * `packages/adapters/postgres-tenancy/src/`. 1503 + 11 = 1514.
+ *
+ * And TWELVE more from the same dimension's `Idempotency-Key` gate, none of
+ * which reads the environment either: five source modules and four suites under
+ * `apps/core-api/src/http/`, the kernel's `RequestIdempotency` port, and the
+ * Redis implementation of that port with its suite under
+ * `packages/adapters/redis-cache/src/`. 1514 + 12 = 1526.
+ */
+/**
+ * M2 INTEGRATION. Three dimensions, one base, disjoint directories:
+ * 1503 + 10 + 24 + 23 = 1560, and `scripts/arch/arch-boundaries.test.mjs` and
+ * `scripts/arch/composition-root.mjs` read the same 1560 back from their own
+ * independently written scans of the same five roots, so the three can DISAGREE
+ * and be caught. The DECLARED table is unmoved by any of the three: not one of
+ * the fifty-seven files reads the environment.
+ */
+export const EXPECTED_FILE_COUNT = 1560;
 
 function listSourceFiles(root) {
   const found = [];

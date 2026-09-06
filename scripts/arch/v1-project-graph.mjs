@@ -180,7 +180,36 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // the discovered graph had no vertex for it, so its own owner edge was not
 // walked and only the composition root's was counted. Reading the pin off that
 // first number would have set it one short of what the tree actually has.
-export const EXPECTED_EDGE_COUNT = 113;
+// WIN-260 (M2.5): 111 -> 112, and this one is NOT an owner edge.
+// `packages/adapters/postgres-tenancy` -> `packages/kernel`, because
+// `transaction.ts` consumes the kernel `CorrelationSource` port so the request
+// identifier the process edge decided on is stamped into PostgreSQL's own
+// transaction-local settings and can be read back off a committed row. Every
+// other edge into this directory carries a canonical-store port an owner
+// PUBLISHES; this one carries a port the adapter CONSUMES, which is why
+// `ADAPTER_EXTRA_PROJECTS` exists rather than a seventeenth owner being invented
+// to hang it on. No cycle: the kernel imports nothing (`kernel-is-leaf`), so an
+// edge INTO it can never come back out.
+//
+// WIN-260 (M2.5): 112 -> 113. `packages/adapters/redis-cache` ->
+// `packages/contexts/jobs`, carrying `IdempotencyStore`. The SECOND multi-owner
+// directory in the layout, and the first entry `EXPECTED_MULTI_OWNER_ADAPTERS`
+// has gained since it was written — which is the whole point of that map being
+// a named, counted exception rather than a permission.
+//
+// WIN-260 (M2.5), the errors-and-idempotency dimension: 113 -> 114.
+// `packages/adapters/redis-cache` -> `packages/kernel`, carrying the kernel's
+// `RequestIdempotency` port. A THIRD owner edge on a directory that had two, and
+// a reference per PACKAGE rather than per port, so one new binding is again
+// exactly one new edge. It cannot create a cycle for the reason the
+// `postgres-tenancy` -> kernel edge cannot: the kernel imports nothing
+// (`kernel-is-leaf`), so an edge INTO it never comes back out.
+//
+// M2 INTEGRATION: 111 + 2 + 3 = 116. This gate and `gen-v1-skeleton.mjs` derive
+// the count by DIFFERENT models -- one walks the discovered graph, one derives a
+// reference per row owner -- and are maintained separately on purpose, so the
+// two can disagree and be caught.
+export const EXPECTED_EDGE_COUNT = 116;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -238,6 +267,20 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   // disagree with the migrations the same commit ships.
   "packages/adapters/postgres-tenancy": {
     "@platos/tenancy-database": "workspace:*",
+  },
+  // WIN-260 (M2.5). The Redis client, declared in the ONE directory ADR M0.3 §4
+  // gives it — the same second half of the cutting rule the two entries around
+  // it state. The range is byte-identical to `apps/agent`'s, so pnpm resolves it
+  // to the entry already in pnpm-lock.yaml (ioredis@5.10.1) and adopting this
+  // adapter is not a supply-chain change: the lockfile gains a workspace link
+  // and a link to an already-resolved package, and no new resolution.
+  //
+  // The container library is deliberately NOT here. `@testcontainers/redis` is a
+  // devDependency, and this axis is about what SHIPS: a container library in the
+  // runtime set would follow the adapter into the production image and into the
+  // SBOM of a process that never starts a container.
+  "packages/adapters/redis-cache": {
+    ioredis: "^5.6.1",
   },
   "packages/adapters/model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
@@ -323,7 +366,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "clickhouse-observability": ["observability"],
   "objectstore-minio": ["files"],
   "redis-ratelimit": ["identity-access"],
-  "redis-cache": ["memory"],
+  "redis-cache": ["memory", "jobs", "kernel"],
   "redis-streams": ["kernel"],
   "model-router-providers": ["providers"],
   "channel-slack": ["channels"],
@@ -348,7 +391,26 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 3 };
+
+/**
+ * Edges an adapter has that are NOT owner edges, declared separately.
+ *
+ * WIN-260 (M2.5). `packages/adapters/postgres-tenancy` reaches `packages/kernel`
+ * because `transaction.ts` CONSUMES the kernel `CorrelationSource` port, so the
+ * request identifier the process edge decided on reaches PostgreSQL's own
+ * transaction-local settings. Every other edge into that directory carries a
+ * canonical-store port an owner PUBLISHES, and folding this one into
+ * `EXPECTED_ADAPTER_OWNERS` would have made the kernel an eighteenth owner of
+ * rows it owns none of — a false statement, and one that would then have to be
+ * carried through `EXPECTED_MULTI_OWNER_ADAPTERS`, `table-ownership.mjs` and the
+ * README the generator writes. It is a second axis for the same reason the
+ * external-dependency axis below is one.
+ *
+ * `scripts/arch/gen-v1-skeleton.mjs` states the same fact as
+ * `ADAPTER_EXTRA_PROJECTS`, and the two are maintained separately on purpose.
+ */
+export const EXPECTED_ADAPTER_EXTRA_PROJECTS = { "postgres-tenancy": ["packages/kernel"] };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.
@@ -402,10 +464,10 @@ function expectedReferences() {
     ]);
   }
   for (const [adapter, owners] of Object.entries(EXPECTED_ADAPTER_OWNERS)) {
-    graph.set(
-      `packages/adapters/${adapter}`,
-      owners.map((owner) => (owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`)),
-    );
+    graph.set(`packages/adapters/${adapter}`, [
+      ...owners.map((owner) => (owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`)),
+      ...(EXPECTED_ADAPTER_EXTRA_PROJECTS[adapter] ?? []),
+    ]);
   }
   graph.set("apps/core-api", [
     // WIN-297: the composition root names kernel ports directly. See the note on

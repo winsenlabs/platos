@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   adoptRequestId,
+  correlationSource,
   currentCorrelation,
   mintRequestId,
   resolveCorrelation,
@@ -86,5 +87,50 @@ describe("ambient propagation", () => {
         return currentCorrelation()?.requestId;
       });
     expect(await Promise.all([run("first"), run("second")])).toEqual(["first", "second"]);
+  });
+});
+
+describe("the kernel CorrelationSource seam (WIN-260)", () => {
+  // This is the process-edge END of the propagation the adapters carry. The
+  // OTHER end is proved in
+  // `packages/adapters/postgres-tenancy/src/correlation.integration.test.ts`,
+  // which asks a real PostgreSQL for the value it received. The two are separate
+  // suites because rule (j) forbids this app from naming an adapter outside its
+  // one composition module, and the kernel port is the seam they share.
+
+  it("reports the SAME identifier the ambient context carries", () => {
+    withCorrelation(resolveCorrelation("req-edge-1"), () => {
+      expect(correlationSource.current()?.requestId).toBe("req-edge-1");
+      expect(correlationSource.current()?.requestId).toBe(currentCorrelation()?.requestId);
+    });
+  });
+
+  it("reports NULL outside a request rather than inventing one", () => {
+    // A fabricated correlation is worse than an absent one: an adapter that
+    // received one would stamp a request identifier onto work no request caused,
+    // and it would be indistinguishable from a real one.
+    expect(correlationSource.current()).toBeNull();
+  });
+
+  it("carries only the id that SURVIVED validation, never the hostile header", () => {
+    // The edge replaces an unusable inbound value rather than rejecting the
+    // request, so what reaches an adapter is always safe in a statement, a
+    // header, a log field and a span attribute. This is the assertion that lets
+    // `transaction.ts` bind it into SQL without escaping it a second time.
+    const hostile = 'ok\r\n{"level":"info","message":"authorized"}';
+    withCorrelation(resolveCorrelation(hostile), () => {
+      const carried = correlationSource.current()?.requestId ?? "";
+      expect(carried).not.toBe(hostile);
+      expect(carried).toMatch(/^[A-Za-z0-9_.:-]{1,128}$/u);
+    });
+  });
+
+  it("keeps concurrent requests apart at the port, not just at the storage", async () => {
+    const run = async (id: string): Promise<string | undefined> =>
+      await withCorrelation(resolveCorrelation(id), async () => {
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        return correlationSource.current()?.requestId;
+      });
+    expect(await Promise.all([run("port-a"), run("port-b")])).toEqual(["port-a", "port-b"]);
   });
 });

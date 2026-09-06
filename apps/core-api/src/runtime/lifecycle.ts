@@ -137,6 +137,12 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     // Nest's own logger writes unstructured lines to stdout, which would sit
     // beside this process's JSON and break any parser reading the stream.
     logger: false,
+    // WIN-260 (M2.5). The framework's body parser keeps the exact bytes on
+    // `request.rawBody`, which is what M0.4 §2's idempotency fingerprint is
+    // taken over. Without it the gate would have to re-read the stream itself,
+    // ahead of the parser, and hand the bytes back — a correctness hazard the
+    // gate would then own for every request in the process.
+    rawBody: true,
   });
 
   // Correlation is installed BEFORE the in-flight register so that the register's

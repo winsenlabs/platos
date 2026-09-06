@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FORTY-SEVEN bindings across ADR M0.3 §4's THIRTEEN adapter directories", () => {
+  it("declares FORTY-NINE bindings across ADR M0.3 §4's THIRTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -163,14 +163,45 @@ describe("the declared binding table", () => {
     // `AeadCipher` and `Hasher` separately because they are three capabilities
     // with three failure modes, and they share a directory because the opaque
     // `RootKeyHandle` is resolvable only by whoever minted it.
-    expect(ADAPTER_BINDINGS).toHaveLength(47);
-    expect(DECLARED_BINDING_COUNT).toBe(47);
+    // WIN-260 (M2.5) adds the FORTY-FIFTH, and it is the FIRST binding the §15
+    // amendment has produced anywhere but `postgres-tenancy`:
+    // `redis-cache:IdempotencyStore` for `jobs`, behind the SAME Redis client as
+    // `memory`'s `Cache`. The `jobs` note above said that port "gets no row"
+    // here because it writes no CANONICAL row — which is still true, and is why
+    // its row is on a keyspace directory rather than on the PostgreSQL one.
+    //
+    // The DIRECTORY count does not move, for the eighteenth time, and this is
+    // the first occasion it has held for a directory other than the shared
+    // PostgreSQL one — which is what makes it a rule rather than a fact about
+    // one package.
+    //
+    // 45 -> 46 (WIN-260's errors-and-idempotency dimension):
+    // `redis-cache:RequestIdempotency` for the KERNEL, M0.4 §2's
+    // `Idempotency-Key` envelope, behind the same client the two rows above it
+    // already share. The directory count holds a nineteenth time.
+    //
+    // M2 INTEGRATION. The two counts move by DIFFERENT amounts and that is the
+    // fact worth stating: bindings 44 + 3 + 2 = 49, directories 12 + 1 = 13.
+    // WIN-259 adds a directory and three rows on it; WIN-260 adds two rows on a
+    // directory that already existed.
+    expect(ADAPTER_BINDINGS).toHaveLength(49);
+    expect(DECLARED_BINDING_COUNT).toBe(49);
     expect(ADAPTER_NAMES).toHaveLength(13);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "keyring-envelope").map(
         (binding) => binding.port,
       ),
     ).toEqual(["KeyRing", "AeadCipher", "Hasher"]);
+    // THREE directories now hold more than one binding, where one did before M2
+    // and two did on the errors-and-idempotency branch alone. `keyring-envelope`
+    // joins the list merged, which is a claim NEITHER branch could make: it has
+    // three ports and exactly ONE owner, so it is multi-PORT without being
+    // multi-OWNER, and `EXPECTED_MULTI_OWNER_ADAPTERS` in the graph gate stays
+    // at two entries while this list goes to three.
+    const multiPort = [...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter))].filter(
+      (adapter) => ADAPTER_BINDINGS.filter((binding) => binding.adapter === adapter).length > 1,
+    );
+    expect(multiPort.sort()).toEqual(["keyring-envelope", "postgres-tenancy", "redis-cache"]);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
     );
@@ -281,9 +312,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(47);
+    expect(report.unsatisfied).toHaveLength(49);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/47 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/49 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -310,7 +341,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(46);
+    expect(report.unsatisfied).toHaveLength(48);
 
     expect(report.faults).toEqual([]);
   });
@@ -340,7 +371,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(47);
+    expect(app.bindings.unsatisfied).toHaveLength(49);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -362,7 +393,13 @@ describe("composing the application", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(CompositionFault);
       const fault = error as CompositionFault;
-      expect(fault.faults).toHaveLength(1);
+      // THREE faults, not one, since WIN-260 (M2.5): `redis-cache` carries
+      // `Cache`, `IdempotencyStore` and — since this dimension —
+      // `RequestIdempotency`, so an adapter wired into that slot that identifies
+      // as something else fails every binding on the directory. A pin of `1`
+      // would have gone green on a directory that had quietly stopped satisfying
+      // its second and third ports.
+      expect(fault.faults).toHaveLength(3);
       expect(fault.message).not.toContain("127.0.0.1");
     }
   });
@@ -370,7 +407,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(46);
+    expect(app.bindings.unsatisfied).toHaveLength(48);
 
   });
 

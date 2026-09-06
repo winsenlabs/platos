@@ -94,7 +94,15 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // `scripts/arch/v1-project-graph.mjs` read 112, because that gate had no
   // vertex for the new directory yet and so never walked its owner edge. A pin
   // taken from that number would have been one short.
-  assert.match(output, /33 V1 projects and 113 project edges/u);
+  // 111 -> 113 (WIN-260, M2.5), on two axes that are deliberately separate:
+  // packages/adapters/postgres-tenancy -> packages/kernel, which is NOT an owner
+  // edge but a port the adapter CONSUMES (`CorrelationSource`); and
+  // packages/adapters/redis-cache -> packages/contexts/jobs, which is a second
+  // OWNER edge on a directory that had one. The count is still read back rather
+  // than computed.
+  // M2 INTEGRATION: 33 projects (only WIN-259 adds one; WIN-260 adopts one that
+  // already existed) and 111 + 2 + 3 = 116 edges. Still READ BACK, not computed.
+  assert.match(output, /33 V1 projects and 116 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -579,7 +587,15 @@ const LIVE_ADAPTERS = [
   { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "n" },
   { dir: "objectstore-minio", port: "ObjectStore", owner: "files", note: "n" },
   { dir: "redis-ratelimit", port: "RateLimiter", owner: "identity-access", note: "n" },
-  { dir: "redis-cache", port: "Cache", owner: "memory", note: "n" },
+  // WIN-260 (M2.5). The SECOND binding on this directory: `jobs`'
+  // `IdempotencyStore` behind the SAME Redis client as `memory`'s `Cache`.
+  // The fixture copy has to carry it, or the non-vacuity anchor below is
+  // comparing the refusals against a table the tree no longer has.
+  { dir: "redis-cache", port: "Cache", owner: "memory", note: "n",
+    additional: [
+      { port: "IdempotencyStore", owner: "jobs" },
+      { port: "RequestIdempotency", owner: "kernel" },
+    ] },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
   { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n" },
@@ -618,18 +634,24 @@ test("§15 refusal: a FOURTEENTH adapter directory fails, even though bindings m
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FORTY-EIGHTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTIETH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
   // `eventing`'s one canonical-store binding all landed in the one directory.
+  // WIN-260 (M2.5) moved it to forty-five, and NOT in that directory: the
+  // forty-fifth is `redis-cache:IdempotencyStore`, the first application of the
+  // §15 amendment anywhere but `postgres-tenancy`. Its errors-and-idempotency
+  // dimension moved it again to forty-six, in the same directory and for the
+  // kernel: `redis-cache:RequestIdempotency`, M0.4 §2's Idempotency-Key
+  // envelope.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 47 adapter bindings; ADAPTERS flattens to 48")));
+  assert.ok(errors.some((error) => error.includes("declares 49 adapter bindings; ADAPTERS flattens to 50")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

@@ -30,7 +30,13 @@ import {
   type Suspension,
 } from "@platos/kernel";
 
-import { reservationUnavailable, type Reservation } from "../../domain/index.js";
+import {
+  readableRecord,
+  reservationUnavailable,
+  unreadableRecord,
+  type Reservation,
+  type UnreadableReason,
+} from "../../domain/index.js";
 import type {
   HandlerInvocation,
   HandlerOutcome,
@@ -48,8 +54,15 @@ interface Held {
 export class InMemoryIdempotencyStore implements IdempotencyStore {
   private readonly held = new Map<string, Held>();
   private pendingFailure: string | null = null;
-  /** Set to make a held record unreadable, the live "could not parse" case. */
-  private corruptNext = false;
+  /**
+   * Set to make the next LOST race report an unreadable record.
+   *
+   * WIN-260 made this a REASON rather than a flag. A double that could only
+   * produce one kind of unreadable record could not exercise the three codes
+   * `decideReplay` now mints, and a test asserting on all three against a double
+   * that only ever emits one of them would be asserting on the double.
+   */
+  private corruptNext: UnreadableReason | null = null;
 
   constructor(private readonly now: () => Date) {}
 
@@ -57,9 +70,9 @@ export class InMemoryIdempotencyStore implements IdempotencyStore {
     this.pendingFailure = reason;
   }
 
-  /** The next `reserve` that LOSES reports a null existing record. */
-  corruptNextRead(): void {
-    this.corruptNext = true;
+  /** The next `reserve` that LOSES reports an unreadable record, for `reason`. */
+  corruptNextRead(reason: UnreadableReason = "absent"): void {
+    this.corruptNext = reason;
   }
 
   private key(key: IdempotencyKey): string {
@@ -89,11 +102,12 @@ export class InMemoryIdempotencyStore implements IdempotencyStore {
     const id = this.key(key);
     const existing = this.live(id);
     if (existing !== null) {
-      if (this.corruptNext) {
-        this.corruptNext = false;
-        return ok({ kind: "held", existing: null });
+      if (this.corruptNext !== null) {
+        const reason = this.corruptNext;
+        this.corruptNext = null;
+        return ok({ kind: "held", held: unreadableRecord(reason) });
       }
-      return ok({ kind: "held", existing: existing.reservation });
+      return ok({ kind: "held", held: readableRecord(existing.reservation) });
     }
     this.held.set(id, { reservation, expiresAt: this.now().getTime() + ttlSeconds * 1000 });
     return ok({ kind: "reserved" });

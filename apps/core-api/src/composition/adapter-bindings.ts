@@ -23,7 +23,7 @@
 // readiness rather than pretending to be ready. WIN-258/259 and their siblings
 // fill the registry in; none of them needs to change this file's shape to do it.
 
-import type { DurableRuntime, EventBus, OutboxWriter } from "@platos/kernel";
+import type { DurableRuntime, EventBus, OutboxWriter, RequestIdempotency } from "@platos/kernel";
 
 import type {
   IdentityAccessRepository,
@@ -92,6 +92,7 @@ import type {
 } from "@platos/context-conversations/application/ports/index.js";
 import type {
   ApprovalsRepository,
+  IdempotencyStore,
   JobsRepository,
 } from "@platos/context-jobs/application/ports/index.js";
 
@@ -419,7 +420,17 @@ interface PortSatisfaction {
   >;
   readonly "objectstore-minio:ObjectStore": Satisfies<ObjectstoreMinioAdapter, ObjectStore>;
   readonly "redis-ratelimit:RateLimiter": Satisfies<RedisRatelimitAdapter, RateLimiter>;
-  readonly "redis-cache:Cache": Satisfies<RedisCacheAdapter, Cache>;
+  readonly "redis-cache:Cache": Satisfies<RedisCacheAdapter["cache"], Cache>;
+  readonly "redis-cache:IdempotencyStore": Satisfies<RedisCacheAdapter["idempotency"], IdempotencyStore>;
+  // WIN-260 (M2.5), the errors-and-idempotency dimension. The THIRD port on this
+  // directory and the first kernel port it carries. Indexed through the PROPERTY
+  // for the reason the two above it are: the adapter is one object serving three
+  // contracts, and `Satisfies<RedisCacheAdapter, RequestIdempotency>` would ask
+  // whether the whole adapter is a request-idempotency store, which it is not.
+  readonly "redis-cache:RequestIdempotency": Satisfies<
+    RedisCacheAdapter["requests"],
+    RequestIdempotency
+  >;
   readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
   readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
   readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
@@ -480,6 +491,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "objectstore-minio:ObjectStore": true,
   "redis-ratelimit:RateLimiter": true,
   "redis-cache:Cache": true,
+  "redis-cache:IdempotencyStore": true,
+  "redis-cache:RequestIdempotency": true,
   "redis-streams:EventBus": true,
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
@@ -828,7 +841,30 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     owner: "eventing",
   }),
   Object.freeze({ adapter: "redis-ratelimit", port: "RateLimiter", owner: "identity-access" }),
+  // WIN-260 (M2.5). The SECOND binding on this directory, and the FIRST time the
+  // §15 amendment has been applied outside `postgres-tenancy`. `Cache` and
+  // `IdempotencyStore` sit behind ONE Redis connection, so they are one
+  // directory; a thirteenth would have been a second client for one server.
+  //
+  // The claim the `jobs` rows above make is now discharged. They say
+  // `IdempotencyStore` is "a reserve-once keyspace — an atomic claim-or-report,
+  // a TTL the store enforces, and an update that must not resurrect an expired
+  // key — none of which PostgreSQL has, and all of which `redis-cache` below
+  // does". Until this row, "does" was a promise about a placeholder.
   Object.freeze({ adapter: "redis-cache", port: "Cache", owner: "memory" }),
+  Object.freeze({ adapter: "redis-cache", port: "IdempotencyStore", owner: "jobs" }),
+  // WIN-260 (M2.5), the errors-and-idempotency dimension. The THIRD row on this
+  // directory and the FORTY-SIXTH binding. `RequestIdempotency` is M0.4 §2's
+  // `Idempotency-Key` envelope — the header a transport reads, the reservation
+  // that makes a replay possible, and the one-time-secret mints that REQUIRE
+  // both. Its owner is `kernel` and not `jobs`: `jobs`' `IdempotencyStore`
+  // reserves a job EXECUTION keyed by an `ExecutionRequestId` and settles with a
+  // `JobExecutionErrorCode`, while this reserves an HTTP REQUEST keyed by a
+  // caller's header and settles with the bytes that went on the wire. All
+  // seventeen contexts have side-effecting operations the rule covers and none
+  // of them decides anything with the key, which is the test `CorrelationSource`
+  // passed to become a kernel port.
+  Object.freeze({ adapter: "redis-cache", port: "RequestIdempotency", owner: "kernel" }),
   Object.freeze({ adapter: "redis-streams", port: "EventBus", owner: "kernel" }),
   Object.freeze({ adapter: "model-router-providers", port: "ModelRouter", owner: "providers" }),
   Object.freeze({ adapter: "channel-slack", port: "ChannelAdapter", owner: "channels" }),
@@ -845,7 +881,7 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-SEVEN rows across
+ * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-NINE rows across
  * thirteen directories: a caller iterating this list to construct or close
  * adapters would otherwise build `postgres-tenancy` THIRTY-THREE times and
  * open thirty-three pools over the one database.

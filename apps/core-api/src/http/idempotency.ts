@@ -1,0 +1,272 @@
+// M0.4 §2's `Idempotency-Key` CONTRACT, ENFORCED AT THE EDGE.
+//
+// Three promises, one gate. The header is ACCEPTED on every side-effecting
+// operation, REQUIRED on the one-time-secret mints — "no key, 400
+// IDEMPOTENCY_KEY_REQUIRED" — and a repeat of a settled request REPLAYS the
+// first answer with `Idempotency-Replayed: true` instead of running again.
+//
+// IT RUNS BEFORE ROUTING, AND THAT IS WHY IT EXISTS NOW. WIN-267 (M4.1) owns the
+// canonical V1 REST routes and has not landed; the ENVELOPE is not the routes.
+// A contract that is only enforced once handlers exist is a contract every
+// handler has to remember, and the first one to forget mints a second live
+// credential on a retry. Registered as module middleware over `*`, the gate sees
+// every request the process receives — including one whose handler does not
+// exist yet, which is the honest state of the surface today.
+//
+// WHY MODULE MIDDLEWARE AND NOT `nest.use`. `runtime/lifecycle.ts` installs
+// correlation with `nest.use`, which Express runs BEFORE the framework's body
+// parser — correct for correlation, which needs no body, and useless here: the
+// fingerprint has to cover what the caller sent. Nest registers module
+// middleware after `registerParserMiddleware`, so `request.rawBody` (the app is
+// created with `rawBody: true`) holds the exact bytes.
+//
+// FAIL CLOSED, EVERY TIME. An unreachable store, an unreadable record, a
+// reservation that vanished and a request that arrived while its twin is running
+// are all refusals. The alternative — proceeding when the store cannot say
+// whether this request already ran — turns a cache blip into a second live
+// secret, which is the one outcome nobody can undo.
+
+import { createHash } from "node:crypto";
+
+import type {
+  DomainError,
+  RecordedResponse,
+  RequestFingerprint,
+  RequestIdempotency,
+} from "@platos/kernel";
+
+import {
+  idempotencyKeyMalformed,
+  idempotencyKeyRequired,
+  idempotencyRecordAbsent,
+  idempotencyRecordMalformed,
+  idempotencyRequestInFlight,
+  idempotencyRequestMismatch,
+  idempotencyStoreUnavailable,
+} from "./idempotency-errors.js";
+import { classifyRequest, operationScope } from "./idempotency-policy.js";
+
+/**
+ * How long a reservation — and the response it replays — is held.
+ *
+ * TWENTY-FOUR HOURS, and the number is an EXPOSURE WINDOW rather than a
+ * convenience. On a `required` operation the recorded body contains a one-time
+ * secret, because M0.4 §2 says a replay "returns same secret" and there is no
+ * way to return it without having kept it. So the TTL is how long that secret
+ * sits in the cache, and it is deliberately far shorter than the seven days
+ * `jobs` gives a job reservation: a client retrying a failed HTTP call retries
+ * in seconds or minutes, and nothing about an interactive mint needs a week.
+ */
+export const REQUEST_IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60;
+
+/**
+ * The shape an `Idempotency-Key` must have.
+ *
+ * Unreserved characters only, so the value is safe in a header, a log field, a
+ * span attribute and a store key without escaping anywhere — the same rule
+ * `runtime/correlation.ts` applies to an inbound request id, and for the same
+ * reason: the value is attacker-controlled and ends up in all four places.
+ *
+ * NO MINIMUM LENGTH BEYOND ONE. A short key is only a risk to the caller that
+ * chose it, because the reservation is scoped by the credential and the
+ * operation as well — and inventing a length rule M0.4 §2 does not state would
+ * refuse callers who are within the contract.
+ */
+export const ACCEPTABLE_IDEMPOTENCY_KEY = /^[A-Za-z0-9_.:-]{1,255}$/u;
+
+/** The largest response body a reservation will hold for replay. */
+export const MAX_REPLAYABLE_BODY_BYTES = 64 * 1024;
+
+export type KeyRead =
+  | { readonly kind: "absent" }
+  | { readonly kind: "malformed" }
+  | { readonly kind: "key"; readonly value: string };
+
+/**
+ * Read the header, deciding nothing about what its absence means.
+ *
+ * A REPEATED HEADER IS MALFORMED, NOT ABSENT. Node hands a repeated header over
+ * as an array, and two upstream opinions about which request this is are not a
+ * key — picking either would let a proxy that duplicated the header decide which
+ * reservation a mint lands on.
+ */
+export function readIdempotencyKey(raw: unknown): KeyRead {
+  if (raw === undefined || raw === null) return { kind: "absent" };
+  if (typeof raw !== "string") return { kind: "malformed" };
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return { kind: "absent" };
+  return ACCEPTABLE_IDEMPOTENCY_KEY.test(trimmed) ? { kind: "key", value: trimmed } : { kind: "malformed" };
+}
+
+function sha256Hex(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+/**
+ * What joins the fields of a fingerprint before they are hashed.
+ *
+ * A CHARACTER NO FIELD CAN CONTAIN, and that is the whole requirement. Joining
+ * on a space would let `["a b", "c"]` and `["a", "b c"]` hash to the same
+ * digest, so two different requests could share a reservation — and on a mint,
+ * share a secret. `U+0000` cannot appear in a header value, a URL or a
+ * `Content-Type`, so the encoding is unambiguous. It is written as an escape
+ * rather than as a literal byte because a NUL sitting in a source file is
+ * invisible in every diff and every review.
+ */
+const FIELD_SEPARATOR = "\u0000";
+
+/** What the edge knows about one request, before any handler has seen it. */
+export interface RequestFacts {
+  readonly method: string;
+  /** `originalUrl` — Express strips the mount prefix off `url` for middleware. */
+  readonly originalUrl: string;
+  /** The `Idempotency-Key` header, exactly as it arrived. `unknown` because a
+   * repeated header arrives as an array and a missing one as `undefined`, and
+   * both are facts `readIdempotencyKey` has to judge rather than assume away. */
+  readonly idempotencyKey: unknown;
+  readonly authorization: string | null;
+  readonly contentType: string | null;
+  readonly contentLength: string | null;
+  /** The exact bytes of the body, or null when the parser read none. */
+  readonly rawBody: Uint8Array | null;
+}
+
+export function pathnameOf(originalUrl: string): string {
+  const cut = originalUrl.search(/[?#]/u);
+  return cut === -1 ? originalUrl : originalUrl.slice(0, cut);
+}
+
+/**
+ * The identity a reservation is held under.
+ *
+ * THE SCOPE IS HASHED WHOLE, credential included. The credential must never
+ * appear in a store key an operator can read off a `SCAN`, and once one half has
+ * to be hashed the other may as well be — a half-readable key invites a reader
+ * to believe the readable half is the whole identity. `keyFor()` on the adapter
+ * is how tooling gets from a fingerprint to a key, rather than by rebuilding the
+ * string.
+ *
+ * THE CREDENTIAL IS IN THE SCOPE AND THAT IS A SECURITY PROPERTY, not
+ * bookkeeping. Two callers may choose the same `Idempotency-Key`; nothing stops
+ * them. Without the credential in the scope, the second caller to a mint would
+ * replay the first caller's response — which on these operations IS the first
+ * caller's secret.
+ *
+ * THE DIGEST COVERS WHAT WAS SENT. Method, path, query, content type, declared
+ * length and the body bytes. A request that differs in any of them is a
+ * different request, and the store refuses rather than answering it with the
+ * first one's response.
+ *
+ * DECLARED LIMIT: when the framework's parser read no body — an unparsed content
+ * type — `rawBody` is null and the digest falls back to the declared length and
+ * type. Two bodies of identical length and type that the parser did not read
+ * therefore share a digest. It is stated rather than hidden because the fix is
+ * WIN-267's: a routed handler knows its own media types, and the edge does not.
+ */
+export function fingerprintFor(facts: RequestFacts, key: string): RequestFingerprint {
+  const pathname = pathnameOf(facts.originalUrl);
+  const query = facts.originalUrl.slice(pathname.length);
+  const scope = sha256Hex(
+    [operationScope(facts.method, pathname), facts.authorization ?? ""].join(FIELD_SEPARATOR),
+  ).slice(0, 32);
+  const digest = sha256Hex(
+    [
+      facts.method.toUpperCase(),
+      pathname,
+      query,
+      facts.contentType ?? "",
+      facts.contentLength ?? "",
+      facts.rawBody === null ? "" : Buffer.from(facts.rawBody).toString("base64"),
+    ].join(FIELD_SEPARATOR),
+  );
+  return { scope, key, digest };
+}
+
+/** What the gate decided. `proceed` carries the reservation the caller now owns,
+ * or null when there was nothing to reserve. */
+export type GateDecision =
+  | { readonly kind: "proceed"; readonly held: RequestFingerprint | null }
+  | { readonly kind: "replay"; readonly response: RecordedResponse }
+  | { readonly kind: "refuse"; readonly error: DomainError };
+
+/**
+ * Decide one request against the contract.
+ *
+ * Separated from the middleware so every branch is reachable without a socket —
+ * and so the middleware holds no rule, which is what ADR M0.3 §6 budgets a
+ * transport for.
+ */
+export async function decideIdempotency(
+  facts: RequestFacts,
+  store: RequestIdempotency | null,
+): Promise<GateDecision> {
+  const pathname = pathnameOf(facts.originalUrl);
+  const classification = classifyRequest(facts.method, pathname);
+  if (classification === "not-applicable" || classification === "exempt") {
+    return { kind: "proceed", held: null };
+  }
+  const operation = operationScope(facts.method, pathname);
+  const read = readIdempotencyKey(facts.idempotencyKey);
+  if (read.kind === "malformed") return { kind: "refuse", error: idempotencyKeyMalformed(operation) };
+  if (read.kind === "absent") {
+    // THE ONE REFUSAL M0.4 §2 NAMES. `required` means the operation hands back a
+    // secret the caller can never read again, so running it without a key is
+    // running something that cannot be retried safely.
+    if (classification === "required") {
+      return { kind: "refuse", error: idempotencyKeyRequired(operation) };
+    }
+    // `accepted` with no key: nothing to reserve, nothing to refuse.
+    return { kind: "proceed", held: null };
+  }
+  if (store === null) {
+    // A key was sent and there is no store to honour it. Refusing is the
+    // fail-closed answer for BOTH classes: a caller that sent a key asked for
+    // exactly-once, and serving the request as though it had not is the
+    // duplicate side effect this gate exists to prevent. Readiness already
+    // reports the unsatisfied binding, so an install in this state is visibly
+    // not ready rather than silently wrong.
+    return {
+      kind: "refuse",
+      error: idempotencyStoreUnavailable(operation, "no RequestIdempotency adapter is bound"),
+    };
+  }
+  const fingerprint = fingerprintFor(facts, read.value);
+  const reservation = await store.reserve(fingerprint, REQUEST_IDEMPOTENCY_TTL_SECONDS);
+  switch (reservation.kind) {
+    case "reserved":
+      return { kind: "proceed", held: fingerprint };
+    case "replay":
+      return { kind: "replay", response: reservation.response };
+    case "in-flight":
+      return { kind: "refuse", error: idempotencyRequestInFlight(operation) };
+    case "mismatch":
+      return { kind: "refuse", error: idempotencyRequestMismatch(operation) };
+    case "absent":
+      return { kind: "refuse", error: idempotencyRecordAbsent(operation) };
+    case "malformed":
+      return { kind: "refuse", error: idempotencyRecordMalformed(operation) };
+    case "unavailable":
+      return {
+        kind: "refuse",
+        error: idempotencyStoreUnavailable(operation, reservation.reason),
+      };
+  }
+}
+
+/**
+ * What a settled request should do with the reservation it holds.
+ *
+ * A 5xx RELEASES. It means the system does not know what happened, and recording
+ * it would answer every retry of that key with the same 500 for a day — turning
+ * "try again" into "you already did". Everything below 500 is an ANSWER, refusal
+ * included: a 422 the caller can fix is still a decision the operation reached,
+ * and replaying it is cheaper and more consistent than reaching it twice.
+ *
+ * A body too large to hold also releases. A replay that returned a truncated
+ * secret would be worse than no replay at all.
+ */
+export function settlementFor(status: number, bytes: number): "record" | "release" {
+  if (status >= 500) return "release";
+  if (bytes > MAX_REPLAYABLE_BODY_BYTES) return "release";
+  return "record";
+}

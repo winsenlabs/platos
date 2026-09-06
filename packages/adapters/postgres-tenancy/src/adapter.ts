@@ -260,6 +260,8 @@
 // DELAYED hand-off whose `availableAt` asks for the durable schedule ADR M0.3 §7
 // decision 10 puts behind `durable-runtime`.
 
+import type { CorrelationSource } from "@platos/kernel";
+
 import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
 import type { NotificationRuleRepository } from "@platos/context-eventing/application/ports/index.js";
 import type {
@@ -513,8 +515,13 @@ export type PostgresTenancyOptions = TenancyClientOptions & TransactionTimeouts;
 export function buildPostgresTenancyAdapter(
   client: TenancyDatabaseClient,
   timeouts: TransactionTimeouts = {},
+  correlation: CorrelationSource | null = null,
 ): PostgresTenancyAdapter {
-  const transactions: TenancyTransactions = createTenancyTransactions(client, timeouts);
+  // WIN-260. Handed to `createTenancyTransactions` and to NOTHING else in this
+  // file. Correlation is a property of the unit of work, not of a repository:
+  // stamping it once where the transaction opens means every one of the
+  // thirteen owners' writes inherits it, and no repository has to remember to.
+  const transactions: TenancyTransactions = createTenancyTransactions(client, timeouts, correlation);
   // WIN-258 T3. Built ONCE and referenced twice: `operators` and
   // `sessionRevoker` below are handed narrow `Pick<>`s of these very stores, so
   // tenancy's two edges into identity-access resolve to the SAME objects the

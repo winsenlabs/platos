@@ -674,21 +674,33 @@ test("generated ownership includes the generator's exact 118 outputs across 33 V
   // because the package was born adopted: it shipped with real source from its
   // first commit and never had a declaration stub to release.
   //
-  // BOTH NUMBERS ARE READ BACK, never computed. `gen-v1-skeleton.mjs --check`
-  // prints "100 scaffolding + 18 placeholder = 118 generated file(s) for 33 V1
-  // projects and 113 project edges (24 project(s) adopted, 88 placeholder(s)
-  // released)". The scaffolding term moved 97 -> 100 and the placeholder term is
-  // unmoved at 18, which is the arithmetic of a package that adds three and
-  // releases none.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 118);
+  // M2 INTEGRATION MOVES IT BACK DOWN, 118 -> 116, AND THIS IS WHERE THE
+  // "read it back" instruction earned itself. The two dimensions pull in
+  // OPPOSITE directions on the same counter: WIN-259 adds a project and three
+  // scaffolding files (+3), and WIN-260's errors-and-idempotency dimension
+  // ADOPTS `packages/adapters/redis-cache`, which RELEASES that project's two
+  // declaration placeholders (-2). Summing the two branch figures would have
+  // given 118 + (-2) only if somebody had noticed the second one moved at all —
+  // and neither branch's own pin was right merged, because
+  // `tejas/errors-idempotency` never moved this file: it left the pin at v1's
+  // 115 while its own adoption took the generator to 113, so it shipped
+  // `test:workspace-reachability` RED, exactly as `tejas/secret-lifecycle` had
+  // done before its rebase.
+  //
+  // READ BACK, NOT COMPUTED. `gen-v1-skeleton.mjs --check` prints
+  // "100 scaffolding + 16 placeholder = 116 generated file(s) for 33 V1 projects
+  // and 116 project edges (25 project(s) adopted, 90 placeholder(s) released)".
+  // Scaffolding 97 -> 100, placeholders 18 -> 16, adopted 23 -> 25, released
+  // 86 -> 90.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 116);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 33);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 118 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 118);
+  // Same 116 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 116);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

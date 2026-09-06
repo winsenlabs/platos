@@ -37,11 +37,22 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // added to SCRIPT_PREFIXES: the advisory and licence gates are protected because
 // they are security CONTROLS that fail a release, and this one is a census that
 // fails a review. Protecting it would say something about it that is not true.
+// WIN-260 (M2.5) adds TWO, no removals and no content substitutions:
+//   docs/error-taxonomy.json                         (the code->status contract)
+//   docs/win-260-mutation-ledger.json                (the mutation sweep)
+// Both fall inside the existing `docs/**` selection rather than widening it, so
+// 788 + 2 = 790. `scripts/error-taxonomy.mjs` and its suite are deliberately NOT
+// added: the selection protects the evidence a gate reads, not the gate, and the
+// exact-path list is where a governance script earns protection one decision at
+// a time.
+// M2 INTEGRATION: 788 + 1 + 2 = 791. All three fall inside the existing
+// `docs/**` selection rather than widening it, and none of the three scanners
+// beside them is added to SCRIPT_PREFIXES.
 //
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "80bc12c13e261492fc566ed5fbed0462104dd7f45f81d7ea979da4f1bb37251f";
+export const EXPECTED_PATH_SET_SHA256 = "0000000000000000000000000000000000000000000000000000000000000000";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
