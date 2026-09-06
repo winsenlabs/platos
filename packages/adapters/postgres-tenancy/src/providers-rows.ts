@@ -369,7 +369,35 @@ export function readModelPriceSnapshot(
  * round-trip a 24-digit decimal and the column would store whatever the binary
  * float happened to be nearest to.
  */
-export function writeRateBook(rates: RateBook): Record<string, string | Date | null> {
+/**
+ * The sixteen rate columns, NAMED rather than as an index signature.
+ *
+ * A `Record<string, …>` would have compiled here and been refused by the
+ * driver's own generated input type, which demands every one of the sixteen by
+ * name: the shape is what proves at COMPILE time that a rate has not been left
+ * out, which is the one mistake on this row that cannot be corrected afterwards
+ * — `reject_model_price_mutation` refuses UPDATE, DELETE and TRUNCATE outright.
+ */
+export interface RateColumnValues {
+  readonly inputRate: string;
+  readonly outputRate: string;
+  readonly cacheReadRate: string;
+  readonly cacheWriteRate: string;
+  readonly inputSource: RateSource;
+  readonly outputSource: RateSource;
+  readonly cacheReadSource: RateSource;
+  readonly cacheWriteSource: RateSource;
+  readonly inputObservedAt: Date;
+  readonly outputObservedAt: Date;
+  readonly cacheReadObservedAt: Date;
+  readonly cacheWriteObservedAt: Date;
+  readonly inputSourceRef: string | null;
+  readonly outputSourceRef: string | null;
+  readonly cacheReadSourceRef: string | null;
+  readonly cacheWriteSourceRef: string | null;
+}
+
+export function writeRateBook(rates: RateBook): RateColumnValues {
   const written: Record<string, string | Date | null> = {};
   for (const name of RATE_NAMES) {
     const columns = RATE_COLUMNS[name];
@@ -385,15 +413,27 @@ export function writeRateBook(rates: RateBook): Record<string, string | Date | n
     written[columns.observedAt] = requireInstant(`ModelPrice.${columns.observedAt}`, entry.observedAt);
     written[columns.sourceRef] = entry.sourceRef;
   }
-  return written;
+  // The cast is over a value this function has just built from a CLOSED list of
+  // four names crossed with four column roles, so every field of the interface
+  // above is present by construction. It is here because a loop cannot narrow a
+  // computed key, and the alternative — sixteen literal assignments — is the
+  // form where one of them can be forgotten.
+  return written as unknown as RateColumnValues;
 }
 
-/** The whole insert row for one card. */
+/**
+ * The whole insert row for one card, keyed by a caller-supplied identifier.
+ *
+ * `insertPrice` does NOT use this: it omits the id so the column's own
+ * `@default(uuid())` mints one, because the port hands no identifier for a card.
+ * It is here for the constraint suites, which need to write a card at a KNOWN id
+ * in order to assert that the immutability triggers refuse to touch it again.
+ */
 export function writeModelPrice(
   modelPriceId: string,
   modelId: string,
   card: PriceCard,
-): Record<string, string | Date | null> {
+): RateColumnValues & { readonly id: string; readonly modelId: string; readonly effectiveFrom: Date } {
   return {
     id: requireUuid("ModelPrice.id", modelPriceId),
     modelId: requireUuid("ModelPrice.modelId", modelId),

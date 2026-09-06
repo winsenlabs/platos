@@ -113,48 +113,38 @@ function scopedWhere(scope: EnvironmentScope): {
 }
 
 /**
- * Which of `ProviderKey`'s rules refused, as the domain error the port answers.
+ * Which of `ProviderKey`'s rules refused, as a REASON rather than as an error.
  *
- * THE THREE UNIQUE INDEXES ARE TOLD APART BY THEIR COLUMN LISTS. `meta.target`
- * carries the columns for a violation the client recognises, and the partial
- * one-default index is reported by its NAME because it is a partial index the
- * client has no model of. Collapsing them would tell an operator who promoted a
- * second default that their LABEL was taken.
- *
- * `providerKeyAlreadyExists(provider, "default")` is spelled exactly as
- * `InMemoryProvidersRepository` spells it. The shared conformance scenario
- * compares the two stores' observations verbatim, so a store that improved the
- * wording would be reporting a different outcome for the same event.
+ * `"unique"` is deliberately undifferentiated here, and that is a finding rather
+ * than laziness. This table carries THREE unique indexes — the primary key, the
+ * three-column label index, and a PARTIAL one on `(environmentId, provider)`
+ * `WHERE "isDefault" = TRUE` — and only the first two are in `schema.prisma`, so
+ * the client can map only those two back to field names. The partial index is
+ * invisible to it: the first run of the conformance differential against a real
+ * database reported a second default as "provider key id already exists",
+ * because the classifier fell through to the one index it had left. WHICH index
+ * refused is therefore established by a READ rather than by a driver error —
+ * one or two extra statements, only on the path that was already exceptional,
+ * and the same shape `cost-budgets.ts` uses one store over.
  */
-function keyRefusal(key: ProviderKey, error: unknown): DomainError | null {
+type KeyRefusalReason = "unique" | "credential" | "immutable" | null;
+
+function keyRefusal(error: unknown): KeyRefusalReason {
   const sqlstate = sqlstateOf(error);
-  if (sqlstate === UNIQUE_VIOLATION) {
-    if (namesConstraint(error, "ProviderKey_one_default_per_environment_provider")) {
-      return providerKeyAlreadyExists(key.provider, "default");
-    }
-    if (namesConstraint(error, "environmentId,provider,label")) {
-      return providerKeyAlreadyExists(key.provider, key.label);
-    }
-    // The primary key, which is a caller minting an identifier already in use.
-    return repositoryUnavailable("provider key id already exists");
-  }
+  if (sqlstate === UNIQUE_VIOLATION) return "unique";
   if (
     sqlstate === CHECK_VIOLATION &&
     raisedMessageOf(error).includes("ProviderKey credential/provider mismatch")
   ) {
-    // The trigger's own subject, in the context's own vocabulary: from the
-    // operator's position the credential they named does not exist HERE, for
-    // THIS provider, which is exactly what `credentialUnavailable` says.
-    return credentialUnavailable(key.credentialName, key.provider);
+    return "credential";
   }
   if (sqlstate === CHECK_VIOLATION && raisedMessageOf(error).includes("is immutable")) {
-    return repositoryUnavailable("provider key environment is immutable");
+    return "immutable";
   }
-  if (sqlstate === FOREIGN_KEY_VIOLATION) {
-    // `ProviderKey_credentialId_environmentId_fkey` is `ON DELETE RESTRICT`, so
-    // this is a credential that is not in this environment at all.
-    return credentialUnavailable(key.credentialName, key.provider);
-  }
+  // `ProviderKey_credentialId_environmentId_fkey` is `ON DELETE RESTRICT`, so a
+  // foreign-key violation here is a credential that is not in this environment
+  // at all — the same fact the trigger reports, one statement earlier.
+  if (sqlstate === FOREIGN_KEY_VIOLATION) return "credential";
   return null;
 }
 
@@ -238,6 +228,47 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
     return rows[0]?.pinned ?? 0;
   }
 
+  /**
+   * WHICH unique index refused, established by reading rather than by guessing.
+   *
+   * Called only after a savepoint has already rolled the refused statement back,
+   * so the transaction is usable and the rows the indexes saw are still there.
+   * `excluding` is the row being UPDATED: its own label and its own default are
+   * not conflicts with itself.
+   */
+  async function uniqueRefusal(
+    client: { providerKey: { findFirst(query: unknown): Promise<{ readonly id: string } | null> } },
+    key: ProviderKey,
+    excluding: string | null,
+  ): Promise<DomainError> {
+    if (excluding === null) {
+      const held = await client.providerKey.findFirst({
+        where: { id: key.providerKeyId },
+        select: { id: true },
+      });
+      // A caller minting an identifier already in use. NOT a business outcome:
+      // the port has no code for it, and reporting it as a label conflict would
+      // send an operator to rename a key that is not the problem.
+      if (held !== null) return repositoryUnavailable("provider key id already exists");
+    }
+    const labelled = await client.providerKey.findFirst({
+      where: {
+        environmentId: key.environmentId,
+        provider: key.provider,
+        label: key.label,
+        ...(excluding === null ? {} : { id: { not: excluding } }),
+      },
+      select: { id: true },
+    });
+    if (labelled !== null) return providerKeyAlreadyExists(key.provider, key.label);
+    // The PARTIAL index. `providerKeyAlreadyExists(provider, "default")` is
+    // spelled exactly as `InMemoryProvidersRepository` spells it: the shared
+    // conformance scenario compares the two stores' observations verbatim, so a
+    // store that improved the wording would be reporting a different outcome for
+    // the same event.
+    return providerKeyAlreadyExists(key.provider, "default");
+  }
+
   return {
     async listProviderKeys(scope: EnvironmentScope): Promise<Result<readonly ProviderKey[]>> {
       return ok(await keysIn(scope, null));
@@ -308,9 +339,18 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
       const written = await providersRefusable(
         client,
         () => client.providerKey.create({ data: writeProviderKey(key), select: KEY_COLUMNS }),
-        (error) => keyRefusal(key, error),
+        keyRefusal,
       );
-      if (!written.ok) return err(written.refusal);
+      if (!written.ok) {
+        if (written.refusal === "unique") return err(await uniqueRefusal(client, key, null));
+        // The trigger's own subject, in the context's own vocabulary: from the
+        // operator's position the credential they named does not exist HERE, for
+        // THIS provider, which is exactly what `credentialUnavailable` says.
+        if (written.refusal === "credential") {
+          return err(credentialUnavailable(key.credentialName, key.provider));
+        }
+        return err(repositoryUnavailable("provider key environment is immutable"));
+      }
       return ok(readProviderKey(written.value));
     },
 
@@ -331,9 +371,18 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
       const written = await providersRefusable(
         client,
         () => client.providerKey.updateMany({ where: { id, environmentId }, data: mutable }),
-        (error) => keyRefusal(key, error),
+        keyRefusal,
       );
-      if (!written.ok) return err(written.refusal);
+      if (!written.ok) {
+        // `excluding` is this row: a key that already holds its own label, or is
+        // already the default, is not in conflict with itself, and an update
+        // that changed neither would otherwise report a clash with itself.
+        if (written.refusal === "unique") return err(await uniqueRefusal(client, key, id));
+        if (written.refusal === "credential") {
+          return err(credentialUnavailable(key.credentialName, key.provider));
+        }
+        return err(repositoryUnavailable("provider key environment is immutable"));
+      }
       if (written.value.count === 0) return err(repositoryUnavailable("no such provider key"));
       return ok(key);
     },
@@ -386,14 +435,30 @@ export function createProviderKeyStore(transactions: TenancyTransactions): Provi
       // transaction's own client whenever one is open, which is precisely the
       // enlistment the port forbids.
       //
+      // RAW SQL, AND THAT IS A FINDING RATHER THAN A PREFERENCE.
+      // `ProviderKey.updatedAt` is `@updatedAt`, so the client sets it on EVERY
+      // delegate write and there is nothing a caller can pass that would leave
+      // it alone. The first conformance run against a real database diverged
+      // exactly here: the touched key came back with `updatedAt` moved to the
+      // wall clock, while the double — and `domain/provider-key.ts`'s own
+      // `markUsed`, which returns `{ ...key, lastUsedAt: at }` — left it where it
+      // was. A write the port calls "bookkeeping on a read path" that silently
+      // re-dates the row is not bookkeeping; it is an edit nobody made, and an
+      // operator reading `updatedAt` to find out when a key was last CHANGED
+      // would have been told when it was last USED. The statement below names
+      // ONE column.
+      //
+      // It is statically visible, so `sole-writer.mjs` attributes it to
+      // `ProviderKey` and to this owner exactly as it attributes a delegate
+      // call — the gate reads the SQL, not the method's reputation.
+      //
       // NO SCOPE, because the port's signature has none: it is called from the
       // turn path with a key the caller has already resolved through a scoped
-      // read. `updateMany` rather than `update` so a key deleted between the
-      // resolve and the touch is a no-op rather than a raised P2025.
-      await transactions.pool().providerKey.updateMany({
-        where: { id: providerKeyId },
-        data: { lastUsedAt: usedAt },
-      });
+      // read. A key deleted between the resolve and the touch updates no rows,
+      // which is the same no-op the port's `Result<void>` reports.
+      await transactions.pool().$executeRaw`
+        UPDATE "ProviderKey" SET "lastUsedAt" = ${usedAt} WHERE "id" = ${providerKeyId}::uuid
+      `;
       return ok(undefined);
     },
   };
