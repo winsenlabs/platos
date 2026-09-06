@@ -311,7 +311,7 @@
         "the clauses that decide WHICH ROW a call reaches a patch of a non-uuid id refuses without aborting the caller's transaction",
         "the uuid guard is the canonical hyphenated form and nothing else what it accepts and what it does not",
         "the uuid guard is the canonical hyphenated form and nothing else requireUuid refuses under its own code and names the field",
-        "a scope naming one identifier at two levels is refused because the trigger reads the stored rows and not the caller's claim"
+        "a scope naming one identifier at two levels is refused because the rule reads the stored rows and not the caller's claim"
       ],
       "verdict": "KILLED",
       "executedCases": 33
@@ -328,7 +328,7 @@
       ],
       "kills": [
         "the shapes the schema will not hold, refused BEFORE a statement is sent a scope naming one identifier at two levels",
-        "a scope naming one identifier at two levels is refused because the trigger reads the stored rows and not the caller's claim"
+        "a scope naming one identifier at two levels is refused because the rule reads the stored rows and not the caller's claim"
       ],
       "verdict": "KILLED",
       "executedCases": 33
