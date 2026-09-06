@@ -2186,7 +2186,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 119, cases: 1310 },
+  "packages/adapters/postgres-tenancy": { files: 122, cases: 1346 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2372,7 +2372,70 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7226;
+/*
+ * WIN-258 T7, concurrency / pooling / transaction boundaries — 7226 -> 7262.
+ *
+ * THIRTY-SIX CASES OVER THREE NEW SUITES AND TWO EDITED ONES, all inside
+ * `packages/adapters/postgres-tenancy`, whose row goes 119/1310 -> 122/1346:
+ *
+ *   pooling.integration.test.ts                 11  the datasource URL asked of
+ *                                                   a real server: the query
+ *                                                   parameter shape reporting
+ *                                                   '0', the options shape
+ *                                                   reporting its three values,
+ *                                                   the caller's own options
+ *                                                   surviving, and three
+ *                                                   refusals — 57014, 55P03 and
+ *                                                   a terminated session — each
+ *                                                   with its negative control,
+ *                                                   plus the pool's P2024
+ *   optimistic-concurrency.integration.test.ts   6  the unfenced lost update
+ *                                                   RUN rather than described,
+ *                                                   the stale writer refused
+ *                                                   after a measured wait, the
+ *                                                   loser's earlier work rolled
+ *                                                   back, the insert race, and
+ *                                                   the two controls
+ *   transaction-boundaries.integration.test.ts   9  the returned-error-commits
+ *                                                   trap and the bridge that
+ *                                                   closes it, failure
+ *                                                   injection, the aborted
+ *                                                   transaction that reports a
+ *                                                   successful commit, and
+ *                                                   isolation inside the
+ *                                                   ambient frame
+ *                                                        subtotal = 26
+ *
+ *   client.test.ts                              +9  six for the server-timeout
+ *                                                   shape, two for the P2025
+ *                                                   classification the M26
+ *                                                   sweep proved missing, and
+ *                                                   two more rows on the
+ *                                                   positive-integer table,
+ *                                                   less the one case the pool
+ *                                                   settings and the server
+ *                                                   settings were split out of
+ *   secrets-rules.integration.test.ts           +1  the divergence case became
+ *                                                   two: both stores keying on
+ *                                                   the pair, and both refusing
+ *                                                   a write that thinks the key
+ *                                                   is free
+ *                                                        subtotal = 10
+ *
+ * 26 + 10 = 36, and 1310 + 36 = 1346. NO OTHER PACKAGE MOVES: the fence, the
+ * scoped DELETE and the domain refusal are edits in place in
+ * `packages/contexts/secrets`, whose own suites still number what they did.
+ *
+ * The three-way file identity holds: packages.contexts.test 349 +
+ * packages.kernel.test 3 + packages.adapters.test 141 = 493, which is this
+ * census's own totalFiles. The adapters term moved 138 -> 141 for the same three
+ * suites the v1 ledger counts.
+ *
+ * The cases this census records that `pnpm test:v1-packages` does not execute
+ * are the ones whose file name carries `.integration.`; all three new suites do,
+ * so that measured figure moves by 26 and `client.test.ts`'s nine stay runnable.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7262;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

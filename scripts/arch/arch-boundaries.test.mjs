@@ -1003,8 +1003,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               21 + 14 + 17 + 18 + 12 + 14 = 1477. No branch's own figure is
     //               right merged — 1416, 1419, 1420, 1414 and 1416 each under-count
     //               the others by their whole tranche.
-    assert.equal(result.fileCount, 1477, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14);
+    // 1477 -> 1480 (WIN-258 T7, concurrency, pooling and transaction
+    //               boundaries). THREE files, all suites, all in that same one
+    //               adapter directory: `pooling.integration.test.ts`,
+    //               `optimistic-concurrency.integration.test.ts` and
+    //               `transaction-boundaries.integration.test.ts`. NO source file
+    //               is added — the fence, the server timeouts and the tenant
+    //               clause on the DELETE are all edits in place — so this delta
+    //               is exactly the tranche's suite count and nothing else, and
+    //               `packages/contexts/secrets` gains no file either.
+    assert.equal(result.fileCount, 1480, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 3);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
