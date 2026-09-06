@@ -65,6 +65,16 @@ export interface ObservabilityHarness {
    * once.
    */
   siblingEnvironment(parent: AuditScope): Promise<AuditScope>;
+  /**
+   * A SECOND project, with its own environment, under an existing organization.
+   *
+   * What tells the ancestry statement's THREE clauses apart on the write path.
+   * A foreign tenant fails all three at once, so it proves only that some clause
+   * is there; a sibling project fails the `projectId` clause alone, and a scope
+   * that keeps the right project and lies about the organization fails the
+   * organization clause alone.
+   */
+  siblingProject(parent: AuditScope): Promise<AuditScope>;
   stop(): Promise<void>;
 }
 
@@ -141,6 +151,41 @@ export async function startObservabilityHarness(): Promise<ObservabilityHarness>
         ),
         organizationId: parent.organizationId,
         projectId: parent.projectId,
+        environmentId,
+      };
+    },
+
+    async siblingProject(parent: AuditScope): Promise<AuditScope> {
+      const projectId = await base.seedProject(
+        asTenancyIdentifier(parent.organizationId),
+        `proj-${base.freshId("0025")}`,
+      );
+      const environmentId = asTenancyIdentifier<EnvironmentId>(base.freshId("0026"));
+      await base.adapter.unitOfWork.run((transaction) =>
+        base.adapter.saveEnvironment(
+          {
+            id: environmentId,
+            projectId,
+            slug: asTenancyIdentifier<Slug>("prod"),
+            name: "prod",
+            archivedAt: null,
+            accessKeyRevocationVersion: 0,
+            memoryFeedbackBackfillCursor: null,
+            memoryFeedbackBackfillCompletedAt: null,
+            createdAt: AT,
+            updatedAt: AT,
+          },
+          transaction,
+        ),
+      );
+      return {
+        scope: environmentScope(
+          asIdentifier(parent.organizationId),
+          asIdentifier(projectId),
+          asIdentifier(environmentId),
+        ),
+        organizationId: parent.organizationId,
+        projectId,
         environmentId,
       };
     },

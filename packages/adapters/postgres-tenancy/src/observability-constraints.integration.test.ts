@@ -301,6 +301,80 @@ test("a SIBLING environment under the same project is excluded, which only the e
   expect(counted.ok && counted.value).toBeGreaterThanOrEqual(1);
 });
 
+test("the ancestry statement's PROJECT clause is what refuses a sibling project's environment", async () => {
+  // A foreign tenant fails all three clauses at once, so it proves only that
+  // SOME clause is there. A sibling project under the same organization fails
+  // the `projectId` clause ALONE — the organization clause is satisfied — which
+  // is what tells the three apart.
+  const sibling = await harness.siblingProject(home);
+  const mixed: EnvironmentScope = {
+    level: "environment",
+    organizationId: home.scope.organizationId,
+    projectId: home.scope.projectId,
+    environmentId: sibling.scope.environmentId,
+  };
+  const refused = await write((transaction) =>
+    harness.stores.observability.recordAdminAudit(auditRecord(mixed, id("004d")), transaction),
+  );
+  expect(refused.ok).toBe(false);
+  expect(reasonOf(refused)).toContain(AUDIT_SCOPE_UNRESOLVED);
+
+  // The same environment under its OWN project is accepted, so the refusal is
+  // the clause and not the row.
+  const accepted = await write((transaction) =>
+    harness.stores.observability.recordAdminAudit(
+      auditRecord(sibling.scope, id("004e")),
+      transaction,
+    ),
+  );
+  expect(accepted.ok).toBe(true);
+});
+
+test("the ancestry statement's ORGANIZATION clause is what refuses a foreign organization claim", async () => {
+  // Right environment, right project, WRONG organization. Only the organization
+  // clause can see it — the `id` and `projectId` clauses are both satisfied.
+  const mixed: EnvironmentScope = {
+    level: "environment",
+    organizationId: foreign.scope.organizationId,
+    projectId: home.scope.projectId,
+    environmentId: home.scope.environmentId,
+  };
+  const refused = await write((transaction) =>
+    harness.stores.observability.recordAdminAudit(auditRecord(mixed, id("004f")), transaction),
+  );
+  expect(refused.ok).toBe(false);
+  expect(reasonOf(refused)).toContain(AUDIT_SCOPE_UNRESOLVED);
+});
+
+test("a non-uuid ENVIRONMENT id is refused by a GUARD too, so the ancestry read never raises", async () => {
+  // Without the guard the ancestry statement itself would be sent with a
+  // malformed uuid, PostgreSQL would raise `invalid input syntax for type uuid`,
+  // and the caller's transaction would be aborted by a read rather than
+  // refused by this store.
+  const malformed: EnvironmentScope = {
+    level: "environment",
+    organizationId: home.scope.organizationId,
+    projectId: home.scope.projectId,
+    environmentId: "environment-1" as unknown as EnvironmentScope["environmentId"],
+  };
+  const survivor = id("0050");
+  const outcome = await write(async (transaction) => {
+    const refused = await harness.stores.observability.recordAdminAudit(
+      auditRecord(malformed, id("0051")),
+      transaction,
+    );
+    // THE SAME TRANSACTION, still writable.
+    const written = await harness.stores.observability.recordAdminAudit(
+      auditRecord(home.scope, survivor),
+      transaction,
+    );
+    return { refused, written };
+  });
+  expect(outcome.refused.ok).toBe(false);
+  expect(reasonOf(outcome.refused)).toContain(OBSERVABILITY_IDENTIFIER_NOT_UUID);
+  expect(outcome.written.ok).toBe(true);
+});
+
 test("a listing scoped to the wrong project returns NOTHING rather than another tenant's trail", async () => {
   const auditId = id("0047");
   await write((transaction) =>

@@ -2016,6 +2016,69 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * and 6520 + 325 = 6845 cases. The adapters term of the three-way identity
  * carries all twenty-eight, because every added file is an adapter's:
  * 79 + 28 = 107, and 349 + 3 + 107 = 459.
+ *
+ * AND `observability` ADDS FIVE MORE FILES AND FIFTY-TWO CASES TO THE SAME ROW,
+ * the THIRTEENTH owner of that one directory:
+ *
+ *   observability-rows.test.ts                    15  the mapping and the five
+ *                                                     guards, WITHOUT a daemon:
+ *                                                     the scope the predicate
+ *                                                     proved, the snapshot a
+ *                                                     row an older binary wrote
+ *                                                     can hold, the unstated
+ *                                                     `source`, and the two
+ *                                                     blank-selector codes
+ *                                                     standing side by side
+ *   observability-constraints.integration.test.ts 17  what the REAL table adds:
+ *                                                     THREE cases on the
+ *                                                     append-only rule that
+ *                                                     takes `clearAdminAuditActor`
+ *                                                     away, the ancestry this
+ *                                                     table has NO rule for, and
+ *                                                     the narrower `= 'object'`
+ *                                                     CHECK
+ *   observability-transaction.integration.test.ts 10  failure injection from a
+ *                                                     SECOND connection, the
+ *                                                     audit row rolling back
+ *                                                     WITH the action it
+ *                                                     records, a returned error
+ *                                                     `Result` that COMMITS, and
+ *                                                     the three scope refusals
+ *   observability-statements.integration.test.ts   9  measured statement counts,
+ *                                                     every pin taken over two
+ *                                                     rows and over twenty
+ *   observability-conformance.integration.test.ts  1  ONE scenario, asked of the
+ *                                                     double and of PostgreSQL
+ *
+ * 15 + 17 + 10 + 9 + 1 = 52, over 5 files, and every number is READ BACK from
+ * the counter in this file rather than tallied by hand. Four of the five need a
+ * real PostgreSQL; `observability-rows.test.ts` does not, and it is the only one
+ * that can reach a snapshot column this binary cannot read, since a container
+ * only ever reads rows this binary wrote.
+ *
+ * SEVENTEEN CASES IN THE CONSTRAINTS SUITE FOR ONE TABLE, and the ratio is the
+ * finding rather than thoroughness. `AdminAudit` is APPEND-ONLY IN THE DATABASE
+ * — a rule on UPDATE, on DELETE and on TRUNCATE — so one of the port's four
+ * methods cannot be honoured, and three of those cases are what that leaves:
+ * an empty unlink is `ok(0)`, a non-empty one refuses under its own code, and
+ * the caller's transaction is left unusable, which is what proves the refusal is
+ * the DATABASE's. Three more exist because the table carries NO ancestry rule
+ * while the port's record carries a three-level scope, and the three clauses
+ * that replace it can only be told apart by a sibling ENVIRONMENT, a sibling
+ * PROJECT and a scope that lies about the organization alone.
+ *
+ * THE NUMBER TO WATCH IN THIS BLOCK is the 1 in the conformance suite, for the
+ * reason every tranche before it gives: it is ONE scenario of twenty-odd
+ * observations compared verbatim, so adding an observation strengthens the
+ * differential and moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-observability.json` is where
+ * those guards are held falsifiable instead — twenty-six entries, every one
+ * killed by a named case.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 88 -> 93 FILES and 929 -> 981 CASES, and the
+ * tree total 459 -> 464 files and 6845 -> 6897 cases. The adapters term of the
+ * three-way identity carries all five, because every added file is an adapter's:
+ * 107 + 5 = 112, and 349 + 3 + 112 = 464.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2026,7 +2089,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 88, cases: 929 },
+  "packages/adapters/postgres-tenancy": { files: 93, cases: 981 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2212,7 +2275,15 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6845;
+/*
+ * 6845 -> 6897: the 52 cases of WIN-258 tranche 5's `observability` canonical
+ * store, enumerated file by file in the block beside the postgres-tenancy row.
+ * Four of its five suites carry `.integration.` in the name; the fifth,
+ * `observability-rows.test.ts`, runs in the ordinary package test script for the
+ * reason the other row suites do — it has no database in it, and it reaches the
+ * mapping branches a container suite cannot.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 6897;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
