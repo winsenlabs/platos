@@ -1898,7 +1898,49 @@ test("an element-access member that is not a delegate is still not a write", () 
 // + 11 = 301. All of tranche 5's stores landed in the ONE directory, so this
 // pin is the SUM of every enumeration above and no single branch's own figure
 // survives the merge.
-const LIVE_TREE_WRITE_COUNT = 301;
+//
+// WIN-258 TRANCHE 7 MOVES IT BY SIX, AND ONLY ITS CONCURRENCY AND POOLING
+// DIMENSION DOES. That dimension reported no delta here at all, so this gate was
+// not in its list; the merged scan is where it is first counted, and the six are
+// enumerated rather than absorbed. The other three dimensions add ZERO: a census
+// module, a measurement kit, five plan suites, a rollout harness and their
+// suites READ, and a `select:` that narrows a read is not a mutation.
+//
+//   src/secrets-variables.ts    NET +1. The single `upsert` behind
+//                               `setEnvironmentVariable` becomes TWO writes: a
+//                               `createManyAndReturn` with `skipDuplicates`
+//                               (ON CONFLICT DO NOTHING, because a caught 23505
+//                               aborts the enclosing transaction and the COMMIT
+//                               after it then reports success while discarding
+//                               everything) and an `update` carrying
+//                               `expectedVersion` in its WHERE clause beside the
+//                               compound unique, so the precondition and the
+//                               write are ONE statement. 2 - 1                 1
+//   src/optimistic-concurrency.integration.test.ts
+//                               ONE raw UPDATE on `EnvironmentVariable`: the
+//                               UNFENCED read-modify-write reproduced out of
+//                               band, which is what proves the fence refuses
+//                               something a writer can otherwise commit         1
+//   src/pooling.integration.test.ts
+//                               TWO raw INSERTs on `Organization` — a row
+//                               `tenancy` owns, legal from here only because
+//                               `tenancy` resolves to this same directory. They
+//                               are raw because the point is a statement the
+//                               SERVER cancels or a backend it terminates, which
+//                               no port call is shaped to produce               2
+//   src/transaction-boundaries.integration.test.ts
+//                               TWO `create` calls on `EnvironmentVariable`,
+//                               issued through the CLIENT rather than the port,
+//                               because what is under measurement is whether the
+//                               row is there on a SECOND connection after the
+//                               unit of work resolved                           2
+//                                                                       total = 6
+//
+// 301 + 6 = 307. Every one of the six is inside
+// `packages/adapters/postgres-tenancy`, which is the permitted directory for
+// both `EnvironmentVariable` and `Organization`, so the violation list stays
+// empty and it is the COUNT that moved — which is exactly what this pin is for.
+const LIVE_TREE_WRITE_COUNT = 307;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
