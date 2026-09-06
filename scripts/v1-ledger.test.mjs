@@ -961,7 +961,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
     // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
     // again -- is right here, and neither is any pair of them.
-    packages: 1397,
+    // WIN-259 (M2.4) 1397 -> 1414. Seventeen tracked files, every one under
+    // `packages`, and no other area moves: FOURTEEN are the thirteenth adapter
+    // directory `packages/adapters/keyring-envelope` (three generator-owned
+    // scaffolding files, six sources, four colocated suites and one mutation
+    // ledger that classifies as config beside the twenty-two already in
+    // `packages/adapters/postgres-tenancy`), TWO are `packages/contexts/providers`
+    // (`evict-probe-cache.ts` and `probe-cache-eviction.test.ts`) and ONE is
+    // `packages/adapters/postgres-tenancy/src/secrets-key-version.integration.test.ts`.
+    // 14 + 2 + 1 = 17. `packages/contexts/secrets` gains NO file: its port entry
+    // point was widened IN PLACE to publish the seven values its three
+    // cryptography ports' signatures use, and a widened file is not a new one.
+    packages: 1414,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
