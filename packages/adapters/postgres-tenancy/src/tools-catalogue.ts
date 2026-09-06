@@ -64,6 +64,26 @@ export interface ToolsCatalogue {
 }
 
 /** The shape a binding is read in. Named once; both reads select it. */
+/**
+ * The nine columns `ToolRow` declares. `paramSchema` is the JSONB one.
+ *
+ * WIN-258 T7. `findTools` is handed a list of ids by the turn's own tool
+ * resolution, so this is a per-turn read whose row count is the size of an
+ * agent's loadout; an unprojected one deserialises a JSON Schema per tool and
+ * whatever the table grows next besides.
+ */
+const TOOL_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  kind: true,
+  paramSchema: true,
+  category: true,
+  schemaHash: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 const BINDING_SELECT = {
   agentId: true,
   activeAgentVersion: {
@@ -126,6 +146,7 @@ export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCa
       return guarded("findToolByFingerprint", async () => {
         const row = await transactions.reader().tool.findUnique({
           where: { name_schemaHash: { name, schemaHash } },
+          select: TOOL_SELECT,
         });
         return ok(row === null ? null : toTool(row));
       });
@@ -136,6 +157,7 @@ export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCa
         const fingerprint = { name: tool.name, schemaHash: tool.schemaHash };
         const held = await transactions.reader().tool.findUnique({
           where: { name_schemaHash: fingerprint },
+          select: TOOL_SELECT,
         });
         if (held !== null) return ok(toTool(held));
         try {
@@ -161,6 +183,7 @@ export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCa
           // write. Their row IS this row: the key is the content.
           const won = await transactions.reader().tool.findUniqueOrThrow({
             where: { name_schemaHash: fingerprint },
+            select: TOOL_SELECT,
           });
           return ok(toTool(won));
         }
@@ -173,6 +196,7 @@ export function createToolsCatalogue(transactions: TenancyTransactions): ToolsCa
         const rows = await transactions.reader().tool.findMany({
           where: { id: { in: [...toolIds] } },
           orderBy: { id: "asc" },
+          select: TOOL_SELECT,
         });
         return ok(rows.map(toTool));
       });

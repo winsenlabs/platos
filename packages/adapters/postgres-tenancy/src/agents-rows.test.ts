@@ -1,31 +1,49 @@
-// The two readers that can REFUSE, and the one that cannot.
+// The readers that can REFUSE, and the ones that cannot.
 //
 // `agents-rows.ts` is mostly field copying, and field copying is not worth a
-// suite. What is worth one is the pair of readers that throw rather than
+// suite. What is worth one is the set of readers that throw rather than
 // inventing a value, because the alternative each of them declines is the kind
 // that ships: a `toolDefaultPolicy` the domain does not name would default to
-// `NONE` and silently expose no tools where a version said `ALL`, and a macro
-// step with no tool would replay as a no-op that reports success.
+// `NONE` and silently expose no tools where a version said `ALL`, a macro step
+// with no tool would replay as a no-op that reports success, and — WIN-258 T7 —
+// a step whose `params` are not an object used to replay WITH NO PARAMETERS.
 //
-// NEITHER CAN BE REACHED THROUGH POSTGRESQL TODAY, and that is why they are
-// here rather than in an integration suite. `AgentVersion.toolDefaultPolicy` is
-// a database ENUM, so the column cannot hold a value outside the set until a
-// migration adds one; `Macro_steps_json_root` pins the column to an ARRAY and
-// says nothing about what is inside it, so a malformed STEP is reachable in
-// principle and only by a writer that is not this adapter. A guard nothing can
-// turn red is a guard that is not there, so both are falsified here.
+// ONLY THE MACRO ONES CAN BE REACHED THROUGH POSTGRESQL, and the split is the
+// point. `AgentVersion.toolDefaultPolicy` is a database ENUM, so the column
+// cannot hold a value outside the set until a migration adds one, and every
+// object column's root is pinned by a `_json_root` CHECK. `Macro_steps_json_root`
+// pins the column to an ARRAY and says NOTHING about what is inside it, so a
+// malformed step — and a malformed `params` inside a well-formed step — is
+// reachable by any writer, and `json-columns.integration.test.ts` reaches it
+// with `prisma db execute`. A guard nothing can turn red is a guard that is not
+// there, so all of them are falsified here and the reachable ones twice.
 
 import { describe, expect, test } from "vitest";
 
 import { DEFAULT_AGENTS_POLICY } from "@platos/context-agents/application/ports/index.js";
 
 import {
+  AGENTS_COLUMN_NOT_AN_OBJECT,
+  MACRO_STEP_NAMES_NO_TOOL,
+  MACRO_STEP_PARAMS_NOT_AN_OBJECT,
+  MACRO_STEPS_NOT_AN_ARRAY,
+  readObjectColumn,
   toMacroSteps,
   toVersion,
   UNREADABLE_AGENTS_ROW,
   UnreadableAgentsRowError,
   type AgentVersionRowShape,
 } from "./agents-rows.js";
+
+/** The code a refusal carried, or the string that says it did not refuse. */
+function codeOf(work: () => unknown): string {
+  try {
+    work();
+  } catch (error) {
+    return error instanceof UnreadableAgentsRowError ? error.code : `not-a-row-refusal:${String(error)}`;
+  }
+  return "no-refusal";
+}
 
 const AT = new Date("2026-05-01T09:00:00.000Z");
 const DEFAULTS = DEFAULT_AGENTS_POLICY.defaults;
@@ -99,11 +117,57 @@ describe("toMacroSteps", () => {
 
   test("REFUSES a steps column that is not an array", () => {
     expect(() => toMacroSteps("m", {})).toThrow(UnreadableAgentsRowError);
+    expect(codeOf(() => toMacroSteps("m", {}))).toBe(MACRO_STEPS_NOT_AN_ARRAY);
   });
 
   test("REFUSES a step that names no tool", () => {
     expect(() => toMacroSteps("m", [{ params: {} }])).toThrow(/step 0 names no tool/u);
     expect(() => toMacroSteps("m", [{ tool: "" }])).toThrow(/step 0 names no tool/u);
     expect(() => toMacroSteps("m", [null])).toThrow(/step 0 names no tool/u);
+    expect(codeOf(() => toMacroSteps("m", [null]))).toBe(MACRO_STEP_NAMES_NO_TOOL);
+  });
+
+  // WIN-258 T7. This was a COERCION and not a refusal: params that were not an
+  // object read back as `{}`, so the step replayed with no parameters at all and
+  // the read reported success. Each of the three shapes below satisfies
+  // `Macro_steps_json_root`, because that CHECK pins the ROOT of the column and
+  // says nothing about an element's members.
+  test("REFUSES a step whose params are present and are not an object", () => {
+    expect(() => toMacroSteps("m", [{ tool: "send", params: ["a"] }])).toThrow(
+      /step 0 carries a JSON array where params is an object/u,
+    );
+    expect(() => toMacroSteps("m", [{ tool: "send", params: "oops" }])).toThrow(
+      /step 0 carries string where params is an object/u,
+    );
+    expect(codeOf(() => toMacroSteps("m", [{ tool: "send", params: 7 }]))).toBe(
+      MACRO_STEP_PARAMS_NOT_AN_OBJECT,
+    );
+  });
+
+  test("the four refusals this module raises carry four different codes", () => {
+    const codes = [
+      codeOf(() => toVersion(versionRow({ toolDefaultPolicy: "SOME" }), DEFAULTS)),
+      codeOf(() => toMacroSteps("m", {})),
+      codeOf(() => toMacroSteps("m", [null])),
+      codeOf(() => toMacroSteps("m", [{ tool: "send", params: 7 }])),
+    ];
+    expect(new Set(codes).size).toBe(4);
+  });
+});
+
+describe("readObjectColumn", () => {
+  test("reads an object, and reads absence as absence", () => {
+    expect(readObjectColumn("AgentCluster.metadata", "AgentCluster c", { a: 1 })).toEqual({ a: 1 });
+    expect(readObjectColumn("AgentCluster.metadata", "AgentCluster c", null)).toBeNull();
+    expect(readObjectColumn("AgentCluster.metadata", "AgentCluster c", undefined)).toBeNull();
+  });
+
+  test("REFUSES an array and a scalar rather than answering null", () => {
+    expect(() => readObjectColumn("AgentSkill.config", "AgentSkill s", [])).toThrow(
+      /carries a JSON array where AgentSkill.config is an object/u,
+    );
+    expect(codeOf(() => readObjectColumn("AgentSkill.config", "AgentSkill s", 3))).toBe(
+      AGENTS_COLUMN_NOT_AN_OBJECT,
+    );
   });
 });

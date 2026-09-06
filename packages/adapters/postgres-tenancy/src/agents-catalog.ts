@@ -52,15 +52,39 @@ import {
   UNIQUE_VIOLATION,
 } from "./agents-guards.js";
 import type { AgentBindingRow, AgentClusterRow, AgentRow, AgentVersionRowShape } from "./agents-rows.js";
-import { toAgent, toBinding, toCluster, toVersion } from "./agents-rows.js";
+import {
+  AGENT_COLUMNS,
+  BINDING_COLUMNS,
+  CLUSTER_COLUMNS,
+  toAgent,
+  toBinding,
+  toCluster,
+  toVersion,
+  VERSION_COLUMNS,
+} from "./agents-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
-/** The four relations a `BoundAgent` is assembled from. */
-const BOUND_INCLUDE = {
-  agent: true,
-  activeAgentVersion: true,
-  canaryAgentVersion: true,
-  cluster: true,
+/**
+ * The four relations a `BoundAgent` is assembled from, PROJECTED.
+ *
+ * WIN-258 T7 TURNED THIS FROM AN `include` INTO A `select`. `activeAgentVersion:
+ * true` asks the client for every column `AgentVersion` has, and six of them are
+ * JSONB; a bound agent carries two versions, so a page of twenty cost forty
+ * rows' worth of JSON documents whether or not the next migration's column has
+ * anything to do with a version's content. The `BoundRow` interface below already
+ * named the columns this module reads — an `include` made that a claim about the
+ * TABLE, and the maps in `./agents-rows.js` make it a fact about the STATEMENT.
+ *
+ * Every one of the four is still hydrated in full, and that is not
+ * over-hydration: `BoundAgent` publishes the whole of both versions and the whole
+ * cluster. The projection is what stops the read WIDENING behind the assertion.
+ */
+const BOUND_SELECT = {
+  ...BINDING_COLUMNS,
+  agent: { select: AGENT_COLUMNS },
+  activeAgentVersion: { select: VERSION_COLUMNS },
+  canaryAgentVersion: { select: VERSION_COLUMNS },
+  cluster: { select: CLUSTER_COLUMNS },
 } as const;
 
 /** `byListingOrder`, expressed over the joined agent so the store applies it. */
@@ -140,7 +164,7 @@ export function createAgentCatalog(
     ): Promise<Result<BoundAgent | null>> {
       const row = (await transactions.reader().agentBinding.findFirst({
         where: { ...inScope(scope), agentId },
-        include: BOUND_INCLUDE,
+        select: BOUND_SELECT,
       })) as BoundRow | null;
       return ok(row === null ? null : bound(row));
     },
@@ -151,7 +175,7 @@ export function createAgentCatalog(
     ): Promise<Result<BoundAgent | null>> {
       const row = (await transactions.reader().agentBinding.findFirst({
         where: { environmentId: scope.environmentId, agent: { projectId: scope.projectId, slug } },
-        include: BOUND_INCLUDE,
+        select: BOUND_SELECT,
       })) as BoundRow | null;
       return ok(row === null ? null : bound(row));
     },
@@ -159,7 +183,7 @@ export function createAgentCatalog(
     async listBoundAgents(scope: EnvironmentScope): Promise<Result<readonly BoundAgent[]>> {
       const rows = (await transactions.reader().agentBinding.findMany({
         where: inScope(scope),
-        include: BOUND_INCLUDE,
+        select: BOUND_SELECT,
         orderBy: [...LISTING_ORDER],
       })) as BoundRow[];
       return ok(rows.map(bound));
@@ -189,7 +213,7 @@ export function createAgentCatalog(
       const [rows, total] = await Promise.all([
         transactions.reader().agentBinding.findMany({
           where,
-          include: BOUND_INCLUDE,
+          select: BOUND_SELECT,
           orderBy: [...LISTING_ORDER],
           skip: query.offset,
           take: query.limit,

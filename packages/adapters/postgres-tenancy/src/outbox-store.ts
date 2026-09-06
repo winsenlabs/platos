@@ -47,6 +47,9 @@ export const EVENT_ID_TAKEN = "outbox.store.event_id_taken";
 /** The environment the event names does not exist. A distinct fact, distinct code. */
 export const ENVIRONMENT_UNKNOWN = "outbox.store.environment_unknown";
 
+/** `Event.payload` does not hold the object root its CHECK pins. */
+export const PAYLOAD_NOT_AN_OBJECT = "outbox.store.payload_not_an_object";
+
 export class OutboxStoreError extends Error {
   readonly code: string;
 
@@ -56,6 +59,47 @@ export class OutboxStoreError extends Error {
     this.code = code;
   }
 }
+
+/**
+ * `Event.payload`, as the object root `Event_payload_json_root` pins it to.
+ *
+ * WIN-258 T7. The drain used to cast this column to `unknown` and hand it on, so
+ * a payload that was not an envelope reached whichever projection the event type
+ * routes to and failed THERE — inside somebody else's stack, on every pass over
+ * the same row, for as long as the row is in the outbox. The drain is a loop over
+ * rows nobody is watching, which is exactly where an unnamed shape hides longest.
+ * The CHECK makes the refusal unreachable through a committed write, and
+ * `json-columns.integration.test.ts` proves that by having the database refuse
+ * the out-of-band write; the reader stands so the drain names the row rather than
+ * a projection naming a field.
+ */
+export function readOutboxPayload(eventId: string, value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new OutboxStoreError(
+      PAYLOAD_NOT_AN_OBJECT,
+      `event ${eventId} carries a payload that is not a JSON object`,
+    );
+  }
+  return value;
+}
+
+/**
+ * The six columns the drain reads.
+ *
+ * WIN-258 T7. The drain is a paged loop over EVERY event in the outbox, so an
+ * unprojected read is the one whose cost grows with the table rather than with a
+ * tenant. `payload` is JSONB and is the point of the read; the other five are the
+ * cursor and the routing. Nothing else on `Event` is wanted, and naming that is
+ * what stops the next column joining every page.
+ */
+const EVENT_SELECT = {
+  id: true,
+  environmentId: true,
+  eventType: true,
+  subjectId: true,
+  payload: true,
+  createdAt: true,
+} as const;
 
 /** A prepared row. Primitives only; see the seam's own note for why. */
 export interface OutboxInsertRow {
@@ -149,6 +193,7 @@ export function createOutboxEventStore(transactions: TenancyTransactions): Outbo
       // rows of one millisecond share a value: the second arm is what stops the
       // page either re-reading them or stepping over them.
       const rows = await transactions.reader().event.findMany({
+        select: EVENT_SELECT,
         where:
           cursor === null
             ? {}
@@ -166,7 +211,7 @@ export function createOutboxEventStore(transactions: TenancyTransactions): Outbo
         environmentId: row.environmentId,
         eventType: row.eventType,
         subjectId: row.subjectId,
-        payload: row.payload as unknown,
+        payload: readOutboxPayload(row.id, row.payload),
         createdAt: row.createdAt,
       }));
     },

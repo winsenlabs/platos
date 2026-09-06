@@ -53,7 +53,7 @@ import {
   UNIQUE_VIOLATION,
 } from "./agents-guards.js";
 import type { AgentSkillRow, AgentVersionRowShape } from "./agents-rows.js";
-import { toSkill, toVersion } from "./agents-rows.js";
+import { SKILL_COLUMNS, toSkill, toVersion, VERSION_COLUMNS } from "./agents-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
 /** `byVersionOrder`: highest number first, then by id descending. */
@@ -104,14 +104,21 @@ export function createAgentVersions(
       // null, which is what stops a canary check passing on a foreign version.
       const row = (await transactions
         .reader()
-        .agentVersion.findFirst({ where: { id: versionId, agentId } })) as AgentVersionRowShape | null;
+        .agentVersion.findFirst({
+          where: { id: versionId, agentId },
+          select: VERSION_COLUMNS,
+        })) as AgentVersionRowShape | null;
       return ok(row === null ? null : read(row));
     },
 
     async listVersions(agentId: AgentId): Promise<Result<readonly AgentVersion[]>> {
       const rows = (await transactions
         .reader()
-        .agentVersion.findMany({ where: { agentId }, orderBy: [...VERSION_ORDER] })) as AgentVersionRowShape[];
+        .agentVersion.findMany({
+          where: { agentId },
+          orderBy: [...VERSION_ORDER],
+          select: VERSION_COLUMNS,
+        })) as AgentVersionRowShape[];
       return ok(rows.map(read));
     },
 
@@ -126,6 +133,7 @@ export function createAgentVersions(
         transactions.reader().agentVersion.findMany({
           where: { agentId },
           orderBy: [...VERSION_ORDER],
+          select: VERSION_COLUMNS,
           take: window.take + 1,
           ...(window.cursor === null
             ? { skip: window.offset }
@@ -218,6 +226,7 @@ export function createAgentVersions(
       const rows = (await transactions.reader().agentSkill.findMany({
         where: { agentVersionId },
         orderBy: [{ environmentSkillId: "asc" }],
+        select: SKILL_COLUMNS,
       })) as AgentSkillRow[];
       return ok(rows.map(toSkill));
     },
