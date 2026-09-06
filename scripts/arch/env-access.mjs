@@ -233,7 +233,30 @@ export const VIOLATION_CODES = Object.freeze({
  * same 1513 back from its own scan of the same five roots, so the two can
  * DISAGREE and be caught.
  */
-export const EXPECTED_FILE_COUNT = 1513;
+ * WIN-259 (M2.4) adds TWENTY-FOUR MORE, on top of WIN-260's 1503, and this pin
+ * is the SECOND scan to read the same tree: `arch-boundaries.test.mjs` states
+ * 1503 + 24 = 1527 from its own walk of the same five roots, and the two are
+ * written independently so they can DISAGREE and be caught. FOURTEEN of the
+ * twenty-four are the new `packages/adapters/keyring-envelope`, TWO are
+ * `packages/adapters/postgres-tenancy`, TWO are `packages/contexts/providers`
+ * and SIX are `packages/contexts/secrets`. 1503 + 24 = 1527.
+ *
+ * NOT ONE OF THE TWENTY-FOUR READS THE ENVIRONMENT, which is why this file's
+ * DECLARED table does not move even though its census does. The legacy migration
+ * keys reach the key-management adapter as a CONSTRUCTOR ARGUMENT from the
+ * composition root, exactly as the root key ring does — an adapter that read
+ * `process.env` for them would be the ENV-002 violation this gate exists to
+ * catch, and the census moving without the table moving is the evidence that it
+ * does not.
+ */
+ *
+ * M2 INTEGRATION. Neither branch figure survives composition: the two dimensions
+ * walk the SAME five roots and touch DISJOINT directories, so 1503 + 10 + 24 =
+ * 1537, and `scripts/arch/arch-boundaries.test.mjs` reads the same 1537 back
+ * from its own independently written scan of those roots, so the two can
+ * DISAGREE and be caught.
+ */
+export const EXPECTED_FILE_COUNT = 1537;
 
 function listSourceFiles(root) {
   const found = [];

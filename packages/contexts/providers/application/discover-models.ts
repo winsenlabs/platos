@@ -21,6 +21,7 @@
 import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
+  credentialFingerprint,
   modelListCacheKey,
   NO_RUNTIME_SETTINGS,
   planModelRoute,
@@ -60,7 +61,7 @@ export async function discoverModels(
   const key = keys.value.find((candidate) => candidate.isDefault) ?? keys.value[0];
   if (key === undefined) return ok(NOTHING);
 
-  const cacheKey = modelListCacheKey(manifest.id, key.providerKeyId);
+  const cacheKey = modelListCacheKey(manifest.id, credentialFingerprint(key));
   const cached = await dependencies.probeCache.readModelList(cacheKey);
   // An empty array IS a stored answer. Only `null` is a miss.
   if (cached.ok && cached.value !== null) return ok(cached.value);

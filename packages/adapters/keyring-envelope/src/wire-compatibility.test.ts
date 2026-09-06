@@ -1,0 +1,239 @@
+// Does this adapter speak the format every stored envelope was written in?
+//
+// The three vectors it opens were produced by
+// `internal-packages/tenancy-database/src/secrets.ts`, which this issue does not
+// edit. That is the whole design of the file: an assertion comparing this
+// adapter's `envelopeAad` against the domain's `envelopeAad` compares two things
+// one tranche controls, so a mutation that changed the domain constant would move
+// both sides and stay green. A ciphertext moves with neither.
+
+import { describe, expect, it } from "vitest";
+
+import type { EnvelopeBinding, RootKeyVersion, SecretRevision } from "@platos/context-secrets/application/ports/index.js";
+import { asSecretsIdentifier } from "@platos/context-secrets/application/ports/index.js";
+import type { CredentialId } from "@platos/context-secrets/application/ports/index.js";
+
+import { createEnvelopeCipher } from "./envelope-cipher.js";
+import { createRootKeyRing } from "./root-key-ring.js";
+import type { WireVector } from "./wire-vectors.js";
+import { WIRE_VECTORS, hexBytes } from "./wire-vectors.js";
+
+function bindingOf(vector: WireVector): EnvelopeBinding {
+  return {
+    environmentId: asSecretsIdentifier(vector.environmentId),
+    credentialId: asSecretsIdentifier<CredentialId>(vector.credentialId),
+    secretRevision: vector.secretRevision as SecretRevision,
+    formatVersion: 1,
+    rootKeyVersion: vector.rootKeyVersion as RootKeyVersion,
+  };
+}
+
+function ringFor(vector: WireVector) {
+  const ring = createRootKeyRing({
+    activeVersion: vector.rootKeyVersion,
+    keys: { [String(vector.rootKeyVersion)]: vector.rootKeyHex },
+  });
+  if (!ring.ok) throw new Error(`ring did not build: ${ring.error.code}`);
+  return ring.value;
+}
+
+function handleFor(vector: WireVector) {
+  const ring = ringFor(vector);
+  const handle = ring.mint(vector.rootKeyVersion as RootKeyVersion);
+  if (!handle.ok) throw new Error(`handle did not mint: ${handle.error.code}`);
+  return { ring, handle: handle.value };
+}
+
+/**
+ * Open one vector, or report why not.
+ *
+ * A HELPER AND NOT A LOOP OVER `it()`, deliberately.
+ * `scripts/arch/test-case-census.mjs` refuses an `it()` declared inside a loop —
+ * "a construct it cannot count is a construct that can silently lose a case" —
+ * so each vector gets its own named case below and the shared body lives here.
+ */
+async function openVector(vector: WireVector) {
+  const { ring, handle } = handleFor(vector);
+  return createEnvelopeCipher(ring).open({
+    key: handle,
+    binding: bindingOf(vector),
+    envelope: {
+      salt: hexBytes(vector.saltHex),
+      nonce: hexBytes(vector.nonceHex),
+      ciphertext: hexBytes(vector.ciphertextHex),
+      authTag: hexBytes(vector.authTagHex),
+    },
+  });
+}
+
+function vectorAt(index: number): WireVector {
+  const vector = WIRE_VECTORS[index];
+  if (vector === undefined) throw new Error(`wire vector ${index} is missing`);
+  return vector;
+}
+
+describe("format 1 wire compatibility with the extraction source", () => {
+  it("opens the extraction source's revision 1 envelope under root key version 1", async () => {
+    const vector = vectorAt(0);
+    const opened = await openVector(vector);
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
+  it("opens its revision 7 envelope under root key version 2", async () => {
+    // The SAME key bytes as version 1, at a different revision and version. Both
+    // fields are inside the derived key and the associated data, so this case
+    // fails the moment either stops reaching the binding.
+    const vector = vectorAt(1);
+    const opened = await openVector(vector);
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
+  it("opens its non-ASCII envelope under a third root key", async () => {
+    const vector = vectorAt(2);
+    const opened = await openVector(vector);
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
+  // The negative control for the three above. Without it, an `open` that ignored
+  // its binding entirely would pass every positive case — the associated data
+  // would simply never be checked, and no vector could tell.
+  it("refuses a vector whose binding names another credential", async () => {
+    const vector = vectorAt(0);
+    const { ring, handle } = handleFor(vector);
+    const opened = await createEnvelopeCipher(ring).open({
+      key: handle,
+      binding: {
+        ...bindingOf(vector),
+        credentialId: asSecretsIdentifier<CredentialId>("00000000-0000-4000-8000-000000000000"),
+      },
+      envelope: {
+        salt: hexBytes(vector.saltHex),
+        nonce: hexBytes(vector.nonceHex),
+        ciphertext: hexBytes(vector.ciphertextHex),
+        authTag: hexBytes(vector.authTagHex),
+      },
+    });
+
+    expect(opened.ok).toBe(false);
+    if (opened.ok) return;
+    expect(opened.error.code).toBe("CREDENTIAL_UNAVAILABLE");
+  });
+
+  // The SECOND negative control, and the one the whole rotation story rests on.
+  // The revision is inside both the derived key and the associated data, so a
+  // re-encryption that wrote the wrong revision would produce a row nothing can
+  // ever open. Vector two is at revision 7; opening it as revision 1 must fail.
+  it("refuses a vector whose binding names another revision", async () => {
+    const vector = vectorAt(1);
+    const { ring, handle } = handleFor(vector);
+    const opened = await createEnvelopeCipher(ring).open({
+      key: handle,
+      binding: { ...bindingOf(vector), secretRevision: 1 as SecretRevision },
+      envelope: {
+        salt: hexBytes(vector.saltHex),
+        nonce: hexBytes(vector.nonceHex),
+        ciphertext: hexBytes(vector.ciphertextHex),
+        authTag: hexBytes(vector.authTagHex),
+      },
+    });
+
+    expect(opened.ok).toBe(false);
+  });
+
+  // Round trip in the other direction: what this adapter SEALS must be openable
+  // with the same primitives the extraction source uses. The vectors prove the
+  // read side; this proves the write side is the same format rather than a
+  // second one that happens to be self-consistent.
+  it("seals an envelope this adapter can re-open at the same binding", async () => {
+    const vector = vectorAt(0);
+    const { ring, handle } = handleFor(vector);
+    const cipher = createEnvelopeCipher(ring);
+    const binding = bindingOf(vector);
+
+    const sealed = await cipher.seal({
+      key: handle,
+      binding,
+      plaintext: { reveal: () => vector.plaintext, toJSON: () => "x", toString: () => "x" },
+    });
+    expect(sealed.ok).toBe(true);
+    if (!sealed.ok) return;
+
+    // Widths are format 1's descriptor, and they are asserted because the
+    // extraction source's rows carry exactly these and a narrower nonce would
+    // still round-trip inside this adapter.
+    expect(sealed.value.salt).toHaveLength(32);
+    expect(sealed.value.nonce).toHaveLength(12);
+    expect(sealed.value.authTag).toHaveLength(16);
+
+    const opened = await cipher.open({ key: handle, binding, envelope: sealed.value });
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
+  // FOUND BY A SURVIVING MUTANT. Changing `cipher.update(plaintext, "utf8")` to
+  // `"latin1"` on the SEAL side survived every case above, because the three
+  // non-ASCII bytes in the tree were only ever OPENED — vector three is a fixture
+  // this adapter reads and never writes, and every plaintext it seals was ASCII,
+  // where the two encodings agree byte for byte. So the write side's encoding was
+  // untested, and a mis-encoded seal is silent: it round-trips inside a process
+  // that makes the same mistake twice and produces mojibake the day anything else
+  // reads the row.
+  it("seals and re-opens multi-byte UTF-8, a newline and a tab", async () => {
+    const vector = vectorAt(2);
+    const { ring, handle } = handleFor(vector);
+    const cipher = createEnvelopeCipher(ring);
+    const binding = bindingOf(vector);
+
+    const sealed = await cipher.seal({
+      key: handle,
+      binding,
+      plaintext: { reveal: () => vector.plaintext, toJSON: () => "x", toString: () => "x" },
+    });
+    expect(sealed.ok).toBe(true);
+    if (!sealed.ok) return;
+
+    // The ciphertext is as long as the UTF-8 ENCODING, not as long as the string.
+    // GCM is a stream cipher, so `ciphertext.length` is exactly the byte count —
+    // which is what says the seal encoded 8 characters of `éàü` as more than 8
+    // bytes rather than truncating each to one.
+    expect(sealed.value.ciphertext).toHaveLength(Buffer.byteLength(vector.plaintext, "utf8"));
+    expect(sealed.value.ciphertext.length).toBeGreaterThan(vector.plaintext.length);
+
+    const opened = await cipher.open({ key: handle, binding, envelope: sealed.value });
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe(vector.plaintext);
+  });
+
+  it("draws a fresh salt and nonce for every seal", async () => {
+    const vector = vectorAt(0);
+    const { ring, handle } = handleFor(vector);
+    const cipher = createEnvelopeCipher(ring);
+    const binding = bindingOf(vector);
+    const material = { reveal: () => "same-plaintext", toJSON: () => "x", toString: () => "x" };
+
+    const first = await cipher.seal({ key: handle, binding, plaintext: material });
+    const second = await cipher.seal({ key: handle, binding, plaintext: material });
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+
+    // A reused GCM nonce under one key is a total break, and the port says the
+    // cipher owns randomness so no caller can supply one.
+    expect(Buffer.from(first.value.nonce).toString("hex")).not.toBe(
+      Buffer.from(second.value.nonce).toString("hex"),
+    );
+    expect(Buffer.from(first.value.salt).toString("hex")).not.toBe(
+      Buffer.from(second.value.salt).toString("hex"),
+    );
+    expect(Buffer.from(first.value.ciphertext).toString("hex")).not.toBe(
+      Buffer.from(second.value.ciphertext).toString("hex"),
+    );
+  });
+});

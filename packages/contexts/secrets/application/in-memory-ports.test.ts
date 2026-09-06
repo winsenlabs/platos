@@ -19,6 +19,7 @@ import {
   inMemoryHasher,
   inMemoryIdGenerator,
   inMemoryKeyRing,
+  legacyPayload,
 } from "./in-memory-crypto.js";
 import type { RootKeyHandle } from "./ports/index.js";
 
@@ -87,6 +88,45 @@ describe("the in-memory cipher behaves like authenticated encryption", () => {
     const sealed = await cipher.seal({ key, binding, plaintext: secretMaterial(PLAINTEXT) });
     expect(sealed.ok).toBe(false);
     expect((await ring.handle(2 as RootKeyVersion)).ok).toBe(false);
+  });
+});
+
+describe("the legacy double is faithful about the FORMAT, and says so", () => {
+  it("routes through the domain's own rule rather than deciding for itself", async () => {
+    // THIS CASE EXISTS BECAUSE A MUTANT SURVIVED. Replacing the double's
+    // `requireMigratableFormat(request.formatVersion)` with a hard-coded `2`
+    // passed every case in `migrate-legacy-envelope.test.ts`, because that
+    // suite reaches the cipher only THROUGH the use case — which refuses the
+    // canonical format before the cipher is ever called. The double's own guard
+    // was unreachable from the one suite that drives it.
+    //
+    // A double that quietly stops honouring the format rule is worse than no
+    // double: every "fails closed" assertion built on it would pass for the
+    // wrong reason. So it is asserted here, directly, alongside the cipher's
+    // other non-vacuity proofs.
+    const cipher = inMemoryAeadCipher(inMemoryKeyRing());
+    const refused = await cipher.openLegacy({ formatVersion: 1, payload: "irrelevant" });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.code).toBe("LEGACY_ENVELOPE_UNREADABLE");
+    expect(refused.error.details?.reason).toBe("format_is_already_canonical");
+  });
+
+  it("refuses a payload it did not mint, so no legacy assertion is vacuous", async () => {
+    const cipher = inMemoryAeadCipher(inMemoryKeyRing());
+    const refused = await cipher.openLegacy({ formatVersion: 2, payload: "not-a-double-payload" });
+    expect(refused.ok).toBe(false);
+  });
+
+  it("round-trips a payload it did mint", async () => {
+    const cipher = inMemoryAeadCipher(inMemoryKeyRing());
+    const opened = await cipher.openLegacy({
+      formatVersion: 3,
+      payload: legacyPayload(3, "legacy-column-value"),
+    });
+    expect(opened.ok).toBe(true);
+    if (!opened.ok) return;
+    expect(opened.value.reveal()).toBe("legacy-column-value");
   });
 });
 

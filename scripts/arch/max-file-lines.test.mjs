@@ -671,6 +671,23 @@ test("the live selectors scan an exact nonzero source census", () => {
   // branches reported a ZERO delta here, so this gate was in none of their
   // lists; the merged scan reads back 1452 + 16 = 1468.
   //
+  // WIN-259 (M2.4) 1468 -> 1492. TWENTY-FOUR files: FOURTEEN in the new
+  // `packages/adapters/keyring-envelope` (eight source, six suites), TWO in
+  // `packages/adapters/postgres-tenancy`, TWO in `packages/contexts/providers`
+  // and SIX in `packages/contexts/secrets`. 14 + 2 + 2 + 6 = 24.
+  //
+  // NINE OF THE TWENTY-FOUR ARE THE LEGACY-ENVELOPE MIGRATION: two decoder-side
+  // modules and one use case, each with the suite that falsifies it, the domain
+  // rule with its own suite, and the real-PostgreSQL suite that asks the database
+  // what it refuses.
+  //
+  // NONE OF THE TWENTY-FOUR IS IN THE WARNING BAND, and the largest is the
+  // migration's use-case suite at 251 effective lines. That is worth stating for
+  // a tranche whose files carry the longest headers in the tree — the legacy
+  // wire-vector fixture is 141 lines of which 62 are comment — because effective
+  // lines exclude comments and a reader comparing raw counts will find them very
+  // different.
+  //
   // NONE OF THE SEVEN IS IN THE WARNING BAND EITHER, and the largest is the
   // conversations suite at 350 effective lines. That is worth stating because
   // this tranche's files are the most heavily COMMENTED in the directory —
@@ -692,13 +709,25 @@ test("the live selectors scan an exact nonzero source census", () => {
   // context moves — the reference is a VALUE, so it adds no row, no store and no
   // port implementation; the one port it widens (`AeadCipher`) is widened IN
   // PLACE, and a widened file is not a new one.
-  assert.equal(result.fileCount, 1477);
+  //
+  // M2 INTEGRATION. 1468 + 9 (projection) + 24 (lifecycle) = 1501. The
+  // lifecycle dimension's own figure was 1492 and the projection dimension's
+  // 1477; both were pinned against the same base for themselves alone, and
+  // their directories do not overlap, so the composition is their sum.
+  assert.equal(result.fileCount, 1501);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 2 + 2 + 1 + 4
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 +
+      // projection: kernel 2, secrets 2, the fence split 1, and the reference 4.
+      2 + 2 + 1 + 4 +
+      // lifecycle: keyring-envelope 14, postgres-tenancy 2, providers 2,
+      // secrets 6. The postgres term is TWO because the legacy-envelope finding
+      // needs a real database on both sides — one suite for the format-1
+      // envelope round trip and one for what the canonical row REFUSES.
+      14 + 2 + 2 + 6
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -741,7 +770,28 @@ test("the live selectors scan an exact nonzero source census", () => {
   // in `packages/contexts/secrets` and nowhere else, so the CONTEXTS term goes
   // 1062 -> 1066 and the kernel, adapters and apps terms are unchanged.
   // 22 + 1066 + 383 + 6 = 1477.
-  assert.equal(result.fileCount, 22 + 1066 + 383 + 6);
+  // WIN-259 (M2.4) MOVES BOTH THE ADAPTERS AND THE CONTEXTS TERM, which no
+  // tranche-5 store did. Adapters 382 -> 398: FOURTEEN for the thirteenth
+  // directory and TWO for the postgres row. Contexts 1060 -> 1068: `providers`
+  // gains the eviction helper and its suite, `secrets` the sweep and its suite
+  // plus the legacy-envelope domain rule, the migration use case and a suite
+  // each. The contexts term moves because this issue adds USE CASES rather than
+  // only implementing ports that already existed. Kernel and apps are untouched.
+  //
+  // THE LEGACY-ENVELOPE MIGRATION IS FOUR IN THE CONTEXTS TERM AND FIVE IN THE
+  // ADAPTERS TERM, and the four-and-four core of that is the deliverable's shape
+  // rather than a coincidence: the domain judges and the adapter decodes, so each
+  // half is one module plus one fixture-or-use-case with the suite that falsifies
+  // it. The fifth is the postgres suite, which belongs to NEITHER half — it is
+  // where the two claims meet a database that is not either one's.
+  //
+  // M2 INTEGRATION SUMS THE TWO PER TERM, which is the only way the four-way
+  // disjoint scan can survive a composition: the KERNEL term moves only for
+  // projection (20 -> 22), the CONTEXTS term takes both (1060 + 6 + 8 = 1074),
+  // the ADAPTERS term takes both (382 + 1 + 16 = 399), and the APPS term is
+  // untouched by either, because its selector is
+  // `apps/core-api/src/transports/**` only. 22 + 1074 + 399 + 6 = 1501.
+  assert.equal(result.fileCount, 22 + 1074 + 399 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

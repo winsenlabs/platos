@@ -17,6 +17,7 @@ export type {
   EnvironmentVariableUpsert,
   Hasher,
   KeyRing,
+  LegacyOpenRequest,
   OpenHandleRequest,
   OpenRequest,
   RetiredSecretVersionCandidate,
@@ -34,6 +35,27 @@ export type { RotateCredentialCommand } from "./rotate-credential.js";
 
 export { reEncryptCredential } from "./re-encrypt-credential.js";
 export type { ReEncryptCredentialCommand } from "./re-encrypt-credential.js";
+
+// WIN-259 M2.4 — the operation `domain/envelope.ts` named and nothing performed:
+// a legacy format-2 or format-3 ciphertext, read out of the column its own module
+// wrote, opened under its legacy key and sealed afresh as a canonical format-1
+// row. It is published beside rotation and re-encryption because it is the third
+// way an envelope comes to exist, and the only one whose input this context does
+// not already own.
+export { migrateLegacyEnvelope } from "./migrate-legacy-envelope.js";
+export type { MigrateLegacyEnvelopeCommand } from "./migrate-legacy-envelope.js";
+
+// WIN-259 M2.4 — the same operation as a JOB rather than a request. Published
+// beside it because a composition root wiring a durable schedule needs the
+// bounded, resumable form and a transport handling one credential needs the
+// single one, and neither should have to reach past this entry point for the
+// other.
+export { SWEEP_HARD_LIMIT, sweepRootKeyReEncryption } from "./sweep-root-key-reencryption.js";
+export type {
+  RootKeySweepReport,
+  SweepRootKeyReEncryptionCommand,
+  SweepSkip,
+} from "./sweep-root-key-reencryption.js";
 
 export {
   DEFAULT_REVOKED_SECRET_RETENTION_MS,
@@ -89,6 +111,7 @@ export {
   inMemoryIdGenerator,
   inMemoryKeyRing,
   inMemoryUnitOfWork,
+  legacyPayload,
 } from "./in-memory-crypto.js";
 export type {
   InMemoryClock,

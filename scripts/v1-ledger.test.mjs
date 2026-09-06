@@ -992,7 +992,45 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // each. The SECRET REFERENCE adds no adapter file and no row of its own — it
     // is a VALUE this context never persists, so no store moves, and the one
     // port it widens (`AeadCipher`) is widened IN PLACE. 2 source + 2 test = 4.
-    packages: 1407,
+    // WIN-259 (M2.4) 1397 -> 1414. Seventeen tracked files, every one under
+    // `packages`, and no other area moves: FOURTEEN are the thirteenth adapter
+    // directory `packages/adapters/keyring-envelope` (three generator-owned
+    // scaffolding files, six sources, four colocated suites and one mutation
+    // ledger that classifies as config beside the twenty-two already in
+    // `packages/adapters/postgres-tenancy`), TWO are `packages/contexts/providers`
+    // (`evict-probe-cache.ts` and `probe-cache-eviction.test.ts`) and ONE is
+    // `packages/adapters/postgres-tenancy/src/secrets-key-version.integration.test.ts`.
+    // 14 + 2 + 1 = 17. `packages/contexts/secrets` gains NO file: its port entry
+    // point was widened IN PLACE to publish the seven values its three
+    // cryptography ports' signatures use, and a widened file is not a new one.
+    // WIN-259 (M2.4) 1414 -> 1416. The sweep and its suite:
+    // `packages/contexts/secrets/application/sweep-root-key-reencryption.ts`
+    // and `…test.ts`, rotation as a JOB rather than as a request-time loop.
+    // 14 (keyring-envelope) + 2 (providers) + 1 (postgres) + 2 (secrets) = 19.
+    //
+    // WIN-259 (M2.4), THE LEGACY-ENVELOPE MIGRATION, 1416 -> 1424. EIGHT more,
+    // all in `packages` and no other area, in matched pairs across the two
+    // packages the deliverable is split between: `keyring-envelope` gains
+    // `legacy-envelope-reader.ts` and `legacy-wire-vectors.ts` with
+    // `legacy-wire-compatibility.test.ts` and `legacy-migration.test.ts`;
+    // `secrets` gains `domain/legacy-envelope.ts` and
+    // `application/migrate-legacy-envelope.ts` with a suite each. Every one
+    // classifies under a rule that ALREADY EXISTED — `packages.adapters.source`,
+    // `packages.adapters.test`, `packages.contexts.source` and
+    // `packages.contexts.test` — so NO ledger rule changed for the migration, and
+    // the delta is purely additive.
+    // AND ONE MORE IN `postgres-tenancy`, 1424 -> 1425:
+    // `secrets-legacy-envelope.integration.test.ts`, the real-PostgreSQL half of
+    // the legacy finding. It classifies under `packages.adapters.test` like every
+    // other suite in that directory, so it too changes no ledger rule.
+    // 18 (keyring-envelope) + 2 (providers) + 2 (postgres) + 6 (secrets) = 28,
+    // and REBASED ONTO v1 @ 2abd19b4 the whole of WIN-259 is those 28: v1's own
+    // `packages` delta is 1397, and 1397 + 28 = 1425.
+    // M2 INTEGRATION: the two WIN-259 dimensions above touch DISJOINT paths --
+    // projection's ten and lifecycle's twenty-eight share no file -- so this
+    // counter is their SUM off the base they share, not either branch's figure:
+    // 1397 + 10 + 28 = 1435.
+    packages: 1435,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1255,7 +1293,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 14,
     "root-infra": 45,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1509);
+  // M2 INTEGRATION: 1495 + 14 (projection) + 28 (lifecycle) = 1537, and
+  // 3469 + 1537 = 5006, which is what the ledger fingerprint carries.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1537);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1312,7 +1352,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // reference is a value, so it lands no artifact under docs/audits, no
     // scanner under scripts/ and no suite outside the context that owns it.
     // 1505 + 4 = 1509.
-    rulesDocument.baseline.totalFiles + 1509
+    // and WIN-259 (M2.4) +28, ALL in `packages`: the thirteenth adapter
+    // directory with its legacy-envelope reader, `providers`' probe-cache
+    // eviction, TWO postgres integration suites, and `secrets`' sweep and
+    // legacy-envelope migration. It ADOPTS ONE PROJECT — `keyring-envelope`,
+    // the first V1 project added since the layout was drawn — and its three
+    // generator-owned scaffolding files are inside the twenty-eight. It CHANGES
+    // NO LEDGER RULE: every one of the twenty-eight is classified by a rule that
+    // already existed, which is why this delta too is purely additive.
+    //
+    // M2 INTEGRATION sums the two rather than side-picking, because the two
+    // dimensions above are disjoint and each pinned this file for itself alone:
+    // 1495 + 14 + 28 = 1537. This assertion re-derives it by summing the
+    // per-area counts independently of the assertion above, so the two can
+    // DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1537
   );
 });
 

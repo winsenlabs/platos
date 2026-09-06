@@ -23,6 +23,7 @@ import {
 } from "../domain/index.js";
 import { requireAccess, verifyOperator } from "./authorization.js";
 import type { ProvidersDependencies } from "./dependencies.js";
+import { evictProbeCache } from "./evict-probe-cache.js";
 
 export interface DeleteProviderKeyCommand {
   readonly authorization: unknown;
@@ -57,6 +58,9 @@ export async function deleteProviderKey(
   // The row was read inside this use case and is gone now. A `false` here means
   // something else removed it between the read and the write, which is the same
   // outcome the caller asked for and not a failure.
-  await dependencies.probeCache.forgetProvider(key.provider);
-  return ok(key);
+  // WIN-259 M2.4. The key is GONE and its cached verdict says it was healthy.
+  // That is the same class of staleness a rotation leaves — an answer about
+  // material that no longer exists — so it refuses on the same terms rather than
+  // being discarded.
+  return evictProbeCache(dependencies, key.provider, key);
 }

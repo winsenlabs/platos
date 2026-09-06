@@ -1058,8 +1058,46 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               the two deltas agree at +4 for the first time on this branch
     //               — the first pass differed (+6 here, +5 there) only because
     //               of the apps selector. 1509 + 4 = 1513.
-    assert.equal(result.fileCount, 1513, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 + 2 + 2 + 1 + 1 + 4);
+    //
+    // WIN-259 (M2.4) +24, ON TOP OF WIN-260'S 1503: 1503 + 24 = 1527. FOURTEEN in
+    //               the new `packages/adapters/keyring-envelope` (eight source,
+    //               six suites), TWO in `packages/adapters/postgres-tenancy`, TWO
+    //               in `packages/contexts/providers` and SIX in
+    //               `packages/contexts/secrets`. This scan's roots are
+    //               packages/kernel, packages/contexts, packages/adapters,
+    //               apps/core-api and apps/mcp-stdio, so the thirteenth adapter
+    //               directory is inside it from the moment it exists and
+    //               `unknown-context-directory` polices it per FILE. The two
+    //               dimensions touch DISJOINT directories, which is why they
+    //               compose by addition rather than needing a re-count.
+    //
+    //               THE LEGACY-ENVELOPE MIGRATION IS EIGHT OF THE TWENTY-FOUR,
+    //               and they arrive in matched pairs because the deliverable is
+    //               two decoders and one use case, each with the suite that
+    //               falsifies it: `keyring-envelope` gains
+    //               `legacy-envelope-reader.ts` and `legacy-wire-vectors.ts` with
+    //               `legacy-wire-compatibility.test.ts` and
+    //               `legacy-migration.test.ts`; `secrets` gains
+    //               `domain/legacy-envelope.ts` and
+    //               `application/migrate-legacy-envelope.ts` with a suite each.
+    //               The vectors file is SOURCE and not a fixture directory
+    //               because it is imported by two suites in the package that owns
+    //               it, which is the same reason `wire-vectors.ts` is.
+    //
+    // M2 INTEGRATION. The two dimensions above scan the SAME five roots and
+    // touch DISJOINT directories, so they compose by addition and neither
+    // branch's own figure survives: 1503 + 10 (projection) + 24 (lifecycle) =
+    // 1537. The written-out sum below CONCATENATES both addend lists rather
+    // than replacing one with the other, so a file dropped from one dimension
+    // while the other added cannot reach the same total.
+    assert.equal(result.fileCount, 1537, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
+      // projection: kernel 2, secrets 2, postgres-tenancy 1, apps/core-api 1,
+      // and the fence split 4 lines below it in its own file.
+      2 + 2 + 1 + 1 + 4 +
+      // lifecycle: keyring-envelope 14, postgres-tenancy 2, providers 2,
+      // secrets 6.
+      14 + 2 + 2 + 6);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

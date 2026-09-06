@@ -50,6 +50,7 @@ import {
   type TenancyOperatorGrant,
 } from "./authorization.js";
 import type { ProvidersDependencies } from "./dependencies.js";
+import { evictProbeCache } from "./evict-probe-cache.js";
 import { discoverModels } from "./discover-models.js";
 
 export interface DescribeProvidersQuery {
@@ -233,8 +234,10 @@ export async function unlinkProvider(
     dependencies.repository.deleteProviderLink(granted.value.scope, manifest.value.id, transaction),
   );
   if (!removed.ok) return err(removed.error);
-  await dependencies.probeCache.forgetProvider(manifest.value.id);
-  return ok(removed.value);
+  // WIN-259 M2.4. Unlinking removes the provider's configuration, so every
+  // cached verdict about it now describes a link that is gone. Same class as a
+  // rotation and a deletion, same refusal.
+  return evictProbeCache(dependencies, manifest.value.id, removed.value);
 }
 
 /** The providers a turn in this environment may actually route to. */
