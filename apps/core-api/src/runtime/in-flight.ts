@@ -108,9 +108,18 @@ export function createInFlightRegister(): InFlightRegister {
         admitted: true,
         refusal: null,
         settle: () => {
-          // Express fires both `finish` and `close` on some responses. Without
-          // this guard the counter would go negative and drain would return
-          // immediately with work still running — a silent truncation.
+          // Express fires both `finish` and `close` on some responses, so this
+          // runs twice for many requests.
+          //
+          // THE COMMENT THAT USED TO STAND HERE SAID "without this guard the
+          // counter would go negative", and that was not true of this code. The
+          // register holds a Map keyed by registration id, not a number:
+          // deleting an absent key is already a no-op, so double settle is
+          // harmless with or without the flag. The mutation sweep proved it —
+          // removing the flag killed no case, which is what a redundant guard
+          // looks like from the outside. The flag is kept as an early return
+          // and the ledger records it as unfalsifiable WITH the measured reason,
+          // rather than claiming a kill that was not there.
           if (settled) return;
           settled = true;
           running.delete(id);
@@ -152,9 +161,15 @@ export function createInFlightRegister(): InFlightRegister {
           clearTimeout(timer);
           resolve({ drained, remaining: running.size, waitedMs: now() - startedAt });
         };
-        const onEmpty = (): void => {
-          if (running.size === 0) finish(true);
-        };
+        // ONE GUARD, IN ONE PLACE. A draft of this carried a second
+        // `running.size === 0` check here, because `closeAdmission()` now wakes
+        // the waiters too and a waiter that resolved on being woken would report
+        // a clean drain with work still running. The sweep showed that mutation
+        // SURVIVING — `release()` above already refuses to wake anyone while
+        // work is outstanding, so the second check was unreachable. A guard
+        // nothing can turn red is a guard that is not there, and two guards for
+        // one property are one guard and one decoration.
+        const onEmpty = (): void => finish(true);
         const timer = setTimeout(() => finish(false), timeoutMs);
         // Do not hold the event loop open on account of the deadline itself:
         // if everything drains, the process must be free to exit immediately.

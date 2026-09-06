@@ -1,0 +1,219 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for apps/core-api's WIN-260 (M2.5) shutdown work: the",
+    "admission gate in src/runtime/in-flight.ts, the deferred-drain sequence in",
+    "src/runtime/shutdown-drain.ts, and their wiring in src/runtime/lifecycle.ts.",
+    "One entry per invariant, each carrying the file it lives in, the EXACT text",
+    "that implements it (`from`), the edit that removes it (`to`), and the NAMED",
+    "cases that were seen to go red (`kills`).",
+    "",
+    "A guard nothing can turn red is a guard that is not there — and this sweep",
+    "found two of those in code this dimension had just written. C03 and C14 are",
+    "the honest record of both.",
+    "",
+    "NOTHING HERE NEEDS A DATABASE OR A CONTAINER. Every case runs against a real",
+    "in-process HTTP server or against the sequence's own injected clock, which is",
+    "why the whole ledger is swept in about four seconds."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. An earlier tranche reported 22 kills and every",
+    "one was VACUOUS: a package's dist/ had been cleaned, so every suite failed to",
+    "LOAD and would have 'died' against no mutation at all. The driver runs each",
+    "suite set UNMUTATED and refuses to sweep unless it is green, and classifies a",
+    "module-load failure with no named failing case as VACUOUS.",
+    "",
+    "For one entry: replace its `from` with its `to` in the named file, run",
+    "`pnpm --filter @platos/core-api exec vitest run <suites>`, and confirm a NAMED",
+    "case goes red. Then revert and confirm green.",
+    "",
+    "apps/core-api is OUTSIDE scripts/arch/test-case-census.mjs's PACKAGE_ROOTS,",
+    "so its case count is not pinned there. It is pinned by",
+    "docs/v1-ledger-rules.json's apps-core-api.test.suites FILE count and by this",
+    "ledger, which names cases rather than counting them."
+  ],
+  "mutations": [
+    {
+      "name": "C01 the admission gate never refuses, so a late request is begun and then destroyed",
+      "file": "src/runtime/in-flight.ts",
+      "from": "      if (!admitting) {\n        refused += 1;",
+      "to": "      if (false) {\n        refused += 1;",
+      "suites": ["src/runtime/in-flight.test.ts", "src/runtime/lifecycle.test.ts"],
+      "kills": [
+        "the admission gate refuses rather than dropping > refuses after admission closes, with its own code",
+        "the admission gate refuses rather than dropping > does not COUNT a refused unit, so the drain's zero keeps meaning zero",
+        "the admission gate refuses rather than dropping > counts refusals, so the shutdown log can say how many callers were turned away",
+        "the admission gate refuses rather than dropping > is idempotent, because two signals in a row are normal"
+      ]
+    },
+    {
+      "name": "C02 closeAdmission leaves the door open, which is the same defect wearing the other face",
+      "file": "src/runtime/in-flight.ts",
+      "from": "      admitting = false;",
+      "to": "      admitting = true;",
+      "suites": ["src/runtime/in-flight.test.ts", "src/runtime/lifecycle.test.ts"],
+      "kills": [
+        "the admission gate refuses rather than dropping > refuses after admission closes, with its own code",
+        "the admission gate refuses rather than dropping > does not COUNT a refused unit, so the drain's zero keeps meaning zero",
+        "the admission gate refuses rather than dropping > counts refusals, so the shutdown log can say how many callers were turned away",
+        "the admission gate refuses rather than dropping > is idempotent, because two signals in a row are normal"
+      ]
+    },
+    {
+      "name": "C03 release() wakes the drain while work is still running — a clean stop reported over a truncation",
+      "file": "src/runtime/in-flight.ts",
+      "from": "  const release = (): void => {\n    if (running.size !== 0) return;",
+      "to": "  const release = (): void => {\n    if (false) return;",
+      "suites": ["src/runtime/in-flight.test.ts"],
+      "kills": [
+        "the in-flight register > waits for the last of several concurrent units, not the first",
+        "the admission gate refuses rather than dropping > does not resolve a waiting drain merely because the door closed"
+      ],
+      "note": [
+        "THIS ENTRY WAS RE-AIMED AFTER ITS FIRST DRAFT SURVIVED. The draft removed a",
+        "`running.size === 0` check inside the drain's `onEmpty` waiter, added",
+        "because `closeAdmission()` now wakes the waiters too. It killed nothing:",
+        "`release()` already refuses to wake anyone while work is outstanding, so",
+        "the second check was unreachable. The redundant check was DELETED from the",
+        "source rather than kept beside an entry that could not fail, and the entry",
+        "now aims at the guard that is actually load-bearing."
+      ]
+    },
+    {
+      "name": "C04 admission closes after the drain instead of before the listener, restoring the drop window",
+      "file": "src/runtime/lifecycle.ts",
+      "from": "      inFlight.closeAdmission();\n\n      server.close();",
+      "to": "      server.close();",
+      "suites": ["src/runtime/lifecycle.test.ts"],
+      "kills": [
+        "shutdown REFUSES late work instead of dropping it > keeps admitting through the whole grace period, then closes",
+        "shutdown REFUSES late work instead of dropping it > has closed admission by the time deferred work is drained"
+      ]
+    },
+    {
+      "name": "C05 the deferred drain is handed a SECOND full budget, so a 60ms process may spend 120ms",
+      "file": "src/runtime/lifecycle.ts",
+      "from": "      const leftOverMs = Math.max(\n        configuration.shutdownTimeoutMs - (clock.now().getTime() - budgetStartedAt),\n        0,\n      );",
+      "to": "      const leftOverMs = configuration.shutdownTimeoutMs;",
+      "suites": ["src/runtime/lifecycle.test.ts"],
+      "kills": [
+        "shutdown drains deferred work out of the SAME budget > does NOT hand the deferred drain a second full budget"
+      ]
+    },
+    {
+      "name": "C06 the stop verdict ignores the deferred half, so an abandoned outbox exits 0",
+      "file": "src/runtime/lifecycle.ts",
+      "from": "      const drained = outcome.drained && deferred.drained;",
+      "to": "      const drained = outcome.drained;",
+      "suites": ["src/runtime/lifecycle.test.ts"],
+      "kills": [
+        "shutdown drains deferred work out of the SAME budget > reports NOT drained overall when a drainable did not drain"
+      ]
+    },
+    {
+      "name": "C07 the middleware routes a refused request instead of answering 503",
+      "file": "src/runtime/lifecycle.ts",
+      "from": "      if (!registration.admitted) {",
+      "to": "      if (false) {",
+      "suites": ["src/runtime/lifecycle.test.ts"],
+      "kills": [
+        "shutdown REFUSES late work instead of dropping it > answers 503 with the refusal code once admission is closed",
+        "shutdown REFUSES late work instead of dropping it > tells the caller to come back, rather than merely closing on them"
+      ]
+    },
+    {
+      "name": "C08 the budget is not divided, so N drains may spend N times the shutdown timeout",
+      "file": "src/runtime/shutdown-drain.ts",
+      "from": "    const slice = budgetMs - spent;",
+      "to": "    const slice = budgetMs;",
+      "suites": ["src/runtime/shutdown-drain.test.ts", "src/runtime/lifecycle.test.ts"],
+      "kills": [
+        "two drains share ONE budget > hands the second what is LEFT, not a second full copy",
+        "two drains share ONE budget > does not CALL a step that arrives with nothing left",
+        "two drains share ONE budget > is drained only when EVERY step drained",
+        "a step that ignores its budget is bounded anyway > continues the sequence rather than aborting it, and says why the next step did not run"
+      ]
+    },
+    {
+      "name": "C09 a step with nothing left is CALLED anyway, reporting a failure that reads like its own",
+      "file": "src/runtime/shutdown-drain.ts",
+      "from": "    if (slice <= 0) {\n      steps.push({ name: drainable.name, budgetMs: 0, waitedMs: 0, outcome: NOT_CALLED });\n      continue;\n    }",
+      "to": "    if (slice <= -1_000_000) {\n      steps.push({ name: drainable.name, budgetMs: 0, waitedMs: 0, outcome: NOT_CALLED });\n      continue;\n    }",
+      "suites": ["src/runtime/shutdown-drain.test.ts"],
+      "kills": [
+        "two drains share ONE budget > does not CALL a step that arrives with nothing left",
+        "two drains share ONE budget > is drained only when EVERY step drained",
+        "two drains share ONE budget > calls no step at all when the budget starts at zero",
+        "a step that ignores its budget is bounded anyway > continues the sequence rather than aborting it, and says why the next step did not run"
+      ]
+    },
+    {
+      "name": "C10 two drainables may share a name, so their two rows in the report become one row",
+      "file": "src/runtime/shutdown-drain.ts",
+      "from": "  assertDistinctNames(drainables);",
+      "to": "  void drainables;",
+      "suites": ["src/runtime/shutdown-drain.test.ts"],
+      "kills": [
+        "two drainables may not share a name > refuses before anything runs",
+        "two drainables may not share a name > names the code and the colliding name"
+      ]
+    },
+    {
+      "name": "C11 a faulting step aborts the sequence, skipping the outbox flush precisely on a bad day",
+      "file": "src/runtime/shutdown-drain.ts",
+      "from": "      drainable.drain(sliceMs, now).catch((cause: unknown) => faulted(cause)),",
+      "to": "      drainable.drain(sliceMs, now),",
+      "suites": ["src/runtime/shutdown-drain.test.ts"],
+      "kills": [
+        "a broken step does not take the others with it > records the fault and keeps going",
+        "a broken step does not take the others with it > carries the reason, because the process it happened in has already exited",
+        "a broken step does not take the others with it > survives a step that rejects with something that is not an Error"
+      ]
+    },
+    {
+      "name": "C12 an abandoned step is reported as a clean stop rather than as a timeout",
+      "file": "src/runtime/shutdown-drain.ts",
+      "from": "          stoppedBecause: SHUTDOWN_DRAIN_TIMED_OUT,",
+      "to": "          stoppedBecause: null,",
+      "suites": ["src/runtime/shutdown-drain.test.ts"],
+      "kills": [
+        "a step that ignores its budget is bounded anyway > is raced against its own slice and reported as timed out",
+        "a step that ignores its budget is bounded anyway > continues the sequence rather than aborting it, and says why the next step did not run"
+      ]
+    },
+    {
+      "name": "C13 the sequence verdict becomes ANY rather than EVERY step drained",
+      "file": "src/runtime/shutdown-drain.ts",
+      "from": "    drained: steps.every((step) => step.outcome.drained),",
+      "to": "    drained: steps.some((step) => step.outcome.drained) || steps.length === 0,",
+      "suites": ["src/runtime/shutdown-drain.test.ts"],
+      "kills": ["two drains share ONE budget > is drained only when EVERY step drained"]
+    },
+    {
+      "name": "C14 the settle idempotence flag — DECLARED UNFALSIFIABLE, with the measured reason",
+      "file": "src/runtime/in-flight.ts",
+      "from": "          if (settled) return;",
+      "to": "          if (false) return;",
+      "suites": ["src/runtime/in-flight.test.ts"],
+      "kills": [],
+      "unfalsifiable": [
+        "MEASURED, NOT ASSUMED: the mutation was applied and the whole suite stayed",
+        "green, including the case named `settles idempotently, because Express fires",
+        "both finish and close`.",
+        "",
+        "WHY. The register holds a `Map` keyed by registration id, not a counter.",
+        "`running.delete(id)` on an id already deleted is a no-op, so a double",
+        "settle cannot take the count below zero with or without the flag. The",
+        "comment that used to stand beside it said 'without this guard the counter",
+        "would go negative', which described an implementation this file does not",
+        "have; the prose is corrected in the source rather than left to be believed.",
+        "",
+        "THE FLAG IS KEPT as an early return — it is free and it documents intent —",
+        "and it is recorded here as a guard that CANNOT be turned red rather than",
+        "counted as a kill that was not obtained. The property it appears to protect",
+        "IS covered, by the Map itself and by the named case above, which fails if",
+        "`running.delete(id)` is replaced by a numeric decrement."
+      ]
+    }
+  ]
+}

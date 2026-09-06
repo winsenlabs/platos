@@ -11,7 +11,7 @@
     "below was exercised before this adapter was proposed.",
     "",
     "The store half of the outbox lives in packages/adapters/postgres-tenancy,",
-    "because ADR M0.3 §15 gives the ORM one home and this package may not hold",
+    "because ADR M0.3 \u00a715 gives the ORM one home and this package may not hold",
     "it. Its guards are in that package's mutations-outbox.json; the two",
     "ledgers are separate because the two halves are separate packages with",
     "separate suites, not because the outbox is two things.",
@@ -19,7 +19,14 @@
     "This lives here rather than in README.md because that file is emitted by",
     "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
     "scripts/arch/gen-v1-skeleton.mjs --check`: adoption releases a project's",
-    "PLACEHOLDERS, never its scaffolding."
+    "PLACEHOLDERS, never its scaffolding.",
+    "",
+    "WIN-260 (M2.5) ADDS THE F-SERIES: the shutdown flush in src/flush.ts. It was",
+    "drafted at the process edge and scripts/arch/composition-root.mjs refused it",
+    "-- rule (C1) allows exactly ONE importer of an adapter package. The refusal",
+    "was right beyond the letter: everything the loop knows is outbox knowledge,",
+    "and a copy of it under apps/core-api would be a second place to get this",
+    "package's paging contract wrong."
   ],
   "procedure": [
     "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills",
@@ -35,7 +42,13 @@
     "",
     "NONE of these entries needs a database. That is the point of the split:",
     "the identifier, the envelope and every refusal are decided above the",
-    "store, so they are falsifiable with no container at all."
+    "store, so they are falsifiable with no container at all.",
+    "",
+    "THE F-SERIES NEEDS NO DATABASE EITHER, and four of its kills come from the",
+    "block that drives the REAL buildOutboxAdapter over the REAL",
+    "createInMemoryOutbox. Those are the ones worth reading: a compile-time",
+    "`Satisfies` compares two declarations, while F02 and F08 are killed by a loop",
+    "run against a running adapter."
   ],
   "mutations": [
     {
@@ -328,6 +341,134 @@
         "src/adapter.test.ts > drain > a cursor resumes strictly after the last event of the previous page",
         "src/adapter.test.ts > drain > the SECOND event of a shared millisecond is neither repeated nor skipped",
         "src/conformance.test.ts > the committed scenario > the in-memory store reproduces the committed transcript exactly"
+      ]
+    },
+    {
+      "name": "F01 flush: the budget is checked AFTER the read, so the last page is read and dropped",
+      "file": "src/flush.ts",
+      "from": "        if (now() - startedAt >= budgetMs) {\n          return { drained: false, handled, remaining: null, stoppedBecause: FLUSH_BUDGET_SPENT };\n        }\n\n        let read: OutboxDrainPage;",
+      "to": "        let read: OutboxDrainPage;",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush is bounded > stops at the budget and reports what it did hand on",
+        "the flush is bounded > checks the budget BEFORE reading a page, so no event is read and dropped"
+      ]
+    },
+    {
+      "name": "F02 flush: a SHORT page is treated as quiescence, leaving the tail behind on every uneven flush",
+      "file": "src/flush.ts",
+      "from": "        if (read.events.length === 0) {",
+      "to": "        if (read.events.length < options.pageSize) {",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush drains to quiescence > keeps reading until a page comes back empty",
+        "the flush drains to quiescence > treats an EMPTY page as quiescence and a short one as merely a page",
+        "the seam fits the adapter that ships > drains events appended through the REAL OutboxWriter port",
+        "the seam fits the adapter that ships > hands the real adapter's events on in append order"
+      ]
+    },
+    {
+      "name": "F03 flush: the page size is not validated, so the refusal lands during shutdown instead",
+      "file": "src/flush.ts",
+      "from": "  requireWholePositive(options.pageSize, \"page size\");",
+      "to": "  void options.pageSize;",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush refuses and reports rather than guessing > refuses a zero page size at construction, not during shutdown",
+        "the flush refuses and reports rather than guessing > refuses a negative page size at construction, not during shutdown",
+        "the flush refuses and reports rather than guessing > refuses a fractional page size at construction, not during shutdown",
+        "the flush refuses and reports rather than guessing > refuses a not a number page size at construction, not during shutdown"
+      ]
+    },
+    {
+      "name": "F04 flush: a source answering rows and no cursor is tolerated, re-delivering one page to the cap",
+      "file": "src/flush.ts",
+      "from": "        if (cursor === null) {\n          // Unreachable through this package's own adapter",
+      "to": "        if (false) {\n          // Unreachable through this package's own adapter",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush refuses and reports rather than guessing > refuses to loop on a source that answers rows and no cursor"
+      ]
+    },
+    {
+      "name": "F05 flush: the page cap becomes a backfill, so a table still being written holds shutdown open",
+      "file": "src/flush.ts",
+      "from": "export const DEFAULT_MAX_PAGES = 20;",
+      "to": "export const DEFAULT_MAX_PAGES = 200;",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush is bounded > caps at twenty pages when nobody says otherwise"
+      ]
+    },
+    {
+      "name": "F06 flush: the handed count counts PAGES rather than events",
+      "file": "src/flush.ts",
+      "from": "        handled += read.events.length;",
+      "to": "        handled += 1;",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush drains to quiescence > keeps reading until a page comes back empty",
+        "the flush is bounded > stops at the budget and reports what it did hand on",
+        "the flush refuses and reports rather than guessing > keeps the count of what it had already handed on when the source faults",
+        "the seam fits the adapter that ships > drains events appended through the REAL OutboxWriter port"
+      ]
+    },
+    {
+      "name": "F07 flush: a source fault REJECTS instead of reporting, losing the outbox-specific code",
+      "file": "src/flush.ts",
+      "from": "        } catch (cause) {\n          return { drained: false, handled, remaining: null, stoppedBecause: faulted(cause) };\n        }",
+      "to": "        } catch (cause) {\n          throw cause;\n        }",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush refuses and reports rather than guessing > reports a faulting source with its reason instead of rejecting",
+        "the flush refuses and reports rather than guessing > keeps the count of what it had already handed on when the source faults"
+      ]
+    },
+    {
+      "name": "F08 flush: the cursor never advances, so one page is handed on to the cap",
+      "file": "src/flush.ts",
+      "from": "        cursor = read.cursor;",
+      "to": "        cursor = cursor ?? read.cursor;",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the seam fits the adapter that ships > drains events appended through the REAL OutboxWriter port",
+        "the seam fits the adapter that ships > hands the real adapter's events on in append order"
+      ],
+      "note": [
+        "THE FIRST DRAFT OF THIS ENTRY MOVED `await options.handler(read)` BELOW the",
+        "cursor advance and SURVIVED, because within one call the ordering has no",
+        "observable consequence: the handler's rejection propagates and `handled` is",
+        "never read. The entry was replaced rather than counted. Both kills come from",
+        "the real-adapter block: the scripted double is call-indexed and ignores the",
+        "cursor, so only an adapter that actually pages can tell the difference."
+      ]
+    },
+    {
+      "name": "F09 flush: the page cap is not validated, so a zero cap flushes nothing and blames the budget",
+      "file": "src/flush.ts",
+      "from": "  requireWholePositive(maxPages, \"page cap\");",
+      "to": "  void maxPages;",
+      "suites": [
+        "src/flush.test.ts"
+      ],
+      "kills": [
+        "the flush refuses and reports rather than guessing > refuses a page cap that is not a positive whole number"
       ]
     }
   ]
