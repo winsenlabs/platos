@@ -1,0 +1,723 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `skills`' canonical store, the",
+    "NINTH owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM.",
+    "One entry per guard: per scope predicate, per vocabulary check that stands",
+    "where no enum stands, per shape check that stands where a migration-only",
+    "CHECK stands, per envelope decision that keeps a row an older binary wrote",
+    "readable, and per clause of a statement the port's contract depends on.",
+    "Each carries the file it lives in, the EXACT text that implements it",
+    "(`from`), the edit that removes it (`to`), and the NAMED cases that were",
+    "seen to go red (`kills`).",
+    "",
+    "IT IS A TENTH FILE beside mutations.json, mutations-identity.json,",
+    "mutations-ports.json, mutations-outbox.json, mutations-tools.json,",
+    "mutations-agents.json, mutations-cost.json, mutations-channels.json,",
+    "mutations-governance.json and mutations-secrets.json rather than an",
+    "extension of any of them, for the reason the fourth was: ten tranches are",
+    "ten separate claims about ten separate port surfaces, and a reader checking",
+    "one should not have to read past the other nine. All are hashed by the same",
+    "packages.adapters.config rule and counted together by the v1 ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. THREE columns of this context are",
+    "typed far more loosely in PostgreSQL than in the domain and NOTHING in the",
+    "database narrows them. `Skill.origin` is a plain TEXT with the closed set",
+    "living only in `domain/manifest.ts`; `Skill.manifest` is JSONB behind ONE",
+    "check on its ROOT, so no field inside it is checked at all; and",
+    "`Skill.providesTools` is JSONB behind one check on its root and is the",
+    "column `domain/catalogue.ts` says the RUNTIME reads in preference to the",
+    "manifest. A store that CAST any of the three would hand a caller a value",
+    "outside its own type with no error anywhere.",
+    "",
+    "AND THREE TEXT[] COLUMNS ARE NULLABLE IN THE DDL AND NON-OPTIONAL IN",
+    "`schema.prisma`. `00000000000000_initial/migration.sql` declares `tags`,",
+    "`requiredEnvironmentKeys` and `optionalEnvironmentKeys` as",
+    "`TEXT[] DEFAULT ARRAY[]::TEXT[]` with no NOT NULL on any of them, while the",
+    "generated types present all three as `String[]`. A row holding SQL NULL is",
+    "representable, the type system denies that it is, and the in-memory double",
+    "— which holds JavaScript arrays — cannot produce one at all.",
+    "",
+    "SEVEN NAMED CASES EXIST BECAUSE THIS LEDGER WAS ENUMERATED FIRST. Five",
+    "guards had no case anywhere that could go red: the uuid guard on the PATCH",
+    "path, the project and organization halves of a binding read, the",
+    "`organizationId` clause of the raw anonymisation UPDATE, the re-enable half",
+    "of both install upserts, and `jsonb_set(create_missing => true)`. Two of",
+    "those five are guards NOTHING THAT GOES THROUGH THE PORT CAN REACH — the",
+    "port has no disable method and no way to write a manifest without an author",
+    "— so their cases plant the input as SQL, which is the only honest way to",
+    "build it."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at",
+    "all, including none. The driver runs each suite set UNMUTATED and refuses",
+    "to sweep unless it is green with a non-zero executed case count, and",
+    "classifies a run with no executed cases as VACUOUS rather than as a kill.",
+    "",
+    "THE INTEGRATION SUITES RUN ON A REAL POSTGRESQL, in a container, on the",
+    "machine that has a daemon. `skills-rows.test.ts` is the only suite here",
+    "that runs without one, and it is the one that reaches the mapping branches",
+    "a container suite cannot: a container only ever reads rows THIS BINARY",
+    "WROTE, so the legacy-manifest, unknown-origin and NULL-array branches are",
+    "unreachable from it except through the rows the rules suite plants as raw",
+    "SQL.",
+    "",
+    "EVERY `from` IS A UNIQUE SUBSTRING OF ITS FILE and is applied literally, so",
+    "a mutation that failed to match is reported as UNAPPLIED rather than",
+    "scored as a survivor."
+  ],
+  "mutations": [
+    {
+      "name": "M-K01 rows: Skill.origin is validated, not cast",
+      "file": "src/skills-rows.ts",
+      "from": "  if (!isSkillOrigin(value)) {",
+      "to": "  if (false) {",
+      "note": "`origin` is a plain TEXT column and the closed set lives only in `domain/manifest.ts`. A cast puts a fourth value into `compareCatalogueEntries`, whose first comparison is `isOfficial`, and into `mayUninstall`, which decides whether a tenant may remove the row.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K02 rows: a NULL TEXT[] reads as the empty list the DEFAULT names",
+      "file": "src/skills-rows.ts",
+      "from": "  if (value === null || value === undefined) return [];\n  if (!Array.isArray(value)) {",
+      "to": "  if (false) return [];\n  if (!Array.isArray(value)) {",
+      "note": "`tags`, `requiredEnvironmentKeys` and `optionalEnvironmentKeys` are declared TEXT[] with no NOT NULL in the migration and as non-optional `String[]` in schema.prisma. A row holding SQL NULL is representable and the generated types deny it; without this arm the reader refuses a row an older writer left.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K03 rows: a TEXT[] element is text, checked rather than assumed",
+      "file": "src/skills-rows.ts",
+      "from": "    if (typeof element !== \"string\") refuse(UNREADABLE_TEXT_LIST, `${field} holds a non-text element`);",
+      "to": "    if (false) refuse(UNREADABLE_TEXT_LIST, `${field} holds a non-text element`);",
+      "note": "The column has no element constraint of any kind. A non-text element reaches `EnvironmentKey` branding and the readiness check that compares declared key names against what is set.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K04 rows: a REQUIRED manifest key is present and is text",
+      "file": "src/skills-rows.ts",
+      "from": "  if (typeof value !== \"string\") refuse(UNREADABLE_MANIFEST, `${field}.${key} is missing or is not text`);",
+      "to": "  if (false) refuse(UNREADABLE_MANIFEST, `${field}.${key} is missing or is not text`);",
+      "note": "`Skill.manifest` is JSONB behind ONE check on its ROOT. Nothing checks a field inside it, so a manifest with no `id` reads back as a `SkillManifest` whose slug is undefined.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K05 rows: a NULLABLE manifest key present with the wrong type is refused",
+      "file": "src/skills-rows.ts",
+      "from": "  if (typeof value !== \"string\") refuse(UNREADABLE_MANIFEST, `${field}.${key} is present and is not text`);",
+      "to": "  if (false) refuse(UNREADABLE_MANIFEST, `${field}.${key} is present and is not text`);",
+      "note": "The distinction this guard makes is the whole expand/contract discipline: an ABSENT key is version skew and normalises to null, a key PRESENT with the wrong type is corruption. Collapsing them hides the second.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K06 rows: an ABSENT manifest list normalises to empty rather than refusing",
+      "file": "src/skills-rows.ts",
+      "from": "  if (value === undefined || value === null) return [];\n  if (!Array.isArray(value)) refuse(UNREADABLE_MANIFEST",
+      "to": "  if (false) return [];\n  if (!Array.isArray(value)) refuse(UNREADABLE_MANIFEST",
+      "note": "`required_env`, `optional_env` and `tags` are required properties of `SkillManifest` and a manifest serialised before one of them existed has no key at all. Refusing it makes this binary unable to read what an older one wrote.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K07 rows: manifest.origin is validated against the closed set",
+      "file": "src/skills-rows.ts",
+      "from": "  if (typeof value !== \"string\" || !isSkillOrigin(value)) {",
+      "to": "  if (false) {",
+      "note": "The manifest carries its own `origin` beside the column's, and `resolveOrigin` reads it as the second precedence step of a REGISTRATION. A value outside the union there decides the official flag of the next re-registration.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K08 rows: an UNKNOWN manifest key survives a read",
+      "file": "src/skills-rows.ts",
+      "from": "  return {\n    ...value,\n    id: asIdentifier<SkillSlug>(requiredText(field, value, \"id\")),",
+      "to": "  return {\n    id: asIdentifier<SkillSlug>(requiredText(field, value, \"id\")),",
+      "note": "The CONTRACT direction of expand/contract. Rebuilding the manifest from a known key list silently DELETES a newer release's field on the next write, and `upsertSkill` writes the manifest it was handed.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K09 rows: an UNKNOWN provided-tool field survives a read",
+      "file": "src/skills-rows.ts",
+      "from": "  return {\n    ...value,\n    name: asIdentifier<ToolName>(name),",
+      "to": "  return {\n    name: asIdentifier<ToolName>(name),",
+      "note": "Same direction, on the column the RUNTIME reads. `domain/catalogue.ts` says `providesTools` is read back in preference to the manifest, so a dropped field is a field the sandbox never sees.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K10 rows: a provided tool has a NAME",
+      "file": "src/skills-rows.ts",
+      "from": "  if (typeof name !== \"string\") refuse(UNREADABLE_PROVIDED_TOOLS, `${field} element has no tool name`);",
+      "to": "  if (false) refuse(UNREADABLE_PROVIDED_TOOLS, `${field} element has no tool name`);",
+      "note": "The name is what `domain/tool-namespace.ts` folds the slug into. A nameless element becomes a namespaced tool called `slug__undefined`, offered to the runtime.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K11 rows: a provided tool's schema is an object or null",
+      "file": "src/skills-rows.ts",
+      "from": "  if (!isPlainObject(value)) refuse(UNREADABLE_PROVIDED_TOOLS, `${field} element schema is not an object`);",
+      "to": "  if (false) refuse(UNREADABLE_PROVIDED_TOOLS, `${field} element schema is not an object`);",
+      "note": "`inputSchema` is handed to the executor as a JSON Schema. An array or a string there is a schema no dialect can read, and this context does not interpret it, so nothing downstream would notice.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K12 rows: providesTools has an ARRAY root",
+      "file": "src/skills-rows.ts",
+      "from": "  if (!Array.isArray(value)) {\n    refuse(UNREADABLE_PROVIDED_TOOLS, \"Skill.providesTools is not an array\");",
+      "to": "  if (false) {\n    refuse(UNREADABLE_PROVIDED_TOOLS, \"Skill.providesTools is not an array\");",
+      "note": "`Skill_providesTools_json_root` is a migration-only CHECK, so the ROOT is guaranteed for rows this database wrote — and this reader is what turns the guarantee into a checked one for a row restored from anywhere else.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K13 rows: manifest has an OBJECT root",
+      "file": "src/skills-rows.ts",
+      "from": "  if (!isPlainObject(value)) refuse(UNREADABLE_MANIFEST, \"Skill.manifest is not an object\");",
+      "to": "  if (false) refuse(UNREADABLE_MANIFEST, \"Skill.manifest is not an object\");",
+      "note": "The counterpart of `Skill_manifest_json_root`, on the read side.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K14 rows: EnvironmentSkill.config has an OBJECT root",
+      "file": "src/skills-rows.ts",
+      "from": "  if (!isPlainObject(value)) refuse(UNREADABLE_INSTALL_CONFIG, \"EnvironmentSkill.config is not an object\");",
+      "to": "  if (false) refuse(UNREADABLE_INSTALL_CONFIG, \"EnvironmentSkill.config is not an object\");",
+      "note": "The counterpart of `EnvironmentSkill_config_json_root`. The config is the tenant's own per-environment settings and is handed to the sandbox verbatim.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K15 guards: the uuid shape is the canonical hyphenated form",
+      "file": "src/skills-guards.ts",
+      "from": "const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;",
+      "to": "const UUID = /^.*$/u;",
+      "note": "Four columns are `@db.Uuid` and this context's own doubles mint `org-1` and `id-0001`. Without the shape check the string reaches `uuid_in`, and the driver's raise inside a caller's transaction takes the TRANSACTION as well as the answer.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K16 guards: a scope naming one identifier at two levels is refused",
+      "file": "src/skills-guards.ts",
+      "from": "  if (organizationId === projectId || projectId === environmentId || organizationId === environmentId) {",
+      "to": "  if (false) {",
+      "note": "The ancestry triggers check the stored rows against each other when a row is WRITTEN and have nothing to say about a scope assembled by the caller later. A forged scope would resolve the project alone and write into whatever organization actually owns it.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K17 guards: a JSON-object column refuses an array, a null and a scalar",
+      "file": "src/skills-guards.ts",
+      "from": "  if (typeof value !== \"object\" || value === null || Array.isArray(value)) {",
+      "to": "  if (false) {",
+      "note": "Two migration-only CHECKs stand behind this one function. Letting the value through means the database raises instead — and a raise aborts the caller's whole transaction, which is the difference between a refusal and an incident.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K18 guards: a JSON-array column refuses an object",
+      "file": "src/skills-guards.ts",
+      "from": "  if (!Array.isArray(value)) {\n    throw new SkillsWriteRefused(code, `${field} must be a JSON array",
+      "to": "  if (false) {\n    throw new SkillsWriteRefused(code, `${field} must be a JSON array",
+      "note": "`Skill_providesTools_json_root` demands an array root, and the column is the one the runtime reads.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K19 guards: a TEXT[] write refuses a non-list",
+      "file": "src/skills-guards.ts",
+      "from": "  if (!Array.isArray(value)) {\n    throw new SkillsWriteRefused(TEXT_LIST_INVALID, `${field} must be a list",
+      "to": "  if (false) {\n    throw new SkillsWriteRefused(TEXT_LIST_INVALID, `${field} must be a list",
+      "note": "A `null` reaching a `String[]` field is a client VALIDATION error naming a Prisma input path rather than a column, and the columns are NULLABLE in the DDL so nothing downstream would name them either.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K20 guards: a TEXT[] write refuses a non-text element",
+      "file": "src/skills-guards.ts",
+      "from": "    if (typeof element !== \"string\") {\n      throw new SkillsWriteRefused(",
+      "to": "    if (false) {\n      throw new SkillsWriteRefused(",
+      "note": "The write half of M-K03. The column has no element constraint at all.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K21 guards: an empty segment of the uniqueness key is refused",
+      "file": "src/skills-guards.ts",
+      "from": "  if (value.length === 0) {",
+      "to": "  if (false) {",
+      "note": "Neither `slug` nor `version` carries a CHECK, which is exactly why the guard is here: an empty version does not FAIL, it SUCCEEDS, and every version-less registration in the organization then converges onto that one row and overwrites the last.",
+      "suites": [
+        "src/skills-rows.test.ts",
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K22 guards: an unrepresentable instant is refused",
+      "file": "src/skills-guards.ts",
+      "from": "  if (Number.isNaN(value.getTime())) {",
+      "to": "  if (false) {",
+      "note": "An `Invalid Date` reaches the driver as NaN and is reported as a parameter error with no column named.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K23 visibility: the install clause spans BOTH levels",
+      "file": "src/skills-visibility.ts",
+      "from": "        environments: { some: { environmentId: scope.environment.environmentId } },",
+      "to": "        environments: { some: {} },",
+      "note": "`domain/visibility.ts`: 'a skill installed in the project but not bound in this environment is NOT visible here. Checking only the project half would leak a staging-only skill into production.'",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K24 visibility: the organization match is a CONJUNCT, not a fallback",
+      "file": "src/skills-visibility.ts",
+      "from": "    organizationId: scope.environment.organizationId,\n    OR: [{ isOfficial: true }, installedHere(scope)],",
+      "to": "    OR: [{ isOfficial: true }, installedHere(scope)],",
+      "note": "'Official' means catalogue-owned, not global. Without the conjunct every official row in the installation is visible from every environment of every tenant.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K25 visibility: an official row is visible with no install at all",
+      "file": "src/skills-visibility.ts",
+      "from": "    OR: [{ isOfficial: true }, installedHere(scope)],",
+      "to": "    OR: [installedHere(scope)],",
+      "note": "It is what makes a fresh environment able to run the seeded catalogue before anyone has installed anything, and what `shouldMaterialiseInstall` is written around.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K26 visibility: official rows sort FIRST",
+      "file": "src/skills-visibility.ts",
+      "from": "  { isOfficial: \"desc\" },",
+      "to": "  { isOfficial: \"asc\" },",
+      "note": "The first comparison of `compareCatalogueEntries`. PostgreSQL orders false before true, so DESC is what puts official first; the pin is the ordering the library surface reads.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K27 visibility: a slug's HIGHEST version wins",
+      "file": "src/skills-visibility.ts",
+      "from": "  { version: \"desc\" },",
+      "to": "  { version: \"asc\" },",
+      "note": "The port says a slug names a FAMILY of rows and an implementation MUST return the highest version. `findVisibleSkillByReference` is `findFirst` over this order, so the direction IS the rule.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K28 visibility: a search term is TRIMMED",
+      "file": "src/skills-visibility.ts",
+      "from": "  const term = search.trim();",
+      "to": "  const term = search;",
+      "note": "`matchesSearch` trims and the client does not, so an untrimmed ' web' matches nothing in SQL and everything containing `web` in the double.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K29 visibility: a null search is no filter at all",
+      "file": "src/skills-visibility.ts",
+      "from": "  if (search === null) return {};",
+      "to": "  if (false) return {};",
+      "note": "Without it `null.trim()` throws a TypeError, which `refuseSkills` deliberately RETHROWS — so every unfiltered page read rejects rather than answering.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts",
+        "src/skills-statements.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K30 visibility: a reference that is not a uuid is not sent to uuid_in",
+      "file": "src/skills-visibility.ts",
+      "from": "  return looksLikeUuid(reference) ? { OR: [{ id: reference }, bySlug] } : bySlug;",
+      "to": "  return { OR: [{ id: reference }, bySlug] };",
+      "note": "`Skill.id` is `@db.Uuid` and a slug is the ordinary input to this method. An unguarded id arm makes every slug lookup a driver error, and a driver error inside a transaction aborts the transaction.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K31 catalogue: a non-uuid row id READS as absent",
+      "file": "src/skills-catalogue.ts",
+      "from": "        if (!looksLikeUuid(skillId)) return ok(null);\n        const row = await transactions.reader().skill.findFirst({",
+      "to": "        if (false) return ok(null);\n        const row = await transactions.reader().skill.findFirst({",
+      "note": "The double answers null for the same input. Sending it instead costs the caller's transaction, not just the read.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K32 catalogue: a re-registration does not move createdAt",
+      "file": "src/skills-catalogue.ts",
+      "from": "          update: { ...columns, updatedAt: at },",
+      "to": "          update: { ...columns, createdAt: at, updatedAt: at },",
+      "note": "'A row that looks new after every edit is a row nobody can audit.' The identity triple is the uniqueness key, so a re-registration is the SAME row and its origin instant is a fact about the row rather than about the write.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K33 catalogue: a re-registration OVERWRITES what the manifest describes",
+      "file": "src/skills-catalogue.ts",
+      "from": "          update: { ...columns, updatedAt: at },\n          select: SKILL_COLUMNS,",
+      "to": "          update: { updatedAt: at },\n          select: SKILL_COLUMNS,",
+      "note": "`revisionFrom` names exactly the columns a re-registration replaces. An upsert that only touched the timestamp would accept a new manifest and keep serving the old prompt block.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K34 catalogue: a patch of an unknown id is a refusal, not a crash",
+      "file": "src/skills-catalogue.ts",
+      "from": "        if (row === undefined) return absent;",
+      "to": "        if (false) return absent;",
+      "note": "`updateManyAndReturn` answers an empty array rather than raising, which is why it is used instead of `update`; without the check the empty array reaches `readSkill` and the method rejects.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K35 catalogue: a patch of a NON-UUID id is a refusal, not an aborted transaction",
+      "file": "src/skills-catalogue.ts",
+      "from": "        if (!looksLikeUuid(skillId)) return absent;",
+      "to": "        if (false) return absent;",
+      "note": "The write-path half of the uuid guard, and the expensive one: `updateManyAndReturn({ where: { id } })` sends the string to `uuid_in` inside the caller's own transaction.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K36 catalogue: the official flag is what hasOfficialSkills asks about",
+      "file": "src/skills-catalogue.ts",
+      "from": "          where: { organizationId: organization.organizationId, isOfficial: true },",
+      "to": "          where: { organizationId: organization.organizationId },",
+      "note": "It drives LAZY SEEDING. Answering true for any catalogue row at all means a fresh organization never gets its official skills.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K37 catalogue: hasOfficialSkills is confined to ONE organization",
+      "file": "src/skills-catalogue.ts",
+      "from": "          where: { organizationId: organization.organizationId, isOfficial: true },\n          select: { id: true },",
+      "to": "          where: { isOfficial: true },\n          select: { id: true },",
+      "note": "The seeding decision is per organization. Without the clause the FIRST organization to be seeded suppresses seeding for every other one in the installation.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K38 catalogue: a page's TOTAL is of the filter, not of the window",
+      "file": "src/skills-catalogue.ts",
+      "from": "        return ok({ items: rows.map((row) => readSkill(row as SkillRow)), total });",
+      "to": "        return ok({ items: rows.map((row) => readSkill(row as SkillRow)), total: rows.length });",
+      "note": "The port says so, and the consequence is concrete: a caller paging on a windowed total never reaches the last page.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K39 catalogue: skills resolved FROM installations are still visibility-filtered",
+      "file": "src/skills-catalogue.ts",
+      "from": "          where: { AND: [visibleWhere(scope), { id: { in: wanted } }] },",
+      "to": "          where: { id: { in: wanted } },",
+      "note": "A caller holding an install it resolved under one scope must not be able to read another organization's catalogue row by handing it back under a different one.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K40 installs: an adoption checks the scope before it writes",
+      "file": "src/skills-installations.ts",
+      "from": "        requireCoherentScope(\n          scope.environment.organizationId,\n          scope.environment.projectId,\n          scope.environment.environmentId,\n        );\n        requireUuid(\"ProjectSkill.skillId\", skillId);",
+      "to": "        requireUuid(\"ProjectSkill.skillId\", skillId);",
+      "note": "`ProjectSkill.projectId` is written straight from the scope and `ProjectSkill_ancestry` then checks it against the SKILL's organization — a check that cannot see a scope whose own levels disagree.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K41 installs: both upserts RE-ENABLE",
+      "file": "src/skills-installations.ts",
+      "from": "          update: { enabled: true, updatedAt: at },\n          select: PROJECT_SKILL_COLUMNS,",
+      "to": "          update: { updatedAt: at },\n          select: PROJECT_SKILL_COLUMNS,",
+      "note": "`domain/installation.ts`: 'a re-install is the documented way to undo a disable'. The port has no disable METHOD, so nothing that goes through it can produce the input — which is why the case that kills this plants a disabled row as SQL.",
+      "suites": [
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K42 installs: the environment upsert re-enables too",
+      "file": "src/skills-installations.ts",
+      "from": "          update: { enabled: true, updatedAt: at },\n          select: ENVIRONMENT_SKILL_COLUMNS,",
+      "to": "          update: { updatedAt: at },\n          select: ENVIRONMENT_SKILL_COLUMNS,",
+      "note": "The second half of the same rule, on the row that actually gates a turn.",
+      "suites": [
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K43 installs: a binding read joins through the PROJECT, not the environment alone",
+      "file": "src/skills-installations.ts",
+      "from": "    projectSkill: {\n      projectId: scope.environment.projectId,\n      project: { organizationId: scope.environment.organizationId },\n    },",
+      "to": "    projectSkill: {},",
+      "note": "`EnvironmentSkill` carries `environmentId` and `projectSkillId` and nothing above either, so the project and organization halves of a read's scope are the CALLER'S claim and nothing in the row checks them.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K44 installs: a bulk resolve answers in the CALLER'S order and repeats a repeated id",
+      "file": "src/skills-installations.ts",
+      "from": "        const found = new Map(rows.map((row) => [row.id, hydrate(row as InstallationRow, scope)]));\n        const ordered: Installation[] = [];\n        for (const id of wanted) {\n          const installation = found.get(id);\n          if (installation !== undefined) ordered.push(installation);\n        }\n        return ok(ordered);",
+      "to": "        return ok(rows.map((row) => hydrate(row as InstallationRow, scope)));",
+      "note": "A bare `IN` answers in whatever order the plan produced; the double answers in the order it was ASKED. A store that returned the rows as they arrived would diverge on a list of two, silently, in the method the runtime load goes through.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K45 installs: a non-uuid binding id is dropped rather than sent",
+      "file": "src/skills-installations.ts",
+      "from": "        const wanted = environmentSkillIds.filter((id) => looksLikeUuid(id));",
+      "to": "        const wanted = environmentSkillIds;",
+      "note": "ONE bad element in an `IN` list aborts the whole statement — and, inside a transaction, the transaction with it. The port already says a binding this scope does not cover is simply absent.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K46 installs: an uninstall answers whether it removed anything",
+      "file": "src/skills-installations.ts",
+      "from": "        return ok(outcome.count > 0);",
+      "to": "        return ok(true);",
+      "note": "The port's answer is a boolean about the ROW, and the tenant-facing surface reports 'uninstalled' from it. A constant true reports work that did not happen.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K47 installs: an uninstall reaches only THIS environment's binding",
+      "file": "src/skills-installations.ts",
+      "from": "          where: {\n            environmentId: scope.environment.environmentId,\n            projectSkill: {\n              projectId: scope.environment.projectId,\n              skillId,\n              project: { organizationId: scope.environment.organizationId },\n            },\n          },\n        });\n        return ok(outcome.count > 0);",
+      "to": "          where: {\n            projectSkill: {\n              skillId,\n            },\n          },\n        });\n        return ok(outcome.count > 0);",
+      "note": "'Uninstalling from staging must not uninstall from production.' Without the environment clause one tenant's uninstall removes the binding in every environment that adopted the same catalogue row.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K48 installs: a non-uuid skill id does not reach an uninstall statement",
+      "file": "src/skills-installations.ts",
+      "from": "        if (!looksLikeUuid(skillId)) return ok(false);",
+      "to": "        if (false) return ok(false);",
+      "note": "The write path again: a DELETE whose predicate raises takes the caller's transaction.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K49 erasure: a project-level selector selects NOTHING",
+      "file": "src/skills-erasure.ts",
+      "from": "  if (selector.scope.level !== \"organization\") return null;",
+      "to": "  if (false) return null;",
+      "note": "`Skill` is organization-scoped and the double resolves the selector by the kernel's `contains` with the SELECTOR as the outer scope, so only an organization path contains `org/<id>`. Transcribed rather than corrected: changing it would make an erasure erase MORE rows against PostgreSQL than against the store every use-case suite is written against.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K50 erasure: a subject with no principal selects nothing",
+      "file": "src/skills-erasure.ts",
+      "from": "  if (selector.principalId === null) return null;",
+      "to": "  if (false) return null;",
+      "note": "An end-user or an entity subject has no `author` column to match. Without the guard the selector becomes `author: null`, which matches every skill nobody claimed.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K51 erasure: the anonymisation is confined to ONE organization",
+      "file": "src/skills-erasure.ts",
+      "from": "           WHERE \"organizationId\" = ${organizationId}::uuid\n             AND \"author\" = ${selector.principalId}",
+      "to": "           WHERE \"author\" = ${selector.principalId}",
+      "note": "An erasure addressed at one tenant would otherwise rewrite the author of every skill in the installation carrying the same principal string.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K52 erasure: the anonymisation is confined to the SUBJECT",
+      "file": "src/skills-erasure.ts",
+      "from": "             AND \"author\" = ${selector.principalId}",
+      "to": "",
+      "note": "Without the clause one subject's erasure anonymises every authored skill in the organization, and the count it returns is the size of the catalogue.",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K53 erasure: the stored MANIFEST is overwritten as well as the column",
+      "file": "src/skills-erasure.ts",
+      "from": "                 \"manifest\" = jsonb_set(\n                   \"manifest\",\n                   '{author}',\n                   to_jsonb(${ANONYMIZED_SKILL_AUTHOR}::text),\n                   true\n                 ),\n",
+      "to": "",
+      "note": "The name is in two places. `domain/manifest.ts` fixes the frontmatter field names as the persisted contract, and overwriting only the column leaves the name legible in the JSON — which reads as complete, because the column says [erased].",
+      "suites": [
+        "src/skills-conformance.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K54 erasure: jsonb_set CREATES the key when a manifest never carried one",
+      "file": "src/skills-erasure.ts",
+      "from": "                   to_jsonb(${ANONYMIZED_SKILL_AUTHOR}::text),\n                   true\n                 ),",
+      "to": "                   to_jsonb(${ANONYMIZED_SKILL_AUTHOR}::text),\n                   false\n                 ),",
+      "note": "A row written before `author` was in the frontmatter has the name in the COLUMN and no key in the JSON. With `false` the anonymisation leaves the JSON untouched.",
+      "suites": [
+        "src/skills-rules.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K55 refusal: a TransactionScopeError is RETHROWN, never folded into a Result",
+      "file": "src/skills-refusal.ts",
+      "from": "      isDriverError(error)\n    ) {",
+      "to": "      error instanceof Error\n    ) {",
+      "note": "The three scope refusals are the property tranche 1 built and every tranche since relies on. Converting them to a `Result` lets a use case that lost its transaction carry on as though a row had merely failed to write.",
+      "suites": [
+        "src/skills-transaction.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K56 refusal: the distinct CODE leads the reason a caller receives",
+      "file": "src/skills-refusal.ts",
+      "from": "  if (error instanceof SkillsWriteRefused) return `${error.code}: ${error.detail}`;",
+      "to": "  if (error instanceof SkillsWriteRefused) return error.detail;",
+      "note": "`domain/errors.ts` publishes ONE caller-facing code for every store failure, deliberately. The discrimination therefore has to travel in `details.reason`, led by the code, or an operator cannot tell thirteen refusals apart.",
+      "suites": [
+        "src/skills-constraints.integration.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K57 stamps: the instant source never repeats",
+      "file": "src/skills-repository.ts",
+      "from": "      previous = now > previous ? now : previous + 1;",
+      "to": "      previous = now;",
+      "note": "`createdAt` and `updatedAt` are timestamp(3), so two rows written in the same millisecond TIE — and `now()` would be worse, because on PostgreSQL it is the TRANSACTION'S start time and every row a seeding run wrote in one unit of work would carry the identical instant.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    },
+    {
+      "name": "M-K58 stamps: every minted identifier is a uuid",
+      "file": "src/skills-repository.ts",
+      "from": "    skillId: () => crypto.randomUUID(),",
+      "to": "    skillId: () => \"skill-1\",",
+      "note": "All three primary keys are `@db.Uuid`. A source that minted anything else is refused by the guard one line earlier and by the column one statement later.",
+      "suites": [
+        "src/skills-rows.test.ts"
+      ],
+      "kills": []
+    }
+  ]
+}
