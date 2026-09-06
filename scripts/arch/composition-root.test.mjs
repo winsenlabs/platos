@@ -90,7 +90,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // 30 -> 38 (WIN-258 T5, four times): `providers` adds `ProvidersRepository`, its ONE
   // canonical-store port over the four rows of §1 row 4, and `conversations`
   // adds FOUR — `ThreadRepository`, `TurnRepository`, `PostmanRepository` and
-  // `ConversationsErasureStore` — so that directory carries TWENTY-SEVEN and the
+  // `ConversationsErasureStore` — so that directory carries TWENTY-EIGHT and the
   // ninth through twelfth owners arrive without a thirteenth directory. `providers` is
   // proven against the ADAPTER rather than through a property — its eighteen
   // method names collide with nothing the directory already publishes — which is
@@ -124,7 +124,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
-  // carries TWENTY-SEVEN in all. Both are proven through the property that carries them,
+  // carries TWENTY-EIGHT in all with `observability`'s. Both are proven through the property that carries them,
   // and there too it was FORCED: `KnowledgeGraphRepository` and
   // `TenancyRepository` both declare a top-level `findEntity` with different
   // signatures, so one interface cannot extend both. The DIRECTORY count is

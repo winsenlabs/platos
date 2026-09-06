@@ -605,6 +605,28 @@ test("the live selectors scan an exact nonzero source census", () => {
   // file precisely because a differential's values have to be identical on both
   // sides and are minted from a counter it owns.
   //
+  // 1377 -> 1389 (WIN-258 T5): `observability`'s canonical store adds TWELVE
+  // files to the one ORM home — six source and six suites — for ONE port with
+  // FOUR methods over ONE table. Its mutation ledger is not source and is not
+  // scanned here.
+  //
+  // TWELVE FILES FOR FOUR METHODS IS THE SMALLEST STORE IN THE DIRECTORY AND THE
+  // LARGEST RATIO OF EVIDENCE TO CODE, and the reason is the finding rather than
+  // thoroughness. `AdminAudit` is APPEND-ONLY IN THE DATABASE, so
+  // `clearAdminAuditActor` cannot be honoured at all — three named cases say what
+  // that leaves, one of them measuring that the caller's transaction is aborted
+  // by the rule rather than by this package. And the table carries no ancestry
+  // rule while the port's record carries a three-level scope, so the containment
+  // is this adapter's WHERE clause and a whole second tenant exists in two suites
+  // to prove it. Neither claim can be made without a real database.
+  //
+  // NO FILE IN THE TRANCHE ENTERS THE WARNING BAND. The largest is
+  // `observability-constraints.integration.test.ts`; the split that keeps it out
+  // is the one the port already had — what the DATABASE decides for a row is that
+  // file, what a TRANSACTION does with it is `observability-transaction`, and
+  // what a mapping does with a row an older binary wrote is
+  // `observability-rows.test.ts`, which needs no daemon.
+  //
   // THE TRANCHE-5 BLOCKS SUM: 1200 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20
   // + 17 + 21 + 14 + 17 + 18 + 12 + 14 = 1452. All the stores are in the one
   // adapter directory, so no branch's own figure survives the merge — 1266 for

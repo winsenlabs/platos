@@ -361,6 +361,14 @@ test("§15: ownerDirectories grants exactly two directories, and only where decl
     "packages/contexts/files",
     "packages/adapters/postgres-tenancy",
   ]);
+  // And `observability` is the SIXTEENTH. It is the entry that most needs
+  // stating, because this owner also DRAINS two rows it is deliberately not the
+  // writer of: `ownerDirectories("<kernel-outbox-adapter>")` is a different
+  // pair, and no part of this grant reaches it.
+  assert.deepEqual(ownerDirectories("observability"), [
+    "packages/contexts/observability",
+    "packages/adapters/postgres-tenancy",
+  ]);
   // THIS WAVE COMPLETED THE MAP, AND THAT FALSIFIED THE SECOND HALF OF THIS
   // CASE rather than shortening it. Every revision before this one kept a list
   // of owners with NO entry, and each tranche moved a name out of it and left
@@ -790,6 +798,123 @@ test("the RAW `UPDATE` that carries a vector is attributed to `memory`, not wave
   );
   assert.equal(dynamic.unattributable.length, 1);
   assert.deepEqual(dynamic.violations, []);
+});
+
+test("only observability's own two directories may write `AdminAudit`", () => {
+  // WIN-258 T5. The delegation added in this tranche is a permission, and a
+  // permission is only worth anything if the thing it does NOT permit goes red.
+  // ONE row rather than a list, because ADR M0.3 §1 row 12 gives this context
+  // exactly one Prisma model: its four analytical tables are not Prisma rows at
+  // all and are reached through `ObservabilitySink`.
+
+  // The delegate directory: legal, and the reason the repository can exist at
+  // all — ADR M0.3 §2 forbids `packages/contexts/observability` from holding the
+  // client.
+  assert.deepEqual(
+    checkWriteEnforcement(
+      fixture({ "packages/adapters/postgres-tenancy/src/x.ts": write("adminAudit", "create") }),
+    ).violations,
+    [],
+    "AdminAudit must be writable from its canonical-store adapter",
+  );
+  // The owning context itself: also legal, and never exercised in the live tree
+  // for exactly that reason.
+  assert.deepEqual(
+    checkWriteEnforcement(
+      fixture({ "packages/contexts/observability/application/x.ts": write("adminAudit", "create") }),
+    ).violations,
+    [],
+    "AdminAudit must be writable from its owning context",
+  );
+
+  // ANY THIRD PLACE: refused. `tenancy` is the pointed choice — every admin
+  // action this table records is a change to an organization, a project or an
+  // environment, and it is the context most plausibly tempted to append its own
+  // evidence — and it is exactly as refused as anything else, even though it is
+  // delegated to the SAME directory for its own rows.
+  const trespass = checkWriteEnforcement(
+    fixture({ "packages/contexts/tenancy/application/x.ts": write("adminAudit", "create") }),
+  );
+  assert.equal(trespass.violations.length, 1, "a foreign write to AdminAudit must be refused");
+  assert.equal(trespass.violations[0].model, "AdminAudit");
+  assert.equal(trespass.violations[0].actual, "packages/contexts/tenancy");
+  assert.deepEqual(trespass.violations[0].permitted, [
+    "packages/contexts/observability",
+    "packages/adapters/postgres-tenancy",
+  ]);
+
+  // And a SIBLING canonical-store adapter is not a loophole either: being an
+  // adapter is not the qualification, being THIS owner's declared store is. The
+  // outbox adapter is the pointed choice here, because `observability` is the
+  // context that DRAINS the outbox — the two are as close as two packages in
+  // this tree get, and the grant still does not cross.
+  assert.equal(
+    checkWriteEnforcement(
+      fixture({ "packages/adapters/outbox/src/x.ts": write("adminAudit", "create") }),
+    ).violations.length,
+    1,
+    "AdminAudit must be refused from an adapter that is not its canonical store",
+  );
+
+  // AND THE CONVERSE, WHICH MATTERS MORE FOR THIS OWNER THAN FOR ANY OTHER.
+  // `observability` DRAINS `ObservabilityOutbox` and `Event` and is deliberately
+  // NOT their writer: ADR M0.3 §1's closing note and §7 decision 8 give both to
+  // the kernel outbox adapter's pseudo-owner. A write to either from an
+  // `observability`-tagged module in this directory is still refused, which is
+  // what keeps "this context settles the envelope" and "this context does not
+  // write the queue row" both true.
+  for (const [delegate, model] of [
+    ["observabilityOutbox", "ObservabilityOutbox"],
+    ["event", "Event"],
+  ]) {
+    const drained = checkWriteEnforcement(
+      fixture({ "packages/contexts/observability/application/drain.ts": write(delegate, "create") }),
+    );
+    assert.equal(drained.violations.length, 1, `${model} must be refused from observability`);
+    assert.equal(drained.violations[0].model, model);
+    assert.equal(drained.violations[0].expected, "packages/adapters/outbox");
+  }
+
+  // And the widening did not licence the directory over rows `observability`
+  // does not own. `ErasureOperation` is `privacy`'s (§1 row 18) — the context
+  // that ORCHESTRATES the erasure this store's unlink is part of, and the one
+  // whose rows a careless implementation of `clearAdminAuditActor` would reach
+  // for. No owner has delegated it here, so a WRITE to it from this directory is
+  // still refused, which is what makes "reads are unrestricted" a bounded
+  // statement rather than an open door.
+  const readOnlyPeers = checkWriteEnforcement(
+    fixture({
+      "packages/adapters/postgres-tenancy/src/observability-y.ts": write("erasureOperation", "update"),
+    }),
+  );
+  assert.equal(readOnlyPeers.violations.length, 1);
+  assert.equal(readOnlyPeers.violations[0].model, "ErasureOperation");
+  assert.equal(readOnlyPeers.violations[0].expected, "packages/contexts/privacy");
+});
+
+test("the RAW `INSERT INTO \"AdminAudit\"` a suite plants is attributed to `observability`", () => {
+  // The append-only rule means two rows the constraints suite needs — an ARRAY
+  // snapshot the narrower CHECK refuses, and a row with no `source` — cannot be
+  // produced by any path through the port. They are planted as raw SQL, in the
+  // ONE directory now permitted to write the table, and they are judged by the
+  // table they name rather than exempted for being raw.
+  const permitted = checkWriteEnforcement(
+    fixture({
+      "packages/adapters/postgres-tenancy/src/observability-constraints.integration.test.ts":
+        'await db.$executeRawUnsafe(`INSERT INTO "AdminAudit" ("id") VALUES (\'x\')`);\n',
+    }),
+  );
+  assert.deepEqual(permitted.violations, []);
+  assert.equal(permitted.writeCount, 1, "the raw write must be SEEN, not merely un-flagged");
+
+  const trespass = checkWriteEnforcement(
+    fixture({
+      "packages/contexts/privacy/application/x.ts":
+        'await db.$executeRawUnsafe(`INSERT INTO "AdminAudit" ("id") VALUES (\'x\')`);\n',
+    }),
+  );
+  assert.equal(trespass.violations.length, 1);
+  assert.equal(trespass.violations[0].model, "AdminAudit");
 });
 
 test("only secrets' own two directories may write its four rows", () => {
@@ -1670,11 +1795,39 @@ test("an element-access member that is not a delegate is still not a write", () 
 // and both do it through `prisma db execute`, which is the ORM's CLI at runtime
 // and not a client call at all, so the scanner neither sees them nor should.
 //
-// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 + 6 + 15 + 6 + 8 = 280.
-// All of tranche 5's stores landed in the ONE directory, so this pin is the SUM
-// of every enumeration above and no single branch's own figure survives the
-// merge.
-const LIVE_TREE_WRITE_COUNT = 280;
+//
+// WIN-258 T5 — THE `observability` CANONICAL STORE adds FIVE, and THREE of them
+// are in SUITES rather than in the store, which has not been true of any tranche
+// before it:
+//
+//   src/observability-audit.ts     `adminAudit.create`, and the `updateMany`
+//                                  the append-only rule refuses. The second is
+//                                  SENT deliberately — see the file's header —
+//                                  so the refusal comes from the database
+//                                  rather than from this package's memory of
+//                                  having read the migration                   2
+//   src/observability-constraints  `adminAudit.delete`, proving the rule covers
+//     .integration.test.ts         DELETE as well as UPDATE, and TWO raw
+//                                  `INSERT INTO "AdminAudit"` statements that
+//                                  plant rows no path through the port can
+//                                  produce — an ARRAY snapshot the narrower
+//                                  CHECK refuses, and a row with no `source`.
+//                                  Each spells its SQL AT THE CALL SITE, so
+//                                  `MUTATING_SQL_STATEMENT` attributes it by
+//                                  the TABLE it names                          3
+//                                                                        total = 5
+//
+// `src/observability-harness.ts` contributes ZERO and needs no out-of-band seed
+// at all, which is a fact about the TABLE rather than about the harness:
+// `AdminAudit` has exactly one foreign key, to `Environment`, and its
+// `actorUserId` is a plain nullable TEXT column with no relation — so nothing it
+// points at belongs to a context this directory may not write.
+//
+// 12 + 51 + 3 + 3 + 17 + 27 + 37 + 7 + 13 + 28 + 17 + 30 + 6 + 15 + 6 + 8 + 5 + 5
+// = 290. All of tranche 5's stores landed in the ONE directory, so this pin is
+// the SUM of every enumeration above and no single branch's own figure survives
+// the merge.
+const LIVE_TREE_WRITE_COUNT = 290;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -1820,6 +1973,11 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
     "packages/adapters/postgres-tenancy",
   ]);
   assert.equal(CANONICAL_STORE_ADAPTERS.skills, "packages/adapters/postgres-tenancy");
+  // WIN-258 T5. The THIRTEENTH owner delegated to the SAME directory, over the
+  // ONE Prisma row ADR M0.3 §1 row 12 gives it. `files` stays absent, which is
+  // what keeps this a per-owner grant rather than a blanket one.
+  assert.equal(CANONICAL_STORE_ADAPTERS.observability, "packages/adapters/postgres-tenancy");
+  assert.equal(CANONICAL_STORE_ADAPTERS.files, undefined);
   const skillRows = Object.entries(OWNER)
     .filter(([, owner]) => owner === "skills")
     .map(([model]) => model)

@@ -1095,6 +1095,9 @@ importers:
       '@platos/context-memory':
         specifier: workspace:*
         version: link:../../contexts/memory
+      '@platos/context-observability':
+        specifier: workspace:*
+        version: link:../../contexts/observability
       '@platos/context-privacy':
         specifier: workspace:*
         version: link:../../contexts/privacy

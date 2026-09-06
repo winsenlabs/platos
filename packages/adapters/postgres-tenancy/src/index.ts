@@ -598,3 +598,36 @@ export {
   UNREADABLE_TOTAL_BYTES,
   UNRESOLVED_SCOPE_ANCESTRY as FILES_UNRESOLVED_SCOPE_ANCESTRY,
 } from "./files-rows.js";
+// WIN-258 T5 — `observability`'s one canonical store, the THIRTEENTH owner in
+// this directory. The factory leaves the package for the reason
+// `createMemoryStores` does: a composition root that wanted this repository
+// WITHOUT tenancy's — an admin surface, say — has to be able to build it over
+// the SAME transactions rather than over a second client, or an admin action and
+// the audit row that records it would be two transactions with a window between
+// them.
+//
+// THE FIVE REFUSAL CODES LEAVE IT BECAUSE `observability/domain/errors.ts`
+// PUBLISHES ONE. Every store failure in that context is `repositoryUnavailable`,
+// which is right for a caller — an audit read that cannot reach its store has
+// one thing to do whatever the cause — and useless for an operator, who needs to
+// tell a malformed id from a selector naming nobody from a page size the driver
+// would read backwards.
+//
+// `ADMIN_AUDIT_IMMUTABLE` IS THE ONE A COMPOSITION ROOT ACTUALLY HAS TO
+// RECOGNISE, and it is not a guard at all: it is the code this package reports
+// the DATABASE's append-only refusal of `clearAdminAuditActor` under. A root
+// that cannot tell it from an outage would retry, for ever, a statement no
+// database these migrations build will ever accept.
+export type { ObservabilityStores } from "./observability-repository.js";
+export { createObservabilityStores } from "./observability-repository.js";
+export {
+  ADMIN_AUDIT_IMMUTABLE,
+  ADMIN_AUDIT_IMMUTABLE_RAISE,
+  AUDIT_ACTOR_BLANK,
+  AUDIT_ORGANIZATION_BLANK,
+  AUDIT_PAGE_LIMIT_INVALID,
+  AUDIT_SCOPE_UNRESOLVED,
+  OBSERVABILITY_IDENTIFIER_NOT_UUID,
+  ObservabilityStoreRefused,
+} from "./observability-guards.js";
+export { AUDIT_ROW_OUTSIDE_SCOPE, AUDIT_STATE_NOT_AN_OBJECT } from "./observability-rows.js";

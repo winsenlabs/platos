@@ -973,6 +973,14 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               them is in the same one home, attributed by the TABLE it
     //               names, and `src/client.ts` is still the only file in the
     //               layout that imports the ORM.
+    // 1402 -> 1414 (WIN-258 T5, `observability`). TWELVE files in the one
+    //               adapter directory: SEVEN source (the guards, the row
+    //               mapping, the refusal adapter, the audit half, the erasure
+    //               half, the composite and the harness) and FIVE suites. The
+    //               `mutations-observability.json` beside them is not source and
+    //               is not counted here; the v1 ledger counts it and its own
+    //               delta says 13. `packages/contexts/observability` gains NO
+    //               file — its port entry point was widened in place.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
     //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 +
     //               21 + 14 + 17 + 18 + 12 + 14 = 1477. No branch's own figure is

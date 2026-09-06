@@ -1,0 +1,435 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-258 TRANCHE 5 — `observability`'s canonical store, the",
+    "THIRTEENTH owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM.",
+    "One entry per guard: per scope clause that stands where no ancestry rule",
+    "stands, per shape check that stands where a migration-only CHECK stands, per",
+    "refusal code that has to stay distinguishable from its neighbour, and per",
+    "statement the port's contract says must be sent rather than anticipated.",
+    "Each carries the file it lives in, the EXACT text that implements it",
+    "(`from`), the edit that removes it (`to`), and the NAMED cases that were seen",
+    "to go red (`kills`).",
+    "",
+    "IT IS A THIRTEENTH FILE beside mutations.json, mutations-identity.json,",
+    "mutations-ports.json, mutations-outbox.json, mutations-tools.json,",
+    "mutations-agents.json, mutations-cost.json, mutations-channels.json,",
+    "mutations-governance.json, mutations-secrets.json, mutations-providers.json,",
+    "mutations-conversations.json, mutations-skills.json and mutations-memory.json",
+    "rather than an extension of any of them, for the reason the fourth was:",
+    "separate tranches are separate claims about separate port surfaces, and a",
+    "reader checking one should not have to read past the others. All are hashed",
+    "by the same packages.adapters.config rule and counted together by the v1",
+    "ledger.",
+    "",
+    "WHY THIS TRANCHE NEEDED ITS OWN SWEEP, AND WHAT IT FOUND.",
+    "",
+    "`AdminAudit` IS APPEND-ONLY IN THE DATABASE AND THE PORT ASKS FOR AN UPDATE.",
+    "`00000000000000_initial/migration.sql` installs `reject_admin_audit_mutation()`",
+    "on UPDATE, on DELETE and on TRUNCATE and withdraws all three privileges from",
+    "PUBLIC. `ObservabilityRepository.clearAdminAuditActor` is defined as an UPDATE",
+    "returning rows changed, so against a database these migrations build it can",
+    "return zero or refuse and nothing else — and the context's own in-memory",
+    "double unlinks happily, which is trap 2 of this issue in its second form: the",
+    "double does not mint a value the database refuses, it performs an OPERATION",
+    "the database refuses. M-O17, M-O13, M-O14 and M-O24 are the four halves of",
+    "keeping that refusal visible, distinguishable from an outage, and NOT",
+    "anticipated by this package.",
+    "",
+    "AND THE TABLE HAS NO ANCESTRY RULE WHILE THE RECORD HAS A THREE-LEVEL SCOPE.",
+    "`AdminAudit` is not among the thirty-eight tables carrying",
+    "`enforce_domain_ancestry`, and it stores ONE scope column. So the containment",
+    "an `EnvironmentScope` asserts is this adapter's WHERE clause or nobody's, and",
+    "the three clauses have to be told APART rather than proved as a group: a",
+    "foreign tenant fails all three at once. M-O02 needs a SIBLING ENVIRONMENT",
+    "under the same project, M-O03 a SIBLING PROJECT under the same organization,",
+    "and M-O16 a scope that keeps the right project and lies about the",
+    "organization. Two of those three fixtures exist only for the sweep.",
+    "",
+    "ONE ENTRY IS HONESTLY WEAKER THAN THE REST AND SAYS SO. M-O04 removes the",
+    "organization clause from the READ predicate, and no integration case can see",
+    "it: `Project.organizationId` is a column, so a row whose project matches",
+    "necessarily has a matching organization, and the read's project clause",
+    "implies the one M-O04 removes. It is killed by the shape case in",
+    "`observability-rows.test.ts` and it is defence in depth on the read path —",
+    "which is not the same as being untested, and is not the same as being",
+    "load-bearing either. The WRITE path's organization clause IS load-bearing and",
+    "is M-O16, because there the environment is named directly and its project is",
+    "not."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Tranche 1's first sweep reported 22 kills and",
+    "every one was VACUOUS: a context's `dist` had been cleaned, so every suite",
+    "failed to load its import and would have 'died' against any mutation at all,",
+    "including none. The driver runs each suite set UNMUTATED and refuses to",
+    "sweep unless it is green with a non-zero executed case count, and classifies",
+    "a run with no executed cases as VACUOUS rather than as a kill.",
+    "",
+    "THE INTEGRATION SUITES RUN ON A REAL POSTGRESQL, in a container, on the",
+    "machine that has a daemon. `observability-rows.test.ts` is the only suite",
+    "here that runs without one, and it is the one that reaches the mapping",
+    "branches a container suite cannot: a container only ever reads rows THIS",
+    "binary wrote, so the non-object-snapshot branch is unreachable from it except",
+    "through the two rows the constraints suite plants as raw SQL.",
+    "",
+    "EVERY `from` IS A UNIQUE SUBSTRING OF ITS FILE and is applied literally, so a",
+    "mutation that no longer matches is a LEDGER FAULT rather than a silent skip.",
+    "The driver rebuilds the package between mutations, because",
+    "`pnpm test:v1-foundation` runs `test:clean-v1` and a sweep over a cleaned",
+    "`dist` reproduces exactly the vacuity above.",
+    "",
+    "TWO ENTRIES ARE SPELLED SO THE COMPILER DOES NOT KILL THEM FIRST, and that",
+    "is a property of the sweep rather than a courtesy to the mutation. M-O06's",
+    "first spelling compared a `JsonObject | undefined` to `null` and M-O24's",
+    "removed the only use of an import; both failed `tsc` before a single case",
+    "ran, and a mutation the BUILD refuses says nothing about whether a SUITE",
+    "would have caught it. Each is now an edit that compiles and changes",
+    "behaviour, so the kill is a red case rather than a red compiler.",
+    "",
+    "THREE ENTRIES BELOW WERE WRITTEN AFTER A SURVIVOR RATHER THAN BEFORE ONE.",
+    "M-O02 survived its first sweep because the only cross-tenant fixture was a",
+    "second ORGANIZATION, which fails the project and organization clauses too —",
+    "so removing the environment clause changed no observation. M-O03 and M-O16",
+    "survived for the mirror-image reason on the write path. Each is now a named",
+    "case with a fixture built for it: `siblingEnvironment` and `siblingProject`",
+    "in `observability-harness.ts` exist for no other purpose."
+  ],
+  "mutations": [
+    {
+      "name": "M-O01 rows: a row outside the proven scope is refused, not relabelled",
+      "file": "src/observability-rows.ts",
+      "from": "  if (row.environmentId !== scope.environmentId) {",
+      "to": "  if (false) {",
+      "note": "The record's scope is the one the predicate proved, so the row is never asked for its ancestry. This is the backstop that stops a widened predicate RELABELLING a sibling environment's rows with the caller's scope instead of failing.",
+      "suites": ["src/observability-rows.test.ts"],
+      "kills": [
+        "the scope a row does not carry a row from a DIFFERENT environment is refused rather than relabelled"
+      ]
+    },
+    {
+      "name": "M-O02 rows: the read predicate names the ENVIRONMENT",
+      "file": "src/observability-rows.ts",
+      "from": "    environmentId: scope.environmentId,\n    environment: {",
+      "to": "    environment: {",
+      "note": "A sibling environment under the same project satisfies BOTH relation clauses, so without this one a trail read returns the sibling's rows. It is the only clause a second ORGANIZATION cannot test, which is why `siblingEnvironment` exists.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-rows.test.ts"
+      ],
+      "kills": [
+        "a SIBLING environment under the same project is excluded, which only the environment clause can do",
+        "the scope a row does not carry an environment read names all THREE levels, so a mismatched scope matches nothing"
+      ]
+    },
+    {
+      "name": "M-O03 rows: the read predicate names the PROJECT",
+      "file": "src/observability-rows.ts",
+      "from": "      projectId: scope.projectId,\n      project: { organizationId: scope.organizationId },",
+      "to": "      project: { organizationId: scope.organizationId },",
+      "note": "Without it a read scoped to one project returns another project's environment when the caller passes its id — and the record comes back wearing the caller's project.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-rows.test.ts"
+      ],
+      "kills": [
+        "a listing scoped to the wrong project returns NOTHING rather than another tenant's trail",
+        "the scope a row does not carry an environment read names all THREE levels, so a mismatched scope matches nothing"
+      ]
+    },
+    {
+      "name": "M-O04 rows: the read predicate names the ORGANIZATION",
+      "file": "src/observability-rows.ts",
+      "from": "      project: { organizationId: scope.organizationId },\n    },\n  };\n}",
+      "to": "      project: {},\n    },\n  };\n}",
+      "note": "DEFENCE IN DEPTH ON THE READ PATH, and the ledger says so rather than claiming more. `Project.organizationId` is a column, so a row whose project matches necessarily has a matching organization: the project clause IMPLIES this one and no integration case can separate them. The WRITE path's organization clause is a different guard and IS load-bearing — see M-O16.",
+      "suites": ["src/observability-rows.test.ts"],
+      "kills": [
+        "the scope a row does not carry an environment read names all THREE levels, so a mismatched scope matches nothing"
+      ]
+    },
+    {
+      "name": "M-O05 rows: an unstated source reads back as the DOMAIN's default",
+      "file": "src/observability-rows.ts",
+      "from": "  return value === null ? DEFAULT_AUDIT_SOURCE : value;",
+      "to": "  return value === null ? \"unknown\" : value;",
+      "note": "`AdminAudit.source` is nullable and `AdminAuditRecord.source` is not, so one row disagrees with the record type: the one an older writer left unstated. The constant is the domain's own published answer, so a store spelling its own would be a second definition of a rule the domain owns.",
+      "suites": [
+        "src/observability-rows.test.ts",
+        "src/observability-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "the source column an unstated source reads back as the DOMAIN's default rather than as null",
+        "a row written WITHOUT `source` reads back as the domain's default rather than as null"
+      ]
+    },
+    {
+      "name": "M-O06 rows: a snapshot that is not an object root is REFUSED on read",
+      "file": "src/observability-rows.ts",
+      "from": "  const object = asObject(value);",
+      "to": "  const object = asObject(value) ?? asObject({});",
+      "note": "Unreachable through the column's own CHECK and reachable through a row an OLDER binary wrote. Casting it would put a number where every reader of `AdminAuditRecord` expects a bag of fields.",
+      "suites": ["src/observability-rows.test.ts"],
+      "kills": [
+        "the two snapshot columns a value that is NOT an object root is REFUSED on read, not cast",
+        "the two snapshot columns an ARRAY is refused, and that is the migration's own narrower CHECK"
+      ]
+    },
+    {
+      "name": "M-O07 guards: a non-uuid identifier is refused BEFORE a statement",
+      "file": "src/observability-guards.ts",
+      "from": "  if (!isAuditUuid(value)) {",
+      "to": "  if (false) {",
+      "note": "`AdminAudit.id` and `.environmentId` are `@db.Uuid`. A malformed one refused here leaves the caller's transaction usable; the same value refused by the column aborts the admin action the audit row is evidence of.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-statements.integration.test.ts",
+        "src/observability-transaction.integration.test.ts",
+        "src/observability-rows.test.ts"
+      ],
+      "kills": [
+        "a non-uuid id is refused by a GUARD, and the same transaction stays writable",
+        "a non-uuid ENVIRONMENT id is refused by a GUARD too, so the ancestry read never raises",
+        "the write a GUARD refusal costs ZERO statements, which is why it leaves the transaction usable",
+        "*** A RETURNED ERROR `Result` COMMITS WHEN A GUARD RAISED IT *** — the cost-monitoring trap, measured",
+        "the guards a null identifier is always allowed, and a malformed one carries its own code"
+      ]
+    },
+    {
+      "name": "M-O08 guards: the uuid pattern is the one the COLUMN parses",
+      "file": "src/observability-guards.ts",
+      "from": "const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;",
+      "to": "const UUID = /^[0-9a-f-]{10,}$/iu;",
+      "note": "A looser hex-and-dashes pattern admits spellings PostgreSQL's `uuid` input then refuses, which is a guard that does not guard. The same expression `governance-guards.ts` uses.",
+      "suites": ["src/observability-rows.test.ts"],
+      "kills": [
+        "the guards the uuid shape is the one the column parses, not a looser hex pattern"
+      ]
+    },
+    {
+      "name": "M-O09 guards: a selector naming no ACTOR is refused",
+      "file": "src/observability-guards.ts",
+      "from": "  if (actorUserId.trim().length === 0) {",
+      "to": "  if (false) {",
+      "note": "`AdminAudit.actorUserId` is a plain nullable TEXT, so `WHERE \"actorUserId\" = ''` is legal and quietly returns zero — and a count of zero is what an erasure plan reports as 'this target holds nothing about the subject'.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-rows.test.ts"
+      ],
+      "kills": [
+        "a blank actor and a blank organization are two refusals with two codes",
+        "the guards a blank actor and a blank organization are TWO codes, not one"
+      ]
+    },
+    {
+      "name": "M-O10 guards: a selector naming no ORGANIZATION is refused",
+      "file": "src/observability-guards.ts",
+      "from": "  if (organizationId.trim().length === 0) {",
+      "to": "  if (false) {",
+      "note": "A blank organization reaches every tenant through `organizationWhere`, which is the widest possible read this store can issue.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-rows.test.ts"
+      ],
+      "kills": [
+        "a blank actor and a blank organization are two refusals with two codes",
+        "the guards a blank actor and a blank organization are TWO codes, not one"
+      ]
+    },
+    {
+      "name": "M-O11 guards: the two blank refusals carry DISTINCT codes",
+      "file": "src/observability-guards.ts",
+      "from": "export const AUDIT_ORGANIZATION_BLANK = \"observability.write.audit_organization_blank\";",
+      "to": "export const AUDIT_ORGANIZATION_BLANK = \"observability.write.audit_actor_blank\";",
+      "note": "Two guards returning one code cannot be told apart in a log. This is the entry that proves the codes are checked rather than merely spelled differently.",
+      "suites": [
+        "src/observability-rows.test.ts",
+        "src/observability-constraints.integration.test.ts"
+      ],
+      "kills": [
+        "the guards a blank actor and a blank organization are TWO codes, not one",
+        "a blank actor and a blank organization are two refusals with two codes"
+      ]
+    },
+    {
+      "name": "M-O12 guards: a page size the driver would read backwards is refused",
+      "file": "src/observability-guards.ts",
+      "from": "  if (!Number.isInteger(limit) || limit < 0) {",
+      "to": "  if (false) {",
+      "note": "The client reads `take: -1` as 'the last one, in reverse', so an unguarded store answers a newest-first contract with the OLDEST row and no error anywhere.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-statements.integration.test.ts",
+        "src/observability-rows.test.ts"
+      ],
+      "kills": [
+        "a negative page size is refused rather than read backwards",
+        "the reads a read guard refusal costs ZERO statements",
+        "the guards a negative or fractional page size is refused; zero and whole numbers are not"
+      ]
+    },
+    {
+      "name": "M-O13 guards: the append-only raise is RECOGNISED",
+      "file": "src/observability-guards.ts",
+      "from": "  return error instanceof Error && error.message.includes(ADMIN_AUDIT_IMMUTABLE_RAISE);",
+      "to": "  return false;",
+      "note": "Unrecognised, the database's permanent refusal of `clearAdminAuditActor` is reported under the generic driver label — the same string as a dropped connection — and an operator reading the log retries for ever a statement no database these migrations build will accept.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-rows.test.ts"
+      ],
+      "kills": [
+        "*** an unlink that matches ONE row is REFUSED BY THE DATABASE — the port's contract is unhonourable ***",
+        "the database's own refusal the append-only raise is recognised by its message, not by SQLSTATE alone"
+      ]
+    },
+    {
+      "name": "M-O14 guards: the raise text is the MIGRATION's own",
+      "file": "src/observability-guards.ts",
+      "from": "export const ADMIN_AUDIT_IMMUTABLE_RAISE = \"AdminAudit is immutable\";",
+      "to": "export const ADMIN_AUDIT_IMMUTABLE_RAISE = \"AdminAudit cannot be changed\";",
+      "note": "The constant is a quotation from `00000000000000_initial/migration.sql`, not a description of it. A paraphrase matches nothing the database ever raises, so the recognition in M-O13 silently stops firing.",
+      "suites": ["src/observability-constraints.integration.test.ts"],
+      "kills": [
+        "*** an unlink that matches ONE row is REFUSED BY THE DATABASE — the port's contract is unhonourable ***",
+        "a DELETE is refused too, so 'unlink rather than delete' was never a choice this store had"
+      ]
+    },
+    {
+      "name": "M-O15 audit: the ancestry statement's refusal actually refuses",
+      "file": "src/observability-audit.ts",
+      "from": "        if (environment === null) {",
+      "to": "        if (environment === undefined) {",
+      "note": "`findFirst` answers `null`, never `undefined`, so the mutated branch is dead and every mis-filed record is written. Nothing in the database would refuse it: `AdminAudit` has no ancestry rule and its only foreign key proves the environment EXISTS, not whose it is.",
+      "suites": ["src/observability-constraints.integration.test.ts"],
+      "kills": [
+        "an environment outside the record's own organization is refused by THIS store, because no rule refuses it",
+        "the ancestry statement's PROJECT clause is what refuses a sibling project's environment",
+        "the ancestry statement's ORGANIZATION clause is what refuses a foreign organization claim"
+      ]
+    },
+    {
+      "name": "M-O16 audit: the ancestry statement names the PROJECT and the ORGANIZATION",
+      "file": "src/observability-audit.ts",
+      "from": "            projectId: record.scope.projectId,\n            project: { organizationId: record.scope.organizationId },",
+      "to": "            project: { organizationId: record.scope.organizationId },",
+      "note": "The write path's clauses are NOT redundant the way the read path's are (see M-O04): the environment is named directly here, so its project is not implied by anything. A sibling project under the same organization is refused by this clause ALONE.",
+      "suites": ["src/observability-constraints.integration.test.ts"],
+      "kills": [
+        "the ancestry statement's PROJECT clause is what refuses a sibling project's environment"
+      ]
+    },
+    {
+      "name": "M-O17 audit: the unlink statement is SENT rather than anticipated",
+      "file": "src/observability-audit.ts",
+      "from": "            actorUserId: selector.actorUserId,\n            ...organizationWhere(selector.organizationId),\n          },\n          data: { actorUserId: null },",
+      "to": "            actorUserId: selector.actorUserId,\n            ...organizationWhere(selector.organizationId),\n            id: \"00000000-0000-4000-8000-000000000000\",\n          },\n          data: { actorUserId: null },",
+      "note": "THE ENTRY THAT KEEPS THE FINDING NON-VACUOUS. Narrowed to match nothing, the unlink returns `ok(0)` and every claim about the append-only rule becomes unfalsifiable — the refusal would look identical to a port that quietly did nothing. This is why `observability-audit.ts` sends a statement it knows will raise instead of refusing from memory.",
+      "suites": ["src/observability-constraints.integration.test.ts"],
+      "kills": [
+        "*** an unlink that matches ONE row is REFUSED BY THE DATABASE — the port's contract is unhonourable ***",
+        "the refusal leaves the caller's transaction UNUSABLE, which is what proves it is the DATABASE's"
+      ]
+    },
+    {
+      "name": "M-O18 audit: an absent snapshot is written as SQL NULL",
+      "file": "src/observability-audit.ts",
+      "from": "            before: nullableJson(record.before),",
+      "to": "            before: record.before as never,",
+      "note": "A `Json?` column has two nulls. A plain JavaScript `null` is a client VALIDATION error, and the other sentinel writes the JSON scalar `null`, whose `jsonb_typeof` is `'null'` — which `AdminAudit_before_json_root` refuses through the clause that looks like it should have allowed it.",
+      "suites": [
+        "src/observability-constraints.integration.test.ts",
+        "src/observability-conformance.integration.test.ts"
+      ],
+      "kills": [
+        "an absent snapshot is SQL NULL, not the JSON scalar null, which both CHECKs refuse",
+        "the fake and the real store answer the same scenario identically"
+      ]
+    },
+    {
+      "name": "M-O19 audit: a blank filter is ABSENCE, not a value",
+      "file": "src/observability-audit.ts",
+      "from": "  if (action.length > 0) filters[\"action\"] = action;",
+      "to": "  filters[\"action\"] = action;",
+      "note": "The port's type admits `string | null | undefined` for all three filters. Treating the resolved blank as a value makes an unfiltered listing filter on `action = ''`, which no row `domain/admin-audit.ts` can produce carries — so the page is empty for a reason no caller can see.",
+      "suites": ["src/observability-conformance.integration.test.ts"],
+      "kills": ["the fake and the real store answer the same scenario identically"]
+    },
+    {
+      "name": "M-O20 audit: the listing is NEWEST FIRST",
+      "file": "src/observability-audit.ts",
+      "from": "          orderBy: [{ createdAt: \"desc\" }, { id: \"desc\" }],",
+      "to": "          orderBy: [{ createdAt: \"asc\" }, { id: \"desc\" }],",
+      "note": "The port's contract is 'one page of the trail, newest first'. Reversed, a capped page returns the OLDEST rows and an operator looking for what just changed sees the oldest thing that ever did.",
+      "suites": ["src/observability-conformance.integration.test.ts"],
+      "kills": ["the fake and the real store answer the same scenario identically"]
+    },
+    {
+      "name": "M-O21 audit: the page size is the CALLER's",
+      "file": "src/observability-audit.ts",
+      "from": "          take: query.limit,",
+      "to": "          take: 200,",
+      "note": "`AUDIT_PAGE_MAX` is resolved in the application layer through `resolveAuditLimit`; a store that re-derived it would hold a second copy of a bound the domain owns and a caller asking for two would get two hundred.",
+      "suites": ["src/observability-conformance.integration.test.ts"],
+      "kills": ["the fake and the real store answer the same scenario identically"]
+    },
+    {
+      "name": "M-O22 audit: the actor count is contained by the ORGANIZATION",
+      "file": "src/observability-audit.ts",
+      "from": "        const total = await transactions.reader().adminAudit.count({\n          where: {\n            actorUserId: selector.actorUserId,\n            ...organizationWhere(selector.organizationId),\n          },\n        });",
+      "to": "        const total = await transactions.reader().adminAudit.count({\n          where: {\n            actorUserId: selector.actorUserId,\n          },\n        });",
+      "note": "The number this returns is what an erasure plan reports as 'found N'. Uncontained it counts every tenant's rows for that actor — and `actorUserId` has no foreign key, so one string can legitimately name a different person in a different installation's tenant.",
+      "suites": ["src/observability-conformance.integration.test.ts"],
+      "kills": ["the fake and the real store answer the same scenario identically"]
+    },
+    {
+      "name": "M-O23 refusal: a lost transaction is RETHROWN, never folded into a Result",
+      "file": "src/observability-refusal.ts",
+      "from": "      error instanceof ObservabilityStoreRefused ||\n      error instanceof UnreadableRowError ||\n      isDriverError(error)",
+      "to": "      true",
+      "note": "The three `TransactionScopeError` codes are the property WIN-258 T1 built and T2, T3 and T4 relied on. Converting them to a `Result` lets a use case that lost its transaction carry on as though a row had merely failed to write.",
+      "suites": ["src/observability-transaction.integration.test.ts"],
+      "kills": [
+        "the three scope refusals, from the store the ports declare a write with NO open transaction is refused with not_open",
+        "the three scope refusals, from the store the ports declare a write with a FINISHED transaction's token is refused with scope_unknown",
+        "the three scope refusals, from the store the ports declare a write with ANOTHER LIVE transaction's token is refused with scope_foreign"
+      ]
+    },
+    {
+      "name": "M-O24 refusal: the append-only refusal gets its OWN reason",
+      "file": "src/observability-refusal.ts",
+      "from": "    return `${ADMIN_AUDIT_IMMUTABLE}: ${error instanceof Error ? error.message : String(error)}`;",
+      "to": "    return `${label}: ${error instanceof Error ? error.message : String(error)}`;",
+      "note": "The predicate can be right and its ANSWER discarded. Reported under the generic method label, a permanent structural refusal carries the same string as a dropped connection — which is the one distinction this file exists to keep. The mutation edits the RETURNED reason rather than the branch, because `if (…) && false` narrows `error` back to `unknown` and `tsc` kills it before a case runs.",
+      "suites": ["src/observability-constraints.integration.test.ts"],
+      "kills": [
+        "*** an unlink that matches ONE row is REFUSED BY THE DATABASE — the port's contract is unhonourable ***"
+      ]
+    },
+    {
+      "name": "M-O25 refusal: a guard's distinct CODE leads the reason",
+      "file": "src/observability-refusal.ts",
+      "from": "  if (error instanceof ObservabilityStoreRefused) return `${error.code}: ${error.detail}`;",
+      "to": "  if (error instanceof ObservabilityStoreRefused) return error.detail;",
+      "note": "Every store failure in this context is `repositoryUnavailable`, so the code a caller matches on lives in `details.reason` and has to LEAD it. Two guards whose codes lead the same string can be told apart; two whose codes are dropped cannot.",
+      "suites": ["src/observability-constraints.integration.test.ts"],
+      "kills": [
+        "a blank actor and a blank organization are two refusals with two codes",
+        "a non-uuid id is refused by a GUARD, and the same transaction stays writable",
+        "an environment outside the record's own organization is refused by THIS store, because no rule refuses it"
+      ]
+    },
+    {
+      "name": "M-O26 audit: the write resolves through writer(), never the pool",
+      "file": "src/observability-audit.ts",
+      "from": "        const client = transactions.writer(transaction);\n\n        // THE ANCESTRY STATEMENT.",
+      "to": "        const client = transactions.pool();\n\n        // THE ANCESTRY STATEMENT.",
+      "note": "`pool()` is the deliberate escape hatch for the one method in this directory whose port requires it to be OUTSIDE the caller's unit of work. Used here it silently removes all three scope refusals AND takes the audit row out of the admin action's transaction — which is the exact defect `domain/admin-audit.ts` says is worse than having no audit trail.",
+      "suites": ["src/observability-transaction.integration.test.ts"],
+      "kills": [
+        "the three scope refusals, from the store the ports declare a write with NO open transaction is refused with not_open",
+        "failure injection a THROWN failure after a successful write leaves NEITHER row, seen from another connection",
+        "failure injection an audit row and the ACTION it records roll back together — the whole reason they share a directory"
+      ]
+    }
+  ]
+}

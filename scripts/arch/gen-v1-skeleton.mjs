@@ -260,6 +260,30 @@ export const ADAPTERS = [
       // `durable-runtime`. Neither writes a canonical row.
       { port: "JobsRepository", owner: "jobs" },
       { port: "ApprovalsRepository", owner: "jobs" },
+      // WIN-258 T5 adds the TENTH owner recorded on this directory here, and the
+      // THIRTEENTH overall. `observability` owns exactly ONE canonical row —
+      // `AdminAudit`, ADR M0.3 §1 row 12 — and publishes ONE canonical-store
+      // port over it.
+      //
+      // FOUR OF THE FIVE TABLES THAT ROW CREDITS IT WITH GET NO BINDING HERE,
+      // and that is arithmetic rather than a shortfall: `turns_v1`, `steps_v1`,
+      // `tool_calls_v1` and `usage_events_v1` are the analytical projections,
+      // are not Prisma rows at all, and are bound to `clickhouse-observability`
+      // below through `ObservabilitySink`.
+      //
+      // IT IS SATISFIED BY A PROPERTY rather than by spread-in methods, and here
+      // that is the third of the three reasons rather than the collision one:
+      // nothing it declares collides with anything this directory publishes, but
+      // `ObservabilityDependencies` names the slot `repository`, and a
+      // composition root has to hand the port over under that name rather than
+      // out of a bundle assembled from key order.
+      //
+      // The context's two other driven ports get no binding on this directory.
+      // `ProjectionOutbox` settles a row whose SINGLE writer is the kernel
+      // outbox adapter (§1's closing note, §7 decision 8), and
+      // `ErasedSubjectRegister` and `SubjectLocatorSource` read `privacy`'s
+      // tombstones and `conversations`' threads.
+      { port: "ObservabilityRepository", owner: "observability" },
     ],
     note: "the tenancy-database client; per-context repositories, owner-tagged",
   },
@@ -432,6 +456,16 @@ export function adapterOwnerPackages(adapter) {
 // been wrong twice over: `files` ALREADY has an adapter directory of its own,
 // `objectstore-minio`, for the OTHER port it owns. A row and a blob are two
 // technologies behind two ports, and this pin counts DIRECTORIES.
+// AND 38 -> 39 (WIN-258 T5, a THIRTEENTH owner). `observability` adds ONE
+// canonical-store binding, `ObservabilityRepository`, over the ONE Prisma row of
+// ADR M0.3 §1 row 12. ONE and not five: that row credits the context with four
+// analytical tables as well, and none of them is a Prisma row — they are already
+// bound to `clickhouse-observability` through `ObservabilitySink`. It is a
+// PROPERTY for the middle of the three reasons, like `conversations`' four: it
+// collides with nothing and is blocked from nothing, but
+// `ObservabilityDependencies` names the slot `repository`, and a root has to hand
+// the port over under that name. EXPECTED_ADAPTER_COUNT is deliberately unmoved a
+// THIRTEENTH time, which is the point of pinning the two separately.
 export const EXPECTED_ADAPTER_COUNT = 12;
 export const EXPECTED_BINDING_COUNT = 44;
 
@@ -579,6 +613,13 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // way. `files` is now the only context reached from TWO adapter directories,
 // this one for its rows and `objectstore-minio` for its bucket; that is two
 // edges from two directories, not two edges from one.
+// AND 106 -> 107 (WIN-258 T5, a THIRTEENTH owner). `packages/adapters/postgres-tenancy`
+// -> `packages/contexts/observability`, carrying that context's ONE
+// canonical-store port. It cannot create a cycle: contexts are leaves relative to
+// adapters, and ADR M0.3 §1 gives `observability` exactly two dependencies,
+// `tenancy` and the kernel, neither of which depends back on it. The independent
+// expectation in scripts/arch/v1-project-graph.mjs carries the same delta and is
+// maintained separately on purpose.
 export const EXPECTED_EDGE_COUNT = 111;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
@@ -730,6 +771,7 @@ export const TESTING_ENTRY_PROJECTS = [
   "packages/contexts/privacy", // WIN-258 T5 — InMemoryPrivacyRepository is the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/jobs", // WIN-258 T5 — InMemoryJobsRepository and InMemoryApprovalsRepository are the differential packages/adapters/postgres-tenancy is measured against
   "packages/contexts/files", // WIN-258 T5 — InMemoryFilesRepository is the differential packages/adapters/postgres-tenancy is measured against
+  "packages/contexts/observability", // WIN-258 T5 — InMemoryObservabilityRepository is the differential packages/adapters/postgres-tenancy is measured against, and the double that says the unlink works
 ];
 
 // THREE TRANCHE-5 STORES NEEDED AN ENTRY AND EACH BRANCH ADDED THE LIST ITSELF,

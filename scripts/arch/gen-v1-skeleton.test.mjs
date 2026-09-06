@@ -548,6 +548,10 @@ const LIVE_ADAPTERS = [
       // appear TWICE in this table — once here for its rows and once at
       // `objectstore-minio` below for its bucket.
       { port: "FilesRepository", owner: "files" },
+      // WIN-258 T5. `observability`'s one canonical-store port, in the fixture
+      // copy for the reason `skills`' is: a copy missing a binding would make
+      // the refusal COUNTS below wrong rather than the refusals.
+      { port: "ObservabilityRepository", owner: "observability" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },

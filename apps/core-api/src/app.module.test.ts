@@ -139,6 +139,10 @@ describe("the declared binding table", () => {
     // signatures. Its OTHER two ports get no row: `IdempotencyStore` is a
     // reserve-once keyspace and `JobHandlerRuntime` is an isolate, and neither
     // writes a canonical row.
+    // The SIXTEENTH is `observability`, whose ONE port covers its ONE Prisma
+    // row: ADR M0.3 §1 row 12 credits it with five tables and four of them are
+    // the analytical projections, which are not Prisma rows and are bound to
+    // `clickhouse-observability` instead.
     expect(ADAPTER_NAMES).toHaveLength(12);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
@@ -175,6 +179,7 @@ describe("the declared binding table", () => {
       "JobsRepository",
       "ApprovalsRepository",
       "FilesRepository",
+      "ObservabilityRepository",
     ]);
     expect(sharedDirectory.map((binding) => binding.owner)).toEqual([
       "tenancy",
@@ -211,6 +216,7 @@ describe("the declared binding table", () => {
       // table: here for `MessageAttachment` and `Artifact`, and again at
       // `objectstore-minio` for the blobs those rows point at.
       "files",
+      "observability",
     ]);
   });
 

@@ -143,6 +143,19 @@
 // and a store that held both would have made that ordering look like an
 // implementation detail it could optimise away.
 
+// AND SO DOES `observability`'s `ObservabilityRepository` (WIN-258 T5) — the
+// THIRTEENTH owner delegated here, and the one whose port the real database
+// proves it cannot fully honour. `AdminAudit` is ADR M0.3 §1 row 12's single
+// Prisma row, in the same database behind the same client, so Amendment 15 puts
+// it here; but the initial migration makes that table APPEND-ONLY — a rule on
+// UPDATE, on DELETE and on TRUNCATE, plus the matching privileges withdrawn from
+// PUBLIC — so `clearAdminAuditActor`, which the port defines as an UPDATE
+// returning rows changed, can only ever return zero or refuse.
+// `observability-audit.ts` sends the statement and maps the database's refusal
+// under its own code rather than inventing a count, and the two halves of that
+// behaviour are named cases rather than prose. The context's three other driven
+// ports are absent for reasons `observability-repository.ts` gives one by one.
+
 // AND SO DOES `providers`' `ProvidersRepository` (WIN-258 T5). The four rows of
 // ADR M0.3 §1 row 4 — `ProviderKey`, `EnvironmentProvider`, `Model` and
 // `ModelPrice` — are in that same database behind that same client, so Amendment
@@ -254,6 +267,7 @@ import type {
   JobsRepository,
 } from "@platos/context-jobs/application/ports/index.js";
 import type { PrivacyRepository } from "@platos/context-privacy/application/ports/index.js";
+import type { ObservabilityRepository } from "@platos/context-observability/application/ports/index.js";
 import type { ProvidersRepository } from "@platos/context-providers/application/ports/index.js";
 import type {
   EnvironmentVariableRepository,
@@ -292,6 +306,7 @@ import { createOperatorDirectory, createOperatorSessionRevoker } from "./operato
 import type { OutboxEventStorePort } from "./outbox-store.js";
 import { createOutboxEventStore } from "./outbox-store.js";
 import { createPrivacyRepository } from "./privacy-repository.js";
+import { createObservabilityStores } from "./observability-repository.js";
 import { createProvidersRepository } from "./providers-repository.js";
 import {
   createEnvironmentVariableRepository,
@@ -435,6 +450,25 @@ export interface PostgresTenancyAdapter
    */
   readonly jobs: JobsRepository;
   readonly approvals: ApprovalsRepository;
+
+   * WIN-258 T5 — `observability`'s one canonical-store port.
+   *
+   * A PROPERTY, and forced by the same sentence `skills` and `memory` stand on:
+   * `ObservabilityDependencies`' slot for it is called `repository`, and
+   * `repository` alone is not a name a directory serving SEVENTEEN owners can
+   * give to one of them. The owner is spelled in front so a composition root
+   * hands the port to the context under its own name rather than out of a bundle
+   * assembled from key order.
+   *
+   * The context's THREE other driven ports are deliberately absent and
+   * `observability-repository.ts` says why for each: `ObservabilitySink` is the
+   * four analytical tables, which are not Prisma rows and already have an
+   * adapter; `ProjectionOutbox` settles a row whose only writer is the kernel
+   * outbox adapter; and `ErasedSubjectRegister` and `SubjectLocatorSource` read
+   * `privacy`'s and `conversations`' tables, which this directory answering
+   * under `observability`'s name would be the sideways access §5.2 forbids.
+   */
+  readonly observability: ObservabilityRepository;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -503,6 +537,13 @@ export function buildPostgresTenancyAdapter(
     // `TransactionScope` this ambient frame minted rather than a second one that
     // would refuse it as `scope_unknown`.
     ...createJobsStores(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The SIXTEENTH owner delegated to this
+    // directory. Built from the same `transactions` as everything above, which
+    // is the whole reason `record-admin-action.ts` is safe to place inside an
+    // admin action's own unit of work: the action and the row that says who
+    // performed it commit together or neither does, and an audit trail that can
+    // disagree with what actually happened is worse than no audit trail.
+    ...createObservabilityStores(transactions),
     async close(): Promise<void> {
       await client.$disconnect();
     },

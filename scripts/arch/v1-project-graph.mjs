@@ -135,6 +135,12 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // context reached from TWO adapter directories: this one for its rows and
 // `objectstore-minio` for the `ObjectStore` port it also owns. Two directories,
 // two edges — not one directory with two.
+// AND a THIRTEENTH owner edge, to `packages/contexts/observability`, whose ONE
+// canonical row — `AdminAudit` — is in that same PostgreSQL database. It is ONE
+// edge carrying ONE binding. ADR M0.3 §1 gives `observability` exactly two
+// dependencies, `tenancy` and the kernel, and nothing in the 17-context DAG
+// depends on `observability`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is again
+// unchanged and no cycle is possible.
 export const EXPECTED_EDGE_COUNT = 111;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
@@ -270,6 +276,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "privacy",
     "jobs",
     "files",
+    "observability",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
