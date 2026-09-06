@@ -2016,6 +2016,43 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * and 6520 + 325 = 6845 cases. The adapters term of the three-way identity
  * carries all twenty-eight, because every added file is an adapter's:
  * 79 + 28 = 107, and 349 + 3 + 107 = 459.
+ *
+ * WIN-258 T5, `jobs` — THE THIRTEENTH OWNER, in that SAME package a twelfth
+ * time. `Job` and `AgentApproval` are the two rows of ADR M0.3 §1 row 15, and
+ * the store that writes them adds SEVEN suites and 93 cases:
+ *
+ *   jobs-rows.test.ts                       21 — the only one that runs without
+ *                                                a container, and the only one
+ *                                                that can reach the branches a
+ *                                                container cannot: a container
+ *                                                reads only rows THIS binary
+ *                                                wrote
+ *   jobs-rules.integration.test.ts          18 — rows an older binary wrote,
+ *                                                planted by the ORM's CLI
+ *   jobs-constraints.integration.test.ts    15 — a guard beside the raw
+ *                                                statement it was written from
+ *   jobs-statements.integration.test.ts     14 — the N+1 controls, each taken
+ *                                                over a small fixture and one an
+ *                                                order of magnitude larger
+ *   jobs-transaction.integration.test.ts    13 — failure injection, the three
+ *                                                scope refusals, and the
+ *                                                `cost-monitoring` trap
+ *   jobs-isolation.integration.test.ts      11 — what the DATABASE decides with
+ *                                                no guard beside it
+ *   jobs-conformance.integration.test.ts     1 — one scenario, two stores, one
+ *                                                comparison
+ *
+ * THE 1 IN THE CONFORMANCE SUITE IS THE NUMBER TO WATCH, for the reason every
+ * tranche before it gives: it is ONE scenario of eighty-odd observations
+ * compared verbatim, so adding an observation strengthens the differential and
+ * moves NO count here.
+ * `packages/adapters/postgres-tenancy/mutations-jobs.json` is where those guards
+ * are held falsifiable instead.
+ *
+ * THE PACKAGE ROW THEREFORE MOVES 88 -> 95 FILES and 929 -> 1022 CASES, and the
+ * tree total 459 -> 466 files and 6845 -> 6938 cases. The adapters term of the
+ * three-way identity carries all seven, because every added file is an
+ * adapter's: 107 + 7 = 114, and 349 + 3 + 114 = 466.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2026,7 +2063,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 88, cases: 929 },
+  "packages/adapters/postgres-tenancy": { files: 95, cases: 1022 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2212,7 +2249,7 @@ export const EXPECTED = Object.freeze({
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
  */
-export const EXPECTED_RUNTIME_TOTAL = 6845;
+export const EXPECTED_RUNTIME_TOTAL = 6938;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

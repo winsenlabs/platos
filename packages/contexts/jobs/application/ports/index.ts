@@ -57,13 +57,29 @@ export * from "./job-handler-runtime.js";
 // kernel from a package whose only declared dependency is the context whose
 // ports it satisfies.
 export type {
+  EnvironmentId,
   EnvironmentScope,
   JsonValue,
+  OrganizationId,
+  ProjectId,
   Result,
   TenantScope,
   TransactionScope,
 } from "@platos/kernel";
-export { asIdentifier, contains, environmentScope, err, ok } from "@platos/kernel";
+// `organizationScope` and `projectScope` travel with `environmentScope` because
+// `JobsErasureSelector.scope` is a `TenantScope`, and a `TenantScope` is a
+// discriminated union whose members carry BRANDED ids: an implementor that
+// wrote the object literal itself would need `OrganizationId` and `ProjectId`
+// by name, which is a wider surface than the three constructors that mint them.
+export {
+  asIdentifier,
+  contains,
+  environmentScope,
+  err,
+  ok,
+  organizationScope,
+  projectScope,
+} from "@platos/kernel";
 
 export type {
   AgentId,

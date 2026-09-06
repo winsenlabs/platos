@@ -103,7 +103,16 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // per port. `memory` depends on `tenancy` and `providers` and nothing in the
 // 17-context DAG depends on `memory`, so `EXPECTED_CONTEXT_DEPENDS_ON` below is
 // again unchanged and no cycle is possible.
-export const EXPECTED_EDGE_COUNT = 106;
+//
+// 106 -> 107 (WIN-258 T5, a seventh time). AND a THIRTEENTH owner edge, to
+// `packages/contexts/jobs`, whose two canonical rows — `Job` and
+// `AgentApproval` — are in that same PostgreSQL database. It is ONE edge
+// carrying TWO bindings, `JobsRepository` and `ApprovalsRepository`, because a
+// project reference is per PACKAGE and not per port. `jobs` depends on `tenancy`
+// alone and `conversations` already depends on `jobs`, both of which the
+// 17-context DAG carries, so `EXPECTED_CONTEXT_DEPENDS_ON` below is again
+// unchanged and no cycle is possible — the adapter is a leaf of that DAG.
+export const EXPECTED_EDGE_COUNT = 107;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -210,9 +219,10 @@ export const EXPECTED_CONTEXT_NAMES = Object.keys(EXPECTED_CONTEXT_DEPENDS_ON);
 // owner string until WIN-258 T2, which is the same shape as a one-element list
 // and a NARROWER statement than the layout now makes: `postgres-tenancy` holds
 // the repositories of EVERY context whose canonical rows live in the one
-// PostgreSQL database it has the client for — two at T2, and NINE since tranche
-// 5 bound `tools`, `agents`, `cost-monitoring`, `channels`, `governance`,
-// `secrets` and `memory`, and the shape has not had to change to say so.
+// PostgreSQL database it has the client for — two at T2, and THIRTEEN since
+// tranche 5 bound `tools`, `agents`, `cost-monitoring`, `channels`,
+// `governance`, `secrets`, `providers`, `conversations`, `skills`, `memory` and
+// `jobs`, and the shape has not had to change to say so.
 //
 // The widening is exactly "one or more", not "any". The list is still compared
 // as an EXACT, ORDERED expectation against the tsconfig references and manifest
@@ -234,6 +244,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
     "conversations",
     "skills",
     "memory",
+    "jobs",
   ],
   outbox: ["kernel"],
   "durable-runtime": ["kernel"],
@@ -256,7 +267,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 12 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 13 };
 
 /**
  * The multi-owner exception, judged over maps the caller SUPPLIES.

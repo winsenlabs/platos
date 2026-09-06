@@ -910,13 +910,35 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               so four statements are raw SQL — in the same one home,
     //               attributed by the TABLE they name, and `src/client.ts` is
     //               still the only file in the layout that imports the ORM.
+    //  1328 -> 1345 +17: WIN-258 TRANCHE 5, `jobs`' canonical store, in that
+    //               SAME one ORM home for the THIRTEENTH owner. SEVENTEEN files,
+    //               all under `packages/adapters/postgres-tenancy/src/`: ten
+    //               source (the guards, the row mapping and its two envelopes,
+    //               the refusal adapter, the seven `Job` methods, the nine
+    //               `Approval` methods, the erasure pair, the composite, the
+    //               harness and the shared conformance scenario in two halves)
+    //               and SEVEN suites. The `mutations-jobs.json` beside them is
+    //               not source and is not counted here; the v1 ledger counts it
+    //               and its own delta says 18.
+    //               THE SEVENTEENTH FILE IS THE §6 BUDGET, not a suite spread
+    //               thin: the constraints proof reached 414 effective lines as
+    //               one file, and the three describes that left it had no guard
+    //               at all — `enforce_domain_ancestry`, the two unique indexes
+    //               and the scoped reads are rules this store does not restate.
+    //               `packages/contexts/jobs` gains NO file — its port entry
+    //               point was widened in place.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A SIXTH TIME, and
+    //               this tranche does not test it the way `memory` did: every
+    //               statement here is a delegate call, and the rows this store
+    //               may NOT write reach the database through `prisma db execute`
+    //               — the ORM's CLI at runtime, which is not an import at all.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
     //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 +
-    //               21 = 1402. No branch's own figure is right merged — 1344,
-    //               1348, 1345 and 1349 each under-count the others by their
-    //               whole tranche.
-    assert.equal(result.fileCount, 1402, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21);
+    //               21 + 17 = 1419. No branch's own figure is right merged —
+    //               1344, 1348, 1345 and 1349 each under-count the others by
+    //               their whole tranche.
+    assert.equal(result.fileCount, 1419, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 17);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

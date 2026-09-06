@@ -79,6 +79,10 @@ import type {
   ThreadRepository,
   TurnRepository,
 } from "@platos/context-conversations/application/ports/index.js";
+import type {
+  ApprovalsRepository,
+  JobsRepository,
+} from "@platos/context-jobs/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
 import type { OutboxAdapter, OutboxEventStore } from "@platos/adapter-outbox";
@@ -101,7 +105,7 @@ import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, THIRTY-EIGHT BINDINGS (ADR M0.3 §15). An install wires a
+ * TWELVE SLOTS, FORTY BINDINGS (ADR M0.3 §15). An install wires a
  * DIRECTORY — one process-lifetime object holding one vendor client — so this
  * table stays keyed by directory and keeps twelve entries. What a directory
  * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
@@ -308,6 +312,26 @@ interface PortSatisfaction {
     PostgresTenancyAdapter["memoryGraph"],
     KnowledgeGraphRepository
   >;
+
+  // WIN-258 T5. `jobs`' two canonical-store ports, proven through the PROPERTY
+  // that carries each one — and, like `secrets`' pair and `memory`'s, FORCED
+  // rather than stylistic. `ApprovalsRepository.erase(selector, transaction)`
+  // and `ConversationsErasureStore.erase(plan, transaction)` are both top-level
+  // members with one name and two signatures, so `PostgresTenancyAdapter` cannot
+  // extend both ports and `Satisfies<PostgresTenancyAdapter,
+  // ApprovalsRepository>` would resolve to `never` and fail a binding that
+  // holds. `JobsRepository` is indexed the same way for the same reason
+  // `MemoryRepository` is: the two arrive together under `JobsDependencies`' own
+  // slot names, and a root that took one from a property and the other from the
+  // adapter would be describing one store two ways.
+  readonly "postgres-tenancy:JobsRepository": Satisfies<
+    PostgresTenancyAdapter["jobs"],
+    JobsRepository
+  >;
+  readonly "postgres-tenancy:ApprovalsRepository": Satisfies<
+    PostgresTenancyAdapter["approvals"],
+    ApprovalsRepository
+  >;
   readonly "outbox:OutboxWriter": Satisfies<OutboxAdapter, OutboxWriter>;
   readonly "durable-runtime:DurableRuntime": Satisfies<DurableRuntimeAdapter, DurableRuntime>;
   readonly "clickhouse-observability:ObservabilitySink": Satisfies<
@@ -352,6 +376,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:SkillsRepository": true,
   "postgres-tenancy:MemoryRepository": true,
   "postgres-tenancy:KnowledgeGraphRepository": true,
+  "postgres-tenancy:JobsRepository": true,
+  "postgres-tenancy:ApprovalsRepository": true,
   "outbox:OutboxWriter": true,
   "durable-runtime:DurableRuntime": true,
   "clickhouse-observability:ObservabilitySink": true,
@@ -603,6 +629,27 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     port: "KnowledgeGraphRepository",
     owner: "memory",
   }),
+  // WIN-258 T5 — `jobs`' TWO canonical-store ports, on that same directory, and
+  // the THIRTEENTH owner of the one PostgreSQL client. Appended after `memory`'s
+  // pair for the reason that pair was appended after tenancy's five: every block
+  // above counts its ordinals from the end of the block before it, so inserting
+  // in the middle would silently make four comments wrong.
+  //
+  // They are TWO rows and not one because `jobs` publishes two ports over two
+  // rows, and the split is the one `domain/index.ts` argues for: "They share an
+  // owner and a scope and nothing else, so they are two aggregates rather than
+  // one. A `Job` outlives every run of it; an `Approval` is born and dies inside
+  // a single turn."
+  //
+  // The context's other two ports get no row here, and that is a claim rather
+  // than an omission. `IdempotencyStore` is a reserve-once keyspace — an atomic
+  // claim-or-report, a TTL the store enforces, and an update that must not
+  // resurrect an expired key — none of which PostgreSQL has, and all of which
+  // `redis-cache` below does. `JobHandlerRuntime` is the isolate that runs
+  // untrusted handler source, which ADR M0.3 §7 decision 10 puts behind
+  // `durable-runtime`; it writes no row.
+  Object.freeze({ adapter: "postgres-tenancy", port: "JobsRepository", owner: "jobs" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "ApprovalsRepository", owner: "jobs" }),
   Object.freeze({ adapter: "outbox", port: "OutboxWriter", owner: "kernel" }),
   Object.freeze({ adapter: "durable-runtime", port: "DurableRuntime", owner: "kernel" }),
   Object.freeze({ adapter: "clickhouse-observability", port: "ObservabilitySink", owner: "observability" }),
@@ -619,10 +666,10 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds thirty-eight rows across
- * twelve directories: a caller iterating this list to construct or close
- * adapters would otherwise build `postgres-tenancy` TWENTY-SEVEN times and
- * open twenty-seven pools over the one database.
+ * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY rows across twelve
+ * directories: a caller iterating this list to construct or close adapters would
+ * otherwise build `postgres-tenancy` TWENTY-NINE times and open twenty-nine
+ * pools over the one database.
  */
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),
