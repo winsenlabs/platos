@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "bf5adbacce2eb6b789193f389f38f4780ba1d860bf7ba1ced12c635ec8a8b2c6"
+      "sha256": "9c2e133f7886fb641b04152d75fc83abd36eaf99928d718d15aa43191f5752cf"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
