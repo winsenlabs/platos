@@ -976,7 +976,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/contexts/secrets/application/sweep-root-key-reencryption.ts`
     // and `…test.ts`, rotation as a JOB rather than as a request-time loop.
     // 14 (keyring-envelope) + 2 (providers) + 1 (postgres) + 2 (secrets) = 19.
-    packages: 1416,
+    //
+    // WIN-259 (M2.4), THE LEGACY-ENVELOPE MIGRATION, 1416 -> 1424. EIGHT more,
+    // all in `packages` and no other area, in matched pairs across the two
+    // packages the deliverable is split between: `keyring-envelope` gains
+    // `legacy-envelope-reader.ts` and `legacy-wire-vectors.ts` with
+    // `legacy-wire-compatibility.test.ts` and `legacy-migration.test.ts`;
+    // `secrets` gains `domain/legacy-envelope.ts` and
+    // `application/migrate-legacy-envelope.ts` with a suite each. Every one
+    // classifies under a rule that ALREADY EXISTED — `packages.adapters.source`,
+    // `packages.adapters.test`, `packages.contexts.source` and
+    // `packages.contexts.test` — so NO ledger rule changed for the migration, and
+    // the delta is purely additive.
+    // 18 (keyring-envelope) + 2 (providers) + 1 (postgres) + 6 (secrets) = 27,
+    // and REBASED ONTO v1 @ 2abd19b4 the whole of WIN-259 is those 27: v1's own
+    // `packages` delta is 1397, and 1397 + 27 = 1424.
+    packages: 1424,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1229,7 +1244,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // changed here either. 41 + 2 = 43.
     "root-infra": 43,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1495);
+  // WIN-259 (M2.4) 1495 -> 1522, REBASED ONTO v1 @ 2abd19b4: the twenty-seven
+  // files enumerated on the `packages` delta above, ALL in that one area, so
+  // this total and that per-area figure move by the same number or one of them
+  // is wrong.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1522);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1275,7 +1294,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and CHANGES NO LEDGER RULE: every one of the thirteen is classified by a
     // rule that already existed, which is why the delta is purely additive and
     // sums with every one above it.
-    rulesDocument.baseline.totalFiles + 1495
+    //
+    // and WIN-259 (M2.4) +27, ALL in `packages`: the thirteenth adapter
+    // directory with its legacy-envelope reader, `providers`' probe-cache
+    // eviction, one postgres integration suite, and `secrets`' sweep and
+    // legacy-envelope migration. It ADOPTS ONE PROJECT — `keyring-envelope`,
+    // the first V1 project added since the layout was drawn — and its three
+    // generator-owned scaffolding files are inside the twenty-seven. It CHANGES
+    // NO LEDGER RULE: every one of the twenty-seven is classified by a rule that
+    // already existed, which is why this delta too is purely additive.
+    rulesDocument.baseline.totalFiles + 1522
   );
 });
 
