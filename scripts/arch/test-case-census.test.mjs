@@ -337,11 +337,15 @@ test("the census is not vacuous — it reads the real suites", () => {
   // `files` seven, `observability` five and `eventing` six. 459 + 31 = 490. No
   // context row moves, for the NINTH time — every port already existed, and
   // widening a port entry point is not a new file.
-  assert.equal(live.totalFiles, 490);
+  //
+  // AND WIN-258 TRANCHE 7 ADDS THREE MORE to the SAME row, for the TENTH time
+  // with no context row moving: the JSON-column census, its real-database half,
+  // and the outbox payload reader. 490 + 3 = 493.
+  assert.equal(live.totalFiles, 493);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total.
-  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6);
+  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -469,8 +473,10 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // They run in the ordinary package test script, so the runnable term goes
   // 266 + 25 + 22 + 21 + 15 + 17 = 366 and the integration term
   // 663 + 51 + 75 + 79 + 37 + 39 = 944, and 366 + 944 = 1310 is the row's whole
-  // case count over 119 files.
-  assert.equal(files, 490);
+  // case count over 119 files. WIN-258 tranche 7 then adds 31 runnable (the
+  // census's 24, the outbox reader's 3 and the four in `agents-rows.test.ts`)
+  // and 17 that need the daemon, so the row reads 397 + 961 = 1358 over 122.
+  assert.equal(files, 493);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -618,8 +624,13 @@ test("the skills adoption is pinned, and moved nothing else", () => {
   // `jobs`, `files`, `observability` and `eventing`, whose context rows above
   // are untouched for exactly the same reason: the port existed and only the
   // adapter row moved.
+  // WIN-258 tranche 7 adds a TWELFTH trailing term, 48, on the same shape as the
+  // eleven before it: the JSON-column census, its real-database half and the
+  // outbox payload reader all land on the postgres-tenancy adapter row, and no
+  // context row above moves — every port those decoders sit behind already
+  // existed, and four of the 48 went into a file this row already counted.
   assert.equal(
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56,
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
