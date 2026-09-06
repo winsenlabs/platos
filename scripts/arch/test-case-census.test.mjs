@@ -1083,9 +1083,9 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/adapters/postgres-tenancy"].cases, 604);
   // 182 of the 604 run in `pnpm test:v1-packages`; the other 422 need a Docker
   // daemon and run in the `postgres-tenancy-repository` CI job. A pin that
-  // counted only the runnable 143 would go green if the integration suites were
+  // counted only the runnable 182 would go green if the integration suites were
   // deleted, which is the one change this row exists to make visible.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
