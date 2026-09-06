@@ -74,6 +74,20 @@ test("X2 — an assertion on the receiver of .run( is refused", () => {
   assert.deepEqual(rulesFired(SOURCE, `export const go = (uow) => (<Loose>uow).run(work);\n`), ["X2"]);
 });
 
+test("X2 — a cast on `.atomic(` is refused too, for the same reason", () => {
+  // `atomic` is `TenancyTransactions`' pass-through to `run` and carries the
+  // same `NotResult` constraint, so a cast of its receiver drops the refusal
+  // just as completely. The hole was real: `atomic` shipped WITHOUT the
+  // constraint, and three of the store's own writes were going through it.
+  assert.deepEqual(rulesFired(SOURCE, `export const go = (t) => (t as Loose).atomic(work);\n`), ["X2"]);
+  assert.deepEqual(rulesFired(SOURCE, `export const go = (d) => (d.transactions as Loose).atomic(work);\n`), ["X2"]);
+  // The honest spellings.
+  assert.deepEqual(rulesFired(SOURCE, `export const go = (t) => t.atomic(work);\n`), []);
+  assert.deepEqual(rulesFired(SOURCE, `export const go = (t) => t.atomicResult(work);\n`), []);
+  // A cast on a method that carries NO refusal is not this rule's business.
+  assert.deepEqual(rulesFired(SOURCE, `export const go = (t) => (t as Loose).reader();\n`), []);
+});
+
 test("X2 — the honest call sites are not refused", () => {
   assert.deepEqual(rulesFired(SOURCE, `export const go = (d) => d.unitOfWork.run(work);\n`), []);
   assert.deepEqual(rulesFired(SOURCE, `export const go = (d) => runResult(d.unitOfWork, work);\n`), []);

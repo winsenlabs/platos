@@ -57,9 +57,18 @@ export const PORT_PATH = "packages/kernel/src/ports/unit-of-work.ts";
  */
 export const ESCAPE_OWNER = PORT_PATH;
 
+/**
+ * The methods whose callback return position carries the refusal.
+ *
+ * `run` is the kernel port's. `atomic` is `TenancyTransactions`' pass-through to
+ * it, which carries `NotResult<Value>` for the same reason and would otherwise
+ * be the way around a refusal that still holds.
+ */
+export const CONSTRAINED_METHODS = new Set(["run", "atomic"]);
+
 export const RULES = [
   { id: "X1", description: "UnitOfWork.run must REFUSE a callback whose answer is a Result, and accept every other shape" },
-  { id: "X2", description: "no call site may cast the receiver of .run( to walk around that refusal" },
+  { id: "X2", description: "no call site may cast the receiver of .run( or .atomic( to walk around that refusal" },
 ];
 
 const SKIP_DIRECTORIES = new Set(["node_modules", "dist", ".turbo", "coverage"]);
@@ -277,7 +286,17 @@ export function analyzeSource(virtualPath, text) {
   const visit = (node) => {
     // `(x as Something).run(...)` — an assertion standing where the refusal
     // would otherwise apply.
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.text === "run") {
+    //
+    // `atomic` IS IN THE SET FOR THE SAME REASON `run` IS. It is
+    // `TenancyTransactions`' pass-through to `run` and it carries the same
+    // `NotResult` constraint, so a cast of ITS receiver drops the refusal just
+    // as completely. That hole was real: `atomic` shipped without the constraint
+    // and three of the store's own writes were going through it.
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      CONSTRAINED_METHODS.has(node.expression.name.text)
+    ) {
       let receiver = node.expression.expression;
       while (ts.isParenthesizedExpression(receiver)) receiver = receiver.expression;
       if (ts.isAsExpression(receiver) || ts.isTypeAssertionExpression(receiver)) {
@@ -286,8 +305,7 @@ export function analyzeSource(virtualPath, text) {
           rule: "X2",
           path: virtualPath,
           line: line + 1,
-          message:
-            "casts the receiver of .run( ; that drops the NotResult refusal at this call site. Use runResult when the answer is a Result",
+          message: `casts the receiver of .${node.expression.name.text}( ; that drops the NotResult refusal at this call site. Use runResult (or atomicResult) when the answer is a Result`,
         });
       }
     }

@@ -307,9 +307,23 @@
         "scripts/arch/transaction-outcome.test.mjs"
       ],
       "kills": [
-        "X2 — an assertion on the receiver of .run( is refused"
+        "X2 — an assertion on the receiver of .run( is refused",
+        "X2 — a cast on `.atomic(` is refused too, for the same reason"
       ],
       "note": "X1 AND X2 ARE TWO CODES BECAUSE THEY ARE TWO FAILURES. X1 says the type has stopped meaning anything; X2 says it still means something and one call site wrote `(unitOfWork as Loose).run(...)` to get past it. This mutation leaves X1 green, which is the proof the two are told apart — the mistake two earlier guards in `privacy` and `identity-access` made by minting one code for both."
+    },
+    {
+      "name": "K18 the cast scan forgets `atomic`, so the store's own pass-through is a way around the refusal",
+      "file": "../../scripts/arch/transaction-outcome.mjs",
+      "from": "export const CONSTRAINED_METHODS = new Set([\"run\", \"atomic\"]);",
+      "to": "export const CONSTRAINED_METHODS = new Set([\"run\"]);",
+      "suites": [
+        "scripts/arch/transaction-outcome.test.mjs"
+      ],
+      "kills": [
+        "X2 — a cast on `.atomic(` is refused too, for the same reason"
+      ],
+      "note": "THE HOLE THIS CLOSES WAS REAL AND SHIPPED. `TenancyTransactions.atomic` is a generic pass-through to `UnitOfWork.run`, and a pass-through LAUNDERS a refusal unless it carries one: `atomic` had no `NotResult` and three of `packages/adapters/postgres-tenancy`'s own writes were reaching `run` through it with a `Result`-valued callback. `atomic` now carries the constraint and `atomicResult` is the sanctioned failing form. This mutation removes only the SCAN's knowledge of `atomic`, so the `run` case stays green and exactly one case goes red — which is what says the two halves of X2 are independent rather than one assertion counted twice."
     }
   ]
 }

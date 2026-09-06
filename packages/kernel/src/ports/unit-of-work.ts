@@ -109,10 +109,17 @@ export interface UnitOfWork {
  * `NotResult<Value>` is `never` when `Value` is a `Result`, and `Value`
  * otherwise. In `run`'s callback return position that makes a `Result`-valued
  * callback unassignable, which is what turns the rule from prose into a compile
- * error. The kernel's own suite pins the discrimination as EXACT — `void`,
- * `undefined`, `null`, arrays, unions with `null` and ordinary records all pass
- * through untouched — so the refusal is known to land on `Result` rather than on
- * a guess about its structural shape.
+ * error.
+ *
+ * TWO THINGS PIN IT, and they pin different halves. `unit-of-work.test.ts` below
+ * asserts the TYPE collapses as stated. `scripts/arch/transaction-outcome.mjs`
+ * compiles eight probes against this file and reads back what the compiler
+ * actually said about a CALL — one `Result`, one `Result` in a union, and six
+ * ordinary answers (`void`, `undefined`, a record-or-null union, an array, a
+ * record, and a value read off the transaction scope) that must all still be
+ * accepted. The second is what makes the refusal falsifiable: a `NotResult`
+ * mutated to plain `never` refuses everything, and only the six accepting probes
+ * would notice.
  */
 export type NotResult<Value> = Value extends { readonly ok: boolean } ? never : Value;
 
