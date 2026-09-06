@@ -69,6 +69,14 @@ export interface SecretsConformanceIds {
   readonly alphaVariableId: string;
   readonly bravoVariableId: string;
   readonly charlieVariableId: string;
+  /**
+   * A variable id that is never stored.
+   *
+   * WIN-258 T7's fence case offers it for a key another writer already holds, so
+   * the write must be REFUSED and the id must stay unused; a store that accepted
+   * it would leave two rows answering to one key.
+   */
+  readonly deltaVariableId: string;
   readonly auditIds: readonly string[];
 }
 

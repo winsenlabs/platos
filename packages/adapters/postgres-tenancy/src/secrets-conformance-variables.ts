@@ -73,6 +73,7 @@ export async function runVariableConformance(
           credentialId: null,
           lastUpdatedBy: "operator-1",
           at: AT,
+          expectedVersion: null,
         },
         transaction,
       ),
@@ -92,6 +93,9 @@ export async function runVariableConformance(
           value: "two",
           credentialId: null,
           lastUpdatedBy: "operator-2",
+          // FENCED ON 1, the version `upsertAlphaPlain` just produced. Both
+          // stores must apply this and both must reach 2.
+          expectedVersion: 1,
           at: LATER,
         },
         transaction,
@@ -109,6 +113,7 @@ export async function runVariableConformance(
           credentialId: null,
           lastUpdatedBy: null,
           at: AT,
+          expectedVersion: null,
         },
         transaction,
       ),
@@ -128,6 +133,51 @@ export async function runVariableConformance(
           credentialId: credentialId(ids.charlieCredentialId),
           lastUpdatedBy: "operator-1",
           at: AT,
+          expectedVersion: null,
+        },
+        transaction,
+      ),
+    );
+    // THE FENCE REFUSING, recorded on BOTH stores. `ALPHA` is at 2 by now, so a
+    // write decided from version 1 is a writer that lost a race, and it must be
+    // told so rather than being allowed to overwrite what it never read. The
+    // adapter learns this from P2025 on an UPDATE that matched nothing; the
+    // double learns it from a comparison. A differential over the two is the
+    // only thing that shows they answer the same.
+    record(
+      "upsertAlphaFromStaleVersion",
+      await variables.upsert(
+        {
+          id: variableId(ids.alphaVariableId),
+          environmentId,
+          key: "ALPHA",
+          kind: "PLAIN",
+          value: "three",
+          credentialId: null,
+          lastUpdatedBy: "operator-3",
+          at: LATER,
+          expectedVersion: 1,
+        },
+        transaction,
+      ),
+    );
+    // AND THE OTHER SHAPE OF THE SAME LOSS: a caller that read NO row for a key
+    // another writer has since created. `create` is refused by the compound
+    // unique index, and the answer is the same conflict — an insert that
+    // silently became an overwrite is the lost update wearing a different hat.
+    record(
+      "upsertBravoAsFreshWhenPresent",
+      await variables.upsert(
+        {
+          id: variableId(ids.deltaVariableId),
+          environmentId,
+          key: "BRAVO",
+          kind: "PLAIN",
+          value: "four",
+          credentialId: null,
+          lastUpdatedBy: "operator-3",
+          at: LATER,
+          expectedVersion: null,
         },
         transaction,
       ),

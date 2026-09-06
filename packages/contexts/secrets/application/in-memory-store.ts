@@ -20,6 +20,7 @@ import type { Credential, CredentialDraft } from "../domain/credential.js";
 import {
   credentialNameTaken,
   credentialUnavailable,
+  environmentVariableVersionConflict,
   secretVersionAlreadyExists,
 } from "../domain/errors.js";
 import type { EnvironmentVariable } from "../domain/environment-variable.js";
@@ -277,9 +278,28 @@ export function inMemorySecretsStore(): InMemorySecretsStore {
     },
 
     async upsert(input: EnvironmentVariableUpsert) {
-      const existing = tables.variables.get(input.id);
+      // KEYED ON `[environmentId, key]`, NOT ON `id`. WIN-258 T5 found this
+      // double keying on `id` while the canonical store keys on the pair the
+      // unique index carries, so a caller handing a FRESH id for an existing key
+      // got a second row here and SQLSTATE 23505 there. The two now answer the
+      // same question.
+      const existing =
+        [...tables.variables.values()].find(
+          (variable) =>
+            variable.environmentId === input.environmentId && variable.key === input.key,
+        ) ?? null;
+
+      // THE OPTIMISTIC FENCE, and it is here rather than only in the adapter
+      // because a double that cannot lose a write cannot be used to test the code
+      // that must not lose one. WIN-258 T7.
+      if (input.expectedVersion === null) {
+        if (existing !== null) return err(environmentVariableVersionConflict(null));
+      } else if (existing === null || existing.version !== input.expectedVersion) {
+        return err(environmentVariableVersionConflict(input.expectedVersion));
+      }
+
       const variable: EnvironmentVariable = {
-        id: input.id,
+        id: existing?.id ?? input.id,
         environmentId: input.environmentId,
         key: input.key,
         kind: input.kind,

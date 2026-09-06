@@ -22,6 +22,25 @@ export interface EnvironmentVariableUpsert {
   readonly credentialId: CredentialId | null;
   readonly lastUpdatedBy: string | null;
   readonly at: Date;
+  /**
+   * The `version` this write was decided from, or null to INSERT a new row.
+   *
+   * WIN-258 T7, and REQUIRED rather than optional on purpose. Every caller of
+   * this port reads the row first — that is what `findByKey` is for — so every
+   * caller already holds the value, and an optional field would let the one
+   * caller that forgot it silently keep the lost update this fence exists to
+   * close. Two concurrent writers on one key both read version N, both write,
+   * and PostgreSQL applies both in turn and reports success to both; the first
+   * one's value is gone and it was told it had been stored. Reproduced against a
+   * real PostgreSQL, not reasoned about.
+   *
+   * A number means "update the row that is still at this version"; the store
+   * answers `ENVIRONMENT_VARIABLE_VERSION_CONFLICT` when no such row is there.
+   * Null means "there was no row"; the store answers the same conflict when one
+   * has appeared since, because a concurrent INSERT is the same lost update
+   * wearing the other shape.
+   */
+  readonly expectedVersion: number | null;
 }
 
 export interface EnvironmentVariableRepository {
@@ -29,7 +48,13 @@ export interface EnvironmentVariableRepository {
 
   list(environmentId: EnvironmentId): Promise<Result<readonly EnvironmentVariable[]>>;
 
-  /** Insert or update in one round trip, bumping `version`. */
+  /**
+   * Insert or update in one round trip, bumping `version`.
+   *
+   * FENCED on `input.expectedVersion`. The bump itself is not the fence and
+   * never was: a monotonic `version` tells a later reader that the row changed,
+   * and tells the writer that lost absolutely nothing.
+   */
   upsert(
     input: EnvironmentVariableUpsert,
     transaction: TransactionScope,

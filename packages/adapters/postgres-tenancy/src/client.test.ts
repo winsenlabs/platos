@@ -11,6 +11,7 @@ import { describe, expect, test } from "vitest";
 import {
   AdapterConfigurationError,
   buildDatasourceUrl,
+  buildServerOptions,
   DATABASE_URL_INVALID,
   FOREIGN_KEY_VIOLATION_CODE,
   isForeignKeyViolation,
@@ -26,21 +27,63 @@ describe("buildDatasourceUrl", () => {
     const built = new URL(buildDatasourceUrl(BASE));
     expect(built.searchParams.has("connection_limit")).toBe(false);
     expect(built.searchParams.has("pool_timeout")).toBe(false);
-    expect(built.searchParams.has("statement_timeout")).toBe(false);
+    expect(built.searchParams.has("options")).toBe(false);
   });
 
-  test("writes each setting it is given, with the driver's own parameter names", () => {
+  test("writes each POOL setting it is given, with the driver's own parameter names", () => {
     const built = new URL(
-      buildDatasourceUrl(BASE, {
-        connectionLimit: 12,
-        poolTimeoutSeconds: 9,
-        statementTimeoutMs: 4000,
-      }),
+      buildDatasourceUrl(BASE, { connectionLimit: 12, poolTimeoutSeconds: 9 }),
     );
     expect(built.searchParams.get("connection_limit")).toBe("12");
     expect(built.searchParams.get("pool_timeout")).toBe("9");
-    expect(built.searchParams.get("statement_timeout")).toBe("4000");
     expect(built.pathname).toBe("/platos");
+  });
+
+  // --- the server timeouts --------------------------------------------------
+  //
+  // WIN-258 T7. These cases exist because the shape they assert is the one that
+  // WORKS and the obvious shape is the one that silently does not; see
+  // `buildDatasourceUrl`'s own comment for the probe, and
+  // `pooling.integration.test.ts` for the same claim put to a real server.
+
+  test("carries a statement timeout as a server option, NOT as a query parameter", () => {
+    const built = new URL(buildDatasourceUrl(BASE, { statementTimeoutMs: 4000 }));
+    expect(built.searchParams.get("options")).toBe("-c statement_timeout=4000ms");
+    expect(built.searchParams.has("statement_timeout")).toBe(false);
+  });
+
+  test("carries all three server timeouts in one options value, each with its unit", () => {
+    const built = new URL(
+      buildDatasourceUrl(BASE, {
+        statementTimeoutMs: 4000,
+        lockTimeoutMs: 250,
+        idleInTransactionSessionTimeoutMs: 60_000,
+      }),
+    );
+    expect(built.searchParams.get("options")).toBe(
+      "-c statement_timeout=4000ms -c lock_timeout=250ms -c idle_in_transaction_session_timeout=60000ms",
+    );
+  });
+
+  test("KEEPS an options value the caller set and appends its own after it", () => {
+    const built = new URL(
+      buildDatasourceUrl(`${BASE}?options=-c%20application_name%3Dplatos`, {
+        lockTimeoutMs: 250,
+      }),
+    );
+    expect(built.searchParams.get("options")).toBe(
+      "-c application_name=platos -c lock_timeout=250ms",
+    );
+  });
+
+  test("writes no options value at all when no server timeout was asked for", () => {
+    const built = new URL(buildDatasourceUrl(BASE, { connectionLimit: 4 }));
+    expect(built.searchParams.has("options")).toBe(false);
+  });
+
+  test("buildServerOptions answers null when nothing is set, so the caller can tell", () => {
+    expect(buildServerOptions({})).toBeNull();
+    expect(buildServerOptions({ connectionLimit: 8, poolTimeoutSeconds: 2 })).toBeNull();
   });
 
   test("REPLACES a setting the caller already put on the URL rather than doubling it", () => {
@@ -80,6 +123,8 @@ describe("buildDatasourceUrl", () => {
     ["connectionLimit", { connectionLimit: 1.5 }],
     ["poolTimeoutSeconds", { poolTimeoutSeconds: 0 }],
     ["statementTimeoutMs", { statementTimeoutMs: -1 }],
+    ["lockTimeoutMs", { lockTimeoutMs: 0 }],
+    ["idleInTransactionSessionTimeoutMs", { idleInTransactionSessionTimeoutMs: 2.5 }],
   ])("refuses a %s that is not a positive whole number, with pool_setting_invalid", (_label, pool) => {
     expect(() => buildDatasourceUrl(BASE, pool)).toThrowError(
       expect.objectContaining({ code: POOL_SETTING_INVALID }),

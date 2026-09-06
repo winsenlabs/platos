@@ -142,6 +142,7 @@ async function seed(count: number): Promise<Fixture> {
           credentialId: null,
           lastUpdatedBy: null,
           at: AT,
+          expectedVersion: null,
         },
         transaction,
       );
@@ -379,6 +380,7 @@ describe("the writes are one statement each", () => {
             credentialId: null,
             lastUpdatedBy: null,
             at: AT,
+            expectedVersion: null,
           },
           transaction,
         ),

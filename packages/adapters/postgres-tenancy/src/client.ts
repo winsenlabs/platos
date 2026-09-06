@@ -112,7 +112,44 @@ export interface TenancyPoolSettings {
   readonly poolTimeoutSeconds?: number;
   /** Milliseconds a single statement may run before PostgreSQL cancels it. */
   readonly statementTimeoutMs?: number;
+  /**
+   * Milliseconds a statement may WAIT FOR A ROW LOCK before PostgreSQL cancels
+   * it, with SQLSTATE 55P03.
+   *
+   * WIN-258 T7, and separate from `statementTimeoutMs` because the two bound
+   * different things. `statement_timeout` bounds total run time and cannot tell
+   * a slow query from a queued one; this package's whole serialization story is
+   * `FOR UPDATE` and `pg_advisory_xact_lock` (see locks.ts), so the wait is the
+   * failure mode that actually happens and `lock_timeout` is the setting that
+   * turns an unbounded wait into a refusal the caller can name.
+   */
+  readonly lockTimeoutMs?: number;
+  /**
+   * Milliseconds a transaction may sit IDLE before PostgreSQL ends its session,
+   * with SQLSTATE 25P03.
+   *
+   * WIN-258 T7. A transaction abandoned between two writes — an awaited call
+   * that never settles inside `UnitOfWork.run` — holds its connection, its row
+   * locks and its snapshot for as long as the process lives. With
+   * `connectionLimit` set, one such transaction is a share of the whole pool
+   * removed until restart, and `transactionTimeoutMs` cannot reach it because
+   * that timer is the client's and the client is the thing that is stuck.
+   */
+  readonly idleInTransactionSessionTimeoutMs?: number;
 }
+
+/**
+ * The three settings that are PostgreSQL's, not the driver's.
+ *
+ * Named once, here, because the whole point of this block is that they travel by
+ * a different road than `connection_limit` and `pool_timeout` do — see
+ * `buildDatasourceUrl`.
+ */
+const SERVER_TIMEOUT_SETTINGS = [
+  ["statement_timeout", "statementTimeoutMs"],
+  ["lock_timeout", "lockTimeoutMs"],
+  ["idle_in_transaction_session_timeout", "idleInTransactionSessionTimeoutMs"],
+] as const satisfies readonly (readonly [string, keyof TenancyPoolSettings])[];
 
 export interface TenancyClientOptions extends TenancyPoolSettings {
   readonly databaseUrl: string;
@@ -145,8 +182,31 @@ function requirePositiveInteger(label: string, value: number): number {
 }
 
 /**
- * The datasource URL, with pool and timeout settings folded in as query
- * parameters.
+ * The `options` value carrying the server-side timeouts, or null when none were
+ * asked for.
+ *
+ * PURE and exported so the encoding is checkable without a database, and
+ * separate from `buildDatasourceUrl` so the ONE decision this function makes —
+ * which settings are the server's — has a name.
+ */
+export function buildServerOptions(pool: TenancyPoolSettings): string | null {
+  const flags: string[] = [];
+  for (const [setting, field] of SERVER_TIMEOUT_SETTINGS) {
+    const value = pool[field];
+    if (value === undefined) continue;
+    // `ms` SPELLED OUT. `statement_timeout` happens to default to milliseconds
+    // and `idle_in_transaction_session_timeout` does too, but a bare integer is
+    // read in whatever `unit` the parameter declares, and a setting whose unit
+    // is implied is a setting that changes meaning when it is copied to another
+    // parameter. `current_setting` echoes the unit back, which is what the
+    // integration suite compares against.
+    flags.push(`-c ${setting}=${String(requirePositiveInteger(field, value))}ms`);
+  }
+  return flags.length === 0 ? null : flags.join(" ");
+}
+
+/**
+ * The datasource URL, with pool and timeout settings folded in.
  *
  * PURE, and exported, so the whole of this decision is testable without a
  * database. A setting the caller did not give is left OFF the URL rather than
@@ -156,6 +216,29 @@ function requirePositiveInteger(label: string, value: number): number {
  * A parameter the caller already put on the URL is REPLACED, not appended.
  * PostgreSQL URLs are parsed by the driver, and a duplicated key is resolved by
  * a rule nobody reading this code would guess.
+ *
+ * THE TIMEOUTS DO NOT TRAVEL AS QUERY PARAMETERS, AND THAT IS THE WHOLE POINT
+ * OF `buildServerOptions`. WIN-258 T7 put `statement_timeout=250` on a real
+ * connection string, opened a real pool over a real PostgreSQL, and asked the
+ * server what it had: `current_setting('statement_timeout')` answered `'0'`, and
+ * a `pg_sleep(1)` ran its full second. The driver recognises a CLOSED list of
+ * connection-string parameters — `connection_limit` and `pool_timeout` are on
+ * it, `statement_timeout` is not — and discards the rest silently. So the
+ * setting was validated here, written onto the URL, carried to the server and
+ * dropped, and every reader of this file would have said the adapter had a
+ * statement timeout. It did not.
+ *
+ * A server setting reaches PostgreSQL through the `options` startup parameter
+ * instead, as `-c name=value`. The same probe under `options` reports
+ * `'250ms'` and cancels the sleep with SQLSTATE 57014.
+ *
+ * `options` the caller already set is KEPT and ours APPENDED after it, which is
+ * the one place this function does not follow its own replace rule. PostgreSQL
+ * applies `-c` flags left to right and the last wins, so appending leaves a
+ * caller's unrelated settings — `search_path`, `application_name` — intact while
+ * still making the adapter's own timeouts the ones in force. Replacing would
+ * discard settings this package never knew about; appending BEFORE would let a
+ * caller quietly disable a timeout the operator configured.
  */
 export function buildDatasourceUrl(databaseUrl: string, pool: TenancyPoolSettings = {}): string {
   let url: URL;
@@ -185,10 +268,12 @@ export function buildDatasourceUrl(databaseUrl: string, pool: TenancyPoolSetting
       String(requirePositiveInteger("poolTimeoutSeconds", pool.poolTimeoutSeconds)),
     );
   }
-  if (pool.statementTimeoutMs !== undefined) {
+  const serverOptions = buildServerOptions(pool);
+  if (serverOptions !== null) {
+    const existing = url.searchParams.get("options");
     url.searchParams.set(
-      "statement_timeout",
-      String(requirePositiveInteger("statementTimeoutMs", pool.statementTimeoutMs)),
+      "options",
+      existing === null || existing.length === 0 ? serverOptions : `${existing} ${serverOptions}`,
     );
   }
   return url.toString();
@@ -208,6 +293,18 @@ export const UNIQUE_VIOLATION_CODE = "P2002";
 /** PostgreSQL SQLSTATE 23503, as the ORM reports it. */
 export const FOREIGN_KEY_VIOLATION_CODE = "P2003";
 
+/**
+ * "An update or delete matched no row", as the ORM reports it.
+ *
+ * WIN-258 T7. This is NOT a SQLSTATE: PostgreSQL reports an UPDATE that matched
+ * nothing as a perfectly successful command with a row count of zero, and the
+ * client is what turns that into an error. It is the answer an optimistic fence
+ * depends on — `secrets-variables.ts` writes the version it read into the WHERE
+ * clause, so "matched no row" IS "somebody else got there first" — and it has to
+ * be recognised by code, because the message names the model and not the reason.
+ */
+export const RECORD_NOT_FOUND_CODE = "P2025";
+
 function errorCode(error: unknown): string | null {
   if (typeof error !== "object" || error === null) return null;
   const code = (error as { readonly code?: unknown }).code;
@@ -220,4 +317,8 @@ export function isUniqueViolation(error: unknown): boolean {
 
 export function isForeignKeyViolation(error: unknown): boolean {
   return errorCode(error) === FOREIGN_KEY_VIOLATION_CODE;
+}
+
+export function isRecordNotFound(error: unknown): boolean {
+  return errorCode(error) === RECORD_NOT_FOUND_CODE;
 }
