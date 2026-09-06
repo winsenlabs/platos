@@ -2349,7 +2349,7 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
   "packages/contexts/providers": { files: 27, cases: 375 },
-  "packages/contexts/secrets": { files: 17, cases: 175 },
+  "packages/contexts/secrets": { files: 18, cases: 186 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
@@ -2668,7 +2668,26 @@ export const EXPECTED = Object.freeze({
  * "Test Files 17 passed (17) / Tests 175 passed (175)" — and the new file on
  * its own prints 13.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7428;
+/*
+ * WIN-259 (M2.4) DENIED-READ EVIDENCE, +11 and one new FILE, again all in
+ * `packages/contexts/secrets`: 175 -> 186 cases, 17 -> 18 files, and
+ * 7428 -> 7439.
+ *
+ * The file is `application/denied-read-audit.test.ts`. `DENIED` has been in
+ * `CREDENTIAL_AUDIT_OUTCOMES` since this context was written and a grep of the
+ * package found it declared and never produced -- `recordAudit` defaulted to
+ * `SUCCESS` and no caller passed anything else -- so a refused read left no
+ * trace at all. Seven cases pin the row that now exists; THREE DECLARE A
+ * SILENCE (an unminted grant, a credential that does not resolve, a PLAIN
+ * variable) because each is a place the trail is deliberately empty and a
+ * reader counting rows has to know which emptiness is honest; one pins that the
+ * evidence path cannot change the answer the caller receives.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 18 passed (18) / Tests 186 passed (186)" -- and the new file on
+ * its own prints 11.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7439;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
