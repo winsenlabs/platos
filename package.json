@@ -106,6 +106,8 @@
     "test:v1-packages": "turbo run test --concurrency=1 --filter @platos/kernel --filter \"@platos/context-*\" --filter \"@platos/adapter-*\" --filter @platos/core-api --filter @platos/mcp-stdio",
     "audit:composition-root": "node scripts/arch/composition-root.mjs",
     "test:composition-root": "node --test scripts/arch/composition-root.test.mjs",
+    "audit:env-access": "node scripts/arch/env-access.mjs",
+    "test:env-access": "node --test scripts/arch/env-access.test.mjs",
     "audit:sole-writer": "node scripts/arch/sole-writer.mjs",
     "test:sole-writer": "node --test scripts/arch/sole-writer.test.mjs",
     "audit:test-case-census": "node scripts/arch/test-case-census.mjs",

@@ -202,13 +202,19 @@ export const VIOLATION_CODES = Object.freeze({
 });
 
 /**
- * The census, read back from a scan rather than computed here.
+ * The file census, READ BACK from a scan rather than computed here.
  *
- * `files` is every source file under the five roots; `reads` is the sum of the
- * per-file pins in ALLOWED. Both are asserted, because a scan that silently
- * stopped walking would otherwise report a clean tree.
+ * A scan that silently stopped walking — a renamed root, a directory the skip
+ * list swallowed, a permission error the walker caught — would otherwise report
+ * a clean tree, which is the failure mode a containment gate cannot afford.
+ *
+ * ARITHMETIC. The tree at `f88c8364` scanned 1493, the same number
+ * `scripts/arch/arch-boundaries.mjs` and `scripts/arch/composition-root.mjs` read
+ * back over the same five roots. WIN-260 adds TEN files: seven configuration
+ * modules and two suites under `apps/core-api/src/config/`, and one environment
+ * reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
  */
-export const EXPECTED_FILE_COUNT = 1502;
+export const EXPECTED_FILE_COUNT = 1503;
 
 function listSourceFiles(root) {
   const found = [];
@@ -346,19 +352,32 @@ export function findEnvironmentReads(path, text) {
   return reads;
 }
 
-export function analyse(root = repositoryRoot) {
+/**
+ * Read the tree: every source file under the five roots, and every environment
+ * read in each. Separate from `judge` so the judgement can be exercised against
+ * a scan this file did not produce — which is the only way to see a violation
+ * code that the live tree, by design, never raises.
+ */
+export function scan(root = repositoryRoot) {
   const files = SCAN_ROOTS.flatMap((scanRoot) => listSourceFiles(scanRoot));
   const readsByFile = new Map();
-  let totalReads = 0;
 
   for (const path of files) {
     const text = readFileSync(join(root, path), "utf8");
+    // A cheap pre-filter. Every spelling this gate models contains the three
+    // letters, so a file without them cannot hold a read, and the parser is
+    // skipped for the roughly fourteen hundred files that do not.
     if (!text.includes("env")) continue;
     const reads = findEnvironmentReads(path, text);
     if (reads.length === 0) continue;
     readsByFile.set(path, reads);
-    totalReads += reads.length;
   }
+  return { files, readsByFile };
+}
+
+export function judge({ files, readsByFile }, expectedFileCount = EXPECTED_FILE_COUNT) {
+  let totalReads = 0;
+  for (const reads of readsByFile.values()) totalReads += reads.length;
 
   const violations = [];
 
@@ -425,12 +444,12 @@ export function analyse(root = repositoryRoot) {
     });
   }
 
-  if (files.length !== EXPECTED_FILE_COUNT) {
+  if (files.length !== expectedFileCount) {
     violations.push({
       code: VIOLATION_CODES.CENSUS_DRIFT,
       path: "scripts/arch/env-access.mjs",
       line: 0,
-      message: `EXPECTED_FILE_COUNT is ${String(EXPECTED_FILE_COUNT)} and the scan read back ${String(files.length)}`,
+      message: `EXPECTED_FILE_COUNT is ${String(expectedFileCount)} and the scan read back ${String(files.length)}`,
     });
   }
 
@@ -443,6 +462,10 @@ export function analyse(root = repositoryRoot) {
     reads: [...readsByFile.values()].flat(),
     violations,
   };
+}
+
+export function analyse(root = repositoryRoot) {
+  return judge(scan(root));
 }
 
 function main(argv) {
