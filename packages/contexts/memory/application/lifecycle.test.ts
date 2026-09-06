@@ -18,6 +18,15 @@ import {
 } from "./testing/fixtures.js";
 import { deterministicEmbedding } from "./testing/in-memory-embedding-model.js";
 
+/**
+ * A FIXED instant, because a fixture that says `new Date()` is a fixture whose
+ * value depends on when the suite runs. `scripts/arch/ambient-time.mjs` rule T2
+ * refuses the ambient form here as it does in the code under test: the whole
+ * reason `Clock` is a port is that an instant is an input.
+ */
+const MARKED_AT = new Date("2026-01-01T00:00:00.000Z");
+
+
 function seed(
   context: MemoryHarness,
   id: string,
@@ -89,7 +98,7 @@ describe("reads", () => {
     const context = harness();
     seed(context, "mem-live");
     seed(context, "mem-quarantined", {
-      lifecycle: { ...memoryFixture().lifecycle, quarantinedAt: new Date() },
+      lifecycle: { ...memoryFixture().lifecycle, quarantinedAt: MARKED_AT },
     });
     seed(context, "mem-rag", { source: "rag" });
     const listed = await listMemories(context.dependencies, READ);
@@ -101,7 +110,7 @@ describe("reads", () => {
   it("EXCLUDES archived rows by default", async () => {
     const context = harness();
     seed(context, "mem-live");
-    seed(context, "mem-archived", { lifecycle: { ...memoryFixture().lifecycle, archivedAt: new Date() } });
+    seed(context, "mem-archived", { lifecycle: { ...memoryFixture().lifecycle, archivedAt: MARKED_AT } });
     const listed = await listMemories(context.dependencies, READ);
     if (!listed.ok) throw new Error("unreachable");
     expect(listed.value.map((memory) => memory.memoryId)).toEqual(["mem-live"]);
@@ -179,7 +188,7 @@ describe("archive and restore", () => {
 
   it("restores, and reports the change", async () => {
     const context = harness();
-    seed(context, "mem-1", { lifecycle: { ...memoryFixture().lifecycle, archivedAt: new Date() } });
+    seed(context, "mem-1", { lifecycle: { ...memoryFixture().lifecycle, archivedAt: MARKED_AT } });
     const restored = await restore(context.dependencies, command);
     if (!restored.ok) throw new Error("unreachable");
     expect(restored.value.changed).toBe(true);

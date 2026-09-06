@@ -147,6 +147,8 @@ jobs:
           pnpm test:max-file-lines
           pnpm audit:kernel-content
           pnpm test:kernel-content
+          node scripts/arch/ambient-time.mjs
+          node --test scripts/arch/ambient-time.test.mjs
           pnpm audit:sole-writer
           pnpm test:sole-writer
           pnpm audit:composition-root
