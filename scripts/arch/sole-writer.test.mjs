@@ -1940,7 +1940,41 @@ test("an element-access member that is not a delegate is still not a write", () 
 // `packages/adapters/postgres-tenancy`, which is the permitted directory for
 // both `EnvironmentVariable` and `Organization`, so the violation list stays
 // empty and it is the COUNT that moved — which is exactly what this pin is for.
-const LIVE_TREE_WRITE_COUNT = 307;
+//
+// WIN-259 (M2.4) MOVES IT BY FOUR, ALL IN ONE NEW FILE:
+//
+//   src/secrets-legacy-envelope.integration.test.ts
+//                               FOUR raw INSERTs on `CredentialSecretVersion` —
+//                               a row `secrets` owns, legal from here because
+//                               `secrets` resolves to this same directory. THREE
+//                               are expected to be REFUSED by the migrations'
+//                               `octet_length` and `rootKeyVersion` CHECKs, which
+//                               is the whole point of the suite: a legacy
+//                               envelope is unstorable, so the migration must
+//                               transcode rather than update in place. The
+//                               FOURTH is the control that runs the same
+//                               statement with a canonical shape and succeeds,
+//                               without which the three refusals could be
+//                               failing for an unrelated reason.
+//
+//                               They are RAW because the repository port cannot
+//                               express them. `insertSecretVersion` takes a
+//                               `CredentialSecretVersionDraft`, whose salt and
+//                               nonce are typed `Uint8Array` with no width and
+//                               whose `rootKeyVersion` is a branded positive
+//                               integer — so a zero-length salt, a 16-byte nonce
+//                               and a root key version of 0 are values the PORT
+//                               refuses to carry. The only way to ask PostgreSQL
+//                               the question is to go around the port, and a
+//                               statement the port cannot express is exactly
+//                               what `sole-writer` counts rather than forbids.  4
+//                                                                       total = 4
+//
+// 307 + 4 = 311. All four are inside `packages/adapters/postgres-tenancy`, the
+// permitted directory for `CredentialSecretVersion` since WIN-258 T5 gave
+// `secrets` its `CANONICAL_STORE_ADAPTERS` entry, so the violation list stays
+// empty and it is again the COUNT that moved.
+const LIVE_TREE_WRITE_COUNT = 311;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();

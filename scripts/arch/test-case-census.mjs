@@ -2365,9 +2365,23 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * gate working: a construct it cannot count is a construct that can silently
  * lose a case. The shared body moved into a helper and the three cases are named.
  *
- *   packages/adapters/postgres-tenancy   132 -> 133 files, 1483 -> 1488 cases
+ *   packages/adapters/postgres-tenancy   132 -> 134 files, 1483 -> 1495 cases
  *
- * ONE FILE, FIVE CASES: `secrets-key-version.integration.test.ts`, the
+ * TWO FILES, TWELVE CASES. `secrets-key-version.integration.test.ts` (5) is the
+ * real-PostgreSQL half of the envelope-byte proof, and
+ * `secrets-legacy-envelope.integration.test.ts` (7) is the real-PostgreSQL half
+ * of the LEGACY finding: three cases prove PostgreSQL REFUSES a format-2 shape,
+ * a format-3 shape and a legacy row's absent root key version, each matched on
+ * the CONSTRAINT NAME the database raises; a fourth runs the same raw statement
+ * with a canonical shape and expects success, so the three refusals cannot be
+ * passing on an unrelated fault; and three more insert the bytes a REAL
+ * migration produced and read them back unchanged. 5 + 7 = 12.
+ *
+ * THE SECOND FILE IS WHY THE MIGRATION IS A TRANSCODING. Its negative half is
+ * the only place the claim that a legacy envelope is UNSTORABLE meets something
+ * outside this repository's own opinion of itself.
+ *
+ * `secrets-key-version.integration.test.ts`, the
  * real-PostgreSQL half of the envelope-byte proof. It is excluded from the
  * default `test` script by filename and run by the `postgres-tenancy-repository`
  * CI job, like every `*.integration.test.ts` in that directory, and it is counted
@@ -2445,7 +2459,7 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   "packages/adapters/outbox": { files: 4, cases: 41 },
   "packages/adapters/keyring-envelope": { files: 6, cases: 71 },
-  "packages/adapters/postgres-tenancy": { files: 133, cases: 1488 },
+  "packages/adapters/postgres-tenancy": { files: 134, cases: 1495 },
   "packages/adapters/redis-cache": { files: 0, cases: 0 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
@@ -2739,10 +2753,10 @@ export const EXPECTED = Object.freeze({
  * files / 1054 tests is therefore a check on this split derived without it.
  */
 /*
- * WIN-259 (M2.4) 7399 -> 7534: +71 in the new `packages/adapters/keyring-envelope`
- * row, +5 in `packages/adapters/postgres-tenancy`, +8 in
+ * WIN-259 (M2.4) 7399 -> 7541: +71 in the new `packages/adapters/keyring-envelope`
+ * row, +12 in `packages/adapters/postgres-tenancy`, +8 in
  * `packages/contexts/providers` and +51 in `packages/contexts/secrets`.
- * 7399 + 71 + 5 + 8 + 51 = 7534.
+ * 7399 + 71 + 12 + 8 + 51 = 7541.
  *
  * SIXTY-SIX OF THE HUNDRED-AND-THIRTY-FIVE ARE THE LEGACY-ENVELOPE
  * MIGRATION, split 31 / 35 across the two packages, and the split is the
@@ -2753,23 +2767,23 @@ export const EXPECTED = Object.freeze({
  *
  * THE RUNNABLE/INTEGRATION SPLIT MOVES ON BOTH SIDES, WHICH IS UNUSUAL FOR A
  * TRANCHE THAT TOUCHES THIS ADAPTER. A hundred and thirty of the
- * hundred-and-thirty-five are RUNNABLE by `pnpm test:v1-packages` — the whole
+ * hundred-and-forty-two are RUNNABLE by `pnpm test:v1-packages` — the whole
  * keyring-envelope row plus providers' eight and secrets' fifty-one — because
  * real AES-256-GCM needs no daemon and neither does an in-memory probe cache or
- * an in-memory vault. Only the remaining five carry `.integration.` in the name,
+ * an in-memory vault. Only the remaining twelve carry `.integration.` in the name,
  * so the cases this census records that the script does not execute go
- * 1054 -> 1059 over 109 -> 110 files, and the runnable side goes 429 -> 559 for
+ * 1054 -> 1066 over 109 -> 111 files, and the runnable side goes 429 -> 559 for
  * the postgres row's own split plus the three rows outside it.
  *
  * The three-way file identity holds with the same shape:
  * packages.contexts.test 353 + packages.kernel.test 3 +
- * packages.adapters.test 158 = 514, which is this census's own totalFiles. The
- * adapters term moved 151 -> 158, of which SIX are the new directory's suites
- * and ONE is the postgres row's; the contexts term moved 349 -> 353, one for
- * `providers` and three for `secrets`. The v1 ledger counts the same eleven
- * inside its twenty-seven.
+ * packages.adapters.test 159 = 515, which is this census's own totalFiles. The
+ * adapters term moved 151 -> 159, of which SIX are the new directory's suites
+ * and TWO are the postgres row's; the contexts term moved 349 -> 353, one for
+ * `providers` and three for `secrets`. The v1 ledger counts the same twelve
+ * inside its twenty-eight.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7534;
+export const EXPECTED_RUNTIME_TOTAL = 7541;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

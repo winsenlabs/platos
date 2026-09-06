@@ -210,13 +210,40 @@ test("lockfile importer parser rejects malformed and duplicate keys", () => {
 });
 
 test("committed baseline independently captures OCI, application/deployable, and migrations-union closures", () => {
+  // WIN-259 (M2.4) MOVES FOUR OF THESE SEVEN BY EXACTLY ONE, and the one is
+  // `packages/adapters/keyring-envelope` — the thirteenth adapter directory and
+  // the first V1 project added since this baseline was drawn.
+  //
+  // THIS GATE WAS RED ON THE BRANCH THAT ADDED THAT PACKAGE, and the numbers are
+  // stated here rather than adjusted because that is how it stayed red: the
+  // branch regenerated the ARTIFACT (`docs/audits/win-253-workspace-reachability.json`,
+  // in a commit whose own subject reads "60 -> 61 registered packages") and never
+  // moved the pin that reads it back. The artifact and the pin are two
+  // independent statements of one fact, which is the whole point of the pair,
+  // and only one of them had been updated.
+  //
+  //   registeredWorkspaceCount          60 -> 61  the new package is in pnpm-workspace
+  //   applicationDeployableWorkspaceCount 37 -> 38 it is reachable from a root
+  //                                                TypeScript reference, because
+  //                                                `tsconfig.json` lists it
+  //   deploymentUnionWorkspaceCount     38 -> 39  the union carries it for the
+  //                                                same reason
+  //   installTraversalWorkspaceCount    60 -> 61  the lockfile has an importer
+  //                                                for it
+  //
+  // THE OTHER THREE DO NOT MOVE, and each absence is a fact rather than an
+  // oversight. `ociImageWorkspaceCount` stays 6: this adapter ships INSIDE the
+  // agent image's closure and builds no image of its own. `repositoryDevWorkspaceCount`
+  // stays 10: it is production code, not tooling. `reviewCandidateCount` stays 22:
+  // a candidate is a workspace reachable from NO root, and this one is reachable
+  // from two.
   const report = repositoryReport();
-  assert.equal(report.summary.registeredWorkspaceCount, 60);
+  assert.equal(report.summary.registeredWorkspaceCount, 61);
   assert.equal(report.summary.ociImageWorkspaceCount, 6);
-  assert.equal(report.summary.applicationDeployableWorkspaceCount, 37);
-  assert.equal(report.summary.deploymentUnionWorkspaceCount, 38);
+  assert.equal(report.summary.applicationDeployableWorkspaceCount, 38);
+  assert.equal(report.summary.deploymentUnionWorkspaceCount, 39);
   assert.equal(report.summary.repositoryDevWorkspaceCount, 10);
-  assert.equal(report.summary.installTraversalWorkspaceCount, 60);
+  assert.equal(report.summary.installTraversalWorkspaceCount, 61);
   assert.equal(report.summary.reviewCandidateCount, 22);
   const applicationRootKinds = new Set(
     Object.values(report.roots.applicationDeployable.reasons)
@@ -262,7 +289,12 @@ test("the entire root-referenced V1 application graph is retained, never classif
   const report = repositoryReport();
   const rootConfig = JSON.parse(fs.readFileSync(path.join(ROOT, "tsconfig.json"), "utf8"));
   const v1Projects = rootConfig.references.map((reference) => reference.path.replace(/^\.\//, ""));
-  assert.equal(v1Projects.length, 32);
+  // WIN-259 (M2.4) 32 -> 33. `packages/adapters/keyring-envelope` is the
+  // THIRTY-THIRD root reference and the first V1 project added since the layout
+  // was drawn, which is exactly why this count is asserted rather than derived:
+  // a project added to `tsconfig.json` and to nothing else would be built, would
+  // be reachable, and would still be invisible to every gate that reads a list.
+  assert.equal(v1Projects.length, 33);
   for (const project of v1Projects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
     assert.equal(workspace.applicationDeployableClosure.reachable, true, project);
@@ -462,7 +494,7 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 117 outputs across 32 V1 projects", () => {
+test("generated ownership includes the generator's exact 118 outputs across 33 V1 projects", () => {
   const report = repositoryReport();
   // M2 INTEGRATION DELTA — 201 -> 117. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
@@ -630,15 +662,30 @@ test("generated ownership includes the generator's exact 117 outputs across 32 V
   // The EDGE count does not move: the outbox reaches its store through a seam
   // declared in its own package and proven at the composition root, so it gained
   // no project reference, and neither did `postgres-tenancy`.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 115);
-  assert.equal(report.generatedOwnership.ownedOutputProjectCount, 32);
+  // WIN-259 (M2.4) 115 -> 118 and 32 -> 33 PROJECTS, and this is the FIRST time
+  // this count has RISEN. Every delta above it is a reduction, because adoption
+  // releases placeholders; this one ADDS a project. `packages/adapters/keyring-envelope`
+  // is the thirteenth adapter directory and the first V1 project added since the
+  // layout was drawn, so the generator emits its THREE scaffolding files —
+  // package.json, tsconfig.json and README.md — and RELEASES no placeholder,
+  // because the package was born adopted: it shipped with real source from its
+  // first commit and never had a declaration stub to release.
+  //
+  // BOTH NUMBERS ARE READ BACK, never computed. `gen-v1-skeleton.mjs --check`
+  // prints "100 scaffolding + 18 placeholder = 118 generated file(s) for 33 V1
+  // projects and 113 project edges (24 project(s) adopted, 88 placeholder(s)
+  // released)". The scaffolding term moved 97 -> 100 and the placeholder term is
+  // unmoved at 18, which is the arithmetic of a package that adds three and
+  // releases none.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 118);
+  assert.equal(report.generatedOwnership.ownedOutputProjectCount, 33);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 115 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 115);
+  // Same 118 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 118);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

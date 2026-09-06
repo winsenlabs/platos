@@ -220,15 +220,15 @@ export const VIOLATION_CODES = Object.freeze({
  * modules and two suites under `apps/core-api/src/config/`, and one environment
  * reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
  *
- * WIN-259 (M2.4) adds TWENTY-THREE MORE, on top of WIN-260's 1503, and this pin
+ * WIN-259 (M2.4) adds TWENTY-FOUR MORE, on top of WIN-260's 1503, and this pin
  * is the SECOND scan to read the same tree: `arch-boundaries.test.mjs` states
- * 1503 + 23 = 1526 from its own walk of the same five roots, and the two are
+ * 1503 + 24 = 1527 from its own walk of the same five roots, and the two are
  * written independently so they can DISAGREE and be caught. FOURTEEN of the
- * twenty-three are the new `packages/adapters/keyring-envelope`, ONE is
+ * twenty-four are the new `packages/adapters/keyring-envelope`, TWO are
  * `packages/adapters/postgres-tenancy`, TWO are `packages/contexts/providers`
- * and SIX are `packages/contexts/secrets`. 1503 + 23 = 1526.
+ * and SIX are `packages/contexts/secrets`. 1503 + 24 = 1527.
  *
- * NOT ONE OF THE TWENTY-THREE READS THE ENVIRONMENT, which is why this file's
+ * NOT ONE OF THE TWENTY-FOUR READS THE ENVIRONMENT, which is why this file's
  * DECLARED table does not move even though its census does. The legacy migration
  * keys reach the key-management adapter as a CONSTRUCTOR ARGUMENT from the
  * composition root, exactly as the root key ring does — an adapter that read
@@ -236,7 +236,7 @@ export const VIOLATION_CODES = Object.freeze({
  * catch, and the census moving without the table moving is the evidence that it
  * does not.
  */
-export const EXPECTED_FILE_COUNT = 1526;
+export const EXPECTED_FILE_COUNT = 1527;
 
 function listSourceFiles(root) {
   const found = [];

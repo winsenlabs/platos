@@ -1043,9 +1043,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               their own scans of the same five roots, so the three can
     //               DISAGREE and be caught.
     //
-    // WIN-259 (M2.4) +23, ON TOP OF WIN-260'S 1503: 1503 + 23 = 1526. FOURTEEN in
+    // WIN-259 (M2.4) +24, ON TOP OF WIN-260'S 1503: 1503 + 24 = 1527. FOURTEEN in
     //               the new `packages/adapters/keyring-envelope` (eight source,
-    //               six suites), ONE in `packages/adapters/postgres-tenancy`, TWO
+    //               six suites), TWO in `packages/adapters/postgres-tenancy`, TWO
     //               in `packages/contexts/providers` and SIX in
     //               `packages/contexts/secrets`. This scan's roots are
     //               packages/kernel, packages/contexts, packages/adapters,
@@ -1067,12 +1067,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               The vectors file is SOURCE and not a fixture directory
     //               because it is imported by two suites in the package that owns
     //               it, which is the same reason `wire-vectors.ts` is.
-    assert.equal(result.fileCount, 1526, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 1527, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
-      // WIN-259 (M2.4): keyring-envelope 14, postgres-tenancy 1, providers 2,
+      // WIN-259 (M2.4): keyring-envelope 14, postgres-tenancy 2, providers 2,
       // secrets 6. Written as four terms so a file deleted from one while
-      // another added cannot reach the same total.
-      14 + 1 + 2 + 6);
+      // another added cannot reach the same total. The postgres term is TWO
+      // because the legacy-envelope finding needs a real database on BOTH sides:
+      // one suite for the format-1 envelope round trip and one for what the
+      // canonical row REFUSES.
+      14 + 2 + 2 + 6);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

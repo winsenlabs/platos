@@ -671,16 +671,17 @@ test("the live selectors scan an exact nonzero source census", () => {
   // branches reported a ZERO delta here, so this gate was in none of their
   // lists; the merged scan reads back 1452 + 16 = 1468.
   //
-  // WIN-259 (M2.4) 1468 -> 1491. TWENTY-THREE files: FOURTEEN in the new
-  // `packages/adapters/keyring-envelope` (eight source, six suites), ONE in
+  // WIN-259 (M2.4) 1468 -> 1492. TWENTY-FOUR files: FOURTEEN in the new
+  // `packages/adapters/keyring-envelope` (eight source, six suites), TWO in
   // `packages/adapters/postgres-tenancy`, TWO in `packages/contexts/providers`
-  // and SIX in `packages/contexts/secrets`. 14 + 1 + 2 + 6 = 23.
+  // and SIX in `packages/contexts/secrets`. 14 + 2 + 2 + 6 = 24.
   //
-  // EIGHT OF THE TWENTY-THREE ARE THE LEGACY-ENVELOPE MIGRATION, in matched
-  // pairs: two decoder-side modules and one use case, each with the suite that
-  // falsifies it, plus the domain rule and its own suite.
+  // NINE OF THE TWENTY-FOUR ARE THE LEGACY-ENVELOPE MIGRATION: two decoder-side
+  // modules and one use case, each with the suite that falsifies it, the domain
+  // rule with its own suite, and the real-PostgreSQL suite that asks the database
+  // what it refuses.
   //
-  // NONE OF THE TWENTY-THREE IS IN THE WARNING BAND, and the largest is the
+  // NONE OF THE TWENTY-FOUR IS IN THE WARNING BAND, and the largest is the
   // migration's use-case suite at 251 effective lines. That is worth stating for
   // a tranche whose files carry the longest headers in the tree — the legacy
   // wire-vector fixture is 141 lines of which 62 are comment — because effective
@@ -693,16 +694,18 @@ test("the live selectors scan an exact nonzero source census", () => {
   // every pin carries the measurement it came from — and effective lines
   // exclude comments, so a reader comparing raw line counts with this figure
   // will find them very different and should.
-  assert.equal(result.fileCount, 1491);
+  assert.equal(result.fileCount, 1492);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
     328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 +
-      // WIN-259 (M2.4): keyring-envelope 14, postgres-tenancy 1, providers 2,
-      // secrets 6.
-      14 + 1 + 2 + 6
+      // WIN-259 (M2.4): keyring-envelope 14, postgres-tenancy 2, providers 2,
+      // secrets 6. The postgres term is TWO because the legacy-envelope finding
+      // needs a real database on both sides — one suite for the format-1
+      // envelope round trip and one for what the canonical row REFUSES.
+      14 + 2 + 2 + 6
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -733,18 +736,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   // nine land in that same term: 366 + 16 = 382.
   //
   // WIN-259 (M2.4) MOVES BOTH THE ADAPTERS AND THE CONTEXTS TERM, which no
-  // tranche-5 store did. Adapters 382 -> 397: FOURTEEN for the thirteenth
-  // directory and one for the postgres row. Contexts 1060 -> 1068: `providers`
+  // tranche-5 store did. Adapters 382 -> 398: FOURTEEN for the thirteenth
+  // directory and TWO for the postgres row. Contexts 1060 -> 1068: `providers`
   // gains the eviction helper and its suite, `secrets` the sweep and its suite
   // plus the legacy-envelope domain rule, the migration use case and a suite
   // each. The contexts term moves because this issue adds USE CASES rather than
   // only implementing ports that already existed. Kernel and apps are untouched.
   //
-  // THE LEGACY-ENVELOPE MIGRATION IS FOUR IN EACH OF THE TWO MOVING TERMS, and
-  // that symmetry is the deliverable's shape rather than a coincidence: the
-  // domain judges and the adapter decodes, so each half is one module plus one
-  // fixture-or-use-case with the suite that falsifies it.
-  assert.equal(result.fileCount, 20 + 1068 + 397 + 6);
+  // THE LEGACY-ENVELOPE MIGRATION IS FOUR IN THE CONTEXTS TERM AND FIVE IN THE
+  // ADAPTERS TERM, and the four-and-four core of that is the deliverable's shape
+  // rather than a coincidence: the domain judges and the adapter decodes, so each
+  // half is one module plus one fixture-or-use-case with the suite that falsifies
+  // it. The fifth is the postgres suite, which belongs to NEITHER half — it is
+  // where the two claims meet a database that is not either one's.
+  assert.equal(result.fileCount, 20 + 1068 + 398 + 6);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
