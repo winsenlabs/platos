@@ -133,7 +133,13 @@ test("the live corpora are enumerated with exact non-vacuous counts", () => {
     // unchanged. The count is pinned rather than derived so a document
     // appearing or vanishing is a failure someone reads, not a number that
     // quietly follows the tree.
-    docsMarkdownFiles: 394,
+    //   +1 WIN-260 (M2.5) docs/audits/M2.5-transaction-outbox-clock-retry.md,
+    //      the milestone note for the transaction, clock, retry and shutdown
+    //      contracts. It carries no relative link and no anchor reference, so
+    //      relativeLinks and anchorReferences below are deliberately unchanged;
+    //      its only cross-references are inline code spans naming source paths,
+    //      which this corpus does not treat as links. 394 -> 395.
+    docsMarkdownFiles: 395,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,
