@@ -510,6 +510,8 @@ test("the live selectors scan an exact nonzero source census", () => {
   // of thirty-five observations, driven against the in-memory double and against
   // PostgreSQL and compared verbatim. Its length IS the scenario, and splitting
   // it would split a transcript that is only evidence while it is one sequence.
+  // It is 459 rather than 448 because the first mutation sweep found one guard
+  // unfalsifiable and the observation that closes it went INTO the scenario.
   // The store modules beside it are all well inside the band, because the six
   // rows were split by lifecycle — connections and apps, installations, links,
   // the inbox — when they were written, which is the same discipline the note
@@ -517,7 +519,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
-      effectiveLines: 448,
+      effectiveLines: 459,
       severity: "warning",
     },
     {
