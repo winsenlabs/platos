@@ -93,7 +93,7 @@ import type {
 } from "@platos/context-jobs/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
-import type { OutboxAdapter, OutboxEventStore } from "@platos/adapter-outbox";
+import type { OutboxAdapter, OutboxEventStore, OutboxFlush } from "@platos/adapter-outbox";
 import type { DurableRuntimeAdapter } from "@platos/adapter-durable-runtime";
 import type { ClickhouseObservabilityAdapter } from "@platos/adapter-clickhouse-observability";
 import type { ObjectstoreMinioAdapter } from "@platos/adapter-objectstore-minio";
@@ -104,6 +104,8 @@ import type { ModelRouterProvidersAdapter } from "@platos/adapter-model-router-p
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
+
+import type { Drainable } from "../runtime/shutdown-drain.js";
 
 /**
  * The twelve adapter slots, keyed by directory name.
@@ -479,6 +481,22 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
  * declare. It is an obligation between two adapters, so it is stated as one.
  */
 export const OUTBOX_STORE_SATISFACTION: Satisfies<PostgresTenancyAdapter, OutboxEventStore> = true;
+
+/**
+ * WIN-260 (M2.5). The SECOND obligation this file states rather than binds.
+ *
+ * `apps/core-api/src/runtime/shutdown-drain.ts` sequences `Drainable`s inside
+ * one shutdown budget, and the outbox flush is the first of them. The flush
+ * itself lives in `@platos/adapter-outbox` — `scripts/arch/composition-root.mjs`
+ * rule (C1) allows exactly ONE importer of an adapter package, which is this
+ * file, and the paging contract it implements is outbox knowledge anyway. So the
+ * two halves agree STRUCTURALLY, the same way `OutboxEventStore` above does, and
+ * the agreement is checked HERE because this is the only file entitled to name
+ * both packages. It is not a bound PORT and gets no row in `ADAPTER_BINDINGS`:
+ * nothing is wired to it by name, and a row would claim a binding the ADR does
+ * not declare.
+ */
+export const OUTBOX_FLUSH_SATISFACTION: Satisfies<OutboxFlush, Drainable> = true;
 
 /** Who owns the port an adapter implements: a context, or the kernel itself. */
 export interface AdapterBinding {
