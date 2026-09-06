@@ -514,7 +514,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   // about what the SCHEMA decides for a row, and the new one about the one thing
   // in this store the schema declares and the client cannot express.
   //
-  // TWO FILES REMAIN IN THE WARNING BAND. `memory-conformance.ts` is 428: its
+  // TWO FILES REMAIN IN THE WARNING BAND. `memory-conformance.ts` is 441: its
   // length IS the scenario — one sequence of observations driven against the two
   // in-memory doubles and against PostgreSQL and compared verbatim — and its
   // graph half is already a separate file, so halving it again would put the
@@ -647,7 +647,7 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/memory-conformance.ts",
-      effectiveLines: 428,
+      effectiveLines: 441,
       severity: "warning",
     },
     {

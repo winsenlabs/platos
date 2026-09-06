@@ -816,12 +816,38 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               `ToolsRepository` both declare `appendAudit` — so they are
     //               named properties on the one adapter rather than a thirteenth
     //               package with a second client.
+    //  1295 -> 1316 +21: WIN-258 TRANCHE 5, `memory`'s canonical store, in that
+    //               SAME one ORM home for the ninth owner. TWENTY-ONE files, all
+    //               under `packages/adapters/postgres-tenancy/src/`: fourteen
+    //               source (the guards, the row mapping, the refusal adapter,
+    //               the four raw vector statements, the five peer reads, the
+    //               point writes, the set reads, the two graph tables, the six
+    //               erasure methods, the composite, the harness and the shared
+    //               conformance scenario in two halves) and SEVEN suites. The
+    //               `mutations-memory.json` beside them is not source and is not
+    //               counted here; the v1 ledger counts it and its own delta says
+    //               22.
+    //               THE FOURTEEN SOURCE MODULES ARE THE §6 BUDGET, not a store
+    //               spread thin: `MemoryRepository` alone is twenty methods, and
+    //               the seventh suite arrived after the mutation sweep, when
+    //               three cases closing a survivor took the rules suite to 500
+    //               effective lines exactly.
+    //               `packages/contexts/memory` gains NO file — its port entry
+    //               point was widened in place, which is what the census
+    //               distinguishes from an addition.
+    //               THE RULE TO WATCH IS `tenancy-prisma-only` A FIFTH TIME, and
+    //               this tranche is the first where the ORM could not express
+    //               the write at all: `Memory.embedding` and
+    //               `MemoryEntity.embedding` are `Unsupported("vector(1536)")`,
+    //               so four statements are raw SQL — in the same one home,
+    //               attributed by the TABLE they name, and `src/client.ts` is
+    //               still the only file in the layout that imports the ORM.
     // ALL THE TRANCHE-5 STORES ARE IN THE ONE DIRECTORY, so the entries above
-    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 = 1328. No
-    //               branch's own figure is right merged — 1291, 1294 and 1295
-    //               each under-count the other two by their whole tranche.
-    assert.equal(result.fileCount, 1328, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19);
+    //               SUM: 1225 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 21 = 1349. No
+    //               branch's own figure is right merged — 1291, 1294, 1295 and
+    //               1246 each under-count the others by their whole tranche.
+    assert.equal(result.fileCount, 1349, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 21);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
