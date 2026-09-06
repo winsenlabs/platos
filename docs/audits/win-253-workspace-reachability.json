@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6738a6b1a6b2df91356352ec7f81ca2a23af12b52e1209cb97c8ffc2f0054752",
+  "evidenceSha256": "5cf4b6cc675392c3fe7e4c4054e70f216916f4b23c275e7728ca81352cb14c93",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "1f430ce7c433a87ae9bfadfa112deac088ced4b2b29cf41649c564b5e0d646eb",
+    "aggregateSha256": "515e5294bb0dd64a97c872b4a49c7dac9808dc7aeeee1b5d8191f1acbdb53ba1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6045,7 +6045,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "22d1fee8d0218f2134cf3949e088a901b6b9ed98b3bbbf434caef8f339830714"
+        "sha256": "23dacbad24e463396c928e3e2b12a80d9aed1525d988c5ab2e84848d2658637c"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -19237,7 +19237,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "96fefdd0fb2b8424ab5d6b91bdf95c45f4c8631b58c77d1b478e49e888f32bf9"
+        "sha256": "c60a804547974edd7981dc54ad098fe48b2d5eae9d53fd449a08ee5ff08a20f0"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -55536,7 +55536,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 577
+              "line": 584
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -55898,7 +55898,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "db575a152bac81930e2f4d26a0eaf75ddcdff1db49f9c4423fad2d5e32482e1c",
+      "evidenceSha256": "1023ee416215b7ad55e23f516f4100ce211b722b898f74842a7515a65f3aa519",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
