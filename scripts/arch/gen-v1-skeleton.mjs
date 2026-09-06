@@ -315,6 +315,37 @@ export const ADAPTERS = [
   { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "one channel client" },
   { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
+  // WIN-259 (M2.4). THE THIRTEENTH DIRECTORY, and the first one added since the
+  // §15 amendment. It is a directory rather than a row on `postgres-tenancy`
+  // for the reason `packages/adapters/postgres-tenancy/src/secrets-repository.ts`
+  // already wrote down when it declined all three of these ports: `KeyRing`
+  // holds the ROOT KEY BYTES that open every envelope in the database, so
+  // putting it behind the database client would place both halves of a
+  // credential in one process, and one leak would yield the plaintext. §15's
+  // amendment says one VENDOR CLIENT is one directory; a key ring is not the
+  // ORM's client, and `AeadCipher` and `Hasher` own randomness and constant-time
+  // comparison rather than rows. So this is the case §15 does NOT cover, and the
+  // directory count moves for the first time.
+  //
+  // THREE BINDINGS AND ONE DIRECTORY, and that is forced rather than chosen.
+  // `AeadCipher.seal` takes a `RootKeyHandle` that only NAMES a version; the
+  // bytes behind it are resolvable exactly by whoever minted it. Split the ring
+  // and the cipher into two directories and the cipher can no longer resolve the
+  // handle without the ring exporting key material across a package boundary —
+  // which is the disclosure the opaque handle exists to prevent. `Hasher` joins
+  // them because `crypto.ts` says it is "deliberately separate from the cipher so
+  // a hash can never be mistaken for a reversible envelope" — separate PORT, same
+  // custodian.
+  {
+    dir: "keyring-envelope",
+    port: "KeyRing",
+    owner: "secrets",
+    additional: [
+      { port: "AeadCipher", owner: "secrets" },
+      { port: "Hasher", owner: "secrets" },
+    ],
+    note: "the versioned root key ring and the AES-256-GCM envelope over it",
+  },
 ];
 
 /**
@@ -491,8 +522,28 @@ export function adapterOwnerPackages(adapter) {
 // permitted to write the row would be the one package unable to. It is SPREAD
 // rather than a property — its nine method names collide with nothing — and
 // EXPECTED_ADAPTER_COUNT is deliberately unmoved a SEVENTEENTH time.
-export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 44;
+// 12 -> 13 (WIN-259 M2.4). THE FIRST TIME THIS PIN HAS MOVED, after seventeen
+// deliberate refusals above. Every one of those seventeen was the same case:
+// another OWNER of rows in the one PostgreSQL database, which §15 says is a row
+// on an existing directory. This is not that case. `keyring-envelope` holds no
+// rows and no database client; it holds the AES-256 root keys, and
+// `secrets-repository.ts` refused all three of its ports on exactly that ground
+// -- "putting it here would move the keys that decrypt every envelope into the
+// process that holds the database connection, so a single credential leak would
+// yield both halves. It belongs to a key-management adapter." This is that
+// adapter. The BINDING pin moves by three in the same breath, and the two
+// remain pinned separately so neither could have widened the other silently.
+export const EXPECTED_ADAPTER_COUNT = 13;
+// 44 -> 47 (WIN-259 M2.4). `secrets` binds its three CRYPTOGRAPHY ports --
+// `KeyRing`, `AeadCipher` and `Hasher` -- to the one directory that may hold a
+// key. Three and not one because they are three capabilities with three failure
+// modes: a ring that cannot name its active version is a configuration error, a
+// cipher that cannot open an envelope is a fail-closed read, and a hasher that
+// compares in variable time is a timing oracle. They share a DIRECTORY because
+// the opaque `RootKeyHandle` is resolvable only by its minter; they do not share
+// a PORT because collapsing them would let a caller hand a digest where an
+// envelope belongs.
+export const EXPECTED_BINDING_COUNT = 47;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -513,7 +564,13 @@ const KERNEL_PORTS = [
 
 export const OWNED_ROOTS = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api", "apps/mcp-stdio"];
 export const ROOT_SOLUTION_PATH = "tsconfig.json";
-export const EXPECTED_PROJECT_COUNT = 32;
+// 32 -> 33 (WIN-259 M2.4). `packages/adapters/keyring-envelope`, the
+// thirteenth adapter directory. It is the first V1 project added since the
+// layout was drawn, and it is a PROJECT rather than a folder because ADR M0.3
+// §2 lets only an adapter package implement a driven port: without its own
+// tsconfig and its own package it could not be referenced by the composition
+// root, and `secrets`' three cryptography ports would have stayed unimplemented.
+export const EXPECTED_PROJECT_COUNT = 33;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -661,21 +718,47 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // graph either way. The independent expectation in
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 111;
+// 111 -> 113 (WIN-259 M2.4). TWO edges and one new project.
+// `packages/adapters/keyring-envelope` -> `packages/contexts/secrets` is the
+// owner edge, and `apps/core-api` -> `packages/adapters/keyring-envelope` is the
+// composition-root edge every adapter gets. 111 + 2 = 113, and the arithmetic is
+// the whole delta: an adapter reaches exactly its owners, and exactly one project
+// reaches it.
+//
+// IT CANNOT CREATE A CYCLE. `secrets` is a context, and ADR M0.3 §1 gives it the
+// kernel alone as a dependency -- it is the strictest allow-list in the table --
+// so it names no adapter and cannot name this one. `apps/core-api` is the sink of
+// the whole graph. The independent expectation in
+// scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
+export const EXPECTED_EDGE_COUNT = 113;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
 // references that ARE the 94-edge DAG) and its README stay generated forever.
 export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.md"];
 
-// Scaffolding is invariant for the life of the V1 layout:
-// 32 projects x 3 files + the root solution tsconfig.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 97;
+// Scaffolding is one manifest, one tsconfig and one README per project, plus the
+// root solution tsconfig:
+// 33 projects x 3 files + 1 = 100.
+//
+// 97 -> 100 (WIN-259 M2.4). The layout was NOT invariant after all, and the
+// comment that said so is corrected rather than deleted: it was true for as long
+// as every port had a home, and `secrets`' three cryptography ports did not.
+// The thirteenth directory brings the three files every project brings.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 100;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
-// kernel 3 + contexts 17x4 + adapters 12x2 + core-api 8 + mcp-stdio 1.
-// This is the same 104-file set the architecture gate scans.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 104;
+// kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
+//
+// 104 -> 106 (WIN-259 M2.4). The thirteenth adapter's `src/index.ts` and
+// `src/adapter.ts`. Both are emitted for an UNADOPTED project and immediately
+// released by this issue's adoption, which is why the released count moves by
+// two in the same run. Raising the CEILING rather than the floor is what keeps
+// un-adoption failing closed: the check refuses a placeholder count ABOVE this
+// number, so the two files reappear as MISSING if the adoption entry is ever
+// removed while the real source is still on disk.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 106;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -714,6 +797,7 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/outbox", // WIN-258 T4 — the kernel OutboxWriter: the envelope, the ordered identifier, every refusal, and the store seam the one ORM home implements
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
+  "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
 ];
 
 // ---------------------------------------------------------------------------

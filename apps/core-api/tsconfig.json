@@ -107,6 +107,9 @@
     },
     {
       "path": "../../packages/adapters/notifier-webhook"
+    },
+    {
+      "path": "../../packages/adapters/keyring-envelope"
     }
   ]
 }

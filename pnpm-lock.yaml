@@ -286,6 +286,9 @@ importers:
       '@platos/adapter-durable-runtime':
         specifier: workspace:*
         version: link:../../packages/adapters/durable-runtime
+      '@platos/adapter-keyring-envelope':
+        specifier: workspace:*
+        version: link:../../packages/adapters/keyring-envelope
       '@platos/adapter-model-router-providers':
         specifier: workspace:*
         version: link:../../packages/adapters/model-router-providers
@@ -1014,6 +1017,12 @@ importers:
       '@platos/kernel':
         specifier: workspace:*
         version: link:../../kernel
+
+  packages/adapters/keyring-envelope:
+    dependencies:
+      '@platos/context-secrets':
+        specifier: workspace:*
+        version: link:../../contexts/secrets
 
   packages/adapters/model-router-providers:
     dependencies:

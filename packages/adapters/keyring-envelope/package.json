@@ -1,0 +1,24 @@
+{
+  "name": "@platos/adapter-keyring-envelope",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Implements the secrets KeyRing port, the secrets AeadCipher port and the secrets Hasher port.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@platos/context-secrets": "workspace:*"
+  }
+}
