@@ -1033,12 +1033,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "c25f1fbfcabd47905ea506a70c354a3ef847d8915cb23d747eee0cf5db9c0bb0"
+      "sha256": "7800da632d60308355c0e1c67df2116c8400fe8362b4d9bbb6f5cd5eb9931fc0"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "1ab5fc3987ac3460dd71ea3bd77083a3e45f945cd7e365b50f397b478a6d2230"
+      "sha256": "1c77badf6645edfd236fd5c3733a91ea5b01540e857afbea7476530d01a6e7a6"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "84f6babaf75876f1f7a9e6a93bb41d3744096d966a40aa3cd97173dae601505d"
+      "sha256": "ce06c6939280b0d5d37e2b0ff2debb7a0245dfd8d42cd01e3ad44f551e07a0c1"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
