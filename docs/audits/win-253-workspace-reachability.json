@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2918eb0a85dfbf8fe8f4de7071765fc1a0e0b99fdab14f67adcd81487e1196b2",
+  "evidenceSha256": "c1f1a3773e8f14aa04f930d0726fc555a00b1202ab984baec08eb9764662a29a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "923096a4957d8061f6c63f315181eb9b594d595a608022108f5a2b3e095d416b",
+    "aggregateSha256": "b39dca119ca46c43882fbb6983de97ae3dfc9195c852d58cb203f02372b111b8",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4041,7 +4041,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "163811567e0986e55bb751685e1001b380aa67ff591956de17ec9e9afa45d51a"
+        "sha256": "743fa0f290150221ab8cde474b2ae928ad0b49e79781a33e37080e6b9436974b"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
