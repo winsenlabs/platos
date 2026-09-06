@@ -1083,6 +1083,9 @@ importers:
       '@platos/context-identity-access':
         specifier: workspace:*
         version: link:../../contexts/identity-access
+      '@platos/context-memory':
+        specifier: workspace:*
+        version: link:../../contexts/memory
       '@platos/context-secrets':
         specifier: workspace:*
         version: link:../../contexts/secrets

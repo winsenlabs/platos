@@ -259,3 +259,45 @@ export {
   UNKNOWN_VARIABLE_KIND,
   UnreadableSecretsRowError,
 } from "./secrets-rows.js";
+
+// WIN-258 T5 — `memory`'s two canonical stores. The factory leaves the package
+// for the reason `createGovernanceStores` does: a composition root that wanted
+// the memory pair WITHOUT tenancy's repositories — an extraction worker, say —
+// has to be able to build them over the SAME transactions rather than over a
+// second client, or an extraction that writes a memory and the entities pulled
+// out of it would be two transactions with a window between them.
+//
+// THE REFUSAL CODES LEAVE IT BECAUSE `memory/domain/errors.ts` PUBLISHES ONE.
+// Every store failure in that context is `repositoryUnavailable`, which is right
+// for a caller — a recall that cannot reach its store has one thing to do
+// whatever the cause — and useless for an operator, who needs to tell a vector
+// of the wrong dimension from a provenance the schema refuses from a row an
+// older binary wrote. The fourteen write-shape refusals and the four
+// unreadable-row refusals are named here and carried out of band.
+export type { MemoryStores } from "./memory-repository.js";
+export { createMemoryStores } from "./memory-repository.js";
+export {
+  EMBEDDING_DIMENSIONS,
+  MEMORY_BASELINE_OUT_OF_RANGE,
+  MEMORY_CONFIDENCE_OUT_OF_RANGE,
+  MEMORY_CONTENT_HASH_MALFORMED,
+  MEMORY_EMBEDDING_DIMENSION,
+  MEMORY_EMBEDDING_NOT_FINITE,
+  MEMORY_ENTITY_KEY_TOO_LONG,
+  MEMORY_IDENTIFIER_NOT_UUID,
+  MEMORY_KIND_NOT_CANONICAL,
+  MEMORY_METADATA_NOT_OBJECT,
+  MEMORY_PROFILE_KEY_NOT_NORMALISED,
+  MEMORY_PROVENANCE_CONTRACT,
+  MEMORY_SOURCE_NOT_CANONICAL,
+  MEMORY_VISIBILITY_NOT_CANONICAL,
+  MEMORY_WEIGHT_NOT_FINITE,
+  MemoryWriteRefused,
+} from "./memory-guards.js";
+export {
+  UNKNOWN_MEMORY_KIND,
+  UNKNOWN_MEMORY_SOURCE,
+  UNKNOWN_MEMORY_VISIBILITY,
+  UNREADABLE_MEMORY_METADATA,
+  UnreadableMemoryRow,
+} from "./memory-rows.js";

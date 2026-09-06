@@ -111,8 +111,26 @@
 // edge the §1 DAG does not grant, and `ChannelEventCipher` is the key that opens
 // every inbox row — which is the one thing the process that stores them must not
 // hold.
+//
+// AND SO DO `memory`'s TWO CANONICAL-STORE PORTS (WIN-258 T5) — the NINTH owner
+// delegated to this directory, and the SECOND whose ports are PROPERTIES because
+// a name collided. `Memory`, `MemoryEntity` and `MemoryRelationship` are in the
+// same database behind the same client, so Amendment 15 puts them here; but
+// `KnowledgeGraphRepository.findEntity(subject, agentIds, entityId)` and
+// `TenancyRepository.findEntity(entityId)` are one name with two signatures, so
+// this interface cannot extend both and the two ports arrive under
+// `MemoryDependencies`' own slot names instead. The context's four OTHER ports
+// are deliberately absent and `memory-repository.ts` says why for each: `Cache`
+// is ADR M0.3 §13's named assignment to this context with Redis as the
+// implementation detail, `EmbeddingModel` and `ExtractionJudge` are priced
+// provider calls, and `ContentDigest` is a synchronous host hash with no failure
+// channel and no row.
 
 import type { ChannelsRepository } from "@platos/context-channels/application/ports/index.js";
+import type {
+  KnowledgeGraphRepository,
+  MemoryRepository,
+} from "@platos/context-memory/application/ports/index.js";
 import type {
   AgentsRepository,
   ScaffoldingRepository,
@@ -153,6 +171,7 @@ import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createInvitationTokenIssuer } from "./invitation-token.js";
 import { createTenancyLocks } from "./locks.js";
+import { createMemoryStores } from "./memory-repository.js";
 import { createMembershipRepository } from "./membership.js";
 import { createOperatorDirectory, createOperatorSessionRevoker } from "./operator-peers.js";
 import type { OutboxEventStorePort } from "./outbox-store.js";
@@ -225,6 +244,23 @@ export interface PostgresTenancyAdapter
    */
   readonly secrets: SecretsRepository;
   readonly secretsVariables: EnvironmentVariableRepository;
+
+  /**
+   * WIN-258 T5 — `memory`'s two canonical-store ports.
+   *
+   * PROPERTIES, and forced by the same kind of collision `secrets` hit rather
+   * than by preference. `KnowledgeGraphRepository.findEntity(subject, agentIds,
+   * entityId)` and `TenancyRepository.findEntity(entityId)` are both top-level
+   * members with one name and two signatures, so `PostgresTenancyAdapter extends
+   * TenancyRepository, KnowledgeGraphRepository` is a TypeScript error — "cannot
+   * simultaneously extend" — and a spread would have let whichever composite
+   * came last silently answer both. The names below are `MemoryDependencies`'
+   * own two slots — `repository` and `graph` — spelled with the owner in front,
+   * because `repository` alone is not a name a directory serving nine owners can
+   * give to one of them.
+   */
+  readonly memory: MemoryRepository;
+  readonly memoryGraph: KnowledgeGraphRepository;
   /** Release the pool. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -273,6 +309,13 @@ export function buildPostgresTenancyAdapter(
     // whether to revoke sees the row the same transaction just wrote.
     secrets: createSecretsRepository(transactions),
     secretsVariables: createEnvironmentVariableRepository(transactions),
+    // WIN-258 T5 (ADR M0.3 §15). The NINTH owner delegated to this directory.
+    // Built from the same `transactions` as everything above, so an extraction
+    // that writes a memory, the entities pulled out of it and the edges between
+    // them is ONE transaction — and so an erasure that counts a subject's
+    // memories, nodes and edges and then destroys all three cannot leave the
+    // graph standing over a person whose memories are gone.
+    ...createMemoryStores(transactions),
     async close(): Promise<void> {
       await client.$disconnect();
     },

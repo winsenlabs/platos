@@ -419,6 +419,40 @@ export const CANONICAL_STORE_ADAPTERS = Object.freeze({
   // write it. `domain/credential.ts` already records that those three methods
   // were deliberately not extracted for exactly that reason.
   secrets: "packages/adapters/postgres-tenancy",
+
+  // WIN-258 T5. The NINTH context to resolve to this directory, on the sentence
+  // every entry above stands on: one PostgreSQL database is one client is one
+  // adapter DIRECTORY (ADR M0.3 §15), and `tenancy-prisma-only` in
+  // scripts/arch/boundary-rules.mjs names that directory as the ORM's only home.
+  //
+  // WHAT THIS GRANTS, EXACTLY: the THREE rows `memory` owns — `Memory`,
+  // `MemoryEntity` and `MemoryRelationship`. Nothing else. `checkSoleWriter`
+  // asks per WRITE whether the file's directory is one of
+  // `ownerDirectories(OWNER[model])`, so a write to `Turn` or to `MessageRating`
+  // from this package still fails — and those two matter here more than the
+  // usual pair, because `MemoryRepository` READS both. Five of its methods read
+  // rows this context does not own (`AgentBinding`, `Thread`, `Turn`,
+  // `MessageRating`), which §5.2 exempts by name because they are reads; the
+  // moment one of them became a write it would be refused, and that is the whole
+  // point of the grant being per row rather than per directory.
+  //
+  // IT IS ALSO WHAT MAKES THE ERASURE TARGET ATOMIC ACROSS THREE TABLES.
+  // `memory-erasure-target.ts` counts a subject's memories, entities and edges,
+  // then destroys the edges, the nodes and the rows, and every one of those six
+  // port signatures puts the mutations in the CALLER's `TransactionScope`. The
+  // three tables are written by the same client in the same transaction only
+  // because they resolve to the same directory; a thirteenth adapter package
+  // holding `memory`'s two repositories would have had its own pool, and an
+  // erasure that failed between the edges and the memories would have left a
+  // knowledge graph standing over a person whose memories are gone.
+  //
+  // AND IT IS WHAT LETS THE VECTOR BE WRITTEN AT ALL. `Memory.embedding` is
+  // `Unsupported("vector(1536)")`, which the generated client can neither select
+  // nor set — so storing one is a raw `UPDATE "Memory"`, and `RAW_SQL_METHODS`
+  // below attributes that statement to `memory` by the table it names. Without
+  // this entry the one package permitted to write the row would be issuing a
+  // statement the gate refuses.
+  memory: "packages/adapters/postgres-tenancy",
 });
 
 /**

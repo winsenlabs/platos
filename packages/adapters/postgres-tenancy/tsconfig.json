@@ -39,6 +39,9 @@
     },
     {
       "path": "../../contexts/secrets"
+    },
+    {
+      "path": "../../contexts/memory"
     }
   ]
 }
