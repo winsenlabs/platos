@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "a09e2ba95e3b1c71c355be828b2d260f76a8807c46e156e9930210dd1c925a7c",
+  "evidenceSha256": "6b8b74135f30c2652553678e8de67d0eb8aae872c9d75406d882e6d130289ef0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 28,
     "generatedProjectCount": 36,
@@ -109,7 +109,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "89a4dac8e19655197acf086b8a3ddf06d608839e4f6a96869b0f7e9bea25768d",
+    "aggregateSha256": "d0a6a0e425a71941ab02f4f5c54d4d44240481242d7a49c28a66d78c62bd9fa5",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11449,7 +11449,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
-        "sha256": "6e4d23255d4c1ff611b0145867f56e780e4c7817697010f69dc19147dffb63ae"
+        "sha256": "55312cebad1bf2d7042b974e2d28a4ab4e17c4d9194b4dfe5679fa62d9ef7c90"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/agents-versions.ts",
@@ -11801,7 +11801,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/files-transaction.integration.test.ts",
-        "sha256": "d562fc930c9c5116647812158d6b4122d4aed5278b19ae5170da56948a256d54"
+        "sha256": "0342d27ba1286f6f5961cc978e813e928efa39122e72d6df9bfce1b5adb796cf"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-conformance-evals.ts",
@@ -12421,7 +12421,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/providers-transaction.integration.test.ts",
-        "sha256": "ea2ea81390b59ac6c8bc07a6e6450146f86ca3f2c8e9000f3314f06633a18fe9"
+        "sha256": "48b8f70da34377f1d06e2d6f599ceb3c5443f7697103dc7a9a4913cee7483247"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/repository.integration.test.ts",
@@ -12489,7 +12489,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-transaction.integration.test.ts",
-        "sha256": "81773920a21c2a512158273dcd4af89264ed928023b4aa136b0eeb9458a94616"
+        "sha256": "f5ef8a8060702ab89ae65b93147402e7f8759d3709a335cebb4750edb10451fb"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/secrets-variable-constraints.integration.test.ts",
