@@ -60,7 +60,13 @@ import {
   TURN_JSON_NOT_OBJECT,
 } from "./conversations-guards.js";
 import type { ConversationsHarness, PeerChain } from "./conversations-harness.js";
-import { startConversationsHarness } from "./conversations-harness.js";
+import {
+  CONFORMANCE_RATES,
+  RATE_OBSERVED_AT,
+  RATE_SOURCE,
+  RATE_SOURCE_REF,
+  startConversationsHarness,
+} from "./conversations-harness.js";
 
 let harness: ConversationsHarness;
 let chain: PeerChain;
@@ -141,6 +147,22 @@ function turnOf(overrides: Partial<Turn> = {}): Turn {
     completedAt: null,
     createdAt: AT,
     ...overrides,
+  });
+}
+
+/** The four rates as the harness's card holds them. See `RATE_SOURCE_REF`. */
+function fullRates(): Step["rates"] {
+  const rate = (usdPerToken: string) => ({
+    usdPerToken,
+    source: RATE_SOURCE,
+    observedAt: RATE_OBSERVED_AT,
+    sourceRef: RATE_SOURCE_REF,
+  });
+  return Object.freeze({
+    input: rate(CONFORMANCE_RATES.input),
+    output: rate(CONFORMANCE_RATES.output),
+    cacheRead: rate(CONFORMANCE_RATES.cacheRead),
+    cacheWrite: rate(CONFORMANCE_RATES.cacheWrite),
   });
 }
 
@@ -448,6 +470,20 @@ describe("Turn_input_json_root and Turn_output_json_root", () => {
 });
 
 describe("Step_usage_check", () => {
+  test("the store refuses a step sequence of zero", async () => {
+    // `Step_usage_check` opens `"sequence" > 0 AND "retryCount" >= 0`, and the
+    // sequence is what `@@unique([turnId, sequence])` orders a trace by.
+    // `PRIMARY_STEP_SEQUENCE` is 1 because the row layout says so, and a step at
+    // zero would sort in front of the turn's own model call.
+    const refused = await harness.stores.turns.saveSettlement(scope, {
+      turn: turnOf({ turnId, status: "SUCCEEDED" }),
+      steps: [stepOf({ sequence: 0 })],
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.message).toContain(SEQUENCE_OUT_OF_RANGE);
+  });
+
   test("the store refuses a negative token count", async () => {
     const refused = await harness.stores.turns.saveSettlement(scope, {
       turn: turnOf({ turnId, status: "SUCCEEDED" }),
@@ -492,10 +528,31 @@ describe("Step_usage_check", () => {
     expect(refused.error.message).toContain(STEP_CACHE_EXCEEDS_INPUT);
   });
 
-  test("the store refuses a priced step with no price snapshot", async () => {
+  // THE PRICE SNAPSHOT IS TWO GUARDS AND THEY ARE STOOD APART ON PURPOSE. A step
+  // that carried neither a card nor its rates would be refused by whichever ran
+  // first, so deleting either one would change nothing and both would be
+  // unfalsifiable behind one case — which is exactly what the first mutation
+  // sweep found. Each case below leaves the OTHER half satisfied.
+  test("a priced step with full rates but NO card is refused", async () => {
     const refused = await harness.stores.turns.saveSettlement(scope, {
       turn: turnOf({ turnId, status: "SUCCEEDED" }),
-      steps: [stepOf({ cost: money(4_500_000n) })],
+      steps: [stepOf({ cost: money(4_500_000n), modelPriceId: null, rates: fullRates() })],
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.message).toContain(STEP_PRICE_SNAPSHOT_INCOMPLETE);
+  });
+
+  test("a priced step with a card but ONE rate missing is refused", async () => {
+    const refused = await harness.stores.turns.saveSettlement(scope, {
+      turn: turnOf({ turnId, status: "SUCCEEDED" }),
+      steps: [
+        stepOf({
+          cost: money(4_500_000n),
+          modelPriceId: asConversationsIdentifier<ModelPriceId>(chain.modelPriceId),
+          rates: Object.freeze({ ...fullRates(), cacheWrite: null }),
+        }),
+      ],
     });
     expect(refused.ok).toBe(false);
     if (refused.ok) return;

@@ -657,3 +657,263 @@ describe("Step_price_snapshot — a priced step's billing evidence is immutable"
     expect(message).toContain("priced Step billing evidence is immutable");
   });
 });
+
+describe("tenant isolation: every read and every write carries its scope", () => {
+  // THE PREDICATE IS THE ONLY THING BETWEEN TWO TENANTS, and none of these rows
+  // is protected by a database rule once a caller has an id: `Thread.id`,
+  // `Turn.id`, `PostmanExecution.id` and `PostmanExecution.contextHandle` are
+  // unique INSTALLATION-WIDE, so a store that dropped `environmentId` from a
+  // `where` would answer another tenant's row to whoever held the identifier.
+  // The in-memory double drops the scope on EVERY method — it takes the
+  // parameter and ignores it — so this is the class of defect the conformance
+  // differential is structurally unable to see.
+  test("a foreign thread, turn and execution are all invisible through this scope", async () => {
+    const foreign = await harness.foreignChain();
+    const foreignThreadId = uuid("71");
+    const foreignTurnId = uuid("72");
+    expect(
+      (await harness.stores.threads.createThread(foreign.scope, threadOf(foreign, foreignThreadId)))
+        .ok,
+    ).toBe(true);
+    expect(
+      (
+        await harness.stores.turns.createTurn(
+          foreign.scope,
+          turnOf(foreign, foreignTurnId, foreignThreadId, 1),
+        )
+      ).ok,
+    ).toBe(true);
+    const execution = executionOf(foreign, "7");
+    expect((await harness.stores.postman.createExecution(foreign.scope, execution)).ok).toBe(true);
+
+    // THIS scope, THEIR identifiers. Every one answers null.
+    expect(
+      await harness.stores.threads.findThread(
+        scope,
+        asConversationsIdentifier<ThreadId>(foreignThreadId),
+      ),
+    ).toEqual({ ok: true, value: null });
+    expect(
+      await harness.stores.turns.findTurn(scope, asConversationsIdentifier<TurnId>(foreignTurnId)),
+    ).toEqual({ ok: true, value: null });
+    expect(await harness.stores.postman.findExecution(scope, execution.executionId)).toEqual({
+      ok: true,
+      value: null,
+    });
+    // THE HANDLE IS THE SHARPEST OF THE FOUR. `contextHandle` is `@unique`
+    // installation-wide and is a CAPABILITY — whoever holds it can name that
+    // execution — so a lookup without the environment in its WHERE is a
+    // cross-tenant read for anyone who has ever been handed one.
+    expect(await harness.stores.postman.findByHandle(scope, execution.contextHandle)).toEqual({
+      ok: true,
+      value: null,
+    });
+
+    const listed = await harness.stores.threads.pageThreads({
+      scope,
+      endUserId: asConversationsIdentifier<EndUserId>(foreign.endUserId),
+      limit: 10,
+      offset: 0,
+      includeArchived: true,
+    });
+    expect(listed.ok && listed.value.total).toBe(0);
+  });
+
+  test("a settlement addressed across the boundary writes nothing and says so", async () => {
+    const foreign = await harness.foreignChain();
+    const foreignThreadId = uuid("73");
+    const foreignTurnId = uuid("74");
+    expect(
+      (await harness.stores.threads.createThread(foreign.scope, threadOf(foreign, foreignThreadId)))
+        .ok,
+    ).toBe(true);
+    expect(
+      (
+        await harness.stores.turns.createTurn(
+          foreign.scope,
+          turnOf(foreign, foreignTurnId, foreignThreadId, 1),
+        )
+      ).ok,
+    ).toBe(true);
+
+    const refused = await harness.stores.turns.saveSettlement(scope, {
+      turn: turnOf(foreign, foreignTurnId, foreignThreadId, 1, { outputText: "stolen" }),
+      steps: [],
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    // `TURN_NOT_FOUND`, deliberately, and NOT the sequence-clash code: a caller
+    // must not be able to tell "not yours" from "not there", and those are two
+    // different mistakes with two different retries.
+    expect(refused.error.code).toBe("CONVERSATIONS_TURN_NOT_FOUND");
+
+    const untouched = await harness.stores.turns.findTurn(
+      foreign.scope,
+      asConversationsIdentifier<TurnId>(foreignTurnId),
+    );
+    expect(untouched.ok && untouched.value?.outputText).toBeNull();
+  });
+
+  test("a saveThread addressed across the boundary writes nothing and says so", async () => {
+    // THE COMPANION TO THE READ CASE ABOVE, and it exists because the first
+    // mutation sweep found the scope predicate on this UPDATE unfalsifiable: the
+    // frozen-column case asserts the write SUCCEEDS, so dropping the scope from
+    // its `where` changed nothing it could see.
+    const foreign = await harness.foreignChain();
+    const foreignThreadId = uuid("79");
+    expect(
+      (await harness.stores.threads.createThread(foreign.scope, threadOf(foreign, foreignThreadId)))
+        .ok,
+    ).toBe(true);
+
+    const refused = await harness.stores.threads.saveThread(
+      scope,
+      threadOf(foreign, foreignThreadId, { title: "stolen" }),
+    );
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.code).toBe("CONVERSATIONS_THREAD_NOT_FOUND");
+
+    const untouched = await harness.stores.threads.findThread(
+      foreign.scope,
+      asConversationsIdentifier<ThreadId>(foreignThreadId),
+    );
+    expect(untouched.ok && untouched.value?.title).toBeNull();
+  });
+
+  test("censusForActor is scoped to ONE organization too", async () => {
+    // The operator's audit trail crosses tenants by construction: one `User` may
+    // run a postman request in any organization they are a member of, and
+    // `PostmanExecution_ancestry` does not scope the actor at all. So the census
+    // predicate is the only boundary, and the first sweep found it unfalsifiable
+    // because every earlier case ran inside one organization.
+    // MEASURED BEFORE AND AFTER, because the actor is genuinely the same `User`
+    // in both tenants — the shared fixture seeds one operator and
+    // `PostmanExecution_ancestry` does not scope the actor — which is exactly
+    // what makes this predicate load-bearing rather than incidental.
+    const foreign = await harness.foreignChain();
+    const before = await harness.stores.conversationsErasure.censusForActor(
+      foreign.actorUserId,
+      scope.organizationId,
+    );
+    expect(before.ok).toBe(true);
+    if (!before.ok) return;
+
+    expect(
+      (await harness.stores.postman.createExecution(foreign.scope, executionOf(foreign, "8"))).ok,
+    ).toBe(true);
+
+    const after = await harness.stores.conversationsErasure.censusForActor(
+      foreign.actorUserId,
+      scope.organizationId,
+    );
+    const there = await harness.stores.conversationsErasure.censusForActor(
+      foreign.actorUserId,
+      foreign.scope.organizationId,
+    );
+    expect(there.ok && there.value.postmanExecutionCount).toBe(1);
+    // THIS organization's count is UNMOVED by a row written in another one.
+    expect(after.ok && after.value.postmanExecutionCount).toBe(
+      before.value.postmanExecutionCount,
+    );
+  });
+
+  test("measureForkDepth counts EVERY ancestor, not the nearest", async () => {
+    // A CHAIN OF THREE, so the deepest answers 2 and the nearest would answer 1.
+    // The first sweep found `MAX(depth)` unfalsifiable because every earlier case
+    // measured a ROOT thread, where the maximum and the minimum are both zero.
+    const rootId = uuid("81");
+    const rootTurnId = uuid("82");
+    expect((await harness.stores.threads.createThread(scope, threadOf(chain, rootId))).ok).toBe(
+      true,
+    );
+    expect(
+      (await harness.stores.turns.createTurn(scope, turnOf(chain, rootTurnId, rootId, 1))).ok,
+    ).toBe(true);
+
+    let parentId = rootId;
+    for (const forkId of [uuid("83"), uuid("84")]) {
+      const written = await harness.stores.threads.createThread(
+        scope,
+        threadOf(chain, forkId, {
+          parentThreadId: asConversationsIdentifier<ThreadId>(parentId),
+          forkedTurnIds: [asConversationsIdentifier<TurnId>(rootTurnId)],
+          forkedUpToTurnId: asConversationsIdentifier<TurnId>(rootTurnId),
+        }),
+      );
+      expect(written.ok).toBe(true);
+      parentId = forkId;
+    }
+
+    expect(
+      await harness.stores.threads.measureForkDepth(
+        scope,
+        asConversationsIdentifier<ThreadId>(uuid("84")),
+      ),
+    ).toEqual({ ok: true, value: 2 });
+    expect(
+      await harness.stores.threads.measureForkDepth(
+        scope,
+        asConversationsIdentifier<ThreadId>(rootId),
+      ),
+    ).toEqual({ ok: true, value: 0 });
+  });
+
+  test("findInheritedTurns answers in the CALLER'S order, not the database's", async () => {
+    // DESCENDING, which is not the order a `WHERE id IN (...)` returns rows in.
+    // The first sweep found the re-ordering unfalsifiable because the earlier
+    // case asked for two turns the planner happened to return in that order; a
+    // fork's inherited transcript read out of order is a conversation whose
+    // question follows its answer.
+    const threadId = uuid("85");
+    const turnIds = [uuid("86"), uuid("87"), uuid("88")];
+    expect((await harness.stores.threads.createThread(scope, threadOf(chain, threadId))).ok).toBe(
+      true,
+    );
+    for (const [index, turnId] of turnIds.entries()) {
+      const written = await harness.stores.turns.createTurn(
+        scope,
+        turnOf(chain, turnId, threadId, index + 1),
+      );
+      expect(written.ok).toBe(true);
+    }
+
+    const descending = [...turnIds].reverse().map((id) => asConversationsIdentifier<TurnId>(id));
+    const resolved = await harness.stores.threads.findInheritedTurns(scope, descending);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.value.map((turn) => turn.turnId)).toEqual(descending);
+  });
+
+  test("a settlement REPLACES its steps, so a second one does not accumulate", async () => {
+    const threadId = uuid("75");
+    const turnId = uuid("76");
+    expect((await harness.stores.threads.createThread(scope, threadOf(chain, threadId))).ok).toBe(
+      true,
+    );
+    expect(
+      (await harness.stores.turns.createTurn(scope, turnOf(chain, turnId, threadId, 1))).ok,
+    ).toBe(true);
+
+    for (const stepId of [uuid("77"), uuid("78")]) {
+      const settled = await harness.stores.turns.saveSettlement(scope, {
+        turn: turnOf(chain, turnId, threadId, 1),
+        steps: [pricedStep(chain, stepId, turnId)],
+      });
+      expect(settled.ok).toBe(true);
+    }
+
+    const read = await harness.stores.turns.findTurnWithSteps(
+      scope,
+      asConversationsIdentifier<TurnId>(turnId),
+    );
+    expect(read.ok).toBe(true);
+    if (!read.ok || read.value === null) throw new Error("the turn went missing");
+    // ONE step, and it is the SECOND one. A store that merged would leave two
+    // rows at the same `[turnId, sequence]` — which the unique index forbids —
+    // or, worse, one row from a previous try inside a rollup it was never part
+    // of. The turn's cost follows the surviving step and nothing else.
+    expect(read.value.steps.map((step) => step.stepId)).toEqual([uuid("78")]);
+    expect(read.value.turn.cost.stepCount).toBe(1);
+  });
+});
