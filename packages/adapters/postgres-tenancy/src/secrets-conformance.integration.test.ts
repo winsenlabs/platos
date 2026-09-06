@@ -79,6 +79,7 @@ beforeAll(async () => {
     alphaVariableId: uuid("0201"),
     bravoVariableId: uuid("0202"),
     charlieVariableId: uuid("0203"),
+    deltaVariableId: uuid("0204"),
     auditIds: [uuid("0301"), uuid("0302"), uuid("0303"), uuid("0304")],
   };
 }, 300_000);

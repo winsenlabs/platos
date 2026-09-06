@@ -10,6 +10,16 @@
 // pair. `setEnvironmentVariable` never notices, because it reads the row first
 // and reuses `existing.value.id`; every other caller of the port would.
 //
+// THE WRITE IS FENCED ON `version`, AND THAT IS WIN-258 T7's WHOLE CONTRIBUTION
+// TO THIS FILE. The bump was already here and it was never a fence: `version:
+// { increment: 1 }` tells a LATER reader the row moved and tells the writer that
+// lost nothing at all. Two `setEnvironmentVariable` calls on one key both read
+// version N, both write, and PostgreSQL — which serializes the two UPDATEs on
+// the row lock and then applies both — answers success to both. The first
+// caller's value is gone and it was told it had been stored. That was reproduced
+// against a real container before the fence was written, and the same two
+// concurrent transactions now end with one `ENVIRONMENT_VARIABLE_VERSION_CONFLICT`.
+//
 // TWO COLUMNS ARE FROZEN ON UPDATE. `EnvironmentVariable_owner_immutable` fires
 // BEFORE UPDATE over `environmentId` and `key`, so the conflict branch below
 // writes neither — which is also why it cannot be written as "set every column
@@ -35,7 +45,13 @@ import type {
   Result,
   TransactionScope,
 } from "@platos/context-secrets/application/ports/index.js";
-import { ok } from "@platos/context-secrets/application/ports/index.js";
+import {
+  environmentVariableVersionConflict,
+  err,
+  ok,
+} from "@platos/context-secrets/application/ports/index.js";
+
+import { isRecordNotFound } from "./client.js";
 
 import {
   requireInstant,
@@ -88,41 +104,108 @@ export function createEnvironmentVariableStore(
       const at = requireInstant("EnvironmentVariable.updatedAt", input.at);
       const environmentId = requireUuid("EnvironmentVariable.environmentId", input.environmentId);
 
-      const row = (await transactions.writer(transaction).environmentVariable.upsert({
-        where: { environmentId_key: { environmentId, key } },
-        create: {
-          id: requireUuid("EnvironmentVariable.id", input.id),
-          environmentId,
-          key,
-          kind: input.kind,
-          value: input.value,
-          credentialId,
-          // The column's own default is 1 and the double's first write produces
-          // 1. Writing it explicitly is what makes the two agree by construction
-          // rather than by two defaults happening to match.
-          version: 1,
-          lastUpdatedBy: input.lastUpdatedBy,
-          createdAt: at,
-          updatedAt: at,
-        },
-        update: {
-          kind: input.kind,
-          value: input.value,
-          credentialId,
-          // `increment`, not `existing.version + 1`. A read-then-write would lose
-          // a concurrent bump, and `version` is the field a stale reader uses to
-          // learn it is stale — a version that silently repeats is worse than no
-          // version at all.
-          version: { increment: 1 },
-          lastUpdatedBy: input.lastUpdatedBy,
-          updatedAt: at,
-        },
-        select: VARIABLE_COLUMNS,
-      })) as VariableRow;
-      return ok(readVariable(row));
+      const writer = transactions.writer(transaction);
+
+      // NO ROW WAS READ, SO THE FENCE IS THE UNIQUE INDEX ITSELF. Not `upsert`:
+      // an upsert here would quietly turn "I am creating this" into "I am
+      // overwriting whatever is there", which is the lost update in its other
+      // shape — a caller that read no row and a caller that read version 7 would
+      // both succeed and one of them would be writing over a value it never saw.
+      // `EnvironmentVariable_environmentId_key_key` refuses the second one.
+      //
+      // AND IT IS `createManyAndReturn` WITH `skipDuplicates` RATHER THAN
+      // `create` IN A `try`, WHICH IS THE OPPOSITE OF WHAT THIS PACKAGE DOES
+      // EVERYWHERE ELSE. WIN-258 T7 put a caught SQLSTATE 23505 inside a real
+      // interactive transaction and asked the connection one more question: it
+      // answered SQLSTATE 25P02, "current transaction is aborted, commands
+      // ignored until end of transaction block". PostgreSQL aborts a transaction
+      // on a constraint violation and the client opens no savepoint around a
+      // statement, so a store that CATCHES a violation and answers `Result` has
+      // returned a value to a caller whose transaction is already dead — the
+      // `err` is true and everything the caller does with it is not.
+      // `channels-links.ts` documents the same fact from the other side and
+      // deliberately reads nothing after its own catch.
+      //
+      // WORSE, THE COMMIT THEN REPORTS SUCCESS. PostgreSQL turns the COMMIT of an
+      // aborted transaction into a ROLLBACK and answers `COMMIT`, so the caller
+      // is told the whole block landed while every row in it was discarded —
+      // measured in `transaction-boundaries.integration.test.ts`. A store that
+      // wants to keep answering `Result` therefore has to avoid the violation,
+      // not catch it.
+      //
+      // `skipDuplicates` emits `ON CONFLICT DO NOTHING`, so the conflict is an
+      // EMPTY RESULT and no error is raised at all: one statement, the row back
+      // when it was written, a usable transaction either way.
+      if (input.expectedVersion === null) {
+        const created = (await writer.environmentVariable.createManyAndReturn({
+          data: [
+            {
+              id: requireUuid("EnvironmentVariable.id", input.id),
+              environmentId,
+              key,
+              kind: input.kind,
+              value: input.value,
+              credentialId,
+              // The column's own default is 1 and the double's first write
+              // produces 1. Writing it explicitly is what makes the two agree by
+              // construction rather than by two defaults happening to match.
+              version: 1,
+              lastUpdatedBy: input.lastUpdatedBy,
+              createdAt: at,
+              updatedAt: at,
+            },
+          ],
+          skipDuplicates: true,
+          select: VARIABLE_COLUMNS,
+        })) as readonly VariableRow[];
+        const row = created[0];
+        if (row === undefined) return err(environmentVariableVersionConflict(null));
+        return ok(readVariable(row));
+      }
+
+      // THE COMPARE-AND-SET. The version the caller read is in the WHERE clause,
+      // beside the compound unique, so PostgreSQL evaluates the precondition and
+      // the write as ONE statement and no window exists between them. `update`
+      // rather than `updateMany` for two reasons: it returns the stored row, so
+      // the answer needs no second statement, and it reports a miss as P2025
+      // instead of as a count nobody is obliged to look at.
+      //
+      // `increment`, not `expectedVersion + 1`. The two are equal on the row this
+      // WHERE clause can match, and writing the increment keeps the column's rule
+      // — it only ever goes up — true in the statement rather than true by the
+      // caller's arithmetic.
+      try {
+        const updated = (await writer.environmentVariable.update({
+          where: {
+            environmentId_key: { environmentId, key },
+            version: input.expectedVersion,
+          },
+          data: {
+            kind: input.kind,
+            value: input.value,
+            credentialId,
+            version: { increment: 1 },
+            lastUpdatedBy: input.lastUpdatedBy,
+            updatedAt: at,
+          },
+          select: VARIABLE_COLUMNS,
+        })) as VariableRow;
+        return ok(readVariable(updated));
+      } catch (error) {
+        // MATCHED NO ROW. Either the row moved on — somebody else wrote between
+        // this caller's read and this statement — or it was deleted. Both are the
+        // same answer to this caller: what you read is not what is there, read
+        // again. They are deliberately NOT distinguished, because a caller cannot
+        // act on the difference and the retry is identical.
+        if (isRecordNotFound(error)) {
+          return err(environmentVariableVersionConflict(input.expectedVersion));
+        }
+        throw error;
+      }
     },
 
     async remove(
+      environmentId: EnvironmentId,
       id: EnvironmentVariableId,
       transaction: TransactionScope,
     ): Promise<Result<boolean>> {
@@ -130,8 +213,17 @@ export function createEnvironmentVariableStore(
       // port answers `Result<boolean>` and the double answers `Map.delete`'s
       // boolean, so a store that raised on an absent row would turn an idempotent
       // delete into a poisoned transaction.
+      //
+      // AND THE `environmentId` IS IN THE WHERE CLAUSE, not merely in the
+      // signature. `id` is a bare uuid primary key, so without it this statement
+      // reaches any tenant's row that a caller can name — WIN-258 T7 ran exactly
+      // that against a real database and watched a second environment's variable
+      // disappear.
       const removed = await transactions.writer(transaction).environmentVariable.deleteMany({
-        where: { id: requireUuid("EnvironmentVariable.id", id) },
+        where: {
+          id: requireUuid("EnvironmentVariable.id", id),
+          environmentId: requireUuid("EnvironmentVariable.environmentId", environmentId),
+        },
       });
       return ok(removed.count > 0);
     },

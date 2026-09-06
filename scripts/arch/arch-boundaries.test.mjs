@@ -1010,8 +1010,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //               it has to satisfy are the ones every file in that directory
     //               already does — `tenancy-prisma-only` above all, and the
     //               probe names the client type in the one file entitled to.
-    assert.equal(result.fileCount, 1484, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7);
+    // 1477 -> 1480 (WIN-258 T7, concurrency, pooling and transaction
+    //               boundaries). THREE files, all suites, all in that same one
+    //               adapter directory: `pooling.integration.test.ts`,
+    //               `optimistic-concurrency.integration.test.ts` and
+    //               `transaction-boundaries.integration.test.ts`. NO source file
+    //               is added — the fence, the server timeouts and the tenant
+    //               clause on the DELETE are all edits in place — so this delta
+    //               is exactly the tranche's suite count and nothing else, and
+    //               `packages/contexts/secrets` gains no file either.
+    // MERGED: 1477 + 7 + 3 = 1487. Neither 1484 nor 1480 is right here.
+    assert.equal(result.fileCount, 1487, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

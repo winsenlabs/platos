@@ -114,6 +114,18 @@ export async function setEnvironmentVariable(
         credentialId,
         lastUpdatedBy: actor.effectiveUserId ?? actor.actorId,
         at: deps.clock.now(),
+        // THE FENCE, carried from the read this whole block was decided from.
+        //
+        // WIN-258 T7. Everything above — which id to reuse, which credential to
+        // rotate rather than create — was chosen from `existing`, and between
+        // that read and this write another caller may have set the same key.
+        // Without the version the store cannot tell the two apart and applies
+        // both, and the loser is told it won. With it the loser is refused, and
+        // because the refusal travels back through `inTransaction` the ROTATION
+        // above rolls back too — which is the part that matters, since a
+        // committed rotation for a variable that was never written leaves a
+        // credential whose envelope no reader can account for.
+        expectedVersion: existing.value?.version ?? null,
       },
       transaction,
     );
@@ -153,7 +165,7 @@ export async function deleteEnvironmentVariable(
     if (!existing.ok) return err(existing.error);
     if (existing.value === null) return ok({ deleted: false, key: key.value });
 
-    const removed = await deps.variables.remove(existing.value.id, transaction);
+    const removed = await deps.variables.remove(environmentId, existing.value.id, transaction);
     if (!removed.ok) return err(removed.error);
     if (existing.value.credentialId !== null) {
       const swept = await revokeIfUnreferenced(deps, granted.value, existing.value.credentialId);

@@ -18,12 +18,15 @@ export type {
 export {
   AdapterConfigurationError,
   buildDatasourceUrl,
+  buildServerOptions,
   createTenancyDatabaseClient,
   DATABASE_URL_INVALID,
   FOREIGN_KEY_VIOLATION_CODE,
   isForeignKeyViolation,
+  isRecordNotFound,
   isUniqueViolation,
   POOL_SETTING_INVALID,
+  RECORD_NOT_FOUND_CODE,
   UNIQUE_VIOLATION_CODE,
 } from "./client.js";
 

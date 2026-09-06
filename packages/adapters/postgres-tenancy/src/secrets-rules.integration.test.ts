@@ -211,6 +211,7 @@ describe("four rules freeze a column the row may not change", () => {
           credentialId: null,
           lastUpdatedBy: null,
           at: AT,
+          expectedVersion: null,
         },
         transaction,
       ),
@@ -245,6 +246,7 @@ describe("enforce_win124_credential_kind re-reads the credential from inside the
             credentialId: credentialIdOf(credentialId),
             lastUpdatedBy: null,
             at: AT,
+            expectedVersion: null,
           },
           transaction,
         ),
@@ -271,6 +273,7 @@ describe("enforce_win124_credential_kind re-reads the credential from inside the
         credentialId: credentialIdOf(credentialId),
         lastUpdatedBy: null,
         at: AT,
+        expectedVersion: null,
       },
       { transactionId: "fake" } as never,
     );
@@ -338,8 +341,14 @@ describe("the active envelope cannot be destroyed, two different ways", () => {
   });
 });
 
-describe("the double keys an upsert on the row id; the database is unique on the pair", () => {
-  test("a FRESH id for an existing key makes two rows in memory and updates one here", async () => {
+describe("both stores key an upsert on [environmentId, key], and the fence says so", () => {
+  // WIN-258 T5 wrote this block to record a DIVERGENCE: the adapter keyed on the
+  // compound unique the database carries and the double keyed on `input.id`, so
+  // a caller handing a fresh id for an existing key got one updated row here and
+  // TWO rows in memory. WIN-258 T7 closes it, because a fence cannot be tested
+  // against a double that has no row to be stale about — so the claim this block
+  // makes is now the opposite one, and it is made against BOTH stores at once.
+  test("a FRESH id for an existing key updates the row that is there, on both stores", async () => {
     const firstId = fresh();
     const secondId = fresh();
     await inTransaction((transaction) =>
@@ -353,6 +362,7 @@ describe("the double keys an upsert on the row id; the database is unique on the
           credentialId: null,
           lastUpdatedBy: null,
           at: AT,
+          expectedVersion: null,
         },
         transaction,
       ),
@@ -368,11 +378,13 @@ describe("the double keys an upsert on the row id; the database is unique on the
           credentialId: null,
           lastUpdatedBy: null,
           at: LATER,
+          // The version the caller read, not the id it invented.
+          expectedVersion: 1,
         },
         transaction,
       ),
     );
-    // THE STORE KEYS ON `[environmentId, key]`, which is what the database is
+    // The store keys on `[environmentId, key]`, which is what the database is
     // unique on, so the second call UPDATES the first row and the id it was
     // handed is not the id it answers with.
     expect(second).toMatchObject({ ok: true, value: { id: firstId, value: "two", version: 2 } });
@@ -382,10 +394,9 @@ describe("the double keys an upsert on the row id; the database is unique on the
     });
     expect(rows).toEqual([{ id: firstId }]);
 
-    // THE DOUBLE KEYS ON `input.id`, so the same two calls leave TWO rows with
-    // one key — a state `EnvironmentVariable_environmentId_key_key` makes
-    // unreachable. `setEnvironmentVariable` never notices because it reads the
-    // row first and reuses its id; any other caller of the port would.
+    // THE DOUBLE, ASKED THE SAME TWO QUESTIONS. It now answers `firstId` too and
+    // holds ONE row, which is the state `EnvironmentVariable_environmentId_key_key`
+    // makes the only reachable one.
     const fake = inMemorySecretsStore();
     const scope = { transactionId: "fake" } as never;
     await fake.upsert(
@@ -398,6 +409,7 @@ describe("the double keys an upsert on the row id; the database is unique on the
         credentialId: null,
         lastUpdatedBy: null,
         at: AT,
+        expectedVersion: null,
       },
       scope,
     );
@@ -411,10 +423,96 @@ describe("the double keys an upsert on the row id; the database is unique on the
         credentialId: null,
         lastUpdatedBy: null,
         at: LATER,
+        expectedVersion: 1,
       },
       scope,
     );
-    expect(fakeSecond).toMatchObject({ ok: true, value: { id: secondId, version: 1 } });
-    expect(fake.allVariables()).toHaveLength(2);
+    expect(fakeSecond).toMatchObject({ ok: true, value: { id: firstId, version: 2 } });
+    expect(fake.allVariables()).toHaveLength(1);
+  });
+
+  test("a write that thinks the key is FREE is refused once the row exists, on both stores", async () => {
+    const held = fresh();
+    await inTransaction((transaction) =>
+      harness.variables.upsert(
+        {
+          id: variableIdOf(held),
+          environmentId,
+          key: "TAKEN",
+          kind: "PLAIN",
+          value: "one",
+          credentialId: null,
+          lastUpdatedBy: null,
+          at: AT,
+          expectedVersion: null,
+        },
+        transaction,
+      ),
+    );
+    // `expectedVersion: null` says "I read no row for this key". A row is there,
+    // so the caller read a state that no longer holds — the same lost update as a
+    // stale version, wearing the shape of an insert.
+    const refused = await inTransaction((transaction) =>
+      harness.variables.upsert(
+        {
+          id: variableIdOf(fresh()),
+          environmentId,
+          key: "TAKEN",
+          kind: "PLAIN",
+          value: "two",
+          credentialId: null,
+          lastUpdatedBy: null,
+          at: LATER,
+          expectedVersion: null,
+        },
+        transaction,
+      ),
+    );
+    expect(refused).toMatchObject({
+      ok: false,
+      error: { code: "ENVIRONMENT_VARIABLE_VERSION_CONFLICT" },
+    });
+    // NOTHING WAS WRITTEN, and the row that was there is untouched.
+    const rows = await harness.base.client.environmentVariable.findMany({
+      where: { environmentId, key: "TAKEN" },
+      select: { id: true, value: true, version: true },
+    });
+    expect(rows).toEqual([{ id: held, value: "one", version: 1 }]);
+
+    const fake = inMemorySecretsStore();
+    const scope = { transactionId: "fake" } as never;
+    await fake.upsert(
+      {
+        id: variableIdOf(held),
+        environmentId,
+        key: "TAKEN",
+        kind: "PLAIN",
+        value: "one",
+        credentialId: null,
+        lastUpdatedBy: null,
+        at: AT,
+        expectedVersion: null,
+      },
+      scope,
+    );
+    const fakeRefused = await fake.upsert(
+      {
+        id: variableIdOf(fresh()),
+        environmentId,
+        key: "TAKEN",
+        kind: "PLAIN",
+        value: "two",
+        credentialId: null,
+        lastUpdatedBy: null,
+        at: LATER,
+        expectedVersion: null,
+      },
+      scope,
+    );
+    expect(fakeRefused).toMatchObject({
+      ok: false,
+      error: { code: "ENVIRONMENT_VARIABLE_VERSION_CONFLICT" },
+    });
+    expect(fake.allVariables()).toHaveLength(1);
   });
 });

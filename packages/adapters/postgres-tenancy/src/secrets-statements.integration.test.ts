@@ -142,6 +142,7 @@ async function seed(count: number): Promise<Fixture> {
           credentialId: null,
           lastUpdatedBy: null,
           at: AT,
+          expectedVersion: null,
         },
         transaction,
       );
@@ -379,6 +380,7 @@ describe("the writes are one statement each", () => {
             credentialId: null,
             lastUpdatedBy: null,
             at: AT,
+            expectedVersion: null,
           },
           transaction,
         ),
@@ -392,7 +394,7 @@ describe("the writes are one statement each", () => {
 
     const removed = await measure(() =>
       inTransaction((transaction) =>
-        harness.variables.remove(variableIdOf(variableId), transaction),
+        harness.variables.remove(small.environmentId, variableIdOf(variableId), transaction),
       ),
     );
     expect(removed.counted).toBe(1);

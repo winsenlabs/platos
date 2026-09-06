@@ -16,7 +16,24 @@
     "scripts/arch/gen-v1-skeleton.mjs and byte-compared by `node",
     "scripts/arch/gen-v1-skeleton.mjs --check`: adoption releases a project's",
     "PLACEHOLDERS, never its scaffolding, so an adopted adapter still owes the",
-    "generator its README verbatim."
+    "generator its README verbatim.",
+    "",
+    "WIN-258 T7 adds M23-M26 and lifts the count from 22 to 26. M23 is the",
+    "sharpest entry in this file, because the mutation IS the code as it stood",
+    "at 8f078963: it puts the server timeouts back on the datasource URL as",
+    "query parameters. Three of its four kills are in",
+    "`pooling.integration.test.ts` and NONE of them could have been in",
+    "`client.test.ts`, because the URL the mutant writes is exactly as",
+    "convincing as the URL the fix writes and only a real server can tell them",
+    "apart -- it answers `current_setting('statement_timeout')` with '0' and",
+    "runs a `pg_sleep` to the end.",
+    "",
+    "M25 IS DECLARED WEAK AND NAMED SO. Dropping the `ms` suffix leaves a",
+    "mutant that is still correct against PostgreSQL today, because all three",
+    "settings default to milliseconds; what goes red is the spelling",
+    "`current_setting` echoes back. It is counted as a kill of the SPELLING and",
+    "the entry says so, rather than being counted as a behavioural guard it is",
+    "not."
   ],
   "procedure": [
     "PROVE THE SUITES GREEN FIRST. The first run of this sweep reported 22 kills",
@@ -326,6 +343,64 @@
       ],
       "kills": [
         "src/repository.integration.test.ts > read semantics > a list of twenty-five projects is ONE statement, not one per row"
+      ]
+    },
+    {
+      "name": "M23 client: the server timeouts go back on the URL as query parameters",
+      "file": "src/client.ts",
+      "from": "  const serverOptions = buildServerOptions(pool);\n  if (serverOptions !== null) {\n    const existing = url.searchParams.get(\"options\");\n    url.searchParams.set(\n      \"options\",\n      existing === null || existing.length === 0 ? serverOptions : `${existing} ${serverOptions}`,\n    );\n  }",
+      "to": "  for (const [setting, field] of SERVER_TIMEOUT_SETTINGS) {\n    const value = pool[field];\n    if (value !== undefined) {\n      url.searchParams.set(setting, String(requirePositiveInteger(field, value)));\n    }\n  }",
+      "suites": [
+        "src/client.test.ts",
+        "src/pooling.integration.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > carries a statement timeout as a server option, NOT as a query parameter",
+        "src/pooling.integration.test.ts > the server timeouts reach the server > the OPTIONS shape reports all three settings back, with their units",
+        "src/pooling.integration.test.ts > each timeout REFUSES, with its own SQLSTATE > a statement that outruns statementTimeoutMs is cancelled with 57014",
+        "src/pooling.integration.test.ts > each timeout REFUSES, with its own SQLSTATE > a statement that waits for a row lock past lockTimeoutMs is cancelled with 55P03"
+      ],
+      "note": "This mutation IS the defect T7 found, restored: it is exactly what `buildDatasourceUrl` did at 8f078963. The unit case sees the shape change; the three integration cases see the server report '0' and enforce nothing. That the unit suite alone cannot catch it is the reason `pooling.integration.test.ts` exists."
+    },
+    {
+      "name": "M24 client: a caller's own options are replaced rather than appended to",
+      "file": "src/client.ts",
+      "from": "      existing === null || existing.length === 0 ? serverOptions : `${existing} ${serverOptions}`,",
+      "to": "      serverOptions,",
+      "suites": [
+        "src/client.test.ts",
+        "src/pooling.integration.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > KEEPS an options value the caller set and appends its own after it",
+        "src/pooling.integration.test.ts > the server timeouts reach the server > a caller's own options survive, and the adapter's timeout is the one in force"
+      ]
+    },
+    {
+      "name": "M25 client: the unit is dropped, so a bare integer is read in the parameter's own unit",
+      "file": "src/client.ts",
+      "from": "    flags.push(`-c ${setting}=${String(requirePositiveInteger(field, value))}ms`);",
+      "to": "    flags.push(`-c ${setting}=${String(requirePositiveInteger(field, value))}`);",
+      "suites": [
+        "src/client.test.ts",
+        "src/pooling.integration.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > buildDatasourceUrl > carries all three server timeouts in one options value, each with its unit",
+        "src/pooling.integration.test.ts > the server timeouts reach the server > the OPTIONS shape reports all three settings back, with their units"
+      ],
+      "note": "Declared as a WEAK guard rather than a strong one, and named so it cannot be mistaken for a strong one. All three settings happen to default to milliseconds, so the mutant is still CORRECT against PostgreSQL today; what goes red is the value `current_setting` echoes back ('400' rather than '400ms'). The guard is against a future setting whose unit is not ms, and the kill is real but is a kill of the SPELLING, not of the behaviour."
+    },
+    {
+      "name": "M26 client: the record-not-found code is recognised by message rather than by code",
+      "file": "src/client.ts",
+      "from": "export function isRecordNotFound(error: unknown): boolean {\n  return errorCode(error) === RECORD_NOT_FOUND_CODE;\n}",
+      "to": "export function isRecordNotFound(error: unknown): boolean {\n  return String(error).includes(\"not found\");\n}",
+      "suites": [
+        "src/client.test.ts"
+      ],
+      "kills": [
+        "src/client.test.ts > driver error classification > recognises the record-not-found code and nothing else"
       ]
     }
   ]

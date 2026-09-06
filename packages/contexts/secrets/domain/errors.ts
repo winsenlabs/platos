@@ -36,6 +36,7 @@ export const SECRETS_ERROR_CODES = [
   "ENVIRONMENT_VARIABLE_KEY_INVALID",
   "ENVIRONMENT_VARIABLE_VALUE_REQUIRED",
   "ENVIRONMENT_VARIABLE_VALUE_TOO_LONG",
+  "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
 ] as const;
 
 export type SecretsErrorCode = (typeof SECRETS_ERROR_CODES)[number];
@@ -175,5 +176,35 @@ export function secretVersionAlreadyExists(): DomainError {
     "SECRET_VERSION_ALREADY_EXISTS",
     "conflict",
     "secret version already exists for this revision and root key",
+  );
+}
+
+/**
+ * The optimistic fence on `EnvironmentVariable.version`: the row moved between
+ * the read this write was decided from and the write itself.
+ *
+ * WIN-258 T7. `setEnvironmentVariable` is a read-modify-write — it reads the row
+ * to learn which id and which backing credential to reuse, then writes. Two
+ * concurrent callers on one key both read version N and both write; PostgreSQL
+ * serializes the two UPDATEs on the row lock, applies them one after the other,
+ * and answers both with success. Nothing is violated and nothing is refused: the
+ * first caller's value is simply gone, and it was told the write had happened.
+ * That is a LOST UPDATE, and it was reproduced against a real PostgreSQL before
+ * this error existed.
+ *
+ * A version the caller read is therefore carried back into the WHERE clause, so
+ * the second write matches no row and the caller learns it lost rather than
+ * being told it won. `conflict`, not `precondition_failed`, because the caller's
+ * request was well formed and the correct answer is to read again and retry.
+ *
+ * The message names no key and no value, for the reason every message in this
+ * file names none.
+ */
+export function environmentVariableVersionConflict(expectedVersion: number | null): DomainError {
+  return domainError(
+    "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+    "conflict",
+    "environment variable was modified concurrently",
+    { details: withReason("stale_version", { expectedVersion }) },
   );
 }

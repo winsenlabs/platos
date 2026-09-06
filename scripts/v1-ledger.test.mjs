@@ -913,10 +913,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // PostgreSQL 16 at three hundred threads: an index scan feeding a full
     // `Sort`, 241 rows read to return a page of 25, at every window.
     // 1378 + 8 = 1386, and internal-packages 0 -> 1.
-    // MERGED: `packages` 1378 + 5 (the JSON-column census) + 8 (the plan
-    // suites and their kit) = 1391; `internal-packages` 0 + 1 (the thread
-    // listing index). Neither branch's own figure is right merged.
-    packages: 1391,
+    // +3 (WIN-258 T7): three integration suites under
+    // packages/adapters/postgres-tenancy/src — pooling, optimistic-concurrency
+    // and transaction-boundaries. All three are `packages.adapters.test`, all
+    // three land in `packages` and in no other area, and the tranche adds no
+    // source file at all: every code change it makes is an edit in place.
+    // MERGED: `packages` 1378 + 5 (the JSON-column census) + 8 (the plan suites
+    // and their kit) + 3 (the concurrency, pooling and transaction-boundary
+    // suites) = 1394; `internal-packages` 0 + 1 (the thread listing index).
+    // No branch's own figure -- 1383, 1386 or 1381 -- is right merged.
+    packages: 1394,
     "internal-packages": 1,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1166,7 +1172,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     "docs-content": 13,
     "root-infra": 41,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1468);
+    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1471);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1197,7 +1203,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `internal-packages` that gives the operator thread listing the index it
     // was said to have); this one re-derives it by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1468
+    // and that tranche's concurrency, pooling and transaction-boundary suites
+    // +3); this one re-derives it by summing the per-area counts independently,
+    // so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1471
   );
 });
 

@@ -49,9 +49,15 @@ export type {
 // already happened three times to the envelope. `asSecretsIdentifier` is the
 // tagging function `domain/ids.ts` reserves for "adapters reading a row and
 // transports parsing a request", which is this caller exactly, and
-// `credentialUnavailable` is the ONE refusal `domain/errors.ts` says a store may
-// answer with — a store that minted its own would re-open the probing oracle
-// that file collapses nine reasons to close.
+// `credentialUnavailable` is the one refusal `domain/errors.ts` says a store may
+// answer with ABOUT A CREDENTIAL — a store that minted its own would re-open the
+// probing oracle that file collapses nine reasons to close.
+//
+// WIN-258 T7 adds a second, and it is a different kind of answer rather than a
+// hole in the first. `environmentVariableVersionConflict` is not about a secret
+// at all: it says the row a write was decided from has moved, it names no key
+// and no value, and it is the outcome of a WHERE clause rather than of a lookup,
+// so it discloses only what the caller's own failed write already told it.
 //
 // The kernel values these signatures name are republished for the reason
 // `identity-access`'s and `cost-monitoring`'s port entry points republish
@@ -94,5 +100,6 @@ export {
   asSecretsIdentifier,
   credentialNameTaken,
   credentialUnavailable,
+  environmentVariableVersionConflict,
   secretVersionAlreadyExists,
 } from "../../domain/index.js";

@@ -218,6 +218,7 @@ describe("the three transaction-scope refusals, told apart", () => {
             credentialId: null,
             lastUpdatedBy: null,
             at: AT,
+            expectedVersion: null,
           },
           stale as unknown as TransactionScope,
         );
@@ -266,6 +267,7 @@ describe("a read joins the open transaction rather than the pool", () => {
           credentialId: null,
           lastUpdatedBy: null,
           at: AT,
+          expectedVersion: null,
         },
         transaction,
       );

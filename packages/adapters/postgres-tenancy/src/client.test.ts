@@ -11,11 +11,14 @@ import { describe, expect, test } from "vitest";
 import {
   AdapterConfigurationError,
   buildDatasourceUrl,
+  buildServerOptions,
   DATABASE_URL_INVALID,
   FOREIGN_KEY_VIOLATION_CODE,
   isForeignKeyViolation,
+  isRecordNotFound,
   isUniqueViolation,
   POOL_SETTING_INVALID,
+  RECORD_NOT_FOUND_CODE,
   UNIQUE_VIOLATION_CODE,
 } from "./client.js";
 
@@ -26,21 +29,63 @@ describe("buildDatasourceUrl", () => {
     const built = new URL(buildDatasourceUrl(BASE));
     expect(built.searchParams.has("connection_limit")).toBe(false);
     expect(built.searchParams.has("pool_timeout")).toBe(false);
-    expect(built.searchParams.has("statement_timeout")).toBe(false);
+    expect(built.searchParams.has("options")).toBe(false);
   });
 
-  test("writes each setting it is given, with the driver's own parameter names", () => {
+  test("writes each POOL setting it is given, with the driver's own parameter names", () => {
     const built = new URL(
-      buildDatasourceUrl(BASE, {
-        connectionLimit: 12,
-        poolTimeoutSeconds: 9,
-        statementTimeoutMs: 4000,
-      }),
+      buildDatasourceUrl(BASE, { connectionLimit: 12, poolTimeoutSeconds: 9 }),
     );
     expect(built.searchParams.get("connection_limit")).toBe("12");
     expect(built.searchParams.get("pool_timeout")).toBe("9");
-    expect(built.searchParams.get("statement_timeout")).toBe("4000");
     expect(built.pathname).toBe("/platos");
+  });
+
+  // --- the server timeouts --------------------------------------------------
+  //
+  // WIN-258 T7. These cases exist because the shape they assert is the one that
+  // WORKS and the obvious shape is the one that silently does not; see
+  // `buildDatasourceUrl`'s own comment for the probe, and
+  // `pooling.integration.test.ts` for the same claim put to a real server.
+
+  test("carries a statement timeout as a server option, NOT as a query parameter", () => {
+    const built = new URL(buildDatasourceUrl(BASE, { statementTimeoutMs: 4000 }));
+    expect(built.searchParams.get("options")).toBe("-c statement_timeout=4000ms");
+    expect(built.searchParams.has("statement_timeout")).toBe(false);
+  });
+
+  test("carries all three server timeouts in one options value, each with its unit", () => {
+    const built = new URL(
+      buildDatasourceUrl(BASE, {
+        statementTimeoutMs: 4000,
+        lockTimeoutMs: 250,
+        idleInTransactionSessionTimeoutMs: 60_000,
+      }),
+    );
+    expect(built.searchParams.get("options")).toBe(
+      "-c statement_timeout=4000ms -c lock_timeout=250ms -c idle_in_transaction_session_timeout=60000ms",
+    );
+  });
+
+  test("KEEPS an options value the caller set and appends its own after it", () => {
+    const built = new URL(
+      buildDatasourceUrl(`${BASE}?options=-c%20application_name%3Dplatos`, {
+        lockTimeoutMs: 250,
+      }),
+    );
+    expect(built.searchParams.get("options")).toBe(
+      "-c application_name=platos -c lock_timeout=250ms",
+    );
+  });
+
+  test("writes no options value at all when no server timeout was asked for", () => {
+    const built = new URL(buildDatasourceUrl(BASE, { connectionLimit: 4 }));
+    expect(built.searchParams.has("options")).toBe(false);
+  });
+
+  test("buildServerOptions answers null when nothing is set, so the caller can tell", () => {
+    expect(buildServerOptions({})).toBeNull();
+    expect(buildServerOptions({ connectionLimit: 8, poolTimeoutSeconds: 2 })).toBeNull();
   });
 
   test("REPLACES a setting the caller already put on the URL rather than doubling it", () => {
@@ -80,6 +125,8 @@ describe("buildDatasourceUrl", () => {
     ["connectionLimit", { connectionLimit: 1.5 }],
     ["poolTimeoutSeconds", { poolTimeoutSeconds: 0 }],
     ["statementTimeoutMs", { statementTimeoutMs: -1 }],
+    ["lockTimeoutMs", { lockTimeoutMs: 0 }],
+    ["idleInTransactionSessionTimeoutMs", { idleInTransactionSessionTimeoutMs: 2.5 }],
   ])("refuses a %s that is not a positive whole number, with pool_setting_invalid", (_label, pool) => {
     expect(() => buildDatasourceUrl(BASE, pool)).toThrowError(
       expect.objectContaining({ code: POOL_SETTING_INVALID }),
@@ -111,10 +158,28 @@ describe("driver error classification", () => {
     expect(isForeignKeyViolation({ code: UNIQUE_VIOLATION_CODE })).toBe(false);
   });
 
+  test("recognises the record-not-found code and nothing else", () => {
+    // WIN-258 T7. This one carries more weight than its two neighbours: it is
+    // what `secrets-variables.ts` reads "somebody else got there first" from, so
+    // a classification that answered by MESSAGE would turn every other P-coded
+    // failure whose text happens to say "not found" into a version conflict.
+    expect(isRecordNotFound({ code: RECORD_NOT_FOUND_CODE })).toBe(true);
+    expect(isRecordNotFound({ code: UNIQUE_VIOLATION_CODE })).toBe(false);
+    expect(isRecordNotFound({ code: FOREIGN_KEY_VIOLATION_CODE })).toBe(false);
+    expect(isRecordNotFound(new Error("An operation failed because it depends on one or more records that were required but not found."))).toBe(
+      false,
+    );
+  });
+
+  test("the three driver codes are distinct, so one cannot be read as another", () => {
+    expect(new Set([UNIQUE_VIOLATION_CODE, FOREIGN_KEY_VIOLATION_CODE, RECORD_NOT_FOUND_CODE]).size).toBe(3);
+  });
+
   test("survives every shape that is not an object with a string code", () => {
     for (const value of [null, undefined, 7, "P2002", { code: 2002 }, []]) {
       expect(isUniqueViolation(value)).toBe(false);
       expect(isForeignKeyViolation(value)).toBe(false);
+      expect(isRecordNotFound(value)).toBe(false);
     }
   });
 });
