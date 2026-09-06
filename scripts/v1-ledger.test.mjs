@@ -1241,7 +1241,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two census files were edited in place. 43 + 2 = 45.
     // The two dimensions BOTH read 43 on their own bases and BOTH added two
     // files; taking either side of the rebase whole would have lost two files.
-    "root-infra": 45,
+    // +2 more (WIN-260, M2.5 T8): scripts/arch/transaction-outcome.mjs and its
+    // test, on the SAME root-infra.tooling.scripts rule again. That rule now
+    // carries all four of this dimension's gate files, which is why it moves by
+    // four while no ledger rule changed. 45 + 2 = 47.
+    "root-infra": 47,
   };
   // 1482 -> 1495 (WIN-260, typed configuration): +10 apps-core-api,
   // +1 apps-mcp-stdio, +2 root-infra = 13.
@@ -1249,7 +1253,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // +7 packages, +1 docs-content, +2 root-infra = 13, which is also the sum of
   // the four area deltas above and is asserted as such by the deepEqual below
   // rather than trusted.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1508);
+  // 1508 -> 1510 (WIN-260, M2.5 T8): +2 root-infra, the transaction-outcome gate
+  // and its test. Nothing else moves: the gate adds no file under the five V1
+  // roots, so the source census below is UNCHANGED at 1511 while this total
+  // rises by two — the two counts scope differently and are allowed to disagree
+  // for exactly that reason.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1510);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1302,9 +1311,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`. Its `root-infra` +2 and the typed
     // configuration dimension's `root-infra` +2 are FOUR DISTINCT FILES, which
     // is the one place where the two dimensions' arithmetic does not merge by
-    // agreement; this one re-derives the total by summing the per-area counts
+    // agreement, and T8 adds a further +2 to the same area for the second gate
+    // this dimension builds (13 + 13 + 2 = 28 over the M2 integration figure);
+    // this one re-derives the total by summing the per-area counts
     // independently, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1508
+    rulesDocument.baseline.totalFiles + 1510
   );
 });
 

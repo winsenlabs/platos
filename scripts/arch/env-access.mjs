@@ -216,11 +216,21 @@ export const VIOLATION_CODES = Object.freeze({
  *
  * ARITHMETIC. The tree at `f88c8364` scanned 1493, the same number
  * `scripts/arch/arch-boundaries.mjs` and `scripts/arch/composition-root.mjs` read
- * back over the same five roots. WIN-260 adds TEN files: seven configuration
- * modules and two suites under `apps/core-api/src/config/`, and one environment
- * reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ * back over the same five roots. WIN-260's typed configuration adds TEN files:
+ * seven configuration modules and two suites under `apps/core-api/src/config/`,
+ * and one environment reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-260 (M2.5, outbox/clock/retry) adds EIGHT more, and this pin is what
+ * CAUGHT them: three in `packages/kernel` (`vo/retry.ts` and the two behaviour
+ * suites), one in `packages/contexts/eventing` (the kernel-policy conformance
+ * suite), two in `packages/adapters/outbox` (`src/flush.ts` and its suite) and
+ * two under `apps/core-api/src/runtime` (`shutdown-drain.ts` and its suite).
+ * 1503 + 8 = 1511. That dimension's transaction-outcome gate adds NOTHING here —
+ * it lives under `scripts/` and this scan reads the five roots — which is why the
+ * V1 LEDGER moves by two where this pin does not, and the two are allowed to
+ * disagree for a stated reason rather than by accident.
  */
-export const EXPECTED_FILE_COUNT = 1503;
+export const EXPECTED_FILE_COUNT = 1511;
 
 function listSourceFiles(root) {
   const found = [];
