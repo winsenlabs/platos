@@ -1,6 +1,6 @@
 # @platos/adapter-postgres-tenancy
 
-Implements 28 owner-supplied ports — the tenancy-database client; per-context repositories, owner-tagged:
+Implements 33 owner-supplied ports — the tenancy-database client; per-context repositories, owner-tagged:
 
 - the tenancy `TenancyRepository` port
 - the identity-access `IdentityAccessRepository` port
@@ -31,6 +31,10 @@ Implements 28 owner-supplied ports — the tenancy-database client; per-context 
 - the memory `MemoryRepository` port
 - the memory `KnowledgeGraphRepository` port
 - the privacy `PrivacyRepository` port
+- the jobs `JobsRepository` port
+- the jobs `ApprovalsRepository` port
+- the observability `ObservabilityRepository` port
+- the eventing `NotificationRuleRepository` port
 
 ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a
 directory may satisfy more than one port when the ports sit behind the same

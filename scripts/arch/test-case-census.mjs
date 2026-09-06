@@ -2371,7 +2371,7 @@ export const EXPECTED = Object.freeze({
  * package test script for the reason the other three row suites do — it has no
  * database in it, and it reaches the mapping branches a container suite cannot,
  * since a container only ever reads rows this binary wrote.
- *
+ */
 export const EXPECTED_RUNTIME_TOTAL = 7226;
 
 /** Every case-declaring package directory, in byte order. */
