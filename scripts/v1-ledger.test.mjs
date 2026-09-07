@@ -578,7 +578,25 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and its wiring changed in-flight.ts, lifecycle.ts and their two suites IN
     // PLACE and add no file. 29 + 3 = 32.
     // M2 INTEGRATION, ALL FOUR: 29 + 1 + 11 + 3 = 44.
-    "apps-core-api": 44,
+    //
+    // WIN-267 (M4.1, T2 — the REST chassis) 44 -> 54, and it is TEN files that
+    // arrive on rules that already existed, so NO LEDGER RULE CHANGED:
+    //   `apps-core-api.source.transports` 7 -> 11 — `transports/rest/`'s
+    //     `envelope.ts`, `page.ts`, `fault.ts` and `transport-errors.ts`;
+    //   `apps-core-api.source.process`   25 -> 29 — `http/domain-exception.filter.ts`,
+    //     `http/validation.pipe.ts`, `http/not-found.controller.ts` and
+    //     `runtime/edge-middleware.ts`;
+    //   `apps-core-api.test.suites`      16 -> 18 — `transports/rest/envelope.test.ts`
+    //     and `http/rest-chassis.test.ts`.
+    // `edge-middleware.ts` is the correlation-and-admission middleware LIFTED OUT
+    // of `runtime/lifecycle.ts` rather than a new decision, and it is counted
+    // anyway: the census counts FILES, and a file that only moved is still a file
+    // the tree did not have. Everything else this tranche touches —
+    // `app.module.ts`, `http.module.ts`, `idempotency-middleware.ts`,
+    // `in-flight.ts`, `lifecycle.ts`, `lifecycle.test.ts`, `mutations.json` and
+    // `transports/rest/index.ts` — is edited in place and adds nothing.
+    // 44 + 10 = 54.
+    "apps-core-api": 54,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1436,8 +1454,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // splitting on its own merits, and this notes the arrival without splitting
     // it inside the tranche that would be its own beneficiary. The census
     // scripts and the contract-map gate T1 edits are edited in place.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 = 54.
-    "root-infra": 54,
+    // WIN-267 (M4.1, T2) 54 -> 55: `scripts/mutations-win267-t2.json`, this
+    // tranche's guard ledger, on the same rule and for the same stated reason.
+    // It is the THIRD non-code file under `scripts/`; the split T0 imagined is
+    // now clearly worth doing and is still not being done INSIDE a tranche that
+    // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
+    // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
+    // and add no file.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
+    "root-infra": 55,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1445,7 +1470,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // WIN-267 (M4.1, T1): 1581 + 3 = 1584, and 3469 + 1584 = 5053 — two in
   // apps-agent (the version expression and its route-identity probe) and one in
   // root-infra (this tranche's guard ledger).
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1584);
+  // WIN-267 (M4.1, T2): 1584 + 11 = 1595, and 3469 + 1595 = 5064 — TEN in
+  // apps-core-api (the REST chassis, itemised in `expectedDeltas` above) and ONE
+  // in root-infra (`scripts/mutations-win267-t2.json`, this tranche's guard
+  // ledger, on the same `root-infra.tooling.scripts` rule T0's and T1's took).
+  // The taxonomy gains four codes and no file: `docs/error-taxonomy.json` is
+  // edited in place.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1595);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1557,7 +1588,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // expression and its route-identity probe) and root-infra +1 (T1's guard
     // ledger) — re-derived here by summing the per-area counts independently of
     // the assertion above, so the two can DISAGREE and be caught. 1581 + 3 = 1584.
-    rulesDocument.baseline.totalFiles + 1584
+    // WIN-267 (M4.1, T2) +11 across TWO areas — apps-core-api +10 (the REST
+    // chassis: four modules under `transports/rest/`, three under `http/`,
+    // `runtime/edge-middleware.ts` and two suites) and root-infra +1 (T2's guard
+    // ledger) — re-derived here by summing the per-area counts independently of
+    // the assertion above, so the two can DISAGREE and be caught. 1584 + 11 = 1595.
+    rulesDocument.baseline.totalFiles + 1595
   );
 });
 

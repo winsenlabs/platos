@@ -145,21 +145,18 @@ export function collectionEnvelope<Row>(page: PageResult<Row>): CollectionEnvelo
   return { data: [...page.rows], page: block };
 }
 
-/**
- * `X-Platos-Contract-Version` IS STAMPED BY THE EDGE, NOT BY A ROUTE.
- *
- * `runtime/edge-middleware.ts` sets it on every response before anything is
- * routed, which is why there is no helper here for a route to call. A header
- * three hundred handlers each have to remember is a header some of them will
- * not carry, and the ones that forget are exactly the error paths — the 404, the
- * shutdown refusal, the 500 — where a client trying to work out which build
- * answered it needs it most. `X-Total-Count` is the opposite case and stays a
- * route's business: it asserts a count only the handler knows was taken, and a
- * count nobody took is a lie with a number in it.
- *
- * The value below is the same one `meta.contractVersion` carries; both come from
- * `CONTRACT_BUILD_ID` so the header and the body cannot disagree.
- */
+// `X-Platos-Contract-Version` IS STAMPED BY THE EDGE, NOT BY A ROUTE, which is
+// why there is no header helper in this file for a route to call.
+// `runtime/edge-middleware.ts` sets it on every response before anything is
+// routed. A header three hundred handlers each have to remember is a header some
+// of them will not carry, and the ones that forget are exactly the error paths —
+// the 404, the shutdown refusal, the 500 — where a client working out which
+// build answered it needs it most. It reads `CONTRACT_BUILD_ID` above, so the
+// header and `meta.contractVersion` cannot disagree.
+//
+// `X-Total-Count` is the opposite case and stays a route's business: it asserts
+// a count only the handler knows was taken, and a count nobody took is a lie
+// with a number in it.
 
 /**
  * An opaque cursor.

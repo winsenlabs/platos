@@ -1131,14 +1131,27 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     // M2 INTEGRATION, ALL FOUR DIMENSIONS: 1503 + 10 + 24 + 23 + 8 = 1568, with
     // every addend list concatenated rather than replaced.
-    assert.equal(result.fileCount, 1568, "the generated V1 source census must stay exact");
+    //
+    // WIN-267 (M4.1) T2 — THE REST CHASSIS: 1568 + 10 = 1578. FIVE under
+    // `apps/core-api/src/transports/rest/` (`envelope.ts`, `page.ts`,
+    // `fault.ts`, `transport-errors.ts` and the directory's suite), FOUR under
+    // `apps/core-api/src/http/` (`domain-exception.filter.ts`,
+    // `validation.pipe.ts`, `not-found.controller.ts` and `rest-chassis.test.ts`)
+    // and ONE under `apps/core-api/src/runtime/` (`edge-middleware.ts`, the
+    // correlation-and-admission middleware lifted out of `lifecycle.ts`). No
+    // other root moves: the chassis is the process edge and nothing else.
+    // `scripts/arch/env-access.mjs` pins the same census independently, which is
+    // why the two are allowed to disagree and be caught.
+    assert.equal(result.fileCount, 1578, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
       2 + 2 + 1 + 1 + 4 +
       14 + 2 + 2 + 6 +
       11 + 12 +
-      3 + 1 + 2 + 2);
+      3 + 1 + 2 + 2 +
+      // WIN-267 T2 chassis: transports/rest 5, http 4, runtime 1.
+      5 + 4 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

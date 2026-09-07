@@ -125,6 +125,19 @@ class ProbeController {
     throw new HttpException({ readiness: "a document a load balancer parses" }, 409);
   }
 
+  /**
+   * A handler that throws AFTER the response has gone.
+   *
+   * The filter cannot un-send bytes, and calling `setHeader` past `end` throws a
+   * second error inside the handler for the first one. The only honest answer is
+   * a log line, and this is what makes that arm falsifiable.
+   */
+  @Get("late")
+  late(@Res() response: { end(body: string): unknown }): never {
+    response.end(JSON.stringify({ written: "before the throw" }));
+    throw new TypeError("thrown after the response went");
+  }
+
   @Get("item")
   item(): unknown {
     return itemEnvelope({ id: "agent-1" });
@@ -182,6 +195,11 @@ function configuration(): ReturnType<typeof loadCoreApiConfiguration> {
 
 let base = "";
 let nest: Awaited<ReturnType<typeof NestFactory.create>> | null = null;
+/** Every structured line the application's logger wrote, as objects. */
+const written: string[] = [];
+function logLines(): readonly Record<string, unknown>[] {
+  return written.map((line) => JSON.parse(line) as Record<string, unknown>);
+}
 
 async function get(path: string, headers: Record<string, string> = {}): Promise<Answer> {
   const response = await fetch(`${base}${path}`, { headers });
@@ -208,7 +226,7 @@ beforeAll(async () => {
     configuration: outcome.value,
     clock,
     ids: ulidGenerator(clock),
-    logger: createProcessLogger({ minimumLevel: "error", write: () => undefined }),
+    logger: createProcessLogger({ minimumLevel: "debug", write: (line) => written.push(line) }),
     inFlight,
   });
   const state: LifecycleState = { phase: "serving" };
@@ -307,6 +325,31 @@ describe("WIN-260 (c) — every canonical code is reachable over REST", () => {
     expect(errorOf(answer)["code"]).toBe("TRANSPORT_UNHANDLED_FAULT");
     expect(answer.text).not.toContain(PLANTED);
     expect(answer.text).not.toContain("postgres://");
+  });
+
+  it("logs a fault that arrived after the response, instead of writing a second one", async () => {
+    const answer = await get("/probe/late");
+    expect(answer.status).toBe(200);
+    expect(answer.body).toEqual({ written: "before the throw" });
+    // The only observable the filter has left once the bytes are gone. Without
+    // the guard it would call `setHeader` past `end` and raise a second error
+    // inside the handling of the first.
+    expect(logLines().map((line) => line["message"])).toContain("http.fault_after_response");
+  });
+
+  it("records the code, the status and the caller's error id against every refusal", async () => {
+    const answer = await get("/probe/raise?code=TOOLS_DISPATCH_RATE_LIMITED");
+    const line = logLines()
+      .filter((entry) => entry["message"] === "http.request_failed")
+      .at(-1);
+    expect(line).toMatchObject({
+      code: "TOOLS_DISPATCH_RATE_LIMITED",
+      status: 429,
+      errorId: errorOf(answer)["errorId"],
+    });
+    // `details` is the kernel's log-only channel. It reaches the operator here
+    // and the caller nowhere; the sweep above asserts the second half.
+    expect(JSON.stringify(line)).toContain(PLANTED);
   });
 
   it("leaves a handler's own HttpException exactly as the handler chose it", async () => {

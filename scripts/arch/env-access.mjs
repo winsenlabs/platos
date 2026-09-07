@@ -306,7 +306,23 @@ export const VIOLATION_CODES = Object.freeze({
  * gate's own scan and independently from `arch-boundaries.test.mjs`'s, so the
  * two can DISAGREE and be caught. The DECLARED table is unmoved by all four.
  */
-export const EXPECTED_FILE_COUNT = 1568;
+/**
+ * WIN-267 (M4.1) T2, the REST chassis: 1568 + 10 = 1578, and every one of the
+ * ten is named so the pin stays a claim rather than a number somebody raised
+ * until the gate went quiet. Four under `apps/core-api/src/transports/rest/`
+ * (`envelope.ts`, `page.ts`, `fault.ts`, `transport-errors.ts`) plus that
+ * directory's suite; three under `apps/core-api/src/http/`
+ * (`domain-exception.filter.ts`, `validation.pipe.ts`, `not-found.controller.ts`)
+ * plus `rest-chassis.test.ts`; and `runtime/edge-middleware.ts`, which is the
+ * correlation-and-admission middleware lifted out of `runtime/lifecycle.ts`
+ * rather than a new one — the pin moves by the FILE, and a file that only moved
+ * is still a file this scan had not read before.
+ *
+ * The DECLARED table is unmoved: not one of the ten reads `process.env`. The
+ * chassis takes its configuration from the composed `AppModule`, which is the
+ * property this gate exists to keep true as `apps/core-api` grows a transport.
+ */
+export const EXPECTED_FILE_COUNT = 1578;
 
 function listSourceFiles(root) {
   const found = [];
