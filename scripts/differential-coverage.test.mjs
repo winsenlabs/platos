@@ -24,6 +24,7 @@ import {
   matrixDigest,
   readRestCensus,
   reconcileRestCensus,
+  reconcileScanRoots,
   renderMarkdown,
   summarise,
 } from "./differential-coverage.mjs";
@@ -294,4 +295,84 @@ test("the committed artifact states which sources enumerate and which reconciles
   assert.equal(document.enumeratedFrom.length, CENSUS_SOURCES.length - 1);
   assert.equal(document.reconciledAgainst.source, REST_CENSUS_PATH);
   assert.equal(document.reconciledAgainst.agrees, true);
+});
+
+// ── WIN-267 (M4.1): the denominator, reconciled PER SCAN ROOT ───────────────
+// One agreed total hides a disagreement about WHICH TREES were counted. These
+// cases mutate the split rather than the total: the same 300, attributed
+// differently, or attributed to a root only one mechanism has heard of.
+
+const capabilityStub = (roots, total) => ({
+  totals: { restOperations: total },
+  scanRoots: { roots },
+});
+const censusStub = (roots) => ({ totals: { scanRoots: roots } });
+
+test("MUTATION: a scan root only one mechanism declares is refused", () => {
+  const { failures } = reconcileScanRoots(
+    capabilityStub([{ id: "agent", dir: "apps/agent/src", operations: 300 }], 300),
+    censusStub([
+      { id: "agent", dir: "apps/agent/src", manifestOperations: 300, sourceControllers: 27, sourceDecorators: 281, ok: true },
+      { id: "core-api-transports", dir: "apps/core-api/src/transports", manifestOperations: 0, sourceControllers: 0, sourceDecorators: 0, ok: true },
+    ]),
+  );
+  assert.ok(
+    failures.some((f) => f.includes("core-api-transports") && f.includes("not looking at the same set of trees")),
+    failures.join("\n"),
+  );
+});
+
+test("MUTATION: the same total split differently between roots is refused", () => {
+  // 300 either way. Only the per-root split shows that one mechanism has moved
+  // four operations into a tree the other says is empty.
+  const { failures } = reconcileScanRoots(
+    capabilityStub(
+      [
+        { id: "agent", dir: "apps/agent/src", operations: 296 },
+        { id: "core-api-transports", dir: "apps/core-api/src/transports", operations: 4 },
+      ],
+      300,
+    ),
+    censusStub([
+      { id: "agent", dir: "apps/agent/src", manifestOperations: 300, sourceControllers: 27, sourceDecorators: 281, ok: true },
+      { id: "core-api-transports", dir: "apps/core-api/src/transports", manifestOperations: 0, sourceControllers: 0, sourceDecorators: 0, ok: true },
+    ]),
+  );
+  assert.equal(failures.length, 2, failures.join("\n"));
+  for (const id of ["agent", "core-api-transports"]) {
+    assert.ok(failures.some((f) => f.includes(id) && f.includes("per-root denominator")), failures.join("\n"));
+  }
+});
+
+test("MUTATION: a root that failed its own source reconciliation cannot corroborate the denominator", () => {
+  const { failures } = reconcileScanRoots(
+    capabilityStub([{ id: "agent", dir: "apps/agent/src", operations: 300 }], 300),
+    censusStub([{ id: "agent", dir: "apps/agent/src", manifestOperations: 300, sourceControllers: 27, sourceDecorators: 281, ok: false }]),
+  );
+  assert.ok(failures.some((f) => f.includes("failed its own source-to-manifest reconciliation")), failures.join("\n"));
+});
+
+test("MUTATION: per-root counts that do not sum to the published total are refused", () => {
+  const { failures } = reconcileScanRoots(
+    capabilityStub([{ id: "agent", dir: "apps/agent/src", operations: 299 }], 300),
+    censusStub([{ id: "agent", dir: "apps/agent/src", manifestOperations: 299, sourceControllers: 27, sourceDecorators: 281, ok: true }]),
+  );
+  assert.ok(failures.some((f) => f.includes("sum to 299")), failures.join("\n"));
+});
+
+test("MUTATION: a census that publishes no split is refused, not skipped", () => {
+  const { failures, scanRoots } = reconcileScanRoots(capabilityStub([], 0), { totals: {} });
+  assert.equal(scanRoots, null);
+  assert.ok(failures.some((f) => f.includes("independent census publishes no totals.scanRoots")), failures.join("\n"));
+});
+
+test("BASELINE: the committed matrix agrees root by root, and the empty root is an assertion", async () => {
+  const { document } = await buildDocument();
+  const rows = document.restScanRoots.rows;
+  assert.deepEqual(rows.map((r) => r.id), ["agent", "core-api-transports"]);
+  for (const row of rows) assert.equal(row.agrees, true, `${row.id} does not agree`);
+  const core = rows.find((r) => r.id === "core-api-transports");
+  assert.equal(core.enumeratedOperations, 0);
+  assert.equal(core.independentOperations, 0);
+  assert.equal(document.restScanRoots.total, document.reconciledAgainst.enumeratedRestCells);
 });

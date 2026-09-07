@@ -22,7 +22,7 @@
 // hand, so the two cannot diverge.
 import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import {
   MCP_TOOL_OWNER,
@@ -33,6 +33,10 @@ import {
   ownerForRoute,
   validateOwners,
 } from "./arch/route-ownership.mjs";
+// WIN-267 — the scan roots are DECLARED ONCE, in the independent census, and
+// imported here. Two files each keeping their own copy of "which directories the
+// V1 REST surface lives in" is how one of them ends up a directory behind.
+import { SCAN_ROOTS } from "./rest-census-independent.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MANIFEST = join(ROOT, "apps/agent/src/control-plane/operation-manifest.generated.json");
@@ -80,7 +84,86 @@ function restAndMcp() {
     auth: "oauth-bearer / platform token",
     compatibility: "MCP serverInfo.version 1; per WIN-249",
   }));
-  return { rest, mcp, restCount: rest.length, mcpCount: mcp.length, operatorCount: rest.filter((r) => r.requiresOperator).length };
+  return {
+    rest,
+    mcp,
+    restCount: rest.length,
+    mcpCount: mcp.length,
+    operatorCount: rest.filter((r) => r.requiresOperator).length,
+    scanRoots: scanRootAccounting(m),
+  };
+}
+
+/**
+ * WIN-267 — the REST total, split by the tree each operation came from.
+ *
+ * The matrix used to publish one REST number over one application, at a moment
+ * when a second application was being built to serve the same surface. A total
+ * that cannot say which tree it covers cannot notice a tree it does not cover.
+ *
+ * This is a RE-DERIVATION, not a read: the split is computed here from each
+ * implementation's own `source` path, and then checked against the split the
+ * generator wrote into `summary.restScanRoots`. The generator counted while
+ * walking; this counts the emitted rows. Agreement is the claim; disagreement
+ * names the root and both numbers.
+ */
+export function scanRootAccounting(manifest) {
+  const declared = SCAN_ROOTS.map((root) => ({ ...root, operations: 0, routeBindings: 0 }));
+  const unattributed = [];
+  for (const operation of manifest.inventories.restOperations) {
+    const owning = new Set();
+    for (const implementation of operation.implementations ?? []) {
+      const source = String(implementation.source ?? "").split("\\").join("/");
+      const match = declared.find((r) => source === r.dir || source.startsWith(`${r.dir}/`));
+      if (!match) {
+        unattributed.push(`${operation.id} <- ${source || "(no source recorded)"}`);
+        continue;
+      }
+      match.routeBindings += 1;
+      owning.add(match.id);
+    }
+    for (const id of owning) declared.find((r) => r.id === id).operations += 1;
+  }
+
+  const errors = [];
+  if (unattributed.length > 0) {
+    errors.push(
+      `scan-root-unattributed: ${unattributed.length} REST implementation source(s) fall outside every declared scan root (${SCAN_ROOTS.map((r) => r.dir).join(", ")}): ${unattributed.sort().slice(0, 8).join("; ")}`,
+    );
+  }
+  const generated = manifest.summary?.restScanRoots;
+  if (!Array.isArray(generated)) {
+    errors.push(
+      "scan-root-missing-from-manifest: the control-plane manifest publishes no summary.restScanRoots, so this re-derivation has nothing to agree with; regenerate it with `pnpm --filter platos-agent generate:control-plane`",
+    );
+  } else {
+    for (const root of declared) {
+      const theirs = generated.find((g) => g.id === root.id);
+      if (!theirs) {
+        errors.push(`scan-root-absent: the manifest's restScanRoots does not name ${root.id} (${root.dir})`);
+        continue;
+      }
+      if (theirs.operations !== root.operations) {
+        errors.push(
+          `scan-root-count: ${root.id} — the generator recorded ${theirs.operations} operation(s) while re-deriving the emitted rows gives ${root.operations}`,
+        );
+      }
+    }
+    for (const theirs of generated) {
+      if (!declared.some((root) => root.id === theirs.id)) {
+        errors.push(
+          `scan-root-undeclared: the manifest's restScanRoots names ${theirs.id} (${theirs.dir}), which SCAN_ROOTS in scripts/rest-census-independent.mjs does not declare`,
+        );
+      }
+    }
+  }
+
+  return {
+    authority: "scripts/rest-census-independent.mjs SCAN_ROOTS",
+    roots: declared.map((r) => ({ id: r.id, dir: r.dir, operations: r.operations, routeBindings: r.routeBindings })),
+    unattributed: unattributed.sort(),
+    errors,
+  };
 }
 
 // ── Persisted state, re-enumerated from the Prisma schemas ───────────────────
@@ -168,6 +251,7 @@ function renderMarkdown(m) {
     "| Surface | Count |",
     "|---|---|",
     `| REST operations | ${m.totals.restOperations} |`,
+    ...m.scanRoots.roots.map((r) => `| — from \`${r.dir}\` (${r.id}) | ${r.operations} |`),
     `| operator-protected | ${m.totals.operatorProtectedRest} |`,
     `| MCP tools | ${m.totals.mcpTools} |`,
     `| Tenancy models | ${m.totals.tenancyModels} |`,
@@ -207,7 +291,9 @@ function build() {
       mcpTools: rm.mcpCount,
       tenancyModels: tenancyModels.length,
       endUserRestrictedModels: endUserModels.length,
+      restOperationsByScanRoot: Object.fromEntries(rm.scanRoots.roots.map((r) => [r.id, r.operations])),
     },
+    scanRoots: rm.scanRoots,
     surfaces: {
       rest: rm.rest,
       mcp: rm.mcp,
@@ -240,6 +326,15 @@ function main() {
   // WIN-256 — the owner column is checked on every run, generate and --check
   // alike, so a bad owner cannot be written to disk and then read back as
   // "current". Each failure names the offending row id and its rule.
+  // WIN-267 — the scan-root split is checked on every run, generate and --check
+  // alike, for the same reason the owner column is: a matrix written from a
+  // manifest whose roots do not reconcile would be read back as "current".
+  if (fresh.scanRoots.errors.length > 0) {
+    console.error(`capability-matrix: ${fresh.scanRoots.errors.length} scan-root violation(s).`);
+    for (const e of fresh.scanRoots.errors) console.error(`  ${e}`);
+    process.exit(1);
+  }
+
   const ownerErrors = validateOwners(fresh.surfaces.rest, fresh.surfaces.mcp);
   if (ownerErrors.length > 0) {
     console.error(`capability-matrix: ${ownerErrors.length} owner violation(s) against ADR M0.3 §1.`);
@@ -296,4 +391,7 @@ function main() {
   console.error(`capability-matrix: wrote ${OUT_JSON} + ${OUT_MD} — REST ${fresh.totals.restOperations}/${fresh.totals.operatorProtectedRest}op, MCP ${fresh.totals.mcpTools}, models ${fresh.totals.tenancyModels}+${fresh.totals.endUserRestrictedModels}, digest ${fresh.sourceDigest.slice(0, 12)}, owners ${fresh.ownership.oracleDerivedRestRows}+${fresh.ownership.pathPrefixRestRows}`);
 }
 
-main();
+// Only when INVOKED. `scanRootAccounting` is imported by capability-matrix.test.mjs,
+// and a module that regenerates the artifact on import would make the suite's
+// exit code the gate's exit code.
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();
