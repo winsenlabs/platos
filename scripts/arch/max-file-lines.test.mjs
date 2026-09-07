@@ -39,6 +39,12 @@ test("selectors and thresholds are the exact accepted WIN-251 max-file-lines sli
     "packages/contexts/**",
     "packages/adapters/**",
     "apps/core-api/src/transports/**",
+    // WIN-267 (M4.1). The fifth selector closes the shorter path to a controller
+    // monolith: `src/http/` is where core-api's Nest controllers are registered
+    // (`http.module.ts`) and where its only route-bearing file lives, and it was
+    // outside every selector while `src/transports/**` — which holds no
+    // controller yet — was inside one.
+    "apps/core-api/src/http/**",
   ]);
   assert.equal(WARNING_THRESHOLD, 400);
   assert.equal(ERROR_THRESHOLD, 500);
@@ -746,7 +752,30 @@ test("the live selectors scan an exact nonzero source census", () => {
   // 1468 + 6 = 1474, read back from the scan.
   //
   // M2 INTEGRATION, ALL FOUR: 1468 + 9 + 24 + 14 + 6 = 1521.
-  assert.equal(result.fileCount, 1521);
+  //
+  // WIN-267 (M4.1) 1521 -> 1533, AND IT MOVES THE SELECTOR RATHER THAN THE TREE.
+  // This is only the second delta on this list that changes what the gate JUDGES
+  // — the model-router pass above was the first — and it adds no file to the
+  // repository at all. The FIFTH selector is `apps/core-api/src/http/**`: twelve
+  // files that were sitting outside every selector while `src/transports/**`,
+  // which holds no controller yet, was inside one. The reason is not symmetry.
+  // `src/http/` is where core-api's Nest controllers are REGISTERED —
+  // `http.module.ts` carries the controller array and `health.controller.ts` is
+  // the one route-bearing file the application has — so "a controller monolith
+  // is structurally forbidden" was true of the directory the routes are coming
+  // TO and false of the directory they would be registered IN, and the shorter
+  // path was the uncovered one.
+  //
+  // WIDENING THE SELECTOR ADDED NO FINDING. The twelve newly covered files
+  // produce zero errors and zero warnings; the finding list below is unchanged.
+  // That is a measured result over this tree, not an inherited claim.
+  //
+  // IT STOPS AT `src/http/**` ON PURPOSE. `apps/core-api/src/**` would pull in
+  // `app.module.test.ts` at 509 effective lines — over the hard threshold — and
+  // the honest options there are to split a suite this issue has no mandate to
+  // touch or to grant the budget its first waiver. Neither is M4.1's to take, so
+  // the selector covers the HTTP edge and says why it stops.
+  assert.equal(result.fileCount, 1533);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -757,7 +786,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       2 + 2 + 1 + 4 +
       14 + 2 + 2 + 6 +
       2 + 12 +
-      3 + 1 + 2
+      3 + 1 + 2 +
+      // WIN-267: the fifth selector, `apps/core-api/src/http/**`. Twelve files
+      // already in the tree, newly JUDGED rather than newly written.
+      12
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -849,7 +881,21 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   ADAPTERS 382 + 1 + 16 + 10 + 2 = 411
   //   APPS     6 + 2 (error-status and its suite) = 8
   // 27 + 1075 + 411 + 8 = 1521.
-  assert.equal(result.fileCount, 27 + 1075 + 411 + 8);
+  //
+  // WIN-267 (M4.1) SPLITS THE APPS TERM IN TWO, because the apps row is no longer
+  // one selector. APPS-TRANSPORTS stays 8 and does not move — nothing was added
+  // under `src/transports/` — and APPS-HTTP arrives at 12, the whole of
+  // `apps/core-api/src/http/**` becoming visible to the budget at once. The
+  // kernel, contexts and adapters terms are untouched, which is the claim worth
+  // making about a delta that adds no file: this issue widened the JUDGE, not the
+  // tree.
+  //   KERNEL           27
+  //   CONTEXTS       1075
+  //   ADAPTERS        411
+  //   APPS-TRANSPORTS   8
+  //   APPS-HTTP        12   NEWLY COVERED
+  // 27 + 1075 + 411 + 8 + 12 = 1533.
+  assert.equal(result.fileCount, 27 + 1075 + 411 + 8 + 12);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

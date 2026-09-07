@@ -254,6 +254,80 @@ export function reconcileRestCensus(cells, census) {
   };
 }
 
+/**
+ * WIN-267 — the REST denominator, reconciled PER SCAN ROOT.
+ *
+ * Agreeing on one total is a weaker claim than it looks once the surface spans
+ * more than one tree: two enumerators can agree on 300 while one of them is
+ * counting a directory the other has never opened, and the disagreement only
+ * surfaces on the day a route lands in it. Both censuses now publish the split,
+ * so the roots themselves are a reconciled datum: the same root ids, the same
+ * directories, the same operation counts, from two mechanisms.
+ *
+ * The empty root is the point. `apps/core-api/src/transports` reads 0 = 0 today,
+ * and that zero is an ASSERTION rather than an omission — the first WIN-267
+ * route to land moves both sides together, and a change that moves only one of
+ * them fails here.
+ */
+export function reconcileScanRoots(capability, census) {
+  const failures = [];
+  const mine = capability?.scanRoots?.roots;
+  const theirs = census?.totals?.scanRoots;
+  if (!Array.isArray(mine) || !Array.isArray(theirs)) {
+    failures.push(
+      "the REST denominator cannot be reconciled per scan root: " +
+        `${Array.isArray(mine) ? "" : "the capability matrix publishes no scanRoots.roots; "}` +
+        `${Array.isArray(theirs) ? "" : "the independent census publishes no totals.scanRoots; "}` +
+        "regenerate both censuses",
+    );
+    return { failures, scanRoots: null };
+  }
+
+  const ids = [...new Set([...mine.map((r) => r.id), ...theirs.map((r) => r.id)])].sort();
+  const rows = [];
+  for (const id of ids) {
+    const a = mine.find((r) => r.id === id);
+    const b = theirs.find((r) => r.id === id);
+    if (!a || !b) {
+      failures.push(
+        `scan root ${id} is declared by ${a ? "the capability matrix" : "the independent census"} and not by the other; the two enumerators are not looking at the same set of trees`,
+      );
+      continue;
+    }
+    if (a.dir !== b.dir) {
+      failures.push(`scan root ${id} points at ${a.dir} in the capability matrix and ${b.dir} in the independent census`);
+    }
+    if (a.operations !== b.manifestOperations) {
+      failures.push(
+        `scan root ${id} (${a.dir}): the capability matrix counted ${a.operations} operation(s), the independent census ${b.manifestOperations}; the per-root denominator is not established`,
+      );
+    }
+    if (b.ok !== true) {
+      failures.push(
+        `scan root ${id} (${b.dir}) failed its own source-to-manifest reconciliation in the independent census; a root that cannot reconcile itself cannot corroborate a denominator`,
+      );
+    }
+    rows.push({
+      id,
+      dir: a.dir,
+      enumeratedOperations: a.operations,
+      independentOperations: b.manifestOperations,
+      independentSourceControllers: b.sourceControllers,
+      independentSourceDecorators: b.sourceDecorators,
+      agrees: a.operations === b.manifestOperations && b.ok === true,
+    });
+  }
+
+  const total = rows.reduce((sum, row) => sum + row.enumeratedOperations, 0);
+  if (Number.isFinite(capability?.totals?.restOperations) && total !== capability.totals.restOperations) {
+    failures.push(
+      `the per-root operation counts sum to ${total} but the capability matrix publishes ${capability.totals.restOperations} REST operations; a root is double-counting or an operation belongs to no root`,
+    );
+  }
+
+  return { failures, scanRoots: { rows, total } };
+}
+
 // ---------------------------------------------------------------------------
 // Coverage
 // ---------------------------------------------------------------------------
@@ -363,6 +437,20 @@ export function renderMarkdown(document) {
       ` counted independently: **${document.reconciledAgainst.independentManifestOperator}**,` +
       ` at or above the source-derived floor of ${document.reconciledAgainst.independentOperatorFloor}`,
     "",
+    "### Split by scan root",
+    "",
+    "One agreed total is a weaker claim than it looks once the surface spans more than one tree:",
+    "two enumerators can agree on a number while one of them is counting a directory the other has",
+    "never opened. Both publish the split, so the roots are themselves a reconciled datum. A root",
+    "reading zero is an assertion, not an omission — the first route to land there moves both sides.",
+    "",
+    "| scan root | directory | enumerated here | counted independently | source controllers | agrees |",
+    "| --- | --- | ---: | ---: | ---: | :-: |",
+    ...(document.restScanRoots?.rows ?? []).map(
+      (row) =>
+        `| ${row.id} | \`${row.dir}\` | ${row.enumeratedOperations} | ${row.independentOperations} | ${row.independentSourceControllers} | ${row.agrees ? "yes" : "**no**"} |`,
+    ),
+    "",
     "## Why the covered count is small, and why that is the honest answer",
     "",
     "At the `v1` baseline there is no V1 REST, MCP, SDK, channel or stream implementation",
@@ -421,7 +509,10 @@ export async function buildDocument(root = repositoryRoot) {
   const registryFailures = assertRegistryIsWellFormed(SCENARIO_REGISTRY);
   const cells = enumerateCells(root);
   const { rows, errors } = buildMatrix(cells, SCENARIO_REGISTRY, claimedCapabilities(SCENARIO_REGISTRY));
-  const { failures: censusFailures, reconciliation } = reconcileRestCensus(cells, readRestCensus(root));
+  const census = readRestCensus(root);
+  const { failures: censusFailures, reconciliation } = reconcileRestCensus(cells, census);
+  const capability = readCensus(root, "docs/audits/M0.2-capability-matrix.json");
+  const { failures: scanRootFailures, scanRoots } = reconcileScanRoots(capability, census);
   const summary = summarise(rows);
   const digest = matrixDigest(rows);
   return {
@@ -441,13 +532,16 @@ export async function buildDocument(root = repositoryRoot) {
         "docs/audits/M0.4-design-contract-map.json",
       ],
       reconciledAgainst: reconciliation,
+      // WIN-267 — the same denominator, split by the tree it was counted in, and
+      // agreed by both mechanisms root by root.
+      restScanRoots: scanRoots,
       generatedBy: "scripts/differential-coverage.mjs",
       coverageComputedFrom: "tests/differential-harness/scenarios.mjs",
       summary,
       digest,
       rows,
     },
-    failures: [...registryFailures, ...errors, ...censusFailures],
+    failures: [...registryFailures, ...errors, ...censusFailures, ...scanRootFailures],
   };
 }
 

@@ -19,7 +19,7 @@
 
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repoRoot = new URL("../../", import.meta.url);
 const repoDir = fileURLToPath(repoRoot);
@@ -89,46 +89,25 @@ export function measureApiV1Literals(root = repoDir) {
       const text = readFileSync(path, "utf8");
       if (!text.includes("api/v1")) continue;
       const file = path.slice(root.length).replace(/^[/\\]/u, "").split("\\").join("/");
-      for (const match of text.matchAll(decorator)) {
-        const open = match.index + match[0].length;
+      const { blanked, literals } = tokenize(text);
+      for (const match of blanked.matchAll(decorator)) {
         let depth = 1;
-        let index = open;
-        let quote = null;
-        let literalStart = -1;
-        while (index < text.length && depth > 0) {
-          const ch = text[index];
-          if (quote !== null) {
-            if (ch === "\\") index += 1;
-            else if (ch === quote) {
-              const value = text.slice(literalStart + 1, index);
-              if (value.includes("api/v1"))
-                sites.push({
-                  file,
-                  line: text.slice(0, literalStart).split("\n").length,
-                  decorator: match[0].slice(1, -1).trim().replace(/\s*\($/u, ""),
-                  literal: value,
-                });
-              quote = null;
-            }
-            index += 1;
-            continue;
-          }
-          if (ch === "/" && text[index + 1] === "/") {
-            index = text.indexOf("\n", index);
-            if (index === -1) break;
-            continue;
-          }
-          if (ch === "/" && text[index + 1] === "*") {
-            const end = text.indexOf("*/", index + 2);
-            index = end === -1 ? text.length : end + 2;
-            continue;
-          }
-          if (ch === '"' || ch === "'" || ch === "`") {
-            quote = ch;
-            literalStart = index;
-          } else if (ch === "(") depth += 1;
-          else if (ch === ")") depth -= 1;
+        let index = match.index + match[0].length;
+        const open = index;
+        while (index < blanked.length && depth > 0) {
+          if (blanked[index] === "(") depth += 1;
+          else if (blanked[index] === ")") depth -= 1;
           index += 1;
+        }
+        for (const literal of literals) {
+          if (literal.start < open || literal.start >= index) continue;
+          if (!literal.value.includes("api/v1")) continue;
+          sites.push({
+            file,
+            line: text.slice(0, literal.start).split("\n").length,
+            decorator: match[0].replace(/^@/u, "").replace(/\s*\($/u, ""),
+            literal: literal.value,
+          });
         }
       }
     }
@@ -143,6 +122,66 @@ export function measureApiV1Literals(root = repoDir) {
 }
 
 /**
+ * One tokenizing pass over a source file.
+ *
+ * `blanked` is the text with every comment body AND every string body replaced
+ * by spaces, positions preserved — so a decorator name written in prose is not a
+ * decorator, and a `)` inside a path literal does not close an argument list.
+ * `literals` carries each string literal with the offset it started at, so a hit
+ * can be attributed to the decorator whose parentheses enclose it.
+ *
+ * The first version of this scan matched the decorator regex against the raw
+ * text and only became comment-aware once inside the argument list. Its own
+ * fixture caught it: a commented-out `// @Get("api/v1/nope")` counted as a
+ * route. That is the case that is now pinned in contract-map.test.mjs.
+ */
+function tokenize(text) {
+  const blanked = [...text];
+  const literals = [];
+  let index = 0;
+  while (index < text.length) {
+    const ch = text[index];
+    const next = text[index + 1];
+    if (ch === "/" && next === "/") {
+      while (index < text.length && text[index] !== "\n") blanked[index++] = " ";
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      const close = text.indexOf("*/", index + 2);
+      const stop = close === -1 ? text.length : close + 2;
+      while (index < stop) {
+        if (text[index] !== "\n") blanked[index] = " ";
+        index += 1;
+      }
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const start = index;
+      index += 1;
+      let value = "";
+      while (index < text.length) {
+        if (text[index] === "\\") {
+          value += text[index + 1] ?? "";
+          blanked[index] = " ";
+          blanked[index + 1] = " ";
+          index += 2;
+          continue;
+        }
+        if (text[index] === ch) break;
+        value += text[index];
+        if (text[index] !== "\n") blanked[index] = " ";
+        index += 1;
+      }
+      literals.push({ start, value });
+      index += 1;
+      continue;
+    }
+    index += 1;
+  }
+  return { blanked: blanked.join(""), literals };
+}
+
+/**
  * Mechanism B — line-based, and deliberately cruder. Counts SOURCE LINES on
  * which a routing decorator opens with an `api/v1` literal. It cannot see the
  * second literal on a shared line, which is exactly why it is a useful second
@@ -154,12 +193,20 @@ export function measureApiV1LiteralLines(root = repoDir) {
     `@(?:${ROUTING_DECORATORS.join("|")})\\s*\\(\\s*\\[?\\s*["'\`][^"'\`]*api/v1`,
     "u",
   );
+  // Comment-only lines are dropped by shape rather than by tokenizing — the
+  // whole point of the second mechanism is that it does not share the first
+  // one's machinery. It is cruder and it is allowed to be; it is not allowed to
+  // count prose.
+  const commentLine = /^\s*(?:\/\/|\/\*|\*)/u;
   let lines = 0;
   for (const scanRoot of LITERAL_SCAN_ROOTS) {
     for (const path of productionSources(join(root, scanRoot))) {
       const text = readFileSync(path, "utf8");
       if (!text.includes("api/v1")) continue;
-      for (const line of text.split("\n")) if (pattern.test(line)) lines += 1;
+      for (const line of text.split("\n")) {
+        if (commentLine.test(line)) continue;
+        if (pattern.test(line)) lines += 1;
+      }
     }
   }
   return lines;
@@ -466,6 +513,67 @@ export function contractHistogram(screens = SCREENS) {
   return { rows, byStatus };
 }
 
+/**
+ * The literal-migration record on disk, checked against a measurement of the
+ * tree. Pure and exported so the mutation suite can feed it the number this
+ * file used to assert against itself and watch it go red.
+ */
+export function literalMigrationErrors(recorded, measured) {
+  const errors = [];
+  if (!recorded) {
+    return ["the committed artifact records no literalMigration measurement to check against the tree"];
+  }
+  for (const [field, actual] of [
+    ["literals", measured.literals],
+    ["sourceLines", measured.sourceLines],
+    ["files", measured.files],
+  ]) {
+    if (recorded[field] !== actual) {
+      errors.push(
+        `literalMigration.${field}: the committed artifact records ${JSON.stringify(recorded[field])} but the tree carries ${actual} — run --write, or the pre-gate is describing a tree that no longer exists`,
+      );
+    }
+  }
+  const expectedStatus = measured.literals === 0 ? "complete" : "pending";
+  if (recorded.status !== expectedStatus) {
+    errors.push(
+      `literalMigration.status is "${recorded.status}" but the tree carries ${measured.literals} literal(s), which is "${expectedStatus}"`,
+    );
+  }
+  return errors;
+}
+
+/**
+ * Contract rows, checked against themselves and against the committed totals.
+ * Pure and exported for the same reason.
+ */
+export function contractRowErrors(screens, committedTotals) {
+  const errors = [];
+  const histogram = contractHistogram(screens);
+  if (histogram.rows !== Object.values(histogram.byStatus).reduce((n, v) => n + v, 0)) {
+    errors.push("the contract-status histogram does not sum to the number of contract rows");
+  }
+  for (const screen of screens) {
+    for (const contract of screen.contracts) {
+      if (!CONTRACT_STATUSES.includes(contract.status)) {
+        errors.push(
+          `screen ${screen.id} carries contract status "${contract.status}", which is not one of ${CONTRACT_STATUSES.join(", ")}`,
+        );
+      }
+    }
+    const derived = screen.contracts.filter((c) => c.status === "N").length;
+    if (screen.newCount !== derived) {
+      errors.push(`screen ${screen.id} records newCount ${screen.newCount} but carries ${derived} row(s) marked N`);
+    }
+  }
+  if (committedTotals && committedTotals.newContracts !== histogram.byStatus.N) {
+    errors.push(
+      `totals.newContracts: committed ${committedTotals.newContracts}, rows marked N ${histogram.byStatus.N} — the net-new figure must be the histogram, not a hand-kept sum`,
+    );
+  }
+  return errors;
+}
+
 function buildModel(measured = measureApiV1Literals()) {
   // `newCount` is DERIVED from the rows rather than carried beside them. It used
   // to be a hand-kept integer that disagreed with its own contract list on 12 of
@@ -613,28 +721,7 @@ function validate(model) {
   } catch {
     committed = null;
   }
-  const recorded = committed?.canonicalPrefix?.literalMigration;
-  if (!recorded) {
-    errors.push("the committed artifact records no literalMigration measurement to check against the tree");
-  } else {
-    for (const [field, actual] of [
-      ["literals", measured.literals],
-      ["sourceLines", measured.sourceLines],
-      ["files", measured.files],
-    ]) {
-      if (recorded[field] !== actual) {
-        errors.push(
-          `literalMigration.${field}: the committed artifact records ${JSON.stringify(recorded[field])} but the tree carries ${actual} — run --write, or the pre-gate is describing a tree that no longer exists`,
-        );
-      }
-    }
-    const expectedStatus = measured.literals === 0 ? "complete" : "pending";
-    if (recorded.status !== expectedStatus) {
-      errors.push(
-        `literalMigration.status is "${recorded.status}" but the tree carries ${measured.literals} literal(s), which is "${expectedStatus}"`,
-      );
-    }
-  }
+  errors.push(...literalMigrationErrors(committed?.canonicalPrefix?.literalMigration, measured));
   if (!Array.isArray(model.canonicalPrefix?.literalMigration?.sites)) {
     errors.push("literalMigration.sites must enumerate the measured literals, so the count names the files it came from");
   }
@@ -642,28 +729,10 @@ function validate(model) {
   // Contract-row accounting, derived rather than declared.
   const committedTotals = committed?.totals;
   const histogram = contractHistogram(model.screens);
-  if (histogram.rows !== Object.values(histogram.byStatus).reduce((n, v) => n + v, 0)) {
-    errors.push("the contract-status histogram does not sum to the number of contract rows");
-  }
-  for (const screen of model.screens) {
-    for (const contract of screen.contracts) {
-      if (!CONTRACT_STATUSES.includes(contract.status)) {
-        errors.push(`screen ${screen.id} carries contract status "${contract.status}", which is not one of ${CONTRACT_STATUSES.join(", ")}`);
-      }
-    }
-    const derived = screen.contracts.filter((c) => c.status === "N").length;
-    if (screen.newCount !== derived) {
-      errors.push(`screen ${screen.id} records newCount ${screen.newCount} but carries ${derived} row(s) marked N`);
-    }
-  }
+  errors.push(...contractRowErrors(model.screens, committedTotals));
   if (committedTotals) {
     if (committedTotals.contractRows !== histogram.rows) {
       errors.push(`totals.contractRows: committed ${committedTotals.contractRows}, rows on the screens ${histogram.rows}`);
-    }
-    if (committedTotals.newContracts !== histogram.byStatus.N) {
-      errors.push(
-        `totals.newContracts: committed ${committedTotals.newContracts}, rows marked N ${histogram.byStatus.N} — the net-new figure must be the histogram, not a hand-kept sum`,
-      );
     }
   }
 
@@ -713,4 +782,7 @@ function main() {
   );
 }
 
-main();
+// Only when INVOKED. The measurement and validation helpers above are imported
+// by `contract-map.test.mjs`, and a module that validates on import would make
+// the suite's exit code the gate's exit code.
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) main();

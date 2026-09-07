@@ -14,6 +14,18 @@ Both counts must agree or the denominator is not established and this gate fails
 - operations counted independently: **300** (281 unique routes + 19 dual-mount aliases across 27 controllers)
 - operator-protected, enumerated here: **120**; counted independently: **120**, at or above the source-derived floor of 103
 
+### Split by scan root
+
+One agreed total is a weaker claim than it looks once the surface spans more than one tree:
+two enumerators can agree on a number while one of them is counting a directory the other has
+never opened. Both publish the split, so the roots are themselves a reconciled datum. A root
+reading zero is an assertion, not an omission — the first route to land there moves both sides.
+
+| scan root | directory | enumerated here | counted independently | source controllers | agrees |
+| --- | --- | ---: | ---: | ---: | :-: |
+| agent | `apps/agent/src` | 300 | 300 | 27 | yes |
+| core-api-transports | `apps/core-api/src/transports` | 0 | 0 | 0 | yes |
+
 ## Why the covered count is small, and why that is the honest answer
 
 At the `v1` baseline there is no V1 REST, MCP, SDK, channel or stream implementation

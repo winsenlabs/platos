@@ -26,6 +26,29 @@
     "controllers": 27,
     "agrees": true
   },
+  "restScanRoots": {
+    "rows": [
+      {
+        "id": "agent",
+        "dir": "apps/agent/src",
+        "enumeratedOperations": 300,
+        "independentOperations": 300,
+        "independentSourceControllers": 27,
+        "independentSourceDecorators": 281,
+        "agrees": true
+      },
+      {
+        "id": "core-api-transports",
+        "dir": "apps/core-api/src/transports",
+        "enumeratedOperations": 0,
+        "independentOperations": 0,
+        "independentSourceControllers": 0,
+        "independentSourceDecorators": 0,
+        "agrees": true
+      }
+    ],
+    "total": 300
+  },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {

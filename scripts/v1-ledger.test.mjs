@@ -1402,12 +1402,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // gates with their suites. Taking any side whole drops files and leaves
     // every identity below still holding, which is why the rule here is to SUM.
     // docs-content 13 + 1 + 2 + 1 = 17; root-infra 43 + 2 + 2 + 4 = 51.
+    //
+    // WIN-267 (M4.1, T0) 51 -> 53, and BOTH land in root-infra, on rules that
+    // already existed. `scripts/arch/contract-map.test.mjs` is the mutation suite
+    // for the gate whose 18-literal assertion could not fail, and
+    // `scripts/mutations-win267-t0.json` is this tranche's guard ledger. Both
+    // match `root-infra.tooling.scripts` (`scripts/**`), so both classify as
+    // kind `source` — and the ledger is DATA rather than code. That is the
+    // blanket rule's verdict applied without an exception, which is the honest
+    // reading: carving a bespoke `scripts/**/*.json` rule for this tranche's own
+    // artifact would be a local exemption written by the file it exempts, and
+    // this is the FIRST non-code file under `scripts/` in the tree. If a second
+    // arrives, the rule is worth splitting on its own merits rather than on
+    // mine. No other area moves: T0 edits enumerators and censuses in place, and
+    // an edited file is not a new one.
+    // root-infra 43 + 2 + 2 + 4 + 2 = 53.
     "docs-content": 17,
-    "root-infra": 51,
+    "root-infra": 53,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
-  // is what the ledger fingerprint carries.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1579);
+  // is what the ledger fingerprint carried before M4.
+  // WIN-267 (M4.1, T0): 1579 + 2 = 1581, and 3469 + 1581 = 5050.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1581);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1513,7 +1529,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1579
+    // WIN-267 (M4.1, T0) +2, both in root-infra: the contract-map mutation suite
+    // and this tranche's guard ledger. 1579 + 2 = 1581.
+    rulesDocument.baseline.totalFiles + 1581
   );
 });
 
