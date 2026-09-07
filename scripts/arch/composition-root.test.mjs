@@ -27,6 +27,7 @@ import {
   auditCompositionRoot,
   parseBindingTable,
   parseSatisfactionKeys,
+  parseUnimplementedAdapters,
 } from "./composition-root.mjs";
 import { ADAPTERS, adapterBindings } from "./gen-v1-skeleton.mjs";
 
@@ -271,9 +272,17 @@ test("C6: dropping one adapter import fails", () => {
   // proves `postgres-tenancy` satisfies — and a control anchored on the exact
   // one-name line stopped matching and started passing vacuously. Anchoring on
   // the specifier is what the audit itself looks for.
+  //
+  // WIN-267 T3 WIDENED IT AGAIN, AND THIS CONTROL CAUGHT IT. The composition
+  // root now carries a VALUE import of the same package beside the type import —
+  // `buildOutboxAdapter`, the constructor — so removing one line left the
+  // specifier in the file and this control went red rather than vacuously green.
+  // Every import of the package is removed now, which is the only edit that
+  // actually makes the audit's question ("does this file name the package?")
+  // answer no.
   const root = realTreeCopy();
   edit(root, COMPOSITION_ROOT_FILE, (source) =>
-    source.replace(/^import type \{[^}]*\} from "@platos\/adapter-outbox";\n/mu, "")
+    source.replace(/^import (?:type )?\{[^}]*\} from "@platos\/adapter-outbox";\n/gmu, "")
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) => problem.includes("does not import @platos/adapter-outbox"))
@@ -324,6 +333,100 @@ test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
       problem.includes("PORT_SATISFACTION has no entry for durable-runtime:DurableRuntime")
     )
   );
+});
+
+// ---------------------------------------------------------------------------
+// (C7) — the unimplemented list, joined to the adapter packages' own source.
+//
+// WIN-267 T3. `constructAdapters` tells `/readyz` that eight directories hold no
+// object because there is nothing to build. An operator ACTS on that: it is the
+// difference between "set a variable" and "this cannot be wired at all". Both
+// controls below mutate ONE side of the join and watch the other side refuse —
+// which is only possible because the other side is the adapter packages
+// themselves and not a second number the composition root wrote.
+// ---------------------------------------------------------------------------
+
+test("C7: a directory left on the unimplemented list after it gains a constructor fails", () => {
+  // The STALE direction. `redis-cache` has a real `createRedisCacheAdapter`; if
+  // someone had added it to the list, readiness would tell every operator that a
+  // wired Redis cannot be wired, and nothing else in this repository would care.
+  const root = realTreeCopy();
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace('  "durable-runtime",\n', '  "durable-runtime",\n  "redis-cache",\n')
+  );
+  assert.ok(
+    auditCompositionRoot(root).problems.some((problem) =>
+      problem.includes("UNIMPLEMENTED_ADAPTERS says redis-cache cannot be constructed")
+    )
+  );
+});
+
+test("C7: a directory dropped from the list while still a generated interface fails", () => {
+  // The OTHER direction, and the one that matters more: `constructAdapters` would
+  // then be silent about `redis-ratelimit`, so `/readyz` would report its binding
+  // unsatisfied with no reason at all — and an operator would go looking for a
+  // variable that does not exist.
+  const root = realTreeCopy();
+  edit(root, COMPOSITION_ROOT_FILE, (source) => source.replace('  "redis-ratelimit",\n', ""));
+  assert.ok(
+    auditCompositionRoot(root).problems.some((problem) =>
+      problem.includes("packages/adapters/redis-ratelimit/src/index.ts exports no constructor")
+    )
+  );
+});
+
+test("C7: an adapter that gains a real constructor must leave the list — the join reads the package", () => {
+  // The evidence is the PACKAGE, not the list. Giving `redis-streams` a real
+  // export while leaving it declared unimplementable fails, and it fails because
+  // of a file the composition root does not own.
+  const root = realTreeCopy();
+  edit(root, "packages/adapters/redis-streams/src/index.ts", (source) =>
+    `${source}\nexport { createRedisStreamsAdapter } from "./adapter.js";\n`
+  );
+  assert.ok(
+    auditCompositionRoot(root).problems.some((problem) =>
+      problem.includes("UNIMPLEMENTED_ADAPTERS says redis-streams cannot be constructed")
+    )
+  );
+});
+
+test("C7: a list naming something that is not an adapter directory fails", () => {
+  const root = realTreeCopy();
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace('  "durable-runtime",\n', '  "durable-runtime",\n  "redis-queue",\n')
+  );
+  const problems = auditCompositionRoot(root).problems;
+  assert.ok(problems.some((problem) => problem.includes('UNIMPLEMENTED_ADAPTERS names "redis-queue"')));
+});
+
+test("C7: the list parser reports ABSENCE rather than an empty list", () => {
+  // An absent declaration and one that names nothing are different claims, and
+  // only one of them is checkable. Returning `[]` for a missing block would have
+  // made every directory look constructible and fired eight false problems
+  // instead of the one true one.
+  assert.equal(parseUnimplementedAdapters("export const SOMETHING_ELSE = 1;"), null);
+  assert.deepEqual(
+    parseUnimplementedAdapters('export const UNIMPLEMENTED_ADAPTERS: readonly X[] = Object.freeze([\n  "a",\n]);'),
+    ["a"]
+  );
+});
+
+test("C7 NON-VACUITY: the live list names exactly the directories with no constructor", () => {
+  // The positive control. If every adapter package exported a constructor — or
+  // none did — the two controls above would still pass and prove nothing about
+  // the real tree. This reads BOTH sides off the live repository.
+  const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
+  const listed = parseUnimplementedAdapters(source);
+  assert.equal(listed.length, 8, "eight of the thirteen directories are still generated interfaces");
+  const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
+  assert.deepEqual(constructible, [
+    "keyring-envelope",
+    "model-router-providers",
+    "outbox",
+    "postgres-tenancy",
+    "redis-cache",
+  ]);
+  assert.equal(listed.length + constructible.length, ADAPTERS.length);
 });
 
 test("C4: a run-time-resolved import anywhere else fails", () => {

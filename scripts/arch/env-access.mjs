@@ -153,8 +153,8 @@ export const ALLOWED = Object.freeze([
   Object.freeze({
     path: "apps/core-api/src/process.test.ts",
     role: "test-support",
-    reads: 2,
-    why: "The executable process evidence spawns the BUILT binary with a bare environment and forwards only PATH, so an inherited PLATOS_* variable from a developer's shell cannot change what the fail-closed cases prove.",
+    reads: 3,
+    why: "The executable process evidence spawns the BUILT binary with a bare environment and forwards only PATH, so an inherited PLATOS_* variable from a developer's shell cannot change what the fail-closed cases prove. THREE since WIN-267 T3 (M4.1): the third spawn is the child that constructs a store connection to a port nothing is listening on, releases it, and must then DRAIN — the one claim about the event loop that no in-process assertion can make, because `main()` calls `process.exit` and every other case would pass with a live reconnect timer. It forwards PATH for the same reason as the other two.",
   }),
   Object.freeze({
     path: "apps/mcp-stdio/src/main.test.ts",
@@ -306,7 +306,21 @@ export const VIOLATION_CODES = Object.freeze({
  * gate's own scan and independently from `arch-boundaries.test.mjs`'s, so the
  * two can DISAGREE and be caught. The DECLARED table is unmoved by all four.
  */
-export const EXPECTED_FILE_COUNT = 1568;
+/**
+ * WIN-267 T3 (M4.1) adds TWO files, both under `apps/core-api/src/composition/`:
+ * `context-ports.ts`, which turns constructed adapters into the port bundles a
+ * context is built from, and `installation.test.ts`, the suite that drives the
+ * real `constructAdapters` and reads the binding count back off the declared
+ * table. Nothing lands in the other four roots — the adapter fix this tranche
+ * carries is an EDIT to `packages/adapters/redis-cache/src/client.ts`, not a new
+ * file, which is why `packages/adapters` does not move here.
+ *
+ * 1568 + 2 = 1570. The DECLARED table is unmoved: `main.ts` gained a great deal
+ * of wiring and not one environment read, which is the property this gate is for
+ * — the six sections still arrive through `readProcessEnvironment()` and nothing
+ * added a second door.
+ */
+export const EXPECTED_FILE_COUNT = 1570;
 
 function listSourceFiles(root) {
   const found = [];

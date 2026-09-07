@@ -1131,14 +1131,29 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     // M2 INTEGRATION, ALL FOUR DIMENSIONS: 1503 + 10 + 24 + 23 + 8 = 1568, with
     // every addend list concatenated rather than replaced.
-    assert.equal(result.fileCount, 1568, "the generated V1 source census must stay exact");
+    //
+    // WIN-267 T3 (M4.1) adds TWO, both under `apps/core-api/src/composition/`:
+    // `context-ports.ts` — which turns the constructed adapters into the port
+    // bundles a context is built from, and is separate from `adapter-bindings.ts`
+    // because it names no adapter PACKAGE and rule (C1) is about packages — and
+    // `installation.test.ts`, the suite that drives the real `constructAdapters`
+    // and reads the binding count back off ADAPTER_BINDINGS rather than off the
+    // report under test. 1568 + 2 = 1570.
+    //
+    // `packages/adapters` DOES NOT MOVE, and that is worth stating because this
+    // tranche does change an adapter: the two defects wiring `redis-cache` exposed
+    // are edits to `src/client.ts`, not new files, and the case that proves them
+    // lives in `apps/core-api` because that is where the construction is.
+    assert.equal(result.fileCount, 1570, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
       2 + 2 + 1 + 1 + 4 +
       14 + 2 + 2 + 6 +
       11 + 12 +
-      3 + 1 + 2 + 2);
+      3 + 1 + 2 + 2 +
+      // WIN-267 T3: composition/context-ports.ts + composition/installation.test.ts.
+      2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

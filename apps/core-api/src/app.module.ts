@@ -67,12 +67,26 @@
 // siblings — because asking whether the whole adapter extends `TenancyLocks`
 // would resolve to `never` and fail a binding that holds.
 //
-// WHAT REMAINS TRUE, and is now the whole of what is open: this root CONSTRUCTS
-// no adapter. Nothing here calls `createPostgresTenancyAdapter`, so the wiring is
-// proven by TYPE — `PORT_SATISFACTION` and `OUTBOX_STORE_SATISFACTION` resolve
-// at compile time — and by nothing at runtime. An install supplies each bundle
-// itself, and readiness is now honest about every binding that is unsatisfied,
-// the five included.
+// AND THAT LAST CLAUSE IS NOW FALSE TOO (WIN-267 T3), so it is corrected rather
+// than carried. It used to read: "this root CONSTRUCTS no adapter. Nothing here
+// calls `createPostgresTenancyAdapter`, so the wiring is proven by TYPE and by
+// nothing at runtime." `constructAdapters` in `composition/adapter-bindings.ts`
+// now opens the pool, builds the outbox over it, opens the Redis connection,
+// parses the root key ring and builds the model router — from the validated
+// configuration `main.ts` already had and was throwing away. Five of the
+// thirteen directories are built; the other eight are still WIN-251's generated
+// interfaces and cannot be, and every one of them reaches readiness with a cause
+// saying which of those two it is.
+//
+// WHAT REMAINS OPEN, restated to the one sentence that is still true: TWO
+// contexts are composed and only ONE of them can be composed from an adapter.
+// `tenancy`'s six driven ports and its unit of work are all properties of one
+// `PostgresTenancyAdapter`, so a database URL is the whole of what it needs;
+// `identity-access` still takes a supplied bundle because four of its eight
+// slots — a rate limiter, a secret hasher, a token minter, a TOTP verifier and a
+// MFA cipher — are satisfied by no adapter directory in this tree.
+// `composition/context-ports.ts` states that per context and is the file that
+// assembles what CAN be assembled.
 // ---------------------------------------------------------------------------
 
 import type { Clock, IdGenerator, Logger, RequestIdempotency } from "@platos/kernel";
@@ -99,7 +113,11 @@ import type { ConversationsContract } from "@platos/context-conversations";
 import type { EventingContract } from "@platos/context-eventing";
 import type { PrivacyContract } from "@platos/context-privacy";
 
-import { ADAPTER_BINDINGS, type SuppliedAdapters } from "./composition/adapter-bindings.js";
+import {
+  ADAPTER_BINDINGS,
+  type SuppliedAdapters,
+  type UnwiredAdapter,
+} from "./composition/adapter-bindings.js";
 import { reportAdapterSupply, type AdapterSupplyReport } from "./composition/registry.js";
 import type { CoreApiConfiguration } from "./config/schema.js";
 import { createInFlightRegister, type InFlightRegister } from "./runtime/in-flight.js";
@@ -139,6 +157,18 @@ export interface AppModule {
   readonly logger: Logger;
   readonly adapters: SuppliedAdapters;
   readonly bindings: AdapterSupplyReport;
+  /**
+   * WIN-267 T3. Why each directory that holds no object holds none.
+   *
+   * `bindings.unsatisfied` says WHICH ports are unserved; this says WHY, and the
+   * two answers are for different readers. An operator seeing
+   * `postgres-tenancy:TenancyRepository` unsatisfied cannot tell a missing
+   * `PLATOS_STORE_POSTGRES_URL` from an adapter that was never written, and those
+   * have completely different responses. Empty when a caller composed without
+   * constructing — which is every unit test in this package, and is why it is a
+   * list rather than a claim that all thirteen were considered.
+   */
+  readonly unwired: readonly UnwiredAdapter[];
   readonly contexts: ComposedContexts;
   readonly inFlight: InFlightRegister;
   /**
@@ -187,6 +217,8 @@ export interface CompositionInput {
   readonly logger: Logger;
   readonly adapters?: SuppliedAdapters;
   readonly ports?: SuppliedContextPorts;
+  /** Carried through from `constructAdapters`; see `AppModule.unwired`. */
+  readonly unwired?: readonly UnwiredAdapter[];
   readonly inFlight?: InFlightRegister;
 }
 
@@ -231,6 +263,7 @@ export function composeApplication(input: CompositionInput): AppModule {
     logger: input.logger,
     adapters: Object.freeze({ ...adapters }),
     bindings,
+    unwired: Object.freeze([...(input.unwired ?? [])]),
     contexts,
     inFlight: input.inFlight ?? createInFlightRegister(),
     // `?? null` rather than leaving it undefined: the gate has to be able to see

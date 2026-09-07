@@ -568,7 +568,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and its wiring changed in-flight.ts, lifecycle.ts and their two suites IN
     // PLACE and add no file. 29 + 3 = 32.
     // M2 INTEGRATION, ALL FOUR: 29 + 1 + 11 + 3 = 44.
-    "apps-core-api": 44,
+    // +3 (WIN-267 T3, M4.1): the composition root stops being a declaration and
+    // starts CONSTRUCTING, so three files land and every one of them falls on a
+    // rule WIN-297 already wrote — `apps-core-api.source.process` 25 -> 26 for
+    // src/composition/context-ports.ts, `apps-core-api.test.suites` 16 -> 17 for
+    // src/composition/installation.test.ts, and `apps-core-api.config.package`
+    // 4 -> 5 for mutations-win267-t3.json, exactly as WIN-260's mutations.json
+    // landed on that same rule. NO LEDGER RULE CHANGED.
+    //
+    // The construction itself adds NO file: it is inside
+    // src/composition/adapter-bindings.ts, because
+    // `scripts/arch/composition-root.mjs` rule (C1) allows exactly ONE importer
+    // of an adapter package and a second file naming one would fail the gate.
+    // `context-ports.ts` is separate precisely because it names no adapter
+    // PACKAGE — it reads the `SuppliedAdapters` type — and the two questions it
+    // separates ("which vendor implements this port" and "which slot on which
+    // context does that object go in") are not the same rule.
+    //
+    // The redis-cache defects this tranche exposed are EDITS to
+    // packages/adapters/redis-cache/src/client.ts, so `packages` does not move.
+    // 44 + 3 = 47.
+    "apps-core-api": 47,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1422,8 +1442,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  // WIN-267 (M4.1, T0): 1579 + 2 = 1581, and 3469 + 1581 = 5050.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1581);
+  //
+  // WIN-267 (M4.1) INTEGRATION SUMS ITS FOUR TRANCHES, and this is the counter
+  // that would have lost files silently: T0 and T3 both branched from
+  // 21ca7a8b, so each wrote its own +N over 1579 and NEITHER figure is the
+  // integrated one.
+  //   T0 +2, both `root-infra`: scripts/arch/contract-map.test.mjs (the
+  //     mutation suite for the gate whose 18-literal assertion could not fail)
+  //     and scripts/mutations-win267-t0.json (its guard ledger). Both match the
+  //     pre-existing root-infra.tooling.scripts rule.
+  //   T3 +3, ALL `apps-core-api`: src/composition/context-ports.ts, its suite,
+  //     and apps/core-api/mutations-win267-t3.json. The composition root begins
+  //     CONSTRUCTING; the redis-cache defects it exposed are edits, not files.
+  //   T1 +3: `apps-agent` +2 (src/http/api-surface.ts and its suite) and
+  //     `root-infra` +1 (scripts/mutations-win267-t1.json). The 24 route
+  //     literals it deletes are edits in place and add no file.
+  //   T2 +11: `apps-core-api` +10 (the global filter, the fault type, the
+  //     transport codes, the validation pipe, the page and envelope modules,
+  //     the terminal not-found route, the lifted edge middleware and two
+  //     suites) and `root-infra` +1 (scripts/mutations-win267-t2.json).
+  // NO TRANCHE ADOPTS A PROJECT AND NO TRANCHE CHANGES A LEDGER RULE, so the
+  // four deltas are purely additive and SUM rather than supersede:
+  // 1579 + 2 + 3 + 3 + 11 = 1598, and 3469 + 1598 = 5067.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1529,9 +1570,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    // WIN-267 (M4.1, T0) +2, both in root-infra: the contract-map mutation suite
-    // and this tranche's guard ledger. 1579 + 2 = 1581.
-    rulesDocument.baseline.totalFiles + 1581
+    //
+    // and WIN-267 (M4.1) +19 across three areas, SUMMED over its four tranches
+    // rather than side-picked: T0 +2 root-infra, T3 +3 apps-core-api, T1 +2
+    // apps-agent and +1 root-infra, T2 +10 apps-core-api and +1 root-infra.
+    // 1579 + 19 = 1598, re-derived here by summing the per-area counts rather
+    // than taking the figure above, so the two can DISAGREE and be caught. T0
+    // and T3 each wrote their own figure over the same 1579 base, so this
+    // re-derivation is exactly the mechanism that refuses a side-picked total.
+    rulesDocument.baseline.totalFiles + 1598
   );
 });
 
