@@ -306,7 +306,21 @@ export const VIOLATION_CODES = Object.freeze({
  * gate's own scan and independently from `arch-boundaries.test.mjs`'s, so the
  * two can DISAGREE and be caught. The DECLARED table is unmoved by all four.
  */
-export const EXPECTED_FILE_COUNT = 1568;
+/**
+ * WIN-267 T3 (M4.1) adds TWO files, both under `apps/core-api/src/composition/`:
+ * `context-ports.ts`, which turns constructed adapters into the port bundles a
+ * context is built from, and `installation.test.ts`, the suite that drives the
+ * real `constructAdapters` and reads the binding count back off the declared
+ * table. Nothing lands in the other four roots — the adapter fix this tranche
+ * carries is an EDIT to `packages/adapters/redis-cache/src/client.ts`, not a new
+ * file, which is why `packages/adapters` does not move here.
+ *
+ * 1568 + 2 = 1570. The DECLARED table is unmoved: `main.ts` gained a great deal
+ * of wiring and not one environment read, which is the property this gate is for
+ * — the six sections still arrive through `readProcessEnvironment()` and nothing
+ * added a second door.
+ */
+export const EXPECTED_FILE_COUNT = 1570;
 
 function listSourceFiles(root) {
   const found = [];

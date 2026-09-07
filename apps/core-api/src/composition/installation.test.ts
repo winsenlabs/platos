@@ -250,10 +250,23 @@ describe("constructing the adapters an install declared", () => {
 
 describe("readiness over what was actually constructed", () => {
   it("counts the satisfied bindings off the declared table, so the figure moves with what is wired", () => {
-    // THE NAMED CASE. The expectation is computed from `ADAPTER_BINDINGS` — the
-    // architecture's own table — filtered by the directories that hold an object,
-    // NOT from the report under test. Drop any directory from `constructAdapters`
-    // and the two sides disagree.
+    // WHAT THIS CASE GUARDS, STATED EXACTLY, because the sweep corrected a
+    // sentence that used to stand here. It claimed "drop any directory from
+    // `constructAdapters` and the two sides disagree", and T01 proved that
+    // FALSE: both sides read `construction.adapters`, so dropping a directory
+    // moves them together and this case stays green.
+    //
+    // What it does guard is the ARITHMETIC BETWEEN the supply and the report —
+    // that `reportAdapterSupply` and readiness expand a directory into exactly
+    // the bindings ADAPTER_BINDINGS puts on it, all thirty-three of
+    // `postgres-tenancy`'s included, and that the reason line is built from
+    // those counts rather than from a constant. T07 kills it.
+    //
+    // The case that catches a DROPPED adapter is "reports 41 of 49" below, whose
+    // expectation comes from the binding table and `UNIMPLEMENTED_ADAPTERS`
+    // rather than from the construction, and "builds the directory every
+    // declared configuration group configures" above, whose expectation comes
+    // from the configuration contract.
     const { verdict, construction } = readiness(FULLY_DECLARED);
     const built = new Set<string>(Object.keys(construction.adapters));
     const expected = ADAPTER_BINDINGS.filter((binding) => built.has(binding.adapter));
@@ -301,12 +314,15 @@ describe("readiness over what was actually constructed", () => {
     expect(causes).toEqual(new Set(["configuration", "implementation"]));
   });
 
-  it("carries the unwired reasons only behind the admin token", () => {
-    // Reconnaissance: the list names which stores an install has not wired. The
-    // public body is a status line and a phase, and nothing else.
-    const { app, verdict } = readiness(FULLY_DECLARED);
-    expect(app.unwired).toHaveLength(8);
-    expect(Object.keys(verdict.detail)).toContain("unwiredAdapters");
+  it("carries every unwired reason from the construction through to the detail body", () => {
+    // The PLUMBING, end to end. Asserting only `app.unwired` left the readiness
+    // half unguarded, which the sweep found: T08 blanks `detail.unwiredAdapters`
+    // and this case stayed green. Both ends are compared now, and to each other
+    // rather than to a literal, so a row dropped anywhere between them shows up.
+    const { app, verdict, construction } = readiness(FULLY_DECLARED);
+    expect(construction.unwired).toHaveLength(8);
+    expect(app.unwired).toEqual(construction.unwired);
+    expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });
 });
 

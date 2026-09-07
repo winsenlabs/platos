@@ -390,4 +390,51 @@ describe("the built binary starts, serves and stops", () => {
     expect(code).toBe(7);
     expect(out).not.toContain("process.started");
   }, 40_000);
+
+  it("releases a store connection that never opened, so the loop drains on its own", async () => {
+    // WIN-267 T3. The claim in `AdapterConstruction.release`'s own comment —
+    // "release every pool and connection this call opened" — is a claim about
+    // the EVENT LOOP, and no in-process assertion can make it. `main()` calls
+    // `process.exit`, so every other case in this file would pass with a live
+    // reconnect timer still running; the only way to see the difference is a
+    // child that is NOT allowed to exit explicitly and has to drain.
+    //
+    // NO `process.exit` BELOW, and that is the whole instrument. The child
+    // constructs against a port nothing is listening on, releases, and must
+    // reach the end of its work with nothing left holding the loop open. Before
+    // `close()` disconnected unconditionally, `quit()` could not be sent down a
+    // stream that was never writable and ioredis kept retrying — so this child
+    // hung until the timeout instead of exiting 0.
+    const script = [
+      `const m = await import(${JSON.stringify(join(projectRoot, "dist/composition/adapter-bindings.js"))});`,
+      `const c = m.constructAdapters({`,
+      `  stores: { postgres: null, redis: { url: "redis://127.0.0.1:1", keyPrefix: "p", tls: false }, clickhouse: null, objectstore: null },`,
+      `  security: { session: null, encryption: null },`,
+      `  providers: { modelRouter: null },`,
+      `  clock: { now: () => new Date() },`,
+      `  correlation: null,`,
+      `});`,
+      `if (c.adapters["redis-cache"] === undefined) { console.log("NOT-CONSTRUCTED"); process.exitCode = 3; }`,
+      `await new Promise((resolve) => setTimeout(resolve, 100));`,
+      `await c.release();`,
+      `console.log("RELEASED");`,
+    ].join("\n");
+
+    const child = spawn(process.execPath, ["--input-type=module", "-e", script], {
+      env: { PATH: process.env["PATH"] ?? "" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    live.push(child as PipedChild);
+    let out = "";
+    child.stdout?.on("data", (chunk: Buffer) => {
+      out += chunk.toString("utf8");
+    });
+
+    const settled = await Promise.race([
+      new Promise<number | null | "hung">((resolve) => child.on("exit", resolve)),
+      new Promise<"hung">((resolve) => setTimeout(() => resolve("hung"), 8_000)),
+    ]);
+    expect(out).toContain("RELEASED");
+    expect(settled).toBe(0);
+  }, 40_000);
 });
