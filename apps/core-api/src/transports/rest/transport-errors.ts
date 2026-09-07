@@ -99,7 +99,7 @@ export function unhandledFault(): DomainError {
  * `retryAfterSeconds` is populated because the kernel populates it "only for
  * `rate_limited` and `unavailable`" and this is the second of those, and it is
  * ONE second because the request is being refused by a process that is going
- * away — the caller's next attempt should reach a different instance almost
+ * away — the caller's next request should reach a different instance almost
  * immediately, and a long hint would turn a rolling restart into a stall.
  */
 export function shuttingDown(): DomainError {

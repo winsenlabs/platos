@@ -84,7 +84,7 @@ export function createEdgeMiddleware(dependencies: EdgeMiddlewareDependencies): 
         //
         // `Connection: close` is set here rather than being derivable from the
         // envelope: `Retry-After` tells the CLIENT when to come back, and this
-        // tells the connection not to be reused for the attempt.
+        // tells the connection not to be reused when they do.
         response.setHeader("Connection", "close");
         writeFailure(response, shuttingDown(), {
           errorId: mintErrorId(),
