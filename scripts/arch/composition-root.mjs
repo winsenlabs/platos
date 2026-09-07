@@ -24,7 +24,11 @@
 //     by convention alone and none satisfies a port it was never bound to;
 //   * a DYNAMIC import — a specifier resolved at run time, which no static
 //     boundary checker in this repository can see — may exist in exactly one
-//     declared place, and must carry its declaration.
+//     declared place, and must carry its declaration;
+//
+//   * (WIN-267 T3) the composition root's `UNIMPLEMENTED_ADAPTERS` list — the
+//     directories it tells readiness an operator CANNOT wire — must agree with
+//     the adapter packages' own source, in both directions.
 //
 //   node scripts/arch/composition-root.mjs            # audit this repository
 //   node scripts/arch/composition-root.mjs --root DIR # audit a fixture tree
@@ -176,6 +180,67 @@ export function parseBindingTable(source) {
   return entries;
 }
 
+/**
+ * Read the entries of the `UNIMPLEMENTED_ADAPTERS` frozen literal.
+ *
+ * WIN-267 T3. `null` when the declaration is absent, which (C7) reports as its
+ * own failure rather than as an empty list — an absent list and a list that
+ * names nothing are different claims, and only one of them is checkable.
+ */
+export function parseUnimplementedAdapters(source) {
+  const block = /export const UNIMPLEMENTED_ADAPTERS[^=]*=\s*Object\.freeze\(\[([\s\S]*?)\]\);/u.exec(source);
+  if (block === null) return null;
+  const names = [];
+  const pattern = /"([^"]+)"/gu;
+  let match;
+  while ((match = pattern.exec(block[1] ?? "")) !== null) names.push(match[1]);
+  return names;
+}
+
+/**
+ * Does this adapter package export something a composition root can CALL?
+ *
+ * The question the (C7) join asks of the filesystem. A directory whose
+ * `src/adapter.ts` is still `gen-v1-skeleton.mjs`'s placeholder publishes an
+ * interface extending its port and nothing else; a directory with an
+ * implementation publishes a factory. `src/index.ts` is where the package says
+ * what leaves it, so that is what is read — an unexported factory is one a
+ * composition root cannot reach, which is the same answer as none.
+ *
+ * Read from the compiler's parse rather than by regex, for the reason `parse`
+ * above gives: the word `createFooAdapter` appears in prose in half these files.
+ */
+function exportsAConstructor(root, directory) {
+  const path = join(root, "packages/adapters", directory, "src/index.ts");
+  if (!existsSync(path)) return false;
+  const file = parse(path, readFileSync(path, "utf8"));
+  let found = false;
+  const isFactory = (name) => /^(?:create|build)[A-Z][A-Za-z0-9]*Adapter$/u.test(name);
+  const visit = (node) => {
+    // `export { createFooAdapter } from "./adapter.js"` — the shape every one of
+    // these packages actually uses.
+    if (ts.isExportDeclaration(node) && node.exportClause !== undefined && ts.isNamedExports(node.exportClause)) {
+      if (node.isTypeOnly) return;
+      for (const element of node.exportClause.elements) {
+        if (element.isTypeOnly) continue;
+        if (isFactory(element.name.text)) found = true;
+      }
+    }
+    // `export function createFooAdapter(...)` — declared in the entry point.
+    if (
+      ts.isFunctionDeclaration(node) &&
+      node.name !== undefined &&
+      isFactory(node.name.text) &&
+      node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) === true
+    ) {
+      found = true;
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return found;
+}
+
 /** Read the keys of the `PORT_SATISFACTION` frozen literal. */
 export function parseSatisfactionKeys(source) {
   const block = /export const PORT_SATISFACTION[^=]*=\s*Object\.freeze\(\{([\s\S]*?)\}\);/u.exec(source);
@@ -323,6 +388,56 @@ export function auditCompositionRoot(root = repositoryRoot) {
       problems.push(
         `PORT_SATISFACTION has ${satisfaction.length} entr(ies); ${expectedSatisfactionKeys.size} binding(s) are declared`,
       );
+    }
+  }
+
+  // --- (C7) the unimplemented list must agree with the adapter packages ---
+  //
+  // WIN-267 T3. `constructAdapters` tells readiness that eight directories hold
+  // no object because there is nothing to construct — a claim an operator ACTS
+  // on, since it is the difference between "set a variable" and "this cannot be
+  // wired at all". A hand-maintained list making that claim is exactly the
+  // assertion this programme has been bitten by: it compares the composition
+  // root to itself and goes stale the moment an adapter gains an implementation
+  // and nobody remembers this file.
+  //
+  // So it is joined to the ADAPTER PACKAGES' OWN SOURCE, in BOTH directions:
+  //
+  //   * a directory ON the list that exports a constructor -> the list is stale
+  //     and readiness is telling operators an adapter cannot be wired when it can;
+  //   * a directory OFF the list that exports none -> `constructAdapters` claims
+  //     to build something it cannot, and readiness reports it as a
+  //     configuration gap an operator will go looking for a variable to close.
+  //
+  // Neither side is a number this repository wrote for the purpose. The evidence
+  // is `packages/adapters/*/src/index.ts`, which exists for its own reasons.
+  const unimplemented = parseUnimplementedAdapters(compositionSource);
+  if (unimplemented === null) {
+    problems.push(`${COMPOSITION_ROOT_FILE} declares no UNIMPLEMENTED_ADAPTERS list`);
+  } else {
+    const listed = new Set(unimplemented);
+    for (const name of listed) {
+      if (!ADAPTERS.some((adapter) => adapter.dir === name)) {
+        problems.push(`UNIMPLEMENTED_ADAPTERS names "${name}", which is not a declared adapter directory`);
+      }
+    }
+    if (listed.size !== unimplemented.length) {
+      problems.push(`UNIMPLEMENTED_ADAPTERS names the same directory more than once`);
+    }
+    for (const adapter of ADAPTERS) {
+      const constructible = exportsAConstructor(root, adapter.dir);
+      if (listed.has(adapter.dir) && constructible) {
+        problems.push(
+          `UNIMPLEMENTED_ADAPTERS says ${adapter.dir} cannot be constructed, but` +
+            ` packages/adapters/${adapter.dir}/src/index.ts exports a constructor; drop it from the list`,
+        );
+      }
+      if (!listed.has(adapter.dir) && !constructible) {
+        problems.push(
+          `packages/adapters/${adapter.dir}/src/index.ts exports no constructor, so the` +
+            ` composition root cannot build it; name it in UNIMPLEMENTED_ADAPTERS`,
+        );
+      }
     }
   }
 

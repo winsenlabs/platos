@@ -28,9 +28,12 @@ import "reflect-metadata";
 
 import { pathToFileURL } from "node:url";
 
+import { constructAdapters } from "./composition/adapter-bindings.js";
+import { assembleContextPorts } from "./composition/context-ports.js";
 import { readProcessEnvironment } from "./config/environment.js";
 import { renderStartupFailure } from "./config/load.js";
 import { loadPlatformConfiguration } from "./config/platform.js";
+import { correlationSource } from "./runtime/correlation.js";
 import { createProcessDefaults, startCoreApi } from "./runtime/lifecycle.js";
 
 export { composeApplication, type AppModule } from "./app.module.js";
@@ -62,21 +65,74 @@ export async function runProcess(io: MainIo): Promise<number> {
     return EXIT_CONFIGURATION;
   }
 
-  // `startCoreApi` takes the CORE section. The other five are validated above and
-  // are what the composition root will hand each adapter when it constructs one;
-  // today it constructs none, and `app.module.ts` says so where that is decided.
-  const configuration = outcome.value.core;
+  // WIN-267 T3. THE OTHER FIVE SECTIONS ARE NO LONGER DROPPED ON THE FLOOR.
+  //
+  // This block used to be one line — `startCoreApi({ configuration })` — with a
+  // comment saying the other five sections "are what the composition root will
+  // hand each adapter when it constructs one; today it constructs none". That
+  // was the reason `/readyz` answered 0/49 in every configuration: not a
+  // misconfiguration anywhere, just a validated `stores.postgres` that nothing
+  // read. `constructAdapters` reads them now.
+  //
+  // THE PROCESS DEFAULTS ARE BUILT ONCE, HERE, and handed onward rather than
+  // left to `startCoreApi` to mint again. The outbox stamps every event's time
+  // from a clock, and a process whose adapters ran on one clock while its
+  // request path ran on another would be a process whose event order and whose
+  // logs could disagree for no reason a reader could ever find.
+  const platform = outcome.value;
+  const configuration = platform.core;
+  const defaults = createProcessDefaults(configuration);
+
+  const construction = constructAdapters({
+    stores: platform.stores,
+    security: platform.security,
+    providers: platform.providers,
+    clock: defaults.clock,
+    // The seam WIN-260 built and nothing had wired. `correlationSource` reads
+    // the async-local frame the edge middleware opens, so a write issued while
+    // serving a request carries that request's id into PostgreSQL's own session
+    // state and onto every domain event the transaction appends.
+    correlation: correlationSource,
+  });
+
+  if (construction.faults.length > 0) {
+    // EX_CONFIG, NOT A FAULT. A key ring that will not parse, a pool setting the
+    // client refuses — the value was SUPPLIED and is unusable, so restarting
+    // reaches the same answer. This is the same verdict the section loader gives
+    // a malformed variable, reached one layer later because only the adapter
+    // knows what a usable key ring looks like.
+    io.writeError(
+      `core-api cannot construct its adapters:\n${construction.faults.map((fault) => `  ${fault}\n`).join("")}`,
+    );
+    await construction.release();
+    return EXIT_CONFIGURATION;
+  }
+
+  const assembly = assembleContextPorts(construction.adapters, defaults);
+
   let running;
   try {
-    running = await startCoreApi({ configuration });
+    running = await startCoreApi({
+      configuration,
+      adapters: construction.adapters,
+      ports: assembly.ports,
+      unwired: construction.unwired,
+      clock: defaults.clock,
+      ids: defaults.ids,
+      logger: defaults.logger,
+    });
   } catch (error) {
     // Startup faults are structured too. A composition fault here means a
     // mis-wired adapter, which is a programming error: report it and stay down.
-    const logger = createProcessDefaults(configuration).logger;
-    logger.log("error", "process.start_failed", {
+    defaults.logger.log("error", "process.start_failed", {
       error: error instanceof Error ? error.name : "unknown",
       detail: error instanceof Error ? error.message : String(error),
     });
+    // THE POOL IS ALREADY OPEN BY THIS POINT. Returning without releasing it
+    // would leave a PostgreSQL pool and a Redis socket held by a process that
+    // has decided to die, and `main()` calls `process.exit` — so the sockets go
+    // when the kernel reaps them rather than when this code says so.
+    await construction.release();
     return EXIT_FAULT;
   }
 
@@ -91,7 +147,15 @@ export async function runProcess(io: MainIo): Promise<number> {
     }
   });
 
-  return await stopped;
+  const code = await stopped;
+  // AFTER the drain and after the framework closed, never before. A pool
+  // released while a request is still finishing turns the last work of a
+  // graceful shutdown into a connection error — which is the exact failure the
+  // drain sequence in `lifecycle.ts` exists to prevent, reintroduced one layer
+  // out. This call is what makes `PostgresTenancyAdapter.close`'s own comment —
+  // "the composition root owns this adapter's lifetime" — a true sentence.
+  await construction.release();
+  return code;
 }
 
 async function main(): Promise<void> {

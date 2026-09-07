@@ -57,8 +57,8 @@ import { NestFactory } from "@nestjs/core";
 
 import type { Clock, IdGenerator, Logger } from "@platos/kernel";
 
-import { composeApplication, type AppModule } from "../app.module.js";
-import type { SuppliedAdapters } from "../composition/adapter-bindings.js";
+import { composeApplication, type AppModule, type SuppliedContextPorts } from "../app.module.js";
+import type { SuppliedAdapters, UnwiredAdapter } from "../composition/adapter-bindings.js";
 import { describeAdapterSupply } from "../composition/registry.js";
 import type { CoreApiConfiguration } from "../config/schema.js";
 import type { LifecycleState } from "../health/readiness.js";
@@ -71,6 +71,18 @@ import { drainAll, type Drainable, type ShutdownDrainReport } from "./shutdown-d
 export interface StartOptions {
   readonly configuration: CoreApiConfiguration;
   readonly adapters?: SuppliedAdapters;
+  /**
+   * WIN-267 T3. The context bundles assembled from those adapters.
+   *
+   * SEPARATE FROM `adapters` because they are separate decisions: an adapter
+   * fills one declared binding and is judged against the forty-nine-slot table,
+   * whereas a context takes a whole bundle whose slots are its own names.
+   * `composition/context-ports.ts` builds this from the adapters and says which
+   * contexts it could not.
+   */
+  readonly ports?: SuppliedContextPorts;
+  /** Why each unbuilt adapter directory is unbuilt. Reaches `/readyz`. */
+  readonly unwired?: readonly UnwiredAdapter[];
   readonly clock?: Clock;
   readonly ids?: IdGenerator;
   readonly logger?: Logger;
@@ -165,6 +177,8 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     ids,
     logger,
     adapters: options.adapters,
+    ports: options.ports,
+    unwired: options.unwired,
     inFlight,
   });
 

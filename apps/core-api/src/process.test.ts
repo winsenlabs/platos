@@ -258,7 +258,10 @@ describe("the built binary starts, serves and stops", () => {
     expect(live.status).toBe(200);
     expect(await live.json()).toEqual({ status: "alive", phase: "serving" });
 
-    // Honestly red: no adapter has an implementation at M2.1b.
+    // Honestly red, and for a reason this environment states: `SERVING_ENV`
+    // declares no store group at all, so nothing was constructed and no binding
+    // is satisfied. The case below spawns the same binary with the groups
+    // declared and reads a different number off the same endpoint.
     const ready = await fetch(`http://127.0.0.1:${port}/readyz`);
     expect(ready.status).toBe(503);
 
@@ -277,6 +280,69 @@ describe("the built binary starts, serves and stops", () => {
       drained: true,
       remaining: 0,
     });
+  }, 40_000);
+
+  it("reports a REAL binding count on /readyz once the stores are declared", async () => {
+    // WIN-267 T3's acceptance, proven on the SHIPPED artifact rather than in a
+    // unit test: `node dist/main.js`, a real socket, a real HTTP response.
+    // Before this tranche the number below was 0 in every configuration the
+    // process could be given, because `main.ts` handed `startCoreApi` no
+    // adapters at all — so the endpoint could not distinguish a wired install
+    // from an empty one, and neither could an operator.
+    //
+    // NO STORE HERE IS REACHABLE. `db.internal` and `cache.internal` do not
+    // resolve, which is the point twice over: readiness reports what was
+    // CONSTRUCTED, and a process whose stores are down at boot must still start
+    // and say so rather than crash.
+    const token = "t".repeat(32);
+    const spawned = launch({
+      ...SERVING_ENV,
+      PLATOS_CORE_API_ADMIN_HEALTH_TOKEN: token,
+      PLATOS_STORE_POSTGRES_URL: "postgresql://platos:password-here@db.internal:5432/platos_control",
+      PLATOS_STORE_REDIS_URL: "redis://cache.internal:6379",
+      PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
+      PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
+      PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",
+    });
+    const port = await awaitListening(spawned);
+
+    const response = await fetch(`http://127.0.0.1:${port}/readyz`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    // STILL 503, and that is the honest answer: eight directories are generated
+    // interfaces, so eight bindings cannot be satisfied by any configuration and
+    // this process cannot serve the routes that need them.
+    expect(response.status).toBe(503);
+    const body = (await response.json()) as {
+      reason: string;
+      detail: {
+        satisfiedBindings: string[];
+        declaredBindings: number;
+        composedContexts: string[];
+        unwiredAdapters: { adapter: string; cause: string }[];
+      };
+    };
+    expect(body.detail.declaredBindings).toBe(49);
+    expect(body.detail.satisfiedBindings).toHaveLength(41);
+    expect(body.reason).toBe("41 of 49 adapter bindings are satisfied; 8 are not");
+    // The context composed over a REAL PostgreSQL adapter rather than over a
+    // bundle an install had to hand in — the first one in this programme.
+    expect(body.detail.composedContexts).toEqual(["tenancy"]);
+    // And every remaining directory says which kind of gap it is.
+    expect(body.detail.unwiredAdapters).toHaveLength(8);
+    expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
+
+    // The startup log carries the same figure, so an operator with no token can
+    // still read it off stdout.
+    expect(spawned.stdout()).toContain("41/49 adapter bindings satisfied");
+
+    spawned.child.kill("SIGTERM");
+    const { code, signal } = await spawned.exited;
+    expect(signal).toBeNull();
+    // AND IT STILL EXITS CLEANLY WITH A POOL AND A SOCKET OPEN. `release()` runs
+    // after the drain; before it existed the pool outlived the process's own
+    // decision to stop.
+    expect(code).toBe(EXIT_OK);
   }, 40_000);
 
   it("honours SIGINT the same way", async () => {

@@ -309,7 +309,12 @@ describe("the declared binding table", () => {
 });
 
 describe("adapter supply validation", () => {
-  it("reports every binding unsatisfied when nothing is wired — the honest M2.1b state", () => {
+  // WIN-267 T3 renamed this case. It used to say "the honest M2.1b state", which
+  // read as though 0/49 were a fact about the milestone; it is a fact about a
+  // caller that supplied NOTHING, and that is now one configuration among
+  // several rather than the only one reachable. What an install actually wires
+  // is `src/composition/installation.test.ts`.
+  it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
     expect(report.unsatisfied).toHaveLength(49);
