@@ -75,7 +75,13 @@
 // the five included.
 // ---------------------------------------------------------------------------
 
-import type { Clock, IdGenerator, Logger, RequestIdempotency } from "@platos/kernel";
+import type {
+  Clock,
+  CorrelationSource,
+  IdGenerator,
+  Logger,
+  RequestIdempotency,
+} from "@platos/kernel";
 
 import type { IdentityAccessContract } from "@platos/context-identity-access";
 import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
@@ -102,6 +108,7 @@ import type { PrivacyContract } from "@platos/context-privacy";
 import { ADAPTER_BINDINGS, type SuppliedAdapters } from "./composition/adapter-bindings.js";
 import { reportAdapterSupply, type AdapterSupplyReport } from "./composition/registry.js";
 import type { CoreApiConfiguration } from "./config/schema.js";
+import { correlationSource } from "./runtime/correlation.js";
 import { createInFlightRegister, type InFlightRegister } from "./runtime/in-flight.js";
 
 /** The seventeen published context surfaces, exactly as ADR M0.3 §4 names them. */
@@ -155,6 +162,29 @@ export interface AppModule {
    * it is the only one the EDGE consumes rather than a context.
    */
   readonly requestIdempotency: RequestIdempotency | null;
+  /**
+   * The kernel `CorrelationSource` the process edge decided, published where an
+   * install can hand it to an adapter.
+   *
+   * WIN-260 (M2.5) BUILT BOTH ENDS OF THIS SEAM AND JOINED NEITHER TO THE OTHER.
+   * `runtime/correlation.ts` implements the port over `AsyncLocalStorage`;
+   * `packages/adapters/postgres-tenancy` takes a `CorrelationSource | null` and
+   * writes whatever it reports into PostgreSQL's session state for the
+   * transaction, where a second connection reads it back off the committed row.
+   * In between, every construction site in this repository passed that
+   * parameter's DEFAULT — `null` — so the identifier the edge decided reached the
+   * envelope, the log line, and nothing else. The port is a property of the
+   * composed application for the same reason `requestIdempotency` is: a transport
+   * or an install that reached into `src/runtime/` for it would be naming a
+   * MODULE where it should name a PORT, and handing out ports is the composition
+   * root's one job.
+   *
+   * It is not optional and has no null case. Correlation is ambient and the edge
+   * always has an answer — `current()` returning null OUTSIDE a request is the
+   * port's own way of saying "this work belongs to no request", which is why the
+   * absence needs no second spelling here.
+   */
+  readonly correlation: CorrelationSource;
 }
 
 /**
@@ -188,6 +218,12 @@ export interface CompositionInput {
   readonly adapters?: SuppliedAdapters;
   readonly ports?: SuppliedContextPorts;
   readonly inFlight?: InFlightRegister;
+  /**
+   * Overridable so a suite can move the ambient identifier without an HTTP
+   * request. Defaulted to the process edge's own, which is what every install
+   * gets and what production must never have to remember to pass.
+   */
+  readonly correlation?: CorrelationSource;
 }
 
 /**
@@ -237,6 +273,7 @@ export function composeApplication(input: CompositionInput): AppModule {
     // that the port is ABSENT and fail closed, and an undefined property reads
     // the same as one nobody wired.
     requestIdempotency: adapters["redis-cache"]?.requests ?? null,
+    correlation: input.correlation ?? correlationSource,
   });
 }
 

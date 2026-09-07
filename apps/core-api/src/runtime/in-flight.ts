@@ -34,6 +34,15 @@
 // going away, the request was never begun, send it again". They are different
 // operator responses, and one shared code would make a rolling deploy
 // indistinguishable from a wedged dependency in a log.
+//
+// IT IS THE REGISTER'S REASON, NOT THE WIRE'S CODE — WIN-267 (M4.1). The string
+// below was for a while both, and as a wire code it was wrong: M0.4 §2 fixes
+// `error.code` as SCREAMING_SNAKE and the envelope around it, and a dotted
+// lower-case label in that slot made the shutdown path the second REST error in
+// the process that answered in a private shape. `runtime/edge-middleware.ts` now
+// answers `TRANSPORT_SHUTTING_DOWN` in the canonical envelope, and this stays
+// what it always was underneath: the reason this register refused, counted here
+// and named in the shutdown log line.
 // ---------------------------------------------------------------------------
 
 /** A request arrived after admission closed. It was never begun. */
