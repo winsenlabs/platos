@@ -787,10 +787,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // which is the difference between this census and the arch-boundaries one, and
   // worth stating so a reader does not try to reconcile 1542 with 1578.
   //
-  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. The largest of the nine
-  // is 168 effective lines; the warning list below is unchanged. A controller
-  // monolith remains structurally forbidden in the directory the routes are
-  // coming to AND in the directory they are registered in.
+  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured, not assumed:
+  // the largest of the nine is `rest-chassis.test.ts` at 352 effective lines,
+  // then `envelope.test.ts` at 169; the seven production modules run 13 to 79,
+  // the biggest of them being `page.ts`. Nothing crosses 400 and the warning
+  // list below is unchanged. A controller monolith remains structurally
+  // forbidden in the directory the routes are coming TO and in the directory
+  // they are registered IN.
   assert.equal(result.fileCount, 1542);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
