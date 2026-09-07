@@ -568,7 +568,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and its wiring changed in-flight.ts, lifecycle.ts and their two suites IN
     // PLACE and add no file. 29 + 3 = 32.
     // M2 INTEGRATION, ALL FOUR: 29 + 1 + 11 + 3 = 44.
-    "apps-core-api": 44,
+    // +3 (WIN-267 T3, M4.1): the composition root stops being a declaration and
+    // starts CONSTRUCTING, so three files land and every one of them falls on a
+    // rule WIN-297 already wrote — `apps-core-api.source.process` 25 -> 26 for
+    // src/composition/context-ports.ts, `apps-core-api.test.suites` 16 -> 17 for
+    // src/composition/installation.test.ts, and `apps-core-api.config.package`
+    // 4 -> 5 for mutations-win267-t3.json, exactly as WIN-260's mutations.json
+    // landed on that same rule. NO LEDGER RULE CHANGED.
+    //
+    // The construction itself adds NO file: it is inside
+    // src/composition/adapter-bindings.ts, because
+    // `scripts/arch/composition-root.mjs` rule (C1) allows exactly ONE importer
+    // of an adapter package and a second file naming one would fail the gate.
+    // `context-ports.ts` is separate precisely because it names no adapter
+    // PACKAGE — it reads the `SuppliedAdapters` type — and the two questions it
+    // separates ("which vendor implements this port" and "which slot on which
+    // context does that object go in") are not the same rule.
+    //
+    // The redis-cache defects this tranche exposed are EDITS to
+    // packages/adapters/redis-cache/src/client.ts, so `packages` does not move.
+    // 44 + 3 = 47.
+    "apps-core-api": 47,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1407,7 +1427,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carries.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1579);
+  // WIN-267 T3 (M4.1) +3, ALL of them `apps-core-api`: the composition root
+  // begins CONSTRUCTING, and the three files that lands are
+  // src/composition/context-ports.ts, its suite, and this tranche's guard
+  // ledger. It ADOPTS NO PROJECT and CHANGES NO LEDGER RULE — every one falls
+  // on a rule WIN-297 already wrote — and it moves no other area, because the
+  // construction itself is inside the ONE file rule (C1) lets name an adapter
+  // and the redis-cache defects it exposed are edits rather than files.
+  // 1579 + 3 = 1582.
+  // 3469 + 1582 = 5051.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1582);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1513,7 +1542,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1579
+    //
+    // and WIN-267 T3 (M4.1) +3, ALL in `apps-core-api`: 1579 + 3 = 1582,
+    // re-derived here by summing the per-area counts rather than taking the
+    // figure above, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1582
   );
 });
 
