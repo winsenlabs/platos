@@ -307,20 +307,41 @@ export const VIOLATION_CODES = Object.freeze({
  * two can DISAGREE and be caught. The DECLARED table is unmoved by all four.
  */
 /**
- * WIN-267 T3 (M4.1) adds TWO files, both under `apps/core-api/src/composition/`:
- * `context-ports.ts`, which turns constructed adapters into the port bundles a
- * context is built from, and `installation.test.ts`, the suite that drives the
- * real `constructAdapters` and reads the binding count back off the declared
- * table. Nothing lands in the other four roots — the adapter fix this tranche
- * carries is an EDIT to `packages/adapters/redis-cache/src/client.ts`, not a new
- * file, which is why `packages/adapters` does not move here.
+ * WIN-267 (M4.1) INTEGRATION SUMS T3 AND T2. Both branched from 21ca7a8b and
+ * both wrote their own +N over the same 1568, so NEITHER figure is the
+ * integrated one and taking either side whole would silently drop the other
+ * tranche's files while leaving this pin looking exact.
  *
- * 1568 + 2 = 1570. The DECLARED table is unmoved: `main.ts` gained a great deal
- * of wiring and not one environment read, which is the property this gate is for
- * — the six sections still arrive through `readProcessEnvironment()` and nothing
- * added a second door.
+ * T3 adds TWO, both under `apps/core-api/src/composition/`: `context-ports.ts`,
+ * which turns constructed adapters into the port bundles a context is built
+ * from, and `installation.test.ts`, the suite that drives the real
+ * `constructAdapters` and reads the binding count back off the declared table.
+ * The adapter fix T3 carries is an EDIT to
+ * `packages/adapters/redis-cache/src/client.ts`, not a new file, which is why
+ * `packages/adapters` does not move.
+ *
+ * T2, the REST chassis, adds TEN, every one named so the pin stays a claim
+ * rather than a number somebody raised until the gate went quiet. Four under
+ * `apps/core-api/src/transports/rest/` (`envelope.ts`, `page.ts`, `fault.ts`,
+ * `transport-errors.ts`) plus that directory's suite; three under
+ * `apps/core-api/src/http/` (`domain-exception.filter.ts`, `validation.pipe.ts`,
+ * `not-found.controller.ts`) plus `rest-chassis.test.ts`; and
+ * `runtime/edge-middleware.ts`, which is the correlation-and-admission
+ * middleware lifted out of `runtime/lifecycle.ts` rather than a new one -- the
+ * pin moves by the FILE, and a file that only moved is still a file this scan
+ * had not read before.
+ *
+ * T0 and T1 add nothing here: T0's two files are under `scripts/`, T1's two are
+ * under `apps/agent/src/http/`, and neither root is in this census.
+ *
+ * 1568 + 2 + 10 = 1580. The DECLARED table is unmoved by either tranche. T3's
+ * `main.ts` gained a great deal of wiring and not one environment read, and not
+ * one of T2's ten reads `process.env` -- the chassis takes its configuration
+ * from the composed `AppModule`. That is the property this gate exists to keep
+ * true as `apps/core-api` grows a transport: the six sections still arrive
+ * through `readProcessEnvironment()` and nothing added a second door.
  */
-export const EXPECTED_FILE_COUNT = 1570;
+export const EXPECTED_FILE_COUNT = 1580;
 
 function listSourceFiles(root) {
   const found = [];

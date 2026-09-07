@@ -1132,19 +1132,34 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // M2 INTEGRATION, ALL FOUR DIMENSIONS: 1503 + 10 + 24 + 23 + 8 = 1568, with
     // every addend list concatenated rather than replaced.
     //
-    // WIN-267 T3 (M4.1) adds TWO, both under `apps/core-api/src/composition/`:
-    // `context-ports.ts` — which turns the constructed adapters into the port
+    // WIN-267 (M4.1) INTEGRATION SUMS T3 AND T2, whose roots are DISJOINT, so
+    // their addend lists concatenate rather than contend -- but both wrote a
+    // total over the same 1568 base, so the TOTAL had to be summed by hand.
+    //
+    // T3 adds TWO, both under `apps/core-api/src/composition/`:
+    // `context-ports.ts` -- which turns the constructed adapters into the port
     // bundles a context is built from, and is separate from `adapter-bindings.ts`
-    // because it names no adapter PACKAGE and rule (C1) is about packages — and
+    // because it names no adapter PACKAGE and rule (C1) is about packages -- and
     // `installation.test.ts`, the suite that drives the real `constructAdapters`
     // and reads the binding count back off ADAPTER_BINDINGS rather than off the
-    // report under test. 1568 + 2 = 1570.
+    // report under test. `packages/adapters` DOES NOT MOVE, and that is worth
+    // stating because T3 does change an adapter: the two defects wiring
+    // `redis-cache` exposed are edits to `src/client.ts`, not new files.
     //
-    // `packages/adapters` DOES NOT MOVE, and that is worth stating because this
-    // tranche does change an adapter: the two defects wiring `redis-cache` exposed
-    // are edits to `src/client.ts`, not new files, and the case that proves them
-    // lives in `apps/core-api` because that is where the construction is.
-    assert.equal(result.fileCount, 1570, "the generated V1 source census must stay exact");
+    // T2, THE REST CHASSIS, adds TEN. FIVE under
+    // `apps/core-api/src/transports/rest/` (`envelope.ts`, `page.ts`,
+    // `fault.ts`, `transport-errors.ts` and the directory's suite), FOUR under
+    // `apps/core-api/src/http/` (`domain-exception.filter.ts`,
+    // `validation.pipe.ts`, `not-found.controller.ts` and `rest-chassis.test.ts`)
+    // and ONE under `apps/core-api/src/runtime/` (`edge-middleware.ts`, the
+    // correlation-and-admission middleware lifted out of `lifecycle.ts`).
+    //
+    // T0 and T1 add nothing to this census: their four files are under
+    // `scripts/` and `apps/agent/src/http/`, neither of which is a root here.
+    //
+    // 1568 + 2 + 10 = 1580. `scripts/arch/env-access.mjs` pins the same census
+    // independently, which is why the two are allowed to disagree and be caught.
+    assert.equal(result.fileCount, 1580, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1153,7 +1168,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       11 + 12 +
       3 + 1 + 2 + 2 +
       // WIN-267 T3: composition/context-ports.ts + composition/installation.test.ts.
-      2);
+      2 +
+      // WIN-267 T2 chassis: transports/rest 5, http 4, runtime 1.
+      5 + 4 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

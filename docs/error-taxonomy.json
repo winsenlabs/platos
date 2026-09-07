@@ -2907,6 +2907,34 @@
         "tools"
       ]
     },
+    "TRANSPORT_REQUEST_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "TRANSPORT_ROUTE_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "TRANSPORT_SHUTTING_DOWN": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "TRANSPORT_UNHANDLED_FAULT": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "core-api"
+      ]
+    },
     "UNAUTHENTICATED": {
       "category": "unauthenticated",
       "status": 401,

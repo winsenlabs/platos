@@ -112,10 +112,11 @@
     },
     {
       "name": "C07 the middleware routes a refused request instead of answering 503",
-      "file": "src/runtime/lifecycle.ts",
+      "file": "src/runtime/edge-middleware.ts",
       "from": "      if (!registration.admitted) {",
       "to": "      if (false) {",
       "suites": ["src/runtime/lifecycle.test.ts"],
+      "note": "WIN-267 (M4.1) T2 MOVED THIS GUARD, NOT THIS LEDGER. The correlation-and-admission middleware was lifted out of src/runtime/lifecycle.ts into src/runtime/edge-middleware.ts so a suite can mount the real edge without starting the whole process; the mutated line is unchanged and both named kills still fire. The refusal BODY is now the M0.4 section 2 envelope carrying TRANSPORT_SHUTTING_DOWN rather than the register reason, which is what the first named case now reads.",
       "kills": [
         "shutdown REFUSES late work instead of dropping it > answers 503 with the refusal code once admission is closed",
         "shutdown REFUSES late work instead of dropping it > tells the caller to come back, rather than merely closing on them"
