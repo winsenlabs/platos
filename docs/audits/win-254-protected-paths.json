@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "69e9d9c7ed357d6d9d6ba5435063f42abc73f22a1c6f78229ec0c7a395038a9b"
+      "sha256": "6fb441c177818aafbddb8fc256a952b991d91ea8ddc4014edbd399551f0613f8"
     },
     {
       "path": "LICENSE",
@@ -773,7 +773,7 @@
     {
       "path": "docs/adr/M0.4-contract-versioning.md",
       "mode": "100644",
-      "sha256": "63eb464192fd0509588ca762eabe135f7a2524df5c1895240fcbeac7e7cf3b98"
+      "sha256": "41913a881420f87ed66cb5d3eae38a527f7f0c84e016685d234451cbf424aeac"
     },
     {
       "path": "docs/agent-worktrees.md",
@@ -808,22 +808,22 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "2d80ee01e7898d8727ddc75abb00025188cef5bdb32238abdb93ba6fd2904239"
+      "sha256": "10969e032a279f954c0bcb3c0bc3e13374cc426b21ff18f81f0ad075bbd5c575"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "3db6e5cf5c0ef68bf9f962b10d7c7e754970489bb11c93396ffcf7fa45a73516"
+      "sha256": "bc1233318a3461d2967aab6d0e90693e7d62c79975caea0316527bb20997fac2"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
       "mode": "100644",
-      "sha256": "931fb1b66d75a69b03688270e23fc63a76fbc8c8e22479fd74e2d8e50dfa283e"
+      "sha256": "9ae31b1b14f83780fd0eb174e0b9e095d005ca35a78d1b0ed8cd92cb3d9fcdf9"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.md",
       "mode": "100644",
-      "sha256": "f949bfb03154f613a59e93edd2c442f626c34708d95bf2d15991860aafc50301"
+      "sha256": "4529feba53a7e645893803500a41c1a27a8b17e994ee1a624eb1598a895bf6b5"
     },
     {
       "path": "docs/audits/M0.5-dependency-sbom.md",
@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "5c9c5613fdbd2fdde0a7ff7f583f99b1dd08bbb9030f0c35a87c0bd62aefa41b"
+      "sha256": "b9c216b596fc4ae52738fce5bc07aef60e870b2850d4c802f51afc0d0c26235b"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "015e5aa711ab8c880e75f92306e42910d6ad777a70bb3dfacf49d19cd20c05d9"
+      "sha256": "3891e53241565413feae65a9fc62cbc1f8acbc7094615f10f75220db80126850"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "e4683f597b424ac4becd91e31fbf571c21e9227bb0b022045ba150bf5ed0fe95"
+      "sha256": "bb19beb5f76c4a6baedb53d718029dd69032489d12447c96179f92ac18aee0d4"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "830230c1164aad66212f3de3123ceb3461a604ff5592b647fbff0a2356ffa12c"
+      "sha256": "089a510f002a7218814e173ad58ee402cc1a5290440289485d77d4e48e041c68"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3658,7 +3658,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "3abfc2d7a60d71d6ef70d46a348c1cae56bf74345483dbf15de7f93c67a12b5f"
+      "sha256": "4f9b99c09707db927491542bad25ebcf4a3dfb22694fb8e2844da6af49532d87"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3923,7 +3923,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "d84cbae0166b9ae9d6c234123d3a1bbcbda9729315487c8afb097e236451003a"
+      "sha256": "3a7d1b1a88f38d2767d87ba3e1b52a2e134aaa1b780bdeaaf7f99a61e742e333"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
