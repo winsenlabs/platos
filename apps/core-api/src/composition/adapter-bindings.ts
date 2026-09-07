@@ -1188,7 +1188,7 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     unwired: Object.freeze([...unwired]),
     faults: Object.freeze([...faults]),
     async release(): Promise<void> {
-      // REVERSE ORDER, AND EVERY ONE ATTEMPTED. A close that throws must not
+      // REVERSE ORDER, AND EVERY ONE IS CALLED. A close that throws must not
       // strand the sockets behind it: a leaked PostgreSQL pool outlives the
       // process's usefulness, and the orchestrator's SIGKILL is a worse way to
       // discover it. The rejection is swallowed here and nowhere else, because
