@@ -359,6 +359,23 @@ const expectedV1EvidenceCommands = [
   "pnpm audit:test-case-census",
   "pnpm test:test-case-census",
   "node scripts/arch/contract-map.mjs --check",
+  // WIN-267 (M4.1, T0) +1. The contract-map gate's OWN mutation suite, and it is
+  // here because of what T0 found in the gate it pins: `contract-map.mjs` wrote
+  // `count: 18` at line 38 and then asserted `count !== 18` at line 404 against
+  // the model that constant produced, so no repository change could turn it red.
+  // The audit half has run in this step since M0.4; running it alone reviewed a
+  // gate that could not fail. The `test:` half is what makes the fix falsifiable
+  // -- it is the suite that goes red when the measured literal count and the
+  // committed artifact disagree -- so the pair belongs in one step, read off one
+  // tree, exactly as the census pair above it does.
+  //
+  // ADDED IN INTEGRATION, NOT IN T0. T0 put this command in `ci.yml` and did not
+  // add it here, so `test:ci-policy` went red on that branch and stayed red
+  // through T1 and T2. The later tranche compared it against ITS OWN base
+  // (which already carried T0) and recorded it as pre-existing; measured against
+  // `v1` @ 21ca7a8b the suite is GREEN at 369/369, so the failure was this PR's
+  // own and is repaired here rather than inherited.
+  "node --test scripts/arch/contract-map.test.mjs",
   "pnpm audit:sbom:check",
   "pnpm audit:sbom:nonvacuity",
   "pnpm test:sbom",
