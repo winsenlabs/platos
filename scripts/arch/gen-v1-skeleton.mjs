@@ -999,6 +999,51 @@ export const APPLICATION_ENTRY_PROJECTS = [
 ];
 
 // ---------------------------------------------------------------------------
+// WIN-267 T3 (M4.1) ADDED NOTHING TO THAT LIST, AND THE REASON IS MEASURED.
+//
+// That tranche's brief expected entries here: the composition root began
+// CONSTRUCTING adapters, so contexts a route needs should have become
+// composable. They did not, and adding an entry anyway would have created
+// exactly the dead surface WIN-297 declined to create — the rule above is "the
+// contexts `apps/core-api` ACTUALLY composes", not "the contexts it might".
+//
+// THE COUNT, AND WHERE IT FALLS AWAY. A context is composable only when three
+// things hold at once:
+//
+//   1. it publishes a factory over its whole contract. ELEVEN do —
+//      `createTenancyService`, `createIdentityAccessService`, and the nine
+//      `create*Contract` functions in `channels`, `conversations`, `eventing`,
+//      `files`, `governance`, `jobs`, `observability`, `privacy` and `skills`.
+//      SIX do not: `agents`, `tools`, `secrets`, `memory`, `cost-monitoring` and
+//      `providers` publish their use cases one at a time and no assembler.
+//
+//   2. every driven port in its bundle has an implementation in this tree;
+//
+//   3. that implementation is reachable from a constructed adapter.
+//
+// ONE context clears all three: `tenancy`, whose six driven ports and unit of
+// work are all properties of a single `PostgresTenancyAdapter` (WIN-258 tranches
+// 1 and 3). It is already on the list, and what changed is that it is now
+// composed over REAL PostgreSQL rather than over a bundle an install handed in.
+//
+// `identity-access` is the near miss and the one worth naming, because it looks
+// composable and is not: its `repository` IS on that adapter (tranche 2) and
+// `clock`, `ids` and `logger` are kernel ports the process holds, but
+// `rateLimiter` is `packages/adapters/redis-ratelimit` — still this generator's
+// own placeholder — and `hasher`, `minter`, `totp` and `cipher` are satisfied by
+// no adapter directory at all. `keyring-envelope`'s `Hasher` is `secrets`' port,
+// a different type in a different package, and nothing implements
+// `SecretHasher`, `TokenMinter`, `TotpCodeVerifier` or `MfaSecretCipher`.
+//
+// Of the other nine assemblers, every one needs at least one port whose adapter
+// is a placeholder — `ObjectStore`, `DurableRuntime`, `ObservabilitySink`,
+// `EventBus`, `ChannelAdapter` — or a peer contract from one of the six that
+// publish no assembler. `apps/core-api/src/composition/context-ports.ts` states
+// this per context and its suite checks the identity-access half against
+// `ADAPTER_BINDINGS` rather than asserting it.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
 // CONTEXTS THAT PUBLISH THEIR IN-MEMORY DOUBLES (WIN-258 T5). Append-only, one
 // project path per entry, each with the issue that needed it.
 //

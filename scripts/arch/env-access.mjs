@@ -153,8 +153,8 @@ export const ALLOWED = Object.freeze([
   Object.freeze({
     path: "apps/core-api/src/process.test.ts",
     role: "test-support",
-    reads: 2,
-    why: "The executable process evidence spawns the BUILT binary with a bare environment and forwards only PATH, so an inherited PLATOS_* variable from a developer's shell cannot change what the fail-closed cases prove.",
+    reads: 3,
+    why: "The executable process evidence spawns the BUILT binary with a bare environment and forwards only PATH, so an inherited PLATOS_* variable from a developer's shell cannot change what the fail-closed cases prove. THREE since WIN-267 T3 (M4.1): the third spawn is the child that constructs a store connection to a port nothing is listening on, releases it, and must then DRAIN — the one claim about the event loop that no in-process assertion can make, because `main()` calls `process.exit` and every other case would pass with a live reconnect timer. It forwards PATH for the same reason as the other two.",
   }),
   Object.freeze({
     path: "apps/mcp-stdio/src/main.test.ts",
