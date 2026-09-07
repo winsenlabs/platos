@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "031c6c7cbd302d7a4b13aa9a6870a85fe02c22bdb141ca9be62fd293f96071cf",
+  "evidenceSha256": "c6f37c9b97eebb57945102d355fa5f187966471667172b4b298a6524089b785b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 37,
@@ -111,7 +111,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "a77b12114fd0a9159296af1571acf581fd4a8e68442264739dfe22b12ec8f2bb",
+    "aggregateSha256": "997ec33ed4912287213d266adac4848451f6f7e5a860b751fe0736e2cb04b8c3",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2607,7 +2607,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/edge-middleware.ts",
-        "sha256": "fc2f6c5e2db3015cce84dad4d2091a09baafb9d7002f774fd11751c9ffaee700"
+        "sha256": "c7cf6da35ac4a323e2c60debc1c64674cf11d8cfe7fd0afc7edafc413f4c3a5d"
       },
       {
         "path": "apps/core-api/src/runtime/in-flight.test.ts",
@@ -2687,7 +2687,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/transport-errors.ts",
-        "sha256": "3a954c02c0e0010318b8ec476e279f35124784c4066fea152696677cfff8e0e1"
+        "sha256": "c0ff93e2493819a6df21e9e56c78739ee4e9bc4ad8c4c499fb56a1f772783f25"
       },
       {
         "path": "apps/core-api/src/transports/webhook/index.ts",
@@ -19655,7 +19655,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "a8861b5cc62fe1587741eea6736598d20019ead41f583849b9c1272dd3ad3096"
+        "sha256": "3ff38c4bf95c0446e68e6a0a78531cf75c8f9aba37904d873b660cc2c82202a7"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
