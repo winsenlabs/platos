@@ -10,7 +10,14 @@
     "pages": 47,
     "demanded": 43,
     "undemanded": 4,
-    "newContracts": 98
+    "contractRows": 124,
+    "byStatus": {
+      "N": 104,
+      "E": 16,
+      "E-stream": 3,
+      "E-partial": 1
+    },
+    "newContracts": 104
   },
   "canonicalPrefix": {
     "prefix": "/api/v1",
@@ -19,13 +26,167 @@
     "buildIdHeader": "X-Platos-Contract-Version",
     "floorRequestHeader": "X-Platos-Contract-Min",
     "literalMigration": {
-      "count": 18,
+      "literals": 24,
+      "sourceLines": 23,
+      "files": 20,
+      "measuredBy": "scripts/arch/contract-map.mjs measureApiV1Literals — string literals containing \"api/v1\" inside the balanced argument list of a Nest routing decorator (@Controller/@Get/@Post/@Put/@Patch/@Delete/@All/@Options/@Head), over production .ts/.tsx under apps/, packages/ and internal-packages/ (tests and .d.ts excluded).",
+      "crossCheckedBy": "measureApiV1LiteralLines — an independent line-based count that must agree on sourceLines.",
+      "supersedes": {
+        "count": 18,
+        "why": "ADR M0.4 §2/D1 recorded 18 and this file both wrote and asserted that number, so nothing could contradict it. 18 counts neither the literals, nor the lines, nor the files: two literals share one line in memory.controller.ts, and four of the twenty files carry the prefix on a method decorator rather than on @Controller."
+      },
       "from": "@Controller(\"api/v1/...\") hardcoded literals",
       "to": "setGlobalPrefix + enableVersioning + @Version(\"1\")",
       "milestone": "M4",
       "status": "pending",
       "enforcedBy": "no-bare-prefix lint: generation fails on any literal \"api/v1\" string once the migration lands, so the drift-check reads structure, not a string (ADR M0.4 §2 REST row, §5 item 2).",
-      "prerequisiteFor": "the \"version is a contract, not a path\" guarantee — the drift-check only reads a string until the 18 literals become @Version(\"1\") (D1)."
+      "prerequisiteFor": "the \"version is a contract, not a path\" guarantee — the drift-check only reads a string until every literal becomes @Version(\"1\") (D1).",
+      "sites": [
+        {
+          "file": "apps/agent/src/agent-runtime/agent.controller.ts",
+          "line": 182,
+          "decorator": "Controller",
+          "literal": "api/v1/agent"
+        },
+        {
+          "file": "apps/agent/src/agent-runtime/attachment-upload.controller.ts",
+          "line": 20,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/attachments"
+        },
+        {
+          "file": "apps/agent/src/agent-runtime/channel-apps.controller.ts",
+          "line": 88,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/channel-apps"
+        },
+        {
+          "file": "apps/agent/src/agent-runtime/channels.controller.ts",
+          "line": 126,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/channels"
+        },
+        {
+          "file": "apps/agent/src/agent-runtime/job-execution.controller.ts",
+          "line": 17,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/internal/jobs"
+        },
+        {
+          "file": "apps/agent/src/agent-runtime/jobs.controller.ts",
+          "line": 32,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/jobs"
+        },
+        {
+          "file": "apps/agent/src/auth/public-guest-token.controller.ts",
+          "line": 52,
+          "decorator": "Controller",
+          "literal": "api/v1/public"
+        },
+        {
+          "file": "apps/agent/src/auth/session-token.controller.ts",
+          "line": 87,
+          "decorator": "Controller",
+          "literal": "api/v1/entities"
+        },
+        {
+          "file": "apps/agent/src/channels/channel-app-events.controller.ts",
+          "line": 86,
+          "decorator": "Post",
+          "literal": "api/v1/channels/apps/:appId/events"
+        },
+        {
+          "file": "apps/agent/src/channels/channel-app-oauth.controller.ts",
+          "line": 64,
+          "decorator": "Get",
+          "literal": "api/v1/channels/oauth/:appId/install"
+        },
+        {
+          "file": "apps/agent/src/channels/channel-app-oauth.controller.ts",
+          "line": 140,
+          "decorator": "Get",
+          "literal": "api/v1/channels/oauth/:appId/callback"
+        },
+        {
+          "file": "apps/agent/src/channels/channel-link.controller.ts",
+          "line": 634,
+          "decorator": "Get",
+          "literal": "api/v1/channels/link/callback"
+        },
+        {
+          "file": "apps/agent/src/channels/channel-link.controller.ts",
+          "line": 728,
+          "decorator": "Get",
+          "literal": "api/v1/channels/link/:nonce"
+        },
+        {
+          "file": "apps/agent/src/channels/channels-inbound.controller.ts",
+          "line": 60,
+          "decorator": "Post",
+          "literal": "api/v1/channels/inbound/:connectionId/:webhookSecret"
+        },
+        {
+          "file": "apps/agent/src/channels/channels-inbound.controller.ts",
+          "line": 70,
+          "decorator": "Get",
+          "literal": "api/v1/channels/inbound/:connectionId/:webhookSecret"
+        },
+        {
+          "file": "apps/agent/src/files/files.controller.ts",
+          "line": 20,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/files"
+        },
+        {
+          "file": "apps/agent/src/memory/memory-feedback-admin.controller.ts",
+          "line": 8,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/admin/memory-feedback"
+        },
+        {
+          "file": "apps/agent/src/memory/memory.controller.ts",
+          "line": 62,
+          "decorator": "Controller",
+          "literal": "api/v1/memory"
+        },
+        {
+          "file": "apps/agent/src/memory/memory.controller.ts",
+          "line": 62,
+          "decorator": "Controller",
+          "literal": "api/v1/platos/memory"
+        },
+        {
+          "file": "apps/agent/src/openapi/openapi.controller.ts",
+          "line": 18,
+          "decorator": "Get",
+          "literal": "api/v1/agent/openapi.json"
+        },
+        {
+          "file": "apps/agent/src/performance-evidence/performance-evidence.controller.ts",
+          "line": 12,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/internal/performance-evidence"
+        },
+        {
+          "file": "apps/agent/src/privacy/erasure.controller.ts",
+          "line": 23,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/admin/privacy"
+        },
+        {
+          "file": "apps/agent/src/providers/providers.controller.ts",
+          "line": 27,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/providers"
+        },
+        {
+          "file": "apps/agent/src/skills/skills.controller.ts",
+          "line": 37,
+          "decorator": "Controller",
+          "literal": "api/v1/agent/skills"
+        }
+      ]
     }
   },
   "corrections": {
@@ -68,6 +229,11 @@
       "title": "Field-level compatibility enforcement",
       "status": "accepted",
       "text": "Mandate DTO schema declaration on all new v1 contexts plus the retrofitted envelope, so the breaking-change guard can enforce additive-only field compatibility."
+    },
+    "D8": {
+      "title": "Both pre-gate numbers were unmeasured; they are now derived from the tree",
+      "status": "CORRECTED",
+      "text": "Two figures this map published were written by hand and asserted against themselves. (1) The literal migration was recorded as 18 and validated by comparing the model to the constant that produced it, so no tree could fail it; measured, it is 24 `api/v1` literals on 23 source lines across 20 controller files, identical on the 89c12b8 oracle and on v1. (2) `totals.newContracts` was the sum of a hand-kept per-screen `newCount` that disagreed with the contract rows on 12 of the 43 screens; the histogram over the 124 rows is N 104, E 16, E-stream 3, E-partial 1, so net-new is 104 and not 98. Both are now derived — the literal count from the source tree, the contract counts from the rows themselves — and both are validated against the COMMITTED artifact rather than against the source that emitted it."
     }
   },
   "screens": [
@@ -285,7 +451,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 8,
+      "newCount": 3,
       "contracts": [
         {
           "name": "env needs-attention heterogeneous aggregate feed",
@@ -757,7 +923,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 3,
+      "newCount": 4,
       "contracts": [
         {
           "name": "BYOK provider/credential registry (list+test-all+per-provider test+rotate+spend7d)",
@@ -784,7 +950,7 @@
         "REST",
         "Webhook"
       ],
-      "newCount": 3,
+      "newCount": 4,
       "contracts": [
         {
           "name": "Slack install with two ownership models + channel→agent mapping",
@@ -834,7 +1000,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "memory context (CRUD + tier taxonomy, semantic search, embedding-status + re-embed, provenance, ratings, cluster-scoped visibility, GDPR cascade)",
@@ -853,7 +1019,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "knowledge-graph context (entities+edges w/ evidence/confidence/provenance, ego query, hub ranking, merge/delete)",
@@ -872,7 +1038,7 @@
         "REST",
         "SSE"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "live metrics contract (p50/p95 latency, tool-failure-rate vs baseline, turns/min, dispatch-log ground-truth cause, incident detection)",
@@ -891,7 +1057,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "turn-ledger contract (immutable per-turn billable rows, cost-lane taxonomy, per-turn rate-table version pin, export)",
@@ -910,7 +1076,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "budget context (scope env/agent/lane/guest, cap, hard-stop/soft, alert-threshold; ONE query shared with the cost ledger; breach events; raise-cap-once)",
@@ -929,7 +1095,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "governance/policy context (rule defs, safety-event log w/ outcome, hit counters, baseline set, rule→event linkage; held outcomes share the approval durableToken flow)",
@@ -948,7 +1114,7 @@
         "REST",
         "SSE"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "evals context (criteria, runs comparing two config versions on sampled threads, per-criterion judge scores, canary rollback/promote tied to version bindings)",
@@ -967,7 +1133,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "audit context (append-only across tool-calls+admin+config-saves+role-changes+cross-scope access, unsampled cross-reach guarantee, export-range)",
@@ -1014,7 +1180,7 @@
         "REST",
         "WS"
       ],
-      "newCount": 1,
+      "newCount": 2,
       "contracts": [
         {
           "name": "standardized error envelope {code,title,body,error-id,trace-ref,version} (this IS the REST ERROR envelope in §2)",

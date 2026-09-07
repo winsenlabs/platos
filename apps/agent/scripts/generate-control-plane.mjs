@@ -13,7 +13,7 @@
 
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +24,8 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const agentDir = resolve(scriptDir, "..");
 const repoDir = resolve(agentDir, "../..");
 const srcDir = join(agentDir, "src");
+const coreApiSrcDir = join(repoDir, "apps", "core-api", "src");
+const coreApiTransportsDir = join(coreApiSrcDir, "transports");
 const toolsDir = join(srcDir, "mcp-platform", "tools");
 const manifestPath = join(srcDir, "control-plane", "operation-manifest.generated.json");
 const reportPath = join(repoDir, "docs", "control-plane-parity.generated.md");
@@ -61,6 +63,57 @@ const PRODUCTION_MOUNTED_CONTROLLERS = {
   SkillsController: "skills/skills.module.ts",
   InternalExecuteToolController: "trigger-bridge/trigger-bridge.module.ts",
 };
+
+/**
+ * The V1 core-api transport controllers, mounted the same way and held to a
+ * STRICTER rule than the agent's.
+ *
+ * WIN-267 (M4.1). Until this generator had a second scan root it walked
+ * `apps/agent/src` and nothing else, so a route added under `apps/core-api`
+ * never reached the manifest — and every gate downstream of the manifest
+ * (capability matrix, differential coverage, route parity) was therefore
+ * enumerating a surface that had stopped being the whole surface.
+ *
+ * WHY IT IS EMPTY AND WHY THAT IS NOT A SILENCE. `apps/core-api/src/transports`
+ * holds six 20-line seams whose comments say "M4 OWNS THE SURFACE"; there is no
+ * controller there yet. An empty allowlist paired with `assertNoUnregisteredCoreApiControllers`
+ * below is the opposite of a placeholder: the agent root SKIPS a controller that
+ * is not on its allowlist (there are non-mounted controllers in that tree by
+ * design), whereas the core-api root REFUSES generation for one. So the first
+ * transport controller to land cannot be silently omitted from the manifest —
+ * it either gets registered here or the generator fails by name.
+ *
+ * Keys are class names; values are the module file, relative to
+ * `apps/core-api/src`, whose `controllers: [...]` array must list the class.
+ *
+ * `src/http/health.controller.ts` is NOT here and must not be: `/livez`,
+ * `/healthz` and `/readyz` are the PROCESS edge, deliberately unversioned per
+ * ADR M0.4 §2, and the manifest is the business-surface contract. That exclusion
+ * carries its own tripwire in `scripts/rest-census-independent.mjs`.
+ */
+const CORE_API_MOUNTED_CONTROLLERS = {};
+
+/**
+ * The controller scan roots. `scanDir` is walked for `*.controller.ts`;
+ * `moduleDir` resolves the allowlist's module paths; `strict` decides whether a
+ * controller found outside the allowlist is skipped or is a hard failure.
+ */
+const CONTROLLER_SCAN_ROOTS = [
+  {
+    id: "agent",
+    scanDir: srcDir,
+    moduleDir: srcDir,
+    mounted: PRODUCTION_MOUNTED_CONTROLLERS,
+    strict: false,
+  },
+  {
+    id: "core-api-transports",
+    scanDir: coreApiTransportsDir,
+    moduleDir: coreApiSrcDir,
+    mounted: CORE_API_MOUNTED_CONTROLLERS,
+    strict: true,
+  },
+];
 
 /**
  * Explicit REST→MCP equivalence declarations. Everything not listed here is
@@ -437,18 +490,58 @@ function moduleControllers(modulePath) {
 
 function assertMountedControllerPolicy() {
   const byModule = new Map();
-  for (const [controller, relativeModulePath] of Object.entries(
-    PRODUCTION_MOUNTED_CONTROLLERS
-  )) {
-    const modulePath = join(srcDir, relativeModulePath);
-    const controllers = byModule.get(modulePath) ?? moduleControllers(modulePath);
-    byModule.set(modulePath, controllers);
-    if (!controllers.includes(controller)) {
-      throw new Error(`${controller} is not registered by ${relativeModulePath}`);
+  const seen = new Map();
+  for (const root of CONTROLLER_SCAN_ROOTS) {
+    if (!existsSync(root.scanDir)) {
+      throw new Error(
+        `controller scan root ${root.id} points at ${relative(repoDir, root.scanDir)}, which does not exist; a declared root that is not on disk enumerates nothing`
+      );
+    }
+    for (const [controller, relativeModulePath] of Object.entries(root.mounted)) {
+      const previous = seen.get(controller);
+      if (previous !== undefined) {
+        throw new Error(
+          `controller class ${controller} is registered by two scan roots (${previous} and ${root.id}); the manifest keys route implementations by class name and cannot tell them apart`
+        );
+      }
+      seen.set(controller, root.id);
+      const modulePath = join(root.moduleDir, relativeModulePath);
+      const controllers = byModule.get(modulePath) ?? moduleControllers(modulePath);
+      byModule.set(modulePath, controllers);
+      if (!controllers.includes(controller)) {
+        throw new Error(`${controller} is not registered by ${relativeModulePath}`);
+      }
     }
   }
   if (Object.hasOwn(PRODUCTION_MOUNTED_CONTROLLERS, "TestController")) {
     throw new Error("TestController must not be present in the production mounted-controller policy");
+  }
+}
+
+/**
+ * A strict scan root may not hold a controller its allowlist omits.
+ *
+ * The agent root deliberately skips unlisted controllers — that tree carries
+ * controllers that are not mounted in production, and the allowlist is what
+ * separates them. `apps/core-api/src/transports` carries no such class and never
+ * should: everything under it is the V1 business surface. Skipping there would
+ * reintroduce exactly the invisibility this second scan root was added to remove,
+ * so the omission is a generation failure rather than a silent `continue`.
+ */
+function assertStrictRootsHaveNoUnregisteredControllers() {
+  for (const root of CONTROLLER_SCAN_ROOTS) {
+    if (!root.strict) continue;
+    for (const path of walk(root.scanDir).filter((file) => file.endsWith(".controller.ts"))) {
+      const sf = sourceFile(path);
+      for (const statement of sf.statements) {
+        if (!ts.isClassDeclaration(statement) || !statement.name) continue;
+        if (!decoratorCall(statement, sf, "Controller")) continue;
+        if (Object.hasOwn(root.mounted, statement.name.text)) continue;
+        throw new Error(
+          `${statement.name.text} in ${relative(repoDir, path).split("\\").join("/")} carries @Controller but is not registered in the ${root.id} mounted-controller policy; register it (and its module) so its routes reach the manifest`
+        );
+      }
+    }
   }
 }
 
@@ -522,6 +615,7 @@ function enforcesOperatorScope(memberText, operatorHelpers) {
 
 function extractRestOperations() {
   assertMountedControllerPolicy();
+  assertStrictRootsHaveNoUnregisteredControllers();
   const implementations = [];
   const verbs = new Map([
     ["Get", "GET"],
@@ -532,13 +626,18 @@ function extractRestOperations() {
     ["Options", "OPTIONS"],
     ["Head", "HEAD"],
   ]);
-  for (const path of walk(srcDir).filter((file) => file.endsWith(".controller.ts"))) {
+  const controllerFiles = CONTROLLER_SCAN_ROOTS.flatMap((root) =>
+    walk(root.scanDir)
+      .filter((file) => file.endsWith(".controller.ts"))
+      .map((file) => ({ file, root }))
+  );
+  for (const { file: path, root } of controllerFiles) {
     const sf = sourceFile(path);
     for (const statement of sf.statements) {
       if (!ts.isClassDeclaration(statement) || !statement.name) continue;
       const controller = decoratorCall(statement, sf, "Controller");
       if (!controller) continue;
-      if (!Object.hasOwn(PRODUCTION_MOUNTED_CONTROLLERS, statement.name.text)) continue;
+      if (!Object.hasOwn(root.mounted, statement.name.text)) continue;
       const bases = decoratorPaths(controller, sf);
       // Collect same-class helper methods that themselves enforce operator scope
       // so a route delegating to one (e.g. `this.operatorScope(req)`) is not read
@@ -676,6 +775,39 @@ function buildManifest() {
         (operation) => operation.implementations.length > 1
       ).length,
       restClassifications: countBy(restOperations, "classification"),
+      // WIN-267 — WHICH TREE EACH OPERATION CAME FROM.
+      //
+      // Recorded because the generator now walks more than one, and a total that
+      // does not say what it is a total OF is how a second application ends up
+      // ungoverned without anybody editing a number. Counts are derived from the
+      // route implementations' own source paths, so a root cannot claim an
+      // operation it did not produce. `scripts/rest-census-independent.mjs`
+      // re-derives the same split by globbing and fails if the two disagree.
+      restScanRoots: CONTROLLER_SCAN_ROOTS.map((root) => {
+        const dir = relative(repoDir, root.scanDir).split("\\").join("/");
+        const operations = restOperations.filter((operation) =>
+          (operation.implementations ?? []).some(
+            (implementation) =>
+              implementation.source === dir || implementation.source.startsWith(`${dir}/`)
+          )
+        );
+        return {
+          id: root.id,
+          dir,
+          strict: root.strict,
+          registeredControllers: Object.keys(root.mounted).length,
+          operations: operations.length,
+          routeBindings: operations.reduce(
+            (sum, operation) =>
+              sum +
+              (operation.implementations ?? []).filter(
+                (implementation) =>
+                  implementation.source === dir || implementation.source.startsWith(`${dir}/`)
+              ).length,
+            0
+          ),
+        };
+      }),
     },
   };
 }

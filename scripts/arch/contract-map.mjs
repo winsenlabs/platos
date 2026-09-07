@@ -17,35 +17,188 @@
 //   * the D0–D7 accepted corrections are recorded;
 //   * the committed JSON/MD match what this source would emit (no drift).
 
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repoRoot = new URL("../../", import.meta.url);
+const repoDir = fileURLToPath(repoRoot);
 const designDir = fileURLToPath(new URL("design/platos-ui-refactor/", repoRoot));
 const jsonOut = fileURLToPath(new URL("docs/audits/M0.4-design-contract-map.json", repoRoot));
 const mdOut = fileURLToPath(new URL("docs/audits/M0.4-design-contract-map.md", repoRoot));
 
+// ── THE LITERAL MIGRATION, MEASURED (WIN-267) ───────────────────────────────
+//
+// This file used to WRITE `count: 18` into the model and then assert
+// `literalMigration.count !== 18` against the model it had just written. An
+// assertion comparing two things one file controls cannot fail: the "18-literal
+// @Version migration note not recorded" error was unreachable in every tree,
+// including one with zero literals left, which is the opposite of what a
+// pre-gate for the migration is for.
+//
+// It is now MEASURED FROM THE TREE by two mechanisms, and the validator checks
+// the COMMITTED artifact against a fresh measurement, so the number on disk and
+// the number in the source are joined to something neither of them controls.
+//
+// THE MEASURED TRUTH, and the correction it forces: 18 was never derived from
+// anything. Scanning every production TypeScript file for `api/v1` string
+// literals inside a Nest routing decorator finds 24 literals on 23 source lines
+// across 20 controller files — identical on the frozen `main` oracle and on
+// `v1`. The gap is not drift: `memory.controller.ts` puts two literals on ONE
+// line (the `api/v1/platos/memory` alias), and four of the twenty carry the
+// prefix on a method decorator rather than on `@Controller`, which a count of
+// "@Controller literals" misses entirely.
+export const ROUTING_DECORATORS = Object.freeze([
+  "Controller",
+  "Get",
+  "Post",
+  "Put",
+  "Patch",
+  "Delete",
+  "All",
+  "Options",
+  "Head",
+]);
+export const LITERAL_SCAN_ROOTS = Object.freeze(["apps", "packages", "internal-packages"]);
+const SOURCE_FILE = /\.tsx?$/u;
+const TEST_FILE = /\.(?:test|spec)\.tsx?$/u;
+
+function productionSources(root, acc = []) {
+  if (!existsSync(root)) return acc;
+  for (const entry of readdirSync(root)) {
+    if (["node_modules", "dist", "build", ".turbo", ".next"].includes(entry)) continue;
+    const path = join(root, entry);
+    if (statSync(path).isDirectory()) productionSources(path, acc);
+    else if (SOURCE_FILE.test(entry) && !TEST_FILE.test(entry) && !entry.endsWith(".d.ts"))
+      acc.push(path);
+  }
+  return acc;
+}
+
+/**
+ * Mechanism A — structural. Walks the balanced argument list of every routing
+ * decorator and collects the string literals inside it that carry `api/v1`.
+ * Comment- and string-aware, so a decorator name in prose counts for nothing and
+ * a `)` inside a literal does not end the argument list early.
+ */
+export function measureApiV1Literals(root = repoDir) {
+  const decorator = new RegExp(`@(?:${ROUTING_DECORATORS.join("|")})\\s*\\(`, "gu");
+  const sites = [];
+  for (const scanRoot of LITERAL_SCAN_ROOTS) {
+    for (const path of productionSources(join(root, scanRoot))) {
+      const text = readFileSync(path, "utf8");
+      if (!text.includes("api/v1")) continue;
+      const file = path.slice(root.length).replace(/^[/\\]/u, "").split("\\").join("/");
+      for (const match of text.matchAll(decorator)) {
+        const open = match.index + match[0].length;
+        let depth = 1;
+        let index = open;
+        let quote = null;
+        let literalStart = -1;
+        while (index < text.length && depth > 0) {
+          const ch = text[index];
+          if (quote !== null) {
+            if (ch === "\\") index += 1;
+            else if (ch === quote) {
+              const value = text.slice(literalStart + 1, index);
+              if (value.includes("api/v1"))
+                sites.push({
+                  file,
+                  line: text.slice(0, literalStart).split("\n").length,
+                  decorator: match[0].slice(1, -1).trim().replace(/\s*\($/u, ""),
+                  literal: value,
+                });
+              quote = null;
+            }
+            index += 1;
+            continue;
+          }
+          if (ch === "/" && text[index + 1] === "/") {
+            index = text.indexOf("\n", index);
+            if (index === -1) break;
+            continue;
+          }
+          if (ch === "/" && text[index + 1] === "*") {
+            const end = text.indexOf("*/", index + 2);
+            index = end === -1 ? text.length : end + 2;
+            continue;
+          }
+          if (ch === '"' || ch === "'" || ch === "`") {
+            quote = ch;
+            literalStart = index;
+          } else if (ch === "(") depth += 1;
+          else if (ch === ")") depth -= 1;
+          index += 1;
+        }
+      }
+    }
+  }
+  sites.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.literal.localeCompare(b.literal));
+  return {
+    literals: sites.length,
+    sourceLines: new Set(sites.map((s) => `${s.file}:${s.line}`)).size,
+    files: new Set(sites.map((s) => s.file)).size,
+    sites,
+  };
+}
+
+/**
+ * Mechanism B — line-based, and deliberately cruder. Counts SOURCE LINES on
+ * which a routing decorator opens with an `api/v1` literal. It cannot see the
+ * second literal on a shared line, which is exactly why it is a useful second
+ * opinion: A and B must agree on the LINE count, and their disagreement on the
+ * LITERAL count is the alias this file exists to record.
+ */
+export function measureApiV1LiteralLines(root = repoDir) {
+  const pattern = new RegExp(
+    `@(?:${ROUTING_DECORATORS.join("|")})\\s*\\(\\s*\\[?\\s*["'\`][^"'\`]*api/v1`,
+    "u",
+  );
+  let lines = 0;
+  for (const scanRoot of LITERAL_SCAN_ROOTS) {
+    for (const path of productionSources(join(root, scanRoot))) {
+      const text = readFileSync(path, "utf8");
+      if (!text.includes("api/v1")) continue;
+      for (const line of text.split("\n")) if (pattern.test(line)) lines += 1;
+    }
+  }
+  return lines;
+}
+
 // The canonical version-surface facts (ADR M0.4 §2, D1). "V1 is the frozen
 // semantic surface, not a URL." The major axis is the URL segment via Nest
 // @Version, promoted from per-controller literals.
-const CANONICAL_PREFIX = {
-  prefix: "/api/v1",
-  rule: "A version is a property of the contract, not the code path. The REST major axis is the URL segment, pinned by Nest @Version — never a per-controller literal string.",
-  expression: 'setGlobalPrefix("api") + enableVersioning({ type: URI, defaultVersion: "1" }) + @Version("1")',
-  buildIdHeader: "X-Platos-Contract-Version",
-  floorRequestHeader: "X-Platos-Contract-Min",
-  literalMigration: {
-    count: 18,
-    from: '@Controller("api/v1/...") hardcoded literals',
-    to: 'setGlobalPrefix + enableVersioning + @Version("1")',
-    milestone: "M4",
-    status: "pending",
-    enforcedBy:
-      'no-bare-prefix lint: generation fails on any literal "api/v1" string once the migration lands, so the drift-check reads structure, not a string (ADR M0.4 §2 REST row, §5 item 2).',
-    prerequisiteFor:
-      'the "version is a contract, not a path" guarantee — the drift-check only reads a string until the 18 literals become @Version("1") (D1).',
-  },
-};
+function canonicalPrefix(measured) {
+  return {
+    prefix: "/api/v1",
+    rule: "A version is a property of the contract, not the code path. The REST major axis is the URL segment, pinned by Nest @Version — never a per-controller literal string.",
+    expression: 'setGlobalPrefix("api") + enableVersioning({ type: URI, defaultVersion: "1" }) + @Version("1")',
+    buildIdHeader: "X-Platos-Contract-Version",
+    floorRequestHeader: "X-Platos-Contract-Min",
+    literalMigration: {
+      literals: measured.literals,
+      sourceLines: measured.sourceLines,
+      files: measured.files,
+      measuredBy:
+        "scripts/arch/contract-map.mjs measureApiV1Literals — string literals containing \"api/v1\" inside the balanced argument list of a Nest routing decorator (@Controller/@Get/@Post/@Put/@Patch/@Delete/@All/@Options/@Head), over production .ts/.tsx under apps/, packages/ and internal-packages/ (tests and .d.ts excluded).",
+      crossCheckedBy:
+        "measureApiV1LiteralLines — an independent line-based count that must agree on sourceLines.",
+      supersedes: {
+        count: 18,
+        why: "ADR M0.4 §2/D1 recorded 18 and this file both wrote and asserted that number, so nothing could contradict it. 18 counts neither the literals, nor the lines, nor the files: two literals share one line in memory.controller.ts, and four of the twenty files carry the prefix on a method decorator rather than on @Controller.",
+      },
+      from: '@Controller("api/v1/...") hardcoded literals',
+      to: 'setGlobalPrefix + enableVersioning + @Version("1")',
+      milestone: "M4",
+      status: measured.literals === 0 ? "complete" : "pending",
+      enforcedBy:
+        'no-bare-prefix lint: generation fails on any literal "api/v1" string once the migration lands, so the drift-check reads structure, not a string (ADR M0.4 §2 REST row, §5 item 2).',
+      prerequisiteFor:
+        'the "version is a contract, not a path" guarantee — the drift-check only reads a string until every literal becomes @Version("1") (D1).',
+      sites: measured.sites,
+    },
+  };
+}
 
 // The seven accepted D-decisions with their binding corrections (ADR M0.4 §7).
 const CORRECTIONS = {
@@ -89,7 +242,15 @@ const CORRECTIONS = {
     status: "accepted",
     text: "Mandate DTO schema declaration on all new v1 contexts plus the retrofitted envelope, so the breaking-change guard can enforce additive-only field compatibility.",
   },
+  D8: {
+    title: "Both pre-gate numbers were unmeasured; they are now derived from the tree",
+    status: "CORRECTED",
+    text: "Two figures this map published were written by hand and asserted against themselves. (1) The literal migration was recorded as 18 and validated by comparing the model to the constant that produced it, so no tree could fail it; measured, it is 24 `api/v1` literals on 23 source lines across 20 controller files, identical on the 89c12b8 oracle and on v1. (2) `totals.newContracts` was the sum of a hand-kept per-screen `newCount` that disagreed with the contract rows on 12 of the 43 screens; the histogram over the 124 rows is N 104, E 16, E-stream 3, E-partial 1, so net-new is 104 and not 98. Both are now derived — the literal count from the source tree, the contract counts from the rows themselves — and both are validated against the COMMITTED artifact rather than against the source that emitted it.",
+  },
 };
+
+/** Every contract-status token the map may carry. Anything else fails validation. */
+const CONTRACT_STATUSES = ["N", "E", "E-stream", "E-partial"];
 
 // The 43 screens that carry mapped demand (ADR M0.4 §3, clusters A–E). Each
 // entry: cluster, transports touched, count of NEW contracts, and a compact list
@@ -292,7 +453,31 @@ function designPages() {
     .sort();
 }
 
-function buildModel() {
+/** The contract-status histogram over every row of every demanded screen. */
+export function contractHistogram(screens = SCREENS) {
+  const byStatus = Object.fromEntries(CONTRACT_STATUSES.map((s) => [s, 0]));
+  let rows = 0;
+  for (const screen of screens)
+    for (const contract of screen.contracts) {
+      rows += 1;
+      if (Object.hasOwn(byStatus, contract.status)) byStatus[contract.status] += 1;
+      else byStatus[contract.status] = (byStatus[contract.status] ?? 0) + 1;
+    }
+  return { rows, byStatus };
+}
+
+function buildModel(measured = measureApiV1Literals()) {
+  // `newCount` is DERIVED from the rows rather than carried beside them. It used
+  // to be a hand-kept integer that disagreed with its own contract list on 12 of
+  // the 43 screens — 8 claimed for `03-home` against 3 rows marked N, 1 claimed
+  // for each of nine cluster-E screens carrying 2 — and the totals were the sum
+  // of the claim rather than of the rows. A count next to the thing it counts is
+  // a count that will eventually be wrong; this one cannot be.
+  const screens = SCREENS.map((screen) => ({
+    ...screen,
+    newCount: screen.contracts.filter((c) => c.status === "N").length,
+  }));
+  const histogram = contractHistogram(screens);
   return {
     milestone: "M0.4",
     issue: "WIN-249",
@@ -302,14 +487,16 @@ function buildModel() {
     designDirectory: "design/platos-ui-refactor",
     acceptanceCriterion: "zero orphans — every settled screen maps to at least one contract or an explicit no-backend-contract exclusion",
     totals: {
-      pages: SCREENS.length + UNDEMANDED.length,
-      demanded: SCREENS.length,
+      pages: screens.length + UNDEMANDED.length,
+      demanded: screens.length,
       undemanded: UNDEMANDED.length,
-      newContracts: SCREENS.reduce((n, s) => n + s.newCount, 0),
+      contractRows: histogram.rows,
+      byStatus: histogram.byStatus,
+      newContracts: histogram.byStatus.N,
     },
-    canonicalPrefix: CANONICAL_PREFIX,
+    canonicalPrefix: canonicalPrefix(measured),
     corrections: CORRECTIONS,
-    screens: SCREENS,
+    screens,
     undemandedScreens: UNDEMANDED,
   };
 }
@@ -330,7 +517,7 @@ function renderMarkdown(model) {
   L.push("");
   L.push(`**Acceptance criterion:** ${model.acceptanceCriterion}.`);
   L.push("");
-  L.push(`**Totals:** ${model.totals.pages} design pages = ${model.totals.demanded} with mapped demand + ${model.totals.undemanded} no-backend-contract. ${model.totals.newContracts} new contracts across the demanded screens.`);
+  L.push(`**Totals:** ${model.totals.pages} design pages = ${model.totals.demanded} with mapped demand + ${model.totals.undemanded} no-backend-contract. ${model.totals.contractRows} contract rows across the demanded screens — ${Object.entries(model.totals.byStatus).map(([k, v]) => `**${k}** ${v}`).join(" · ")} — so ${model.totals.newContracts} are net-new. Every one of these is derived from the rows themselves (D8).`);
   L.push("");
   L.push("## Canonical REST prefix");
   L.push("");
@@ -338,7 +525,9 @@ function renderMarkdown(model) {
   L.push(`- **Rule:** ${model.canonicalPrefix.rule}`);
   L.push(`- **Expression:** \`${model.canonicalPrefix.expression}\``);
   L.push(`- **Build-id header:** \`${model.canonicalPrefix.buildIdHeader}\` · **floor request:** \`${model.canonicalPrefix.floorRequestHeader}\``);
-  L.push(`- **Literal migration (M4 pre-gate):** ${model.canonicalPrefix.literalMigration.count} \`${model.canonicalPrefix.literalMigration.from}\` → \`${model.canonicalPrefix.literalMigration.to}\` — status **${model.canonicalPrefix.literalMigration.status}**. ${model.canonicalPrefix.literalMigration.enforcedBy}`);
+  const lm = model.canonicalPrefix.literalMigration;
+  L.push(`- **Literal migration (M4 pre-gate):** ${lm.literals} \`${lm.from}\` on ${lm.sourceLines} source line(s) across ${lm.files} file(s) → \`${lm.to}\` — status **${lm.status}**. ${lm.enforcedBy}`);
+  L.push(`- **Measured, not asserted (D8):** ${lm.measuredBy} Cross-checked by ${lm.crossCheckedBy} This supersedes the recorded figure of ${lm.supersedes.count}: ${lm.supersedes.why}`);
   L.push("");
   L.push("## Accepted decisions (D0–D7)");
   L.push("");
@@ -399,12 +588,87 @@ function validate(model) {
   }
   if (model.totals.demanded !== 43) errors.push(`expected 43 demanded screens; got ${model.totals.demanded}`);
 
-  // Canonical prefix + 18-literal migration must be recorded.
+  // Canonical prefix + the literal migration, ANCHORED TO THE TREE.
+  //
+  // The former check here read `model.canonicalPrefix.literalMigration.count !== 18`
+  // against a model built from a constant that said 18. Both sides came from this
+  // file, so the error was unreachable — including in a tree that had completed the
+  // migration and had none left. The three assertions below each join to something
+  // this file does not control: the tree (measured live), a second measuring
+  // mechanism, and the COMMITTED artifact on disk.
   if (model.canonicalPrefix?.prefix !== "/api/v1") errors.push("canonical prefix /api/v1 not recorded");
-  if (model.canonicalPrefix?.literalMigration?.count !== 18) errors.push("18-literal @Version migration note not recorded");
+  const measured = measureApiV1Literals();
+  const crossChecked = measureApiV1LiteralLines();
+  if (measured.sourceLines !== crossChecked) {
+    errors.push(
+      `api/v1 literal measurement is not corroborated: the structural scan found ${measured.sourceLines} source line(s), the independent line scan found ${crossChecked}`,
+    );
+  }
+  // The COMMITTED artifact, against the live tree. `validate` is only ever called
+  // on a freshly built model, so comparing the model to `measured` would repeat
+  // the self-assertion this replaces; the artifact on disk is the other party.
+  let committed = null;
+  try {
+    committed = JSON.parse(readFileSync(jsonOut, "utf8"));
+  } catch {
+    committed = null;
+  }
+  const recorded = committed?.canonicalPrefix?.literalMigration;
+  if (!recorded) {
+    errors.push("the committed artifact records no literalMigration measurement to check against the tree");
+  } else {
+    for (const [field, actual] of [
+      ["literals", measured.literals],
+      ["sourceLines", measured.sourceLines],
+      ["files", measured.files],
+    ]) {
+      if (recorded[field] !== actual) {
+        errors.push(
+          `literalMigration.${field}: the committed artifact records ${JSON.stringify(recorded[field])} but the tree carries ${actual} — run --write, or the pre-gate is describing a tree that no longer exists`,
+        );
+      }
+    }
+    const expectedStatus = measured.literals === 0 ? "complete" : "pending";
+    if (recorded.status !== expectedStatus) {
+      errors.push(
+        `literalMigration.status is "${recorded.status}" but the tree carries ${measured.literals} literal(s), which is "${expectedStatus}"`,
+      );
+    }
+  }
+  if (!Array.isArray(model.canonicalPrefix?.literalMigration?.sites)) {
+    errors.push("literalMigration.sites must enumerate the measured literals, so the count names the files it came from");
+  }
 
-  // D0–D7 must all be present.
-  for (const d of ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7"]) {
+  // Contract-row accounting, derived rather than declared.
+  const committedTotals = committed?.totals;
+  const histogram = contractHistogram(model.screens);
+  if (histogram.rows !== Object.values(histogram.byStatus).reduce((n, v) => n + v, 0)) {
+    errors.push("the contract-status histogram does not sum to the number of contract rows");
+  }
+  for (const screen of model.screens) {
+    for (const contract of screen.contracts) {
+      if (!CONTRACT_STATUSES.includes(contract.status)) {
+        errors.push(`screen ${screen.id} carries contract status "${contract.status}", which is not one of ${CONTRACT_STATUSES.join(", ")}`);
+      }
+    }
+    const derived = screen.contracts.filter((c) => c.status === "N").length;
+    if (screen.newCount !== derived) {
+      errors.push(`screen ${screen.id} records newCount ${screen.newCount} but carries ${derived} row(s) marked N`);
+    }
+  }
+  if (committedTotals) {
+    if (committedTotals.contractRows !== histogram.rows) {
+      errors.push(`totals.contractRows: committed ${committedTotals.contractRows}, rows on the screens ${histogram.rows}`);
+    }
+    if (committedTotals.newContracts !== histogram.byStatus.N) {
+      errors.push(
+        `totals.newContracts: committed ${committedTotals.newContracts}, rows marked N ${histogram.byStatus.N} — the net-new figure must be the histogram, not a hand-kept sum`,
+      );
+    }
+  }
+
+  // D0–D8 must all be present.
+  for (const d of ["D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8"]) {
     if (!model.corrections?.[d]) errors.push(`decision ${d} not recorded`);
   }
 
@@ -444,7 +708,8 @@ function main() {
   }
   process.stdout.write(
     `ok: ${model.totals.pages} design pages accounted for (${model.totals.demanded} demanded + ${model.totals.undemanded} no-backend-contract); ` +
-      `/api/v1 prefix + 18-literal migration + D0–D7 recorded; artifacts in sync.\n`
+      `${model.totals.contractRows} contract rows (N ${model.totals.byStatus.N}, E ${model.totals.byStatus.E}, E-stream ${model.totals.byStatus["E-stream"]}, E-partial ${model.totals.byStatus["E-partial"]}); ` +
+      `/api/v1 prefix + ${model.canonicalPrefix.literalMigration.literals} measured literals on ${model.canonicalPrefix.literalMigration.sourceLines} lines across ${model.canonicalPrefix.literalMigration.files} files + D0–D8 recorded; artifacts in sync.\n`
   );
 }
 
