@@ -1522,14 +1522,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "d3b2ce1ef1e4d86d2bf10313aeb08179f90cfcaec6c80032bc25b81f86c587d4",
+      "sha256": "8014abb9949704e0ef380d9172b5f1ad503edd9a8f5003bf56e8e689963a771a",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "b5abac9be942d97bc20b052b9870f58942d9359a88356df72780e2127b49db1c",
+      "sha256": "d144f7c887f6e5f0a960b29abbc59b09fcf66ab29e00ce803048833daaa55a52",
       "binds": "current-repository-truth"
     },
     {
