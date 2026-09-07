@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ee97e630444bf35605f2e00948b968802eb87380024da30e0949fe90b27c232a",
+  "evidenceSha256": "5d8355963c84e61bb7fe930a076d90d7b93944002642dd77446c390608011f7a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 37,
@@ -111,7 +111,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "009bb8f9b29d8aeb842d3d5adb01f5440370440d6f7c9d738745357ce6b63dcc",
+    "aggregateSha256": "096699e561f5ecc4952b832bd9e39b048a3b42c81e219badc27622f16e6d4d9e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -263,7 +263,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "69e9d9c7ed357d6d9d6ba5435063f42abc73f22a1c6f78229ec0c7a395038a9b"
+        "sha256": "6fb441c177818aafbddb8fc256a952b991d91ea8ddc4014edbd399551f0613f8"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -411,7 +411,7 @@
       },
       {
         "path": "apps/agent/scripts/generate-control-plane.mjs",
-        "sha256": "35f6af38620816db11904fd4673b33bb761e0af499d21d809c4d5217a690d0f6"
+        "sha256": "fc62bde191d4dbb0c649b95627f97c9f3cd7c059941cd82fefa612de8a217fc7"
       },
       {
         "path": "apps/agent/scripts/probe-session-continuation.mjs",
@@ -951,7 +951,7 @@
       },
       {
         "path": "apps/agent/src/control-plane/operation-manifest.generated.json",
-        "sha256": "40f5a9d842efbf8ee5dd406ffc16973c551df12f1faf6edb451249d74e98d284"
+        "sha256": "48a8821f6b7eced818dd542d971e401d2c5fcf186fc9207fa2937324c11bcd25"
       },
       {
         "path": "apps/agent/src/evals/criterion.service.ts",
@@ -4011,7 +4011,7 @@
       },
       {
         "path": "docs/adr/M0.4-contract-versioning.md",
-        "sha256": "63eb464192fd0509588ca762eabe135f7a2524df5c1895240fcbeac7e7cf3b98"
+        "sha256": "41913a881420f87ed66cb5d3eae38a527f7f0c84e016685d234451cbf424aeac"
       },
       {
         "path": "docs/agent-worktrees.md",
@@ -4039,19 +4039,19 @@
       },
       {
         "path": "docs/audits/M0.2-capability-matrix.json",
-        "sha256": "2d80ee01e7898d8727ddc75abb00025188cef5bdb32238abdb93ba6fd2904239"
+        "sha256": "10969e032a279f954c0bcb3c0bc3e13374cc426b21ff18f81f0ad075bbd5c575"
       },
       {
         "path": "docs/audits/M0.2-capability-matrix.md",
-        "sha256": "3db6e5cf5c0ef68bf9f962b10d7c7e754970489bb11c93396ffcf7fa45a73516"
+        "sha256": "bc1233318a3461d2967aab6d0e90693e7d62c79975caea0316527bb20997fac2"
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.json",
-        "sha256": "931fb1b66d75a69b03688270e23fc63a76fbc8c8e22479fd74e2d8e50dfa283e"
+        "sha256": "9ae31b1b14f83780fd0eb174e0b9e095d005ca35a78d1b0ed8cd92cb3d9fcdf9"
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.md",
-        "sha256": "f949bfb03154f613a59e93edd2c442f626c34708d95bf2d15991860aafc50301"
+        "sha256": "4529feba53a7e645893803500a41c1a27a8b17e994ee1a624eb1598a895bf6b5"
       },
       {
         "path": "docs/audits/M0.5-dependency-sbom.md",
@@ -4071,7 +4071,7 @@
       },
       {
         "path": "docs/audits/M0.9-rest-census-independent.json",
-        "sha256": "5c9c5613fdbd2fdde0a7ff7f583f99b1dd08bbb9030f0c35a87c0bd62aefa41b"
+        "sha256": "b9c216b596fc4ae52738fce5bc07aef60e870b2850d4c802f51afc0d0c26235b"
       },
       {
         "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -4227,11 +4227,11 @@
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
-        "sha256": "015e5aa711ab8c880e75f92306e42910d6ad777a70bb3dfacf49d19cd20c05d9"
+        "sha256": "3891e53241565413feae65a9fc62cbc1f8acbc7094615f10f75220db80126850"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.md",
-        "sha256": "e4683f597b424ac4becd91e31fbf571c21e9227bb0b022045ba150bf5ed0fe95"
+        "sha256": "bb19beb5f76c4a6baedb53d718029dd69032489d12447c96179f92ac18aee0d4"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -6163,7 +6163,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "830230c1164aad66212f3de3123ceb3461a604ff5592b647fbff0a2356ffa12c"
+        "sha256": "089a510f002a7218814e173ad58ee402cc1a5290440289485d77d4e48e041c68"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11003,7 +11003,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "3abfc2d7a60d71d6ef70d46a348c1cae56bf74345483dbf15de7f93c67a12b5f"
+        "sha256": "4f9b99c09707db927491542bad25ebcf4a3dfb22694fb8e2844da6af49532d87"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -19567,7 +19567,11 @@
       },
       {
         "path": "scripts/arch/contract-map.mjs",
-        "sha256": "991b2ba0ef11507d47954b37ca4dfc9994e8157410d9144ae9ebc4679987ea44"
+        "sha256": "75ad509ca3e7dd12b522979b3c774a31ba89d1b7ccd3439889e5c35353c9aae2"
+      },
+      {
+        "path": "scripts/arch/contract-map.test.mjs",
+        "sha256": "1c7f2e08f4883cc1b17b0f5829db06208493607ea3fc332f760b4dd486582bcd"
       },
       {
         "path": "scripts/arch/env-access.mjs",
@@ -19599,11 +19603,11 @@
       },
       {
         "path": "scripts/arch/max-file-lines.mjs",
-        "sha256": "9bd3c6505e5db54fdf6ea1bbd99dadf102f36f2e572781c0f80696b5fd1926c9"
+        "sha256": "4e655b58693bc568947935ca04d132d973e94c1aaf7aef713511dbd4c3ee311b"
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "bf2429e97a42660d2105fd4568b4d867d32bb55bb4bfe4bc4d92159c3129e367"
+        "sha256": "a8861b5cc62fe1587741eea6736598d20019ead41f583849b9c1272dd3ad3096"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -19695,11 +19699,11 @@
       },
       {
         "path": "scripts/capability-matrix.mjs",
-        "sha256": "5d540be926a00dc560967e49e27e5837f936866ff283c6e665dc89669ac0360f"
+        "sha256": "282f54b9d7e60847e0c6e025edfd6eebe717fee193a8e39ac7498363f6cc04c7"
       },
       {
         "path": "scripts/capability-matrix.test.mjs",
-        "sha256": "c56828c0d9d175a4fad1babd05d0260f278935c818a8424fcd50575008441877"
+        "sha256": "2e255829fe1d695507f54ff36221675ace0d9bb1798cd01bee2136a44daeb0c2"
       },
       {
         "path": "scripts/ci-policy.test.mjs",
@@ -19731,11 +19735,11 @@
       },
       {
         "path": "scripts/differential-coverage.mjs",
-        "sha256": "96c816c359067ab5222cca2645ab638d9bf4e9c3e4cc92db0572fd443ee6e0e8"
+        "sha256": "e88c97dd0686b9d5cd2a4a4b58da6da8bad22deb64cb19609d79b4e303adac47"
       },
       {
         "path": "scripts/differential-coverage.test.mjs",
-        "sha256": "465ffd7bb5d4bbfd4eb5dd3e226e6cb5057c55624e07a5996145183a5a9be942"
+        "sha256": "ca597841d7e7de529fd5b0bc81c3deebdc7b7c2304b5e50118038d7a1d5f8da3"
       },
       {
         "path": "scripts/docs-examples.mjs",
@@ -19810,6 +19814,10 @@
         "sha256": "20e6602824cf4e2b47a6a0f3e28623da21eb5bb849108b42cda10463364f434b"
       },
       {
+        "path": "scripts/mutations-win267-t0.json",
+        "sha256": "5635b7971fe220607cee25a5433db1401d07edca4a92589066ecf0596bfcb808"
+      },
+      {
         "path": "scripts/operator-operations.mjs",
         "sha256": "6fe420bc65cd8a5b123481e02767a00ce50b29b5a02b54e85819b9beb638adfa"
       },
@@ -19831,11 +19839,11 @@
       },
       {
         "path": "scripts/rest-census-independent.mjs",
-        "sha256": "96b7e0ede8225e767fcc03c5b2f04387c6b8b599f274f9f223492f2d618775c0"
+        "sha256": "b589bcd631178fb6852e10168f2180462122214e57cb09b0d1536c2b72086681"
       },
       {
         "path": "scripts/rest-census-independent.test.mjs",
-        "sha256": "8184f44573c7baa1cfbc95d7e47ca78397677fb04472e5630c704c9a18dcf071"
+        "sha256": "b4f6fd44e41f2fdaf2ee54a5198651c6b58e328a59b32c0a831ca377803f5504"
       },
       {
         "path": "scripts/root-entry-manifest.mjs",
@@ -19887,7 +19895,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "d84cbae0166b9ae9d6c234123d3a1bbcbda9729315487c8afb097e236451003a"
+        "sha256": "3a7d1b1a88f38d2767d87ba3e1b52a2e134aaa1b780bdeaaf7f99a61e742e333"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -21367,7 +21375,17 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
-              "line": 5923
+              "line": 23
+            },
+            {
+              "from": "docs/audits/M0.2-capability-matrix.md",
+              "kind": "reference",
+              "line": 9
+            },
+            {
+              "from": "docs/audits/M0.4-design-contract-map.json",
+              "kind": "reference",
+              "line": 46
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -21387,7 +21405,7 @@
             {
               "from": "docs/audits/M0.9-rest-census-independent.json",
               "kind": "reference",
-              "line": 5
+              "line": 9
             },
             {
               "from": "docs/audits/sbom/closure-contract.md",
@@ -21418,6 +21436,16 @@
               "from": "docs/audits/win-259-secret-response-census.json",
               "kind": "reference",
               "line": 11
+            },
+            {
+              "from": "docs/audits/win-284-differential-coverage.json",
+              "kind": "reference",
+              "line": 33
+            },
+            {
+              "from": "docs/audits/win-284-differential-coverage.md",
+              "kind": "reference",
+              "line": 26
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
@@ -21688,6 +21716,14 @@
               "docs/audits/M0.2-capability-matrix.json"
             ],
             [
+              "docs/audits/M0.2-capability-matrix.md",
+              "docs/audits/M0.2-capability-matrix.md"
+            ],
+            [
+              "docs/audits/M0.4-design-contract-map.json",
+              "docs/audits/M0.4-design-contract-map.json"
+            ],
+            [
               "docs/audits/M0.5-dependency-sbom.md",
               "docs/audits/M0.5-dependency-sbom.md"
             ],
@@ -21726,6 +21762,14 @@
             [
               "docs/audits/win-259-secret-response-census.json",
               "docs/audits/win-259-secret-response-census.json"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.json",
+              "docs/audits/win-284-differential-coverage.json"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.md",
+              "docs/audits/win-284-differential-coverage.md"
             ],
             [
               "docs/audits/win253-removals/clickhouse-split.json",
@@ -21889,6 +21933,8 @@
             "docs/architecture.md",
             "docs/architecture/INTEGRATIONS_AUDIT.md",
             "docs/audits/M0.2-capability-matrix.json",
+            "docs/audits/M0.2-capability-matrix.md",
+            "docs/audits/M0.4-design-contract-map.json",
             "docs/audits/M0.5-dependency-sbom.md",
             "docs/audits/M0.8-operator-auth-boundary.md",
             "docs/audits/M0.8-operator-operations.md",
@@ -21901,6 +21947,8 @@
             "docs/audits/sbom/licence-resolution.json",
             "docs/audits/win-234-route-capability-parity.json",
             "docs/audits/win-259-secret-response-census.json",
+            "docs/audits/win-284-differential-coverage.json",
+            "docs/audits/win-284-differential-coverage.md",
             "docs/audits/win253-removals/clickhouse-split.json",
             "docs/control-plane-parity.generated.md",
             "docs/deployment/off-box-build.md",
@@ -23342,7 +23390,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 99
+              "line": 105
             },
             {
               "from": "scripts/arch/secret-response-census.test.mjs",
@@ -23360,6 +23408,11 @@
               "line": 271
             },
             {
+              "from": "scripts/capability-matrix.test.mjs",
+              "kind": "reference",
+              "line": 410
+            },
+            {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
               "line": 12
@@ -23370,6 +23423,11 @@
               "line": 189
             },
             {
+              "from": "scripts/differential-coverage.test.mjs",
+              "kind": "reference",
+              "line": 313
+            },
+            {
               "from": "scripts/docs-examples.test.mjs",
               "kind": "reference",
               "line": 22
@@ -23378,6 +23436,11 @@
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 26
+            },
+            {
+              "from": "scripts/rest-census-independent.test.mjs",
+              "kind": "reference",
+              "line": 109
             },
             {
               "from": "scripts/route-capability-parity.test.mjs",
@@ -24363,6 +24426,10 @@
               "scripts/audit-licenses.test.mjs"
             ],
             [
+              "scripts/capability-matrix.test.mjs",
+              "scripts/capability-matrix.test.mjs"
+            ],
+            [
               "scripts/ci-policy.test.mjs",
               "scripts/ci-policy.test.mjs"
             ],
@@ -24371,12 +24438,20 @@
               "scripts/deploy-platos.test.mjs"
             ],
             [
+              "scripts/differential-coverage.test.mjs",
+              "scripts/differential-coverage.test.mjs"
+            ],
+            [
               "scripts/docs-examples.test.mjs",
               "scripts/docs-examples.test.mjs"
             ],
             [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
+            ],
+            [
+              "scripts/rest-census-independent.test.mjs",
+              "scripts/rest-census-independent.test.mjs"
             ],
             [
               "scripts/route-capability-parity.test.mjs",
@@ -24672,10 +24747,13 @@
             "scripts/arch/secret-response-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
             "scripts/audit-licenses.test.mjs",
+            "scripts/capability-matrix.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/deploy-platos.test.mjs",
+            "scripts/differential-coverage.test.mjs",
             "scripts/docs-examples.test.mjs",
             "scripts/license-distribution.test.mjs",
+            "scripts/rest-census-independent.test.mjs",
             "scripts/route-capability-parity.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/vocabulary-boundary.nul.test.mjs",
@@ -24745,7 +24823,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "1cd7ecfe689c9848347dc28bf75be330d80421fa7ebfe2732f4a8688e08ff5fb",
+      "evidenceSha256": "9e0955e1b646fe363b72ea3361d5c21b79d77374d543303e84f5e37b651a158d",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -24924,6 +25002,21 @@
               "line": 200
             },
             {
+              "from": "docs/audits/M0.2-capability-matrix.json",
+              "kind": "reference",
+              "line": 29
+            },
+            {
+              "from": "docs/audits/M0.2-capability-matrix.md",
+              "kind": "reference",
+              "line": 10
+            },
+            {
+              "from": "docs/audits/M0.9-rest-census-independent.json",
+              "kind": "reference",
+              "line": 14
+            },
+            {
               "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "kind": "reference",
               "line": 219
@@ -24932,6 +25025,16 @@
               "from": "docs/audits/win-259-secret-response-census.json",
               "kind": "reference",
               "line": 9
+            },
+            {
+              "from": "docs/audits/win-284-differential-coverage.json",
+              "kind": "reference",
+              "line": 42
+            },
+            {
+              "from": "docs/audits/win-284-differential-coverage.md",
+              "kind": "reference",
+              "line": 27
             },
             {
               "from": "docs/env-vars.md",
@@ -25037,12 +25140,32 @@
               "docs/adr/M0.3-bounded-contexts.md"
             ],
             [
+              "docs/audits/M0.2-capability-matrix.json",
+              "docs/audits/M0.2-capability-matrix.json"
+            ],
+            [
+              "docs/audits/M0.2-capability-matrix.md",
+              "docs/audits/M0.2-capability-matrix.md"
+            ],
+            [
+              "docs/audits/M0.9-rest-census-independent.json",
+              "docs/audits/M0.9-rest-census-independent.json"
+            ],
+            [
               "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "docs/audits/M2.5-transaction-outbox-clock-retry.md"
             ],
             [
               "docs/audits/win-259-secret-response-census.json",
               "docs/audits/win-259-secret-response-census.json"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.json",
+              "docs/audits/win-284-differential-coverage.json"
+            ],
+            [
+              "docs/audits/win-284-differential-coverage.md",
+              "docs/audits/win-284-differential-coverage.md"
             ],
             [
               "docs/env-vars.md",
@@ -25118,8 +25241,13 @@
             "apps/core-api/README.md",
             "apps/mcp-stdio/README.md",
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/audits/M0.2-capability-matrix.json",
+            "docs/audits/M0.2-capability-matrix.md",
+            "docs/audits/M0.9-rest-census-independent.json",
             "docs/audits/M2.5-transaction-outbox-clock-retry.md",
             "docs/audits/win-259-secret-response-census.json",
+            "docs/audits/win-284-differential-coverage.json",
+            "docs/audits/win-284-differential-coverage.md",
             "docs/env-vars.md",
             "docs/error-taxonomy.json",
             "docs/v1-ledger-rules.json",
@@ -25476,14 +25604,29 @@
               "line": 31
             },
             {
+              "from": "scripts/capability-matrix.test.mjs",
+              "kind": "reference",
+              "line": 411
+            },
+            {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
               "line": 154
             },
             {
+              "from": "scripts/differential-coverage.test.mjs",
+              "kind": "reference",
+              "line": 316
+            },
+            {
               "from": "scripts/error-taxonomy.test.mjs",
               "kind": "reference",
               "line": 71
+            },
+            {
+              "from": "scripts/rest-census-independent.test.mjs",
+              "kind": "reference",
+              "line": 110
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -25622,12 +25765,24 @@
               "scripts/arch/v1-project-graph.test.mjs"
             ],
             [
+              "scripts/capability-matrix.test.mjs",
+              "scripts/capability-matrix.test.mjs"
+            ],
+            [
               "scripts/ci-policy.test.mjs",
               "scripts/ci-policy.test.mjs"
             ],
             [
+              "scripts/differential-coverage.test.mjs",
+              "scripts/differential-coverage.test.mjs"
+            ],
+            [
               "scripts/error-taxonomy.test.mjs",
               "scripts/error-taxonomy.test.mjs"
+            ],
+            [
+              "scripts/rest-census-independent.test.mjs",
+              "scripts/rest-census-independent.test.mjs"
             ],
             [
               "scripts/v1-ledger.test.mjs",
@@ -25670,8 +25825,11 @@
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/capability-matrix.test.mjs",
             "scripts/ci-policy.test.mjs",
+            "scripts/differential-coverage.test.mjs",
             "scripts/error-taxonomy.test.mjs",
+            "scripts/rest-census-independent.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/workspace-reachability.test.mjs"
           ]
@@ -25710,7 +25868,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "1f4e1f115ef4339ecd5ea1de0df0f79288bd1609e39952bec7fb55a3affe97f6",
+      "evidenceSha256": "e77ea0b80245af476d6eb382cf325ddfbe06679814fda032284fc4180f16f55c",
       "manifestSha256": "d412269cbb94bb81b70fe4d8b281eb1b77da6db0b5ed7c9615ae9fb8dc0c9042",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -26572,12 +26730,12 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 3376
+              "line": 3399
             },
             {
               "from": "docs/audits/win-284-differential-coverage.md",
               "kind": "reference",
-              "line": 59
+              "line": 71
             },
             {
               "from": "docs/audits/win253-removals/clickhouse-split.json",
@@ -27808,6 +27966,11 @@
               "line": 27
             },
             {
+              "from": "scripts/capability-matrix.test.mjs",
+              "kind": "reference",
+              "line": 467
+            },
+            {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
               "line": 18
@@ -28168,6 +28331,10 @@
               "scripts/audit-sbom.test.mjs"
             ],
             [
+              "scripts/capability-matrix.test.mjs",
+              "scripts/capability-matrix.test.mjs"
+            ],
+            [
               "scripts/ci-policy.test.mjs",
               "scripts/ci-policy.test.mjs"
             ],
@@ -28352,6 +28519,7 @@
             "scripts/audit-advisory.test.mjs",
             "scripts/audit-licenses.test.mjs",
             "scripts/audit-sbom.test.mjs",
+            "scripts/capability-matrix.test.mjs",
             "scripts/ci-policy.test.mjs",
             "scripts/clickhouse-split-audit.test.mjs",
             "scripts/deploy-platos.test.mjs",
@@ -28426,7 +28594,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "5eb89bdf993010b720e8a4b8d05dced39c221dc2590fe28636ccb85fbde56807",
+      "evidenceSha256": "25daddf92a9e0f2af274d22f34cb26811f72085ad54ba671312124e4f1b80409",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -29015,12 +29183,12 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "workspace-owned-file",
-              "line": 3333
+              "line": 3356
             },
             {
               "from": "docs/audits/M0.2-capability-matrix.md",
               "kind": "workspace-owned-file",
-              "line": 18
+              "line": 20
             },
             {
               "from": "docs/audits/M0.4-design-contract-map.json",
@@ -29055,7 +29223,7 @@
             {
               "from": "docs/audits/M0.9-rest-census-independent.json",
               "kind": "workspace-owned-file",
-              "line": 110
+              "line": 168
             },
             {
               "from": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -34359,7 +34527,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "7b39500c32dd9cf61d0dd1f343e26f6d3841682b9efec73d7d805d3479492c6f",
+      "evidenceSha256": "1649290c4146399e1b56ca90e89152be015efcde41dd0c31357b6ca81f0be98b",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -35076,7 +35244,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 286
+              "line": 287
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -35939,7 +36107,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "43a42610195b4ab2e64446c86f9a0e3cc1ceb10c263f7178a0172df03126bf50",
+      "evidenceSha256": "dc3bc6f4e7d3f580b0c6a9b81538dfa4ab5abd72735e554a0c265a5a706f7c6c",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -37604,7 +37772,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1546
+              "line": 1564
             }
           ],
           "reversePaths": [
@@ -37629,7 +37797,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "efbeb471b72fc6ac4acad66ce184cf02799c3b73fb076cb970bf86d1fd2b22d1",
+      "evidenceSha256": "48e90ca13568c077a80b6018563a3906f43286466cfa9047cdd4e652ab1c4d1e",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -38760,7 +38928,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1545
+              "line": 1563
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -38985,7 +39153,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2c464893a95c046f59923388b451ed60116eccad1d5c616f1e5fe00f8cd2c8dd",
+      "evidenceSha256": "4a16ae7536f80527afb4bbdacf637168d5adbaa08f27c6287243c2bf189fc901",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -42028,7 +42196,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 286
+              "line": 287
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -42725,7 +42893,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "48d409f2d28928006d1f7afb7f0d0747d185ede1a4ccd2617d3de038b5d57784",
+      "evidenceSha256": "65d1882518e73d753e6ec9348300787def4f8fd1119e823c1bb4458705a0fdf0",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -46015,7 +46183,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 675
+              "line": 681
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -46174,7 +46342,7 @@
           "packages/adapters/keyring-envelope"
         ]
       },
-      "evidenceSha256": "c4921706c12b3133c8513ee091da8cc16a88f330ef208a89622aa14cc4ea52b9",
+      "evidenceSha256": "4347f5c9445a8eeb01f0d1983ff3fc066260162c8ba078b555596a5dc019016d",
       "manifestSha256": "34b81e0cd2c336a8d9a795f6f271938258b50c0f18e5ba23d2b4010f8d2b5009",
       "name": "@platos/adapter-keyring-envelope",
       "ociImageClosure": {
@@ -48249,7 +48417,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 385
+              "line": 391
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -48408,7 +48576,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "655fc901614c0ed1180da25620ee08f7167acdfe450ec724303dfc7aa3b3c89a",
+      "evidenceSha256": "13158cd88a37f798c319f8701267aa1cd4cdd74254551e31381b8babf1b1b397",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -49486,7 +49654,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 387
+              "line": 393
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -50340,7 +50508,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "cb7909232de138cc1b87c6404da02ec7e8983737fcd21e0b641ea669d8155480",
+      "evidenceSha256": "d1c9e6f42e35d88b5e6347e937c30f73c8d315413e03573ada493a8bc0bb0487",
       "manifestSha256": "8b4ac128fa6e660cb1132d155aaa0668fc2e907f366422dbbb922599f2917a71",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -50702,7 +50870,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 727
+              "line": 733
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -50866,7 +51034,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "6d69c764275a41921d37563a0bd278960e2f4e0950c238000ad0a67047d84f6d",
+      "evidenceSha256": "62c6906e86a347042e6754be963474ec8e5ed806701eddbf45938257e140a627",
       "manifestSha256": "5a766cabb6ec0325aca2f6f4b999495fa6a1d20fecfc2c33fa61f0c797c00158",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -51794,7 +51962,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 375
+              "line": 376
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -52746,7 +52914,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "b4197127d2976b7ab59b56b5a59c27cb8444697e843cc4cc8cb3f8b71cf651af",
+      "evidenceSha256": "eca7a61d8f6c9f25484371b0ee45d432be88bd719ed3da5f858ab95fd89a525e",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -52892,7 +53060,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 397
+              "line": 398
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -53643,7 +53811,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "e0eea4d181dc861f44960f869750b9f991041288676943ade9948c4eb1fb650d",
+      "evidenceSha256": "370f9a771975afcd474f856d83dbdb48f00ae1058f30ee8cec71e2cf17aef83c",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -53767,7 +53935,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 446
+              "line": 447
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -54661,7 +54829,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "668715d9c76a683dd633308a4037098f40c10716de167995c5b043fbcf3944ca",
+      "evidenceSha256": "e8051e9cf0e5fb5847c1669f75b89665dca040c11cb6a66c9703d1de1382d74f",
       "manifestSha256": "218c32b5c5b423bdf39bf215d6365c07bbd746fca291a1b0609da87e2cebd4d8",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -54851,7 +55019,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 385
+              "line": 386
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -55744,7 +55912,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "ae8027b3270a8dedc0558315a21e5f78f4fb75153de9b61410c408ff74e29cd7",
+      "evidenceSha256": "697b56d6562cd93a3210dca7d216f7f4167f828402a5dec6f18ead4a01bd4451",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -55868,7 +56036,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 531
+              "line": 532
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -56364,7 +56532,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 740
+              "line": 746
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -56600,7 +56768,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "32e973a7d34fffc380de6a123fcb533ec8c00bec9d56eeca2ee7d0e43a96bcec",
+      "evidenceSha256": "9e193a30baeb55c7267f28adb589d7197d75f962d8a1a5b6b936812e5ae38d82",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -56840,7 +57008,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 506
+              "line": 507
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -57424,7 +57592,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 584
+              "line": 590
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -57791,7 +57959,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "b8f5e382a3196533d44bade6528bd097e3ec4c00546df027e586d5f745eadca9",
+      "evidenceSha256": "6de7756851a6e5010b81cca08af850f22405767d04e383be03fb1cc3815fa8e3",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -57915,7 +58083,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 408
+              "line": 409
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -58835,7 +59003,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "56ceb471d74ed656a6d95512e3ab01047f16e22c17eba90b718015aa0b8524b0",
+      "evidenceSha256": "d1bd7bbde4df7a1dadecd27f4cbf248f232f7a25aac6264a1b78952d191741c4",
       "manifestSha256": "c6c9eb63ca632d454591f95884a0e51f26305204031c2cdd7167c50f646b895e",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -59543,7 +59711,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 358
+              "line": 359
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -61199,7 +61367,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "4cdac64dca206a9951f63d68b77d5e2dea612af7c8882b688edc18ac7bba6b42",
+      "evidenceSha256": "d0735c54e805f532b1692dd24b032db2b6bdb8872044d0c680bb0b859796cf7f",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -61367,7 +61535,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 495
+              "line": 496
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -61937,7 +62105,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 211
+              "line": 217
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -62247,7 +62415,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "d4fb5e9aef6f519607c3051ac73845fc7aeacd80bd20c425652f5e104d0560e3",
+      "evidenceSha256": "3904d5327c7313167f839b431bfe7cd1e327212d3bbc321ac95f615d8830d018",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -62415,7 +62583,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 467
+              "line": 468
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -63087,7 +63255,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 212
+              "line": 218
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -63447,7 +63615,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "0d9621d155b344ccc9868c97b47e207450681562000ad6db2daa79a6ce3df071",
+      "evidenceSha256": "b3c79b3d90a91d1435b4f0ea3c69ab19f5ee8c88aad5b8a5b5c2e555f5b2987f",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -63593,7 +63761,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 519
+              "line": 520
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -64270,7 +64438,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "52c0ef999da661ece481707621ea76ab2dd5900b983a357dbd4d207f589d023e",
+      "evidenceSha256": "9d6a3fadbf2c76595a34466129c1a16960b83513d3213bf148f572ec7f324910",
       "manifestSha256": "09d858b658a326451d6bdd026af44df9ba5d1b195ce0c71deffc0cb972afc6d7",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -64394,7 +64562,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 482
+              "line": 483
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -65100,7 +65268,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "ba0c1a540f3915f628a81af65f5e2dd20df9836f865a747ee0349828d6c244f9",
+      "evidenceSha256": "5aba52ef4ff4e8e3ff9828564730746a5476acf3ec1e23ecb32419fae363d2d5",
       "manifestSha256": "8d9032044280327b5d3d795c13039f78e41ca275c9d6bce9f093b794a97473f1",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -65480,7 +65648,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 432
+              "line": 433
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -66401,7 +66569,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 176
+              "line": 182
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -67018,7 +67186,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "59a3dd2ede4c27e84291b94a55aac8783838d735c324cdf2df2a3da35cf7f3fa",
+      "evidenceSha256": "aa7eb943a4b2b4913c7b231896a65979746375fd0fdb84ad82970fac3243e5b4",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -67458,7 +67626,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 419
+              "line": 420
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -68295,7 +68463,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 677
+              "line": 683
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -68972,7 +69140,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f430e4a77c9a27169523c10fc778b02f4d540bb71a5739d331755e2b57571720",
+      "evidenceSha256": "e8126aa95e07b424f258be815fae44103f9191af9c323f2fe52a98c1839d0ecf",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -69164,7 +69332,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 456
+              "line": 457
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -70068,7 +70236,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "b339efae8b05564638c4f9de983617b752be7ed025d23a65e0eba1f8bd38feae",
+      "evidenceSha256": "fc5252cb9d4665a6df7eec771b941bc36edffa24fcf69bf07640c370dadfe302",
       "manifestSha256": "f1e56a67ae6b3d846f0887d8a17048ad19d4e0356bf7f38d1056b58507a2e7e2",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -70696,7 +70864,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 351
+              "line": 352
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -72858,7 +73026,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "5316d2439da1e6cdca3bf77261331cbc4184536ab6df5cc760123b20cc247e9b",
+      "evidenceSha256": "668aca4a6a620f1492134266f18039c7c40906fea8399c06fb8fa56c040094f9",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -73030,7 +73198,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 362
+              "line": 363
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -73660,7 +73828,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 64
+              "line": 70
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -73989,7 +74157,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "2e23519d3074084892953274af1bc6bf452b1b720f2b94ec09caff544a65b31b",
+      "evidenceSha256": "552dce05c6d94a8e535703822d54531430ee16d2b2b2022dd125ebde208cd80b",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -74046,7 +74214,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 295
+              "line": 296
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -75628,7 +75796,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2bb4881e613c97112e0719de6b5936bd6a2da2a1892340fb255c29cbbe5f4f5e",
+      "evidenceSha256": "852312cca08760af8629e0fe230bbea81b8d0d11f6788f289bf2efd66a095c37",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -86680,7 +86848,7 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
-              "line": 5861
+              "line": 5884
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -86695,7 +86863,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7208
+              "line": 7231
             },
             {
               "from": "docs/entity-connect.md",
@@ -87178,7 +87346,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9a50f2e6623f2307d020c71659edbb25ed07b360cc334923d29812b0bce25a95",
+      "evidenceSha256": "51e254dc667559d23922c14d1c463fc7e4ac0a6a01b274047a92771b006fdd6d",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -87339,7 +87507,7 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
-              "line": 5859
+              "line": 5882
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -87354,7 +87522,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7198
+              "line": 7221
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -87986,7 +88154,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "cf2174b22956bf0e996d4a8784b758175b605fc339fc0888da7037c646974b83",
+      "evidenceSha256": "c9b50bcd3d321696ed7508dec0c6cd219372de7e2415bc21e71fff423498ed95",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -88743,7 +88911,7 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
-              "line": 5863
+              "line": 5886
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -88753,7 +88921,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7218
+              "line": 7241
             },
             {
               "from": "examples/platos-nextjs-starter/app/platos/token/route.ts",
@@ -89077,7 +89245,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "dcda0cfbae3f419d0144c79a1f0ac99ec0edf2ad4874129dc031355086ec3ead",
+      "evidenceSha256": "72a406936156a84372991c268868635359ebc00de25bc764c4e4a347f2215c49",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {
