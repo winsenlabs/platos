@@ -12,6 +12,7 @@ import {
   Query,
   Req,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type { Job, Prisma } from "@platos/tenancy-database";
 import { type Request } from "express";
 import { AuthService } from "../auth/auth.service";
@@ -29,7 +30,7 @@ import {
   setJobInvocationType,
 } from "./job-persistence";
 
-@Controller("api/v1/agent/jobs")
+@Controller({ path: "agent/jobs", version: API_VERSION })
 export class JobsController {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,

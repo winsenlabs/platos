@@ -15,6 +15,7 @@ import {
   Req,
   Res,
   UnauthorizedException,
+  VERSION_NEUTRAL,
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
@@ -62,7 +63,7 @@ import {
  * This controller runs WITHOUT ScopeGuard — the OAuth token self-auths.
  * See `scope.guard.ts` for the bypass entry.
  */
-@Controller("mcp/entity")
+@Controller({ path: "mcp/entity", version: VERSION_NEUTRAL })
 export class McpEntityController {
   constructor(
     private readonly oauth: OAuthService,

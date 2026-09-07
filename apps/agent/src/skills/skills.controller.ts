@@ -11,6 +11,7 @@ import {
   Optional,
   Query,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { type Request } from "express";
 import { SkillRegistryService, SkillEnableError } from "./skill-registry.service";
 import { SkillImporterService } from "./skill-importer.service";
@@ -34,7 +35,7 @@ import { pageMetadata, parsePageRequest } from "../shared/pagination";
  *   POST   /api/v1/agent/skills/agent/:agentId/:id   — enable skill on agent
  *   DELETE /api/v1/agent/skills/agent/:agentId/:id   — remove skill from agent
  */
-@Controller("api/v1/agent/skills")
+@Controller({ path: "agent/skills", version: API_VERSION })
 export class SkillsController {
   constructor(
     private readonly registry: SkillRegistryService,

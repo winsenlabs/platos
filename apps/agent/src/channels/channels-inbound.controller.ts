@@ -7,6 +7,7 @@ import {
   Res,
   Logger,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 
 /**
@@ -48,7 +49,7 @@ import { ChannelPersistenceService } from "./channel-persistence.service";
  * Logging: connectionId + provider + event kind ONLY. Never message text,
  * handles, or credentials.
  */
-@Controller()
+@Controller({ version: API_VERSION })
 export class ChannelsInboundController {
   private readonly logger = new Logger(ChannelsInboundController.name);
 
@@ -57,7 +58,7 @@ export class ChannelsInboundController {
     private readonly runtime: ChannelRuntimeService,
   ) {}
 
-  @Post("api/v1/channels/inbound/:connectionId/:webhookSecret")
+  @Post("channels/inbound/:connectionId/:webhookSecret")
   async inboundPost(
     @Req() req: RawBodyExpressRequest,
     @Res() res: ExpressResponse,
@@ -67,7 +68,7 @@ export class ChannelsInboundController {
     await this.handle(req, res, connectionId, webhookSecret);
   }
 
-  @Get("api/v1/channels/inbound/:connectionId/:webhookSecret")
+  @Get("channels/inbound/:connectionId/:webhookSecret")
   async inboundGet(
     @Req() req: RawBodyExpressRequest,
     @Res() res: ExpressResponse,

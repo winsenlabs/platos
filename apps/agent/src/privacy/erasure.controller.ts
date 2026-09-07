@@ -1,4 +1,5 @@
 import { Controller, Post, Get, Param, Body, Req, Res, Logger } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type { Request, Response } from "express";
 import {
   ErasureIdempotencyConflictError,
@@ -20,7 +21,7 @@ import type { ErasureAuditActor } from "./erasure-audit";
  * verified credential is organization-bound; subject discovery may span every
  * project/environment inside that organization.
  */
-@Controller("api/v1/agent/admin/privacy")
+@Controller({ path: "agent/admin/privacy", version: API_VERSION })
 export class ErasureController {
   private readonly logger = new Logger(ErasureController.name);
 

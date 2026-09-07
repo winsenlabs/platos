@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Req, Res } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { timingSafeEqual } from "node:crypto";
 import type { Request, Response } from "express";
 import { env } from "../shared/env";
@@ -14,7 +15,7 @@ type AuthErrorCode =
   | "INTERNAL_AUTH_REQUIRED"
   | "INTERNAL_AUTH_INVALID";
 
-@Controller("api/v1/agent/internal/jobs")
+@Controller({ path: "agent/internal/jobs", version: API_VERSION })
 export class JobExecutionController {
   constructor(private readonly executionService: JobExecutionService) {}
 

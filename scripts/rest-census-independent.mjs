@@ -91,8 +91,12 @@ export const PROCESS_EDGE_EXCLUSIONS = Object.freeze([
 // the reconciliation uses the source-derived count, and this map is asserted to
 // match it (a silent change to either side fails --check).
 export const KNOWN_MULTI_MOUNT = {
-  DocsMcpController: 2, // @Controller(["mcp/docs", "mcp"]) — canonical + install URL
-  MemoryController: 2, // @Controller(["api/v1/memory", "api/v1/platos/memory"]) — legacy alias
+  // WIN-267 (M4.1) T1 moved the version out of the decorator, so these now read
+  // `@Controller({ path: [...], version })`. The alias count is unchanged; only
+  // the spelling of the base paths moved, and `parseController` below reads both
+  // spellings so this census keeps deriving the multiplier from source.
+  DocsMcpController: 2, // path: ["mcp/docs", "mcp"] — canonical + install URL
+  MemoryController: 2, // path: ["memory", "platos/memory"] — legacy alias
 };
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
@@ -116,13 +120,28 @@ export function parseController(src) {
   // route under each element (array-form expansion); a single/empty argument is
   // one base path. Derived from source so a new alias prefix is picked up
   // automatically rather than needing a hardcoded multiplier.
-  const ctrl = /@Controller\s*\(\s*(\[[^\]]*\])?/.exec(src);
-  const basePaths =
-    ctrl && ctrl[1] ? Math.max(1, (ctrl[1].match(/["'`][^"'`]*["'`]/g) || []).length) : 1;
-  // Whether the @Controller(...) argument list is EMPTY — the shape that pins a
-  // controller to the application root and therefore off the versioned surface.
+  //
+  // TWO SPELLINGS, ONE MEANING (WIN-267 T1). Before T1 every base path was the
+  // decorator's first argument: `@Controller("api/v1/agent")` or
+  // `@Controller([...])`. T1 moved the version onto the class, and Nest 11's
+  // standalone `@Version` is method-only — it dereferences `descriptor.value`
+  // and throws on a class — so the class-level version has to travel in
+  // `@Controller({ path, version })`. The base path is then the `path` property.
+  // Both spellings are read here, from source, so the multiplier stays DERIVED
+  // and a future alias is still picked up without a hardcoded number.
+  const argument = (/@Controller\s*\(([^\n]*)$/m.exec(src) || [])[1] ?? "";
+  const pathArgument = /\bpath\s*:\s*(\[[^\]]*\]|["'`][^"'`]*["'`])/.exec(argument)?.[1] ?? null;
+  const positional = /^\s*(\[[^\]]*\]|["'`][^"'`]*["'`])/.exec(argument)?.[1] ?? null;
+  const declaredPath = pathArgument ?? positional;
+  const basePaths = declaredPath
+    ? Math.max(1, (declaredPath.match(/["'`][^"'`]*["'`]/g) || []).length)
+    : 1;
+  // Whether the @Controller(...) call declares NO base path — the shape that
+  // pins a controller to the application root and therefore off the versioned
+  // surface. `@Controller()` and `@Controller({ version: VERSION_NEUTRAL })` are
+  // the same statement about the URL; only the version travels differently.
   // Read only by the process-edge exclusion tripwire.
-  const emptyBasePath = /@Controller\s*\(\s*\)/.test(src);
+  const emptyBasePath = /@Controller\s*\(/.test(src) && declaredPath === null;
   // Line-anchored HTTP method decorators. This matches the manifest's per-route
   // counting and ignores decorator names appearing inside comments or strings.
   const routes = (src.match(/^\s*@(Get|Post|Put|Patch|Delete)\s*\(/gm) || []).length;

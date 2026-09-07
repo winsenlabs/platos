@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Res } from "@nestjs/common";
+import { Controller, Get, Header, Res, VERSION_NEUTRAL } from "@nestjs/common";
 import type { Response } from "express";
 import { MetricsService } from "./metrics.service";
 
@@ -10,7 +10,7 @@ import { MetricsService } from "./metrics.service";
  * operator controls who can scrape. For internet-facing deployments,
  * put /metrics behind a reverse-proxy ACL.
  */
-@Controller()
+@Controller({ version: VERSION_NEUTRAL })
 export class MetricsController {
   constructor(private readonly metrics: MetricsService) {}
 

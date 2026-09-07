@@ -11,6 +11,7 @@ import {
   Query,
   Req,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { type Request } from "express";
 import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
@@ -24,7 +25,7 @@ import { ProviderRegistryService } from "./provider-registry.service";
 import { pageMetadata, parsePageRequest } from "../shared/pagination";
 
 /** Provider metadata and same-Environment credential-link management. */
-@Controller("api/v1/agent/providers")
+@Controller({ path: "agent/providers", version: API_VERSION })
 export class ProvidersController {
   constructor(
     private readonly registry: ProviderRegistryService,

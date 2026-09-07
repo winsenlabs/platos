@@ -17,7 +17,7 @@
  * `/mcp/docs*`.
  */
 
-import { Body, Controller, Get, Headers, HttpException, HttpStatus, Post, Req, Res } from "@nestjs/common";
+import { Body, Controller, Get, Headers, HttpException, HttpStatus, Post, Req, Res, VERSION_NEUTRAL } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { DocsMcpService } from "./docs-mcp.service";
 
@@ -89,7 +89,7 @@ const SEARCH_DOCS_TOOL = {
  * the host-aware middleware (`HostRouterMiddleware`) blocks every other
  * path on `mcp.platos.dev` so the public surface stays read-only docs.
  */
-@Controller(["mcp/docs", "mcp"])
+@Controller({ path: ["mcp/docs", "mcp"], version: VERSION_NEUTRAL })
 export class DocsMcpController {
   constructor(private readonly docsService: DocsMcpService) {}
 

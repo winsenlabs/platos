@@ -1,9 +1,9 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, VERSION_NEUTRAL } from "@nestjs/common";
 import { env } from "../shared/env";
 
-@Controller()
+@Controller({ version: VERSION_NEUTRAL })
 export class HealthController {
-  @Get("api/health")
+  @Get("health")
   health() {
     return {
       status: "ok",

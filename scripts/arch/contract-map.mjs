@@ -212,9 +212,44 @@ export function measureApiV1LiteralLines(root = repoDir) {
   return lines;
 }
 
+/**
+ * THE NO-BARE-PREFIX LINT (ADR M0.4 §2 REST row: "fail on any literal
+ * `api/v1`"; §5 item 2).
+ *
+ * WIN-267 (M4.1) T1 landed the migration: the 24 literals are gone and the
+ * version is declared once in `apps/agent/src/http/api-surface.ts`. From here
+ * the measurement is not merely RECORDED, it is a FLOOR — a tree that carries a
+ * routing-decorator `api/v1` literal is refused, at `--write` as well as
+ * `--check`.
+ *
+ * Why the flag, rather than just hardcoding zero: a pre-migration tree
+ * legitimately measured 24, and the artifact's whole purpose then was to record
+ * that number honestly. This constant is the DECISION that the migration has
+ * landed; it is a deliberate, reviewable edit to turn it off. What makes the
+ * assertion falsifiable is that the number it is compared against is measured
+ * from the CONTROLLER TREE, which this file does not write — put one literal
+ * back in any controller and the gate fails without anyone touching this file.
+ */
+export const LITERAL_MIGRATION_LANDED = true;
+
+export function assertNoBareApiV1Prefix(measured) {
+  if (!LITERAL_MIGRATION_LANDED || measured.literals === 0) return;
+  const shown = measured.sites
+    .slice(0, 10)
+    .map((site) => `  ${site.file}:${site.line} @${site.decorator}(${JSON.stringify(site.literal)})`)
+    .join("\n");
+  throw new Error(
+    `no-bare-prefix lint: the WIN-267 T1 migration has landed, so a routing decorator may not spell the ` +
+      `version by hand, but ${measured.literals} literal(s) on ${measured.sourceLines} line(s) across ` +
+      `${measured.files} file(s) do:\n${shown}\n` +
+      `Declare the path only — the version comes from setGlobalPrefix + enableVersioning in ` +
+      `apps/agent/src/http/api-surface.ts.`
+  );
+}
+
 // The canonical version-surface facts (ADR M0.4 §2, D1). "V1 is the frozen
 // semantic surface, not a URL." The major axis is the URL segment via Nest
-// @Version, promoted from per-controller literals.
+// versioning, promoted from per-controller literals.
 function canonicalPrefix(measured) {
   return {
     prefix: "/api/v1",
@@ -232,16 +267,31 @@ function canonicalPrefix(measured) {
         "measureApiV1LiteralLines — an independent line-based count that must agree on sourceLines.",
       supersedes: {
         count: 18,
-        why: "ADR M0.4 §2/D1 recorded 18 and this file both wrote and asserted that number, so nothing could contradict it. 18 counts neither the literals, nor the lines, nor the files: two literals share one line in memory.controller.ts, and four of the twenty files carry the prefix on a method decorator rather than on @Controller.",
+        why: "ADR M0.4 §2/D1 recorded 18 and this file both wrote and asserted that number, so nothing could contradict it. 18 counts neither the literals, nor the lines, nor the files: two literals shared one line in memory.controller.ts, and FIVE of the twenty files carried the prefix on a method decorator rather than on @Controller (channel-app-events, channel-app-oauth, channel-link, channels-inbound, openapi) — 15 @Controller files + 5 method-only files = 20.",
       },
       from: '@Controller("api/v1/...") hardcoded literals',
-      to: 'setGlobalPrefix + enableVersioning + @Version("1")',
+      to: 'setGlobalPrefix("api") + enableVersioning({ type: URI, defaultVersion: "1" }), the version declared per class as @Controller({ path, version }) and per method as @Version(...)',
+      // WIN-267 T1, measured correction to the ADR's own wording. §1.2 and §2
+      // both spell the class-level form `@Version("1")`; in Nest 11 that
+      // decorator is METHOD-ONLY — `version.decorator.js` dereferences
+      // `descriptor.value` unconditionally, so applying it to a class throws at
+      // import time — it did, on ErasureController, the first time this
+      // migration was written that way. `@Controller({ version })` writes the
+      // identical VERSION_METADATA key, so the mechanism the ADR names is intact
+      // and only its spelling for a class differs. `@Version` is still the
+      // method-level form, and is used for the unversioned `/openapi` alias.
+      classLevelSpelling: {
+        adrText: '@Version("1")',
+        actual: '@Controller({ path, version: API_VERSION })',
+        why: "Nest 11's @Version is method-only (@nestjs/common/decorators/core/version.decorator.js dereferences descriptor.value); @Controller({ version }) sets the same VERSION_METADATA.",
+      },
+      declaredIn: "apps/agent/src/http/api-surface.ts",
       milestone: "M4",
       status: measured.literals === 0 ? "complete" : "pending",
       enforcedBy:
-        'no-bare-prefix lint: generation fails on any literal "api/v1" string once the migration lands, so the drift-check reads structure, not a string (ADR M0.4 §2 REST row, §5 item 2).',
+        'no-bare-prefix lint (LITERAL_MIGRATION_LANDED): once the migration has landed this generator REFUSES to emit for any tree carrying a routing-decorator "api/v1" literal, at --write as well as --check, so the count cannot be regenerated back up (ADR M0.4 §2 REST row, §5 item 2).',
       prerequisiteFor:
-        'the "version is a contract, not a path" guarantee — the drift-check only reads a string until every literal becomes @Version("1") (D1).',
+        'the "version is a contract, not a path" guarantee — the drift-check only reads a string until every literal becomes a declared version (D1).',
       sites: measured.sites,
     },
   };
@@ -575,6 +625,10 @@ export function contractRowErrors(screens, committedTotals) {
 }
 
 function buildModel(measured = measureApiV1Literals()) {
+  // The no-bare-prefix lint runs HERE, so it gates `--write` as well as
+  // `--check`: a literal put back cannot be laundered into the artifact by
+  // regenerating it.
+  assertNoBareApiV1Prefix(measured);
   // `newCount` is DERIVED from the rows rather than carried beside them. It used
   // to be a hand-kept integer that disagreed with its own contract list on 12 of
   // the 43 screens — 8 claimed for `03-home` against 3 rows marked N, 1 claimed

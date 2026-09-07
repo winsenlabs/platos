@@ -452,7 +452,22 @@ function decoratorCall(node, sf, name) {
 
 function decoratorPaths(call, sf) {
   if (!call || call.arguments.length === 0) return [""];
-  const arg = call.arguments[0];
+  let arg = call.arguments[0];
+  // WIN-267 T1 — `@Controller({ path, version })`. The class-level version has
+  // to travel in the options object because Nest 11's standalone `@Version` is
+  // method-only: it dereferences `descriptor.value` unconditionally
+  // (`@nestjs/common/decorators/core/version.decorator.js`), so applying it to
+  // a class throws at import. `@Controller({ version })` writes the same
+  // `VERSION_METADATA` key, so this is the same mechanism spelt for a class.
+  if (ts.isObjectLiteralExpression(arg)) {
+    const pathProperty = arg.properties.find(
+      (property) => ts.isPropertyAssignment(property) && propertyName(property) === "path"
+    );
+    // `@Controller({ version })` with no `path` is Nest's own default: the
+    // controller contributes nothing and every route path comes off the method.
+    if (!pathProperty) return [""];
+    arg = pathProperty.initializer;
+  }
   if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return [arg.text];
   if (ts.isArrayLiteralExpression(arg)) {
     return arg.elements.map((entry) => {
@@ -467,6 +482,151 @@ function decoratorPaths(call, sf) {
 
 function joinRoute(base, child) {
   return `/${[base, child].filter(Boolean).join("/")}`.replaceAll(/\/{2,}/g, "/");
+}
+
+// ── THE VERSION EXPRESSION, READ FROM THE FILE THE RUNTIME USES ─────────────
+//
+// WIN-267 (M4.1) T1. Until this milestone every controller spelled `api/v1` in
+// its own decorator, so composing a route here was `@Controller` path +
+// `@Get` path and nothing else. The version now lives in ONE place —
+// `apps/agent/src/http/api-surface.ts` — and Nest assembles the wire path out
+// of three parts at boot: `setGlobalPrefix("api")`, the URI-versioning segment
+// `/v1`, and the controller's own path.
+//
+// This generator has to model that composition, and there is exactly one way to
+// do it that is not a second private opinion about the version: READ THE SAME
+// FILE. `apiSurface()` AST-parses `api-surface.ts` for its four exported
+// constants. If someone renames the prefix, moves the major, or adds an
+// unversioned root, this generator changes with the runtime and the manifest
+// diff shows it — it cannot quietly keep emitting the old paths.
+//
+// The manifest is then checked against a THIRD mechanism that shares nothing
+// with either: `apps/agent/src/http/api-surface.test.ts` boots a real Nest
+// application over these same controllers, calls the same `applyApiSurface`,
+// and reads the route table back out of Express. The generator's arithmetic and
+// Nest's router have to agree, and both have to agree with the frozen
+// `origin/main` manifest.
+const VERSION_NEUTRAL_SENTINEL = Symbol("VERSION_NEUTRAL");
+
+let apiSurfaceCache = null;
+
+function apiSurface() {
+  if (apiSurfaceCache) return apiSurfaceCache;
+  const path = join(srcDir, "http", "api-surface.ts");
+  if (!existsSync(path)) {
+    throw new Error(
+      `the version expression is declared in ${relative(repoDir, path)} and that file is missing; ` +
+        "this generator refuses to guess a URL prefix"
+    );
+  }
+  const sf = sourceFile(path);
+  const values = new Map();
+  for (const statement of sf.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) continue;
+      values.set(declaration.name.text, declaration.initializer);
+    }
+  }
+  const stringConstant = (name) => {
+    const node = values.get(name);
+    if (!node || !(ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) {
+      throw new Error(`${name} must be an exported string literal in api-surface.ts`);
+    }
+    return node.text;
+  };
+  // `UNVERSIONED_ROOT_SEGMENTS` is written as `Object.freeze([...] as const)`;
+  // unwrap to the array literal and require every element to be a plain string.
+  const segmentsNode = values.get("UNVERSIONED_ROOT_SEGMENTS");
+  let arrayNode = segmentsNode;
+  while (
+    arrayNode &&
+    (ts.isAsExpression(arrayNode) ||
+      ts.isParenthesizedExpression(arrayNode) ||
+      (ts.isCallExpression(arrayNode) && arrayNode.arguments.length === 1))
+  ) {
+    arrayNode = ts.isCallExpression(arrayNode) ? arrayNode.arguments[0] : arrayNode.expression;
+  }
+  if (!arrayNode || !ts.isArrayLiteralExpression(arrayNode)) {
+    throw new Error("UNVERSIONED_ROOT_SEGMENTS must be an array literal in api-surface.ts");
+  }
+  const unversionedRoots = arrayNode.elements.map((element) => {
+    if (!ts.isStringLiteral(element) && !ts.isNoSubstitutionTemplateLiteral(element)) {
+      throw new Error("UNVERSIONED_ROOT_SEGMENTS entries must be string literals");
+    }
+    return element.text;
+  });
+  apiSurfaceCache = {
+    globalPrefix: stringConstant("API_GLOBAL_PREFIX"),
+    versionPrefix: stringConstant("API_VERSION_PREFIX"),
+    version: stringConstant("API_VERSION"),
+    unversionedRoots: new Set(unversionedRoots),
+  };
+  return apiSurfaceCache;
+}
+
+/**
+ * Resolve a version expression to a string version or the neutral sentinel.
+ *
+ * Only three forms are accepted, and an unrecognised one THROWS rather than
+ * defaulting: a version this generator cannot read is a route it would silently
+ * mount on the wrong path, which is precisely the failure T1 exists to prevent.
+ */
+function resolveVersionExpression(arg, sf) {
+  if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return arg.text;
+  if (ts.isIdentifier(arg) && arg.text === "VERSION_NEUTRAL") return VERSION_NEUTRAL_SENTINEL;
+  if (ts.isIdentifier(arg) && arg.text === "API_VERSION") return apiSurface().version;
+  throw new Error(
+    `version expression ${arg.getText(sf)} in ${relative(repoDir, sf.fileName)} is not a form this generator ` +
+      "can resolve; use a string literal, API_VERSION, or VERSION_NEUTRAL"
+  );
+}
+
+/**
+ * The version a CLASS declares through `@Controller({ version })`, or `null`
+ * when it declares none and therefore inherits `defaultVersion`.
+ */
+function controllerDeclaredVersion(call, sf) {
+  if (!call || call.arguments.length === 0) return null;
+  const arg = call.arguments[0];
+  if (!ts.isObjectLiteralExpression(arg)) return null;
+  const versionProperty = arg.properties.find(
+    (property) => ts.isPropertyAssignment(property) && propertyName(property) === "version"
+  );
+  if (!versionProperty) return null;
+  return resolveVersionExpression(versionProperty.initializer, sf);
+}
+
+/**
+ * The version a METHOD declares through `@Version(...)`, or `null`.
+ */
+function methodDeclaredVersion(node, sf) {
+  const call = decoratorCall(node, sf, "Version");
+  if (!call) return null;
+  const arg = call.arguments[0];
+  if (!arg) throw new Error(`@Version() needs an argument in ${relative(repoDir, sf.fileName)}`);
+  return resolveVersionExpression(arg, sf);
+}
+
+/**
+ * Compose the wire path exactly as `RoutePathFactory.create` does: the URI
+ * version segment first, then the controller and method paths, then the global
+ * prefix unless the route is excluded from it.
+ *
+ * The exclusion here is by ROOT SEGMENT, where Nest's is by a path-to-regexp
+ * pattern; `api-surface.ts` derives its `exclude` patterns from the same
+ * segment list so the two are two readings of one declaration, and the
+ * route-identity test is what proves the readings agree on every real route.
+ */
+function applyVersionExpression(routePath, version) {
+  const surface = apiSurface();
+  const versioned =
+    version === VERSION_NEUTRAL_SENTINEL
+      ? routePath
+      : joinRoute(`${surface.versionPrefix}${version}`, routePath);
+  const firstSegment = routePath.split("/").filter(Boolean)[0];
+  if (firstSegment !== undefined && surface.unversionedRoots.has(firstSegment)) return versioned;
+  return joinRoute(surface.globalPrefix, versioned);
 }
 
 function moduleControllers(modulePath) {
@@ -639,6 +799,8 @@ function extractRestOperations() {
       if (!controller) continue;
       if (!Object.hasOwn(root.mounted, statement.name.text)) continue;
       const bases = decoratorPaths(controller, sf);
+      // `defaultVersion` is the floor: a controller that declares nothing is v1.
+      const controllerVersion = controllerDeclaredVersion(controller, sf) ?? apiSurface().version;
       // Collect same-class helper methods that themselves enforce operator scope
       // so a route delegating to one (e.g. `this.operatorScope(req)`) is not read
       // as unguarded. See enforcesOperatorScope.
@@ -659,11 +821,15 @@ function extractRestOperations() {
           const route = decoratorCall(member, sf, decorator);
           if (!route) continue;
           const children = decoratorPaths(route, sf);
+          // A method-level `@Version` wins over the controller's, which is how
+          // `OpenApiController` serves the versioned machine document and the
+          // unversioned human alias from one class.
+          const version = methodDeclaredVersion(member, sf) ?? controllerVersion;
           for (const base of bases) {
             for (const child of children) {
               implementations.push({
                 method,
-                path: joinRoute(base, child),
+                path: applyVersionExpression(joinRoute(base, child), version),
                 controller: statement.name.text,
                 handler: member.name.getText(sf),
                 source: relative(repoDir, path).replaceAll("\\", "/"),
