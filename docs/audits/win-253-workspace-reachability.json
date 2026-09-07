@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "1756df032c0a24d0487f9c61cba0fb6a29ee41e13ca4c9f034a19486830afff9",
+  "evidenceSha256": "ee97e630444bf35605f2e00948b968802eb87380024da30e0949fe90b27c232a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 37,
@@ -111,7 +111,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b9e62fec2174cdc7c0e2a5c1712e8d22d730406bcd5015b0e31fa0c992226054",
+    "aggregateSha256": "009bb8f9b29d8aeb842d3d5adb01f5440370440d6f7c9d738745357ce6b63dcc",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11071,7 +11071,7 @@
       },
       {
         "path": "packages/adapters/keyring-envelope/mutations-keyring-envelope.json",
-        "sha256": "e3b541f2da4f6752515cfeca22e177a2346552004eefaa7256a51ee870c0473d"
+        "sha256": "db1962b3d45bb39653f7b08c470c5bc41def2857d73c75e0716f2769dfa6ddd3"
       },
       {
         "path": "packages/adapters/keyring-envelope/package.json",

@@ -6,10 +6,10 @@
   "generatedFrom": "tejas/secret-lifecycle, rebased onto v1 @ 2abd19b4, at the legacy-envelope migration",
   "howToReproduce": "Apply the `from` -> `to` replacement in `file`, run `command`, and observe the named case fail. Restore. The three postgres entries run ON THE MAC MINI inside a detached worktree; the laptop's Docker daemon is unreachable by policy and a local run of those three MUST fail to start, which is correct rather than a defect.",
   "summary": {
-    "entries": 66,
-    "killed": 64,
+    "entries": 73,
+    "killed": 67,
     "survived": 0,
-    "declaredUnfalsifiable": 2
+    "declaredUnfalsifiable": 6
   },
   "notes": [
     "TWO mutations SURVIVED their first sweep and both are recorded below with the case that was added to kill them. `cipher-latin1-plaintext` found that this adapter opened three non-ASCII fixtures and had never SEALED one, so the write side's text encoding was untested. `sweep-limit-not-clamped` found a case whose own comment admitted the clamp was \"not observable\" -- an assertion that could not fail, which is the exact shape this repository has a rule about.",
@@ -778,7 +778,7 @@
       "from": "secretHandleKeyInfo(binding)",
       "to": "a label carrying only the root key version",
       "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
-      "outcome": "DECLARED-UNFALSIFIABLE",
+      "outcome": "DECLARED UNFALSIFIABLE",
       "failingCases": 0,
       "killedBy": "(none — measured, 13/13 still pass)",
       "why": "MEASURED, not assumed: the environment is ALSO in the AEAD associated data, so removing it from the key derivation alone leaves the tag check refusing the foreign environment for the other reason. Defence in depth is not a defect, and counting this as a kill would be counting a kill that was not got. The joint entry above is the one that measures the property."
@@ -789,7 +789,7 @@
       "from": "secretHandleAad(request.binding)",
       "to": "a label carrying only the root key version",
       "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
-      "outcome": "DECLARED-UNFALSIFIABLE",
+      "outcome": "DECLARED UNFALSIFIABLE",
       "failingCases": 0,
       "killedBy": "(none — measured, 13/13 still pass)",
       "why": "The mirror of the entry above, and unfalsifiable for the mirrored reason: the environment is still inside the HKDF expand info, so the derived key differs and the tag fails anyway."
@@ -800,7 +800,7 @@
       "from": "secretHandleKeyInfo / secretHandleAad",
       "to": "envelopeKeyInfo / envelopeAad",
       "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
-      "outcome": "DECLARED-UNFALSIFIABLE",
+      "outcome": "DECLARED UNFALSIFIABLE",
       "failingCases": 0,
       "killedBy": "(none — measured, 13/13 still pass)",
       "why": "MEASURED with a reason that is a fact about the TYPES rather than about the cases. `OpenHandleRequest` carries a `SecretHandleBinding`, which has an environment and a root key version and NOTHING ELSE — no credential id, no revision, no format version. `envelopeAad` needs all five, so the collapsed label can never equal a real envelope's label whatever this file does. The two spaces cannot be made to collide from inside this module, which is why the case that pins the refusal cannot be turned red from here; the labels themselves are pinned byte-for-byte by the domain suite that owns them."
@@ -822,7 +822,7 @@
       "from": "cipher.update(request.body, \"utf8\")",
       "to": "cipher.update(request.body, \"latin1\")",
       "command": "pnpm --filter @platos/adapter-keyring-envelope exec vitest run src/wire-compatibility.test.ts",
-      "outcome": "DECLARED-UNFALSIFIABLE",
+      "outcome": "DECLARED UNFALSIFIABLE",
       "failingCases": 0,
       "killedBy": "(none — measured, 13/13 still pass)",
       "why": "A claims body is a handle id, a UUID, a revision and two ISO instants: ASCII by construction, and latin1 and utf8 agree on every ASCII byte. The case's comment was corrected to say what it does pin — that the ciphertext is exactly the body's byte length — rather than an encoding claim it cannot make. The envelope half next door DOES pin encoding, with a non-ASCII vector."
