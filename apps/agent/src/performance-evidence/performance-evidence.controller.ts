@@ -6,10 +6,11 @@ import {
   Req,
   UnauthorizedException,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type { Request } from "express";
 import { PerformanceEvidenceService } from "./performance-evidence.service";
 
-@Controller("api/v1/agent/internal/performance-evidence")
+@Controller({ path: "agent/internal/performance-evidence", version: API_VERSION })
 export class PerformanceEvidenceController {
   constructor(private readonly evidence: PerformanceEvidenceService) {}
 

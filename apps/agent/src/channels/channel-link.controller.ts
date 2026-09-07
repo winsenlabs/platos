@@ -9,6 +9,7 @@ import {
   Logger,
   Inject,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
@@ -619,7 +620,7 @@ export class ChannelLinkService {
  * first, and `/:nonce` additionally requires a 64-hex-char nonce (so "callback"
  * can never be mistaken for a nonce).
  */
-@Controller()
+@Controller({ version: API_VERSION })
 export class ChannelLinkController {
   private readonly logger = new Logger(ChannelLinkController.name);
 
@@ -631,7 +632,7 @@ export class ChannelLinkController {
   ) {}
 
   // ── GET /callback — declared first so it wins over /:nonce ────────────────
-  @Get("api/v1/channels/link/callback")
+  @Get("channels/link/callback")
   async callback(
     @Req() req: ExpressRequest,
     @Query("code") code: string | undefined,
@@ -725,7 +726,7 @@ export class ChannelLinkController {
   }
 
   // ── GET /:nonce — redirect into Slack SIWS ────────────────────────────────
-  @Get("api/v1/channels/link/:nonce")
+  @Get("channels/link/:nonce")
   async redirect(
     @Req() req: ExpressRequest,
     @Param("nonce") nonce: string,

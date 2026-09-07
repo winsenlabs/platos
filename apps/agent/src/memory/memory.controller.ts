@@ -13,6 +13,7 @@ import {
   NotFoundException,
   HttpException,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import {
   MEMORY_ARCHIVE_STATES,
   MEMORY_KINDS,
@@ -59,7 +60,7 @@ import {
  * keeping them distinct from `/api/v1/agent` so feature flags at the
  * edge can gate the memory API independently.
  */
-@Controller(["api/v1/memory", "api/v1/platos/memory"])
+@Controller({ path: ["memory", "platos/memory"], version: API_VERSION })
 export class MemoryController {
   constructor(
     private readonly memoryService: MemoryService,

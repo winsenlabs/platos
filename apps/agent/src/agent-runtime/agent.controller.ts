@@ -20,6 +20,7 @@ import {
   ServiceUnavailableException,
   Logger,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { type Request, type Response } from "express";
 import * as crypto from "node:crypto";
 import {
@@ -179,7 +180,7 @@ export function internalChatTurnOptions(body: {
  * Agent REST API — every endpoint calls real services.
  * All queries scoped by (organizationId, projectId, environmentId, userId) from ScopeGuard.
  */
-@Controller("api/v1/agent")
+@Controller({ path: "agent", version: API_VERSION })
 export class AgentController {
   private readonly logger = new Logger(AgentController.name);
 

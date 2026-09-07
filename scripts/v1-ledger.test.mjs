@@ -514,7 +514,17 @@ test("every tracked file produces exactly one row and no file is left over", () 
 test("area counts reconcile against the baseline plus exact WIN-254 and legal-provenance additions", () => {
   const summary = summarize(live.rows);
   const expectedDeltas = {
-    "apps-agent": 0,
+    // WIN-267 (M4.1, T1) 0 -> 2, and BOTH are the version expression:
+    // `apps/agent/src/http/api-surface.ts`, the one place the global prefix, the
+    // major and the seven unversioned roots are written, and
+    // `api-surface.test.ts`, the probe that boots a real Nest application over
+    // the 27 production controllers and reads the route table back out of
+    // Express. They land on `apps-agent.source.runtime` and
+    // `apps-agent.test.suites`, rules that already existed; NO LEDGER RULE
+    // CHANGED. The 28 controllers T1 rewrites and `main.ts` are edited IN PLACE
+    // and add no file — which is the whole shape of this tranche: 24 literals
+    // deleted, one declaration added.
+    "apps-agent": 2,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1438,7 +1448,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // an edited file is not a new one.
     // root-infra 43 + 2 + 2 + 4 + 2 = 53.
     "docs-content": 17,
-    "root-infra": 53,
+    // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same reason T0's ledger took it — the blanket rule's verdict
+    // applied without an exception. It is now the SECOND non-code file under
+    // `scripts/`; T0 said that if a second arrived the rule would be worth
+    // splitting on its own merits, and this notes the arrival without splitting
+    // it inside the tranche that would be its own beneficiary. The census
+    // scripts and the contract-map gate T1 edits are edited in place.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 = 54.
+    "root-infra": 54,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.

@@ -26,167 +26,28 @@
     "buildIdHeader": "X-Platos-Contract-Version",
     "floorRequestHeader": "X-Platos-Contract-Min",
     "literalMigration": {
-      "literals": 24,
-      "sourceLines": 23,
-      "files": 20,
+      "literals": 0,
+      "sourceLines": 0,
+      "files": 0,
       "measuredBy": "scripts/arch/contract-map.mjs measureApiV1Literals — string literals containing \"api/v1\" inside the balanced argument list of a Nest routing decorator (@Controller/@Get/@Post/@Put/@Patch/@Delete/@All/@Options/@Head), over production .ts/.tsx under apps/, packages/ and internal-packages/ (tests and .d.ts excluded).",
       "crossCheckedBy": "measureApiV1LiteralLines — an independent line-based count that must agree on sourceLines.",
       "supersedes": {
         "count": 18,
-        "why": "ADR M0.4 §2/D1 recorded 18 and this file both wrote and asserted that number, so nothing could contradict it. 18 counts neither the literals, nor the lines, nor the files: two literals share one line in memory.controller.ts, and four of the twenty files carry the prefix on a method decorator rather than on @Controller."
+        "why": "ADR M0.4 §2/D1 recorded 18 and this file both wrote and asserted that number, so nothing could contradict it. 18 counts neither the literals, nor the lines, nor the files: two literals shared one line in memory.controller.ts, and FIVE of the twenty files carried the prefix on a method decorator rather than on @Controller (channel-app-events, channel-app-oauth, channel-link, channels-inbound, openapi) — 15 @Controller files + 5 method-only files = 20."
       },
       "from": "@Controller(\"api/v1/...\") hardcoded literals",
-      "to": "setGlobalPrefix + enableVersioning + @Version(\"1\")",
+      "to": "setGlobalPrefix(\"api\") + enableVersioning({ type: URI, defaultVersion: \"1\" }), the version declared per class as @Controller({ path, version }) and per method as @Version(...)",
+      "classLevelSpelling": {
+        "adrText": "@Version(\"1\")",
+        "actual": "@Controller({ path, version: API_VERSION })",
+        "why": "Nest 11's @Version is method-only (@nestjs/common/decorators/core/version.decorator.js dereferences descriptor.value); @Controller({ version }) sets the same VERSION_METADATA."
+      },
+      "declaredIn": "apps/agent/src/http/api-surface.ts",
       "milestone": "M4",
-      "status": "pending",
-      "enforcedBy": "no-bare-prefix lint: generation fails on any literal \"api/v1\" string once the migration lands, so the drift-check reads structure, not a string (ADR M0.4 §2 REST row, §5 item 2).",
-      "prerequisiteFor": "the \"version is a contract, not a path\" guarantee — the drift-check only reads a string until every literal becomes @Version(\"1\") (D1).",
-      "sites": [
-        {
-          "file": "apps/agent/src/agent-runtime/agent.controller.ts",
-          "line": 182,
-          "decorator": "Controller",
-          "literal": "api/v1/agent"
-        },
-        {
-          "file": "apps/agent/src/agent-runtime/attachment-upload.controller.ts",
-          "line": 20,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/attachments"
-        },
-        {
-          "file": "apps/agent/src/agent-runtime/channel-apps.controller.ts",
-          "line": 88,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/channel-apps"
-        },
-        {
-          "file": "apps/agent/src/agent-runtime/channels.controller.ts",
-          "line": 126,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/channels"
-        },
-        {
-          "file": "apps/agent/src/agent-runtime/job-execution.controller.ts",
-          "line": 17,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/internal/jobs"
-        },
-        {
-          "file": "apps/agent/src/agent-runtime/jobs.controller.ts",
-          "line": 32,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/jobs"
-        },
-        {
-          "file": "apps/agent/src/auth/public-guest-token.controller.ts",
-          "line": 52,
-          "decorator": "Controller",
-          "literal": "api/v1/public"
-        },
-        {
-          "file": "apps/agent/src/auth/session-token.controller.ts",
-          "line": 87,
-          "decorator": "Controller",
-          "literal": "api/v1/entities"
-        },
-        {
-          "file": "apps/agent/src/channels/channel-app-events.controller.ts",
-          "line": 86,
-          "decorator": "Post",
-          "literal": "api/v1/channels/apps/:appId/events"
-        },
-        {
-          "file": "apps/agent/src/channels/channel-app-oauth.controller.ts",
-          "line": 64,
-          "decorator": "Get",
-          "literal": "api/v1/channels/oauth/:appId/install"
-        },
-        {
-          "file": "apps/agent/src/channels/channel-app-oauth.controller.ts",
-          "line": 140,
-          "decorator": "Get",
-          "literal": "api/v1/channels/oauth/:appId/callback"
-        },
-        {
-          "file": "apps/agent/src/channels/channel-link.controller.ts",
-          "line": 634,
-          "decorator": "Get",
-          "literal": "api/v1/channels/link/callback"
-        },
-        {
-          "file": "apps/agent/src/channels/channel-link.controller.ts",
-          "line": 728,
-          "decorator": "Get",
-          "literal": "api/v1/channels/link/:nonce"
-        },
-        {
-          "file": "apps/agent/src/channels/channels-inbound.controller.ts",
-          "line": 60,
-          "decorator": "Post",
-          "literal": "api/v1/channels/inbound/:connectionId/:webhookSecret"
-        },
-        {
-          "file": "apps/agent/src/channels/channels-inbound.controller.ts",
-          "line": 70,
-          "decorator": "Get",
-          "literal": "api/v1/channels/inbound/:connectionId/:webhookSecret"
-        },
-        {
-          "file": "apps/agent/src/files/files.controller.ts",
-          "line": 20,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/files"
-        },
-        {
-          "file": "apps/agent/src/memory/memory-feedback-admin.controller.ts",
-          "line": 8,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/admin/memory-feedback"
-        },
-        {
-          "file": "apps/agent/src/memory/memory.controller.ts",
-          "line": 62,
-          "decorator": "Controller",
-          "literal": "api/v1/memory"
-        },
-        {
-          "file": "apps/agent/src/memory/memory.controller.ts",
-          "line": 62,
-          "decorator": "Controller",
-          "literal": "api/v1/platos/memory"
-        },
-        {
-          "file": "apps/agent/src/openapi/openapi.controller.ts",
-          "line": 18,
-          "decorator": "Get",
-          "literal": "api/v1/agent/openapi.json"
-        },
-        {
-          "file": "apps/agent/src/performance-evidence/performance-evidence.controller.ts",
-          "line": 12,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/internal/performance-evidence"
-        },
-        {
-          "file": "apps/agent/src/privacy/erasure.controller.ts",
-          "line": 23,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/admin/privacy"
-        },
-        {
-          "file": "apps/agent/src/providers/providers.controller.ts",
-          "line": 27,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/providers"
-        },
-        {
-          "file": "apps/agent/src/skills/skills.controller.ts",
-          "line": 37,
-          "decorator": "Controller",
-          "literal": "api/v1/agent/skills"
-        }
-      ]
+      "status": "complete",
+      "enforcedBy": "no-bare-prefix lint (LITERAL_MIGRATION_LANDED): once the migration has landed this generator REFUSES to emit for any tree carrying a routing-decorator \"api/v1\" literal, at --write as well as --check, so the count cannot be regenerated back up (ADR M0.4 §2 REST row, §5 item 2).",
+      "prerequisiteFor": "the \"version is a contract, not a path\" guarantee — the drift-check only reads a string until every literal becomes a declared version (D1).",
+      "sites": []
     }
   },
   "corrections": {

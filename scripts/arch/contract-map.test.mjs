@@ -20,8 +20,10 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 
 import {
+  LITERAL_MIGRATION_LANDED,
   LITERAL_SCAN_ROOTS,
   ROUTING_DECORATORS,
+  assertNoBareApiV1Prefix,
   contractHistogram,
   contractRowErrors,
   literalMigrationErrors,
@@ -50,7 +52,7 @@ test("the scan is over the declared roots and the Nest routing decorators", () =
   assert.deepEqual([...LITERAL_SCAN_ROOTS], ["apps", "packages", "internal-packages"]);
   assert.ok(ROUTING_DECORATORS.includes("Controller"));
   for (const verb of ["Get", "Post", "Put", "Patch", "Delete"]) {
-    assert.ok(ROUTING_DECORATORS.includes(verb), `${verb} must be counted; four of the twenty files carry the prefix on a method decorator`);
+    assert.ok(ROUTING_DECORATORS.includes(verb), `${verb} must be counted; FIVE of the twenty files carried the prefix on a method decorator`);
   }
 });
 
@@ -128,18 +130,52 @@ test("MUTATION: a missing literalMigration record fails rather than passing quie
   assert.equal(literalMigrationErrors(undefined, { literals: 1, sourceLines: 1, files: 1 }).length, 1);
 });
 
-test("BASELINE: the recorded measurement matches the tree, and both mechanisms agree", () => {
+test("BASELINE: the migration has landed — no routing decorator spells the version by hand", () => {
+  // WIN-267 (M4.1) T1. This assertion used to feed the check `status: "pending"`
+  // and whatever the tree measured. Both are now zero, and the interesting claim
+  // is no longer "the recorded number matches itself" but "the tree carries
+  // NONE" — a statement about 20 controller files this suite does not write.
   const measured = measureApiV1Literals();
   assert.equal(measured.sourceLines, measureApiV1LiteralLines(), "the two measuring mechanisms disagree on source lines");
   assert.ok(measured.literals >= measured.sourceLines);
   assert.ok(measured.sourceLines >= measured.files);
+  assert.equal(
+    measured.literals,
+    0,
+    `a routing decorator still spells api/v1: ${measured.sites.map((s) => `${s.file}:${s.line}`).join(", ")}`,
+  );
+  assert.equal(measured.files, 0);
   assert.deepEqual(
-    literalMigrationErrors(
-      { literals: measured.literals, sourceLines: measured.sourceLines, files: measured.files, status: "pending" },
-      measured,
-    ),
+    literalMigrationErrors({ literals: 0, sourceLines: 0, files: 0, status: "complete" }, measured),
     [],
   );
+});
+
+test("MUTATION: the no-bare-prefix lint refuses a tree that puts a literal back", () => {
+  // ADR M0.4 §2's REST row asks for a lint that fails "on any literal `api/v1`".
+  // Two shapes, because both existed before T1: the class decorator, and a
+  // method decorator on an otherwise path-less controller.
+  const shapes = [
+    ["controller", '@Controller("api/v1/agent")\nexport class AController {}\n'],
+    ["method", '@Controller()\nexport class BController {\n  @Get("api/v1/agent/x")\n  x() {}\n}\n'],
+  ];
+  for (const [name, source] of shapes) {
+    const root = fixture({ [under(`${name}.controller.ts`)]: source });
+    const measured = measureApiV1Literals(root);
+    assert.equal(measured.literals, 1, `${name}: fixture did not produce a literal`);
+    assert.throws(
+      () => assertNoBareApiV1Prefix(measured),
+      /no-bare-prefix lint/u,
+      `${name}: a re-introduced literal was not refused`,
+    );
+  }
+});
+
+test("the no-bare-prefix lint is silent on the clean tree it guards", () => {
+  // The negative control for the control: a gate that fires on everything
+  // proves nothing about the tree that passes it.
+  assert.equal(LITERAL_MIGRATION_LANDED, true);
+  assertNoBareApiV1Prefix(measureApiV1Literals());
 });
 
 test("MUTATION: a hand-kept newCount that disagrees with its own rows fails", () => {

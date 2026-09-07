@@ -12,6 +12,7 @@ import {
   Query,
   Req,
   Res,
+  VERSION_NEUTRAL,
 } from "@nestjs/common";
 import { ModuleRef } from "@nestjs/core";
 import { PLATOS_SECRET_STORE_TOKEN, PRISMA_TOKEN } from "../shared/database.provider";
@@ -89,7 +90,7 @@ import type { McpStdioSession } from "./stdio-transport";
  *      every 30s (required so Caddy/NGINX idle timeouts don't kill
  *      the stream).
  */
-@Controller("mcp/platform")
+@Controller({ path: "mcp/platform", version: VERSION_NEUTRAL })
 export class McpPlatformController {
   private router: McpRouter | null = null;
   /** Request cancellation owned by each live legacy SSE session. */

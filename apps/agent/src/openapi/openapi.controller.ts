@@ -10,12 +10,13 @@
  * is pulled from the official unpkg CDN so the agent image stays lean.
  */
 
-import { Controller, Get, Header } from "@nestjs/common";
+import { Controller, Get, Header, Version, VERSION_NEUTRAL } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import platosAgentOpenApiSpec from "./openapi.generated.json";
 
-@Controller()
+@Controller({ version: API_VERSION })
 export class OpenApiController {
-  @Get("api/v1/agent/openapi.json")
+  @Get("agent/openapi.json")
   @Header("Content-Type", "application/json")
   @Header("Access-Control-Allow-Origin", "*")
   getSpec() {
@@ -23,6 +24,7 @@ export class OpenApiController {
   }
 
   @Get("openapi")
+  @Version(VERSION_NEUTRAL)
   @Header("Content-Type", "text/html; charset=utf-8")
   getSwaggerUi(): string {
     // Swagger UI is intentionally served over the CDN so the agent

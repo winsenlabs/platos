@@ -7,6 +7,7 @@ import {
   Post,
   Req,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { type Request } from "express";
 import * as crypto from "node:crypto";
 import { AuthService } from "./auth.service";
@@ -49,7 +50,7 @@ function extractClientIp(req: Request): string {
   return req.socket?.remoteAddress || "unknown";
 }
 
-@Controller("api/v1/public")
+@Controller({ path: "public", version: API_VERSION })
 export class PublicGuestTokenController {
   constructor(
     private readonly authService: AuthService,

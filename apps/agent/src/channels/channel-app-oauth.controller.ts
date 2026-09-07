@@ -8,6 +8,7 @@ import {
   Logger,
   Inject,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type {
   Request as ExpressRequest,
   Response as ExpressResponse,
@@ -48,7 +49,7 @@ import { ChannelRuntimeService } from "./channel-runtime.service";
  * No secret/token is logged or rendered into HTML. Every Slack HTTP call is
  * bounded by a 10s AbortSignal.timeout.
  */
-@Controller()
+@Controller({ version: API_VERSION })
 export class ChannelAppOAuthController {
   private readonly logger = new Logger(ChannelAppOAuthController.name);
 
@@ -61,7 +62,7 @@ export class ChannelAppOAuthController {
   // ───────────────────────────────────────────────────────────────────────
   // GET /install — mint state, redirect to Slack's authorize screen
   // ───────────────────────────────────────────────────────────────────────
-  @Get("api/v1/channels/oauth/:appId/install")
+  @Get("channels/oauth/:appId/install")
   async install(
     @Req() req: ExpressRequest,
     @Param("appId") appId: string,
@@ -137,7 +138,7 @@ export class ChannelAppOAuthController {
   // ───────────────────────────────────────────────────────────────────────
   // GET /callback — verify state, exchange code, upsert installation
   // ───────────────────────────────────────────────────────────────────────
-  @Get("api/v1/channels/oauth/:appId/callback")
+  @Get("channels/oauth/:appId/callback")
   async callback(
     @Req() req: ExpressRequest,
     @Param("appId") appId: string,

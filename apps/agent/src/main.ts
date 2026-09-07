@@ -3,6 +3,7 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
 import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-options.interface";
 import { AppModule } from "./app.module";
 import { AuthService } from "./auth/auth.service";
+import { applyApiSurface } from "./http/api-surface";
 import { validateAgentEnv } from "./shared/env";
 import { resolveExternalTriggerConfig } from "./shared/external-trigger-config";
 import { terminateAfterStartupFailure } from "./startup-failure";
@@ -148,6 +149,21 @@ async function bootstrap() {
     // JSON/urlencoded body handling is otherwise unchanged.
     rawBody: true,
   });
+
+  // WIN-267 (M4.1) T1 — the version expression, declared once in
+  // `http/api-surface.ts` and installed here: `setGlobalPrefix("api")` +
+  // `enableVersioning({ type: URI, defaultVersion: "1" })`, so every controller
+  // declares only its own path and none of them spells `api/v1` by hand any
+  // more (ADR M0.4 §1.2/§2, WIN-249). Routes are built at `init()`, so this must
+  // run before `listen()`; it is placed first because everything below reasons
+  // about the FINAL wire path this call produces.
+  //
+  // The `app.use` body caps below still match `/api/v1/...` literally, and they
+  // must: they inspect an inbound request URL, and if this call ever stopped
+  // producing that prefix they would stop firing on the public surface — which
+  // is a failure the route-identity test names and this file would rather have
+  // than paper over with a derived string.
+  applyApiSurface(app);
 
   // L8 — clamp body size on the UNAUTHENTICATED bypass surface BEFORE the
   // global parser can buffer it. The 15mb limit below exists solely for the

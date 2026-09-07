@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query, Req } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type { Request } from "express";
 import { AttachmentsService } from "../agent-runtime/attachments.service";
 import { PRISMA_TOKEN } from "../shared/database.provider";
@@ -17,7 +18,7 @@ import { pageMetadata, parsePageRequest, parseTextFilter } from "../shared/pagin
  *
  * All endpoints scope-gated by ScopeGuard (X-Platos-* headers → req.scope).
  */
-@Controller("api/v1/agent/files")
+@Controller({ path: "agent/files", version: API_VERSION })
 export class FilesController {
   constructor(
     @Inject(PRISMA_TOKEN) private readonly prisma: any,

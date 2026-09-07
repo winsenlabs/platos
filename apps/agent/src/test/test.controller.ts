@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Inject } from "@nestjs/common";
+import { Controller, Get, Post, Body, Query, Inject, VERSION_NEUTRAL } from "@nestjs/common";
 import { ToolRegistryService } from "../tool-gateway/tool-registry.service";
 import { AuthService } from "../auth/auth.service";
 import { REDIS_TOKEN } from "../shared/redis.provider";
@@ -8,7 +8,7 @@ const DUMMY_ORG_ID = "test-org";
 const DUMMY_PROJECT_ID = "test-project";
 const DUMMY_ENV_ID = "test-env-dev";
 
-@Controller("test")
+@Controller({ path: "test", version: VERSION_NEUTRAL })
 export class TestController {
   constructor(
     @Inject(ToolRegistryService) private readonly toolRegistry: ToolRegistryService,

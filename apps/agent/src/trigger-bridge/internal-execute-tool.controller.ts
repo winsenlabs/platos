@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpException, HttpStatus, Post } from "@nestjs/common";
+import { Body, Controller, Headers, HttpException, HttpStatus, Post, VERSION_NEUTRAL } from "@nestjs/common";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { ToolExecutorService } from "../tool-gateway/tool-executor.service";
 import { ScopedEnvService } from "../providers/scoped-env.service";
@@ -32,7 +32,7 @@ import { env } from "../shared/env";
 const DEV_COMPONENT_AUTH_SECRET = "dev-internal-secret-change-me";
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000; // 5 min
 
-@Controller("internal")
+@Controller({ path: "internal", version: VERSION_NEUTRAL })
 export class InternalExecuteToolController {
   constructor(
     private readonly toolExecutor: ToolExecutorService,
