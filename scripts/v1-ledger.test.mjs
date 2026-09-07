@@ -524,7 +524,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // app.module.ts and the six transport seams were rewritten in place and add
     // no files. The transports rule stays at exactly 6 — the new rule is
     // declared ahead of it so process code does not inherit transport evidence.
-    // +10 (WIN-260, M2.5), and each of the ten is attributable:
+    // +10 (WIN-260, typed configuration), and each of the ten is attributable:
     //   +6  the five sibling configuration sections beside WIN-297's core one —
     //       stores, providers, channels, durable-runtime, security — and the
     //       platform aggregate that validates all six in ONE pass.
@@ -537,7 +537,38 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // NO LEDGER RULE CHANGED: apps-core-api.source.process already matched
     // src/config/**, so the seven source files land on a rule WIN-297 wrote.
     // 19 + 10 = 29.
-    "apps-core-api": 29,
+    // WIN-259 (M2.4) 29 -> 30: `src/runtime/log-redaction.test.ts`, the suite
+    // that reads the canonical Prisma schema and holds the kernel's redactor to
+    // BOTH sides of it. It lives here rather than beside the redactor because
+    // the kernel may not read a file at all (kernel-content K1/K4), so a suite
+    // in `packages/kernel` could only have compared the classifier to itself.
+    //
+    // 29 -> 31. WIN-260's errors-and-idempotency dimension adds the
+    // code-to-status mapping a transport executes —
+    // src/transports/error-status.ts and its suite — so the transports rule goes
+    // 6 -> 7 and the core-api suite rule 9 -> 10. It is under transports/ rather
+    // than runtime/ because ADR M0.3 §2 makes an HTTP status transport
+    // vocabulary: a context says `not_found`, and only that file knows it means
+    // 404. 29 + 2 = 31.
+    //
+    // 31 -> 40. The rest of that dimension's edge: FIVE source modules under
+    // `src/http/` — the operation-policy table, the seven codes the gate mints,
+    // the gate itself, the middleware that runs it on a socket, and the failure
+    // writer that executes the code-to-status mapping — and FOUR suites, the
+    // last of which is the end-to-end race against a real Redis. All nine land
+    // on rules WIN-297 already wrote (`apps-core-api.source.process` 19 -> 24
+    // and `apps-core-api.test.suites` 10 -> 14), so NO LEDGER RULE CHANGED.
+    // 31 + 9 = 40.
+    // M2 INTEGRATION: 29 + 1 (projection's redaction suite) + 11 (the errors
+    // dimension's status mapping, its edge and their suites) = 41. The two
+    // dimensions add DIFFERENT files under apps/core-api, so the counters add.
+    // +3 (WIN-260, M2.5 outbox/clock/retry): src/runtime/shutdown-drain.ts and
+    // its suite, plus mutations.json, which the existing
+    // apps-core-api.config.package rule already classifies. The admission gate
+    // and its wiring changed in-flight.ts, lifecycle.ts and their two suites IN
+    // PLACE and add no file. 29 + 3 = 32.
+    // M2 INTEGRATION, ALL FOUR: 29 + 1 + 11 + 3 = 44.
+    "apps-core-api": 44,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -961,7 +992,127 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // listing index) + 8 (the rehearsal's two frozen schemas, four modules and
     // two suites) = 9. No dimension's own figure -- 1383, 1386, 1381 or 1381
     // again -- is right here, and neither is any pair of them.
-    packages: 1397,
+    // WIN-259 (M2.4) 1397 -> 1401, and the four are in TWO packages rather than
+    // one, which is why they are named here: `packages/kernel` gains
+    // `src/vo/redaction.ts` and its two-sided suite (the redactor
+    // `ports/logger.ts` has always described and never supplied), and
+    // `packages/contexts/secrets` gains `application/write-only-inputs.test.ts`
+    // and `application/denied-read-audit.test.ts`. 2 + 2 = 4. No adapter and no
+    // other context moves: the write-only change altered THREE command types in
+    // place and `providers` wrapped at its existing seam, and a changed file is
+    // not a new one.
+    // WIN-259 (M2.4) FOLLOW-UP 1401 -> 1402: packages/contexts/secrets/
+    // mutations.json, this issue's guard ledger. It is the fifth `packages`
+    // file rather than a sixth area because it is DATA beside the context it
+    // documents, claimed by the packages.contexts.config rule exactly as the
+    // eight adapter guard ledgers are claimed by packages.adapters.config.
+    // WIN-259 (M2.4) SPLIT 1402 -> 1403:
+    // packages/adapters/postgres-tenancy/src/secrets-variable-fence.
+    // integration.test.ts, the `describe` WIN-258 T7's own line-budget entry
+    // told the next author to move whole once a further case took
+    // secrets-rules.integration.test.ts past 460. It is a MOVE that shows as an
+    // addition, because the source file keeps its path.
+    // WIN-259 (M2.4) SECOND PASS 1403 -> 1407, and all four are in ONE package
+    // for the first time on this branch: `packages/contexts/secrets` takes
+    // `domain/secret-handle.ts` and `application/secret-handles.ts` with a suite
+    // each. The SECRET REFERENCE adds no adapter file and no row of its own — it
+    // is a VALUE this context never persists, so no store moves, and the one
+    // port it widens (`AeadCipher`) is widened IN PLACE. 2 source + 2 test = 4.
+    // WIN-259 (M2.4) 1397 -> 1414. Seventeen tracked files, every one under
+    // `packages`, and no other area moves: FOURTEEN are the thirteenth adapter
+    // directory `packages/adapters/keyring-envelope` (three generator-owned
+    // scaffolding files, six sources, four colocated suites and one mutation
+    // ledger that classifies as config beside the twenty-two already in
+    // `packages/adapters/postgres-tenancy`), TWO are `packages/contexts/providers`
+    // (`evict-probe-cache.ts` and `probe-cache-eviction.test.ts`) and ONE is
+    // `packages/adapters/postgres-tenancy/src/secrets-key-version.integration.test.ts`.
+    // 14 + 2 + 1 = 17. `packages/contexts/secrets` gains NO file: its port entry
+    // point was widened IN PLACE to publish the seven values its three
+    // cryptography ports' signatures use, and a widened file is not a new one.
+    // WIN-259 (M2.4) 1414 -> 1416. The sweep and its suite:
+    // `packages/contexts/secrets/application/sweep-root-key-reencryption.ts`
+    // and `…test.ts`, rotation as a JOB rather than as a request-time loop.
+    // 14 (keyring-envelope) + 2 (providers) + 1 (postgres) + 2 (secrets) = 19.
+    //
+    // WIN-259 (M2.4), THE LEGACY-ENVELOPE MIGRATION, 1416 -> 1424. EIGHT more,
+    // all in `packages` and no other area, in matched pairs across the two
+    // packages the deliverable is split between: `keyring-envelope` gains
+    // `legacy-envelope-reader.ts` and `legacy-wire-vectors.ts` with
+    // `legacy-wire-compatibility.test.ts` and `legacy-migration.test.ts`;
+    // `secrets` gains `domain/legacy-envelope.ts` and
+    // `application/migrate-legacy-envelope.ts` with a suite each. Every one
+    // classifies under a rule that ALREADY EXISTED — `packages.adapters.source`,
+    // `packages.adapters.test`, `packages.contexts.source` and
+    // `packages.contexts.test` — so NO ledger rule changed for the migration, and
+    // the delta is purely additive.
+    // AND ONE MORE IN `postgres-tenancy`, 1424 -> 1425:
+    // `secrets-legacy-envelope.integration.test.ts`, the real-PostgreSQL half of
+    // the legacy finding. It classifies under `packages.adapters.test` like every
+    // other suite in that directory, so it too changes no ledger rule.
+    // 18 (keyring-envelope) + 2 (providers) + 2 (postgres) + 6 (secrets) = 28,
+    // and REBASED ONTO v1 @ 2abd19b4 the whole of WIN-259 is those 28: v1's own
+    // `packages` delta is 1397, and 1397 + 28 = 1425.
+    // M2 INTEGRATION: the two WIN-259 dimensions above touch DISJOINT paths --
+    // projection's ten and lifecycle's twenty-eight share no file -- so this
+    // counter is their SUM off the base they share, not either branch's figure:
+    // 1397 + 10 + 28 = 1435.
+    //
+    // 1397 -> 1399. WIN-260 (M2.5) adds TWO, one to `packages.kernel.source` and
+    // one to `packages.adapters.test`, on rules that already existed:
+    //   packages/kernel/src/ports/correlation.ts   the TENTH kernel port,
+    //     `CorrelationSource`. The nine before it were closed by a comment that
+    //     said so; this one earns the place on the same test they pass, in that
+    //     it belongs to no context -- every context produces work a request
+    //     identifier must follow and none of them decides anything with one.
+    //   packages/adapters/postgres-tenancy/src/correlation.integration.test.ts
+    //     the nine cases that read the identifier back out of PostgreSQL.
+    // The three files WIN-260 widened to carry it -- the outbox adapter, the
+    // transaction runner and the app's edge module -- add none: each was widened
+    // in place, and a widened file is not a new one.
+    //
+    // 1399 -> 1406. WIN-260's SECOND half adds SEVEN, all seven under
+    // `packages/adapters/redis-cache`, which this issue adopts as the
+    // twenty-fourth V1 project:
+    //   src/client.ts               the ONE file that names `ioredis`, and an
+    //     interface named by INTENT rather than by command, so `claim` (NX) and
+    //     `write` (unconditional) cannot be confused for one another and neither
+    //     `KEYS` nor `FLUSHDB` is reachable from any other file here
+    //   src/idempotency-store.ts    the `jobs` port: reserve-once, the loser's
+    //     view, and the `XX` settle
+    //   src/cache.ts                the `memory` port, the second binding on the
+    //     same Redis connection under the ADR M0.3 s15 amendment
+    //   src/harness.ts              the container harness, which FAILS when
+    //     Docker is absent rather than skipping
+    //   three suites: idempotency-store.test.ts, cache.test.ts and
+    //     idempotency.integration.test.ts
+    // `src/adapter.ts` and `src/index.ts` were generated PLACEHOLDERS and are
+    // now real files: adoption releases a source tree, it does not add to it, so
+    // those two are rewritten rather than counted. The census records the same
+    // fact from the other side -- 88 placeholders released rather than 86.
+    // 1406 -> 1409. WIN-260's errors-and-idempotency dimension adds THREE:
+    // `packages/kernel/src/ports/request-idempotency.ts`, the eleventh kernel
+    // port, and `packages/adapters/redis-cache/src/request-idempotency.ts` with
+    // its suite — the Redis implementation of that port, the forty-sixth
+    // binding. Three files on three rules that already existed.
+    // M2 INTEGRATION: 1397 + 38 (the two WIN-259 dimensions) + 12 (WIN-260's
+    // correlation port, its PostgreSQL suite, the seven redis-cache files that
+    // adopt that project, and the eleventh kernel port with its adapter and
+    // suite) = 1447.
+    // 1397 -> 1404 (WIN-260, M2.5), and this is the FIRST dimension since
+    // tranche 2 that adds nothing to packages/adapters/postgres-tenancy:
+    //   +4 packages/kernel   — vo/retry.ts, vo/retry.test.ts,
+    //      ports/unit-of-work.test.ts and mutations.json, the kernel's first
+    //      guard ledger. ports/unit-of-work.ts and vo/index.ts were widened IN
+    //      PLACE and a widened file is not a new one.
+    //   +1 packages/contexts/eventing — the kernel-policy conformance suite.
+    //      domain/retry-schedule.ts is UNCHANGED.
+    //   +2 packages/adapters/outbox — src/flush.ts and its suite. The flush is
+    //      HERE and not under apps/core-api because composition-root.mjs rule
+    //      (C1) allows exactly one importer of an adapter package; index.ts and
+    //      mutations.json were widened in place.
+    // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
+    // M2 INTEGRATION, ALL FOUR: 1397 + 10 + 28 + 12 + 7 = 1454.
+    packages: 1454,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1208,13 +1359,55 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
-    "docs-content": 13,
+    // 13 -> 15. WIN-260's errors dimension adds TWO top-level docs/*.json, each
+    // on a NEW rule, because no existing docs rule matches a top-level
+    // docs/*.json and the audits rule would have called both `regenerate`, which
+    // neither is. docs/error-taxonomy.json (docs-content.pin.error-taxonomy) has
+    // a derived inventory and four hundred statuses that are decisions;
+    // docs/win-260-mutation-ledger.json (docs-content.pin.win-260-mutations) is
+    // generated by nothing at all.
     // +2 (WIN-260): scripts/arch/env-access.mjs and its test. Both classify
     // under the existing root-infra.tooling.scripts rule, so no ledger rule
     // changed here either. 41 + 2 = 43.
-    "root-infra": 43,
+    //
+    // WIN-259 (M2.4) IS THE FIRST SLICE SINCE THE M2 INTEGRATION TO MOVE FOUR
+    // AREAS AT ONCE, and it moves them by 1 + 4 + 1 + 2 = 8. docs-content
+    // 13 -> 14 is `docs/audits/win-259-secret-response-census.json`, the
+    // dispositioned raw-secret RESPONSE count; root-infra 43 -> 45 is the AST
+    // scanner that produces it and that scanner's own fixture suite. The
+    // scanner is fixture-tested rather than repository-tested on purpose: a
+    // re-run of the repository scan agrees with a manifest the same author
+    // wrote, and would have been the assertion-that-cannot-fail this project
+    // has already been bitten by once.
+    // 43 -> 45. WIN-260's errors dimension adds scripts/error-taxonomy.mjs on
+    // that same root-infra.tooling.scripts rule and scripts/error-taxonomy.test.mjs
+    // on root-infra.test.script-suites, so neither rule is new here either.
+    // M2 INTEGRATION SUMS BOTH, AND THE root-infra COUNTER IS THE ONE PLACE
+    // SIDE-PICKING WOULD HAVE LOST FILES SILENTLY: the projection dimension and
+    // the errors dimension BOTH wrote 45 here, for DIFFERENT pairs of files --
+    // the secret-response scanner with its fixture suite, and the error-taxonomy
+    // scanner with its suite. Taking either side whole would have dropped two
+    // tracked files and left every identity below still holding.
+    // docs-content 13 + 1 + 2 = 16; root-infra 43 + 2 + 2 = 47.
+    // 13 -> 14 (WIN-260, M2.5 outbox/clock/retry):
+    // docs/audits/M2.5-transaction-outbox-clock-retry.md, pinned into
+    // docs-content.lifecycle.point-in-time-reports rather than left to the
+    // audit-notes bucket, so this rule and evidence-lifecycle.mjs classify the
+    // same file the same way.
+    // M2 INTEGRATION, ALL FOUR. root-infra IS THE COUNTER THAT WOULD HAVE LOST
+    // FILES SILENTLY TWICE: three of the four dimensions raise it, and TWO of
+    // them wrote the identical 45 and then the identical 47 for DIFFERENT files
+    // -- the secret-response scanner and its suite, the error-taxonomy scanner
+    // and its suite, and this dimension's ambient-time and transaction-outcome
+    // gates with their suites. Taking any side whole drops files and leaves
+    // every identity below still holding, which is why the rule here is to SUM.
+    // docs-content 13 + 1 + 2 + 1 = 17; root-infra 43 + 2 + 2 + 4 = 51.
+    "docs-content": 17,
+    "root-infra": 51,
   };
-    assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1495);
+  // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
+  // is what the ledger fingerprint carries.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1579);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1249,7 +1442,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // +3); this one re-derives it by summing the per-area counts independently,
     // so the two can DISAGREE and be caught.
     // and that tranche's rollout rehearsal +11 across TWO areas, 3 in
-    // `packages` and 8 in `internal-packages`); this one re-derives it by
+    // `packages` and 8 in `internal-packages`, and WIN-260's error taxonomy +5
+    // across THREE areas, 2 in `apps-core-api`, 1 in `docs-content` and 2 in
+    // `root-infra`, and none in `packages`, and WIN-260's correlation half +2 in
+    // `packages`, the tenth kernel port and the suite that reads the identifier
+    // back out of PostgreSQL, and its idempotency half +7 in `packages`, the
+    // whole of the newly adopted `redis-cache`, and its mutation ledger +1 in
+    // `docs-content`); this one re-derives it by
     // summing the per-area counts independently, so the two can DISAGREE and
     // be caught.
     //
@@ -1260,7 +1459,61 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and CHANGES NO LEDGER RULE: every one of the thirteen is classified by a
     // rule that already existed, which is why the delta is purely additive and
     // sums with every one above it.
-    rulesDocument.baseline.totalFiles + 1495
+    //
+    // and WIN-259 (M2.4) +8, the same +8 as the totalFiles assertion above,
+    // across apps-core-api (+1), packages (+4), docs-content (+1) and
+    // root-infra (+2); this one re-derives it by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    //
+    // and its SECOND PASS +4, ALL of them `packages` and all of them the SECRET
+    // REFERENCE. It is the only slice on this branch that moves ONE area: the
+    // reference is a value, so it lands no artifact under docs/audits, no
+    // scanner under scripts/ and no suite outside the context that owns it.
+    // 1505 + 4 = 1509.
+    // and WIN-259 (M2.4) +28, ALL in `packages`: the thirteenth adapter
+    // directory with its legacy-envelope reader, `providers`' probe-cache
+    // eviction, TWO postgres integration suites, and `secrets`' sweep and
+    // legacy-envelope migration. It ADOPTS ONE PROJECT — `keyring-envelope`,
+    // the first V1 project added since the layout was drawn — and its three
+    // generator-owned scaffolding files are inside the twenty-eight. It CHANGES
+    // NO LEDGER RULE: every one of the twenty-eight is classified by a rule that
+    // already existed, which is why this delta too is purely additive.
+    //
+    // M2 INTEGRATION sums the two rather than side-picking, because the two
+    // dimensions above are disjoint and each pinned this file for itself alone:
+    // 1495 + 14 + 28 = 1537. This assertion re-derives it by summing the
+    // per-area counts independently of the assertion above, so the two can
+    // DISAGREE and be caught.
+    // and WIN-260's errors-and-idempotency dimension +12 across TWO areas,
+    // `apps-core-api` +9 and `packages` +3, and none in `docs-content` or
+    // `root-infra`: this half of the dimension adds no document and no script.
+    // 1510 + 12 = 1522.
+    //
+    // M2 INTEGRATION: 1495 + 42 + 27 = 1564. This assertion re-derives it by
+    // summing the per-area counts independently of the assertion above, so the
+    // two can DISAGREE and be caught.
+    // and WIN-260 (typed configuration) +13 across THREE areas — `apps-core-api`
+    // +10 (seven configuration modules, two suites, and this dimension's guard
+    // ledger), `apps-mcp-stdio` +1 (the second deployable's own environment
+    // reader) and `root-infra` +2 (the containment gate and its test). It ADOPTS
+    // NO PROJECT and CHANGES NO LEDGER RULE: every one of the thirteen is
+    // classified by a rule that already existed, which is why the delta is
+    // purely additive and sums with every one above it.
+    //
+    // and WIN-260 (M2.5 outbox/clock/retry) +13 across FOUR areas —
+    // `apps-core-api` +3, `packages` +7, `docs-content` +1, `root-infra` +2 —
+    // the first dimension since tranche 2 that adds nothing to
+    // `packages/adapters/postgres-tenancy`. Its `root-infra` +2 and the typed
+    // configuration dimension's `root-infra` +2 are FOUR DISTINCT FILES, which
+    // is the one place where the two dimensions' arithmetic does not merge by
+    // agreement, and T8 adds a further +2 to the same area for the second gate
+    // this dimension builds (13 + 13 + 2 = 28 over the M2 integration figure);
+    // this one re-derives the total by summing the per-area counts
+    // independently, so the two can DISAGREE and be caught.
+    //
+    // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
+    // per-area counts independently of the assertion above.
+    rulesDocument.baseline.totalFiles + 1579
   );
 });
 

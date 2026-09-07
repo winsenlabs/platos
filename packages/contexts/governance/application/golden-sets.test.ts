@@ -6,7 +6,7 @@
 // same as not testing it.
 
 import { describe, expect, it } from "vitest";
-import { asIdentifier } from "@platos/kernel";
+import { asIdentifier, runResult } from "@platos/kernel";
 
 import type { ActorId, EvalCriterionId, GoldenSetId, ThreadId } from "../domain/index.js";
 import {
@@ -117,7 +117,7 @@ describe("createGoldenSet", () => {
     // holds the constraint, so a lost race still cannot write a duplicate.
     const context = buildGovernanceTestContext();
     await create(context);
-    const direct = await context.dependencies.unitOfWork.run((transaction) =>
+    const direct = await runResult(context.dependencies.unitOfWork, (transaction) =>
       context.goldenSets.create(
         context.scope,
         {

@@ -29,7 +29,8 @@
 // a state an operator needs told about.
 
 import { asIdentifier, err, ok, type DomainError, type Result } from "@platos/kernel";
-import type { CredentialMetadata } from "@platos/context-secrets";
+import { acceptPlaintext } from "@platos/context-secrets";
+import type { CredentialMetadata, SecretMaterial } from "@platos/context-secrets";
 
 import {
   admitProviderKey,
@@ -66,7 +67,7 @@ async function putMaterial(
   grant: SecretsOperatorGrant,
   name: string,
   provider: string,
-  plaintext: string,
+  plaintext: SecretMaterial,
 ): Promise<Result<VaultOutcome>> {
   const existing = await findCredentialByName(dependencies, grant, name);
   if (!existing.ok) return err(existing.error);
@@ -128,7 +129,12 @@ export async function registerProviderKey(
 
   const admitted = admitProviderKey(command.intake);
   if (!admitted.ok) return err(admitted.error);
-  const material = admitProviderSecret(command.plaintext);
+  const admittedSecret = admitProviderSecret(command.plaintext);
+  if (!admittedSecret.ok) return err(admittedSecret.error);
+  // WIN-259 — the plaintext stops being a bare string HERE, at the last point
+  // inside this context that still holds one, so nothing crosses the boundary
+  // into `secrets` as a value a serialiser could record.
+  const material = acceptPlaintext(admittedSecret.value);
   if (!material.ok) return err(material.error);
 
   const scope = granted.value.scope;
@@ -166,6 +172,11 @@ export async function registerProviderKey(
     return err(compensation ?? inserted.error);
   }
 
-  await dependencies.probeCache.forgetProvider(draft.provider);
+  // WIN-259 M2.4 leaves this discarding for the reason `link-provider-key.ts`
+  // spells out: a key is being ADDED, `credentialFingerprint` keys on the new
+  // row, and the only prior answer is a `not_configured` one that
+  // `check-provider-health.ts` never serves from cache. The `void` marks the
+  // discard as decided rather than overlooked.
+  void (await dependencies.probeCache.forgetProvider(draft.provider));
   return ok(inserted.value);
 }

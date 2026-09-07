@@ -75,7 +75,7 @@
 // the five included.
 // ---------------------------------------------------------------------------
 
-import type { Clock, IdGenerator, Logger } from "@platos/kernel";
+import type { Clock, IdGenerator, Logger, RequestIdempotency } from "@platos/kernel";
 
 import type { IdentityAccessContract } from "@platos/context-identity-access";
 import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
@@ -141,6 +141,20 @@ export interface AppModule {
   readonly bindings: AdapterSupplyReport;
   readonly contexts: ComposedContexts;
   readonly inFlight: InFlightRegister;
+  /**
+   * The kernel `RequestIdempotency` port, resolved from whatever adapter carries
+   * it — null when no install supplied one.
+   *
+   * IT IS A PORT HERE AND NOT AN ADAPTER, and that is rule (j) in the one place
+   * it would otherwise be broken. The `Idempotency-Key` gate in `src/http/` needs
+   * this store on every side-effecting request; reaching for
+   * `adapters["redis-cache"].requests` would put an adapter's NAME in a
+   * transport, and the day the store moved behind a different directory the
+   * transport would move with it. Resolving it here is the composition root
+   * doing its one job — and it is the only port lifted out of `adapters` because
+   * it is the only one the EDGE consumes rather than a context.
+   */
+  readonly requestIdempotency: RequestIdempotency | null;
 }
 
 /**
@@ -219,6 +233,10 @@ export function composeApplication(input: CompositionInput): AppModule {
     bindings,
     contexts,
     inFlight: input.inFlight ?? createInFlightRegister(),
+    // `?? null` rather than leaving it undefined: the gate has to be able to see
+    // that the port is ABSENT and fail closed, and an undefined property reads
+    // the same as one nobody wired.
+    requestIdempotency: adapters["redis-cache"]?.requests ?? null,
   });
 }
 

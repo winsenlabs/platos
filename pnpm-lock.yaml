@@ -286,6 +286,9 @@ importers:
       '@platos/adapter-durable-runtime':
         specifier: workspace:*
         version: link:../../packages/adapters/durable-runtime
+      '@platos/adapter-keyring-envelope':
+        specifier: workspace:*
+        version: link:../../packages/adapters/keyring-envelope
       '@platos/adapter-model-router-providers':
         specifier: workspace:*
         version: link:../../packages/adapters/model-router-providers
@@ -373,6 +376,10 @@ importers:
       rxjs:
         specifier: ^7.8.1
         version: 7.8.2
+    devDependencies:
+      '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
 
   apps/mcp-stdio:
     dependencies:
@@ -1015,6 +1022,12 @@ importers:
         specifier: workspace:*
         version: link:../../kernel
 
+  packages/adapters/keyring-envelope:
+    dependencies:
+      '@platos/context-secrets':
+        specifier: workspace:*
+        version: link:../../contexts/secrets
+
   packages/adapters/model-router-providers:
     dependencies:
       '@ai-sdk/anthropic':
@@ -1119,6 +1132,9 @@ importers:
       '@platos/context-tools':
         specifier: workspace:*
         version: link:../../contexts/tools
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
       '@platos/tenancy-database':
         specifier: workspace:*
         version: link:../../../internal-packages/tenancy-database
@@ -1129,9 +1145,22 @@ importers:
 
   packages/adapters/redis-cache:
     dependencies:
+      '@platos/context-jobs':
+        specifier: workspace:*
+        version: link:../../contexts/jobs
       '@platos/context-memory':
         specifier: workspace:*
         version: link:../../contexts/memory
+      '@platos/kernel':
+        specifier: workspace:*
+        version: link:../../kernel
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
+    devDependencies:
+      '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
 
   packages/adapters/redis-ratelimit:
     dependencies:

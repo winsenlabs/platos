@@ -34,6 +34,7 @@ import { err, ok, environmentScope, asIdentifier, type EnvironmentScope, type Re
 import {
   authorizeEnvironmentOperator as mintVaultOperatorGrant,
   authorizeEnvironmentRuntime as mintVaultRuntimeGrant,
+  isSecretMaterial,
   type ActorId,
   type CredentialId,
   type CredentialMetadata,
@@ -190,17 +191,34 @@ export class InMemorySecrets implements SecretsPeer {
     return ok(material(plaintext));
   }
 
+  /**
+   * WIN-259 — the double REFUSES a bare string, exactly as the real vault does.
+   *
+   * A double that accepts one would let this context regress to handing
+   * `secrets` a serialisable plaintext while every suite here stayed green,
+   * which is the failure this project has recorded twice already: the doubles
+   * mint what the canonical store refuses, and the suites certify it.
+   */
+  private static writeOnly(plaintext: unknown): Result<string> {
+    if (!isSecretMaterial(plaintext)) {
+      return err(repositoryUnavailable("secret_input_not_write_only"));
+    }
+    return ok(plaintext.reveal());
+  }
+
   async createCredential(command: {
     readonly name: string;
     readonly provider?: string | null;
     readonly kind?: CredentialMetadata["kind"];
-    readonly plaintext: string;
+    readonly plaintext: SecretMaterial;
   }): Promise<Result<CredentialMetadata>> {
+    const admitted = InMemorySecrets.writeOnly(command.plaintext);
+    if (!admitted.ok) return err(admitted.error);
     return ok(
       this.seed({
         name: command.name,
         provider: command.provider ?? null,
-        plaintext: command.plaintext,
+        plaintext: admitted.value,
         ...(command.kind === undefined ? {} : { kind: command.kind }),
       }),
     );
@@ -208,11 +226,13 @@ export class InMemorySecrets implements SecretsPeer {
 
   async rotateCredential(command: {
     readonly credentialId: CredentialId;
-    readonly plaintext: string;
+    readonly plaintext: SecretMaterial;
   }): Promise<Result<CredentialMetadata>> {
+    const admitted = InMemorySecrets.writeOnly(command.plaintext);
+    if (!admitted.ok) return err(admitted.error);
     const held = this.credentials.get(command.credentialId);
     if (held === undefined) return err(repositoryUnavailable("credential_not_found"));
-    this.plaintexts.set(held.id, command.plaintext);
+    this.plaintexts.set(held.id, admitted.value);
     this.rotations.push(held.id);
     const rotated = { ...held, updatedAt: this.now() };
     this.credentials.set(held.id, rotated);

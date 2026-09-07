@@ -33,7 +33,7 @@
 // application half of `OrganizationMembership.userId -> User(id)`.
 
 import type { OrganizationId, Result } from "@platos/kernel";
-import { asIdentifier, err, ok } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult } from "@platos/kernel";
 
 import {
   OrganizationRole,
@@ -119,7 +119,7 @@ export function createCreateOrganization(dependencies: Dependencies): CreateOrga
     // `Result` from in here commits whatever it wrote before deciding — the
     // defect cost-monitoring shipped. The only way out of this block is a
     // rejection, and a rejection rolls back.
-    return unitOfWork.run(async (transaction) => {
+    return runResult(unitOfWork, async (transaction) => {
       await repository.saveOrganization(organization, transaction);
       await repository.saveOrganizationMembership(founderMembership, transaction);
       return ok({ organization, founderMembership });

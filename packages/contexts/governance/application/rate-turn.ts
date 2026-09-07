@@ -39,7 +39,7 @@
 // `remove` have one: this context reads outside a transaction and writes inside
 // exactly one.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   admitRatingComment,
@@ -97,7 +97,7 @@ export async function rateTurn(
   const target = await resolveTarget(dependencies, scope, command.turnId, actor.value.endUserId);
   if (!target.ok) return err(target.error);
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const existing = await dependencies.ratings.findForTurn(scope, command.turnId, actor.value.endUserId);
     if (!existing.ok) return err(existing.error);
     return dependencies.ratings.upsert(
@@ -126,7 +126,7 @@ export async function withdrawRating(
   const scope = actor.value.grant.scope;
   const target = await resolveTarget(dependencies, scope, command.turnId, actor.value.endUserId);
   if (!target.ok) return err(target.error);
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.ratings.remove(scope, target.value.turnId, actor.value.endUserId, transaction),
   );
 }

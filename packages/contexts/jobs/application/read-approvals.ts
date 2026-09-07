@@ -12,7 +12,7 @@
 // approval that was granted but never acted on indistinguishable from one that
 // was carried out.
 
-import { err, ok, type EnvironmentScope, type JsonValue, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type JsonValue, type Result } from "@platos/kernel";
 
 import { approvalNotFound, type ApprovalId } from "../domain/index.js";
 import type { JobsDependencies } from "./dependencies.js";
@@ -91,7 +91,7 @@ export async function markApprovalConsumed(
   if (!found.ok) return err(found.error);
   if (found.value === null) return err(approvalNotFound(command.approvalId));
 
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.approvals.markConsumed(
       command.scope,
       command.approvalId,

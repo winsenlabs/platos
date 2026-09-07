@@ -13,6 +13,7 @@ import { err, ok } from "@platos/kernel";
 import type { Result } from "@platos/kernel";
 
 import { requireMetadataAccess, requireSecretRead } from "../domain/access-rules.js";
+import { isMintedAuthorization } from "../domain/authorization.js";
 import type { EnvironmentAuthorization } from "../domain/authorization.js";
 import {
   environmentVariableKey,
@@ -22,7 +23,35 @@ import type { EnvironmentVariableMetadata } from "../domain/environment-variable
 import { environmentVariableUnavailable } from "../domain/errors.js";
 import type { SecretMaterial } from "../domain/secret-material.js";
 import type { SecretsDependencies } from "./dependencies.js";
-import { readSecret } from "./read-secret.js";
+import { readSecret, recordDeniedRead } from "./read-secret.js";
+
+/**
+ * WIN-259 — a denied environment-variable read is a denied SECRET read.
+ *
+ * The tier check here happens BEFORE the variable is resolved, so this path
+ * would otherwise deny and record nothing while the `readSecret` beneath it —
+ * which now writes a DENIED row — is never reached. The variable is resolved
+ * anyway, purely to learn which credential the caller was reaching for, and the
+ * evidence is written against that credential. A PLAIN variable resolves to no
+ * credential, so nothing is recorded: the schema has no row shape for it, which
+ * is the same measured limit `recordDeniedRead` states.
+ */
+async function recordDeniedVariableRead(
+  deps: SecretsDependencies,
+  authorization: EnvironmentAuthorization,
+  key: string,
+): Promise<void> {
+  // The minted check is repeated here rather than left to `recordDeniedRead`,
+  // because the lookup below is keyed on `environmentId` — and on a forged
+  // literal that field is whatever the forger typed, so deferring the check
+  // would spend a store read on an address the caller chose.
+  if (!isMintedAuthorization(authorization)) return;
+  const found = await deps.variables.findByKey(authorization.environmentId, key);
+  if (!found.ok || found.value === null) return;
+  const credentialId = found.value.credentialId;
+  if (credentialId === null) return;
+  await recordDeniedRead(deps, { authorization, credentialId, kind: "SECRET_REFERENCE" });
+}
 
 /** A read value, with its kind attached so a caller cannot confuse the two. */
 export type EnvironmentVariableValue =
@@ -39,7 +68,11 @@ export async function readEnvironmentVariable(
   query: ReadEnvironmentVariableQuery,
 ): Promise<Result<EnvironmentVariableValue>> {
   const granted = requireSecretRead(query.authorization);
-  if (!granted.ok) return err(granted.error);
+  if (!granted.ok) {
+    const probed = environmentVariableKey(query.key);
+    if (probed.ok) await recordDeniedVariableRead(deps, query.authorization, probed.value);
+    return err(granted.error);
+  }
   const key = environmentVariableKey(query.key);
   if (!key.ok) return err(key.error);
 

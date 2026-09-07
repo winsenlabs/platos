@@ -1,6 +1,8 @@
 import { unwrap } from "@platos/kernel";
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { secretMaterial } from "../domain/secret-material.js";
+
 import { inMemorySecrets } from "./in-memory-dependencies.js";
 import type { InMemorySecrets } from "./in-memory-dependencies.js";
 import { inMemoryGrants } from "./in-memory-grants.js";
@@ -24,7 +26,7 @@ async function setSecret(key: string, value: string): Promise<void> {
     await setEnvironmentVariable(context.dependencies, {
       authorization: grants.operator,
       key,
-      value,
+      value: secretMaterial(value),
       secret: true,
     }),
   );
@@ -36,7 +38,7 @@ describe("a PLAIN variable keeps its own value", () => {
       await setEnvironmentVariable(context.dependencies, {
         authorization: grants.operator,
         key: "LOG_LEVEL",
-        value: "debug",
+        value: secretMaterial("debug"),
         secret: false,
       }),
     );
@@ -56,7 +58,7 @@ describe("a PLAIN variable keeps its own value", () => {
       await setEnvironmentVariable(context.dependencies, {
         authorization: grants.operator,
         key: "LOG_LEVEL",
-        value,
+        value: secretMaterial(value),
         secret: false,
       });
     }
@@ -115,7 +117,7 @@ describe("a SECRET variable stores nothing readable of its own", () => {
     const failed = await setEnvironmentVariable(context.dependencies, {
       authorization: grants.operator,
       key: "OPENAI_API_KEY",
-      value: "sk-live-1",
+      value: secretMaterial("sk-live-1"),
       secret: true,
     });
     expect(failed.ok).toBe(false);
@@ -131,7 +133,7 @@ describe("dropping the secret drops the material behind it", () => {
     await setEnvironmentVariable(context.dependencies, {
       authorization: grants.operator,
       key: "OPENAI_API_KEY",
-      value: "not-a-secret",
+      value: secretMaterial("not-a-secret"),
       secret: false,
     });
 
@@ -174,7 +176,7 @@ describe("access rules carry over unchanged", () => {
     const denied = await setEnvironmentVariable(context.dependencies, {
       authorization: grants.readOnlyOperator,
       key: "LOG_LEVEL",
-      value: "debug",
+      value: secretMaterial("debug"),
       secret: false,
     });
     expect(denied.ok).toBe(false);
@@ -197,7 +199,7 @@ describe("access rules carry over unchanged", () => {
     await setEnvironmentVariable(context.dependencies, {
       authorization: grants.operator,
       key: "LOG_LEVEL",
-      value: "debug",
+      value: secretMaterial("debug"),
       secret: false,
     });
 
@@ -214,13 +216,13 @@ describe("access rules carry over unchanged", () => {
     const badKey = await setEnvironmentVariable(context.dependencies, {
       authorization: grants.operator,
       key: "lowercase",
-      value: "x",
+      value: secretMaterial("x"),
       secret: false,
     });
     const badValue = await setEnvironmentVariable(context.dependencies, {
       authorization: grants.operator,
       key: "LOG_LEVEL",
-      value: "",
+      value: secretMaterial(""),
       secret: false,
     });
     expect(badKey.ok).toBe(false);

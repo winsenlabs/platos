@@ -309,12 +309,82 @@ export const ADAPTERS = [
   { dir: "clickhouse-observability", port: "ObservabilitySink", owner: "observability", note: "the column-store observability client" },
   { dir: "objectstore-minio", port: "ObjectStore", owner: "files", note: "the S3-compatible object store client" },
   { dir: "redis-ratelimit", port: "RateLimiter", owner: "identity-access", note: "one namespaced keyspace, one owner" },
-  { dir: "redis-cache", port: "Cache", owner: "memory", note: "one namespaced keyspace, one owner" },
+  {
+    dir: "redis-cache",
+    port: "Cache",
+    owner: "memory",
+    // WIN-260 (M2.5) adds the SECOND binding on this directory, and it is the
+    // one the tree has been pointing at since M2.1. `jobs`' own
+    // `jobs-repository.ts` says outright why `IdempotencyStore` is not a
+    // canonical store — "an atomic claim-or-report in one round trip, a TTL the
+    // store enforces rather than a sweep, and an `XX` update that must not
+    // resurrect an expired key" — and names this directory as where it belongs.
+    // The composition root's bindings table says the same sentence.
+    //
+    // ONE VENDOR CLIENT, ONE DIRECTORY, TWO PORTS: the §15 amendment, applied a
+    // second time. `Cache` and `IdempotencyStore` are the same Redis connection
+    // and the same namespace discipline; a thirteenth directory would have been
+    // a second Redis client for the same server, which is the arrangement §15
+    // exists to refuse.
+    //
+    // The note stays "one namespaced keyspace" and drops "one owner", because
+    // that is now false and a generated README repeating it would be the exact
+    // drift `countWord` was written to remove.
+    //
+    // AND A THIRD, `kernel:RequestIdempotency` — M0.4 §2's `Idempotency-Key`
+    // envelope. It is a THIRD binding on the same directory for the same reason
+    // the second was one: reserve-once with a server-enforced TTL is what this
+    // client is for, and a thirteenth directory would have been a second Redis
+    // client for one Redis. It is a SEPARATE port from `jobs`' rather than a
+    // widening of it because the contracts differ — that one reserves a job
+    // execution keyed by an `ExecutionRequestId` and settles with a
+    // `JobExecutionErrorCode`, this one reserves an HTTP request keyed by a
+    // caller's header and settles with the bytes that went on the wire — and
+    // their keyspaces are disjoint by prefix so neither can read the other's
+    // records. Its owner is `kernel`, which is what gives this directory its
+    // `packages/kernel` project reference and moves EXPECTED_EDGE_COUNT.
+    additional: [
+      { port: "IdempotencyStore", owner: "jobs" },
+      { port: "RequestIdempotency", owner: "kernel" },
+    ],
+    note: "one namespaced keyspace behind one Redis client",
+  },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "one namespaced keyspace, one owner" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "the model-provider clients" },
   { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "one channel client" },
   { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
+  // WIN-259 (M2.4). THE THIRTEENTH DIRECTORY, and the first one added since the
+  // §15 amendment. It is a directory rather than a row on `postgres-tenancy`
+  // for the reason `packages/adapters/postgres-tenancy/src/secrets-repository.ts`
+  // already wrote down when it declined all three of these ports: `KeyRing`
+  // holds the ROOT KEY BYTES that open every envelope in the database, so
+  // putting it behind the database client would place both halves of a
+  // credential in one process, and one leak would yield the plaintext. §15's
+  // amendment says one VENDOR CLIENT is one directory; a key ring is not the
+  // ORM's client, and `AeadCipher` and `Hasher` own randomness and constant-time
+  // comparison rather than rows. So this is the case §15 does NOT cover, and the
+  // directory count moves for the first time.
+  //
+  // THREE BINDINGS AND ONE DIRECTORY, and that is forced rather than chosen.
+  // `AeadCipher.seal` takes a `RootKeyHandle` that only NAMES a version; the
+  // bytes behind it are resolvable exactly by whoever minted it. Split the ring
+  // and the cipher into two directories and the cipher can no longer resolve the
+  // handle without the ring exporting key material across a package boundary —
+  // which is the disclosure the opaque handle exists to prevent. `Hasher` joins
+  // them because `crypto.ts` says it is "deliberately separate from the cipher so
+  // a hash can never be mistaken for a reversible envelope" — separate PORT, same
+  // custodian.
+  {
+    dir: "keyring-envelope",
+    port: "KeyRing",
+    owner: "secrets",
+    additional: [
+      { port: "AeadCipher", owner: "secrets" },
+      { port: "Hasher", owner: "secrets" },
+    ],
+    note: "the versioned root key ring and the AES-256-GCM envelope over it",
+  },
 ];
 
 /**
@@ -347,17 +417,56 @@ export function adapterOwners(adapter) {
 }
 
 /** The projects an adapter references: one per distinct owner it serves. */
+/**
+ * Workspace projects an adapter depends on that are NOT one of its port owners.
+ *
+ * WIN-260 (M2.5). `packages/adapters/postgres-tenancy` implements seventeen
+ * contexts' ports and none of the kernel's, so no owner ever put `packages/kernel`
+ * on its edge list — and its `transaction.ts` now CONSUMES the kernel
+ * `CorrelationSource` port, so that the request identifier the process edge
+ * decided on reaches PostgreSQL's own transaction-local settings and can be read
+ * back off a committed row by a second connection.
+ *
+ * The edge is DECLARED rather than avoided. WIN-258 T7 faced the same choice and
+ * took `environmentScope` from `channels` instead, on the grounds that "adding
+ * `@platos/kernel` to this package's manifest for one function would add a
+ * workspace edge `scripts/arch/v1-project-graph.mjs` counts". That reasoning
+ * holds for a helper a SUITE borrows and not for a port the adapter implements
+ * against: a consumed port is the dependency, and hiding it behind a re-export
+ * from an unrelated context would make the graph say something false.
+ *
+ * One table, two derivations — the tsconfig reference (which IS the build DAG)
+ * and the manifest dependency — so the two cannot disagree. The count moves
+ * 111 -> 112 in BOTH `EXPECTED_EDGE_COUNT` here and the independent expectation
+ * in `scripts/arch/v1-project-graph.mjs`, which is maintained separately on
+ * purpose.
+ */
+export const ADAPTER_EXTRA_PROJECTS = Object.freeze({
+  "postgres-tenancy": ["packages/kernel"],
+});
+
+/** The workspace name a V1 project publishes under. */
+function packageNameForProject(project) {
+  if (project === "packages/kernel") return "@platos/kernel";
+  const context = /^packages\/contexts\/(.+)$/u.exec(project);
+  if (context !== null) return `@platos/context-${context[1]}`;
+  const adapter = /^packages\/adapters\/(.+)$/u.exec(project);
+  if (adapter !== null) return `@platos/adapter-${adapter[1]}`;
+  throw new Error(`no workspace package name for project ${project}`);
+}
+
 export function adapterOwnerProjects(adapter) {
-  return adapterOwners(adapter).map((owner) =>
-    owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`,
-  );
+  return [
+    ...adapterOwners(adapter).map((owner) =>
+      owner === "kernel" ? "packages/kernel" : `packages/contexts/${owner}`,
+    ),
+    ...(ADAPTER_EXTRA_PROJECTS[adapter.dir] ?? []),
+  ];
 }
 
 /** The workspace packages an adapter depends on: one per distinct owner. */
 export function adapterOwnerPackages(adapter) {
-  return adapterOwners(adapter).map((owner) =>
-    owner === "kernel" ? "@platos/kernel" : `@platos/context-${owner}`,
-  );
+  return adapterOwnerProjects(adapter).map(packageNameForProject);
 }
 
 // ADR M0.3 §4 names twelve concrete adapter DIRECTORIES and, after the §15
@@ -491,8 +600,47 @@ export function adapterOwnerPackages(adapter) {
 // permitted to write the row would be the one package unable to. It is SPREAD
 // rather than a property — its nine method names collide with nothing — and
 // EXPECTED_ADAPTER_COUNT is deliberately unmoved a SEVENTEENTH time.
-export const EXPECTED_ADAPTER_COUNT = 12;
-export const EXPECTED_BINDING_COUNT = 44;
+// 12 -> 13 (WIN-259 M2.4). THE FIRST TIME THIS PIN HAS MOVED, after seventeen
+// deliberate refusals above. Every one of those seventeen was the same case:
+// another OWNER of rows in the one PostgreSQL database, which §15 says is a row
+// on an existing directory. This is not that case. `keyring-envelope` holds no
+// rows and no database client; it holds the AES-256 root keys, and
+// `secrets-repository.ts` refused all three of its ports on exactly that ground
+// -- "putting it here would move the keys that decrypt every envelope into the
+// process that holds the database connection, so a single credential leak would
+// yield both halves. It belongs to a key-management adapter." This is that
+// adapter. The BINDING pin moves by three in the same breath, and the two
+// remain pinned separately so neither could have widened the other silently.
+// 44 -> 47 (WIN-259 M2.4). `secrets` binds its three CRYPTOGRAPHY ports --
+// `KeyRing`, `AeadCipher` and `Hasher` -- to the one directory that may hold a
+// key. Three and not one because they are three capabilities with three failure
+// modes: a ring that cannot name its active version is a configuration error, a
+// cipher that cannot open an envelope is a fail-closed read, and a hasher that
+// compares in variable time is a timing oracle. They share a DIRECTORY because
+// the opaque `RootKeyHandle` is resolvable only by its minter; they do not share
+// a PORT because collapsing them would let a caller hand a digest where an
+// envelope belongs.
+// 44 -> 45 (WIN-260, M2.5). `redis-cache:IdempotencyStore` for `jobs`. The
+// DIRECTORY count is unmoved at twelve for the eighteenth time, and here the
+// reason is the same one that held for the seventeen before it: another port
+// behind an EXISTING vendor client is a row on an existing directory, not a new
+// directory. `redis-cache` becomes the SECOND multi-owner directory in the
+// layout, which is why `EXPECTED_MULTI_OWNER_ADAPTERS` in
+// scripts/arch/v1-project-graph.mjs gains its first entry since it was written.
+// 45 -> 46 (WIN-260, M2.5, the errors-and-idempotency dimension).
+// `redis-cache:RequestIdempotency` for `kernel`. The DIRECTORY count is unmoved
+// at twelve for the nineteenth time, and the reason is again the one that held
+// for the eighteen before it: another port behind an EXISTING vendor client is a
+// row on an existing directory. `redis-cache` becomes the first directory in the
+// layout to carry THREE bindings outside `postgres-tenancy`, and the first to
+// own a kernel port alongside two context ports — which is what gives it the
+// `packages/kernel` project reference counted in EXPECTED_EDGE_COUNT below.
+// M2 INTEGRATION. The DIRECTORY pin takes WIN-259's move and nothing from
+// WIN-260, whose two bindings are rows on a directory that already existed:
+// 12 + 1 = 13. The BINDING pin takes both: 44 + 3 + 2 = 49. The two moving by
+// different amounts is exactly what the separate pins exist to show.
+export const EXPECTED_ADAPTER_COUNT = 13;
+export const EXPECTED_BINDING_COUNT = 49;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -513,7 +661,13 @@ const KERNEL_PORTS = [
 
 export const OWNED_ROOTS = ["packages/kernel", "packages/contexts", "packages/adapters", "apps/core-api", "apps/mcp-stdio"];
 export const ROOT_SOLUTION_PATH = "tsconfig.json";
-export const EXPECTED_PROJECT_COUNT = 32;
+// 32 -> 33 (WIN-259 M2.4). `packages/adapters/keyring-envelope`, the
+// thirteenth adapter directory. It is the first V1 project added since the
+// layout was drawn, and it is a PROJECT rather than a folder because ADR M0.3
+// §2 lets only an adapter package implement a driven port: without its own
+// tsconfig and its own package it could not be referenced by the composition
+// root, and `secrets`' three cryptography ports would have stayed unimplemented.
+export const EXPECTED_PROJECT_COUNT = 33;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -661,21 +815,88 @@ export const EXPECTED_PROJECT_COUNT = 32;
 // graph either way. The independent expectation in
 // scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
 // separately on purpose.
-export const EXPECTED_EDGE_COUNT = 111;
+// 111 -> 113 (WIN-259 M2.4). TWO edges and one new project.
+// `packages/adapters/keyring-envelope` -> `packages/contexts/secrets` is the
+// owner edge, and `apps/core-api` -> `packages/adapters/keyring-envelope` is the
+// composition-root edge every adapter gets. 111 + 2 = 113, and the arithmetic is
+// the whole delta: an adapter reaches exactly its owners, and exactly one project
+// reaches it.
+//
+// IT CANNOT CREATE A CYCLE. `secrets` is a context, and ADR M0.3 §1 gives it the
+// kernel alone as a dependency -- it is the strictest allow-list in the table --
+// so it names no adapter and cannot name this one. `apps/core-api` is the sink of
+// the whole graph. The independent expectation in
+// scripts/arch/v1-project-graph.mjs carries the same delta and is maintained
+// separately on purpose.
+//
+// WIN-260 (M2.5): 111 -> 112, and this one is NOT an owner edge.
+// `packages/adapters/postgres-tenancy` -> `packages/kernel`, because
+// `transaction.ts` consumes the kernel `CorrelationSource` port so the request
+// identifier the process edge decided on is stamped into PostgreSQL's own
+// transaction-local settings and can be read back off a committed row. Every
+// other edge into this directory carries a canonical-store port an owner
+// PUBLISHES; this one carries a port the adapter CONSUMES, which is why
+// `ADAPTER_EXTRA_PROJECTS` exists rather than a seventeenth owner being invented
+// to hang it on. No cycle: the kernel imports nothing (`kernel-is-leaf`), so an
+// edge INTO it can never come back out.
+//
+// WIN-260 (M2.5): 112 -> 113. `packages/adapters/redis-cache` ->
+// `packages/contexts/jobs`, carrying that context's `IdempotencyStore`. A
+// SECOND owner edge on a directory that had one, which is a reference per
+// PACKAGE and not per port, so one new binding is exactly one new edge. It
+// cannot create a cycle: ADR M0.3 §1 gives `jobs` no dependency on `memory`,
+// contexts are leaves relative to adapters, and an adapter is a leaf of the
+// context DAG either way.
+//
+// WIN-260 (M2.5), the errors-and-idempotency dimension: 113 -> 114.
+// `packages/adapters/redis-cache` -> `packages/kernel`, carrying the kernel's
+// `RequestIdempotency` port. A THIRD owner edge on a directory that had two, and
+// a reference per PACKAGE rather than per port, so one new binding is again
+// exactly one new edge. It cannot create a cycle for the reason the
+// `postgres-tenancy` -> kernel edge cannot: the kernel imports nothing
+// (`kernel-is-leaf`), so an edge INTO it never comes back out.
+//
+// M2 INTEGRATION: 111 + 2 (WIN-259's owner and composition-root edges for the
+// thirteenth directory) + 3 (WIN-260's postgres-tenancy -> kernel consumer edge
+// and redis-cache's two further owner edges) = 116. READ BACK from
+// `gen-v1-skeleton --check` rather than trusted from this arithmetic.
+export const EXPECTED_EDGE_COUNT = 116;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
 // references that ARE the 94-edge DAG) and its README stay generated forever.
 export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.md"];
 
-// Scaffolding is invariant for the life of the V1 layout:
-// 32 projects x 3 files + the root solution tsconfig.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 97;
+// Scaffolding is one manifest, one tsconfig and one README per project, plus the
+// root solution tsconfig:
+// 33 projects x 3 files + 1 = 100.
+//
+// 97 -> 100 (WIN-259 M2.4). The layout was NOT invariant after all, and the
+// comment that said so is corrected rather than deleted: it was true for as long
+// as every port had a home, and `secrets`' three cryptography ports did not.
+// The thirteenth directory brings the three files every project brings.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 100;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
+// kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
+//
+// 104 -> 106 (WIN-259 M2.4). The thirteenth adapter's `src/index.ts` and
+// `src/adapter.ts`. Both are emitted for an UNADOPTED project and immediately
+// released by this issue's adoption, which is why the released count moves by
+// two in the same run. Raising the CEILING rather than the floor is what keeps
+// un-adoption failing closed: the check refuses a placeholder count ABOVE this
+// number, so the two files reappear as MISSING if the adoption entry is ever
+// removed while the real source is still on disk.
 // kernel 3 + contexts 17x4 + adapters 12x2 + core-api 8 + mcp-stdio 1.
-// This is the same 104-file set the architecture gate scans.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 104;
+// This is the same 104-file set the architecture gate scans. It is a property of
+// the SKELETON and not of the tree: adoption releases a project's placeholders
+// from the emitted set, and the number below is what a fully UNADOPTED skeleton
+// would hold, which is why it has never moved and does not move now.
+// M2 INTEGRATION: 106. Only WIN-259 moves this pin, because only WIN-259 adds a
+// DIRECTORY; WIN-260 adopts `redis-cache`, and adoption releases placeholders
+// from the emitted set rather than adding to what a fully unadopted skeleton
+// would hold.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 106;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -691,7 +912,7 @@ export const EXPECTED_PLACEHOLDER_FILE_COUNT = 104;
 // + EXTRA real files), and `gen-v1-skeleton.test.mjs` asserts exactly that.
 // ---------------------------------------------------------------------------
 export const ADOPTED_PROJECTS = [
-  "packages/kernel", // WIN-256 — the nine decoupling ports and the value objects
+  "packages/kernel", // WIN-256 — the decoupling ports and the value objects (nine at WIN-256; CorrelationSource is the tenth, WIN-260)
   "packages/contexts/identity-access", // WIN-256 — the DAG leaf that kills the wrong-way auth edges
   "packages/contexts/tenancy", // WIN-256 — the org/project/environment tree and its authorization
   "packages/contexts/secrets", // WIN-256 — the credential vault and the encryption boundary
@@ -712,8 +933,10 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/model-router-providers", // WIN-256 — the ModelRouter implementation and THE sole holder of the inference SDK
   "packages/adapters/postgres-tenancy", // WIN-258 — the TenancyRepository over PostgreSQL and THE sole holder of the tenancy-database client
   "packages/adapters/outbox", // WIN-258 T4 — the kernel OutboxWriter: the envelope, the ordered identifier, every refusal, and the store seam the one ORM home implements
+  "packages/adapters/redis-cache", // WIN-260 — the memory Cache and the jobs IdempotencyStore over ONE Redis client: reserve-once, the TTL the store enforces, and the update that must not resurrect an expired key
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
+  "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
 ];
 
 // ---------------------------------------------------------------------------
@@ -923,8 +1146,23 @@ const APP_PROJECTS = new Set(["apps/core-api", "apps/mcp-stdio"]);
 // the package root sits outside `src/**`. Moving it under `src/` would stop
 // vitest discovering it. The three globs are spelled out rather than relying on
 // the two defaults surviving a CLI override.
+//
+// WIN-260 (M2.5) adds `packages/adapters/redis-cache` for exactly the same
+// reason and with a byte-identical run: it ships a real-Redis suite that proves
+// two identical requests racing produce one execution, which needs a container
+// and therefore a daemon `pnpm test:v1-packages` does not have.
+//
+// And `apps/core-api` for the third time and the same reason: WIN-260's
+// errors-and-idempotency dimension proves M0.4 §2's `Idempotency-Key` gate end to
+// end — a real process, a real socket, a real Redis and two identical requests
+// racing — which is a container, which is a daemon the typecheck job does not
+// have. The run is byte-identical to the two above so the three cannot drift.
 const PROJECT_TEST_SCRIPTS = {
   "packages/adapters/postgres-tenancy":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  "packages/adapters/redis-cache":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  "apps/core-api":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
 
@@ -1042,6 +1280,14 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   "postgres-tenancy": {
     "@platos/tenancy-database": "workspace:*",
   },
+  // WIN-260 (M2.5). `ioredis` is the Redis client, and this is the FIRST of the
+  // three redis-* directories to hold one. The specifier is byte-identical to
+  // `apps/agent`'s, so pnpm resolves it to the entry already in pnpm-lock.yaml
+  // (ioredis@5.10.1) instead of opening a new resolution — the same discipline
+  // the tenancy-database entry above states.
+  "redis-cache": {
+    ioredis: "^5.6.1",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -1066,6 +1312,14 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
 const ADAPTER_DEV_DEPENDENCIES = {
   "postgres-tenancy": {
     "@testcontainers/postgresql": "^10.28.0",
+  },
+  // WIN-260 (M2.5). The Redis container the reserve-once race is proved against.
+  // A DEV dependency for the same reason the PostgreSQL one is: a container
+  // library that followed the adapter into the production image would be in the
+  // SBOM of something that never starts a container. Byte-identical to the
+  // specifier already in the lockfile (@testcontainers/redis@10.28.0).
+  "redis-cache": {
+    "@testcontainers/redis": "^10.28.0",
   },
 };
 
@@ -1210,7 +1464,27 @@ const CORE_API_RUNTIME_DEPENDENCIES = {
   rxjs: "^7.8.1",
 };
 
-function appManifest({ name, description, dependencies, scripts, externalDependencies = {} }) {
+// What apps/core-api needs to TEST itself and must not ship with (WIN-260, the
+// errors-and-idempotency dimension). `@testcontainers/redis` is the container
+// the `Idempotency-Key` gate's race is proved against, end to end, through the
+// real process. A DEV dependency for the same reason `postgres-tenancy`'s and
+// `redis-cache`'s are: a container library that followed the composition root
+// into the production image would sit in the SBOM of a process that never starts
+// a container. The specifier is byte-identical to the two already in the
+// lockfile, so pnpm resolves it to @testcontainers/redis@10.28.0 rather than
+// opening a new resolution.
+const CORE_API_DEV_DEPENDENCIES = {
+  "@testcontainers/redis": "^10.28.0",
+};
+
+function appManifest({
+  name,
+  description,
+  dependencies,
+  scripts,
+  externalDependencies = {},
+  devDependencies = {},
+}) {
   return packageManifest({
     scripts,
     name,
@@ -1218,6 +1492,7 @@ function appManifest({ name, description, dependencies, scripts, externalDepende
     main: "./dist/main.js",
     types: "./dist/main.d.ts",
     dependencies: { ...workspaceDependencies(dependencies), ...externalDependencies },
+    devDependencies,
   });
 }
 
@@ -1432,6 +1707,10 @@ export function renderSkeleton(
     description: "THE single V1 deployable: the composition root and every transport.",
     dependencies: coreDependencies,
     externalDependencies: CORE_API_RUNTIME_DEPENDENCIES,
+    // Only once the project is adopted, exactly as `adapterManifest` gates its
+    // own: a generated placeholder has no suite to run and gets no test-only
+    // dependency.
+    devDependencies: adoptedSet(adopted).has("apps/core-api") ? CORE_API_DEV_DEPENDENCIES : {},
   }));
   put("apps/core-api/tsconfig.json", projectTsconfig("apps/core-api", ["src/**/*.ts"], references.get("apps/core-api"), "src"));
   put(

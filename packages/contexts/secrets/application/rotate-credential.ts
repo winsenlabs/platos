@@ -23,7 +23,8 @@ import { nextSecretRevision } from "../domain/ids.js";
 import type { CredentialId } from "../domain/ids.js";
 import { toCredentialMetadata } from "../domain/metadata.js";
 import type { CredentialMetadata } from "../domain/metadata.js";
-import { acceptPlaintext } from "../domain/secret-material.js";
+import { requireWriteOnly } from "../domain/secret-material.js";
+import type { SecretMaterial } from "../domain/secret-material.js";
 import { recordAudit } from "./audit-log.js";
 import type { SecretsDependencies } from "./dependencies.js";
 import { sealSecret } from "./envelope-operations.js";
@@ -32,7 +33,8 @@ import { inTransaction } from "./transaction.js";
 export interface RotateCredentialCommand {
   readonly authorization: EnvironmentAuthorization;
   readonly credentialId: CredentialId;
-  readonly plaintext: string;
+  /** WRITE-ONLY, for the reason `CreateCredentialCommand.plaintext` gives. */
+  readonly plaintext: SecretMaterial;
   /** Defers purging of the envelope being retired. It does NOT keep it readable. */
   readonly readableUntil?: Date;
 }
@@ -43,7 +45,7 @@ export async function rotateCredential(
 ): Promise<Result<CredentialMetadata>> {
   const granted = requireSecretMutation(command.authorization);
   if (!granted.ok) return err(granted.error);
-  const material = acceptPlaintext(command.plaintext);
+  const material = requireWriteOnly("plaintext", command.plaintext);
   if (!material.ok) return err(material.error);
 
   const authorization = granted.value;

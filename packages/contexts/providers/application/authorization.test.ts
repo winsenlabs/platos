@@ -1,5 +1,5 @@
-import { asIdentifier, environmentScope } from "@platos/kernel";
-import { isMintedAuthorization } from "@platos/context-secrets";
+import { asIdentifier, environmentScope, unwrap } from "@platos/kernel";
+import { acceptPlaintext, isMintedAuthorization } from "@platos/context-secrets";
 import { isEnvironmentOperatorAuthorization, requireAuthorization } from "@platos/context-tenancy";
 import { describe, expect, it } from "vitest";
 
@@ -36,6 +36,79 @@ describe("the real published check cannot be satisfied by a literal", () => {
     for (const value of [null, undefined, "grant", 42, {}]) {
       expect(requireAuthorization(value).ok).toBe(false);
     }
+  });
+});
+
+describe("the vault double refuses exactly what the real vault refuses", () => {
+  // WIN-259. THIS IS THE CASE THAT MAKES `InMemorySecrets.writeOnly` KILLABLE
+  // ON ITS OWN, and it is here because the guard's own ledger entry could not
+  // name one: every OTHER case in this package reaches the double through a use
+  // case, and the use cases now wrap at their own seam, so the double never sees
+  // a bare string and a double that accepted one changed nothing measurable.
+  //
+  // The refusal half is the mutation's target. The ACCEPTANCE half is what
+  // stops the pair being an assertion about a value this package controls: the
+  // material is minted by `acceptPlaintext`, the ONE mint `secrets` publishes,
+  // so the double is being held to recognising exactly what the real vault
+  // produces. If `secrets` changed what a write-only value is, this goes red in
+  // the package that depends on it rather than only in the package that
+  // declares it — the same reason the literal-rejection cases at the top of this
+  // file are pinned here and not only in `tenancy`.
+  it("refuses a bare string and accepts what acceptPlaintext mints", async () => {
+    const context = buildProvidersTestContext();
+    const refused = await context.secrets.createCredential({
+      name: "BARE",
+      provider: "openai",
+      plaintext: "sk-live-bare" as never,
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) throw new Error("unreachable");
+    expect(refused.error.details).toMatchObject({ reason: "secret_input_not_write_only" });
+
+    const admitted = await context.secrets.createCredential({
+      name: "MINTED",
+      provider: "openai",
+      plaintext: unwrap(acceptPlaintext("sk-live-minted")),
+    });
+    expect(admitted.ok).toBe(true);
+  });
+
+  it("refuses a bare string on ROTATION too, not only on creation", async () => {
+    const context = buildProvidersTestContext();
+    const created = unwrap(
+      await context.secrets.createCredential({
+        name: "ROTATED",
+        provider: "openai",
+        plaintext: unwrap(acceptPlaintext("sk-live-one")),
+      }),
+    );
+    const refused = await context.secrets.rotateCredential({
+      credentialId: created.id,
+      plaintext: "sk-live-two" as never,
+    });
+    expect(refused.ok).toBe(false);
+    if (refused.ok) throw new Error("unreachable");
+    expect(refused.error.details).toMatchObject({ reason: "secret_input_not_write_only" });
+  });
+
+  it("refuses a value that MIMICS material but answers the wrong redaction", async () => {
+    // `isSecretMaterial` asks a function to answer with a literal only the
+    // `secrets` module knows, so a hand-built holder with the right shape is
+    // still not material. Without this the refusal above could be satisfied by a
+    // shape check, and a shape check is what the whole write-only boundary
+    // exists instead of.
+    const context = buildProvidersTestContext();
+    const mimic = {
+      reveal: () => "sk-live-mimic",
+      toJSON: () => "[redacted]",
+      toString: () => "[redacted]",
+    };
+    const refused = await context.secrets.createCredential({
+      name: "MIMIC",
+      provider: "openai",
+      plaintext: mimic as never,
+    });
+    expect(refused.ok).toBe(false);
   });
 });
 

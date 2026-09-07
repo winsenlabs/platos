@@ -671,19 +671,93 @@ test("the live selectors scan an exact nonzero source census", () => {
   // branches reported a ZERO delta here, so this gate was in none of their
   // lists; the merged scan reads back 1452 + 16 = 1468.
   //
+  // WIN-259 (M2.4) 1468 -> 1492. TWENTY-FOUR files: FOURTEEN in the new
+  // `packages/adapters/keyring-envelope` (eight source, six suites), TWO in
+  // `packages/adapters/postgres-tenancy`, TWO in `packages/contexts/providers`
+  // and SIX in `packages/contexts/secrets`. 14 + 2 + 2 + 6 = 24.
+  //
+  // NINE OF THE TWENTY-FOUR ARE THE LEGACY-ENVELOPE MIGRATION: two decoder-side
+  // modules and one use case, each with the suite that falsifies it, the domain
+  // rule with its own suite, and the real-PostgreSQL suite that asks the database
+  // what it refuses.
+  //
+  // NONE OF THE TWENTY-FOUR IS IN THE WARNING BAND, and the largest is the
+  // migration's use-case suite at 251 effective lines. That is worth stating for
+  // a tranche whose files carry the longest headers in the tree — the legacy
+  // wire-vector fixture is 141 lines of which 62 are comment — because effective
+  // lines exclude comments and a reader comparing raw counts will find them very
+  // different.
+  //
   // NONE OF THE SEVEN IS IN THE WARNING BAND EITHER, and the largest is the
   // conversations suite at 350 effective lines. That is worth stating because
   // this tranche's files are the most heavily COMMENTED in the directory —
   // every pin carries the measurement it came from — and effective lines
   // exclude comments, so a reader comparing raw line counts with this figure
   // will find them very different and should.
-  assert.equal(result.fileCount, 1468);
+  // WIN-259 (M2.4) 1468 -> 1473, +5 files under the four selectors:
+  // packages/kernel/src/vo/redaction.ts and its suite (the redactor the Logger
+  // port always described), packages/contexts/secrets/application/
+  // write-only-inputs.test.ts and denied-read-audit.test.ts, and
+  // packages/adapters/postgres-tenancy/src/secrets-variable-fence.
+  // integration.test.ts (the split this file's own band entry pre-registered).
+  // 2 + 2 + 1 = 5. apps/core-api/src/runtime/log-redaction.test.ts is NOT among
+  // them: the fourth selector is `apps/core-api/src/transports/**` only.
+  //
+  // WIN-259 (M2.4), SECOND PASS 1473 -> 1477, +4 and all four in `secrets`: the
+  // SECRET REFERENCE. `domain/secret-handle.ts` with its suite, and
+  // `application/secret-handles.ts` with its suite. No adapter and no other
+  // context moves — the reference is a VALUE, so it adds no row, no store and no
+  // port implementation; the one port it widens (`AeadCipher`) is widened IN
+  // PLACE, and a widened file is not a new one.
+  //
+  // M2 INTEGRATION. 1468 + 9 (projection) + 24 (lifecycle) = 1501. The
+  // lifecycle dimension's own figure was 1492 and the projection dimension's
+  // 1477; both were pinned against the same base for themselves alone, and
+  // their directories do not overlap, so the composition is their sum.
+  //
+  // WIN-260 (M2.5): 1468 -> 1482, and ELEVEN of the fourteen were already in the
+  // tree before this pass — the pin and the scan had parted company on the
+  // errors-and-idempotency dimension's first landing and nobody moved it.
+  //
+  // THE APPS SELECTOR IS `apps/core-api/src/transports/**` AND NOTHING WIDER,
+  // which is why the arithmetic here is not the arithmetic in the v1 ledger:
+  // the nine files this pass added under `apps/core-api/src/http/` are outside
+  // every selector and are counted by no term below. What IS counted is +11
+  // already present (the kernel `CorrelationSource` port, seven files under
+  // `packages/adapters/redis-cache/src`, the `postgres-tenancy` correlation
+  // suite, and `src/transports/error-status.ts` with its suite) and +3 from this
+  // pass (the kernel `RequestIdempotency` port, and the Redis implementation of
+  // it with its suite). 1468 + 11 + 3 = 1482.
+  //
+  // NONE of the fourteen is in the warning band; the largest is the redis-cache
+  // reserve-once integration suite, comfortably under 400 effective lines.
+  //
+  // M2 INTEGRATION: 1468 + 9 (projection) + 24 (lifecycle) + 14 (errors) = 1515.
+  // WIN-260 (M2.5) adds SIX, and for the first time since tranche 2 none of them
+  // is in `packages/adapters/postgres-tenancy`: THREE in `packages/kernel`
+  // (`vo/retry.ts` and the two behaviour suites — the kernel is the FIRST
+  // selector in this list and had not moved it before), ONE in
+  // `packages/contexts/eventing` (the kernel-policy conformance suite) and TWO
+  // in `packages/adapters/outbox` (`src/flush.ts` and its suite).
+  // `apps/core-api/src/runtime/**` is NOT a selector, so this dimension's
+  // shutdown-drain pair is outside this scan even though it is inside the
+  // arch-boundaries one — the two censuses differ by exactly those two files,
+  // which is worth stating so a reader does not try to reconcile 1501 with 1474.
+  // 1468 + 6 = 1474, read back from the scan.
+  //
+  // M2 INTEGRATION, ALL FOUR: 1468 + 9 + 24 + 14 + 6 = 1521.
+  assert.equal(result.fileCount, 1521);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
   assert.equal(
     result.fileCount,
-    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2
+    328 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 4 + 20 + 54 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 +
+      // projection 9, lifecycle 24, errors-and-idempotency 14, outbox 6.
+      2 + 2 + 1 + 4 +
+      14 + 2 + 2 + 6 +
+      2 + 12 +
+      3 + 1 + 2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -712,7 +786,70 @@ test("the live selectors scan an exact nonzero source census", () => {
   // nowhere else: the plan dimension implements no port, so neither the kernel
   // nor the contexts term moves. 366 + 7 = 373, and the merged tranche's other
   // nine land in that same term: 366 + 16 = 382.
-  assert.equal(result.fileCount, 20 + 1060 + 382 + 6);
+  //
+  // WIN-259 (M2.4) LANDS IN THREE OF THE FOUR TERMS, which is the one thing
+  // about its delta worth stating: the KERNEL term moves for the first time
+  // since the skeleton (20 -> 22, `src/vo/redaction.ts` and its suite), the
+  // CONTEXTS term takes the two write-only and denied-audit suites in `secrets`
+  // (1060 -> 1062), and the ADAPTERS term takes the fence split this file's own
+  // band entry pre-registered (382 -> 383). The APPS term does not move: its
+  // selector is `apps/core-api/src/transports/**` and the redaction suite lives
+  // under `src/runtime/`. 22 + 1062 + 383 + 6 = 1473.
+  //
+  // THE SECOND PASS MOVES EXACTLY ONE TERM. The secret reference is four files
+  // in `packages/contexts/secrets` and nowhere else, so the CONTEXTS term goes
+  // 1062 -> 1066 and the kernel, adapters and apps terms are unchanged.
+  // 22 + 1066 + 383 + 6 = 1477.
+  // WIN-259 (M2.4) MOVES BOTH THE ADAPTERS AND THE CONTEXTS TERM, which no
+  // tranche-5 store did. Adapters 382 -> 398: FOURTEEN for the thirteenth
+  // directory and TWO for the postgres row. Contexts 1060 -> 1068: `providers`
+  // gains the eviction helper and its suite, `secrets` the sweep and its suite
+  // plus the legacy-envelope domain rule, the migration use case and a suite
+  // each. The contexts term moves because this issue adds USE CASES rather than
+  // only implementing ports that already existed. Kernel and apps are untouched.
+  //
+  // THE LEGACY-ENVELOPE MIGRATION IS FOUR IN THE CONTEXTS TERM AND FIVE IN THE
+  // ADAPTERS TERM, and the four-and-four core of that is the deliverable's shape
+  // rather than a coincidence: the domain judges and the adapter decodes, so each
+  // half is one module plus one fixture-or-use-case with the suite that falsifies
+  // it. The fifth is the postgres suite, which belongs to NEITHER half — it is
+  // where the two claims meet a database that is not either one's.
+  //
+  // M2 INTEGRATION SUMS THE TWO PER TERM, which is the only way the four-way
+  // disjoint scan can survive a composition: the KERNEL term moves only for
+  // projection (20 -> 22), the CONTEXTS term takes both (1060 + 6 + 8 = 1074),
+  // the ADAPTERS term takes both (382 + 1 + 16 = 399), and the APPS term is
+  // untouched by either, because its selector is
+  // `apps/core-api/src/transports/**` only. 22 + 1074 + 399 + 6 = 1501.
+  // WIN-260 (M2.5) moves THREE of the four terms and not the contexts one, which
+  // is the claim worth making: this dimension implements ports and a transport
+  // and widens no context. Kernel 20 -> 22 (`CorrelationSource` and
+  // `RequestIdempotency`), adapters 382 -> 392 (seven redis-cache files plus its
+  // request-store pair, and the postgres-tenancy correlation suite), apps
+  // 6 -> 8 (`error-status.ts` and its suite; the nine files under `src/http/`
+  // are outside the transports selector). 22 + 1060 + 392 + 8 = 1482.
+  //
+  // M2 INTEGRATION SUMS EVERY TERM SEPARATELY, which is the only way a four-way
+  // disjoint scan survives a composition. KERNEL 20 + 2 (projection's redactor
+  // and its suite) + 2 (the two WIN-260 ports) = 24. CONTEXTS 1060 + 6 + 8 =
+  // 1074, all of it WIN-259's. ADAPTERS 382 + 1 + 16 + 10 = 409. APPS 6 + 2 = 8,
+  // and only the errors dimension moves it, because the selector is
+  // `apps/core-api/src/transports/**` and nothing wider.
+  // 24 + 1074 + 409 + 8 = 1515.
+  // WIN-260 (M2.5) is the FIRST dimension to move the KERNEL term of this split:
+  // 20 -> 23 for `vo/retry.ts` and the two behaviour suites. Contexts 1060 ->
+  // 1061 (the eventing conformance suite), adapters 382 -> 384 (the outbox
+  // flush and its suite), and the core-api TRANSPORTS term stays 6 — this
+  // dimension's shutdown work is under `src/runtime/`, which is not a selector.
+  // 23 + 1061 + 384 + 6 = 1474.
+  //
+  // M2 INTEGRATION SUMS EACH TERM ACROSS ALL FOUR DIMENSIONS:
+  //   KERNEL   20 + 2 (redactor + suite) + 2 (the two WIN-260 ports) + 3 = 27
+  //   CONTEXTS 1060 + 6 + 8 (both WIN-259) + 1 = 1075
+  //   ADAPTERS 382 + 1 + 16 + 10 + 2 = 411
+  //   APPS     6 + 2 (error-status and its suite) = 8
+  // 27 + 1075 + 411 + 8 = 1521.
+  assert.equal(result.fileCount, 27 + 1075 + 411 + 8);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -819,6 +956,24 @@ test("the live selectors scan an exact nonzero source census", () => {
   // store modules beside them are all well inside the band, because the twenty
   // methods of `MemoryRepository` were split by whose rows they touch and by what
   // they do before any of them was written.
+  // WIN-260 (M2.5) MOVES TEN OF THESE EIGHTEEN, all in the WARNING band and none
+  // near the 500-line ERROR, and the arithmetic is one import line per file plus
+  // the comments that say why:
+  //   conversations-conformance.ts                  485 -> 486  (+1)
+  //   conversations-transaction.integration.test.ts 401 -> 403  (+2)
+  //   cost-constraints.integration.test.ts          453 -> 454  (+1)
+  //   files-scope.integration.test.ts               467 -> 468  (+1)
+  //   governance-conformance.ts                     418 -> 420  (+2)
+  //   governance-rules.integration.test.ts          424 -> 425  (+1)
+  //   memory-constraints.integration.test.ts        406 -> 409  (+3)
+  //   providers-conformance.ts                      421 -> 423  (+2)
+  //   secrets-rules.integration.test.ts             439 -> 441  (+2)
+  //   skills-constraints.integration.test.ts        438 -> 435  (-3)
+  // The last one SHRANK: two multi-line `.run(` chains became single-line
+  // `runResult(` calls. A dimension that only ever grew files would be one that
+  // never simplified anything, so the one negative is worth as much as the nine
+  // positives. EIGHT of the eighteen did not move at all, which is what says this
+  // list was measured rather than regenerated wholesale.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
@@ -827,17 +982,17 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/conversations-conformance.ts",
-      effectiveLines: 485,
+      effectiveLines: 486,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/conversations-transaction.integration.test.ts",
-      effectiveLines: 401,
+      effectiveLines: 403,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/cost-constraints.integration.test.ts",
-      effectiveLines: 453,
+      effectiveLines: 454,
       severity: "warning",
     },
     {
@@ -852,17 +1007,17 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/files-scope.integration.test.ts",
-      effectiveLines: 467,
+      effectiveLines: 468,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/governance-conformance.ts",
-      effectiveLines: 418,
+      effectiveLines: 420,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
-      effectiveLines: 424,
+      effectiveLines: 425,
       severity: "warning",
     },
     {
@@ -872,27 +1027,28 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/memory-constraints.integration.test.ts",
-      effectiveLines: 406,
+      effectiveLines: 409,
       severity: "warning",
     },
     {
       path: "packages/adapters/postgres-tenancy/src/providers-conformance.ts",
-      effectiveLines: 421,
+      effectiveLines: 423,
       severity: "warning",
     },
-    {
-      // WIN-258 TRANCHE 7's FENCE PUT THIS FILE IN THE BAND. It was 353
-      // effective lines before the concurrency and pooling dimension added the
-      // `EnvironmentVariable` version fence's cases to it — the loser refused,
-      // the insert race, and the rotation that rolls back with the losing write
-      // — and 439 after. It is named here rather than split because the seam is
-      // not obvious: every case in it is one store's RULES, and the fence is a
-      // rule of exactly that store. A further case takes it past 460 and the
-      // split to make then is the fence's own `describe`, moved whole.
-      path: "packages/adapters/postgres-tenancy/src/secrets-rules.integration.test.ts",
-      effectiveLines: 439,
-      severity: "warning",
-    },
+    // WIN-258 TRANCHE 7's FENCE PUT `secrets-rules.integration.test.ts` IN THE
+    // BAND AND WIN-259 (M2.4) TOOK IT BACK OUT, by making the split that entry
+    // pre-registered. Its note read: "A further case takes it past 460 and the
+    // split to make then is the fence's own `describe`, moved whole." The
+    // further case is a DENIED audit outcome reaching PostgreSQL for the first
+    // time, which took the file to 483; the `describe` was moved whole and
+    // unedited into `secrets-variable-fence.integration.test.ts`.
+    //
+    // 328 + 182 = 510 against a pre-split 483, and the 27-line difference is the
+    // second file's own header and preamble — the imports, the harness lifecycle
+    // and the id sequence a standalone suite has to carry. Neither file is in
+    // the band any more, so NEITHER HAS A ROW HERE, and the non-vacuity
+    // assertion below is what keeps that from being a silent deletion: the band
+    // list is exact, so a file leaving it has to leave the count too.
     {
       // WIN-258 T5. `skills`' constraints suite, and a finding rather than a
       // twelfth file, which is a decision rather than an omission.
@@ -912,7 +1068,7 @@ test("the live selectors scan an exact nonzero source census", () => {
       // is already its own `describe`. A sixth case in that block takes it past
       // 500 and the split is that block, moved whole.
       path: "packages/adapters/postgres-tenancy/src/skills-constraints.integration.test.ts",
-      effectiveLines: 438,
+      effectiveLines: 435,
       severity: "warning",
     },
     {

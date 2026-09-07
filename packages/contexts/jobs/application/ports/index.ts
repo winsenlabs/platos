@@ -58,30 +58,63 @@ export * from "./job-handler-runtime.js";
 // reaching for `@platos/kernel` directly would be a second import edge into the
 // kernel from a package whose only declared dependency is the context whose
 // ports it satisfies.
-export type {
-  EnvironmentId,
-  EnvironmentScope,
-  JsonValue,
-  OrganizationId,
-  ProjectId,
-  Result,
-  TenantScope,
-  TransactionScope,
-} from "@platos/kernel";
+export type { EnvironmentId, EnvironmentScope, JsonValue, NotResult, OrganizationId, ProjectId, Result, TenantScope, TransactionScope } from "@platos/kernel";
 // `organizationScope` and `projectScope` travel with `environmentScope` because
 // `JobsErasureSelector.scope` is a `TenantScope`, and a `TenantScope` is a
 // discriminated union whose members carry BRANDED ids: an implementor that
 // wrote the object literal itself would need `OrganizationId` and `ProjectId`
 // by name, which is a wider surface than the three constructors that mint them.
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+export { asIdentifier, contains, environmentScope, err, ok, organizationScope, projectScope, runResult } from "@platos/kernel";
+
+// WIN-260 (M2.5) — THE SIXTH TIME THIS OMISSION HAS BEEN FOUND, and the first
+// time on a port that is not a canonical store.
+//
+// The block above repaired `JobsRepository` and `ApprovalsRepository`, which
+// were declared in terms of `Job` and `Approval` — names an adapter package had
+// no way to spell. `IdempotencyStore` had exactly the same defect and was not
+// noticed, because nothing had tried to implement it: every one of its three
+// methods is declared in terms of `Reservation`, `reserve` reports a
+// `HeldReservation`, and `IdempotencyKey` is keyed by an `ExecutionRequestId`.
+// None of the four was re-exported, so the port was UNIMPLEMENTABLE outside this
+// package and the gap was invisible for exactly as long as it had no adapter.
+//
+// THE FUNCTIONS TRAVEL WITH THE TYPES, and here that matters more than usual.
+// `readReservation` is the decode boundary: it decides whether a stored record
+// is a reservation, is rubbish, or names a failure code outside the closed set
+// this major promises, and `decideReplay` mints a DIFFERENT error for each. An
+// adapter that classified those itself would be a second copy of a rule the
+// domain owns — and would be the place the four-way collapse WIN-260 removed
+// grew back. `reservationUnavailable` is published for the same reason
+// `repositoryUnavailable` above is: an adapter must be able to fail closed
+// without inventing a code.
+export type {
+  ExecutionRequestId,
+  HeldReservation,
+  JobExecutionErrorCode,
+  ReplayDecision,
+  Reservation,
+  ReservationState,
+  UnreadableReason,
+} from "../../domain/index.js";
 export {
-  asIdentifier,
-  contains,
-  environmentScope,
-  err,
-  ok,
-  organizationScope,
-  projectScope,
-} from "@platos/kernel";
+  completedReservation,
+  failedReservation,
+  IDEMPOTENCY_TTL_SECONDS,
+  isJobExecutionErrorCode,
+  readableRecord,
+  readReservation,
+  reservationUnavailable,
+  runningReservation,
+  unreadableRecord,
+} from "../../domain/index.js";
 
 export type {
   AgentId,

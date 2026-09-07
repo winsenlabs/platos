@@ -43,6 +43,7 @@
         "docs/audits/M0.5-dependency-sbom.md",
         "docs/audits/M0.6-admin-access-containment.md",
         "docs/audits/M0.8-operator-auth-boundary.md",
+        "docs/audits/M2.5-transaction-outbox-clock-retry.md",
         "docs/audits/sbom/advisory/osv-report.json",
         "docs/audits/sbom/license-index.json",
         "docs/refactor/IMPLEMENTATION-STATUS.md",
@@ -91,6 +92,7 @@
         "docs/audits/win-253-workspace-reachability.md",
         "docs/audits/win-284-differential-coverage.json",
         "docs/audits/win-284-differential-coverage.md",
+        "docs/audits/win-259-secret-response-census.json",
         "docs/audits/win253-removals/clickhouse-split.json",
         "docs/audits/win253-removals/clickhouse-split.md",
         "docs/audits/win253-removals/vendored-build.json",
@@ -123,7 +125,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4",
+  "protectedPathSetSha256": "cd008a1779efb3dfcc39fa6df66a4ada346a2ec3440b0ef02b9ff551ac19f395",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -133,11 +135,11 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 250,
+  "entryCount": 252,
   "counts": {
-    "ACCEPTED": 225,
+    "ACCEPTED": 226,
     "SUPERSEDED-BY": 4,
-    "POINT-IN-TIME": 20,
+    "POINT-IN-TIME": 21,
     "DRAFT": 1
   },
   "entries": [
@@ -1233,6 +1235,15 @@
       "binds": "current-repository-truth"
     },
     {
+      "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
+      "status": "POINT-IN-TIME",
+      "mode": "100644",
+      "sha256": "536e7c893703595dff85d2eb56062f0857bf27903d86584ea3f53f92b6e6ec68",
+      "sourceSnapshot": "repository report captured for its named milestone or research baseline",
+      "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
+      "date": "2026-08-30"
+    },
+    {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",
       "status": "POINT-IN-TIME",
       "mode": "100644",
@@ -1381,10 +1392,10 @@
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "a1b27d9a71101317f16bac9aae535b09ab1471b31ec51ab3c5e5d8bd65ced371",
+      "sha256": "b4b7fe44c5c078f1435ae646c0a1c897a83c5a8349353b687418186e374cb997",
       "sourceSnapshot": "OSV advisory response recorded by scripts/audit-advisory.mjs",
       "baseline": "network advisory snapshot; current dependency truth is the checked lock/image inventory",
-      "date": "2026-09-06"
+      "date": "2026-09-07"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -1397,7 +1408,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "682b4929ded1249ba1aadd56a62a75d4adf3decab5502c0057dc5a7b00d6fa2e",
+      "sha256": "5a00a2f08201563eb8b6e34c5a0a2824224a7b52ddaf9ecd0e5365c645d09a06",
       "binds": "current-repository-truth"
     },
     {
@@ -1418,7 +1429,7 @@
       "path": "docs/audits/sbom/license-index.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "782225d34d340d74780097c8364c3b87e7cbcd0c7afb59d320d7b8bc736933a6",
+      "sha256": "6ddfd92742189cdb4a603a7799387fc49beb90c3cc1e126264538b0cf78ed8c1",
       "sourceSnapshot": "frozen registry licence snapshot recorded by scripts/audit-licenses.mjs",
       "baseline": "point-in-time registry metadata baseline; current shipping membership is checked separately",
       "date": "2026-08-30"
@@ -1511,14 +1522,21 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "69270bf5fdcff15e7cc1797c13f8e8000314a373d877533e6f46c46b143f5274",
+      "sha256": "d3b2ce1ef1e4d86d2bf10313aeb08179f90cfcaec6c80032bc25b81f86c587d4",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "d49be28581c8b900a3a5036669b7ed35791862b9f33d486bfa66a4dc57f8ab2e",
+      "sha256": "b5abac9be942d97bc20b052b9870f58942d9359a88356df72780e2127b49db1c",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-259-secret-response-census.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "99f2d1970f404cb8df25270100b6a0928b90254058703fe80eafd6344a7fdec8",
       "binds": "current-repository-truth"
     },
     {
@@ -1539,7 +1557,7 @@
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "fb63fd597bb1475a53c978899b05a9a2dddc54f7e0d998316d09450ce3f8537d",
+      "sha256": "152b2bbc79f7dfb023893ffdbd836fc9a6c83909dbdb5081c6e43c14f2e87464",
       "binds": "current-repository-truth"
     },
     {
@@ -1553,7 +1571,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "4056fee251592aa44f69be131fae3d2ec892ab55b169f54d8054f20043df04da",
+      "sha256": "88f30a03501450d459e060d66f0a4da01030e942883d0666bae8528581fecb97",
       "binds": "current-repository-truth"
     },
     {

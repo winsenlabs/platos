@@ -23,7 +23,7 @@
 // test's carries a fresh nonce, because two clicks are two questions and the
 // second must actually send.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   LOCAL_DELIVERY_FAILURES,
@@ -92,7 +92,7 @@ export async function probeAlertChannel(
     createdAt: now,
     updatedAt: now,
   };
-  const opened = await dependencies.unitOfWork.run((transaction) =>
+  const opened = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.insertDelivery(draft, transaction),
   );
   if (!opened.ok) return err(opened.error);
@@ -104,7 +104,7 @@ export async function probeAlertChannel(
   const settled = finaliseDirect(opened.value, outcome, dependencies.policy.delivery, finishedAt);
   if (!settled.ok) return err(settled.error);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.settleDelivery(
       settled.value,
       retryRecord(settled.value, outcome, finishedAt),

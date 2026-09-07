@@ -21,7 +21,7 @@
 // That is why `composeRuntimeSkills` re-asks at load time and DROPS rather than
 // fails — see its header. The two answers are deliberately different in kind.
 
-import { err, ok, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   environmentKeysMissing,
@@ -90,7 +90,7 @@ export async function bindSkill(
   const ready = await requireEnvironmentReady(dependencies, command.scope, entry.value);
   if (!ready.ok) return err(ready.error);
 
-  const installation = await dependencies.unitOfWork.run((transaction) =>
+  const installation = await runResult(dependencies.unitOfWork, (transaction) =>
     resolveInstallation(dependencies, command.scope, entry.value, transaction),
   );
   if (!installation.ok) return err(installation.error);

@@ -32,11 +32,13 @@ export const SECRETS_ERROR_CODES = [
   "INVALID_PURGE_REQUEST",
   "INVALID_RETENTION_REQUEST",
   "ENVELOPE_FORMAT_UNWRITABLE",
+  "LEGACY_ENVELOPE_UNREADABLE",
   "ENVIRONMENT_VARIABLE_UNAVAILABLE",
   "ENVIRONMENT_VARIABLE_KEY_INVALID",
   "ENVIRONMENT_VARIABLE_VALUE_REQUIRED",
   "ENVIRONMENT_VARIABLE_VALUE_TOO_LONG",
   "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+  "SECRET_INPUT_NOT_WRITE_ONLY",
 ] as const;
 
 export type SecretsErrorCode = (typeof SECRETS_ERROR_CODES)[number];
@@ -58,7 +60,47 @@ export type CredentialUnavailableReason =
   | "root_key_absent"
   | "envelope_open_failed"
   | "envelope_format_unreadable"
-  | "scope_mismatch";
+  | "scope_mismatch"
+  // WIN-259 — the five ways a SECRET REFERENCE fails to become material. All
+  // five collapse to the same CREDENTIAL_UNAVAILABLE on the wire, for the
+  // probing-oracle reason this file opens with: a holder must not be able to
+  // tell "this reference is for another environment" from "this reference is
+  // expired" from "the credential behind it was rotated", because each of those
+  // answers is a fact about the vault it was not given.
+  //
+  // `handle_open_failed` is the UNDIFFERENTIATED one and it is undifferentiated
+  // by construction rather than by policy: a reference minted for another
+  // environment, a reference whose bytes were edited, and a reference invented
+  // outright all fail at the SAME authentication tag, so there is no branch here
+  // that could tell them apart even if it wanted to.
+  | "handle_malformed"
+  | "handle_open_failed"
+  | "handle_expired"
+  | "handle_revision_superseded"
+  | "handle_lifetime_invalid";
+
+/**
+ * Why a legacy envelope could not be read for migration.
+ *
+ * Distinct values throughout, because two guards answering with one reason
+ * cannot be told apart in an operator's log — and every one of these names a
+ * different repair. The three encoding reasons are separate from the three width
+ * reasons for the same cause: "this column does not hold what you think" and
+ * "this column holds the other legacy format" are not the same finding.
+ */
+export type LegacyEnvelopeUnreadableReason =
+  | "format_not_a_known_version"
+  | "format_is_already_canonical"
+  | "legacy_format_carries_no_salt"
+  | "nonce_width_disagrees_with_format"
+  | "auth_tag_width_disagrees_with_format"
+  | "ciphertext_is_empty"
+  | "payload_is_not_a_dotted_base64url_triple"
+  | "payload_is_not_base64"
+  | "payload_is_shorter_than_its_own_header"
+  | "legacy_key_absent_for_format"
+  | "legacy_key_is_not_32_bytes"
+  | "legacy_envelope_open_failed";
 
 function withReason(reason: string, extra: Readonly<Record<string, JsonValue>> = {}): Readonly<Record<string, JsonValue>> {
   return { reason, ...extra };
@@ -97,6 +139,36 @@ export function invalidSecretMaterial(reason: string): DomainError {
   });
 }
 
+/**
+ * WIN-259 — a BARE STRING arrived where a write-only input was required.
+ *
+ * A distinct code from `INVALID_SECRET_MATERIAL`, which says the material is
+ * unacceptable. This one says the material is unacceptably CARRIED: it reached
+ * the command as an ordinary string, so anything that serialised, logged or
+ * queued that command on the way here already recorded the plaintext. Telling
+ * the two apart is the difference between "the caller sent an empty secret" and
+ * "the caller's whole request path has been writing secrets down".
+ *
+ * The field name is safe to publish — it names a position in the command shape,
+ * not a value — so it rides in `fields` rather than in log-only `details`.
+ */
+export function secretInputNotWriteOnly(field: string): DomainError {
+  return domainError(
+    "SECRET_INPUT_NOT_WRITE_ONLY",
+    "invalid_input",
+    "secret input must be a write-only value",
+    {
+      fields: [
+        {
+          field,
+          code: "write_only",
+          message: "must be minted by acceptPlaintext, never passed as a plain string",
+        },
+      ],
+    },
+  );
+}
+
 export function invalidPurgeRequest(reason: string): DomainError {
   return domainError("INVALID_PURGE_REQUEST", "invalid_input", "purge request is not acceptable", {
     details: withReason(reason),
@@ -119,6 +191,32 @@ export function envelopeFormatUnwritable(formatVersion: number): DomainError {
     "precondition_failed",
     "envelope format is read-only and may not be written",
     { details: withReason("legacy_format", { formatVersion }) },
+  );
+}
+
+/**
+ * A legacy envelope could not be read for migration.
+ *
+ * WHY THIS IS ITS OWN CODE AND NOT A TENTH `credentialUnavailable` REASON.
+ * `credentialUnavailable` collapses its reasons because its caller may be a
+ * client probing the vault, and telling a prober "wrong key" apart from "no such
+ * credential" hands it an oracle for free. This code's caller is never a client:
+ * a legacy migration is driven by an operator over material read out of a column
+ * this context does not own, and the only useful answer is WHICH part of the
+ * payload failed. Collapsing it would leave an operator holding an unreadable
+ * `OperatorMfaTotp` row with no way to learn whether the fault was the encoding,
+ * a width, or the key — three findings with three different repairs.
+ *
+ * It is `invalid_input` and not `not_found`: the row exists, and what is wrong
+ * is the material the caller presented. It names no payload, no key and no
+ * plaintext, for the reason every message in this file names none.
+ */
+export function legacyEnvelopeUnreadable(reason: LegacyEnvelopeUnreadableReason): DomainError {
+  return domainError(
+    "LEGACY_ENVELOPE_UNREADABLE",
+    "invalid_input",
+    "legacy envelope could not be read for migration",
+    { details: withReason(reason) },
   );
 }
 

@@ -75,24 +75,16 @@ export { queueUnavailable, repositoryUnavailable } from "../../domain/index.js";
 // NOTHING NEW IS PUBLISHED. Every name below is already on `contracts/index.ts`
 // or on `@platos/kernel`; this widens the door an adapter comes through, and
 // `contracts/index.test.ts` still pins what a peer sees.
-export type {
-  DomainError,
-  EnvironmentScope,
-  JsonValue,
-  Money,
-  Result,
-  TransactionScope,
-} from "@platos/kernel";
-export {
-  asIdentifier,
-  err,
-  money,
-  moneyFromCentsString,
-  moneyToCentsString,
-  ok,
-  sum,
-  zero,
-} from "@platos/kernel";
+export type { DomainError, EnvironmentScope, JsonValue, Money, NotResult, Result, TransactionScope } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+export { asIdentifier, err, money, moneyFromCentsString, moneyToCentsString, ok, runResult, sum, zero } from "@platos/kernel";
 
 export type {
   ActorId,

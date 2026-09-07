@@ -56,8 +56,30 @@ export * from "./content-digest.js";
 // `EnvironmentScope` in most, and an adapter that reached for `@platos/kernel`
 // directly would be a second import edge into the kernel from a package whose
 // only declared dependency is the context whose port it satisfies.
-export type { EnvironmentScope, JsonValue, Result, TransactionScope } from "@platos/kernel";
-export { asIdentifier, environmentScope, err, ok } from "@platos/kernel";
+export type { EnvironmentScope, JsonValue, NotResult, Result, TransactionScope } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+export { asIdentifier, environmentScope, err, ok, runResult } from "@platos/kernel";
+
+// WIN-260 (M2.5) — the SEVENTH time this omission has been found, and the reason
+// it was invisible here is the reason it was invisible in `jobs`: nothing had
+// implemented the port.
+//
+// `Cache`'s header states three refusals an implementation must make — a
+// failure is reported as a VALUE so a caller can tell a down cache from an
+// absent key, a write without a positive TTL is not a write, and a blank
+// namespace prefix is not a namespace — and `cacheUnavailable` already existed
+// in `domain/errors.ts` while being reachable from nowhere outside this package.
+// An adapter that could not name it would have had to mint its own code, which
+// would then be a code on the wire that `docs/error-taxonomy.json` never saw,
+// because that file's inventory is drawn from `packages/contexts/**`.
+export { cacheNamespaceInvalid, cacheTtlInvalid, cacheUnavailable } from "../../domain/index.js";
 
 export type {
   AgentBinding,

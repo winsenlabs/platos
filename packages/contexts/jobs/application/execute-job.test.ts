@@ -278,7 +278,44 @@ describe("executeJob — stage 4, idempotency", () => {
     context.idempotency.corruptNextRead();
     const outcome = await executeJob(context.dependencies, { scope: SCOPE, request });
     if (outcome.ok) throw new Error("unreachable");
-    expect(outcome.error.code).toBe("IDEMPOTENCY_CONFLICT");
+    expect(outcome.error.code).toBe("JOBS_IDEMPOTENCY_RECORD_ABSENT");
+    expect(context.handlers.invocations).toHaveLength(1);
+  });
+
+  it("tells the three unreadable reservations apart, and apart from a real CONFLICT", async () => {
+    // WIN-260. All four used to arrive as IDEMPOTENCY_CONFLICT. The set below is
+    // asserted for its SIZE as well as its members: a regression that merged any
+    // two of them back together shrinks it, whatever the individual codes are.
+    const codes: string[] = [];
+    for (const reason of ["absent", "malformed", "unpromised-code"] as const) {
+      const fresh = buildJobsTestContext();
+      await seed(fresh);
+      fresh.handlers.willReturn({ kind: "completed", value: null });
+      const request = anExecutionRequest();
+      await executeJob(fresh.dependencies, { scope: SCOPE, request });
+      fresh.idempotency.corruptNextRead(reason);
+      const outcome = await executeJob(fresh.dependencies, { scope: SCOPE, request });
+      if (outcome.ok) throw new Error("unreachable");
+      codes.push(outcome.error.code);
+    }
+
+    // The fourth: a genuine reuse of one request id under a different body.
+    context.handlers.willReturn({ kind: "completed", value: null });
+    await executeJob(context.dependencies, { scope: SCOPE, request: anExecutionRequest() });
+    const conflict = await executeJob(context.dependencies, {
+      scope: SCOPE,
+      request: anExecutionRequest({ payload: { changed: true } }),
+    });
+    if (conflict.ok) throw new Error("unreachable");
+    codes.push(conflict.error.code);
+
+    expect(new Set(codes).size).toBe(4);
+    expect(codes).toEqual([
+      "JOBS_IDEMPOTENCY_RECORD_ABSENT",
+      "JOBS_IDEMPOTENCY_RECORD_MALFORMED",
+      "JOBS_IDEMPOTENCY_REPLAY_CODE_UNPROMISED",
+      "IDEMPOTENCY_CONFLICT",
+    ]);
   });
 });
 

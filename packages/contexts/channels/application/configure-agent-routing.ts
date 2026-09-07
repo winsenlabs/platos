@@ -16,7 +16,7 @@
 // cheap and rejects the common mistakes; there is no reason to spend a database
 // round trip proving the agents exist for a table that is malformed anyway.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   appNotFound,
@@ -92,7 +92,7 @@ export async function configureConnectionRouting(
   const rules = await admitRouting(dependencies, command.scope.environmentId, command.agentRouting);
   if (!rules.ok) return err(rules.error);
 
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.saveConnection({ ...connection, agentRouting: rules.value }, transaction),
   );
 }
@@ -109,7 +109,7 @@ export async function configureAppRouting(
   const rules = await admitRouting(dependencies, command.scope.environmentId, command.agentRouting);
   if (!rules.ok) return err(rules.error);
 
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.saveApp({ ...app, agentRouting: rules.value }, transaction),
   );
 }

@@ -23,7 +23,7 @@
 // `updateRule` takes the whole rule, whose `scope` came from the scoped read, so
 // the unscoped-write shape does not exist to get wrong.
 
-import { err, ok, type EnvironmentScope, type Result } from "@platos/kernel";
+import { err, ok, runResult, type EnvironmentScope, type Result } from "@platos/kernel";
 
 import {
   editIsVacuous,
@@ -149,7 +149,7 @@ export async function updateNotificationRule(
   const next = editNotificationRule(found.value, edit.value, dependencies.clock.now());
   if (!next.ok) return err(next.error);
 
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.updateRule(next.value, transaction),
   );
 }

@@ -31,7 +31,7 @@
 // installation silently, and guessing "consumed" demands an operator fix an
 // installation that was merely briefly unreachable.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   abandonRefresh,
@@ -76,7 +76,7 @@ export async function beginInstallationRefresh(
   command: BeginRefreshCommand,
 ): Promise<Result<ClaimedRefresh>> {
   const claimId = dependencies.ids.uuid() as unknown as RefreshClaimId;
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const installation = await current(dependencies, command.installationId);
     if (!installation.ok) return err<ClaimedRefresh>(installation.error);
 
@@ -119,7 +119,7 @@ export async function settleInstallationRefresh(
   dependencies: Dependencies,
   command: SettleRefreshCommand,
 ): Promise<Result<ChannelInstallation>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const installation = await current(dependencies, command.installationId);
     if (!installation.ok) return installation;
 
@@ -157,7 +157,7 @@ export async function reclaimStaleInstallationRefresh(
   dependencies: Dependencies,
   installationId: ChannelInstallationId,
 ): Promise<Result<ChannelInstallation>> {
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const installation = await current(dependencies, installationId);
     if (!installation.ok) return installation;
 

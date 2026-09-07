@@ -17,7 +17,8 @@ import { FIRST_SECRET_REVISION, asSecretsIdentifier, secretRevision } from "../d
 import type { CredentialId } from "../domain/ids.js";
 import { toCredentialMetadata } from "../domain/metadata.js";
 import type { CredentialMetadata } from "../domain/metadata.js";
-import { acceptPlaintext } from "../domain/secret-material.js";
+import { requireWriteOnly } from "../domain/secret-material.js";
+import type { SecretMaterial } from "../domain/secret-material.js";
 import { recordAudit } from "./audit-log.js";
 import type { SecretsDependencies } from "./dependencies.js";
 import { sealSecret } from "./envelope-operations.js";
@@ -28,7 +29,12 @@ export interface CreateCredentialCommand {
   readonly name: string;
   readonly kind?: CredentialKind;
   readonly provider?: string | null;
-  readonly plaintext: string;
+  /**
+   * WRITE-ONLY. Minted by `acceptPlaintext`, which the contract re-exports, so
+   * the plaintext is already inside a self-redacting holder by the time a
+   * command object exists to be serialised, queued or logged.
+   */
+  readonly plaintext: SecretMaterial;
 }
 
 export async function createCredential(
@@ -37,7 +43,7 @@ export async function createCredential(
 ): Promise<Result<CredentialMetadata>> {
   const granted = requireSecretMutation(command.authorization);
   if (!granted.ok) return err(granted.error);
-  const material = acceptPlaintext(command.plaintext);
+  const material = requireWriteOnly("plaintext", command.plaintext);
   if (!material.ok) return err(material.error);
   const revision = secretRevision(FIRST_SECRET_REVISION);
   if (!revision.ok) return err(revision.error);

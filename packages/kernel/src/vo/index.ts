@@ -4,3 +4,5 @@ export * from "./scope.js";
 export * from "./money.js";
 export * from "./domain-event.js";
 export * from "./error.js";
+export * from "./redaction.js";
+export * from "./retry.js";

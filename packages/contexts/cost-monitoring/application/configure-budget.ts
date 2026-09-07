@@ -19,7 +19,7 @@
 // its failure is not the write's failure: the entry expires on its own, and
 // reporting an error would say the cap was not saved when it was.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitBudget,
@@ -77,7 +77,7 @@ export async function configureBudget(
   );
 
   const now = dependencies.clock.now();
-  const written = await dependencies.unitOfWork.run(async (transaction) => {
+  const written = await runResult(dependencies.unitOfWork, async (transaction) => {
     if (collision !== undefined) {
       return dependencies.repository.updateBudget(
         applyIntake(collision, admitted.value, now),
@@ -118,7 +118,7 @@ export async function removeBudget(
   if (found.value === null) return err(budgetNotFound(command.budgetId));
 
   const now = dependencies.clock.now();
-  const removed = await dependencies.unitOfWork.run((transaction) =>
+  const removed = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.retireBudget(scope, command.budgetId, now, transaction),
   );
   if (!removed.ok) return err(removed.error);
@@ -159,7 +159,7 @@ export async function overrideBudget(
   );
   if (!overridden.ok) return err(overridden.error);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.updateBudget(overridden.value, transaction),
   );
   if (!written.ok) return err(written.error);

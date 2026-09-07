@@ -17,6 +17,15 @@ import {
 } from "./testing/index.js";
 import { DEFAULT_CONVERSATIONS_POLICY, type EndUserId, type TurnId } from "../domain/index.js";
 
+/**
+ * A FIXED instant, because a fixture that says `new Date()` is a fixture whose
+ * value depends on when the suite runs. `scripts/arch/ambient-time.mjs` rule T2
+ * refuses the ambient form here as it does in the code under test: the whole
+ * reason `Clock` is a port is that an instant is an input.
+ */
+const ARCHIVED_AT = new Date("2026-01-01T00:00:00.000Z");
+
+
 const SCOPE = {
   level: "environment",
   organizationId: "org-1",
@@ -97,7 +106,7 @@ describe("forkConversation", () => {
   it("refuses to fork an ARCHIVED thread", async () => {
     const context = buildConversationsTestContext();
     seedParent(context);
-    context.store.seedThread(threadFixture({ archivedAt: new Date() }));
+    context.store.seedThread(threadFixture({ archivedAt: ARCHIVED_AT }));
     const refused = await forkConversation(context.dependencies, command());
     expect(refused.ok).toBe(false);
     if (refused.ok) return;

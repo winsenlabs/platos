@@ -1032,18 +1032,113 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // MERGED: 1477 + 7 + 3 + 4 + 2 = 1493, read back from the scan itself. No
     //               dimension's own figure — 1484, 1480, or the 1477 the other
     //               two left untouched — is right here.
-    // WIN-260 (M2.5) +10: nine files under `apps/core-api/src/config` — the six
-    //               typed configuration sections, `environment.ts`, and the two
-    //               suites — and `apps/mcp-stdio/src/environment.ts`, the second
-    //               deployable's own reader. `mutations-config.json` is NOT in
-    //               this count: it is data at the package root, and this scan
-    //               reads source under `src/`. 1493 + 10 = 1503, and
+    // WIN-260 (typed configuration) +10: nine files under
+    //               `apps/core-api/src/config` — the six typed configuration
+    //               sections, `environment.ts`, and the two suites — and
+    //               `apps/mcp-stdio/src/environment.ts`, the second deployable's
+    //               own reader. `mutations-config.json` is NOT in this count: it
+    //               is data at the package root, and this scan reads source
+    //               under `src/`. 1493 + 10 = 1503, and
     //               `scripts/arch/composition-root.mjs` and
     //               `scripts/arch/env-access.mjs` read the same number back from
     //               their own scans of the same five roots, so the three can
     //               DISAGREE and be caught.
-    assert.equal(result.fileCount, 1503, "the generated V1 source census must stay exact");
-    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1);
+    // WIN-259 (M2.4) +6, and the split of the six is worth stating because this
+    //               scan covers a WIDER set of roots than the line-budget one
+    //               next door: packages/kernel takes redaction.ts and its suite
+    //               (+2), packages/contexts/secrets takes the write-only and
+    //               denied-read suites (+2), packages/adapters/postgres-tenancy
+    //               takes the fence split (+1), and apps/core-api takes
+    //               log-redaction.test.ts (+1) — which max-file-lines does NOT
+    //               see, because its fourth selector is `src/transports/**`
+    //               only. 1503 + 6 = 1509.
+    // WIN-259 (M2.4) SECOND PASS +4, and all four are in
+    //               `packages/contexts/secrets`: the SECRET REFERENCE's domain
+    //               file and use-case file with a suite each. This scan reads
+    //               the SAME four files the line-budget one next door reads, so
+    //               the two deltas agree at +4 for the first time on this branch
+    //               — the first pass differed (+6 here, +5 there) only because
+    //               of the apps selector. 1509 + 4 = 1513.
+    //
+    // WIN-259 (M2.4) +24, ON TOP OF WIN-260'S 1503: 1503 + 24 = 1527. FOURTEEN in
+    //               the new `packages/adapters/keyring-envelope` (eight source,
+    //               six suites), TWO in `packages/adapters/postgres-tenancy`, TWO
+    //               in `packages/contexts/providers` and SIX in
+    //               `packages/contexts/secrets`. This scan's roots are
+    //               packages/kernel, packages/contexts, packages/adapters,
+    //               apps/core-api and apps/mcp-stdio, so the thirteenth adapter
+    //               directory is inside it from the moment it exists and
+    //               `unknown-context-directory` polices it per FILE. The two
+    //               dimensions touch DISJOINT directories, which is why they
+    //               compose by addition rather than needing a re-count.
+    //
+    //               THE LEGACY-ENVELOPE MIGRATION IS EIGHT OF THE TWENTY-FOUR,
+    //               and they arrive in matched pairs because the deliverable is
+    //               two decoders and one use case, each with the suite that
+    //               falsifies it: `keyring-envelope` gains
+    //               `legacy-envelope-reader.ts` and `legacy-wire-vectors.ts` with
+    //               `legacy-wire-compatibility.test.ts` and
+    //               `legacy-migration.test.ts`; `secrets` gains
+    //               `domain/legacy-envelope.ts` and
+    //               `application/migrate-legacy-envelope.ts` with a suite each.
+    //               The vectors file is SOURCE and not a fixture directory
+    //               because it is imported by two suites in the package that owns
+    //               it, which is the same reason `wire-vectors.ts` is.
+    //
+    // M2 INTEGRATION. The two dimensions above scan the SAME five roots and
+    // touch DISJOINT directories, so they compose by addition and neither
+    // branch's own figure survives: 1503 + 10 (projection) + 24 (lifecycle) =
+    // 1537. The written-out sum below CONCATENATES both addend lists rather
+    // than replacing one with the other, so a file dropped from one dimension
+    // while the other added cannot reach the same total.
+    // WIN-260 (M2.5), the ERRORS-AND-IDEMPOTENCY dimension, +23. This gate was
+    //               left at 1503 while that dimension's ELEVEN files were
+    //               already in the tree — the code-to-status map and its suite
+    //               under `apps/core-api/src/transports`, the kernel's
+    //               `CorrelationSource` port, seven files under
+    //               `packages/adapters/redis-cache/src` and the correlation
+    //               integration suite under
+    //               `packages/adapters/postgres-tenancy/src` — so 1503 and the
+    //               scan had already parted company before this pass. This pass
+    //               adds TWELVE more: five source modules and four suites under
+    //               `apps/core-api/src/http`, the kernel's `RequestIdempotency`
+    //               port, and the Redis implementation of that port with its
+    //               suite. 1503 + 11 + 12 = 1526, read back from the scan, and
+    //               `scripts/arch/composition-root.mjs` and
+    //               `scripts/arch/env-access.mjs` read the same number back from
+    //               their own scans of the same five roots, so the three can
+    //               DISAGREE and be caught.
+    //
+    // M2 INTEGRATION, ALL THREE DIMENSIONS. Each pinned this scan for itself
+    // alone against the same 1503 and their directories are disjoint, so the
+    // composition is the sum: 1503 + 10 + 24 + 23 = 1560. The addend lists below
+    // are CONCATENATED, never replaced, so a file dropped from one dimension
+    // while another added cannot reach the same total.
+    // WIN-260 (M2.5 outbox/clock/retry) +8, and the first delta on this pin
+    //               since tranche 2 that is not all in one adapter directory:
+    //               THREE in `packages/kernel` (`vo/retry.ts` and the two
+    //               behaviour suites), ONE in `packages/contexts/eventing` (the
+    //               kernel-policy conformance suite), TWO in
+    //               `packages/adapters/outbox` (`src/flush.ts` and its suite)
+    //               and TWO under `apps/core-api/src/runtime`
+    //               (`shutdown-drain.ts` and its suite). The flush is in the
+    //               ADAPTER rather than at the process edge because
+    //               `composition-root.mjs` rule (C1) allows exactly one importer
+    //               of an adapter package, and this scan counts it either way.
+    //               `packages/adapters/postgres-tenancy` gains nothing.
+    //               1503 + 8 = 1511; the two dimensions touch DISJOINT roots, so
+    //               the addend lists concatenate rather than contend.
+    //
+    // M2 INTEGRATION, ALL FOUR DIMENSIONS: 1503 + 10 + 24 + 23 + 8 = 1568, with
+    // every addend list concatenated rather than replaced.
+    assert.equal(result.fileCount, 1568, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
+      // projection 10, lifecycle 24, errors-and-idempotency 23,
+      // outbox/transaction-outcome 8.
+      2 + 2 + 1 + 1 + 4 +
+      14 + 2 + 2 + 6 +
+      11 + 12 +
+      3 + 1 + 2 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

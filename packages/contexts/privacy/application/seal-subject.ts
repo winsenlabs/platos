@@ -19,7 +19,7 @@
 // unrecoverable outcome. The tombstone's TTL bounds how long that can last even
 // if nobody ever retries.
 
-import { asIdentifier, err, ok, type OrganizationId, type Result } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type OrganizationId, type Result } from "@platos/kernel";
 
 import {
   draftTombstones,
@@ -75,7 +75,7 @@ export async function sealSubject(
   });
   const ids = drafts.map(() => asIdentifier<ErasureTombstoneId>(dependencies.ids.uuid()));
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const sealed = await dependencies.repository.sealTombstones(drafts, ids, transaction);
     if (!sealed.ok) return err(operationStoreUnavailable(sealed.error.code));
     const purged = await dependencies.repository.purgeExpiredTombstones(now, transaction);
@@ -102,7 +102,7 @@ export async function purgeExpiredTombstones(
   dependencies: PrivacyDependencies,
 ): Promise<Result<number>> {
   const now = dependencies.clock.now();
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const purged = await dependencies.repository.purgeExpiredTombstones(now, transaction);
     if (!purged.ok) return err(operationStoreUnavailable(purged.error.code));
     return ok(purged.value);

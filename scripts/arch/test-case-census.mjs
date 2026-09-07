@@ -2322,6 +2322,132 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 349 + 3 + 151 = 503. The rollout dimension's other eight files are NOT in
  * that thirteen and cannot be: they are in `internal-packages/tenancy-database`,
  * which has no row here at all. The v1 ledger counts all twenty-eight.
+ *
+ * WIN-259 (M2.4, tejas/secret-lifecycle) MOVES THREE ROWS AND ADDS ONE.
+ *
+ * A NEW ROW, `packages/adapters/keyring-envelope`: 0 -> 6 files, 0 -> 71 cases.
+ * It is the thirteenth adapter directory and the first V1 package added since
+ * this table was drawn — the key-management adapter that
+ * `packages/adapters/postgres-tenancy/src/secrets-repository.ts` named when it
+ * declined `secrets`' `KeyRing`, `AeadCipher` and `Hasher`. Its six suites are
+ * `wire-compatibility` (8), `key-version-integrity` (13), `root-key-ring` (11),
+ * `secret-hasher` (8), `legacy-wire-compatibility` (19) and `legacy-migration`
+ * (12) — 8 + 13 + 11 + 8 + 19 + 12 = 71. NONE of the six needs a container: real
+ * AES-256-GCM needs no daemon, which is why the whole 71 runs on a laptop while
+ * the postgres row below does not.
+ *
+ * THIRTY-ONE OF THE SEVENTY-ONE ARE THE LEGACY-ENVELOPE MIGRATION, and they
+ * are in TWO files rather than one because they make two different claims.
+ * `legacy-wire-compatibility` (19) opens the six frozen legacy vectors and
+ * carries the negative controls — a format-3 payload read as format 2 fails by
+ * WIDTH and not by tag, the right payload under the wrong key fails distinctly,
+ * a flipped tag fails, and an absent legacy key is the fail-closed default.
+ * `legacy-migration` (12) is the deliverable end to end: an extraction-source
+ * ciphertext in, the ORDINARY runtime read path's plaintext out, with real
+ * cryptography on both sides and `secrets`' real use case between them.
+ *
+ * IT IS THE ONE PLACE THE END-TO-END CLAIM CAN LIVE. `secrets`' own suites drive
+ * `in-memory-crypto.ts`, whose header says "It is NOT cryptography", so a
+ * migration proven only there would be proven against a keystream derived from
+ * FNV-1a. This package holds the primitive, so the claim is falsifiable here and
+ * nowhere else.
+ *
+ * ONE OF THE FORTY EXISTS BECAUSE A MUTANT SURVIVED rather than because a rule
+ * asked for it. "seals and re-opens multi-byte UTF-8, a newline and a tab" was
+ * added after `cipher.update(plaintext, "latin1")` survived the first sweep:
+ * every plaintext this adapter SEALED in a test was ASCII, where the two
+ * encodings agree byte for byte, and the only non-ASCII bytes in the tree were
+ * in a fixture it opens and never writes.
+ *
+ * AND THE THREE WIRE-VECTOR CASES ARE THREE `it()`s RATHER THAN A LOOP. They
+ * were a `for (const vector of WIRE_VECTORS)` and this census REFUSED the file —
+ * "it() is declared inside a loop or a non-describe callback" — which is the
+ * gate working: a construct it cannot count is a construct that can silently
+ * lose a case. The shared body moved into a helper and the three cases are named.
+ *
+ *   packages/adapters/postgres-tenancy   132 -> 134 files, 1483 -> 1495 cases
+ *
+ * TWO FILES, TWELVE CASES. `secrets-key-version.integration.test.ts` (5) is the
+ * real-PostgreSQL half of the envelope-byte proof, and
+ * `secrets-legacy-envelope.integration.test.ts` (7) is the real-PostgreSQL half
+ * of the LEGACY finding: three cases prove PostgreSQL REFUSES a format-2 shape,
+ * a format-3 shape and a legacy row's absent root key version, each matched on
+ * the CONSTRAINT NAME the database raises; a fourth runs the same raw statement
+ * with a canonical shape and expects success, so the three refusals cannot be
+ * passing on an unrelated fault; and three more insert the bytes a REAL
+ * migration produced and read them back unchanged. 5 + 7 = 12.
+ *
+ * THE SECOND FILE IS WHY THE MIGRATION IS A TRANSCODING. Its negative half is
+ * the only place the claim that a legacy envelope is UNSTORABLE meets something
+ * outside this repository's own opinion of itself.
+ *
+ * `secrets-key-version.integration.test.ts`, the
+ * real-PostgreSQL half of the envelope-byte proof. It is excluded from the
+ * default `test` script by filename and run by the `postgres-tenancy-repository`
+ * CI job, like every `*.integration.test.ts` in that directory, and it is counted
+ * here for the same reason they are.
+ *
+ * IT IS A SEPARATE FILE FROM `secrets-conformance.integration.test.ts` BECAUSE
+ * THE PROOF IS IN TWO HALVES THAT MAY NOT MEET. `adapter-is-self-contained`
+ * forbids that directory from importing `@platos/adapter-keyring-envelope` and
+ * `tenancy-prisma-only` forbids the reverse, so the joint claim — real rows AND
+ * real AES-256-GCM in one process — has no legal home. The halves meet on frozen
+ * ciphertexts instead, and a file whose whole subject is those bytes is easier to
+ * keep honest than five cases folded into a conformance transcript.
+ *
+ *   packages/contexts/providers          27 -> 28 files,  375 -> 383 cases
+ *
+ * ONE FILE, EIGHT CASES: `probe-cache-eviction.test.ts`. Seven are new
+ * behaviour — a cache key that moves when the material does, and four write
+ * paths that now refuse when the eviction fails — and the eighth is the
+ * deliberate asymmetry, asserted so it cannot be quietly widened: the two paths
+ * that ADD a key keep discarding the eviction `Result`, because nothing stale is
+ * addressable there.
+ *
+ * NO EXISTING FILE'S CASE COUNT MOVES. `domain/errors.test.ts` gains a SAMPLE
+ * for the new `PROVIDERS_PROBE_CACHE_NOT_EVICTED` code inside an existing case
+ * rather than a case of its own, so the catalogue's "mints every declared code
+ * and nothing else" assertion covers it without a census row moving twice.
+ *
+ *   packages/contexts/secrets            16 -> 19 files,  162 -> 215 cases
+ *
+ * THREE NEW FILES AND ONE WIDENED, FIFTY-THREE CASES. The first is
+ * `sweep-root-key-reencryption.test.ts` (16), the bounded, resumable
+ * re-encryption sweep — rotation as a JOB rather than as a request-time loop.
+ * TWO of its sixteen exist because the sweep was WRONG and a case caught it
+ * rather than a reviewer thinking of it: the first draft asked
+ * `needsReEncryption`, which is true only for the `prior` status, so a
+ * credential whose root key had LEFT the ring was counted as already-done and
+ * the environment was reported complete over it. A third replaced a case whose
+ * own comment admitted its assertion was 'not observable'.
+ *
+ * THE OTHER TWO ARE THE LEGACY-ENVELOPE MIGRATION: `domain/legacy-envelope.test.ts`
+ * (16) and `application/migrate-legacy-envelope.test.ts` (15). 16 + 16 + 15 = 47.
+ *
+ * THE DOMAIN SUITE IS SEVENTEEN AND NOT SIX BECAUSE THE FORMAT RULES ARE WHERE A
+ * MIGRATION GOES WRONG SILENTLY. Six of them judge the WIDTH rule from both
+ * sides — format 2's nonce read as format 3's and the reverse — because a
+ * mis-declared column otherwise fails the tag check and looks exactly like a
+ * wrong key. Four assert which CHECK constraints the canonical row refuses each
+ * legacy shape with, and one is the control that format 1 is refused by NONE of
+ * them, which is what keeps the other four from being a list this file wrote
+ * about itself.
+ *
+ * THE USE-CASE SUITE SAYS IN ITS OWN HEADER WHAT IT CANNOT PROVE. It drives
+ * `in-memory-crypto.ts`'s double, so it proves the grant, the convergence
+ * branch, the revision, the audit row and the rollback — and nothing about
+ * bytes. The bytes are `keyring-envelope`'s twenty-seven, above.
+ *
+ * `packages/contexts/secrets` GAINS NO PORT-ENTRY-POINT CASE: the values
+ * re-exported for the cryptography ports are a widening of an existing file, and
+ * a widened file is not a new one.
+ *
+ * The tree total is 503 + 6 + 1 + 1 + 3 = 514 files and
+ * 7399 + 71 + 5 + 8 + 51 = 7534 cases. The adapters term of the three-way
+ * identity carries seven of the eleven new files — six in `keyring-envelope`,
+ * one in `postgres-tenancy` — and the contexts term carries the other four, one
+ * in `providers` and three in `secrets`: 151 + 7 = 158, 349 + 4 = 353, and
+ * 353 + 3 + 158 = 514.
  */
 export const EXPECTED = Object.freeze({
   "packages/adapters/channel-slack": { files: 0, cases: 0 },
@@ -2331,29 +2457,51 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/notifier-email": { files: 0, cases: 0 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
-  "packages/adapters/outbox": { files: 4, cases: 41 },
-  "packages/adapters/postgres-tenancy": { files: 132, cases: 1483 },
-  "packages/adapters/redis-cache": { files: 0, cases: 0 },
+  // M2 INTEGRATION: outbox 4 + 0 + 1 = 5 files, 41 + 5 (the replay codes) + 22
+  // (the flush suite) = 68 cases.
+  "packages/adapters/outbox": { files: 5, cases: 68 },
+  // M2 INTEGRATION: 71 + 5. Composing the two WIN-259 dimensions gave this
+  // adapter production code neither branch had — the projection dimension put
+  // `sealHandle`/`openHandle` on `AeadCipher` having measured that no
+  // production cipher existed, and the lifecycle dimension then built one — so
+  // the SECRET REFERENCE has real AES-256-GCM for the first time and five cases
+  // in `wire-compatibility.test.ts` say what it does. The FILE count does not
+  // move: they were appended to a suite that already existed.
+  "packages/adapters/keyring-envelope": { files: 6, cases: 76 },
+  // M2 INTEGRATION: 132 + 1 (projection's fence split) + 2 (lifecycle's two
+  // legacy/key-version suites) = 135 files; 1483 + 2 + 12 = 1497 cases.
+  // M2 INTEGRATION: postgres-tenancy 132 + 3 + 1 = 136 files,
+  // 1483 + 14 + 9 = 1506 cases -- the two WIN-259 dimensions and WIN-260's
+  // correlation integration suite, which add DIFFERENT files.
+  "packages/adapters/postgres-tenancy": { files: 136, cases: 1506 },
+  // WIN-260 adopts this project and gives it its first suites.
+  "packages/adapters/redis-cache": { files: 4, cases: 65 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
   "packages/contexts/channels": { files: 15, cases: 269 },
   "packages/contexts/conversations": { files: 29, cases: 350 },
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
-  "packages/contexts/eventing": { files: 14, cases: 149 },
+  "packages/contexts/eventing": { files: 15, cases: 157 },
   "packages/contexts/files": { files: 15, cases: 134 },
   "packages/contexts/governance": { files: 31, cases: 609 },
   "packages/contexts/identity-access": { files: 23, cases: 318 },
-  "packages/contexts/jobs": { files: 16, cases: 378 },
+  "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
   "packages/contexts/privacy": { files: 15, cases: 254 },
-  "packages/contexts/providers": { files: 27, cases: 375 },
-  "packages/contexts/secrets": { files: 16, cases: 162 },
+  // M2 INTEGRATION: providers 27 + 0 + 1 = 28 files, 375 + 3 + 8 = 386 cases.
+  "packages/contexts/providers": { files: 28, cases: 386 },
+  // M2 INTEGRATION: secrets 16 + 4 (projection) + 3 (lifecycle) = 23 files,
+  // 162 + 78 + 53 = 293 cases. The two dimensions add DISJOINT suites to the
+  // same package, so the counts add.
+  "packages/contexts/secrets": { files: 23, cases: 293 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
   "packages/contexts/tools": { files: 19, cases: 362 },
-  "packages/kernel": { files: 3, cases: 44 },
+  // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
+  // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
+  "packages/kernel": { files: 6, cases: 129 },
 });
 
 /*
@@ -2625,7 +2773,481 @@ export const EXPECTED = Object.freeze({
  * states independently. The `postgres-tenancy-repository` CI job running 109
  * files / 1054 tests is therefore a check on this split derived without it.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7399;
+/*
+ * WIN-259 (M2.4) SECRET PROJECTION, +16 and one new FILE, all in
+ * `packages/kernel`: 44 -> 60 cases, 3 -> 4 files, and 7399 -> 7415.
+ *
+ * The file is `src/vo/redaction.test.ts`, the colocated suite for the redactor
+ * `ports/logger.ts` has always described and never had. Its sixteen cases are
+ * TWO-SIDED by design and that is why there are sixteen rather than six: every
+ * case that pins a hidden field is paired with one that pins a field which must
+ * SURVIVE, because a redactor that hides everything passes a one-sided suite
+ * and deletes the log.
+ *
+ * Measured with `pnpm --filter @platos/kernel exec vitest run` — "Test Files 4
+ * passed (4) / Tests 60 passed (60)" — and the file on its own prints 16.
+ *
+ * `apps/core-api` gained 9 cases (116 -> 125) in
+ * `src/runtime/log-redaction.test.ts`, the suite that joins the classifier to
+ * the canonical Prisma schema, and is outside PACKAGE_ROOTS so it moves no pin
+ * here. It is named because it is the half of the evidence that is NOT in this
+ * census, and a reader counting 16 should know 9 more exist.
+ */
+/*
+ * WIN-259 (M2.4) WRITE-ONLY INPUTS, +13 and one new FILE, all in
+ * `packages/contexts/secrets`: 162 -> 175 cases, 16 -> 17 files, and
+ * 7415 -> 7428.
+ *
+ * The file is `application/write-only-inputs.test.ts`. Its thirteen cases are
+ * the WRITE half of the boundary: four that a mutating command cannot be
+ * written down (JSON, string coercion, spreading, enumeration), six that a bare
+ * string is refused with its own code and leaves no row and no audit, two that
+ * tell the carrier refusal apart from the material refusal, and one that
+ * DECLARES what the carrier check cannot see rather than overclaiming it.
+ *
+ * `packages/contexts/providers` moves NO pin and that is the finding worth
+ * recording. Its double now refuses a bare string the way the real vault does,
+ * so every existing write-path case there became a witness for the wrapping at
+ * the providers/secrets seam without one case being added. Measured: `pnpm
+ * --filter @platos/context-providers exec vitest run` prints 27 files / 375
+ * tests before and after.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` —
+ * "Test Files 17 passed (17) / Tests 175 passed (175)" — and the new file on
+ * its own prints 13.
+ */
+/*
+ * WIN-259 (M2.4) DENIED-READ EVIDENCE, +11 and one new FILE, again all in
+ * `packages/contexts/secrets`: 175 -> 186 cases, 17 -> 18 files, and
+ * 7428 -> 7439.
+ *
+ * The file is `application/denied-read-audit.test.ts`. `DENIED` has been in
+ * `CREDENTIAL_AUDIT_OUTCOMES` since this context was written and a grep of the
+ * package found it declared and never produced -- `recordAudit` defaulted to
+ * `SUCCESS` and no caller passed anything else -- so a refused read left no
+ * trace at all. Seven cases pin the row that now exists; THREE DECLARE A
+ * SILENCE (an unminted grant, a credential that does not resolve, a PLAIN
+ * variable) because each is a place the trail is deliberately empty and a
+ * reader counting rows has to know which emptiness is honest; one pins that the
+ * evidence path cannot change the answer the caller receives.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 18 passed (18) / Tests 186 passed (186)" -- and the new file on
+ * its own prints 11.
+ */
+/*
+ * WIN-259 (M2.4) ON REAL POSTGRESQL, +1 case and +1 FILE in
+ * `packages/adapters/postgres-tenancy`: 1483 -> 1484 cases, 132 -> 133 files,
+ * and 7439 -> 7440.
+ *
+ * THE CASE IS `a DENIED outcome reaches PostgreSQL, and commits in a
+ * transaction of its OWN`, in `secrets-rules.integration.test.ts`. It exists
+ * because until this branch NO ROW WITH THAT OUTCOME HAD EVER REACHED THE
+ * DATABASE: the value was declared in `CREDENTIAL_AUDIT_OUTCOMES` and never
+ * produced, and the in-memory double stores whatever string it is handed. That
+ * is the shape of the failure this project has already recorded — the doubles
+ * mint values the canonical store refuses, and every use-case suite passes.
+ * Read from the MIGRATION rather than from `schema.prisma`: `outcome` is TEXT
+ * NOT NULL with no CHECK, which is a fact about an ABSENCE that the generated
+ * types cannot show.
+ *
+ * THE FILE IS `secrets-variable-fence.integration.test.ts`, AND IT ADDS NO
+ * CASE. It is the split scripts/arch/max-file-lines.test.mjs pre-registered in
+ * WIN-258 T7's own band entry — "A further case takes it past 460 and the split
+ * to make then is the fence's own `describe`, moved whole" — carried out
+ * verbatim. The `describe` moved unedited, so the case delta is 1 (the DENIED
+ * case) and not 1 plus the fence's four.
+ *
+ * Neither is executed by `pnpm test:v1-packages`: both carry `.integration.` in
+ * the name, so this census records them and that script runs neither. They run
+ * on the Mac mini under `pnpm test:postgres-tenancy:integration`.
+ */
+/*
+ * WIN-259 (M2.4) THE SECRET REFERENCE, +53 cases and +2 FILES, all in
+ * `packages/contexts/secrets`: 186 -> 239 cases, 18 -> 20 files, and
+ * 7440 -> 7493.
+ *
+ * THE TWO FILES SPLIT BY WHAT CAN BE PROVED WITHOUT A CIPHER AND WHAT CANNOT,
+ * which is why there are two rather than one.
+ *
+ * `domain/secret-handle.test.ts` carries 27 and proves only STRUCTURE: the two
+ * label strings byte for byte, the claims body byte for byte, the base64url
+ * codec at every length modulo 3, the wire form's field count and scheme, and
+ * the lifetime rule at its boundary millisecond. It deliberately proves NOTHING
+ * about opacity or environment binding, because neither is a property of that
+ * file — both live in the cipher's key derivation and its AAD, and asserting
+ * them there would have compared the classifier to itself.
+ *
+ * `application/secret-handles.test.ts` carries 26 and proves the four
+ * properties that only exist once a cipher and a store are involved, each
+ * joined to something the assertion does not control: opacity against the
+ * plaintext, the name and the provider; environment binding against a SECOND
+ * fully-built environment whose reference is carried across by hand; revision
+ * pinning against a rotation the real `rotateCredential` performed; and the
+ * audit trail against the store's own rows in BOTH directions.
+ *
+ * `packages/contexts/providers` moves no pin again, for the same reason it did
+ * not move for write-only inputs: a reference is a VALUE and adds no port a
+ * peer implements.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 20 passed (20) / Tests 239 passed (239)" -- and the two new files
+ * on their own print 27 and 26.
+ */
+/*
+ * WIN-259 (M2.4) THE REFERENCE AGAINST REAL POSTGRESQL, +1 case and NO file, in
+ * `packages/adapters/postgres-tenancy`: 1484 -> 1485 cases, 133 files
+ * unchanged, and 7493 -> 7494.
+ *
+ * THE CASE IS `an audit row naming a credential from ANOTHER environment is
+ * refused by the database`, appended to `secrets-rules.integration.test.ts`.
+ * The denied-exchange path states a limit in prose -- a reference that does not
+ * open under the presented grant's environment leaves no trace, because the
+ * trail may only name credentials that exist here -- and this case turns the
+ * second half of that sentence into a fact about the database.
+ *
+ * `inMemorySecretsStore` keys its audit rows by nothing and accepts the pair
+ * happily, so all 26 exchange cases in `packages/contexts/secrets` pass either
+ * way. Only `CredentialAudit_credentialId_environmentId_fkey` -- a COMPOSITE
+ * key that lives in the migration and in neither the generated types nor any
+ * port signature -- refuses it. That is the shape this project has already been
+ * bitten by, and it is why the case is here rather than beside the use case.
+ *
+ * It is NOT executed by `pnpm test:v1-packages`: the file carries
+ * `.integration.` in its name. It runs on the Mac mini under
+ * `pnpm test:postgres-tenancy:integration`.
+ */
+/*
+ * WIN-259 (M2.4) THE LEDGER'S 37th ENTRY, +3 cases and NO file, in
+ * `packages/contexts/providers`: 375 -> 378 cases, 27 files unchanged, and
+ * 7494 -> 7497. THIS IS THE FIRST TIME THIS BRANCH HAS MOVED THE PROVIDERS
+ * ROW, and the two previous entries above both recorded that it did NOT move.
+ *
+ * The three cases go into the existing `application/authorization.test.ts` and
+ * they exist because a mutation had no kill. M23 -- "the providers DOUBLE stops
+ * modelling the vault's refusal" -- changed nothing when applied alone, because
+ * every other case in this package reaches the double through a use case and
+ * the use cases wrap at their own seam, so the double never saw a bare string.
+ * It was recorded as a COMPOUND measurement, an integrator counted 37 entries
+ * against 36 named kills, and the branch was held back for it.
+ *
+ * The repair was the CASE and not the declaration. All three drive
+ * `InMemorySecrets` directly: one pairs the refusal with an ACCEPTANCE whose
+ * material is minted by `acceptPlaintext` -- the one mint `secrets` publishes --
+ * so the double is held to the real vault rather than to a shape this package
+ * owns; one repeats it on ROTATION, the second call site of the same guard; and
+ * one hands it a structurally perfect MIMIC, which is what stops the refusal
+ * being satisfiable by a shape check.
+ *
+ * Measured with `pnpm --filter @platos/context-providers exec vitest run` --
+ * "Test Files 27 passed (27) / Tests 378 passed (378)" -- and the file on its
+ * own prints 18, up from 15.
+ */
+/*
+ * WIN-259 (M2.4) THE REFERENCE IS REACHABLE, +1 case and NO file, in
+ * `packages/contexts/secrets`: 239 -> 240 cases, 20 files unchanged, and
+ * 7497 -> 7498.
+ *
+ * THE CASE IS `issues and spends a SECRET REFERENCE through the contract
+ * alone`, appended to the existing `contracts/index.test.ts`. Every other
+ * assertion about the reference drives the use cases directly; this one proves
+ * the deliverable is actually PUBLISHED -- that a peer context holding nothing
+ * but `SecretsContract` can mint an address, hand it on, spend it, and be
+ * refused when the grant that minted it tries to spend it too. A deliverable
+ * that works and is not reachable is not delivered, and no other case in this
+ * package could have caught that.
+ *
+ * Measured with `pnpm --filter @platos/context-secrets exec vitest run` --
+ * "Test Files 20 passed (20) / Tests 240 passed (240)" -- and
+ * contracts/index.test.ts on its own prints 9, up from 8.
+ */
+/*
+ * WIN-259 (M2.4) 7399 -> 7543: +71 in the new `packages/adapters/keyring-envelope`
+ * row, +12 in `packages/adapters/postgres-tenancy`, +8 in
+ * `packages/contexts/providers` and +53 in `packages/contexts/secrets`.
+ * 7399 + 71 + 12 + 8 + 53 = 7543.
+ *
+ * SIXTY-EIGHT OF THE HUNDRED-AND-FORTY-FOUR ARE THE LEGACY-ENVELOPE
+ * MIGRATION, split 31 / 37 across the two packages, and the split is the
+ * deliverable's own shape: the 31 in `keyring-envelope` are the only ones that
+ * touch real bytes, and the 37 in `secrets` are the domain rule, the control
+ * flow, the refusal itself and the double's own non-vacuity proof. Neither half can make the other's claim, which is why they are not one
+ * suite.
+ *
+ * THE RUNNABLE/INTEGRATION SPLIT MOVES ON BOTH SIDES, WHICH IS UNUSUAL FOR A
+ * TRANCHE THAT TOUCHES THIS ADAPTER. A hundred and thirty-two of the
+ * hundred-and-forty-four are RUNNABLE by `pnpm test:v1-packages` — the whole
+ * keyring-envelope row plus providers' eight and secrets' fifty-three — because
+ * real AES-256-GCM needs no daemon and neither does an in-memory probe cache or
+ * an in-memory vault. Only the remaining twelve carry `.integration.` in the name,
+ * so the cases this census records that the script does not execute go
+ * 1054 -> 1066 over 109 -> 111 files, and the runnable side goes 429 -> 561 for
+ * the postgres row's own split plus the three rows outside it.
+ *
+ * The three-way file identity holds with the same shape:
+ * packages.contexts.test 353 + packages.kernel.test 3 +
+ * packages.adapters.test 159 = 515, which is this census's own totalFiles. The
+ * adapters term moved 151 -> 159, of which SIX are the new directory's suites
+ * and TWO are the postgres row's; the contexts term moved 349 -> 353, one for
+ * `providers` and three for `secrets`. The v1 ledger counts the same twelve
+ * inside its twenty-eight.
+ */
+/*
+ * M2 INTEGRATION. 7399 + 99 (projection) + 144 (lifecycle) = 7642. Neither
+ * branch pin survives: each was measured against v1 @ 2abd19b4 for itself
+ * alone, and the two add DISJOINT suites -- projection none in
+ * `keyring-envelope` (it did not exist for it) and lifecycle none in
+ * `packages/kernel`. Per row the arithmetic is
+ * keyring-envelope 0 + 0 + 71 + 5 = 76 (the trailing five are the integration's
+ * own, for the production code the composition created), postgres-tenancy
+ * 1483 + 2 + 12 = 1497,
+ * providers 375 + 3 + 8 = 386, secrets 162 + 78 + 53 = 293 and kernel
+ * 44 + 16 + 0 = 60; every other row is untouched by both.
+ */
+
+/*
+ * WIN-260 DELTA (M2.5), the idempotency-replay distinctness half.
+ *
+ * `packages/contexts/jobs` 378 -> 386 (+8), no new FILE. `decideReplay` used to
+ * leave through ONE `idempotencyConflict()` for four different facts — a record
+ * that was gone, a record that did not decode, a record whose cached failure
+ * code this major never promised, and the genuine "same id, different body" —
+ * so an operator reading `IDEMPOTENCY_CONFLICT` could not tell which had
+ * happened. The port now carries `HeldReservation` instead of
+ * `Reservation | null`, three codes are minted, and `readReservation` is the
+ * decode boundary that classifies a stored record into one of them.
+ *
+ *   domain/idempotency.test.ts   +7  two on `decideReplay` (the four codes are
+ *                                    distinct, asserted by SET SIZE as well as
+ *                                    by name, so a re-merge fails whichever code
+ *                                    survives; and all four stay `conflict`, so
+ *                                    the STATUS is unchanged and only the CODE
+ *                                    is finer) and five on `readReservation`
+ *                                    (round trip through JSON for all four
+ *                                    reservation shapes, absent, ten malformed
+ *                                    shapes, an unpromised code refused, and the
+ *                                    negative control that a PROMISED code is
+ *                                    admitted — without which the refusal proves
+ *                                    nothing)
+ *   application/execute-job.test.ts
+ *                                +1  the same four codes end to end through the
+ *                                    use case and its store double, which is
+ *                                    where a port that reported only `null`
+ *                                    would still collapse them
+ *
+ * All 8 are runnable: neither file carries `.integration.`, so
+ * `pnpm test:v1-packages` executes every one and the runnable term goes
+ * 7399 - 1054 = 6345 -> 6353, with the integration term unchanged at 1054.
+ * 6353 + 1054 = 7407.
+ */
+/*
+ * WIN-260 DELTA (M2.5), the correlation half. TWO packages, +14 cases and ONE
+ * new file.
+ *
+ * The finding it answers: `DomainEvent.requestId` has been in the kernel
+ * envelope since M2.1 and every one of the EIGHT drafts the tree appends
+ * supplied `requestId: null`, while `RequestScope` — the other carrier — was
+ * named by exactly one port and taken by no use case. The identifier was minted
+ * at the process edge and reached nothing. `CorrelationSource` is the kernel's
+ * TENTH port and the seam that carries it.
+ *
+ *   packages/adapters/outbox            41 -> 46 (+5), no new FILE.
+ *     src/adapter.test.ts  +5  the stamp fills a draft that named no request;
+ *                              a draft that DID name one is not overwritten (an
+ *                              event appended while replaying earlier work
+ *                              belongs to that earlier request); work outside
+ *                              any request stays null rather than being given a
+ *                              fabricated id; an adapter built with NO source
+ *                              behaves exactly as before, which is the control
+ *                              that keeps the other four from passing on an
+ *                              unconditional stamp; and the id survives the
+ *                              DRAIN, which is the point of the field.
+ *
+ *   packages/adapters/postgres-tenancy  1483 -> 1492 (+9), files 132 -> 133.
+ *     src/correlation.integration.test.ts  +9, all NINE in the new file. Every
+ *                              one reads `current_setting('platos.request_id',
+ *                              true)` off the transaction's own connection or
+ *                              reads a committed row through the ONLOOKER — a
+ *                              case that asserted the source's own memory would
+ *                              have proved AsyncLocalStorage works and nothing
+ *                              about the database. The nine are: PostgreSQL
+ *                              reports the edge's id; the option answered for is
+ *                              the one the exported constant names (the join
+ *                              that stops the constant and the literal SQL
+ *                              drifting); no request stamps nothing; a runner
+ *                              with no source stamps nothing (the control); the
+ *                              setting is TRANSACTION-local and cannot leak onto
+ *                              the next borrower of a pooled connection; a row
+ *                              written under it is durable while the setting is
+ *                              not; a rolled-back transaction leaves neither;
+ *                              concurrent requests do not borrow each other's;
+ *                              and a nested unit of work inherits the outer id.
+ *
+ * ALL NINE CARRY `.integration.` so `pnpm test:v1-packages` executes none of
+ * them; the five outbox cases are runnable. The runnable term therefore goes
+ * 6353 -> 6358 and the integration term 1054 -> 1063, over 109 -> 110 files.
+ * 6358 + 1063 = 7421.
+ */
+/*
+ * WIN-260 DELTA (M2.5), the idempotency STORE. `packages/adapters/redis-cache`
+ * 0 -> 40 over THREE new files, and the twenty-fourth project adopted.
+ *
+ * WHY THIS DIRECTORY AND NOT `postgres-tenancy`. WIN-258 T5 declined to satisfy
+ * `IdempotencyStore` from the canonical store and wrote down why:
+ * `jobs-repository.ts` says every one of its three properties is "a property
+ * PostgreSQL does not have — an atomic claim-or-report in one round trip, a TTL
+ * the store enforces rather than a sweep, and an `XX` update that must not
+ * resurrect an expired key", and ADR M0.3 §13 puts a keyspace behind
+ * `redis-cache`. That skip has been right every time it has been made, so this
+ * dimension implemented the port where the tree already said it lived rather
+ * than where it would have been cheaper.
+ *
+ *   src/idempotency-store.test.ts   16  the branches a real server cannot be
+ *                                       persuaded to take on demand: a
+ *                                       connection that throws on the claim and
+ *                                       one that throws on the read of the
+ *                                       incumbent (two DIFFERENT answers, and
+ *                                       the second is not `absent`), a key
+ *                                       holding rubbish, a cached failure naming
+ *                                       an unpromised code and the negative
+ *                                       control that a PROMISED one is admitted,
+ *                                       settle's `XX` reaching `overwrite` and
+ *                                       never `claim` or `write`, the keyspace
+ *                                       carrying the environment, and the
+ *                                       round trip of all four reservation
+ *                                       shapes through the stored value
+ *   src/cache.test.ts               12  the four properties the `Cache` port's
+ *                                       header sets out, plus the two refusals
+ *                                       it asks an implementation to make: a
+ *                                       non-positive or fractional TTL, and the
+ *                                       blank namespace prefix the port calls "a
+ *                                       flush of the whole keyspace"
+ *   src/idempotency.integration.test.ts
+ *                                   12  the claim this issue exists to prove,
+ *                                       against a real Redis: two identical
+ *                                       requests racing over SEPARATE
+ *                                       connections leave one reservation and
+ *                                       the loser sees the winner's record;
+ *                                       EIGHT racing leave one; the work runs
+ *                                       ONCE and every later caller replays the
+ *                                       SAME result; a null result replays as a
+ *                                       value; the SERVER expires a reservation
+ *                                       and settle does not resurrect it; two
+ *                                       environments do not collide on one
+ *                                       request id
+ *
+ * ALL TWELVE INTEGRATION CASES CARRY `.integration.` and the project's generated
+ * `test` script excludes them by filename, exactly as `postgres-tenancy`'s does,
+ * so `pnpm test:v1-packages` runs the 28 unit cases and none of the twelve. The
+ * runnable term goes 6358 -> 6386 and the integration term 1063 -> 1075, over
+ * 110 -> 111 files. 6386 + 1075 = 7461.
+ */
+/*
+ * WIN-260 DELTA (M2.5), the ERRORS-AND-IDEMPOTENCY dimension.
+ * `packages/adapters/redis-cache` 40 -> 65 over ONE new file, and it is the only
+ * row in this census that moves.
+ *
+ *   src/request-idempotency.test.ts  25  the kernel `RequestIdempotency` port's
+ *                                       Redis implementation, over a connection
+ *                                       whose every answer the case chooses: the
+ *                                       keyspace disjoint from the jobs one and
+ *                                       carrying the scope; `reserve` as ONE
+ *                                       command when it wins; `absent` versus
+ *                                       `malformed` versus a store that threw,
+ *                                       which are three different incidents; the
+ *                                       digest checked BEFORE the state, so a
+ *                                       settled record under a reused key is a
+ *                                       mismatch rather than a replayed secret;
+ *                                       `record` reaching `overwrite` and never
+ *                                       `claim` or `write`; and `release`
+ *                                       refusing to delete a record carrying
+ *                                       somebody else's digest
+ *
+ * THE OTHER SUITES THIS DIMENSION ADDED ARE NOT COUNTED HERE, and that is the
+ * census's own rule rather than an omission: `apps/core-api` is outside
+ * PACKAGE_ROOTS, so its four new files — the policy table joined to the frozen
+ * operation manifest, the gate's decisions, the failure envelope and the
+ * end-to-end race — are counted by the v1 ledger and not by this file. The same
+ * boundary carried every core-api suite before them.
+ *
+ * All 25 are runnable, so the runnable term goes 6386 -> 6411 and the
+ * integration term is unmoved at 1075, over 111 -> 112 files.
+ * 6411 + 1075 = 7486.
+ */
+/*
+ * M2 INTEGRATION, AFTER THREE OF THE FOUR (the fourth dimension's paragraph
+ * below supersedes these totals). 7399 + 248 + 87 = 7734 over
+ * 503 + 18 + 5 = 526 files. Every row is a SUM of the dimensions that moved it
+ * and no dimension's own total survives:
+ *   keyring-envelope    0 + 76 + 0            = 76   over 6 files
+ *   postgres-tenancy 1483 + 14 + 9            = 1506 over 136 files
+ *   providers         375 + 11 + 0            = 386  over 28 files
+ *   secrets           162 + 131 + 0           = 293  over 23 files
+ *   kernel             44 + 16 + 0            = 60   over 4 files
+ *   outbox             41 + 0 + 5             = 46   over 4 files
+ *   redis-cache         0 + 0 + 65            = 65   over 4 files
+ *   jobs              378 + 0 + 8             = 386  over 16 files
+ * and every other row is untouched by all three.
+ */
+/*
+ * WIN-260 DELTA (M2.5) — transaction and outbox semantics, clock and retry
+ * policies, graceful shutdown. THREE packages move, and no other:
+ *
+ *   packages/kernel            3 -> 5 files,  44 -> 113 cases  (+69)
+ *   packages/contexts/eventing 14 -> 15 files, 149 -> 157 cases (+8)
+ *   packages/adapters/outbox   4 -> 5 files,   41 -> 63 cases  (+22)
+ *
+ *   7399 + 69 + 8 + 22 = 7498, and 503 + 2 + 1 + 1 = 507 files.
+ *
+ * KERNEL +69, over two NEW files and no edits to the three that were there.
+ * `src/ports/unit-of-work.test.ts` (29) drives `runResult`: 4 cases that an
+ * `ok` answer commits, 5 that an `err` answer rolls back — the shape
+ * `cost-monitoring` shipped — 3 that a genuine exception is not relabelled as a
+ * business failure, 14 that `isTransactionAbort` discriminates exactly (11 of
+ * them one `it.each` row apiece), and 3 on the joined frame whose guarantee is
+ * the weaker one. `src/vo/retry.test.ts` (40) drives the bounded policy: 17 on
+ * the five refusals (10 of them `it.each` rows) plus the freeze and the
+ * default, 7 on growth and its ceiling, 6 on the send budget, 6 on jitter, 3 on
+ * the stated bound, 2 on `retryDueAtMs`. 29 + 40 = 69.
+ *
+ * EVENTING +8, one new file and no edits. `domain/retry-schedule.kernel-conformance.test.ts`
+ * declares the kernel policy to BE eventing's shipped schedule and sweeps 64
+ * retry numbers across every observable of both. The shipped module is
+ * UNCHANGED and its own suite is untouched, which is the point: if either side
+ * drifts this file goes red, and if someone "unifies" them by editing both,
+ * `retry-schedule.test.ts` — with its own hard-coded 2000/4000/give-up
+ * expectations — goes red instead.
+ *
+ * OUTBOX +22, one new file and no edits. `src/flush.test.ts` covers the
+ * shutdown flush: 4 that it drains to quiescence, 4 that it is bounded, 8 that
+ * it refuses and reports rather than guessing (4 of them `it.each` rows over
+ * page sizes), and 5 that the seam fits the adapter that ships — that last
+ * block builds the REAL `buildOutboxAdapter` over the REAL `createInMemoryOutbox`
+ * and is where a compile-time `Satisfies` stops being enough. 4+4+8+5 = 21 plus
+ * the `OUTBOX_FLUSH_SOURCE_SATISFACTION` case = 22.
+ *
+ * APPS/CORE-API IS NOT IN THIS TABLE, and this dimension's largest test
+ * addition lands there: 7 -> 8 files and 116 -> 155 cases, over
+ * `src/runtime/shutdown-drain.test.ts` (19 new) and additions to
+ * `in-flight.test.ts` (+8) and `lifecycle.test.ts` (+12). PACKAGE_ROOTS does
+ * not include apps/, so those 39 cases are pinned by
+ * docs/v1-ledger-rules.json's apps-core-api.test.suites FILE count and by
+ * apps/core-api/mutations.json, which names cases rather than counting them.
+ * They are recorded here so a reader reconciling this delta against the branch
+ * does not conclude the count is short.
+ *
+ * The runnable/integration split is unchanged in shape: every one of the 99 new
+ * cases is runnable by `pnpm test:v1-packages` (none carries `.integration.` in
+ * its filename), so the runnable side of the postgres-tenancy split is
+ * untouched at 429 over 23 files and the non-runnable side stays 1054 over 109.
+ */
+/*
+ * M2 INTEGRATION, ALL FOUR DIMENSIONS. 7399 + 248 + 87 + 99 = 7833 over
+ * 503 + 18 + 5 + 4 = 530 files. The rows the fourth dimension moves are
+ * kernel 60 -> 129, outbox 46 -> 68 and eventing 149 -> 157; every other row is
+ * carried from the composition of the first three.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7833;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

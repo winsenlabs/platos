@@ -29,8 +29,12 @@
 
 import { AsyncLocalStorage } from "node:async_hooks";
 
-import { asIdentifier } from "@platos/context-tenancy/application/ports/index.js";
+import type { CorrelationSource } from "@platos/kernel";
+
+import { asIdentifier, runResult } from "@platos/context-tenancy/application/ports/index.js";
 import type {
+  NotResult,
+  Result,
   TransactionId,
   TransactionScope,
   UnitOfWork,
@@ -67,6 +71,24 @@ interface TransactionFrame {
   readonly transactionId: TransactionId;
   readonly client: TenancyTransactionClient;
 }
+
+/**
+ * The PostgreSQL setting every transaction stamps with the request in flight.
+ *
+ * A CUSTOMISED OPTION, not a column: `set_config('platos.request_id', …, true)`
+ * is transaction-local, so it is rolled back with the transaction it describes
+ * and cannot leak onto the next unit of work that borrows the same pooled
+ * connection. That last property is why this is not `application_name`, which is
+ * per-SESSION and would outlive the transaction on a pooled connection — a
+ * request's identifier still attached to the connection while an unrelated
+ * request used it is worse than no identifier at all.
+ *
+ * Reachable from inside the transaction as
+ * `current_setting('platos.request_id', true)`, which is how
+ * `correlation.integration.test.ts` reads it back off PostgreSQL rather than off
+ * this process's own memory.
+ */
+export const REQUEST_ID_SETTING = "platos.request_id";
 
 /** How long a transaction may hold its connection, and how long it waits for one. */
 export interface TransactionTimeouts {
@@ -119,12 +141,31 @@ export interface TenancyTransactions {
    * two — which is the whole reason the two contexts' repositories share a
    * directory (ADR M0.3 §15).
    */
-  atomic<Value>(work: (client: TenancyTransactionClient) => Promise<Value>): Promise<Value>;
+  atomic<Value>(work: (client: TenancyTransactionClient) => Promise<NotResult<Value>>): Promise<Value>;
+  /**
+   * `atomic` for work whose answer is a `Result`. An `err` ROLLS BACK.
+   *
+   * WIN-260 (M2.5). `atomic` is a generic pass-through to `UnitOfWork.run`, and
+   * a pass-through LAUNDERS a refusal unless it carries it. `run` now refuses a
+   * `Result`-valued callback outright — a resolved callback COMMITS, which is
+   * the defect `cost-monitoring` shipped — and without the `NotResult` above,
+   * every caller of `atomic` would have had a way around that refusal that no
+   * gate looks at. Three of this package's stores were using exactly that way.
+   *
+   * So the pair here mirrors the kernel's exactly: `atomic` refuses a `Result`,
+   * and this is the one sanctioned way to end an `atomic` with a failure. It is
+   * `runResult` over the same joined transaction, so the guarantee is the
+   * kernel's and not a fourth local re-invention of it.
+   */
+  atomicResult<Value>(
+    work: (client: TenancyTransactionClient) => Promise<Result<Value>>,
+  ): Promise<Result<Value>>;
 }
 
 export function createTenancyTransactions(
   client: TenancyDatabaseClient,
   timeouts: TransactionTimeouts = {},
+  correlation: CorrelationSource | null = null,
 ): TenancyTransactions {
   const ambient = new AsyncLocalStorage<TransactionFrame>();
   const open = new Map<string, TenancyTransactionClient>();
@@ -147,6 +188,22 @@ export function createTenancyTransactions(
       try {
         return await client.$transaction(async (transactionClient) => {
           open.set(transactionId, transactionClient);
+          // WIN-260. FIRST statement of every unit of work, before any business
+          // write, so a statement that fails still ran under the correlation of
+          // the request that issued it — the failing ones are the ones anybody
+          // goes looking for. The SQL is written out here rather than composed
+          // from `REQUEST_ID_SETTING` because `scripts/arch/sole-writer.mjs`
+          // reads raw statements as literals and refuses one it cannot read as
+          // `raw-sql-not-static`; the constant is exported for the suites, and
+          // `correlation.integration.test.ts` proves the two agree by asking
+          // PostgreSQL for the setting the constant names.
+          const reference = correlation?.current() ?? null;
+          if (reference !== null) {
+            await transactionClient.$queryRawUnsafe(
+              "SELECT set_config('platos.request_id', $1, true)",
+              reference.requestId,
+            );
+          }
           return await ambient.run({ transactionId, client: transactionClient }, () =>
             work({ transactionId }),
           );
@@ -201,12 +258,24 @@ export function createTenancyTransactions(
     },
 
     async atomic<Value>(
-      work: (transactionClient: TenancyTransactionClient) => Promise<Value>,
+      work: (transactionClient: TenancyTransactionClient) => Promise<NotResult<Value>>,
     ): Promise<Value> {
       // Named through `transactions` rather than `this`, because every store in
       // this package destructures the object it is handed and a `this`-bound
       // method would lose its receiver on the way in.
-      return unitOfWork.run(async (scope) => work(transactions.writer(scope)));
+      //
+      // NO CAST IS NEEDED HERE and that is the point of carrying the constraint
+      // rather than dropping it: `work` already answers `Promise<NotResult<Value>>`,
+      // which is exactly what `run<Value>` now takes. A pass-through that keeps
+      // the refusal type-checks without an escape; only one that DROPS it needs
+      // one.
+      return unitOfWork.run<Value>(async (scope) => work(transactions.writer(scope)));
+    },
+
+    async atomicResult<Value>(
+      work: (transactionClient: TenancyTransactionClient) => Promise<Result<Value>>,
+    ): Promise<Result<Value>> {
+      return runResult(unitOfWork, async (scope) => work(transactions.writer(scope)));
     },
   };
 

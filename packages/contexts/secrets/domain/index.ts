@@ -15,6 +15,8 @@ export * from "./environment-variable.js";
 export * from "./errors.js";
 export * from "./ids.js";
 export * from "./key-ring.js";
+export * from "./legacy-envelope.js";
 export * from "./metadata.js";
+export * from "./secret-handle.js";
 export * from "./secret-material.js";
 export * from "./secret-version.js";

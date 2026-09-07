@@ -22,7 +22,7 @@
 // read in one pass and a single malformed key must not leave the rate card
 // half-updated. Failures are counted and reported; the pass continues.
 
-import { err, ok, type Result, type TransactionScope } from "@platos/kernel";
+import { err, ok, runResult, type Result, type TransactionScope } from "@platos/kernel";
 
 import {
   admitModelKey,
@@ -140,7 +140,7 @@ export async function ingestRateCard(
   }
   const entries = entriesToIngest(command.catalogue);
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     let pricesAppended = 0;
     let unchanged = 0;
     const skipped: string[] = [];

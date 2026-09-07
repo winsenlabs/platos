@@ -5,7 +5,12 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
-export const EXPECTED_V1_PROJECT_COUNT = 32;
+// WIN-259 (M2.4) 32 -> 33. `packages/adapters/keyring-envelope`, the
+// thirteenth adapter directory and the first V1 project added since this
+// list was drawn. The list below is ORDERED and the root tsconfig's
+// references must match it exactly, so the entry goes where the generator
+// emits it: after `notifier-webhook` and before the two apps.
+export const EXPECTED_V1_PROJECT_COUNT = 33;
 export const EXPECTED_V1_PROJECTS = [
   "packages/kernel",
   "packages/contexts/identity-access", "packages/contexts/tenancy", "packages/contexts/secrets",
@@ -19,6 +24,7 @@ export const EXPECTED_V1_PROJECTS = [
   "packages/adapters/redis-ratelimit", "packages/adapters/redis-cache", "packages/adapters/redis-streams",
   "packages/adapters/model-router-providers", "packages/adapters/channel-slack",
   "packages/adapters/notifier-email", "packages/adapters/notifier-webhook",
+  "packages/adapters/keyring-envelope",
   "apps/core-api", "apps/mcp-stdio",
 ];
 
@@ -66,7 +72,7 @@ export function v1DistDirectories(root = repositoryRoot) {
     typeof reference?.path === "string" ? normalizedReferencePath(reference.path) : null
   );
   if (JSON.stringify(actualProjectPaths) !== JSON.stringify(EXPECTED_V1_PROJECTS)) {
-    throw new Error("root tsconfig references must be the exact ordered 32-project V1 target set");
+    throw new Error("root tsconfig references must be the exact ordered 33-project V1 target set");
   }
 
   const projects = [];
@@ -100,7 +106,7 @@ export function v1DistDirectories(root = repositoryRoot) {
     // the only project ADR M0.3 §4 puts a framework in — overrides both flags
     // for itself. Neither affects where output goes, so the safety property this
     // check protects is untouched, and allowing them HERE rather than widening
-    // `expectedCompilerOptionKeys` for all 32 projects keeps the exception
+    // `expectedCompilerOptionKeys` for all 33 projects keeps the exception
     // named, reviewable and impossible to inherit by accident.
     const expectedCompilerOptionKeys = [
       "composite", "declaration", "declarationMap", "outDir", "rootDir", "tsBuildInfoFile",

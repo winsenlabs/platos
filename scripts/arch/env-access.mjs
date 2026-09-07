@@ -219,8 +219,94 @@ export const VIOLATION_CODES = Object.freeze({
  * back over the same five roots. WIN-260 adds TEN files: seven configuration
  * modules and two suites under `apps/core-api/src/config/`, and one environment
  * reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-259 (M2.4) adds TEN more over the same five roots, in two passes, and
+ * this gate did not exist when the first pass landed — so it is told both here
+ * rather than only the second. FIRST PASS +6: `packages/kernel/src/vo/
+ * redaction.ts` and its suite, `packages/contexts/secrets/application/`
+ * write-only-inputs.test.ts and denied-read-audit.test.ts,
+ * `packages/adapters/postgres-tenancy/src/secrets-variable-fence.integration.
+ * test.ts`, and `apps/core-api/src/runtime/log-redaction.test.ts`. SECOND PASS
+ * +4, all in `packages/contexts/secrets`: the SECRET REFERENCE's
+ * `domain/secret-handle.ts` and `application/secret-handles.ts` with a suite
+ * each. 1503 + 6 + 4 = 1513, and `scripts/arch/arch-boundaries.mjs` reads the
+ * same 1513 back from its own scan of the same five roots, so the two can
+ * DISAGREE and be caught.
  */
-export const EXPECTED_FILE_COUNT = 1503;
+/**
+ * WIN-259 (M2.4) adds TWENTY-FOUR MORE, on top of WIN-260's 1503, and this pin
+ * is the SECOND scan to read the same tree: `arch-boundaries.test.mjs` states
+ * 1503 + 24 = 1527 from its own walk of the same five roots, and the two are
+ * written independently so they can DISAGREE and be caught. FOURTEEN of the
+ * twenty-four are the new `packages/adapters/keyring-envelope`, TWO are
+ * `packages/adapters/postgres-tenancy`, TWO are `packages/contexts/providers`
+ * and SIX are `packages/contexts/secrets`. 1503 + 24 = 1527.
+ *
+ * NOT ONE OF THE TWENTY-FOUR READS THE ENVIRONMENT, which is why this file's
+ * DECLARED table does not move even though its census does. The legacy migration
+ * keys reach the key-management adapter as a CONSTRUCTOR ARGUMENT from the
+ * composition root, exactly as the root key ring does — an adapter that read
+ * `process.env` for them would be the ENV-002 violation this gate exists to
+ * catch, and the census moving without the table moving is the evidence that it
+ * does not.
+ */
+/**
+ * M2 INTEGRATION. Neither branch figure survives composition: the two dimensions
+ * walk the SAME five roots and touch DISJOINT directories, so 1503 + 10 + 24 =
+ * 1537, and `scripts/arch/arch-boundaries.test.mjs` reads the same 1537 back
+ * from its own independently written scan of those roots, so the two can
+ * DISAGREE and be caught.
+ */
+/**
+ * ---
+ * back over the same five roots. WIN-260's configuration dimension adds TEN
+ * files: seven configuration modules and two suites under
+ * `apps/core-api/src/config/`, and one environment reader under
+ * `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-260's errors-and-idempotency dimension adds ELEVEN more, none of which
+ * reads the environment: the code-to-status map and its suite under
+ * `apps/core-api/src/transports/`, the `CorrelationSource` port under
+ * `packages/kernel/src/ports/`, seven files under
+ * `packages/adapters/redis-cache/src/` (the client, the two stores, the harness
+ * and three suites), and the correlation integration suite under
+ * `packages/adapters/postgres-tenancy/src/`. 1503 + 11 = 1514.
+ *
+ * And TWELVE more from the same dimension's `Idempotency-Key` gate, none of
+ * which reads the environment either: five source modules and four suites under
+ * `apps/core-api/src/http/`, the kernel's `RequestIdempotency` port, and the
+ * Redis implementation of that port with its suite under
+ * `packages/adapters/redis-cache/src/`. 1514 + 12 = 1526.
+ */
+/**
+ * M2 INTEGRATION. Three dimensions, one base, disjoint directories:
+ * 1503 + 10 + 24 + 23 = 1560, and `scripts/arch/arch-boundaries.test.mjs` and
+ * `scripts/arch/composition-root.mjs` read the same 1560 back from their own
+ * independently written scans of the same five roots, so the three can DISAGREE
+ * and be caught. The DECLARED table is unmoved by any of the three: not one of
+ * the fifty-seven files reads the environment.
+ */
+/**
+ * back over the same five roots. WIN-260's typed configuration adds TEN files:
+ * seven configuration modules and two suites under `apps/core-api/src/config/`,
+ * and one environment reader under `apps/mcp-stdio/src/`. 1493 + 10 = 1503.
+ *
+ * WIN-260 (M2.5, outbox/clock/retry) adds EIGHT more, and this pin is what
+ * CAUGHT them: three in `packages/kernel` (`vo/retry.ts` and the two behaviour
+ * suites), one in `packages/contexts/eventing` (the kernel-policy conformance
+ * suite), two in `packages/adapters/outbox` (`src/flush.ts` and its suite) and
+ * two under `apps/core-api/src/runtime` (`shutdown-drain.ts` and its suite).
+ * 1503 + 8 = 1511. That dimension's transaction-outcome gate adds NOTHING here —
+ * it lives under `scripts/` and this scan reads the five roots — which is why the
+ * V1 LEDGER moves by two where this pin does not, and the two are allowed to
+ * disagree for a stated reason rather than by accident.
+ */
+/**
+ * M2 INTEGRATION, ALL FOUR: 1503 + 10 + 24 + 23 + 8 = 1568, read back from this
+ * gate's own scan and independently from `arch-boundaries.test.mjs`'s, so the
+ * two can DISAGREE and be caught. The DECLARED table is unmoved by all four.
+ */
+export const EXPECTED_FILE_COUNT = 1568;
 
 function listSourceFiles(root) {
   const found = [];

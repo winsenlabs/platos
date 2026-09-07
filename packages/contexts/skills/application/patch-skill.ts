@@ -17,7 +17,7 @@
 // call rather than inlined so that changing the answer is a one-line change in
 // one place when that decision is taken.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   mayEdit,
@@ -44,7 +44,7 @@ export async function patchSkill(
   if (!entry.ok) return err(entry.error);
   if (!mayEdit(entry.value.isOfficial)) return err(officialSkillImmutable(command.reference));
   if (patchIsEmpty(command.patch)) return ok(entry.value);
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.patchSkill(entry.value.skillId, command.patch, transaction),
   );
 }

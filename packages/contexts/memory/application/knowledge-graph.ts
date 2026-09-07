@@ -20,7 +20,7 @@
 // joining a cluster node to its own private one and reading the private node out
 // through the cluster's traversal.
 
-import { asIdentifier, err, ok, type Result } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitEntityKey,
@@ -127,7 +127,7 @@ export async function rememberEntity(
     const created = buildEntity(dependencies, scope.value, key.value, command, now);
     const embedding = await embedQuery(dependencies, created.label);
     if (!embedding.ok) return err(embedding.error);
-    return dependencies.unitOfWork.run(async (transaction) => {
+    return runResult(dependencies.unitOfWork, async (transaction) => {
       const written = await dependencies.graph.insertEntity(created, transaction);
       if (!written.ok) return err(written.error);
       return ok({ entity: written.value, outcome: "created" as const });
@@ -139,7 +139,7 @@ export async function rememberEntity(
       ? promoteEntity(plan.value.entity, scope.value.binding, draft, now)
       : applyEntityDraft(plan.value.entity, draft, now);
   const outcome = plan.value.action === "promote" ? ("promoted" as const) : ("updated" as const);
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     const written = await dependencies.graph.updateEntity(folded, transaction);
     if (!written.ok) return err(written.error);
     return ok({ entity: written.value, outcome });
@@ -197,7 +197,7 @@ export async function relateEntities(
   );
   if (!existing.ok) return err(existing.error);
 
-  return dependencies.unitOfWork.run(async (transaction) => {
+  return runResult(dependencies.unitOfWork, async (transaction) => {
     if (existing.value !== null) {
       return dependencies.graph.updateRelationship(
         reassertRelationship(existing.value, admitted.value),
@@ -236,7 +236,7 @@ export async function forgetEntity(
 ): Promise<Result<boolean>> {
   const scope = await authorizeMutation(dependencies, { ...command, requestedAgentIds: [] });
   if (!scope.ok) return err(scope.error);
-  return dependencies.unitOfWork.run(async (transaction) =>
+  return runResult(dependencies.unitOfWork, async (transaction) =>
     dependencies.graph.deleteEntity(
       scope.value.subject,
       scope.value.agentIds,

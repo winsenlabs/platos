@@ -27,7 +27,7 @@
 // and still does not call it. Widening this read is a change to what every
 // caller receives, so it waits for a decision rather than arriving with a merge.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   admitNote,
@@ -138,7 +138,7 @@ async function changeLoadout(
   const note = admitNote(loadoutNote(change));
   if (!note.ok) return err(note.error);
 
-  const written = await dependencies.unitOfWork.run((transaction) =>
+  const written = await runResult(dependencies.unitOfWork, (transaction) =>
     writeVersion(
       dependencies,
       {

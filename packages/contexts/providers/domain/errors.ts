@@ -77,6 +77,20 @@ export const PROVIDERS_ERROR_CODES = [
   "PROVIDERS_GENERATION_ABORTED",
   "PROVIDERS_MESSAGE_NOT_REPRESENTABLE",
   "PROVIDERS_PASS_BUDGET_INVALID",
+  // WIN-259 M2.4. A key changed and the probe cache could not be told.
+  //
+  // It is its OWN code, and the alternative it replaces is not another code but
+  // SILENCE: six call sites called `probeCache.forgetProvider` and discarded the
+  // `Result`, so a write that changed a provider's material reported success
+  // while a verdict about the OLD material stayed servable for the length of the
+  // health window.
+  //
+  // It is not `PROVIDERS_REPOSITORY_UNAVAILABLE`, and the distinction is the
+  // operator's next step rather than taxonomy: that code says the write did not
+  // happen and the request should be retried, this one says the write DID
+  // happen and what is stale is a cached verdict. Collapsing them would tell an
+  // operator to re-run a rotation that already succeeded.
+  "PROVIDERS_PROBE_CACHE_NOT_EVICTED",
 ] as const;
 
 export type ProvidersErrorCode = (typeof PROVIDERS_ERROR_CODES)[number];
@@ -507,5 +521,31 @@ export function passBudgetInvalid(maxPasses: number): DomainError {
     "invalid_input",
     "a schema-shaped generation must be allowed at least one pass, and a whole number of them",
     { details: { maxPasses } },
+  );
+}
+
+/**
+ * The write landed and the probe cache could not be evicted.
+ *
+ * WIN-259 M2.4. The MESSAGE says the change was applied, on purpose: the six
+ * call sites evict AFTER the key has been written, so refusing without saying so
+ * would send an operator to repeat a rotation that already happened — and a
+ * repeated rotation is a second new secret, not a retry.
+ *
+ * `unavailable` and not `internal`, because the correct response is to retry the
+ * EVICTION (or to wait out the health window), and `retryAfterSeconds` is the
+ * field that category exists to carry. It is the health window's own length, so
+ * a caller that waits it out is guaranteed a fresh probe rather than guessing.
+ *
+ * The provider is named in `details` and not in the message. A provider id is
+ * not a secret, but every message in this file is a fixed literal and one that
+ * interpolated would be the only one that did.
+ */
+export function probeCacheNotEvicted(provider: string, retryAfterSeconds: number): DomainError {
+  return domainError(
+    "PROVIDERS_PROBE_CACHE_NOT_EVICTED",
+    "unavailable",
+    "the key was changed but its cached liveness result could not be evicted",
+    { details: { provider }, retryAfterSeconds },
   );
 }

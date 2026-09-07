@@ -18,14 +18,27 @@ import type { Clock, IdGenerator, Result, TransactionScope, Ulid, UnitOfWork, Uu
 
 import { envelopeAad, envelopeKeyInfo } from "../domain/envelope.js";
 import type { SealedEnvelope } from "../domain/envelope.js";
-import { credentialUnavailable, invalidKeyRing } from "../domain/errors.js";
+import { credentialUnavailable, invalidKeyRing, legacyEnvelopeUnreadable } from "../domain/errors.js";
+import { requireLegacyEnvelopeShape, requireMigratableFormat } from "../domain/legacy-envelope.js";
 import { rootKeyVersion } from "../domain/ids.js";
 import type { RootKeyVersion } from "../domain/ids.js";
 import { rootKeyRingState } from "../domain/key-ring.js";
 import type { RootKeyRingState } from "../domain/key-ring.js";
+import { secretHandleAad, secretHandleKeyInfo } from "../domain/secret-handle.js";
+import type { SecretHandleEnvelope } from "../domain/secret-handle.js";
 import { secretMaterial } from "../domain/secret-material.js";
 import type { SecretMaterial } from "../domain/secret-material.js";
-import type { AeadCipher, Hasher, KeyRing, OpenRequest, RootKeyHandle, SealRequest } from "./ports/index.js";
+import type {
+  AeadCipher,
+  Hasher,
+  KeyRing,
+  LegacyOpenRequest,
+  OpenHandleRequest,
+  OpenRequest,
+  RootKeyHandle,
+  SealHandleRequest,
+  SealRequest,
+} from "./ports/index.js";
 
 function version(value: number): RootKeyVersion {
   const parsed = rootKeyVersion(value);
@@ -164,7 +177,100 @@ export function inMemoryAeadCipher(ring: InMemoryKeyRing): AeadCipher {
       }
       return ok(secretMaterial(plaintext));
     },
+    // WIN-259. The SAME construction over the reference label space, and it has
+    // to be the same construction or the negative controls below it are theatre:
+    // the key seed mixes the root key material with `secretHandleKeyInfo`, which
+    // carries the environment, so a reference opened under another environment
+    // derives a DIFFERENT keystream and a different tag. Nothing compares two
+    // environment ids anywhere on this path.
+    async sealHandle(request: SealHandleRequest): Promise<Result<SecretHandleEnvelope>> {
+      const keyMaterial = ring.material(request.key.rootKeyVersion);
+      if (keyMaterial === null) return err(credentialUnavailable("root_key_absent"));
+      counter += 1;
+      const salt = stream(`handle-salt|${counter}`, SALT_BYTES);
+      const nonce = stream(`handle-nonce|${counter}`, NONCE_BYTES);
+      const keySeed = `${keyMaterial}|${secretHandleKeyInfo(request.binding)}|${[...salt].join(",")}`;
+      const aad = secretHandleAad(request.binding);
+      const body = encodeUtf8(request.body);
+      return ok({
+        salt,
+        nonce,
+        ciphertext: xored(body, stream(`${keySeed}|${[...nonce].join(",")}`, body.length)),
+        authTag: tagOf(keySeed, aad, request.body),
+      });
+    },
+    async openHandle(request: OpenHandleRequest): Promise<Result<string>> {
+      const keyMaterial = ring.material(request.key.rootKeyVersion);
+      if (keyMaterial === null) return err(credentialUnavailable("root_key_absent"));
+      const { envelope } = request;
+      const keySeed = `${keyMaterial}|${secretHandleKeyInfo(request.binding)}|${[...envelope.salt].join(",")}`;
+      const aad = secretHandleAad(request.binding);
+      const keystream = stream(`${keySeed}|${[...envelope.nonce].join(",")}`, envelope.ciphertext.length);
+      const body = decodeUtf8(xored(envelope.ciphertext, keystream));
+      if (!sameBytes(envelope.authTag, tagOf(keySeed, aad, body))) {
+        return err(credentialUnavailable("handle_open_failed"));
+      }
+      return ok(body);
+    },
+
+    // THE LEGACY DOUBLE IS A DOUBLE OF THE FORMAT, NOT OF THE CIPHER, AND THAT
+    // IS THE HONEST LIMIT OF WHAT IT CAN PROVE.
+    //
+    // A legacy payload's plaintext is recoverable here only because this double
+    // and `legacyPayload` below share a fake serialisation: the pair exists so
+    // `migrate-legacy-envelope.ts`'s CONTROL FLOW — the grant, the convergence
+    // branch, the revision, the audit row, the transaction — is exercisable with
+    // nothing running. It says NOTHING about whether real format-2 and format-3
+    // bytes open, and it must not be read as saying so.
+    //
+    // That claim is made where it can be falsified: `keyring-envelope`'s
+    // `legacy-wire-vectors.ts` holds ciphertexts produced BY the two extraction
+    // sources, and its suites open them with real AES-256-GCM. This double
+    // deliberately reproduces the FORMAT rules — it routes the payload through
+    // the same `requireMigratableFormat` and `requireLegacyEnvelopeShape` the
+    // real adapter uses — so a widths change breaks both, and the one thing it
+    // fakes is the primitive.
+    async openLegacy(request: LegacyOpenRequest): Promise<Result<SecretMaterial>> {
+      const format = requireMigratableFormat(request.formatVersion);
+      if (!format.ok) return err(format.error);
+      const parts = request.payload.split("|");
+      if (parts.length !== 4 || parts[0] !== LEGACY_DOUBLE_PREFIX) {
+        return err(legacyEnvelopeUnreadable("payload_is_not_base64"));
+      }
+      const [, declaredFormat, plaintext, tag] = parts;
+      const shaped = requireLegacyEnvelopeShape(format.value, {
+        nonce: stream(`legacy-nonce|${plaintext}`, format.value.nonceBytes),
+        ciphertext: encodeUtf8(plaintext ?? ""),
+        authTag: stream(`legacy-tag|${plaintext}`, TAG_BYTES),
+      });
+      if (!shaped.ok) return err(shaped.error);
+      if (declaredFormat !== String(request.formatVersion)) {
+        return err(legacyEnvelopeUnreadable("nonce_width_disagrees_with_format"));
+      }
+      if (tag !== legacyTag(plaintext ?? "")) {
+        return err(legacyEnvelopeUnreadable("legacy_envelope_open_failed"));
+      }
+      return ok(secretMaterial(plaintext ?? ""));
+    },
   };
+}
+
+/** The double's own serialisation marker. Nothing real ever writes this. */
+const LEGACY_DOUBLE_PREFIX = "in-memory-legacy";
+
+function legacyTag(plaintext: string): string {
+  return mix(`legacy|${plaintext}`).toString(16);
+}
+
+/**
+ * Build a payload `inMemoryAeadCipher.openLegacy` accepts.
+ *
+ * A test double needs a way to MINT its inputs as well as read them, and minting
+ * them in each suite by hand is how two suites end up disagreeing about the
+ * double's own shape.
+ */
+export function legacyPayload(formatVersion: number, plaintext: string): string {
+  return [LEGACY_DOUBLE_PREFIX, String(formatVersion), plaintext, legacyTag(plaintext)].join("|");
 }
 
 export function inMemoryHasher(): Hasher {

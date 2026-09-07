@@ -18,6 +18,7 @@
 import {
   err,
   ok,
+  runResult,
   type EnvironmentScope,
   type JobId as RuntimeJobId,
   type ResumeToken,
@@ -123,7 +124,7 @@ export async function requestApproval(
   const now = dependencies.clock.now();
   const approval = newApproval(dependencies, command.request, now);
 
-  const inserted = await dependencies.unitOfWork.run((transaction) =>
+  const inserted = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.approvals.insertApproval(command.scope, approval, transaction),
   );
   if (!inserted.ok) return err(inserted.error);

@@ -17,7 +17,7 @@
 // product decision and is deliberately NOT assumed here.
 
 import type { OrganizationId, ProjectId, Result, TransactionScope } from "@platos/kernel";
-import { asIdentifier, err, ok } from "@platos/kernel";
+import { asIdentifier, err, ok, runResult } from "@platos/kernel";
 
 import {
   checkProjectMembershipIntegrity,
@@ -92,7 +92,7 @@ export function createAddProjectMember(dependencies: Dependencies): AddProjectMe
     const verified = checkProjectMembershipIntegrity(candidate, project, organizationMembership);
     if (!verified.ok) return err(verified.error);
 
-    return unitOfWork.run(async (transaction: TransactionScope) => {
+    return runResult(unitOfWork, async (transaction: TransactionScope) => {
       await repository.saveProjectMembership(verified.value, transaction);
       return ok(verified.value);
     });

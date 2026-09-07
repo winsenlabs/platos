@@ -13,7 +13,7 @@
 // first and a non-zero one refuses, carrying the number so an operator is told
 // how much work the fix is.
 
-import { err, ok, type Result } from "@platos/kernel";
+import { err, ok, runResult, type Result } from "@platos/kernel";
 
 import {
   providerKeyNotFound,
@@ -23,6 +23,7 @@ import {
 } from "../domain/index.js";
 import { requireAccess, verifyOperator } from "./authorization.js";
 import type { ProvidersDependencies } from "./dependencies.js";
+import { evictProbeCache } from "./evict-probe-cache.js";
 
 export interface DeleteProviderKeyCommand {
   readonly authorization: unknown;
@@ -50,13 +51,16 @@ export async function deleteProviderKey(
     return err(providerKeyPinnedByAgents(key.providerKeyId, pinned.value));
   }
 
-  const removed = await dependencies.unitOfWork.run((transaction) =>
+  const removed = await runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.deleteProviderKey(scope, key.providerKeyId, transaction),
   );
   if (!removed.ok) return err(removed.error);
   // The row was read inside this use case and is gone now. A `false` here means
   // something else removed it between the read and the write, which is the same
   // outcome the caller asked for and not a failure.
-  await dependencies.probeCache.forgetProvider(key.provider);
-  return ok(key);
+  // WIN-259 M2.4. The key is GONE and its cached verdict says it was healthy.
+  // That is the same class of staleness a rotation leaves — an answer about
+  // material that no longer exists — so it refuses on the same terms rather than
+  // being discarded.
+  return evictProbeCache(dependencies, key.provider, key);
 }

@@ -9,8 +9,11 @@ export type {
   AeadCipher,
   Hasher,
   KeyRing,
+  LegacyOpenRequest,
+  OpenHandleRequest,
   OpenRequest,
   RootKeyHandle,
+  SealHandleRequest,
   SealRequest,
 } from "./crypto.js";
 export type {
@@ -65,8 +68,21 @@ export type {
 // method above, and an adapter that reached for `@platos/kernel` directly would
 // be a second import edge into the kernel from a package whose only declared
 // dependency is the context whose port it satisfies.
-export type { EnvironmentId, Result, TransactionScope } from "@platos/kernel";
-export { err, ok } from "@platos/kernel";
+export type { EnvironmentId, NotResult, Result, TransactionScope } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+// WIN-260 (M2.5): `domainError` joins them, for the reason `tenancy`'s and
+// `identity-access`' entry points state — the real-PostgreSQL transaction
+// boundary suite asserts that a returned error `Result` ROLLS BACK where it
+// used to assert that it committed, and a suite that cannot CONSTRUCT a
+// `DomainError` cannot state the case.
+export { domainError, err, ok, runResult } from "@platos/kernel";
 
 export type {
   ActorId,
@@ -81,6 +97,7 @@ export type {
   CredentialSecretVersion,
   CredentialSecretVersionDraft,
   EnvelopeBinding,
+  EnvelopeFormatDescriptor,
   EnvelopeFormatVersion,
   EnvironmentVariable,
   EnvironmentVariableId,
@@ -89,6 +106,8 @@ export type {
   RootKeyUsage,
   RootKeyVersion,
   SealedEnvelope,
+  SecretHandleBinding,
+  SecretHandleEnvelope,
   SecretMaterial,
   SecretRevision,
   SecretVersionId,
@@ -102,4 +121,105 @@ export {
   credentialUnavailable,
   environmentVariableVersionConflict,
   secretVersionAlreadyExists,
+} from "../../domain/index.js";
+
+// WIN-259 M2.4 — the values `crypto.ts`'s THREE ports need, and the THIRD time
+// this exact omission has been found on this issue.
+//
+// WITHOUT THIS BLOCK `KeyRing`, `AeadCipher` AND `Hasher` ARE UNIMPLEMENTABLE
+// OUTSIDE THIS PACKAGE, and the two blocks above record the same discovery for
+// `SecretsRepository` and `EnvironmentVariableRepository`. `crypto.ts` declares
+// its ports in terms of `RootKeyRingState`, `SealedEnvelope`, `EnvelopeBinding`
+// and `SecretMaterial`, every one of which an adapter can now NAME — but naming
+// a type is not building a value. A `KeyRing` has to RETURN a `RootKeyRingState`
+// and a `RootKeyVersion`; an `AeadCipher` has to RETURN a `SecretMaterial`; and
+// neither constructor was reachable from here. An adapter that could not reach
+// them had exactly two options, and both are worse than this export:
+//
+//   1. Cast a structural literal to the branded type. `RootKeyVersion` is
+//      `Branded<number, "RootKeyVersion">` and `rootKeyRingState` is the ONLY
+//      thing that checks the ring's one invariant — that the active version is
+//      present. A cast skips the check, so a ring whose active key is missing
+//      would seal nothing and report success.
+//   2. Re-implement `secretMaterial`. That function is the redaction boundary:
+//      the plaintext lives in a CLOSURE and every accessor is non-enumerable, so
+//      `{ ...material }` is `{}`. A second implementation is a second redaction
+//      policy over the same plaintext, and the one that leaks wins.
+//
+// `envelopeKeyInfo` AND `envelopeAad` ARE THE WIRE FORMAT ITSELF, and they are
+// the reason this block is not merely a convenience. `envelope.ts` pins both
+// strings byte-for-byte, down to the NUL separator, because "changing a
+// separator, an order or a character makes every stored format-1 envelope
+// permanently unopenable". An adapter that could not import them would have
+// re-typed `platos:credential-secret:v1` and the field order by hand — which is
+// how the THREE mutually incompatible envelope shapes in `domain/envelope.ts`'s
+// header came to exist in the first place. Exporting them makes the domain the
+// single source of the HKDF `info` and the AEAD associated data, so a change to
+// either breaks the compile rather than the ciphertext.
+//
+// `ROOT_KEY_BYTE_LENGTH` is here for the same reason `ENVELOPE_FORMAT_VERSIONS`
+// is above: it is a CLOSED fact about the format (AES-256 keys are 32 bytes) and
+// a ring parser that carried its own literal would be a second opinion about one
+// number. `invalidKeyRing` is the one refusal `domain/errors.ts` reserves for a
+// ring that cannot satisfy the vault's invariants, and a parser that minted its
+// own would put a fourteenth code in a closed set of thirteen.
+export {
+  ROOT_KEY_BYTE_LENGTH,
+  envelopeAad,
+  envelopeKeyInfo,
+  invalidKeyRing,
+  rootKeyRingState,
+  rootKeyVersion,
+  secretMaterial,
+} from "../../domain/index.js";
+
+// M2 INTEGRATION — the FIFTH time this exact omission has been found on this
+// issue, and the first time the two halves of WIN-259 stood in one tree to make
+// it visible.
+//
+// `sealHandle` and `openHandle` were added to `AeadCipher` by the projection
+// dimension, which measured that no production `AeadCipher` existed and proved
+// the SECRET REFERENCE against `inMemoryAeadCipher`. The lifecycle dimension
+// then BUILT that production adapter. Composed, `packages/adapters/keyring-
+// envelope` must satisfy the whole port — and it could name
+// `SecretHandleBinding` and `SecretHandleEnvelope` above while being unable to
+// build either label. The two strings are the reference's wire format exactly as
+// `envelopeKeyInfo`/`envelopeAad` are the envelope's, and the paragraph above
+// gives the whole reason they belong here rather than being re-typed: an adapter
+// that spelled `platos:secret-handle:v1` itself would be a second opinion about
+// a format, and the label spaces' inability to collide is the ONLY thing keeping
+// a credential envelope from being presentable as a reference.
+export { secretHandleAad, secretHandleKeyInfo } from "../../domain/index.js";
+
+// WIN-259 M2.4, second half — what `openLegacy` needs, and the FOURTH time this
+// exact omission has been found on this issue.
+//
+// The block above made `AeadCipher.seal` and `.open` implementable outside this
+// package. `openLegacy` is implementable only with three more names, and each is
+// there for the reason the block above gives for `envelopeKeyInfo`: the adapter
+// must ask the DOMAIN what a legacy format is, never decide for itself.
+//
+// `requireMigratableFormat` is the closed rule about which formats may be read
+// at all. An adapter carrying its own `version === 2 || version === 3` would be a
+// second opinion about a set `envelope.ts` derives from `writable`, and the day a
+// fourth legacy format is catalogued the two would disagree silently — the
+// adapter would refuse material the domain says is migratable.
+//
+// `requireLegacyEnvelopeShape` is the width rule, and it is the one an adapter is
+// most tempted to inline. Format 2's nonce is 12 bytes and format 3's is 16; an
+// adapter that hard-coded either would open one format and mis-slice the other,
+// and a mis-sliced payload fails the tag check — which looks exactly like a wrong
+// key. `AUTH_TAG_BYTES` travels with it for the same reason.
+//
+// `legacyEnvelopeUnreadable` is the one refusal `domain/errors.ts` reserves for
+// this operation. An adapter minting its own would put a sixteenth code in a
+// closed set of fifteen, and `contracts/index.test.ts` pins that set.
+export type { LegacyEnvelopeParts, LegacySecretPayload } from "../../domain/index.js";
+export {
+  AUTH_TAG_BYTES,
+  MIGRATABLE_ENVELOPE_FORMATS,
+  canonicalRowRefusals,
+  legacyEnvelopeUnreadable,
+  requireLegacyEnvelopeShape,
+  requireMigratableFormat,
 } from "../../domain/index.js";

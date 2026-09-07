@@ -23,7 +23,7 @@
 // readiness rather than pretending to be ready. WIN-258/259 and their siblings
 // fill the registry in; none of them needs to change this file's shape to do it.
 
-import type { DurableRuntime, EventBus, OutboxWriter } from "@platos/kernel";
+import type { DurableRuntime, EventBus, OutboxWriter, RequestIdempotency } from "@platos/kernel";
 
 import type {
   IdentityAccessRepository,
@@ -40,7 +40,10 @@ import type {
 import type { SkillsRepository } from "@platos/context-skills/application/ports/index.js";
 import type { ToolsRepository } from "@platos/context-tools/application/ports/index.js";
 import type {
+  AeadCipher,
   EnvironmentVariableRepository,
+  Hasher,
+  KeyRing,
   SecretsRepository,
 } from "@platos/context-secrets/application/ports/index.js";
 import type {
@@ -89,11 +92,12 @@ import type {
 } from "@platos/context-conversations/application/ports/index.js";
 import type {
   ApprovalsRepository,
+  IdempotencyStore,
   JobsRepository,
 } from "@platos/context-jobs/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
-import type { OutboxAdapter, OutboxEventStore } from "@platos/adapter-outbox";
+import type { OutboxAdapter, OutboxEventStore, OutboxFlush } from "@platos/adapter-outbox";
 import type { DurableRuntimeAdapter } from "@platos/adapter-durable-runtime";
 import type { ClickhouseObservabilityAdapter } from "@platos/adapter-clickhouse-observability";
 import type { ObjectstoreMinioAdapter } from "@platos/adapter-objectstore-minio";
@@ -104,20 +108,31 @@ import type { ModelRouterProvidersAdapter } from "@platos/adapter-model-router-p
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
+import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
+
+import type { Drainable } from "../runtime/shutdown-drain.js";
 
 /**
- * The twelve adapter slots, keyed by directory name.
+ * The thirteen adapter slots, keyed by directory name.
  *
  * The key is the adapter's directory because that is the name every other gate
  * already uses — `scripts/arch/boundary-rules.mjs`, the generator's `ADAPTERS`
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * TWELVE SLOTS, FORTY-FOUR BINDINGS (ADR M0.3 §15). An install wires a
- * DIRECTORY — one process-lifetime object holding one vendor client — so this
- * table stays keyed by directory and keeps twelve entries. What a directory
- * SATISFIES is a different question, and `PORT_SATISFACTION` below answers it
- * per binding.
+ * THIRTEEN SLOTS, FORTY-SEVEN BINDINGS (ADR M0.3 §15, amended by WIN-259). An
+ * install wires a DIRECTORY — one process-lifetime object holding one vendor
+ * client — so this table stays keyed by directory. What a directory SATISFIES is
+ * a different question, and `PORT_SATISFACTION` below answers it per binding.
+ *
+ * TWELVE HELD FOR SEVENTEEN CONSECUTIVE OWNER GRANTS AND THEN MOVED ONCE.
+ * Every one of those seventeen added another owner of the rows in the ONE
+ * PostgreSQL database, which §15 says is a row on an existing directory rather
+ * than a new package. `keyring-envelope` is the case §15 does not reach: it
+ * holds no rows and no database client, it holds the AES-256 root keys, and the
+ * ORM's own adapter refused all three of its ports because "putting it here
+ * would move the keys that decrypt every envelope into the process that holds
+ * the database connection, so a single credential leak would yield both halves".
  */
 export interface AdapterInstances {
   readonly "postgres-tenancy": PostgresTenancyAdapter;
@@ -132,6 +147,13 @@ export interface AdapterInstances {
   readonly "channel-slack": ChannelSlackAdapter;
   readonly "notifier-email": NotifierEmailAdapter;
   readonly "notifier-webhook": NotifierWebhookAdapter;
+  // WIN-259 M2.4 — the THIRTEENTH slot, and the first one added since this table
+  // was drawn. It is a slot and not a row on `postgres-tenancy` because an
+  // install wires ONE process-lifetime object holding ONE vendor client, and a
+  // root key ring is not the ORM's client: it is the AES-256 material that opens
+  // every envelope the ORM stores. `secrets-repository.ts` declined all three of
+  // its ports on exactly that ground.
+  readonly "keyring-envelope": KeyringEnvelopeAdapter;
 }
 
 export type AdapterName = keyof AdapterInstances;
@@ -400,12 +422,35 @@ interface PortSatisfaction {
   >;
   readonly "objectstore-minio:ObjectStore": Satisfies<ObjectstoreMinioAdapter, ObjectStore>;
   readonly "redis-ratelimit:RateLimiter": Satisfies<RedisRatelimitAdapter, RateLimiter>;
-  readonly "redis-cache:Cache": Satisfies<RedisCacheAdapter, Cache>;
+  readonly "redis-cache:Cache": Satisfies<RedisCacheAdapter["cache"], Cache>;
+  readonly "redis-cache:IdempotencyStore": Satisfies<RedisCacheAdapter["idempotency"], IdempotencyStore>;
+  // WIN-260 (M2.5), the errors-and-idempotency dimension. The THIRD port on this
+  // directory and the first kernel port it carries. Indexed through the PROPERTY
+  // for the reason the two above it are: the adapter is one object serving three
+  // contracts, and `Satisfies<RedisCacheAdapter, RequestIdempotency>` would ask
+  // whether the whole adapter is a request-idempotency store, which it is not.
+  readonly "redis-cache:RequestIdempotency": Satisfies<
+    RedisCacheAdapter["requests"],
+    RequestIdempotency
+  >;
   readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
   readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
   readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
   readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
   readonly "notifier-webhook:Notifier": Satisfies<NotifierWebhookAdapter, Notifier>;
+  // WIN-259 M2.4. `secrets`' THREE cryptography ports, every one proven against
+  // the ADAPTER rather than through a property: `state`/`handle`, `seal`/`open`
+  // and `hash`/`verify` are six names with no collision, so one interface
+  // extends all three and nothing forces the indirection `secrets`' two STORE
+  // bindings above needed.
+  //
+  // THREE OBLIGATIONS AND NOT ONE, and the split does for this directory what
+  // the §15 key does for the ORM's. Collapse them into `keyring-envelope:KeyRing`
+  // alone and the compiler would stop noticing the day `seal` changed shape,
+  // because a missing obligation is not a wrong one.
+  readonly "keyring-envelope:KeyRing": Satisfies<KeyringEnvelopeAdapter, KeyRing>;
+  readonly "keyring-envelope:AeadCipher": Satisfies<KeyringEnvelopeAdapter, AeadCipher>;
+  readonly "keyring-envelope:Hasher": Satisfies<KeyringEnvelopeAdapter, Hasher>;
 }
 
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
@@ -448,11 +493,16 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "objectstore-minio:ObjectStore": true,
   "redis-ratelimit:RateLimiter": true,
   "redis-cache:Cache": true,
+  "redis-cache:IdempotencyStore": true,
+  "redis-cache:RequestIdempotency": true,
   "redis-streams:EventBus": true,
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
   "notifier-email:Notifier": true,
   "notifier-webhook:Notifier": true,
+  "keyring-envelope:KeyRing": true,
+  "keyring-envelope:AeadCipher": true,
+  "keyring-envelope:Hasher": true,
 });
 
 /**
@@ -479,6 +529,22 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
  * declare. It is an obligation between two adapters, so it is stated as one.
  */
 export const OUTBOX_STORE_SATISFACTION: Satisfies<PostgresTenancyAdapter, OutboxEventStore> = true;
+
+/**
+ * WIN-260 (M2.5). The SECOND obligation this file states rather than binds.
+ *
+ * `apps/core-api/src/runtime/shutdown-drain.ts` sequences `Drainable`s inside
+ * one shutdown budget, and the outbox flush is the first of them. The flush
+ * itself lives in `@platos/adapter-outbox` — `scripts/arch/composition-root.mjs`
+ * rule (C1) allows exactly ONE importer of an adapter package, which is this
+ * file, and the paging contract it implements is outbox knowledge anyway. So the
+ * two halves agree STRUCTURALLY, the same way `OutboxEventStore` above does, and
+ * the agreement is checked HERE because this is the only file entitled to name
+ * both packages. It is not a bound PORT and gets no row in `ADAPTER_BINDINGS`:
+ * nothing is wired to it by name, and a row would claim a binding the ADR does
+ * not declare.
+ */
+export const OUTBOX_FLUSH_SATISFACTION: Satisfies<OutboxFlush, Drainable> = true;
 
 /** Who owns the port an adapter implements: a context, or the kernel itself. */
 export interface AdapterBinding {
@@ -793,19 +859,48 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
     owner: "eventing",
   }),
   Object.freeze({ adapter: "redis-ratelimit", port: "RateLimiter", owner: "identity-access" }),
+  // WIN-260 (M2.5). The SECOND binding on this directory, and the FIRST time the
+  // §15 amendment has been applied outside `postgres-tenancy`. `Cache` and
+  // `IdempotencyStore` sit behind ONE Redis connection, so they are one
+  // directory; a thirteenth would have been a second client for one server.
+  //
+  // The claim the `jobs` rows above make is now discharged. They say
+  // `IdempotencyStore` is "a reserve-once keyspace — an atomic claim-or-report,
+  // a TTL the store enforces, and an update that must not resurrect an expired
+  // key — none of which PostgreSQL has, and all of which `redis-cache` below
+  // does". Until this row, "does" was a promise about a placeholder.
   Object.freeze({ adapter: "redis-cache", port: "Cache", owner: "memory" }),
+  Object.freeze({ adapter: "redis-cache", port: "IdempotencyStore", owner: "jobs" }),
+  // WIN-260 (M2.5), the errors-and-idempotency dimension. The THIRD row on this
+  // directory and the FORTY-SIXTH binding. `RequestIdempotency` is M0.4 §2's
+  // `Idempotency-Key` envelope — the header a transport reads, the reservation
+  // that makes a replay possible, and the one-time-secret mints that REQUIRE
+  // both. Its owner is `kernel` and not `jobs`: `jobs`' `IdempotencyStore`
+  // reserves a job EXECUTION keyed by an `ExecutionRequestId` and settles with a
+  // `JobExecutionErrorCode`, while this reserves an HTTP REQUEST keyed by a
+  // caller's header and settles with the bytes that went on the wire. All
+  // seventeen contexts have side-effecting operations the rule covers and none
+  // of them decides anything with the key, which is the test `CorrelationSource`
+  // passed to become a kernel port.
+  Object.freeze({ adapter: "redis-cache", port: "RequestIdempotency", owner: "kernel" }),
   Object.freeze({ adapter: "redis-streams", port: "EventBus", owner: "kernel" }),
   Object.freeze({ adapter: "model-router-providers", port: "ModelRouter", owner: "providers" }),
   Object.freeze({ adapter: "channel-slack", port: "ChannelAdapter", owner: "channels" }),
   Object.freeze({ adapter: "notifier-email", port: "Notifier", owner: "cost-monitoring" }),
   Object.freeze({ adapter: "notifier-webhook", port: "Notifier", owner: "cost-monitoring" }),
+  // WIN-259 M2.4. The three bindings of the thirteenth directory. They sit at the
+  // END so every ordinal above stays true, exactly as the seventeen owner rows of
+  // `postgres-tenancy` were appended rather than interleaved.
+  Object.freeze({ adapter: "keyring-envelope", port: "KeyRing", owner: "secrets" }),
+  Object.freeze({ adapter: "keyring-envelope", port: "AeadCipher", owner: "secrets" }),
+  Object.freeze({ adapter: "keyring-envelope", port: "Hasher", owner: "secrets" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-FOUR rows across
- * twelve directories: a caller iterating this list to construct or close
+ * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-NINE rows across
+ * thirteen directories: a caller iterating this list to construct or close
  * adapters would otherwise build `postgres-tenancy` THIRTY-THREE times and
  * open thirty-three pools over the one database.
  */

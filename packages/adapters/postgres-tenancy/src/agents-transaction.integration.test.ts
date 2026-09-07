@@ -22,6 +22,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
 import type { Agent, AgentVersion } from "@platos/context-agents/application/ports/index.js";
+import { ok, runResult } from "@platos/context-agents/application/ports/index.js";
 
 import { agentIdOf, agentSlugOf, HOME_PROJECT, scopeOf, HOME_ENVIRONMENT, startAgentsHarness, versionIdOf, type AgentsHarness, type SeededAgent } from "./agents-harness.js";
 import { TRANSACTION_NOT_OPEN, TRANSACTION_SCOPE_FOREIGN, TRANSACTION_SCOPE_UNKNOWN } from "./transaction.js";
@@ -83,7 +84,7 @@ describe("the transaction boundary", () => {
     // is rethrown and the transaction is rolled back by `UnitOfWork.run`.
     const orphan: AgentVersion = { ...host.version, agentVersionId: versionIdOf(harness.freshId("0402")), agentId: agentIdOf("aa000000-0000-4000-8000-0000000000fe"), versionNumber: 7 };
     await expect(
-      harness.adapter.unitOfWork.run(async (transaction) => {
+      runResult(harness.adapter.unitOfWork, async (transaction) => {
         const first = await harness.repository.insertAgent(survivor, transaction);
         expect(first.ok).toBe(true);
         return harness.repository.insertVersion(orphan, transaction);
@@ -92,22 +93,56 @@ describe("the transaction boundary", () => {
     expect(await agentCount("rolled-back")).toBe(0);
   });
 
-  test("a RETURNED refusal commits what came before it, and the savepoint is why", async () => {
-    const survivor = agentNamed(harness, "survives-the-refusal");
-    const outcome = await harness.adapter.unitOfWork.run(async (transaction) => {
-      const first = await harness.repository.insertAgent(survivor, transaction);
+  test("a RETURNED refusal discards what came before it; a HANDLED one keeps it, and the savepoint is why", async () => {
+    // THE SAVEPOINT IS STILL THE SUBJECT, and WIN-260 (M2.5) did not change what
+    // it does. A unique-violation inside a PostgreSQL transaction POISONS that
+    // transaction: every statement after it is refused with 25P02 and the COMMIT
+    // executes as a ROLLBACK, silently. `agents-guards.ts` wraps the write in a
+    // savepoint so the violation rolls back to the savepoint and the transaction
+    // stays USABLE. Without it, neither half of this case could pass.
+    //
+    // WHAT CHANGED IS WHICH ANSWER THE CALLER GETS FOR WHICH SPELLING. This case
+    // used to read "a RETURNED refusal commits what came before it", because
+    // `run` committed on a resolved callback and an error `Result` resolves.
+    // Returning the refusal now says the frame failed, and the frame is
+    // discarded; reading it and carrying on still commits, which is what the
+    // savepoint bought and is the second half below.
+    const returned = await runResult(harness.adapter.unitOfWork, async (transaction) => {
+      const first = await harness.repository.insertAgent(
+        agentNamed(harness, "discarded-with-the-refusal"),
+        transaction,
+      );
       expect(first.ok).toBe(true);
-      // A slug already taken. The store answers `err`, the callback RESOLVES,
-      // and `UnitOfWork.run` therefore COMMITS — which is the caller's decision
-      // to make and not this adapter's. What the savepoint guarantees is that
-      // the commit is honest: the first row really is there.
+      // A slug already taken.
       return harness.repository.insertAgent(
         { ...agentNamed(harness, "transaction-host") },
         transaction,
       );
     });
-    expect(outcome.ok).toBe(false);
-    expect(outcome.ok === false && outcome.error.code).toBe("AGENTS_AGENT_ALREADY_EXISTS");
+    expect(returned.ok).toBe(false);
+    expect(returned.ok === false && returned.error.code).toBe("AGENTS_AGENT_ALREADY_EXISTS");
+    expect(await agentCount("discarded-with-the-refusal")).toBe(0);
+
+    // HALF TWO — THE TRANSACTION SURVIVED THE VIOLATION, which is the savepoint
+    // and nothing else. The refusal is read, the caller carries on, and the row
+    // written BEFORE the violation commits. A poisoned transaction would answer
+    // zero here with no error at all, which is the outcome the savepoint removes.
+    let seen: string | null = null;
+    const handled = await runResult(harness.adapter.unitOfWork, async (transaction) => {
+      const first = await harness.repository.insertAgent(
+        agentNamed(harness, "survives-the-refusal"),
+        transaction,
+      );
+      expect(first.ok).toBe(true);
+      const refused = await harness.repository.insertAgent(
+        { ...agentNamed(harness, "transaction-host") },
+        transaction,
+      );
+      seen = refused.ok ? null : refused.error.code;
+      return ok(null);
+    });
+    expect(handled.ok).toBe(true);
+    expect(seen).toBe("AGENTS_AGENT_ALREADY_EXISTS");
     expect(await agentCount("survives-the-refusal")).toBe(1);
   });
 
@@ -165,7 +200,7 @@ describe("the transaction boundary", () => {
       stale = transaction as never;
     });
     await expect(
-      harness.adapter.unitOfWork.run(async () =>
+      runResult(harness.adapter.unitOfWork, async () =>
         harness.repository.insertAgent(agentNamed(harness, "stale-token"), stale),
       ),
     ).rejects.toMatchObject({ code: TRANSACTION_SCOPE_UNKNOWN });
@@ -210,7 +245,7 @@ describe("the transaction boundary", () => {
       stale = transaction as never;
     });
     await expect(
-      harness.adapter.unitOfWork.run(async () =>
+      runResult(harness.adapter.unitOfWork, async () =>
         harness.repository.countBindings(host.agent.agentId, stale),
       ),
     ).rejects.toMatchObject({ code: TRANSACTION_SCOPE_UNKNOWN });
@@ -269,7 +304,7 @@ describe("the transaction boundary", () => {
     // on every save except this one, with every other case in this file still
     // green.
     const bare = agentNamed(harness, "no-versions-yet");
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAgent(bare, transaction),
     );
 
@@ -302,10 +337,10 @@ describe("the transaction boundary", () => {
     // row's identity. A binding whose row has gone matches nothing, and the
     // store answers `binding_moved_underneath` rather than inserting it again.
     const removed = await harness.seedAgent({ slug: "binding-gone" });
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.deleteBinding(HOME, removed.binding, transaction),
     );
-    const moved = await harness.adapter.unitOfWork.run((transaction) =>
+    const moved = await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.updateBinding({ ...removed.binding, canaryPercent: 5 }, transaction),
     );
     expect(moved.ok).toBe(false);
@@ -314,7 +349,7 @@ describe("the transaction boundary", () => {
 
   test("a committed agent is visible from a connection this pool never touched", async () => {
     const durable = agentNamed(harness, "durable");
-    await harness.adapter.unitOfWork.run((transaction) =>
+    await runResult(harness.adapter.unitOfWork, (transaction) =>
       harness.repository.insertAgent(durable, transaction),
     );
     expect(await agentCount("durable")).toBe(1);

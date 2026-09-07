@@ -106,5 +106,13 @@ export {
 // `@platos/kernel` to its manifest to reach `ok` would add a WORKSPACE EDGE
 // that `scripts/arch/v1-project-graph.mjs` counts, for four names this package
 // already publishes on every method it declares.
-export type { Branded, EntityId, EnvironmentId, EnvironmentScope, Result } from "@platos/kernel";
-export { err, ok, resolvePath } from "@platos/kernel";
+export type { Branded, EntityId, EnvironmentId, EnvironmentScope, NotResult, Result } from "@platos/kernel";
+// WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
+// `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
+// callback RESOLVES, and a resolved callback COMMITS, which is the defect
+// `cost-monitoring` shipped — so `runResult` is the only way to end a unit of
+// work with a failure, and every canonical store's suite needs it. It is
+// republished HERE rather than imported from `@platos/kernel` in the adapter,
+// for the reason stated above: that would be the second import edge into the
+// kernel this paragraph exists to refuse.
+export { err, ok, resolvePath, runResult } from "@platos/kernel";

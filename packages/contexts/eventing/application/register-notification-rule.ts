@@ -15,7 +15,7 @@
 // same code. Two writers cannot make a duplicate here that the index would not
 // also refuse.
 
-import { asIdentifier, err, type Result } from "@platos/kernel";
+import { asIdentifier, err, runResult, type Result } from "@platos/kernel";
 import type { EnvironmentScope, PrincipalId } from "@platos/kernel";
 
 import {
@@ -72,7 +72,7 @@ export async function registerNotificationRule(
     dependencies.clock.now(),
   );
 
-  return dependencies.unitOfWork.run((transaction) =>
+  return runResult(dependencies.unitOfWork, (transaction) =>
     dependencies.repository.insertRule(rule, transaction),
   );
 }

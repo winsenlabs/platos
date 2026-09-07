@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createInFlightRegister } from "./in-flight.js";
+import { createInFlightRegister, WORK_REFUSED_SHUTTING_DOWN } from "./in-flight.js";
 
 /** Resolve after the microtask queue drains, without a timer. */
 const settled = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
@@ -94,5 +94,107 @@ describe("the in-flight register", () => {
       return value;
     });
     expect(outcome.waitedMs).toBeGreaterThan(0);
+  });
+});
+
+describe("the admission gate refuses rather than dropping", () => {
+  it("admits while the process is serving", () => {
+    const register = createInFlightRegister();
+    const registration = register.begin("GET /v1/turns");
+    expect(registration.admitted).toBe(true);
+    expect(registration.refusal).toBeNull();
+    expect(register.admitting).toBe(true);
+  });
+
+  it("refuses after admission closes, with its own code", () => {
+    // NOT THE READINESS 503. That one says "route elsewhere, this instance is
+    // not ready"; this one says "this instance is going away, the request was
+    // never begun, send it again". One shared code would make a rolling restart
+    // indistinguishable from a wedged dependency in a log.
+    const register = createInFlightRegister();
+    register.closeAdmission();
+    const registration = register.begin("GET /v1/turns");
+    expect(registration.admitted).toBe(false);
+    expect(registration.refusal).toBe(WORK_REFUSED_SHUTTING_DOWN);
+  });
+
+  it("does not COUNT a refused unit, so the drain's zero keeps meaning zero", () => {
+    const register = createInFlightRegister();
+    register.closeAdmission();
+    register.begin("a");
+    register.begin("b");
+    expect(register.count).toBe(0);
+    expect(register.labels()).toEqual([]);
+  });
+
+  it("counts refusals, so the shutdown log can say how many callers were turned away", () => {
+    const register = createInFlightRegister();
+    expect(register.refused).toBe(0);
+    register.closeAdmission();
+    register.begin("a");
+    register.begin("b");
+    register.begin("c");
+    expect(register.refused).toBe(3);
+  });
+
+  it("leaves work already begun alone: the door closes, nothing inside is cancelled", async () => {
+    const register = createInFlightRegister();
+    const running = register.begin("POST /v1/turns");
+    register.closeAdmission();
+    expect(register.count).toBe(1);
+
+    let resolved = false;
+    const draining = register.drain(5000).then((outcome) => {
+      resolved = true;
+      return outcome;
+    });
+    await settled();
+    expect(resolved).toBe(false);
+
+    running.settle();
+    expect((await draining).drained).toBe(true);
+  });
+
+  it("is idempotent, because two signals in a row are normal", () => {
+    const register = createInFlightRegister();
+    register.closeAdmission();
+    register.closeAdmission();
+    register.closeAdmission();
+    register.begin("a");
+    expect(register.refused).toBe(1);
+    expect(register.admitting).toBe(false);
+  });
+
+  it("settling a refused registration is a no-op rather than a negative counter", async () => {
+    const register = createInFlightRegister();
+    const running = register.begin("kept");
+    register.closeAdmission();
+    const refused = register.begin("turned away");
+    refused.settle();
+    refused.settle();
+    // Had `settle` on a refused unit decremented, this would already be zero and
+    // the drain would return with `kept` still running — the silent truncation
+    // the idempotence guard exists to prevent, arriving by another door.
+    expect(register.count).toBe(1);
+    running.settle();
+    expect(await register.drain(50)).toMatchObject({ drained: true, remaining: 0 });
+  });
+
+  it("does not resolve a waiting drain merely because the door closed", async () => {
+    // CLOSING ADMISSION WAKES THE WAITERS, and a waiter that resolved on being
+    // woken rather than on an empty register would report a clean drain with
+    // work still running.
+    const register = createInFlightRegister();
+    register.begin("POST /v1/turns");
+    let resolved = false;
+    const draining = register.drain(80).then((outcome) => {
+      resolved = true;
+      return outcome;
+    });
+    await settled();
+    register.closeAdmission();
+    await settled();
+    expect(resolved).toBe(false);
+    expect((await draining).drained).toBe(false);
   });
 });
