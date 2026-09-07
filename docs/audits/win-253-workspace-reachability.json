@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "b9cbf4137d4ae7813d3f261f86d70f3172b4720e69209b8eac7f20aa272d80e7",
+  "evidenceSha256": "e93726fd85370338dd4f84de6d73c29c5a137a2e2e55b54fb8d1acd2a5718bc9",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 37,
@@ -111,7 +111,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "da9bcf490e870ea93ac71f1313b84920e5e7ef3503013b853fdfa65e1684c13d",
+    "aggregateSha256": "51260fad73d89e6bfaf992b28f2d7a85b37e72f5a7f99190b373fcdf47d7c6d1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4219,7 +4219,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "5a00a2f08201563eb8b6e34c5a0a2824224a7b52ddaf9ecd0e5365c645d09a06"
+        "sha256": "63f267300d0f54864670c4ef3f315e3ae7ca8d1180489a7f83eff4ac133ecc52"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -19767,7 +19767,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "73c6c8a77131efb093ce3e087087cef6d028e8af95df20b9df0c110d772a5e50"
+        "sha256": "c971401cade5f17eaa436a7f6ea867be7f77c7b50861164bb8a28acb99d0e45c"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -44293,7 +44293,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2570
+              "line": 2587
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -44455,7 +44455,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "4a0854affe5a81bf8020675d91a1ddb86cd3bc56fcd1bbf30d55c30ff5b1530e",
+      "evidenceSha256": "2067eaa6c9eeec35a3dee5d836106e099212bc5120c68b6ccb2e638392d84bf5",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
