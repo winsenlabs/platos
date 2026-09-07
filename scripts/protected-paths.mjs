@@ -11,10 +11,21 @@ export const MANIFEST_PATH = "docs/audits/win-254-protected-paths.json";
 export const LIFECYCLE_PATH = "docs/audits/win-254-evidence-lifecycle.json";
 export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // M2 INTEGRATION DELTA — the anchor moves from
-// 23da242ee46609f4a57581c2d14b90483eb77106047ba16c930e26765682abec (781 paths,
-// the M2 base) to the value below (788 paths). Two branches add protected
-// paths on independent axes and neither removes any, so the integrated set is
-// the UNION of both contributions — 781 + 5 + 2 — not either branch's set.
+// fc19e189460ef7f14ef1670bf4628383ecdd7e9ead09f2093c32f3e98e336bf4 (788 paths,
+// v1 @ 2abd19b4, the M2 base this landing was cut from) to the value below
+// (792 paths). FOUR branches add protected paths on independent axes and NONE
+// removes any, so the integrated set is the UNION of all four contributions —
+// 788 + 1 + 0 + 2 + 1 = 792 — not any one branch's set. Each branch pinned its
+// own anchor against 788 and every one of those pins is WRONG merged:
+//   tejas/safety/m2-finish-2 (secret-projection)  789  80bc12c1…
+//   tejas/safety/m2-finish-1 (secret-lifecycle)   788  fc19e189…  (adds none)
+//   tejas/safety/m2-finish-3 (errors-idempotency) 790  872dcdfd…
+//   tejas/safety/m2-finish-4 (outbox-lifecycle)   789  1945eba0…
+// Taking any one of them would silently DROP the other three's protected paths.
+//
+// The 781 -> 788 step below is the previous integration (WIN-299 + WIN-284)
+// that produced the 788-path base; it is kept because the additions it names
+// are still in the set.
 //
 // WIN-299 (M2.6) adds five, no removals and no content substitutions:
 //   docs/audits/sbom/advisory/README.md              (disposition contract)
@@ -53,14 +64,17 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // scripts/arch/transaction-outcome*.mjs are already covered by the scripts/
 // prefix — 788 -> 789 is the one addition the selection actually gains, and it
 // stays 789 across this dimension's SECOND gate for exactly that reason.
-// M2 INTEGRATION: 788 + 1 + 2 + 1 = 792. All four fall inside the existing
-// `docs/**` selection rather than widening it, and none of the scanners beside
-// them is added to SCRIPT_PREFIXES.
+// M2 INTEGRATION: 788 + 1 + 0 + 2 + 1 = 792, verified SET-WISE and not only by
+// count — the 792 paths at this head are exactly the union of the 788-path base
+// with the four additions named above, with nothing in the head that is not in
+// the union and nothing in the union that is not in the head. All four fall
+// inside the existing `docs/**` selection rather than widening it, and none of
+// the scanners beside them is added to SCRIPT_PREFIXES.
 //
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "0000000000000000000000000000000000000000000000000000000000000000";
+export const EXPECTED_PATH_SET_SHA256 = "cd008a1779efb3dfcc39fa6df66a4ada346a2ec3440b0ef02b9ff551ac19f395";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
