@@ -1,6 +1,6 @@
 import "reflect-metadata";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { Module, VERSION_NEUTRAL, VersioningType, Controller, Get } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
@@ -202,8 +202,15 @@ describe("WIN-267 T1 — the version is one expression", () => {
    * them.
    */
   it("the composition root installs the expression, and nothing else expresses a version", () => {
-    const srcDir = join(import.meta.dirname, "..");
-    const main = readFileSync(join(srcDir, "main.ts"), "utf8");
+    // Located from the working directory rather than `import.meta`: this file is
+    // typechecked under the agent's CommonJS `module` setting, where
+    // `import.meta` is a TS1343 error. `existsSync` decides between the two
+    // roots a run can start from, and a third would fail the assertion below
+    // rather than silently scan nothing.
+    const candidates = [resolve("src"), resolve("apps/agent/src")];
+    const srcDir = candidates.find((dir) => existsSync(join(dir, "main.ts")));
+    expect(srcDir, `agent src not found from ${process.cwd()}`).toBeDefined();
+    const main = readFileSync(join(srcDir as string, "main.ts"), "utf8");
     expect(main).toContain('import { applyApiSurface } from "./http/api-surface"');
     expect(main).toMatch(/^\s*applyApiSurface\(app\);$/mu);
 
@@ -217,14 +224,14 @@ describe("WIN-267 T1 — the version is one expression", () => {
           continue;
         }
         if (!path.endsWith(".ts") || path.endsWith(".test.ts")) continue;
-        if (path === join(srcDir, "http", "api-surface.ts")) continue;
+        if (path === join(srcDir as string, "http", "api-surface.ts")) continue;
         const text = readFileSync(path, "utf8");
         if (/\.setGlobalPrefix\(|\.enableVersioning\(/u.test(text)) {
-          offenders.push(path.slice(srcDir.length + 1));
+          offenders.push(path.slice((srcDir as string).length + 1));
         }
       }
     };
-    walk(srcDir);
+    walk(srcDir as string);
     expect(offenders, "setGlobalPrefix/enableVersioning may only be called from http/api-surface.ts").toEqual([]);
   });
 
