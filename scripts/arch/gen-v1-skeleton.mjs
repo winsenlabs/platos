@@ -1169,37 +1169,58 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // THE COUNT, AND WHERE IT FALLS AWAY. A context is composable only when three
 // things hold at once:
 //
-//   1. it publishes a factory over its whole contract. ELEVEN do —
-//      `createTenancyService`, `createIdentityAccessService`, and the nine
-//      `create*Contract` functions in `channels`, `conversations`, `eventing`,
-//      `files`, `governance`, `jobs`, `observability`, `privacy` and `skills`.
-//      SIX do not: `agents`, `tools`, `secrets`, `memory`, `cost-monitoring` and
-//      `providers` publish their use cases one at a time and no assembler.
+//   1. it publishes a factory over its whole contract, AND `apps/core-api` can
+//      IMPORT that factory. SEVENTEEN publish one; NINE are importable.
 //
 //   2. every driven port in its bundle has an implementation in this tree;
 //
 //   3. that implementation is reachable from a constructed adapter.
+//
+// CONDITION 1 USED TO BE ONE CLAUSE HERE AND IT WAS FALSE (WIN-267 G3). It read
+// "ELEVEN do ... SIX do not: `agents`, `tools`, `secrets`, `memory`,
+// `cost-monitoring` and `providers` publish their use cases one at a time and no
+// assembler". Every one of those six publishes an assembler, and publishes it
+// from `.`: `agentsContract`, `toolsContract`, `secretsContract`,
+// `memoryContract`, `costMonitoringContract` and `providersContract` are all in
+// their own packages' `contracts/index.ts`. `secrets` and `providers` were
+// corrected in `context-ports.ts` when they were composed; this copy of the
+// claim was not, and kept the other four wrong for a further tranche. There is
+// no context in this tree without an assembler, and there never was.
+//
+// WHAT IS REAL IS THE OTHER HALF, and it is this list's own subject. NINE
+// factories can be named from the composition root — six from `.`, and
+// `identity-access`, `tenancy` and `skills` from the `./application/index.js`
+// entries below. The remaining EIGHT — `channels`, `conversations`, `eventing`,
+// `files`, `governance`, `jobs`, `observability` and `privacy` — keep a
+// `create*Contract` in `application/` behind a manifest publishing only `.`,
+// `./application/ports/index.js` and `./application/testing/index.js`. That is
+// WIN-297's finding, still open for eight contexts, and the fix is one line here
+// each — held back by this list's own rule until the context is actually
+// composed.
 //
 // ONE context clears all three: `tenancy`, whose six driven ports and unit of
 // work are all properties of a single `PostgresTenancyAdapter` (WIN-258 tranches
 // 1 and 3). It is already on the list, and what changed is that it is now
 // composed over REAL PostgreSQL rather than over a bundle an install handed in.
 //
-// `identity-access` is the near miss and the one worth naming, because it looks
-// composable and is not: its `repository` IS on that adapter (tranche 2) and
-// `clock`, `ids` and `logger` are kernel ports the process holds, but
-// `rateLimiter` is `packages/adapters/redis-ratelimit` — still this generator's
-// own placeholder — and `hasher`, `minter`, `totp` and `cipher` are satisfied by
-// no adapter directory at all. `keyring-envelope`'s `Hasher` is `secrets`' port,
-// a different type in a different package, and nothing implements
-// `SecretHasher`, `TokenMinter`, `TotpCodeVerifier` or `MfaSecretCipher`.
+// `identity-access` WAS the near miss and its ports have since landed, so the
+// paragraph that stood here is withdrawn rather than carried: it said
+// `rateLimiter` is "still this generator's own placeholder" and that `hasher`,
+// `minter`, `totp` and `cipher` are "satisfied by no adapter directory at all".
+// WIN-267 A1, A2 and A3 closed all five — `redis-ratelimit`,
+// `node-crypto-digest`, `keyring-envelope` and `tokenmint-totp` — and all six of
+// its driven ports are now satisfied. What holds it is the kernel
+// `SafetyEventSink`, implemented only by `governance`.
 //
-// Of the other nine assemblers, every one needs at least one port whose adapter
-// is a placeholder — `ObjectStore`, `DurableRuntime`, `ObservabilitySink`,
-// `EventBus`, `ChannelAdapter` — or a peer contract from one of the six that
-// publish no assembler. `apps/core-api/src/composition/context-ports.ts` states
-// this per context and its suite checks the identity-access half against
-// `ADAPTER_BINDINGS` rather than asserting it.
+// AND `governance` IS IN THE UNIMPORTABLE EIGHT, which is the fact a tranche
+// planning that work needs first: landing adapters for its five unbound ports
+// still would not make it composable, because `createGovernanceContract` cannot
+// be named from the composition root until an entry appears above. Its
+// `AgentsContract` slot needs a composed `agents` too, and `agents` is short
+// `AgentVersionLock` and `MacroRecorder` plus a `skills` peer.
+// `apps/core-api/src/composition/context-ports.ts` states this per context, and
+// its suite checks the identity-access, agents and importability halves against
+// `ADAPTER_BINDINGS` and against the resolver rather than asserting them.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------

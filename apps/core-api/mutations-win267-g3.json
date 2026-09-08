@@ -1,0 +1,187 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "WIN-267 G3 was briefed to BUILD the AgentsContract assembler that",
+    "`IDENTITY_ACCESS_UNASSEMBLED` said no factory assembles. There was nothing",
+    "to build: `agentsContract` has been exported from",
+    "packages/contexts/agents/contracts/index.ts since before that sentence was",
+    "written, from the `.` entry point `app.module.ts` already imports the",
+    "`AgentsContract` TYPE from.",
+    "",
+    "So the tranche's deliverable is a CORRECTION, and a correction is worth",
+    "nothing unless something would notice it going stale again. That is what",
+    "this sweep measures. The three cases added to installation.test.ts each",
+    "join a claim to something apps/core-api does not own -- the agents",
+    "package's module graph, ADAPTER_BINDINGS, and the resolver reading each",
+    "context package's own exports map -- and the mutations below break each",
+    "join in both directions.",
+    "",
+    "TWO OF THE EIGHT ARE THE POINT. G3-M07 makes the claim BECOME TRUE by",
+    "publishing governance's ./application/index.js, and G3-M08 removes the",
+    "factory the correction rests on, in the artifact the runner actually",
+    "resolves. A correction that survived either of those would be prose."
+  ],
+  "procedure": [
+    "Base: tejas/win-267-compose @ ff06655f (the head of PR #153, open against v1).",
+    "Runner: pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts",
+    "Baseline: 20 passed (20). 17 of those are the suite as it stood at ff06655f.",
+    "Each mutation applied to the working tree, the runner re-run, the tree",
+    "restored from a byte copy taken before the sweep, and the baseline",
+    "re-confirmed green at the end (20 passed).",
+    "",
+    "G3-M08 IS RECORDED HONESTLY AS A SECOND ATTEMPT. Renaming",
+    "`agentsContract` in packages/contexts/agents/contracts/index.ts and",
+    "rebuilding FAILED the build -- the agents package's own contracts",
+    "suite imports it -- so dist was never regenerated and the runner still",
+    "resolved the old artifact and stayed GREEN. That first attempt was a",
+    "VACUOUS pass, not a survivor, and it is written down because counting it",
+    "as one would have been the exact accounting error this project's mutation",
+    "discipline exists to stop. The mutation was re-applied to",
+    "packages/contexts/agents/dist/contracts/index.js, which is what the",
+    "runner resolves, and killed there."
+  ],
+  "sweep": {
+    "head": "the tree of the commit that carries this file, on tejas/win-267-g3-agents (base tejas/win-267-compose @ ff06655f)",
+    "entries": 8,
+    "killed": 8,
+    "equivalent": 0,
+    "vacuous": 0,
+    "rejected": 0
+  },
+  "mutations": [
+    {
+      "name": "G3-M01 the withdrawn claim is restored into the runtime reason string",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "\" whose AgentsContract slot needs a composed agents -- agentsContract does\" +",
+      "to": "\" and an AgentsContract no factory assembles\" +",
+      "suites": ["vitest"],
+      "note": "The headline. The sentence this tranche withdrew is put back verbatim; the case that exists to stop it coming back must notice. It asserts the ABSENCE of the wording rather than only the presence of the correction, because a future edit that reintroduced the claim alongside the correction would otherwise pass.",
+      "kills": [
+        "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble"
+      ]
+    },
+    {
+      "name": "G3-M02 the reason stops NAMING the factory that withdrew the claim",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "agentsContract does\" +\n  \" assemble",
+      "to": "a factory does\" +\n  \" assemble",
+      "suites": ["vitest"],
+      "note": "The other direction of M01. A reason that says 'a factory does assemble it' is unfalsifiable prose; naming `agentsContract` is what lets a reader grep for the thing and what makes G3-M08 able to kill. Without this case the correction could decay into a vaguer sentence with nothing going red.",
+      "kills": [
+        "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble"
+      ]
+    },
+    {
+      "name": "G3-M03 AGENTS_UNBOUND_PORTS gains a port that IS bound",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "Object.freeze([\n  \"AgentVersionLock\",",
+      "to": "Object.freeze([\n  \"AgentsRepository\",\n  \"AgentVersionLock\",",
+      "suites": ["vitest"],
+      "note": "`AgentsRepository` is on a row of ADAPTER_BINDINGS against postgres-tenancy. The list is joined to that table rather than to itself, so a name that is in fact bound cannot sit on it -- which is the failure mode that made the sentence this tranche withdrew wrong for three tranches.",
+      "kills": [
+        "the context bundles those adapters can satisfy > blocks that contract on two agents ports instead, and joins them to the table"
+      ]
+    },
+    {
+      "name": "G3-M04 AGENTS_UNBOUND_PORTS silently loses one of the two",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "  \"AgentVersionLock\",\n  \"MacroRecorder\",\n]);",
+      "to": "  \"AgentVersionLock\",\n]);",
+      "suites": ["vitest"],
+      "note": "The shrinking direction, which is how a list of blockers goes quietly optimistic. Both the length and the membership are pinned, and each member must also be NAMED in the reason an operator reads, so dropping one fails twice.",
+      "kills": [
+        "the context bundles those adapters can satisfy > blocks that contract on two agents ports instead, and joins them to the table"
+      ]
+    },
+    {
+      "name": "G3-M05 governance is dropped from UNIMPORTABLE_CONTEXT_FACTORIES",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "  \"governance\",\n  \"jobs\",",
+      "to": "  \"jobs\",",
+      "suites": ["vitest"],
+      "note": "The one entry a future tranche has the strongest incentive to remove, because governance is what identity-access is waiting on. Its membership is asserted by name and not only by the count, so removing it cannot be hidden by adding another.",
+      "kills": [
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and proves it against Node's resolver"
+      ]
+    },
+    {
+      "name": "G3-M06 a context that IS importable is put on the unimportable list",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "  \"channels\",\n  \"conversations\",",
+      "to": "  \"tenancy\",\n  \"conversations\",",
+      "suites": ["vitest"],
+      "note": "`tenancy` publishes ./application/index.js and app.module.ts imports createTenancyService through it. The import RESOLVES, so the rejects assertion fails. This is the case's non-vacuity guard from the pessimistic side: the list cannot be padded with contexts that are fine.",
+      "kills": [
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and proves it against Node's resolver"
+      ]
+    },
+    {
+      "name": "G3-M07 governance PUBLISHES ./application/index.js -- the claim becomes TRUE",
+      "file": "packages/contexts/governance/package.json",
+      "from": "\"exports\": { \".\": ..., \"./application/ports/index.js\": ..., \"./application/testing/index.js\": ... }",
+      "to": "the same map plus \"./application/index.js\": { \"types\": \"./dist/application/index.d.ts\", \"import\": \"./dist/application/index.js\" }",
+      "suites": ["vitest"],
+      "note": "THE MUTATION THIS TRANCHE WAS ASKED FOR: the claim becoming true again. Nothing else changed -- dist/application/index.js was already built, so publishing the subpath is the whole of it -- and the import stops rejecting. A tranche that composes governance will hit this case on its first run, which is the intended way for it to learn that the manifest line and the adapters have to land together.",
+      "kills": [
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and proves it against Node's resolver"
+      ]
+    },
+    {
+      "name": "G3-M08 agentsContract is renamed in the artifact the runner resolves",
+      "file": "packages/contexts/agents/dist/contracts/index.js",
+      "from": "agentsContract",
+      "to": "assembleAgents",
+      "suites": ["vitest"],
+      "note": "The deepest one, and the only mutation in this sweep outside apps/core-api's own source. The correction rests on a VALUE import of another package's factory; if that import were decorative the case would pass without it. Renaming the export in packages/contexts/agents/dist/contracts/index.js -- the file @platos/context-agents's `.` condition resolves to -- makes the import undefined and the case red. See `procedure` for the first attempt, which was vacuous and is not counted.",
+      "kills": [
+        "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble"
+      ]
+    }
+  ],
+  "rejectedMutations": [],
+  "declaredUnfalsifiable": [
+    {
+      "name": "E01 no composition is unblocked by this correction, so none is asserted",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "classification": "no-behaviour-to-mutate--the-finding-is-that-the-work-was-unnecessary",
+      "measurement": [
+        "The brief allowed for the deliverable being 'a three-line composition",
+        "change plus a test that proves it'. It is not even that: correcting the",
+        "claim composes NOTHING, and this entry records that as a measured",
+        "result rather than leaving a reader to wonder why no context moved.",
+        "",
+        "MEASURED, per context, by joining every context's dependency bundle to",
+        "ADAPTER_BINDINGS and to the set constructAdapters actually builds.",
+        "Fourteen contexts are uncomposed. Every one of them has at least one",
+        "driven port that is on NO binding row, or one whose row names a",
+        "directory on UNIMPLEMENTED_ADAPTERS, or a peer in the same state:",
+        "",
+        "  agents          AgentVersionLock, MacroRecorder unbound; skills peer",
+        "  channels        ChannelAdapterRegistry, ChannelCredentialReader,",
+        "                  AgentDirectory, ChannelEventCipher unbound",
+        "  conversations   all four store ports bound -- blocked only by SEVEN",
+        "                  uncomposed peers, the nearest thing to a near miss",
+        "  cost-monitoring SpendLedger, BudgetCapCache unbound",
+        "  eventing        DestinationScreen, NotificationQueue unbound",
+        "  files           every port bound; ObjectStore's directory",
+        "                  objectstore-minio is on UNIMPLEMENTED_ADAPTERS",
+        "  governance      five unbound; agents peer; factory unimportable",
+        "  identity-access all six driven ports bound; kernel SafetyEventSink",
+        "  jobs            JobHandlerRuntime unbound; DurableRuntime unbuilt",
+        "  memory          EmbeddingModel, ExtractionJudge, ContentDigest unbound",
+        "  observability   ProjectionOutbox, ErasedSubjectRegister,",
+        "                  SubjectLocatorSource unbound; ObservabilitySink's",
+        "                  clickhouse-observability unbuilt",
+        "  privacy         SubjectDirectory, SubjectHasher, LegalHoldRegister",
+        "  skills          SkillSourceFetcher, EnvironmentKeyDirectory,",
+        "                  SkillSandbox unbound; files peer",
+        "  tools           ToolDispatch, ContentDigest unbound",
+        "",
+        "So the false claim was never the SOLE blocker for any context, which is",
+        "why this tranche composes nothing and says so. What it changes is what",
+        "the next milestone believes the remaining work IS: not four assemblers",
+        "to write, but adapter directories to build and manifest lines to add."
+      ]
+    }
+  ]
+}

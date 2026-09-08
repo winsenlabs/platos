@@ -618,7 +618,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `transports/rest/index.ts` -- is edited in place and adds nothing.
     //
     // NO LEDGER RULE CHANGED BY EITHER. 44 + 3 + 10 = 57.
-    "apps-core-api": 57,
+    //
+    // WIN-267 G3 57 -> 58: `apps/core-api/mutations-win267-g3.json`, the THIRD
+    // mutation manifest to land beside `mutations.json` and
+    // `mutations-win267-t3.json` and the FOURTH tranche to use the convention.
+    // It classifies under the SAME rule its two siblings already do --
+    // `apps-core-api.config.package`, 5 -> 6 -- so no ledger rule changed for
+    // it either. Everything else G3 touches is an edit in place:
+    // `composition/context-ports.ts` and `composition/installation.test.ts`
+    // carry the correction and its three cases, and
+    // `scripts/arch/gen-v1-skeleton.mjs` carries the same correction to the
+    // second, staler copy of the claim. 44 + 3 + 10 + 1 = 58.
+    "apps-core-api": 58,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1566,7 +1577,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // A3's 1609. The identity this number exists to hold is that the total delta
   // and the per-area deltas are the SAME arithmetic, so a file that arrives in
   // one and not the other cannot pass both halves of this case.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1640);
+  //
+  // WIN-267 G3 1640 -> 1641, and it is the WHOLE of that branch's file delta:
+  // ONE mutation manifest in `apps-core-api`, matching that area's 57 -> 58
+  // above. G3 adds no source file and no suite -- its three cases go into the
+  // `installation.test.ts` that already existed, which is also why the
+  // test-case census does not move (`apps/core-api` is outside PACKAGE_ROOTS).
+  // 1640 + 1 = 1641.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1641);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1692,7 +1710,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // green, and STILL landed red on both of these assertions: the sixth and
     // seventh time this second reconciliation has caught what the first one
     // signed off.
-    rulesDocument.baseline.totalFiles + 1640
+    //
+    // WIN-267 G3 1640 -> 1641, and it caught this branch too -- the EIGHTH and
+    // NINTH time. `--write` regenerated the fingerprint and `audit:v1-ledger`
+    // went green on a tree where BOTH of these assertions were still 1640. The
+    // one file is `apps/core-api/mutations-win267-g3.json`, in `apps-core-api`,
+    // matching that area's 57 -> 58; it ADOPTS NO PROJECT and CHANGES NO LEDGER
+    // RULE, so this delta too is purely additive: 1640 + 1 = 1641.
+    rulesDocument.baseline.totalFiles + 1641
   );
 });
 
