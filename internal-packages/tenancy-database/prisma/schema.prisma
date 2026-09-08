@@ -1996,9 +1996,13 @@ model GoldenSet {
 /// CONSTRAINT. `00000000000000_initial` is hash-pinned by
 /// `upgrade-contract.test.ts`, and `schema.test.ts` holds that file to the
 /// SCHEMA in two ways a post-initial table would otherwise break: it counts
-/// ` FOREIGN KEY ` in the initial SQL against every `@relation(fields:)` line
+/// ` FOREIGN KEY ` in the initial SQL against every OWNING RELATION declared
 /// here, and it requires a `<Model>_<column>_json_root` CHECK in that same file
-/// for every `Json` field. So the three foreign keys live in this table's own
+/// for every `Json` field. (That first check reads this schema LINE BY LINE and
+/// recognises an owning relation by two tokens on one line, so this paragraph
+/// deliberately names neither together — a comment that did would be counted as
+/// a relation, which is how this very sentence first failed.)
+/// So the three foreign keys live in this table's own
 /// migration as SQL — the pattern `AccessKeyBootstrapGrant` established for
 /// WIN-296 and `access_key_revocation_fence` before it — and the plan is stored
 /// as two parallel TEXT ARRAYS rather than as JSON.
