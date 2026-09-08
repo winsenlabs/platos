@@ -78,6 +78,31 @@ async function readRun(
   return rows[0] ?? null;
 }
 
+/**
+ * A plan whose identifiers are all DIFFERENT, in the shape the schema stores.
+ *
+ * `pairs()` below repeats one thread id, which is what a real golden set does —
+ * twenty threads by twenty-five criteria is five hundred pairs over forty-five
+ * distinct identifiers. This one is the opposite extreme, and the two are here
+ * because the btree case measured a difference between them that nothing in the
+ * port or the schema predicts. Deterministic, so a failure reproduces.
+ */
+function distinctPairs(count: number): readonly EvalPair[] {
+  const hex = (seed: number): string => {
+    let value = seed * 2_654_435_761;
+    let out = "";
+    while (out.length < 32) {
+      value = (value * 1_103_515_245 + 12_345) >>> 0;
+      out += value.toString(16).padStart(8, "0");
+    }
+    return `${out.slice(0, 8)}-${out.slice(8, 12)}-4${out.slice(13, 16)}-8${out.slice(17, 20)}-${out.slice(20, 32)}`;
+  };
+  return Array.from({ length: count }, (_unused, index) => ({
+    threadId: asGovernanceIdentifier(hex(index * 2 + 1)),
+    criterionId: asGovernanceIdentifier(hex(index * 2 + 2)),
+  })) as readonly EvalPair[];
+}
+
 function pairs(count: number): readonly EvalPair[] {
   return Array.from({ length: count }, (_unused, index) => ({
     threadId: asGovernanceIdentifier(chain.threadId),
@@ -139,56 +164,60 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     expect(await readRun(first.value.runId)).not.toBeNull();
   });
 
-  test("PostgreSQL itself refuses the port's key in a btree, which is why the digest exists", async () => {
-    // THE NEGATIVE CONTROL, and it is the whole justification for the second
-    // column. The key `enqueue-eval-run.ts` builds is the set id, every pair in
-    // plan order and the baseline; `DEFAULT_GOVERNANCE_POLICY.goldenSets` caps a
-    // set at five hundred pairs. A unique index over the KEY refuses it.
+  test("whether the port's key fits a btree depends on how it COMPRESSES, and the digest removes the question", async () => {
+    // THIS CASE WAS WRITTEN TO ASSERT SOMETHING SIMPLER AND MEASURED SOMETHING
+    // WORSE. The claim was "the port's key cannot be a unique index, because at
+    // the five-hundred-pair ceiling it is ~37 kB and a btree index row may not
+    // exceed ~2704 bytes". A unique index over the real column ACCEPTED it. The
+    // reason is that PostgreSQL compresses an index datum before measuring it,
+    // and `enqueue-eval-run.ts` builds the key by joining `<threadId>:<criterionId>`
+    // — a string that repeats one thread id twenty-five times over in any real
+    // set, and compresses to a fraction of its length.
     //
-    // The probe is a unique index ON THE REAL COLUMN, added and dropped through
-    // the ORM's CLI. A scratch table would have been a raw mutation naming a
-    // model no canonical schema claims, which `sole-writer.mjs` calls
-    // UNATTRIBUTABLE and forbids outright — so the control is run against the
-    // very column the design is about, which is the stronger shape anyway.
-    const plan = pairs(500);
-    const command = request({ pairs: plan, idempotencyKey: `eval-run/${goldenSetId}/big/${"x".repeat(4)}` });
-    const wholeKey = request({ pairs: plan }).idempotencyKey;
-    expect(wholeKey.length).toBeGreaterThan(2_704);
+    // So the limit is not reached by SIZE, it is reached by ENTROPY, and that is
+    // the worse property: an install would meet it on some golden sets and not
+    // others, with no rule at the port or the schema to predict which. Both
+    // halves are measured below, against the same index, on the same column.
+    const repetitive = request({ pairs: pairs(500), idempotencyKey: `eval-run/${goldenSetId}/compressible` });
+    const distinct = request({
+      pairs: distinctPairs(500),
+      idempotencyKey: `eval-run/${goldenSetId}/${distinctPairs(500)
+        .map((pair) => `${pair.threadId}:${pair.criterionId}`)
+        .join("|")}`,
+    });
+    expect(distinct.idempotencyKey.length).toBeGreaterThan(2_704);
+    expect(repetitive.idempotencyKey.length).toBeLessThan(distinct.idempotencyKey.length * 2);
 
     harness.applyPeerRows(
       `CREATE UNIQUE INDEX "EvalRun_idempotencyKey_probe"
          ON "public"."EvalRun" ("environmentId", "idempotencyKey");`,
     );
-    const refused = await harness.base.adapter.evalRuns.enqueue(
-      request({ pairs: plan, idempotencyKey: wholeKey }),
-    );
+    const compressible = await harness.base.adapter.evalRuns.enqueue(repetitive);
+    const incompressible = await harness.base.adapter.evalRuns.enqueue(distinct);
     harness.applyPeerRows(`DROP INDEX "EvalRun_idempotencyKey_probe";`);
 
-    // PostgreSQL's own words, carried out through the port's own refusal code:
-    // "index row size ... exceeds btree version 4 maximum ... for index".
-    expect(refused.ok).toBe(false);
-    if (refused.ok) throw new Error("unreachable");
-    expect(refused.error.code).toBe("GOVERNANCE_QUEUE_UNAVAILABLE");
-    expect(String(refused.error.details?.reason)).toMatch(/index row size/iu);
+    // A key that compresses gets in. A key of the same length that does not is
+    // refused, in PostgreSQL's own words, carried out under the port's own code.
+    expect(compressible.ok).toBe(true);
+    expect(incompressible.ok).toBe(false);
+    if (incompressible.ok) throw new Error("unreachable");
+    expect(incompressible.error.code).toBe("GOVERNANCE_QUEUE_UNAVAILABLE");
+    expect(String(incompressible.error.details?.reason)).toMatch(/index row size/iu);
 
-    // AND THE STORE ACCEPTS THE SAME RUN once the index the design does NOT
-    // create is gone, because what it indexes is 64 hex characters. This is the
-    // pair that makes the decision falsifiable: index the key instead of its
-    // digest and the first half of this case is what production does.
-    const accepted = await harness.base.adapter.evalRuns.enqueue(
-      request({ pairs: plan, idempotencyKey: wholeKey }),
-    );
+    // AND THE DIGEST REMOVES THE QUESTION. With the probe index gone, the SAME
+    // run the index refused is accepted, and a repeat of it answers
+    // `alreadyQueued` — because what the design indexes is 64 hex characters
+    // whatever the key's length or entropy.
+    const accepted = await harness.base.adapter.evalRuns.enqueue(distinct);
     if (!accepted.ok) throw new Error(`unreachable: ${accepted.error.code}`);
     expect(accepted.value.pairCount).toBe(500);
-    expect(evalRunDigest(wholeKey)).toHaveLength(64);
+    expect(evalRunDigest(distinct.idempotencyKey)).toHaveLength(64);
     // The full key is KEPT, not discarded, so a merged run can be explained.
-    expect((await readRun(accepted.value.runId))?.keyLength).toBe(wholeKey.length);
-    const repeated = await harness.base.adapter.evalRuns.enqueue(
-      request({ pairs: plan, idempotencyKey: wholeKey }),
-    );
+    expect((await readRun(accepted.value.runId))?.keyLength).toBe(distinct.idempotencyKey.length);
+    const repeated = await harness.base.adapter.evalRuns.enqueue(distinct);
     if (!repeated.ok) throw new Error("unreachable");
     expect(repeated.value.alreadyQueued).toBe(true);
-    expect(command.idempotencyKey).not.toBe(wholeKey);
+    expect(repeated.value.runId).toBe(accepted.value.runId);
   }, 180_000);
 
   test("an error Result inside the unit of work ROLLS BACK, and the rows prove it", async () => {
