@@ -333,12 +333,54 @@ describe("clean tenancy Prisma boundary", () => {
     expect(violations).toEqual([]);
     // Independently pin both call-site count and unique operation inventory so
     // the audit cannot pass because its discovery silently stopped working.
-    expect(analysis.calls.length).toBe(751);
-    expect(inventory).toHaveLength(304);
+    //
+    // WIN-267 A4, 2026-09-08. RE-PINNED 751 -> 815, 304 -> 329, digest
+    // 0b36ea83 -> 0c4fd159, and the suite was added to the agent job in
+    // .github/workflows/ci.yml at the same time.
+    //
+    // WHY THE RE-PIN IS NOT A LAUNDERED REGRESSION. This file was RED on `v1`
+    // for 1,064 commits because no CI job ran it: the agent job executes eight
+    // individually-named Vitest files and this was not one of them. The pin
+    // last moved in PR #120 (f5793473, 2026-08-24, 747 -> 751), so 64 net
+    // production call sites accumulated unobserved. They were read before the
+    // ratchet was raised. Layer split, measured with the SAME analyzer over
+    // both trees: service 590 -> 641, controller 94 -> 108, MCP tool 54 -> 53,
+    // other 13 -> 13. `agent-runtime/platos-tasks.controller.ts` (8),
+    // `mcp-platform/tools/platos_tasks.ts` (12) and
+    // `agent-runtime/platos-task-execution.service.ts` (2) were renamed to
+    // `jobs.controller.ts` (9), `tools/jobs.ts` (11) and
+    // `job-execution.service.ts` (2) — 22 sites out, 22 in. The rest is
+    // list-endpoint totals (18 new `.count` sites), memory import/export,
+    // attachments, the access-key bootstrap grant and postman executions.
+    //
+    // BUILD STATE. This census is TYPE-CHECKER driven, so the answer depends
+    // on which workspace packages have been built: an unresolved
+    // `@platos/tenancy-database` makes the client type opaque and the analyzer
+    // silently finds fewer call sites. Measured under exactly the state the
+    // agent job reaches before its Vitest steps — `pnpm install
+    // --frozen-lockfile --ignore-scripts`, then `pnpm --filter
+    // @platos/tenancy-database build && pnpm --filter
+    // @internal/workload-identity build` (ci.yml "Generate and build compiled
+    // Agent dependencies"). Re-measured after `pnpm build:v1` as well: 815 in
+    // both states, so the pin does not depend on where in the job it runs.
+    //
+    // THE PIN IS JOINED TO THE ORACLE, NOT TO ITSELF. Running this same
+    // analyzer against `apps/agent/src` as it stood at f5793473 reproduces
+    // that commit's pinned triple exactly — 751 / 304 /
+    // 0b36ea83f83a49ed4795881e9c9ccc00a6214c5e30ef654091d36dc13c2cc5a4 — which
+    // is what establishes that 815 is real growth rather than a measurement
+    // artifact of a different build state.
+    expect(analysis.calls.length).toBe(815);
+    expect(inventory).toHaveLength(329);
     expect(inventoryDigest).toBe(
-      "0b36ea83f83a49ed4795881e9c9ccc00a6214c5e30ef654091d36dc13c2cc5a4",
+      "0c4fd159179dbf051d093ac039b87771c53d407adbf06e7aa79df0a3cc6f85ac",
     );
-  }, 20_000);
+    // 120s, not 20s. Building the program and walking it three times takes
+    // ~10-16s on an M-series laptop; a hosted runner is slower, and a gate that
+    // goes red on wall-clock is a gate someone deletes. The budget bounds
+    // nothing this suite asserts, so widening it removes a false red without
+    // weakening any claim.
+  }, 120_000);
 
   it("follows delegate aliases, object destructuring, method aliases, and bracket access", () => {
     const fileName = "/virtual/clean-prisma-inventory-fixture.ts";
