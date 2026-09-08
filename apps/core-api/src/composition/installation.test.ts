@@ -27,6 +27,7 @@ import {
   type AdapterName,
 } from "./adapter-bindings.js";
 import {
+  GOVERNANCE_BOUND_READ_SEAMS,
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
   assembleContextPorts,
@@ -507,10 +508,36 @@ describe("the context bundles those adapters can satisfy", () => {
     // no row of this table. The day one of them gains an adapter directory, this
     // case fails and the sentence has to be re-derived -- which is the point of
     // naming them rather than writing "governance needs more work".
-    expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(5);
+    expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(2);
     for (const port of GOVERNANCE_UNBOUND_PORTS) {
       expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
       expect(declined?.reason).toContain(port);
+    }
+
+    // AND THE THREE THAT LEFT THAT LIST ARE CHECKED IN THE OTHER DIRECTION,
+    // WHICH IS THE HALF THAT MAKES THE SHRINKING FALSIFIABLE. WIN-267 G2 moved
+    // `RatingTargetReader`, `TranscriptReader` and `ActivityReader` off
+    // `GOVERNANCE_UNBOUND_PORTS`; a list that merely stopped naming them would
+    // be indistinguishable from one that forgot them. So each is joined to a
+    // BINDING ROW, to that row's directory NOT being unimplemented, and to the
+    // fully declared install having CONSTRUCTED it. Delete the three properties
+    // from `PostgresTenancyAdapter` and this case goes red on each of them.
+    //
+    // THE SENTENCE MUST ALSO HAVE STOPPED NAMING THEM. It is the operator-facing
+    // half, and a reason that still listed three satisfied ports would send an
+    // install looking for adapters that are already there.
+    const byPort = new Map(ADAPTER_BINDINGS.map((binding) => [binding.port, binding]));
+    expect(GOVERNANCE_BOUND_READ_SEAMS).toHaveLength(3);
+    for (const port of GOVERNANCE_BOUND_READ_SEAMS) {
+      const binding = byPort.get(port);
+      expect(binding, `${port} must be bound to a named directory`).toBeDefined();
+      expect(binding?.owner, `${port} is a port governance declares`).toBe("governance");
+      expect(UNIMPLEMENTED_ADAPTERS).not.toContain(binding?.adapter);
+      expect(
+        construction.adapters[binding?.adapter ?? ("" as AdapterName)],
+        `${port} needs ${binding?.adapter} constructed`,
+      ).toBeDefined();
+      expect(declined?.reason, `${port} is satisfied and must not be named`).not.toContain(port);
     }
   });
 

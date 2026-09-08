@@ -90,11 +90,14 @@ import type {
   Notifier,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type {
+  ActivityReader,
   CriteriaRepository,
   EvalsRepository,
   GoldenSetsRepository,
+  RatingTargetReader,
   RatingsRepository,
   SafetyLedger,
+  TranscriptReader,
 } from "@platos/context-governance/application/ports/index.js";
 import type {
   ConversationsErasureStore,
@@ -295,6 +298,27 @@ interface PortSatisfaction {
   readonly "postgres-tenancy:GoldenSetsRepository": Satisfies<
     PostgresTenancyAdapter["goldenSets"],
     GoldenSetsRepository
+  >;
+  // WIN-267 G2. `governance`'s THREE inverted read seams, proven through the
+  // property that carries each one — the same shape the five stores above use,
+  // and for a sharper reason than collision. `find`, `read` and `countByAgent`
+  // do not collide with anything in this directory, so all three COULD have been
+  // spread; they are properties because `GovernanceDependencies` has three
+  // separate slots for them and a bundle assembled from a spread would have to
+  // name them again. `ratingTargets` and `transcripts` are the pair that makes
+  // this load-bearing: both read `Thread` and `Turn` inside one environment, so
+  // two readers transposed would answer plausible values for ever.
+  readonly "postgres-tenancy:RatingTargetReader": Satisfies<
+    PostgresTenancyAdapter["ratingTargets"],
+    RatingTargetReader
+  >;
+  readonly "postgres-tenancy:TranscriptReader": Satisfies<
+    PostgresTenancyAdapter["transcripts"],
+    TranscriptReader
+  >;
+  readonly "postgres-tenancy:ActivityReader": Satisfies<
+    PostgresTenancyAdapter["activity"],
+    ActivityReader
   >;
   // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, proven through the
   // PROPERTY that carries each one rather than through the adapter itself.
@@ -573,6 +597,9 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:CriteriaRepository": true,
   "postgres-tenancy:EvalsRepository": true,
   "postgres-tenancy:GoldenSetsRepository": true,
+  "postgres-tenancy:RatingTargetReader": true,
+  "postgres-tenancy:TranscriptReader": true,
+  "postgres-tenancy:ActivityReader": true,
   "postgres-tenancy:TenancyLocks": true,
   "postgres-tenancy:OperatorSessionRevoker": true,
   "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": true,
@@ -737,16 +764,37 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // safety event is never touched again, and a golden set is a pinned sample
   // that shares no invariant with any of them.
   //
-  // The context's other five ports get no row here, and that is a claim rather
-  // than an omission: `read-seams.ts` declares three READERS of rows
-  // `conversations`, `tools` and `jobs` own, `judge.ts` is a provider transport,
-  // and `eval-run-queue.ts` is durable work whose own refusal code exists to
-  // stay separable from a store outage.
+  // The context's other TWO ports get no row here, and that is a claim rather
+  // than an omission: `judge.ts` is a provider transport, and
+  // `eval-run-queue.ts` is durable work whose own refusal code exists to stay
+  // separable from a store outage.
+  //
+  // THIS SENTENCE SAID "OTHER FIVE" UNTIL WIN-267 G2, and it counted
+  // `read-seams.ts`' three readers among them. They are rows now — the three
+  // below — and the reason they could be is a fact the old sentence did not
+  // check: `CANONICAL_STORE_ADAPTERS` maps `conversations`, `tools` and `jobs`,
+  // the owners of the four tables those readers read, to this same directory.
   Object.freeze({ adapter: "postgres-tenancy", port: "SafetyLedger", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "RatingsRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "CriteriaRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "EvalsRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "GoldenSetsRepository", owner: "governance" }),
+  // WIN-267 G2 (ADR M0.3 §2 and §15). `governance`'s THREE inverted READ SEAMS.
+  //
+  // The OWNER is `governance` because the owner column names who owns the PORT,
+  // and `read-seams.ts` declares all three — in `governance`'s vocabulary,
+  // deliberately, so the arrow points inward. The ROWS behind them belong to
+  // three other contexts, and this directory is the canonical store of all three
+  // (§15, one PostgreSQL database behind one client), which is why answering
+  // them from here is asking the owner rather than reaching sideways.
+  //
+  // THREE ROWS AND NOT ONE, because they are three ports on three slots of
+  // `GovernanceDependencies` and a missing obligation is not a wrong one — the
+  // same argument `keyring-envelope`'s three and `tokenmint-totp`'s two are made
+  // with.
+  Object.freeze({ adapter: "postgres-tenancy", port: "RatingTargetReader", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "TranscriptReader", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "ActivityReader", owner: "governance" }),
   // WIN-258 T5 (ADR M0.3 §15). The THIRTEENTH and FOURTEENTH bindings of the
   // same directory, and the eighth owner of the one PostgreSQL client. They are two
   // rows and not one because `secrets` publishes two ports:
