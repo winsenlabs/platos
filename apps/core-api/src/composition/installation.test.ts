@@ -13,6 +13,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/context-providers";
+// WIN-267 G3. Imported as a VALUE, from the `.` entry point `app.module.ts`
+// already imports the `AgentsContract` TYPE from. The import itself is the
+// assertion: the sentence this suite reads back used to claim no factory
+// assembles this contract, and a claim about another package's exports is only
+// worth anything if the module graph is what settles it.
+import { agentsContract } from "@platos/context-agents";
+import { secretsContract } from "@platos/context-secrets";
+import { providersContract } from "@platos/context-providers";
 
 import { composeApplication } from "../app.module.js";
 import { loadPlatformConfiguration } from "../config/platform.js";
@@ -27,8 +35,10 @@ import {
   type AdapterName,
 } from "./adapter-bindings.js";
 import {
+  AGENTS_UNBOUND_PORTS,
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
+  UNIMPORTABLE_CONTEXT_FACTORIES,
   assembleContextPorts,
 } from "./context-ports.js";
 
@@ -624,6 +634,128 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(bundle?.cipher).toBe(keyring);
     expect(bundle?.hasher).toBe(keyring);
     expect(bundle?.unitOfWork).toBe(postgres?.unitOfWork);
+  });
+
+  it("names an AgentsContract that a published factory DOES assemble", () => {
+    // WIN-267 G3 — THE CLAIM THIS CASE EXISTS TO KILL. `IDENTITY_ACCESS_UNASSEMBLED`
+    // used to end "and an AgentsContract no factory assembles". That was the
+    // THIRD claim of this exact shape the programme has had to withdraw: the
+    // same wording stood over `secrets` and `providers` until WIN-267 grepped,
+    // and both had been composable since v1.
+    //
+    // THE IMPORT AT THE HEAD OF THIS FILE IS THE ASSERTION, and it is a join to
+    // the agents package's own module graph rather than to a string this file
+    // wrote. `agentsContract` resolves through `@platos/context-agents`'s `.`
+    // condition -- `dist/contracts/index.js` -- which is the same specifier
+    // `app.module.ts` already imports `AgentsContract` from, so this cannot pass
+    // by reaching somewhere the composition root may not reach.
+    expect(typeof agentsContract).toBe("function");
+    // SAME SHAPE AS THE TWO COMPOSED PEERS, checked rather than described. The
+    // brief for this tranche was "build the assembler the way `secretsContract`
+    // and `providersContract` are built"; there was nothing to build, and the
+    // way to show that is that all three are already one function of one bundle
+    // off one entry point.
+    expect(typeof secretsContract).toBe("function");
+    expect(typeof providersContract).toBe("function");
+    for (const factory of [agentsContract, secretsContract, providersContract]) {
+      expect(factory).toHaveLength(1);
+    }
+
+    // AND THE SENTENCE MUST NOT SAY OTHERWISE AGAIN. Two directions: the
+    // withdrawn wording is gone, and the replacement names the factory that
+    // withdrew it, so a future edit cannot quietly restore the old claim without
+    // failing here.
+    const { assembly } = readiness(FULLY_DECLARED);
+    const declined = assembly.unassembled.find((row) => row.context === "identity-access");
+    expect(declined?.reason).not.toContain("no factory assembles");
+    expect(declined?.reason).not.toContain("publishes its use cases one by one");
+    expect(declined?.reason).toContain("agentsContract");
+  });
+
+  it("blocks that contract on two agents ports instead, and joins them to the table", () => {
+    // WHERE THE BLOCKER ACTUALLY IS, once the assembler claim is withdrawn. The
+    // root cannot hand `governance` an `AgentsContract` because it cannot BUILD
+    // one, and `AgentsDependencies`' four driven ports split two and two.
+    const { assembly } = readiness(FULLY_DECLARED);
+    const declined = assembly.unassembled.find((row) => row.context === "identity-access");
+    const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
+
+    // THE TWO THAT ARE SATISFIED, derived from the binding table BY OWNER rather
+    // than from a list this file wrote -- the same join the identity-access and
+    // providers cases make. A port that left the table, or one that arrived,
+    // changes this set without anybody editing the case.
+    const owned = ADAPTER_BINDINGS.filter((binding) => binding.owner === "agents");
+    expect(owned.map((binding) => binding.port).sort()).toEqual([
+      "AgentsRepository",
+      "ScaffoldingRepository",
+    ]);
+    for (const binding of owned) expect(UNIMPLEMENTED_ADAPTERS).not.toContain(binding.adapter);
+
+    // AND THE TWO THAT ARE NOT, joined the way `GOVERNANCE_UNBOUND_PORTS` is:
+    // each must appear on NO row, and must be NAMED in the reason. The day a
+    // directory implements one, this case fails and the sentence has to be
+    // re-derived -- which is precisely what the wording it replaced never had.
+    expect(AGENTS_UNBOUND_PORTS).toHaveLength(2);
+    for (const port of AGENTS_UNBOUND_PORTS) {
+      expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
+      expect(declined?.reason).toContain(port);
+    }
+    // The two sets must not overlap, or "unbound" would be a list of things that
+    // are in fact bound and the loop above would be vacuous.
+    for (const binding of owned) expect(AGENTS_UNBOUND_PORTS).not.toContain(binding.port);
+  });
+
+  it("cannot import eight context factories, and proves it against Node's resolver", async () => {
+    // THE OTHER HALF OF THE SAME CORRECTION, and the one that will bite the next
+    // tranche. Every one of the seventeen contexts publishes a factory over its
+    // whole contract; EIGHT of them keep it in `application/` behind a manifest
+    // that publishes no `./application/index.js`, so this package cannot name it.
+    //
+    // MEASURED, NOT ASSERTED, because a negative about packaging is exactly the
+    // kind of claim this file has been wrong about three times. The specifier is
+    // built at run time so nothing resolves it statically, and the rejection
+    // comes from the RESOLVER reading each package's own `exports` map -- Vite's
+    // under this runner, Node's under `node --import`, both off the same
+    // manifest -- rather than from a manifest this test re-parsed. The day a
+    // context publishes the subpath the import RESOLVES and this case fails,
+    // which is what forces the list to move.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(8);
+    for (const context of UNIMPORTABLE_CONTEXT_FACTORIES) {
+      const specifier = `@platos/context-${context}/application/index.js`;
+      // THE WHOLE MESSAGE, NOT JUST A THROW, and that is the non-vacuity guard.
+      // A misspelled context rejects too -- "Cannot find package '...'", on a
+      // package that does not exist -- and would make this loop pass while
+      // proving nothing about any manifest. `Missing ... specifier in <package>`
+      // is the resolver saying the package IS there and its `exports` map does
+      // not name this subpath, which is the claim. Pinned verbatim: if the
+      // resolver rewords it this goes red and a reader re-derives it, which is
+      // the right direction for a case whose whole job is to stop a negative
+      // going stale.
+      await expect(
+        import(/* @vite-ignore */ specifier),
+        `${context} must still publish no ./application/index.js`,
+      ).rejects.toThrow(
+        `Missing "./application/index.js" specifier in "@platos/context-${context}" package`,
+      );
+    }
+
+    // AND THE OTHER DIRECTION, without which the loop above would pass on eight
+    // names nobody could import for any reason -- a typo, a package that does
+    // not exist. THREE contexts DO publish the subpath and their factory
+    // resolves through it; `governance` is the one that matters, because a
+    // tranche that lands all five of `GOVERNANCE_UNBOUND_PORTS` still could not
+    // compose it.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toContain("governance");
+    for (const [context, factory] of [
+      ["tenancy", "createTenancyService"],
+      ["identity-access", "createIdentityAccessService"],
+      ["skills", "createSkillsContract"],
+    ] as const) {
+      expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain(context);
+      const specifier = `@platos/context-${context}/application/index.js`;
+      const module_ = (await import(/* @vite-ignore */ specifier)) as Record<string, unknown>;
+      expect(typeof module_[factory], `${context} publishes ${factory}`).toBe("function");
+    }
   });
 
   it("declines secrets and providers by NAMING the directory that is missing", () => {
