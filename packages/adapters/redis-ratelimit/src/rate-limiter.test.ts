@@ -167,7 +167,10 @@ describe("a Redis that is gone", () => {
 
   it("FAILS CLOSED: it never invents a bucket a caller could mistake for a quiet window", async () => {
     const limiter = createRedisRateLimiter(deadConnection());
-    for (let attempt = 0; attempt < 5; attempt += 1) {
+    // The counter is named `call` because the vocabulary boundary reserves the
+    // obvious alternative for retry metadata elsewhere, and this loop is five
+    // separate calls into a dead connection rather than five retries of one.
+    for (let call = 0; call < 5; call += 1) {
       const consumed = await limiter.consume({
         action: "LOGIN",
         identifierHash: HASH,
