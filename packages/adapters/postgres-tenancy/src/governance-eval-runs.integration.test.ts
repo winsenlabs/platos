@@ -46,16 +46,36 @@ let chain: PeerChain;
 let goldenSetId: string;
 
 /**
- * Read a row back with the ORM's own CLI, outside every store in this package.
+ * Count the rows, on the POOL and outside every transaction this suite opens.
  *
- * It goes through the HARNESS rather than spawning the CLI here, because
- * `env-access.mjs` declares that file as an environment reader and this one is
- * not: a second ambient read in a suite is an undeclared door, and the gate
- * says so. (Spelled without the literal, because that gate's own independent
- * reconciliation is a TEXT scan and a mention in prose reads to it as a use.)
+ * `prisma db execute` — which `governance-harness.ts` uses to seed peers — is
+ * deliberately NOT used to read: it answers "Script executed successfully" and
+ * discards the result set, so an assertion on its output is an assertion on
+ * nothing. This was found by running the suite rather than by reading it.
+ *
+ * A STATIC TAGGED TEMPLATE with interpolated VALUES, which is what
+ * `scripts/arch/sole-writer.mjs` can attribute; SQL assembled at run time is
+ * UNATTRIBUTABLE and no package may issue it. It is a read, so the gate exempts
+ * it either way.
  */
-function query(sql: string): string {
-  return harness.readPeerRows(sql);
+async function countRuns(): Promise<number> {
+  const rows = await harness.base.client.$queryRaw<readonly { readonly total: bigint }[]>`
+    SELECT count(*)::bigint AS "total" FROM "public"."EvalRun"`;
+  return Number(rows[0]?.total ?? 0n);
+}
+
+/** One run's stored row, or null. The same pool, outside every transaction. */
+async function readRun(
+  runId: string,
+): Promise<{ readonly lastError: string | null; readonly keyLength: number } | null> {
+  const rows = await harness.base.client.$queryRaw<
+    readonly { readonly lastError: string | null; readonly keyLength: number }[]
+  >`
+    SELECT run."lastError" AS "lastError",
+           length(run."idempotencyKey")::int AS "keyLength"
+    FROM "public"."EvalRun" AS run
+    WHERE run."id" = ${runId}::uuid`;
+  return rows[0] ?? null;
 }
 
 function pairs(count: number): readonly EvalPair[] {
@@ -92,7 +112,7 @@ beforeAll(async () => {
   // reason `governance-harness.ts` gives about mixing two mechanisms in one
   // fixture: this suite is about the queue, and a golden set that failed to
   // admit would be a failure in a port this suite is not testing.
-  query(
+  harness.applyPeerRows(
     `INSERT INTO "GoldenSet" ("id", "environmentId", "agentId", "name", "threadIds", "criterionIds", "createdBy", "createdAt", "updatedAt")
      VALUES ('${goldenSetId}', '${scope.environmentId}', '${chain.agentId}', 'regression',
              ARRAY['${chain.threadId}']::text[], ARRAY[]::text[], 'fixture',
@@ -115,10 +135,8 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     expect(second.value.alreadyQueued).toBe(true);
     expect(second.value.runId).toBe(first.value.runId);
     expect(second.value.pairCount).toBe(2);
-    // And ONE row, read back outside this package.
-    expect(query(`SELECT count(*) FROM "EvalRun" WHERE "id" = '${first.value.runId}';`)).toContain(
-      "1 row",
-    );
+    // And ONE row, read back on the pool rather than taken from the answer.
+    expect(await readRun(first.value.runId)).not.toBeNull();
   });
 
   test("PostgreSQL itself refuses the port's key in a btree, which is why the digest exists", async () => {
@@ -126,41 +144,52 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     // column. The key `enqueue-eval-run.ts` builds is the set id, every pair in
     // plan order and the baseline; `DEFAULT_GOVERNANCE_POLICY.goldenSets` caps a
     // set at five hundred pairs. A unique index over the KEY refuses it.
+    //
+    // The probe is a unique index ON THE REAL COLUMN, added and dropped through
+    // the ORM's CLI. A scratch table would have been a raw mutation naming a
+    // model no canonical schema claims, which `sole-writer.mjs` calls
+    // UNATTRIBUTABLE and forbids outright — so the control is run against the
+    // very column the design is about, which is the stronger shape anyway.
     const plan = pairs(500);
-    const command = request({ pairs: plan });
-    expect(command.idempotencyKey.length).toBeGreaterThan(2_704);
+    const command = request({ pairs: plan, idempotencyKey: `eval-run/${goldenSetId}/big/${"x".repeat(4)}` });
+    const wholeKey = request({ pairs: plan }).idempotencyKey;
+    expect(wholeKey.length).toBeGreaterThan(2_704);
 
-    query(`CREATE TABLE "EvalRunKeyProbe" ("k" TEXT NOT NULL);
-           CREATE UNIQUE INDEX "EvalRunKeyProbe_k_key" ON "EvalRunKeyProbe" ("k");`);
-    let refusal = "";
-    try {
-      query(
-        `INSERT INTO "EvalRunKeyProbe" ("k") VALUES ('${command.idempotencyKey.replaceAll("'", "''")}');`,
-      );
-    } catch (error) {
-      refusal = error instanceof Error ? `${error.message}` : String(error);
-    }
-    // PostgreSQL's own words, not this file's: "index row size ... exceeds
-    // btree version 4 maximum ... for index".
-    expect(refusal).toMatch(/index row size/iu);
+    harness.applyPeerRows(
+      `CREATE UNIQUE INDEX "EvalRun_idempotencyKey_probe"
+         ON "public"."EvalRun" ("environmentId", "idempotencyKey");`,
+    );
+    const refused = await harness.base.adapter.evalRuns.enqueue(
+      request({ pairs: plan, idempotencyKey: wholeKey }),
+    );
+    harness.applyPeerRows(`DROP INDEX "EvalRun_idempotencyKey_probe";`);
 
-    // AND THE STORE ACCEPTS THE SAME RUN, because what it indexes is 64 hex
-    // characters. This is the pair that makes the design decision falsifiable:
-    // remove the digest and this case fails on the line above's error, here.
-    const accepted = await harness.base.adapter.evalRuns.enqueue(command);
+    // PostgreSQL's own words, carried out through the port's own refusal code:
+    // "index row size ... exceeds btree version 4 maximum ... for index".
+    expect(refused.ok).toBe(false);
+    if (refused.ok) throw new Error("unreachable");
+    expect(refused.error.code).toBe("GOVERNANCE_QUEUE_UNAVAILABLE");
+    expect(String(refused.error.details?.reason)).toMatch(/index row size/iu);
+
+    // AND THE STORE ACCEPTS THE SAME RUN once the index the design does NOT
+    // create is gone, because what it indexes is 64 hex characters. This is the
+    // pair that makes the decision falsifiable: index the key instead of its
+    // digest and the first half of this case is what production does.
+    const accepted = await harness.base.adapter.evalRuns.enqueue(
+      request({ pairs: plan, idempotencyKey: wholeKey }),
+    );
     if (!accepted.ok) throw new Error(`unreachable: ${accepted.error.code}`);
     expect(accepted.value.pairCount).toBe(500);
-    expect(evalRunDigest(command.idempotencyKey)).toHaveLength(64);
+    expect(evalRunDigest(wholeKey)).toHaveLength(64);
     // The full key is KEPT, not discarded, so a merged run can be explained.
-    expect(
-      query(
-        `SELECT length("idempotencyKey") FROM "EvalRun" WHERE "id" = '${accepted.value.runId}';`,
-      ),
-    ).toContain("1 row");
-    const repeated = await harness.base.adapter.evalRuns.enqueue(command);
+    expect((await readRun(accepted.value.runId))?.keyLength).toBe(wholeKey.length);
+    const repeated = await harness.base.adapter.evalRuns.enqueue(
+      request({ pairs: plan, idempotencyKey: wholeKey }),
+    );
     if (!repeated.ok) throw new Error("unreachable");
     expect(repeated.value.alreadyQueued).toBe(true);
-  });
+    expect(command.idempotencyKey).not.toBe(wholeKey);
+  }, 180_000);
 
   test("an error Result inside the unit of work ROLLS BACK, and the rows prove it", async () => {
     // THE DEFECT THIS TREE HAS ALREADY SHIPPED ONCE. `UnitOfWork.run` RESOLVES a
@@ -168,7 +197,7 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     // is how a threshold event was committed with no delivery rows beside it,
     // while both test doubles reported "nothing to roll back". The queue's
     // enqueue runs inside `atomicResult`, so the question is live here.
-    const before = query(`SELECT count(*) FROM "EvalRun";`);
+    const before = await countRuns();
     const refusal = domainError("GOVERNANCE_QUEUE_UNAVAILABLE", "conflict", "caller refused after enqueueing");
     const failed = await runResult(harness.base.adapter.unitOfWork, async () => {
       const enqueued = await harness.base.adapter.evalRuns.enqueue(
@@ -182,9 +211,10 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     });
 
     expect(failed.ok).toBe(false);
-    // NOT "the double says it rolled back": the count, read through the ORM's
-    // CLI on a connection this unit of work never held.
-    expect(query(`SELECT count(*) FROM "EvalRun";`)).toBe(before);
+    // NOT "the double says it rolled back": the count, read on the pool after
+    // the transaction ended. `InMemoryEvalRunQueue` has no commit to observe,
+    // which is why this claim cannot be made anywhere but here.
+    expect(await countRuns()).toBe(before);
 
     // AND THE SAME SHAPE COMMITS WHEN IT SUCCEEDS, which is what stops the case
     // above from passing because nothing was ever written.
@@ -194,14 +224,13 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
       );
     });
     if (!committed.ok) throw new Error(`unreachable: ${committed.error.code}`);
-    expect(query(`SELECT count(*) FROM "EvalRun" WHERE "id" = '${committed.value.runId}';`)).toContain(
-      "1 row",
-    );
+    expect(await readRun(committed.value.runId)).not.toBeNull();
+    expect(await countRuns()).toBe(before + 1);
   });
 });
 
 describe("the consumer half: exclusive, and it loses nothing when a consumer dies", () => {
-  test("thirty-two concurrent consumers take thirty-two DISJOINT runs", async () => {
+  test("thirty-two concurrent consumers never take one run twice, and lose none", async () => {
     const seeded = 32;
     const created: string[] = [];
     for (let index = 0; index < seeded; index += 1) {
@@ -229,14 +258,39 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
       if (!claim.ok) throw new Error(`unreachable: ${claim.error.code}`);
       for (const run of claim.value) taken.push(run.runId);
     }
-    const relevant = taken.filter((runId) => created.includes(runId));
-    // DISJOINT: no run was handed to two consumers.
-    expect(new Set(relevant).size).toBe(relevant.length);
-    // AND EXHAUSTIVE: `SKIP LOCKED` stepped over locked rows, it did not drop
-    // them. A statement that merely never double-claimed could pass the line
-    // above by claiming nothing.
-    expect(new Set(relevant).size).toBe(seeded);
-    // Every claim carried a first attempt.
+    const concurrent = taken.filter((runId) => created.includes(runId));
+    // THE SAFETY PROPERTY, and it is absolute: no run reached two consumers.
+    expect(new Set(concurrent).size).toBe(concurrent.length);
+    // Non-vacuous: the pass really did hand work out.
+    expect(concurrent.length).toBeGreaterThan(0);
+
+    // AND NOW THE PROPERTY THIS CASE WAS FIRST WRITTEN TO ASSERT AND WHICH IS
+    // NOT TRUE. It read `expect(new Set(concurrent).size).toBe(seeded)` — "every
+    // run was taken in one concurrent pass" — and MEASURED 30 of 32 on a real
+    // PostgreSQL 16. That is `SKIP LOCKED` behaving exactly as specified: a
+    // claim that steps over a row another transaction has locked, holding
+    // `LIMIT 1`, comes back EMPTY. Two consumers went away with nothing while
+    // two runs stayed QUEUED.
+    //
+    // The honest claim is therefore in two halves: a concurrent batch may be
+    // UNDER-FILLED, and nothing is LOST. The drain below is the second half —
+    // it claims until the queue is empty and the union must be all thirty-two,
+    // still with no run taken twice.
+    const drained: string[] = [...concurrent];
+    for (let round = 0; round < seeded && new Set(drained).size < seeded; round += 1) {
+      const more = await harness.base.adapter.evalRuns.claim(`drain-${String(round)}`, 60_000, seeded);
+      if (!more.ok) throw new Error(`unreachable: ${more.error.code}`);
+      for (const run of more.value) {
+        if (created.includes(run.runId)) drained.push(run.runId);
+      }
+      if (more.value.length === 0) break;
+    }
+    expect(new Set(drained).size).toBe(seeded);
+    // Still no double-hand, across the concurrent pass AND the drain: the only
+    // repeats are redeliveries of runs whose lease this suite never released,
+    // and there are none, because every lease above is sixty seconds.
+    expect(drained.length).toBe(seeded);
+
     for (const claim of claims) {
       if (!claim.ok) throw new Error("unreachable");
       for (const run of claim.value) expect(run.attempts).toBeGreaterThanOrEqual(1);
@@ -308,11 +362,7 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
     if (!retaken.ok) throw new Error("unreachable");
     const back = retaken.value.find((run) => run.runId === enqueued.value.runId);
     expect(back?.attempts).toBe(2);
-    expect(
-      query(
-        `SELECT "lastError" FROM "EvalRun" WHERE "id" = '${enqueued.value.runId}' AND "lastError" = 'judge unreachable';`,
-      ),
-    ).toContain("1 row");
+    expect((await readRun(enqueued.value.runId))?.lastError).toBe("judge unreachable");
   }, 180_000);
 
   test("the claim reads the plan back as pairs, in the order it was planned", async () => {
@@ -335,7 +385,7 @@ describe("the two refusal codes the old objection said could not stay apart", ()
     // from the canonical store would merge "the dispatcher refused the work"
     // with "a table is down". Here is the merge, attempted: the same table is
     // taken away from BOTH ports at once.
-    query(`ALTER TABLE "EvalRun" RENAME TO "EvalRunHidden";
+    harness.applyPeerRows(`ALTER TABLE "EvalRun" RENAME TO "EvalRunHidden";
            ALTER TABLE "AgentEval" RENAME TO "AgentEvalHidden";`);
     try {
       const queued = await harness.base.adapter.evalRuns.enqueue(
@@ -362,7 +412,7 @@ describe("the two refusal codes the old objection said could not stay apart", ()
       // The point, stated as one assertion: the codes DIFFER under one cause.
       expect(queued.error.code).not.toBe(scored.error.code);
     } finally {
-      query(`ALTER TABLE "EvalRunHidden" RENAME TO "EvalRun";
+      harness.applyPeerRows(`ALTER TABLE "EvalRunHidden" RENAME TO "EvalRun";
              ALTER TABLE "AgentEvalHidden" RENAME TO "AgentEval";`);
     }
   }, 180_000);
