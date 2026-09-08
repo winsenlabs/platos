@@ -1,0 +1,163 @@
+{
+  "$schema-note": "Not a schema-validated artifact. A committed record of mutations that were APPLIED to the working tree, RUN, and REVERTED, so a reviewer can re-run any row rather than take a green suite as proof.",
+  "issue": "WIN-267",
+  "tranche": "A4 - light the dark Prisma-delegate gate, and rescue two gates stranded on T5",
+  "branch": "tejas/win-267-a4-dark-gate",
+  "base": "007007f2 (v1, M4.1 foundation #152)",
+  "purpose": [
+    "This tranche exists because a passing suite is not evidence. `apps/agent/src/clean-prisma-delegates.test.ts`",
+    "was RED on `v1` for 1,064 commits and nobody saw it, because no CI job ran the file. So the",
+    "artefact that matters here is not the re-pinned number - it is proof that each assertion, and",
+    "the WIRING that makes them run at all, can be made to fail."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST. The unmutated tree ran green before and after every entry below:",
+    "`node --test scripts/ci-policy.test.mjs` at 370/370, and the census suite at 2/2.",
+    "An entry whose suite was already red proves nothing, and a 'kill' with no named failing",
+    "line is VACUOUS.",
+    "",
+    "EVERY ENTRY BELOW WAS APPLIED, RUN, AND REVERTED. `kills` quotes what the runner actually",
+    "printed. `killCount` is the number of cases that went from pass to fail. An entry that could",
+    "not be made to fail is in `declared`, with the measured reason - never omitted, never counted",
+    "as a kill.",
+    "",
+    "T5 PROVENANCE. Two commits were cherry-picked onto this branch from the unlandable branch",
+    "`tejas/win-267-t5-identity-rest` (3784a5e3, b0998095). Their seven mutations live in",
+    "scripts/mutations-win267-t5.json and were NOT taken on trust: all seven were re-applied on",
+    "THIS branch, re-run, and re-reverted, and every one reproduced its recorded killCount and",
+    "case names exactly - M01 3, M02 1, M03 1, M05 1, M06 3, M07 1, M08 4."
+  ],
+  "commands": {
+    "wiring": "node --test scripts/ci-policy.test.mjs",
+    "census": "pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts"
+  },
+  "build-state": [
+    "The census answer depends on which workspace packages are built, so every row below was run",
+    "under the same state the CI agent job reaches before its Vitest steps: `pnpm install",
+    "--frozen-lockfile --ignore-scripts`, then `pnpm --filter @platos/tenancy-database build &&",
+    "pnpm --filter @internal/workload-identity build`. Re-measured after `pnpm build:v1`: 815 in",
+    "both states."
+  ],
+  "mutations": [
+    {
+      "name": "A01 the CI step that runs the census is deleted",
+      "guards": ".github/workflows/ci.yml + scripts/ci-policy.test.mjs. THE ENTRY THIS TRANCHE EXISTS FOR: this is the byte state of v1 @ 007007f2, under which the census was red and no build ever said so.",
+      "file": ".github/workflows/ci.yml",
+      "from": "the whole `- name: Tenancy Prisma delegate boundary and census` step",
+      "to": "(removed)",
+      "command": "wiring",
+      "exit": 1,
+      "kills": [
+        "x the agent CI job names the tenancy Prisma delegate census",
+        "-> no CI job runs apps/agent/src/clean-prisma-delegates.test.ts. It is a gate only while a job names it"
+      ],
+      "killCount": 1,
+      "control": "`pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts` still passes 2/2 when run by hand. That is the entire failure this tranche repairs: a green suite nobody runs is indistinguishable from a green build.",
+      "note": "A first attempt at this row substituted a DIFFERENT agent suite for the census rather than deleting the step, and killed three cases instead of one - the two extra were pre-existing relocated-command-uniqueness checks reacting to the duplicate command, not to the missing gate. The row was rewritten to delete the step outright so the kill isolates the property under test."
+    },
+    {
+      "name": "A02 the census step is hoisted above the build it depends on",
+      "guards": "scripts/ci-policy.test.mjs - the ordering half. A gate that runs at the wrong point in the job measures a different tree than the one it is pinned against.",
+      "file": ".github/workflows/ci.yml",
+      "from": "the census step placed after `Generate and build compiled Agent dependencies`",
+      "to": "the same step moved immediately before it",
+      "command": "wiring",
+      "exit": 1,
+      "kills": [
+        "x the agent CI job names the tenancy Prisma delegate census",
+        "-> job typecheck runs the delegate census at step 4 but builds @platos/tenancy-database at step 5",
+        "x committed CI and image-build policy is executable, correlated, and complete"
+      ],
+      "killCount": 2,
+      "control": "The second kill is a PRE-EXISTING ci-policy ordering check, not a second copy of mine. It is recorded rather than hidden, because a reader comparing kill counts to case names should not have to wonder where the extra one came from.",
+      "note": "The ordering claim is measured, not asserted. See `declared` for what actually happens in each unbuilt state - the loud mode and the quiet one differ, and only the quiet one justifies an executable assertion."
+    },
+    {
+      "name": "A03 the census suite is renamed and the workflow is not updated",
+      "guards": "scripts/ci-policy.test.mjs - the discovery half. The suite path is found by SHAPE (the one agent test that both pins a delegate inventory digest and reads the generated datamodel), not spelled as a constant, so a rename cannot quietly orphan the step.",
+      "file": "apps/agent/src/clean-prisma-delegates.test.ts",
+      "from": "apps/agent/src/clean-prisma-delegates.test.ts",
+      "to": "apps/agent/src/tenancy-delegate-census.test.ts (workflow left untouched)",
+      "command": "wiring",
+      "exit": 1,
+      "kills": [
+        "x the agent CI job names the tenancy Prisma delegate census",
+        "-> no CI job runs apps/agent/src/tenancy-delegate-census.test.ts"
+      ],
+      "killCount": 1,
+      "control": "Every other ci-policy case stays green, and the census suite itself still passes 2/2 under its new name. The workflow is the only thing that broke, which is the only thing this row is about.",
+      "note": "This is what stops the guard being a restatement of a string in the workflow. The failure message quotes the DISCOVERED path, so the reviewer is told which file lost its job rather than that some file did."
+    },
+    {
+      "name": "A04 the call-site pin is reverted to its pre-A4 value",
+      "guards": "apps/agent/src/clean-prisma-delegates.test.ts - `expect(analysis.calls.length).toBe(815)`. Proves the number this tranche moved is load-bearing rather than decorative.",
+      "file": "apps/agent/src/clean-prisma-delegates.test.ts",
+      "from": "expect(analysis.calls.length).toBe(815);",
+      "to": "expect(analysis.calls.length).toBe(751);",
+      "command": "census",
+      "exit": 1,
+      "kills": [
+        "x uses the type checker to inventory every production delegate operation",
+        "-> expected 815 to be 751"
+      ],
+      "killCount": 1,
+      "control": "This is verbatim the failure `v1` @ 007007f2 produces today, reproduced on this branch to show the two trees are being compared like for like.",
+      "note": "Reverting a pin is the weakest possible mutation - it only shows the assertion is connected. A05 and A06 are the rows that matter, because they move the TREE and leave the pin alone."
+    },
+    {
+      "name": "A05 one new production delegate call site lands",
+      "guards": "the ratchet, in the direction that matters. A census that only fails when someone edits its own number is a census that cannot catch the thing it was written for.",
+      "file": "apps/agent/src/skills/skill-registry.service.ts",
+      "from": "const canonical = await this.resolveScope(scope);",
+      "to": "the same line followed by `await this.prisma.skill.findFirst({ where: { id: \"a4-mutation-probe\" } });`",
+      "command": "census",
+      "exit": 1,
+      "kills": [
+        "x uses the type checker to inventory every production delegate operation",
+        "-> expected 816 to be 815"
+      ],
+      "killCount": 1,
+      "control": "The pin was NOT touched for this row. The tree moved and the gate noticed - which is the 64 unobserved call sites this tranche found, reproduced deliberately at a size of one.",
+      "note": "`skill.findFirst` was chosen because that delegate/operation pair already exists in the inventory, so the row isolates the COUNT assertion: inventory length and digest both stay at their pins and only line 336 fails."
+    },
+    {
+      "name": "A06 one existing call swaps operation, leaving the call count identical",
+      "guards": "apps/agent/src/clean-prisma-delegates.test.ts - `expect(inventoryDigest).toBe(...)`. Isolates the digest from the count.",
+      "file": "apps/agent/src/skills/skill-registry.service.ts",
+      "from": "      this.prisma.skill.count({ where }),",
+      "to": "      this.prisma.skill.aggregate({ where }),",
+      "command": "census",
+      "exit": 1,
+      "kills": [
+        "x uses the type checker to inventory every production delegate operation",
+        "-> expected '078d969f2f4e9316ad66d8f4c2381b88d5e2e...' to be '0c4fd159179dbf051d093ac039b87771c53d4...'"
+      ],
+      "killCount": 1,
+      "control": "Call count stays at 815 and inventory length stays at 329 - both assertions PASSED, and the run reached line 338 before failing. That is the proof the digest is a third independent assertion and not a restatement of the other two.",
+      "note": "`skill.count` had exactly one call site in the tree, so swapping it removes `skill.count` from the inventory and adds `skill.aggregate`: same cardinality, different set, different digest. A pin that only checked the two lengths would have stayed green through this."
+    }
+  ],
+  "declared": [
+    {
+      "name": "the pin's dependence on build state, in the LOUD direction",
+      "attempted": "Delete `internal-packages/tenancy-database/dist` entirely, then run the census suite.",
+      "result": "NOT A SILENT UNDERCOUNT, so not the failure the ordering assertion is written for. Vitest reports `Failed to resolve entry for package \"@platos/tenancy-database\"` and collects no tests at all.",
+      "why-unfalsifiable": "There is nothing here to falsify: the suite cannot run, so no assertion of its can be made to fail. Recorded because the first draft of the ci-policy comment CLAIMED this state produced a quiet undercount, and that claim was wrong. It was measured and the comment rewritten rather than the measurement dropped.",
+      "measured": "exit 1, `Tests: no tests`, zero cases collected."
+    },
+    {
+      "name": "the pin's dependence on build state, in the QUIET direction",
+      "attempted": "Restore `dist` but delete its fifteen `.d.ts` files, so the runtime import succeeds and only the TYPES are missing.",
+      "result": "REPRODUCED, and this is the state the ordering assertion exists for - but it is not counted as a kill because it is a property of the ENVIRONMENT, not a mutation of any file this branch owns. The census reads 812 where it should read 815: three call sites disappear with no error and no warning, because a client the checker cannot type is a client the analyzer cannot follow.",
+      "why-unfalsifiable": "The environment cannot be mutated by a committed diff, so no row in `mutations` can carry it. A02 is the falsifiable shadow of the same property: it makes the WORKFLOW produce that environment, and that IS killable.",
+      "measured": "815 with declarations present, 812 with them deleted, `dist` runtime files identical in both runs."
+    },
+    {
+      "name": "whether the re-pinned figure reproduces on the hosted Linux runner",
+      "attempted": "Nothing. The measurement was taken on darwin/arm64 under Node v24.3.0; CI runs ubuntu-latest under the .nvmrc pin, Node 22.14.0.",
+      "result": "NOT VERIFIED. All three assertions are order-independent by construction - a total, a de-duplicated set's cardinality, and a digest over that set AFTER sorting - so directory-iteration order cannot move them, and TypeScript resolution does not vary by platform for a workspace built the same way. That is an argument, not a measurement.",
+      "why-unfalsifiable": "It is falsifiable, and it was simply not run: the only second machine available here is a Mac mini, which is the same OS family and would not test the thing in question. Docker may not run on the laptop. The honest statement is that this is the one claim in the tranche whose first real test is the first CI run.",
+      "measured": "815 / 329 / 0c4fd159 on darwin/arm64 Node 24.3.0, in two build states (with and without `pnpm build:v1`)."
+    }
+  ]
+}

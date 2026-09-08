@@ -1496,8 +1496,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // files this slice touches — `.dependency-cruiser.js`,
     // `scripts/arch/boundary-rules.mjs` and `scripts/arch/arch-boundaries.test.mjs`
     // — are all tracked already, and an edited file is not a new one.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 = 56.
-    "root-infra": 56,
+    // WIN-267 (M4.1, A4) 56 -> 57: `scripts/mutations-win267-a4.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same stated reason. It is the FIFTH non-code file under
+    // `scripts/`. A4 carries T5's two rescued gates, so it inherits T5's file
+    // as well as adding its own; both are counted here, and neither is being
+    // reclassified inside a tranche that would be its own beneficiary.
+    //
+    // A4 ADDS EXACTLY ONE FILE AND EDITS THE REST IN PLACE. The other paths this
+    // slice touches — `.github/workflows/ci.yml`, `scripts/ci-policy.test.mjs`,
+    // `apps/agent/src/clean-prisma-delegates.test.ts` and the three T5 files
+    // above — are all tracked already, and an edited file is not a new one. In
+    // particular `apps-agent` does NOT move: re-pinning a suite's assertions
+    // changes bytes, not the census.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 = 57.
+    "root-infra": 57,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1505,7 +1518,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // number exists to hold is that the total delta and the per-area deltas are
   // the SAME arithmetic — 2 + 0 + 57 + 4 + 1454 + 9 + 17 + 56 = 1599 — so a file
   // that arrives in one and not the other cannot pass both halves of this case.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1599);
+  // WIN-267 (M4.1, A4) 1599 -> 1600: `scripts/mutations-win267-a4.json`, the one
+  // file A4 adds, landing in root-infra alone —
+  // 2 + 0 + 57 + 4 + 1454 + 9 + 17 + 57 = 1600.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1600);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1617,7 +1633,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // per-area counts rather than reading the total — which is exactly why it is
     // moved separately and by hand: if T5 had added a file to one side and not
     // the other, one of these two assertions would still be red.
-    rulesDocument.baseline.totalFiles + 1599
+    //
+    // WIN-267 (M4.1, A4) 1599 -> 1600, from `scripts/mutations-win267-a4.json`,
+    // also in `root-infra` and also moved by hand for the same reason. A4 ran
+    // `--write`, watched `audit:v1-ledger` go green, and STILL landed here red
+    // on both of these assertions — the sixth and seventh time this second
+    // reconciliation has caught what the first one signed off.
+    rulesDocument.baseline.totalFiles + 1600
   );
 });
 

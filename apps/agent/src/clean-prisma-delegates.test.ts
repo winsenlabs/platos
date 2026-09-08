@@ -354,9 +354,16 @@ describe("clean tenancy Prisma boundary", () => {
     // attachments, the access-key bootstrap grant and postman executions.
     //
     // BUILD STATE. This census is TYPE-CHECKER driven, so the answer depends
-    // on which workspace packages have been built: an unresolved
-    // `@platos/tenancy-database` makes the client type opaque and the analyzer
-    // silently finds fewer call sites. Measured under exactly the state the
+    // on which workspace packages have been built, and both failure modes were
+    // measured rather than assumed. Delete
+    // `internal-packages/tenancy-database/dist` and this suite does not
+    // under-count, it does not run: Vitest reports `Failed to resolve entry for
+    // package "@platos/tenancy-database"` and collects nothing. Keep `dist` but
+    // delete its fifteen `.d.ts` files — runtime import fine, types gone — and
+    // the count silently reads 812 instead of 815. That quiet three-call-site
+    // drift is why `scripts/ci-policy.test.mjs` asserts this suite runs AFTER
+    // ci.yml's "Generate and build compiled Agent dependencies" step rather
+    // than trusting a reader to notice. Measured under exactly the state the
     // agent job reaches before its Vitest steps — `pnpm install
     // --frozen-lockfile --ignore-scripts`, then `pnpm --filter
     // @platos/tenancy-database build && pnpm --filter
