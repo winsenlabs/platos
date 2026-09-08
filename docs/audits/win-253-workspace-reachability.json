@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "f3c39ec42562269311ab4a8012ff0bd40f1a0d6b0227acbaf8b137b70c5ddf97",
+  "evidenceSha256": "ef88ec89ef256fce69be7a062aeab2e9e15f1c91bfc5691307caab625e507719",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ce8522992212a800c2f466250a452e077f1a1cb297c270d727978552ef1fcb12",
+    "aggregateSha256": "609ebfe81464c9b279c009d332d1843a9f1143490727413211736a93fb4fdb24",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2467,7 +2467,7 @@
       },
       {
         "path": "apps/core-api/package.json",
-        "sha256": "bd89f518f79171e1322d4772b1626eaae34510619a28d846e617923797ddb3b2"
+        "sha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26"
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
@@ -19859,7 +19859,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "c064132159209d6597c14eef498a5a2cff94e7da746722990841226f44739add"
+        "sha256": "bba9754325a23a3d852fa1e8543e7656181bb671d4ccf752d1fd7ca8676a1c51"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -26343,8 +26343,8 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "03306e33f9ab528488567103d5817f7389cd64f808c8a13a739a5e9918326ae3",
-      "manifestSha256": "bd89f518f79171e1322d4772b1626eaae34510619a28d846e617923797ddb3b2",
+      "evidenceSha256": "1ab885e8abc9bf7c6f09bebad5f368f27e16d71eaa7e22fb2da60d587d78d9be",
+      "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
         "reachable": false,
@@ -76061,7 +76061,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 2093,
+              "line": 2102,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -76650,7 +76650,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "054b064a8364a1863fbaf5d783cf167d6aa7c9829fd0af4d03f2dd139b6e7b3d",
+      "evidenceSha256": "8deebb4ea6710585b70601730a1bc1eeea2dc9df700c19cd47bae7e61d06535a",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -83602,7 +83602,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 1974,
+              "line": 1983,
               "specifier": "@platos/kernel"
             }
           ],
@@ -89424,7 +89424,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "db7be2dea5e1af68355ea582e88bcca661b594f8c44a700b47befec96180fd5b",
+      "evidenceSha256": "674f734fd4462dd9210addbc77dcad047be76bc0415a9bbc47d6f3a718ae2ead",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
