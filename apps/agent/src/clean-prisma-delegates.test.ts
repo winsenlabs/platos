@@ -333,10 +333,36 @@ describe("clean tenancy Prisma boundary", () => {
     expect(violations).toEqual([]);
     // Independently pin both call-site count and unique operation inventory so
     // the audit cannot pass because its discovery silently stopped working.
-    expect(analysis.calls.length).toBe(751);
-    expect(inventory).toHaveLength(304);
+    //
+    // -----------------------------------------------------------------------
+    // WIN-258 T6 — WHY THESE THREE NUMBERS MOVED, SPLIT BY CAUSE.
+    //
+    // All three pins were ALREADY STALE on the tranche base, v1 @ 007007f2:
+    // measured there, this suite reports 832 calls, a 329-entry inventory and
+    // digest 0c4fd159…, against committed pins of 751 / 304 / 0b36ea83… . So
+    // this gate was RED before T6 touched the tree, by +81 calls and +25
+    // inventory entries that belong to whatever landed them — not to this
+    // branch. That is recorded here rather than quietly absorbed, because a
+    // re-pin with no arithmetic is indistinguishable from a re-pin that hid
+    // someone's drift.
+    //
+    // T6's OWN contribution is the call count alone: 832 -> 817, a delta of
+    // -15. It comes from consolidating duplicated reads while moving them off
+    // the transports — the agentBinding scope guard that was written out three
+    // times, and the paginated queries whose page and count each re-typed their
+    // own predicate.
+    //
+    // The INVENTORY and the DIGEST are unchanged at 329 / 0c4fd159…, and that
+    // is the interesting half. Moving a call from a controller into a store
+    // must not change WHICH delegate operations this application performs, only
+    // where they are written. An inventory that shifted would mean T6 had
+    // altered behaviour, not location; an inventory that held while the count
+    // fell is the signature of exactly the refactor claimed.
+    // -----------------------------------------------------------------------
+    expect(analysis.calls.length).toBe(817);
+    expect(inventory).toHaveLength(329);
     expect(inventoryDigest).toBe(
-      "0b36ea83f83a49ed4795881e9c9ccc00a6214c5e30ef654091d36dc13c2cc5a4",
+      "0c4fd159179dbf051d093ac039b87771c53d407adbf06e7aa79df0a3cc6f85ac",
     );
   }, 20_000);
 

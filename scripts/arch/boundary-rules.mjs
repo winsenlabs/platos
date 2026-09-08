@@ -115,6 +115,49 @@ const POSTGRES_TENANCY_ADAPTER = "^packages/adapters/postgres-tenancy/";
 const TENANCY_DATABASE_SOURCE =
   "node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))";
 
+// ---------------------------------------------------------------------------
+// WIN-258 T6 — the agent HTTP transports that have been taken off the ORM.
+//
+// THIS LIST IS A RATCHET, AND IT IS JOINED TO THE FILESYSTEM.
+// `arch-boundaries.test.mjs` asserts that every path here EXISTS in the tree and
+// that the real scan reports no violation against any of them. Both halves
+// matter: without the existence join, renaming a controller would silently
+// disarm its rule and the suite would still pass, which is this programme's
+// first lesson — an assertion comparing two things you control cannot fail.
+//
+// It names FILES rather than `^apps/agent/` because a rule is only worth having
+// if it is true. T6 converted seven of the twenty-three confirmed transport
+// entry points; the app's services, tasks and MCP tools still hold the client
+// everywhere. A blanket ban would fail on day one and be suppressed, which is
+// worse than no rule. Each entry here can never regress, and the next tranche's
+// job is to ADD to this array — a one-line diff whose gate is already written.
+// ---------------------------------------------------------------------------
+export const DEPRISMA_AGENT_TRANSPORTS = [
+  "apps/agent/src/auth/public-guest-token.controller.ts",
+  "apps/agent/src/auth/session-token.controller.ts",
+  "apps/agent/src/agent-runtime/jobs.controller.ts",
+  "apps/agent/src/files/files.controller.ts",
+];
+
+/**
+ * BOTH doors to the ORM, not just the vendor package.
+ *
+ * Half the converted controllers never imported `@platos/tenancy-database` at
+ * all — they took the client through `apps/agent/src/shared/database.provider`,
+ * which is where `PRISMA_TOKEN` and `ControlDatabaseClient` live. A rule that
+ * banned only the vendor scope would be satisfied by walking through the local
+ * provider, which is the exact door every one of these files actually used.
+ * `TENANCY_DATABASE_SOURCE` above makes the same argument about the workspace
+ * wrapper hiding `@prisma/client`; this is that argument one layer further in.
+ */
+export const AGENT_ORM_DOORS =
+  `^(${TENANCY_DATABASE_SOURCE}|apps/agent/src/shared/database\\.provider)`;
+
+/** Escape a literal path so it can sit inside a rule's `from.path` regex. */
+function escapeForRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 // Per-vendor single-adapter containment (ADR M0.3 §5.1 rule (h)). Each SDK lives
 // in exactly one place; any file outside that place importing the SDK fails.
 export const SDK_CONTAINMENT = [
@@ -382,6 +425,35 @@ export const RULES = [
     to: {
       path: "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)",
     },
+  },
+
+  // (k2) WIN-258 — the agent HTTP transports T6 converted may not reach for the
+  // ORM again. Sibling of (k), same shape, different app.
+  //
+  // WHY THE `from` IS A LIST OF FILES AND NOT `^apps/agent/`.
+  // A rule is only worth having if it is TRUE, and `apps/agent` as a whole is
+  // nowhere near Prisma-free: T6 converted seven of the twenty-three confirmed
+  // transport entry points, and the app's services, tasks and MCP tools reach
+  // the client everywhere. A rule over the whole tree would fail on day one and
+  // be suppressed, which is worse than no rule. Naming the converted files
+  // RATCHETS: each one that is listed can never regress, and the next tranche's
+  // job is to add its own entries rather than to argue about a blanket ban.
+  //
+  // WHY BOTH DOORS ARE NAMED IN `to`. Half these controllers never imported
+  // `@platos/tenancy-database` at all — they took the client through
+  // `apps/agent/src/shared/database.provider`, which is where `PRISMA_TOKEN` and
+  // `ControlDatabaseClient` live. A rule that banned only the vendor package
+  // would be satisfied by walking through the local provider, which is the exact
+  // door every one of these files actually used. `TENANCY_DATABASE_SOURCE`'s own
+  // header makes the same point about `@platos/tenancy-database` wrapping
+  // `@prisma/client`; this is that argument one layer further in.
+  {
+    id: "agent-converted-transport-no-prisma",
+    severity: "error",
+    comment:
+      "a WIN-258-converted agent transport must reach data through its store or directory, never the ORM client or the DI token that carries it.",
+    from: { path: `^(${DEPRISMA_AGENT_TRANSPORTS.map(escapeForRegex).join("|")})$` },
+    to: { path: AGENT_ORM_DOORS },
   },
 
   // (l) CONTEXT REGISTRY — packages/contexts/<name>/ must be one of the 17

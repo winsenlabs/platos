@@ -11,13 +11,14 @@
 // stays within the repository vocabulary boundary; the rule logic is identical
 // across every vendor entry in the banned/containment lists.
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { after, describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { check } from "./arch-boundaries.mjs";
+import { DEPRISMA_AGENT_TRANSPORTS } from "./boundary-rules.mjs";
 
 const tempRoots = [];
 after(() => {
@@ -342,6 +343,83 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     assert.ok(
       !has(check(good, { scanRoots: ["apps/webapp"] }), "webapp-no-prisma"),
       "webapp calling core-api over HTTP must pass"
+    );
+  });
+
+  it("(k2) agent-converted-transport-no-prisma: a converted agent transport may not reach the ORM again", () => {
+    // The vendor door.
+    const vendorDoor = fixture({
+      "apps/agent/src/agent-runtime/jobs.controller.ts":
+        `import type { Prisma } from "@platos/tenancy-database";\nexport type W = Prisma.JobWhereInput;\n`,
+    });
+    assert.ok(
+      has(check(vendorDoor, { scanRoots: ["apps/agent"] }), "agent-converted-transport-no-prisma"),
+      "a converted transport importing the workspace ORM wrapper must fire"
+    );
+
+    // The LOCAL door — the one every one of these controllers actually used.
+    // A rule that named only the vendor package would miss this entirely, and
+    // this case is the whole reason `to` names two things instead of one.
+    const localDoor = fixture({
+      "apps/agent/src/files/files.controller.ts":
+        `import { PRISMA_TOKEN } from "../shared/database.provider";\nexport const t = PRISMA_TOKEN;\n`,
+    });
+    assert.ok(
+      has(check(localDoor, { scanRoots: ["apps/agent"] }), "agent-converted-transport-no-prisma"),
+      "a converted transport importing the DI provider that carries the client must fire"
+    );
+
+    // Reaching data through its store is the shape that is supposed to pass.
+    const good = fixture({
+      "apps/agent/src/agent-runtime/jobs.controller.ts":
+        `import { JobStore } from "./job-store";\nexport const s = JobStore;\n`,
+    });
+    assert.ok(
+      !has(check(good, { scanRoots: ["apps/agent"] }), "agent-converted-transport-no-prisma"),
+      "a converted transport reaching data through its store must pass"
+    );
+
+    // SCOPED, NOT BLANKET. An agent transport that has NOT been converted is
+    // deliberately untouched by this rule — asserting that keeps the ratchet
+    // honest about what it does and does not yet cover, and would catch a
+    // careless widening of `from` to `^apps/agent/`.
+    const unconverted = fixture({
+      "apps/agent/src/agent-runtime/channels.controller.ts":
+        `import { PRISMA_TOKEN } from "../shared/database.provider";\nexport const t = PRISMA_TOKEN;\n`,
+    });
+    assert.ok(
+      !has(check(unconverted, { scanRoots: ["apps/agent"] }), "agent-converted-transport-no-prisma"),
+      "an unconverted agent transport must not fire this rule"
+    );
+  });
+
+  it("(k2) the converted-transport list is joined to the real tree, not to itself", () => {
+    // THE NON-VACUITY JOIN. A `from` list naming files that do not exist would
+    // pass every scan forever: rename a controller and its rule silently stops
+    // applying, with nothing red. So the list is checked against the FILESYSTEM,
+    // and the rule is checked against the REAL agent tree — never against
+    // another constant in this file.
+    const repositoryRoot = new URL("../..", import.meta.url).pathname;
+
+    assert.ok(
+      DEPRISMA_AGENT_TRANSPORTS.length > 0,
+      "the converted-transport list must not be empty, or the rule is unreachable"
+    );
+    for (const relative of DEPRISMA_AGENT_TRANSPORTS) {
+      assert.ok(
+        existsSync(join(repositoryRoot, relative)),
+        `${relative} is named by agent-converted-transport-no-prisma but does not exist; ` +
+          "a renamed transport must move its entry, not lose its gate"
+      );
+    }
+
+    // And every one of them is actually clean, in the tree as committed.
+    const violations = check(repositoryRoot, { scanRoots: ["apps/agent"] }).violations
+      .filter((violation) => violation.rule === "agent-converted-transport-no-prisma");
+    assert.deepEqual(
+      violations.map((violation) => `${violation.from} -> ${violation.specifier}`),
+      [],
+      "a converted agent transport has reached for the ORM again"
     );
   });
 
