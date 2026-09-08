@@ -1,5 +1,6 @@
 import { ForbiddenException } from "@nestjs/common";
 import { describe, expect, it, vi } from "vitest";
+import { FileBrowserStore } from "./file-browser.store";
 import { FilesController } from "./files.controller";
 
 const scope = {
@@ -21,7 +22,7 @@ describe("FilesController clean attachment transport", () => {
       .mockResolvedValueOnce([{ agentId: "agent-a", name: "Ada", _count: 3, lastAt }])
       .mockResolvedValueOnce([{ total: 1 }]);
     const controller = new FilesController(
-      { $queryRaw: queryRaw } as any,
+      new FileBrowserStore({ $queryRaw: queryRaw } as any),
       { getPresignedDownloadUrl: vi.fn() } as any,
     );
 
@@ -60,7 +61,7 @@ describe("FilesController clean attachment transport", () => {
       .mockResolvedValueOnce([{ userId: "end-user-a", attachmentCount: 2, distinctThreads: 1, lastAt }])
       .mockResolvedValueOnce([{ total: 1 }]);
     const controller = new FilesController(
-      { $queryRaw: queryRaw } as any,
+      new FileBrowserStore({ $queryRaw: queryRaw } as any),
       { getPresignedDownloadUrl: vi.fn() } as any,
     );
 
@@ -113,7 +114,7 @@ describe("FilesController clean attachment transport", () => {
       .mockRejectedValueOnce(new Error("object store unavailable"));
     const count = vi.fn().mockResolvedValue(2);
     const controller = new FilesController(
-      { messageAttachment: { findMany, count } } as any,
+      new FileBrowserStore({ messageAttachment: { findMany, count } } as any),
       { getPresignedDownloadUrl: presign } as any,
     );
 
@@ -179,7 +180,7 @@ describe("FilesController clean attachment transport", () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const count = vi.fn().mockResolvedValue(0);
     const controller = new FilesController(
-      { messageAttachment: { findMany, count } } as any,
+      new FileBrowserStore({ messageAttachment: { findMany, count } } as any),
       { getPresignedDownloadUrl: vi.fn() } as any,
     );
 
@@ -211,7 +212,7 @@ describe("FilesController clean attachment transport", () => {
   it("rejects end-user file browsing before querying attachment metadata", async () => {
     const findMany = vi.fn();
     const controller = new FilesController(
-      { messageAttachment: { findMany } } as any,
+      new FileBrowserStore({ messageAttachment: { findMany } } as any),
       { getPresignedDownloadUrl: vi.fn() } as any,
     );
 
@@ -222,5 +223,79 @@ describe("FilesController clean attachment transport", () => {
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * WIN-258 T6 — the page and its total are ONE predicate, not two spellings.
+ *
+ * Each raw level ran two statements: one for the rows, one for the count. They
+ * were written out separately, so the tenancy clause that confines results to
+ * one organization, project and environment existed in SIX independent copies
+ * across the three levels. Two failures follow, and neither shows up in a review
+ * that reads one query at a time — a total computed from a WIDER predicate than
+ * its page (so `hasMore` lies, undetectably), and a scope clause weakened in one
+ * copy only (a cross-tenant leak on a surface that mints presigned URLs for
+ * other users' files).
+ *
+ * The assertion below is a JOIN BETWEEN THE TWO STATEMENTS rather than a
+ * restatement of either: whatever the page query binds, minus the two paging
+ * parameters, must be exactly what the count query binds. It holds no expected
+ * SQL of its own, so it cannot drift with the queries — and it goes red the
+ * moment the two predicates stop being the same object.
+ */
+describe("FileBrowserStore counts the same rows it pages", () => {
+  const levels = [
+    {
+      name: "agents",
+      call: (controller: FilesController) => controller.listAgents(req(), "25", "10", undefined, "ada"),
+    },
+    {
+      name: "users",
+      call: (controller: FilesController) => controller.listUsers(req(), "agent-a", "25", "10", undefined, "ada"),
+    },
+    {
+      name: "conversations",
+      call: (controller: FilesController) =>
+        controller.listConversations(req(), "agent-a", "user-a", "25", "10", undefined, "ada"),
+    },
+  ];
+
+  it.each(levels)("binds one predicate for both statements at the $name level", async ({ call }) => {
+    const queryRaw = vi.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ total: 0 }]);
+    const controller = new FilesController(
+      new FileBrowserStore({ $queryRaw: queryRaw } as any),
+      { getPresignedDownloadUrl: vi.fn() } as any,
+    );
+
+    await call(controller);
+
+    expect(queryRaw).toHaveBeenCalledTimes(2);
+    const page = queryRaw.mock.calls[0][0] as { values: unknown[] };
+    const count = queryRaw.mock.calls[1][0] as { values: unknown[] };
+
+    // The page binds exactly two more values than the count — LIMIT and OFFSET,
+    // in that order, and nothing else.
+    expect(page.values.slice(-2)).toEqual([25, 10]);
+    expect(page.values.slice(0, -2)).toEqual(count.values);
+  });
+
+  it("carries the search term into the count, not only into the page", async () => {
+    const queryRaw = vi.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ total: 0 }]);
+    const controller = new FilesController(
+      new FileBrowserStore({ $queryRaw: queryRaw } as any),
+      { getPresignedDownloadUrl: vi.fn() } as any,
+    );
+
+    await controller.listAgents(req(), "25", "0", undefined, "ada");
+
+    const count = queryRaw.mock.calls[1][0] as { values: unknown[] };
+    // A count that dropped the filter would return the unfiltered total while
+    // the page returned the filtered rows — the exact bug this shape prevents.
+    expect(count.values).toContain("%ada%");
   });
 });
