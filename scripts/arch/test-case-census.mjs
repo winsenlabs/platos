@@ -2503,10 +2503,12 @@ export const EXPECTED = Object.freeze({
   // `governance-eval-runs.integration.test.ts`, and each is named so this stays
   // a claim rather than a number raised until the gate went quiet:
   //
-  //   3 on the ENQUEUE half -- a repeated key costing one run; PostgreSQL's own
-  //     btree refusing the port's 37 kB key while the store accepts the same run
-  //     through its digest; and an error `Result` inside the unit of work
-  //     leaving NO row behind while the same shape committed does.
+  //   4 on the ENQUEUE half -- a repeated key costing one run; a unique index
+  //     over the key itself ACCEPTING a 37 kB key that compresses and REFUSING
+  //     one of the same length that does not, while the digest takes both; a
+  //     forged row whose digest matches a DIFFERENT key being refused rather
+  //     than answered `alreadyQueued`; and an error `Result` inside the unit of
+  //     work leaving NO row behind while the same shape committed does.
   //   4 on the CONSUMER half -- thirty-two concurrent claims taking disjoint AND
   //     exhaustive sets; a consumer that dies between claiming and acknowledging
   //     getting its run back with `attempts` incremented; an abandoned run
@@ -2515,8 +2517,8 @@ export const EXPECTED = Object.freeze({
   //     which is the claim `governance-repository.ts` used to give as the reason
   //     this port could not live in this directory at all.
   //
-  // 136 + 1 = 137 files, 1506 + 8 = 1514 cases.
-  "packages/adapters/postgres-tenancy": { files: 137, cases: 1514 },
+  // 136 + 1 = 137 files, 1506 + 9 = 1515 cases.
+  "packages/adapters/postgres-tenancy": { files: 137, cases: 1515 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -3367,14 +3369,14 @@ export const EXPECTED = Object.freeze({
  * READ BACK from `node scripts/arch/test-case-census.mjs` rather than trusted
  * from this sum.
  *
- * WIN-267 G1: 8071 -> 8079 over 545 -> 546 files. EIGHT cases in ONE file,
+ * WIN-267 G1: 8071 -> 8080 over 545 -> 546 files. NINE cases in ONE file,
  * `packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts`,
  * itemised on that package's row above. `apps/core-api` gains eleven cases in
  * `governance-judge.test.ts` and moves NOTHING here, for the reason
  * `installation.test.ts` moves nothing: that directory is outside PACKAGE_ROOTS.
  * READ BACK the same way.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8079;
+export const EXPECTED_RUNTIME_TOTAL = 8080;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

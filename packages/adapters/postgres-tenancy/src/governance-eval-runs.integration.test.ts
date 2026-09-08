@@ -231,6 +231,37 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     expect(repeated.value.runId).toBe(accepted.value.runId);
   }, 180_000);
 
+  test("a digest that matches a DIFFERENT key is refused, not answered alreadyQueued", async () => {
+    // A SHA-256 collision has never been exhibited, so the branch that compares
+    // the stored key cannot be reached by finding one. It can be reached by
+    // WRITING one: a row whose digest is `digest(K)` and whose key is not `K`
+    // is exactly what a collision would look like to this store, and the ORM's
+    // CLI can put it there. Without this the branch is unfalsifiable and would
+    // have to be declared so.
+    //
+    // WHAT IT PROTECTS. Answering `alreadyQueued: true` for a run that is not
+    // the same run tells the caller its fan-out is already in flight, writes no
+    // row, and leaves nothing to score it — a silent no-op, which is the worst
+    // answer available here.
+    const command = request({ pairs: pairs(2), idempotencyKey: `eval-run/${goldenSetId}/collision` });
+    const forged = harness.base.freshId("00e2");
+    harness.applyPeerRows(
+      `INSERT INTO "EvalRun" ("id", "environmentId", "goldenSetId", "agentId", "requestedBy",
+                              "idempotencyKey", "idempotencyDigest", "pairCount", "pairs",
+                              "status", "attempts", "createdAt", "updatedAt")
+       VALUES ('${forged}', '${scope.environmentId}', '${goldenSetId}', '${chain.agentId}', 'fixture',
+               'a completely different run', '${evalRunDigest(command.idempotencyKey)}', 1,
+               '[{"threadId":"${chain.threadId}","criterionId":"${chain.threadId}"}]'::jsonb,
+               'QUEUED', 0, '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');`,
+    );
+
+    const answered = await harness.base.adapter.evalRuns.enqueue(command);
+    expect(answered.ok).toBe(false);
+    if (answered.ok) throw new Error("unreachable");
+    expect(answered.error.code).toBe("GOVERNANCE_QUEUE_UNAVAILABLE");
+    expect(String(answered.error.details?.reason)).toContain("digest_collision");
+  }, 180_000);
+
   test("an error Result inside the unit of work ROLLS BACK, and the rows prove it", async () => {
     // THE DEFECT THIS TREE HAS ALREADY SHIPPED ONCE. `UnitOfWork.run` RESOLVES a
     // callback that answers a failure, and a resolved callback COMMITS — which
