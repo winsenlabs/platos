@@ -1184,7 +1184,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // gates whose pins moved — `gen-v1-skeleton.mjs`, `v1-project-graph.mjs`,
     // `env-access.mjs`, `test-case-census.mjs` and its suite — are all edits to
     // files under `scripts/`, which `root-infra` already counts.
-    packages: 1461,
+    //
+    // ITS SECOND HALF, the `ProviderProbeCache`, adds THREE more, all under
+    // `packages/adapters/redis-cache/src/` — ONE source, `provider-probe-cache.ts`,
+    // and TWO test, `provider-probe-cache.test.ts` and
+    // `provider-probe.integration.test.ts`. `client.ts` gained a verb,
+    // `adapter.ts` a slot, `index.ts` two exports, `cache.test.ts` a stub in its
+    // double and `packages/contexts/providers`' port entry point three
+    // re-exports: five widened files and no new one.
+    //
+    // 1454 + 7 + 3 = 1464.
+    packages: 1464,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1505,18 +1515,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
     // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
     // and add no file.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
-    "root-infra": 55,
+    // WIN-267 (M4.1, A3) 55 -> 56: `scripts/mutations-win267-a3.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same stated reason. It is the FOURTH non-code file under
+    // `scripts/`; T0 imagined the rule split, T2 said it was clearly worth
+    // doing, and it is STILL not being done inside a tranche that would be its
+    // own beneficiary. The four gates A3 edits — `gen-v1-skeleton.mjs`,
+    // `v1-project-graph.mjs`, `env-access.mjs` and `test-case-census.mjs` — and
+    // their four suites move pinned numbers in place and add no file.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 = 56.
+    "root-infra": 56,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
   //
-  // WIN-267 (M4.1, A3) 1598 -> 1605, and the seven are the SAME seven the
-  // `packages` delta above enumerates — 2 + 0 + 57 + 4 + 1461 + 9 + 17 + 55 =
-  // 1605. Both figures are asserted so the two can disagree and be caught: this
-  // one is the ledger's own total, the map below is re-derived by summing the
-  // per-area counts independently.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1605);
+  // WIN-267 (M4.1, A3) 1598 -> 1609 over THREE contributions: seven files for
+  // the RateLimiter adapter, three for the ProviderProbeCache — both in
+  // `packages` — and ONE in `root-infra` for the tranche's guard ledger,
+  // `scripts/mutations-win267-a3.json`.
+  // 2 + 0 + 57 + 4 + 1464 + 9 + 17 + 56 = 1609. Both figures are asserted so
+  // the two can disagree and be caught: this one is the ledger's own total, the
+  // map below is re-derived by summing the per-area counts independently.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1609);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1627,7 +1647,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/redis-ratelimit/src/`. Re-derived here by summing the
     // per-area counts rather than read off the ledger's own total, which is what
     // lets the two disagree and be caught.
-    rulesDocument.baseline.totalFiles + 1605
+    rulesDocument.baseline.totalFiles + 1609
   );
 });
 
