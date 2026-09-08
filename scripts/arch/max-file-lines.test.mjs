@@ -799,14 +799,26 @@ test("the live selectors scan an exact nonzero source census", () => {
   // WARNING 400 / ERROR 500 effective lines, and this tranche lands ten files
   // there — seven in `redis-ratelimit/src/` and three in `redis-cache/src/`.
   //
-  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured, not assumed:
-  // the largest of the ten is `provider-probe-cache.test.ts` at 176 effective
-  // lines, then `rate-limiter.test.ts` at 168 and `provider-probe-cache.ts` at
-  // 105; the four production modules and the two harness/oracle files run 61 to
-  // 105. Nothing crosses 400 and the warning list below is unchanged — which is
-  // the property that matters for a directory about to grow: an adapter that
-  // needed a 500-line file to hold one port would be an adapter holding more
-  // than one job.
+  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured with THIS
+  // MODULE'S OWN `effectiveLineCount` rather than eyeballed — the first figures
+  // written here were the author's recollection and were wrong by 44 on the
+  // largest file, which is the reason the method is stated:
+  //
+  //   220  redis-cache/src/provider-probe-cache.test.ts
+  //   165  redis-ratelimit/src/rate-limiter.test.ts
+  //   136  redis-ratelimit/src/ratelimit.integration.test.ts
+  //   103  redis-ratelimit/src/oracle-source.ts
+  //    98  redis-cache/src/provider-probe-cache.ts
+  //    91  redis-cache/src/provider-probe.integration.test.ts
+  //    91  redis-ratelimit/src/oracle-differential.test.ts
+  //    77  redis-ratelimit/src/harness.ts
+  //    51  redis-ratelimit/src/rate-limiter.ts
+  //    50  redis-ratelimit/src/client.ts
+  //
+  // Nothing reaches the 400 warning band and the warning list below is
+  // unchanged — which is the property that matters for a directory about to
+  // grow: an adapter that needed a 500-line file to hold one port would be an
+  // adapter holding more than one job.
   assert.equal(result.fileCount, 1552);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
