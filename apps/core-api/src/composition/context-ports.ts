@@ -225,9 +225,11 @@
 // PostgreSQL instead of over a bundle an install had to hand in.
 // ---------------------------------------------------------------------------
 
-import type { Clock, IdGenerator, Logger } from "@platos/kernel";
+import type { Clock, IdGenerator, Logger, SafetyEventSink } from "@platos/kernel";
 
 import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/context-providers";
+import { DEFAULT_GOVERNANCE_POLICY } from "@platos/context-governance";
+import { createGovernanceSafetyEventSink } from "@platos/context-governance/application/index.js";
 
 import type { SuppliedContextPorts } from "../app.module.js";
 import type { SuppliedAdapters } from "./adapter-bindings.js";
@@ -248,6 +250,16 @@ export interface UnassembledContext {
 export interface ContextPortAssembly {
   readonly ports: SuppliedContextPorts;
   readonly unassembled: readonly UnassembledContext[];
+  /**
+   * The kernel `SafetyEventSink` this assembly minted, or null when no store
+   * carried its ledger.
+   *
+   * PUBLISHED SO THE IDENTITY CAN BE PINNED. `governance-contract.ts` requires
+   * this port to be minted once and handed back by identity; a caller that could
+   * not SEE the object could not check that the bundle it went into holds the
+   * same one. `installation.test.ts` asserts exactly that.
+   */
+  readonly safetyEventSink: SafetyEventSink | null;
 }
 
 /**
@@ -271,19 +283,90 @@ export interface ContextPortAssembly {
  * binding row satisfies `SafetyEventSink`.
  */
 export const IDENTITY_ACCESS_UNASSEMBLED =
-  "every one of its six driven ports now has an implementation and its kernel" +
-  " SafetyEventSink slot does not: IdentityAccessRepository is postgres-tenancy," +
-  " RateLimiter is redis-ratelimit, SecretHasher is node-crypto-digest," +
-  " MfaSecretCipher is keyring-envelope, TokenMinter is tokenmint-totp and" +
-  " TotpCodeVerifier is tokenmint-totp; SafetyEventSink is implemented only by" +
-  " the governance context, whose OWN ten driven ports are now every one of" +
-  " them satisfied and which this root still cannot build. What is left is not" +
-  " a driven port: createGovernanceContract cannot be imported here because" +
-  " @platos/context-governance publishes no ./application/index.js, and its" +
-  " AgentsContract slot needs a COMPOSED agents -- agentsContract does assemble" +
-  " that contract, from the package own . entry point, but agents names" +
-  " AgentVersionLock and MacroRecorder on no binding row and a skills peer this" +
-  " root does not compose; so this root cannot compose it";
+  "every one of its TEN slots now has an implementation and the context is" +
+  " COMPOSED wherever the directories carrying them are constructed; " +
+  "IdentityAccessRepository is postgres-tenancy, RateLimiter is redis-ratelimit," +
+  " SecretHasher is node-crypto-digest, MfaSecretCipher is keyring-envelope," +
+  " TokenMinter and TotpCodeVerifier are tokenmint-totp, clock, ids and logger" +
+  " are kernel ports this process holds, and the kernel SafetyEventSink is" +
+  " governance's own createGovernanceSafetyEventSink over postgres-tenancy's" +
+  " SafetyLedger. In THIS install ";
+
+/**
+ * WHICH SOURCE FILLS EACH OF `identity-access`' TEN SLOTS, named once.
+ *
+ * THE INVERSION. This constant replaces a sentence that said which port had NO
+ * implementation, and it is read back the other way round:
+ * `installation.test.ts` asserts that every slot here is satisfied, that each
+ * adapter-sourced one appears on a row of `ADAPTER_BINDINGS` under this owner,
+ * that each row's directory is NOT on `UNIMPLEMENTED_ADAPTERS`, and that a fully
+ * declared install CONSTRUCTED it -- and then that the composed context is
+ * actually present on `app.contexts`. Removing any one of those adapters must
+ * turn that case RED, which is the property the old "is not composed, because"
+ * sentence could never have: a claim about absence goes green when the subject
+ * disappears.
+ *
+ * `safety` IS THE ONE THAT IS NOT AN ADAPTER, and it is spelled as its own
+ * origin rather than folded in with the kernel three. `clock`, `ids` and
+ * `logger` are ports this PROCESS holds; `safety` is a port GOVERNANCE
+ * implements, built here from three named inputs. That difference is the whole
+ * history of this file, so the map records it rather than flattening it.
+ */
+export const IDENTITY_ACCESS_SLOT_SOURCES: Readonly<Record<string, string>> = Object.freeze({
+  repository: "postgres-tenancy",
+  rateLimiter: "redis-ratelimit",
+  hasher: "node-crypto-digest",
+  minter: "tokenmint-totp",
+  totp: "tokenmint-totp",
+  cipher: "keyring-envelope",
+  clock: "kernel",
+  ids: "kernel",
+  logger: "kernel",
+  safety: "governance:createGovernanceSafetyEventSink",
+});
+
+/**
+ * WHY `governance` ITSELF IS STILL NOT COMPOSED, measured rather than asserted.
+ *
+ * WIN-267 G1 and G2 satisfied all ten of its driven ports, so the sentence this
+ * programme has repeated since T3 -- "five driven ports no adapter directory
+ * satisfies" -- is spent. What is left is not a port and cannot be closed by an
+ * adapter, and it is stated here in full because the tranche brief that produced
+ * this file expected the opposite and a reader deserves the measurement rather
+ * than the expectation:
+ *
+ *   `GovernanceDependencies.agents` is an `AgentsContract`, and this root must
+ *   hand over a COMPOSED `agents`. `agentsContract` EXISTS -- WIN-267 G3
+ *   withdrew the claim that it did not -- but `AgentsDependencies` names
+ *   `versionLock: AgentVersionLock` and `recorder: MacroRecorder`, both on no
+ *   row of `ADAPTER_BINDINGS` (`AGENTS_UNBOUND_PORTS`), and `skills: SkillsPeer`,
+ *   whose only honest source is a composed `skills`.
+ *
+ *   `SkillsDependencies` in turn names `sourceFetcher: SkillSourceFetcher`,
+ *   `environmentKeys: EnvironmentKeyDirectory` and `sandbox: SkillSandbox`, none
+ *   of which has a directory -- and `skill-source-fetcher.ts`'s own header says
+ *   so in writing: "NOTHING IN THIS REPOSITORY IMPLEMENTS THIS PORT YET." It
+ *   also names `files: FilesContract`, and `FilesDependencies.objectStore` is
+ *   `objectstore-minio`, still on `UNIMPLEMENTED_ADAPTERS`.
+ *
+ * SO THE CHAIN IS FOUR CONTEXTS AND SIX UNBOUND PORTS DEEP, ending at two
+ * EXTERNAL SUPPLIERS -- an object store and a code sandbox -- and closing it is
+ * not an adapter tranche. That is why this tranche composes `identity-access`
+ * through the SINK rather than through the context: the sink reads three slots
+ * of the seventeen and none of them is `agents`.
+ *
+ * READ BACK BY `installation.test.ts` against `ADAPTER_BINDINGS` and against
+ * `UNIMPLEMENTED_ADAPTERS`, so the day `objectstore-minio` or either agents port
+ * lands, this sentence has to move.
+ */
+export const GOVERNANCE_UNCOMPOSABLE_CHAIN: readonly string[] = Object.freeze([
+  "AgentVersionLock",
+  "MacroRecorder",
+  "SkillSourceFetcher",
+  "EnvironmentKeyDirectory",
+  "SkillSandbox",
+  "ObjectStore",
+]);
 
 /**
  * The governance ports that keep the sink out of reach, named once.
@@ -429,15 +512,41 @@ export const AGENTS_UNBOUND_PORTS: readonly string[] = Object.freeze([
  * these the case fails and this list has to move.
  */
 export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([
+  // WIN-267 — `governance` LEFT THIS LIST, and it is the first context ever to.
+  // `APPLICATION_ENTRY_PROJECTS` gained it because this file now imports
+  // `createGovernanceSafetyEventSink` from `./application/index.js`, which is
+  // that list's own rule ("the contexts whose `application/index.js` a V1
+  // project actually imports") rather than a relaxation of it. Seven remain.
   "channels",
   "conversations",
   "eventing",
   "files",
-  "governance",
   "jobs",
   "observability",
   "privacy",
 ]);
+
+/**
+ * WHY `governance` IS NOT COMPOSED, in the operator's own words.
+ *
+ * A CONSTANT AND A `/readyz` ROW rather than a comment, because it is now the
+ * ONLY context whose blocker is a peer rather than a port, and an operator
+ * reading "governance is absent" cannot otherwise tell a missing variable from
+ * a supply chain four contexts long. `installation.test.ts` reads it back
+ * against `ADAPTER_BINDINGS` and `UNIMPLEMENTED_ADAPTERS`, so the day any link
+ * in `GOVERNANCE_UNCOMPOSABLE_CHAIN` lands, this sentence has to move.
+ */
+export const GOVERNANCE_UNCOMPOSABLE =
+  "all TEN of its driven ports are satisfied -- WIN-267 bound the three read" +
+  " seams and the eval-run queue to postgres-tenancy and satisfied Judge in this" +
+  " deployable -- and its kernel SafetyEventSink is built here and handed to" +
+  " identity-access. What it still cannot get is its AgentsContract slot, which" +
+  " needs a COMPOSED agents peer: agentsContract does assemble that contract," +
+  " from the package's own . entry point, but AgentsDependencies names" +
+  " AgentVersionLock and MacroRecorder on no binding row, and a skills peer" +
+  " needing SkillSourceFetcher, EnvironmentKeyDirectory and SkillSandbox on no" +
+  " binding row either, and a files peer whose ObjectStore is objectstore-minio," +
+  " still on UNIMPLEMENTED_ADAPTERS";
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.
@@ -457,6 +566,9 @@ export function assembleContextPorts(
   const keyring = adapters["keyring-envelope"];
   const cache = adapters["redis-cache"];
   const router = adapters["model-router-providers"];
+  const ratelimit = adapters["redis-ratelimit"];
+  const digest = adapters["node-crypto-digest"];
+  const tokenmint = adapters["tokenmint-totp"];
 
   if (postgres === undefined) {
     unassembled.push(
@@ -466,9 +578,63 @@ export function assembleContextPorts(
       }),
     );
   }
-  unassembled.push(
-    Object.freeze({ context: "identity-access", reason: IDENTITY_ACCESS_UNASSEMBLED }),
-  );
+  // WIN-267. `governance` IS REPORTED UNASSEMBLED UNCONDITIONALLY, because it is
+  // unassembled in EVERY install: no configuration closes it and no directory
+  // an operator can wire closes it either. Reporting it only when a store is
+  // absent would let a fully declared install read as though the context were
+  // merely unconfigured.
+  unassembled.push(Object.freeze({ context: "governance", reason: GOVERNANCE_UNCOMPOSABLE }));
+
+  // WIN-267. THE KERNEL `SafetyEventSink`, MINTED ONCE PER ASSEMBLY, and the
+  // last slot standing between this root and a composed `identity-access`.
+  //
+  // WHY IT IS BUILT HERE AND NOT IN `app.module.ts` WITH THE CONTEXTS. A
+  // `SafetyEventSink` is a KERNEL PORT, not a context. Its three inputs are
+  // exactly the kinds this file already handles: `safety` is a NAMED PROPERTY of
+  // a constructed adapter, `policy` is a published domain default of the same
+  // shape as `DEFAULT_PROVIDERS_POLICY` two paragraphs of this file already
+  // take, and `logger` is a kernel port the process holds. Nothing here holds a
+  // context -- `createGovernanceSafetyEventSink` returns a `SafetyEventSink`,
+  // and `GovernanceSafetySinkDependencies` is the THREE-slot slice that function
+  // now declares, not the seventeen-slot bundle a context is built from.
+  //
+  // WHAT IT IS NOT, STATED SO NOBODY READS IT AS MORE THAN IT IS. This does NOT
+  // compose `governance`. The context is still unassembled and
+  // `GOVERNANCE_UNCOMPOSABLE_CHAIN` says why, at length. The rows this sink writes are
+  // the same `SafetyEvent` rows `pageSafetyEvents` will read the day that
+  // context does compose -- one table, one canonical store, one admission path
+  // through `appendSafetyEvent` -- so nothing here has to be undone.
+  //
+  // THE DAY `governance` COMPOSES, THIS MUST BECOME `governance.safetyEventSink()`
+  // AND NOT A SECOND OBJECT. `governance-contract.ts` mints its sink once and
+  // hands it back by identity because "a fresh `SafetyEventSink` per call would
+  // be a new object on every enforcement decision". This construction obeys the
+  // same rule within its own scope -- ONE object per assembly, handed to
+  // whichever bundles need it -- and `installation.test.ts` pins that identity so
+  // a refactor to a mint-per-bundle cannot pass.
+  const safetyEventSink: SafetyEventSink | null =
+    postgres === undefined
+      ? null
+      : createGovernanceSafetyEventSink({
+          safety: postgres.safety,
+          policy: DEFAULT_GOVERNANCE_POLICY,
+          logger: dependencies.logger,
+        });
+
+  if (postgres === undefined || ratelimit === undefined || digest === undefined || tokenmint === undefined || keyring === undefined) {
+    const missing: string[] = [];
+    if (postgres === undefined) missing.push("postgres-tenancy (IdentityAccessRepository, and the SafetyLedger the kernel sink writes through)");
+    if (ratelimit === undefined) missing.push("redis-ratelimit (RateLimiter)");
+    if (digest === undefined) missing.push("node-crypto-digest (SecretHasher)");
+    if (tokenmint === undefined) missing.push("tokenmint-totp (TokenMinter, TotpCodeVerifier)");
+    if (keyring === undefined) missing.push("keyring-envelope (MfaSecretCipher)");
+    unassembled.push(
+      Object.freeze({
+        context: "identity-access",
+        reason: `${IDENTITY_ACCESS_UNASSEMBLED}${missing.join(", ")} ${missing.length === 1 ? "is" : "are"} not constructed`,
+      }),
+    );
+  }
 
   // WIN-267 composition. `secrets` needs a store, a variable store and the three
   // cryptography ports, and every one of them is a NAMED property of a
@@ -515,6 +681,36 @@ export function assembleContextPorts(
   const ports: {
     -readonly [Key in keyof SuppliedContextPorts]?: SuppliedContextPorts[Key];
   } = {};
+
+  // WIN-267. `identity-access`, composed at last, and EVERY ONE OF ITS TEN SLOTS
+  // ASSIGNED BY NAME. The convention is load-bearing here in a way it is nowhere
+  // else in this file: `minter` and `totp` are satisfied by the SAME
+  // `tokenmint-totp` object, `repository` and `rateLimiter` are both stores, and
+  // `clock` and `ids` are two kernel ports of similar shape -- a bundle
+  // assembled by spreading one adapter over another would type-check with any of
+  // those transposed, and the sign-in path would keep working while minting
+  // tokens from the TOTP alphabet.
+  if (
+    postgres !== undefined &&
+    ratelimit !== undefined &&
+    digest !== undefined &&
+    tokenmint !== undefined &&
+    keyring !== undefined &&
+    safetyEventSink !== null
+  ) {
+    ports.identityAccess = {
+      repository: postgres,
+      rateLimiter: ratelimit,
+      hasher: digest,
+      minter: tokenmint,
+      totp: tokenmint,
+      cipher: keyring.mfaSecrets,
+      clock: dependencies.clock,
+      ids: dependencies.ids,
+      safety: safetyEventSink,
+      logger: dependencies.logger,
+    };
+  }
 
   if (postgres !== undefined) {
     ports.tenancy = {
@@ -569,5 +765,6 @@ export function assembleContextPorts(
   return Object.freeze({
     ports: Object.freeze({ ...ports }),
     unassembled: Object.freeze([...unassembled]),
+    safetyEventSink,
   });
 }

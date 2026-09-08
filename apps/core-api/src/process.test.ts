@@ -352,7 +352,25 @@ describe("the built binary starts, serves and stops", () => {
     // load-bearing rather than incidental — `providers` names `tenancy` and
     // `secrets` as PEERS, so it can only exist after both do, and it is the
     // first context in this tree built from another context at all.
-    expect(body.detail.composedContexts).toEqual(["tenancy", "secrets", "providers"]);
+    // WIN-267 ADDS `identityAccess`, AND IT IS FIRST IN THE LIST BECAUSE THE
+    // ORDER IS `ContextContracts`' OWN. This is the figure this whole line of
+    // work existed for: read off a REAL socket on a REAL process, core-api now
+    // holds a composed `identity-access` -- the context that authenticates an
+    // operator -- rather than a type it imports and never builds.
+    //
+    // ITS TENTH SLOT IS THE KERNEL `SafetyEventSink`, and no adapter supplies
+    // it: `composition/context-ports.ts` mints it from `governance`'s own
+    // `createGovernanceSafetyEventSink` over `postgres-tenancy`'s `SafetyLedger`.
+    // `governance` ITSELF IS STILL ABSENT and must stay absent here -- its
+    // `AgentsContract` slot is four contexts and six unbound ports away -- which
+    // is why this list is asserted with `toEqual` rather than by membership.
+    expect(body.detail.composedContexts).toEqual([
+      "identityAccess",
+      "tenancy",
+      "secrets",
+      "providers",
+    ]);
+    expect(body.detail.composedContexts).not.toContain("governance");
     // And every remaining directory says which kind of gap it is.
     expect(body.detail.unwiredAdapters).toHaveLength(7);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));

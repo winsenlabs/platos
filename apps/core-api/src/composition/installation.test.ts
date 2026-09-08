@@ -37,6 +37,7 @@ import { costMonitoringContract } from "@platos/context-cost-monitoring";
 // at run time, and this is the shape that proves the resolver rather than
 // evading it. `app.module.ts` already imports the first two this way.
 import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
+import { createGovernanceContract } from "@platos/context-governance/application/index.js";
 import { createTenancyService } from "@platos/context-tenancy/application/index.js";
 import { createSkillsContract } from "@platos/context-skills/application/index.js";
 
@@ -56,6 +57,9 @@ import {
   AGENTS_UNBOUND_PORTS,
   GOVERNANCE_BOUND_READ_SEAMS,
   GOVERNANCE_ROOT_SATISFIED_PORTS,
+  GOVERNANCE_UNCOMPOSABLE,
+  GOVERNANCE_UNCOMPOSABLE_CHAIN,
+  IDENTITY_ACCESS_SLOT_SOURCES,
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
   UNIMPORTABLE_CONTEXT_FACTORIES,
@@ -474,36 +478,33 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(app.contexts).toEqual({});
   });
 
-  it("does not compose identity-access, and its reason holds against the binding table", () => {
+  it("COMPOSES identity-access, and every one of its ten slots is joined to its source", () => {
     const { assembly, app, construction } = readiness(FULLY_DECLARED);
-    expect(app.contexts.identityAccess).toBeUndefined();
-    const declined = assembly.unassembled.find((row) => row.context === "identity-access");
-    expect(declined?.reason).toBe(IDENTITY_ACCESS_UNASSEMBLED);
 
-    // THE REASON IS CHECKED, NOT TAKEN ON TRUST, AND WIN-267 INVERTED IT. Until
-    // this issue the sentence named ports that were MISSING and the check joined
-    // each to the absence of a binding row. Every one of those has landed, so
-    // the check is turned around rather than deleted: each of the six driven
-    // ports is now joined to the directory that satisfies it AND to the
-    // constructed adapter that carries it, and REMOVING ANY ONE OF THOSE
-    // ADAPTERS TURNS THIS CASE RED on that port. An assertion that merely
-    // stopped naming the missing ports would be indistinguishable from one that
-    // forgot them.
+    // THE CLAIM THIS WHOLE LINE OF WORK EXISTS FOR, AND IT IS FIRST BECAUSE
+    // EVERYTHING BELOW IS EVIDENCE FOR IT. Until WIN-267 this read
+    // `toBeUndefined()`.
+    const identityAccess = app.contexts.identityAccess;
+    expect(identityAccess, "identity-access must be COMPOSED in a fully declared install").toBeDefined();
+    expect(identityAccess?.name).toBe("identity-access");
+    expect(
+      assembly.unassembled.map((row) => row.context),
+      "a composed context must not also be reported as unassembled",
+    ).not.toContain("identity-access");
+
+    // THE INVERSION, AND WHY IT IS NOT JUST A DELETED ASSERTION. Until this
+    // tranche the case named the ports that were MISSING and joined each to the
+    // ABSENCE of a binding row. A claim about absence goes GREEN when its
+    // subject disappears, so deleting the sentence would have passed. The check
+    // is therefore turned around rather than removed: every slot in
+    // `IDENTITY_ACCESS_SLOT_SOURCES` is joined FORWARDS to the thing that fills
+    // it, and the adapter-sourced ones are joined to a binding row, to that
+    // row's directory not being unimplemented, and to the fully declared install
+    // having CONSTRUCTED it.
     //
-    // WIN-267 A3 FLIPPED THE `RateLimiter` HALF LAST: the binding is still
-    // declared against `redis-ratelimit`, that directory is no longer
-    // unimplemented, and a fully declared install now CONSTRUCTS it.
-    //
-    // WHAT IS LEFT IS NOT AN ADAPTER QUESTION AT ALL. `SafetyEventSink` appears
-    // on NO row of this table, because its only implementation is in the
-    // `governance` context, which `app.module.ts` imports as a TYPE and never
-    // composes -- and cannot, because five of governance's own driven ports have
-    // no adapter directory either.
-    // THE SIX, JOINED TO THE BINDING TABLE RATHER THAN TO A LIST THIS FILE
-    // WROTE. `owned` is derived from `ADAPTER_BINDINGS` by OWNER, so a port that
-    // left the table, or one that arrived, changes this set without anybody
-    // editing the case. Its size and its membership are both pinned, because a
-    // set that silently shrank would make the loop below vacuous.
+    // REMOVING ANY ONE OF THE FIVE ADAPTERS TURNS THIS RED, and it is proven
+    // rather than promised: the second half of this case DELETES each adapter
+    // from a construction in turn and asserts the context stops composing.
     const owned = ADAPTER_BINDINGS.filter((binding) => binding.owner === "identity-access");
     expect(owned.map((binding) => binding.port).sort()).toEqual([
       "IdentityAccessRepository",
@@ -513,26 +514,126 @@ describe("the context bundles those adapters can satisfy", () => {
       "TokenMinter",
       "TotpCodeVerifier",
     ]);
-
-    // AND EACH ONE IS CHECKED THREE WAYS. The reason sentence must name the port
-    // WITH the directory that satisfies it -- so a renamed directory makes the
-    // sentence stale and this red; that directory must not be on
-    // `UNIMPLEMENTED_ADAPTERS`, which `composition-root.mjs` rule (C7) joins to
-    // the adapter packages' own source in both directions; and the fully
-    // declared install must have CONSTRUCTED it, which is the half a type could
-    // never state. DELETE ANY ONE OF THE FIVE ADAPTER CONSTRUCTIONS AND THIS
-    // CASE GOES RED ON THAT PORT.
     for (const binding of owned) {
-      expect(declined?.reason, `${binding.port} is satisfied by ${binding.adapter}`).toContain(
-        `${binding.port} is ${binding.adapter}`,
-      );
       expect(UNIMPLEMENTED_ADAPTERS).not.toContain(binding.adapter);
       expect(
         construction.adapters[binding.adapter],
         `${binding.adapter} must be constructed for ${binding.port}`,
       ).toBeDefined();
+      expect(
+        Object.values(IDENTITY_ACCESS_SLOT_SOURCES),
+        `${binding.port} is satisfied by ${binding.adapter}, so the map must say so`,
+      ).toContain(binding.adapter);
     }
 
+    // THE SLOT MAP IS A PARTITION OF THE BUNDLE, not a list beside it. Ten slots,
+    // and the bundle the assembler built must have exactly those ten keys -- so
+    // a slot added to `IdentityAccessPorts` that nobody wires fails here, and a
+    // slot wired but never named in the map fails here too.
+    const bundle = assembly.ports.identityAccess;
+    expect(bundle, "the assembler must have produced the bundle").toBeDefined();
+    expect(Object.keys(bundle ?? {}).sort()).toEqual(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES).sort());
+    expect(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES)).toHaveLength(10);
+
+    // AND THE SLOTS THAT COULD BE TRANSPOSED ARE PINNED BY IDENTITY. `minter`
+    // and `totp` come off the SAME object, so a bundle that had swapped them
+    // would type-check and pass every count above; the only thing that can catch
+    // it is asking which object each slot holds.
+    expect(bundle?.minter).toBe(construction.adapters["tokenmint-totp"]);
+    expect(bundle?.totp).toBe(construction.adapters["tokenmint-totp"]);
+    expect(bundle?.hasher).toBe(construction.adapters["node-crypto-digest"]);
+    expect(bundle?.rateLimiter).toBe(construction.adapters["redis-ratelimit"]);
+    expect(bundle?.repository).toBe(construction.adapters["postgres-tenancy"]);
+    expect(bundle?.cipher).toBe(construction.adapters["keyring-envelope"]?.mfaSecrets);
+
+    // THE KERNEL SINK IS THE SLOT THAT IS NOT AN ADAPTER, AND IT IS MINTED ONCE.
+    // `governance-contract.ts` requires this port to be handed back BY IDENTITY
+    // -- "a fresh SafetyEventSink per call would be a new object on every
+    // enforcement decision" -- so the object in the bundle must be the object
+    // the assembly published, not an equal one.
+    expect(assembly.safetyEventSink, "a declared install must mint the sink").not.toBeNull();
+    expect(bundle?.safety).toBe(assembly.safetyEventSink);
+    expect(IDENTITY_ACCESS_SLOT_SOURCES.safety).toBe("governance:createGovernanceSafetyEventSink");
+
+    // AND IT IS STILL BOUND TO NO ADAPTER, which is what makes the sentence
+    // above a statement about a CONTEXT rather than about a directory.
+    const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
+    expect(ports, "SafetyEventSink must be bound to no adapter").not.toContain("SafetyEventSink");
+    expect(UNIMPLEMENTED_ADAPTERS).not.toContain("redis-ratelimit");
+  });
+
+  it("STOPS composing identity-access when any one of its five adapters is removed", () => {
+    // THE FALSIFIABILITY HALF, RUN RATHER THAN PROMISED. The case above asserts
+    // ten slots are filled; this one deletes the directory behind each in turn
+    // and asserts the context DISAPPEARS and the reason NAMES the directory.
+    // Without this, "every slot is satisfied" would be a claim that could not
+    // fail -- the exact defect the sentence it replaced had, pointing the other
+    // way.
+    const construction = construct(FULLY_DECLARED);
+    const value = platform(FULLY_DECLARED);
+    const defaults = createProcessDefaults(value.core);
+    const directories: AdapterName[] = [
+      "postgres-tenancy",
+      "redis-ratelimit",
+      "node-crypto-digest",
+      "tokenmint-totp",
+      "keyring-envelope",
+    ];
+    for (const directory of directories) {
+      const withoutOne = { ...construction.adapters };
+      delete withoutOne[directory];
+      const assembly = assembleContextPorts(withoutOne, defaults);
+      expect(
+        assembly.ports.identityAccess,
+        `identity-access must NOT assemble without ${directory}`,
+      ).toBeUndefined();
+      const declined = assembly.unassembled.find((row) => row.context === "identity-access");
+      expect(declined?.reason, `the reason must NAME ${directory}`).toContain(directory);
+      expect(declined?.reason).toContain(IDENTITY_ACCESS_UNASSEMBLED);
+    }
+
+    // AND THE SINK GOES WITH THE STORE, because it is built over that store's
+    // `SafetyLedger`. This is the one directory whose removal takes out both the
+    // repository slot AND the kernel port, and saying so is the difference
+    // between "five adapters" and "five adapters, one of which is load-bearing
+    // twice".
+    const withoutStore = { ...construction.adapters };
+    delete withoutStore["postgres-tenancy"];
+    expect(assembleContextPorts(withoutStore, defaults).safetyEventSink).toBeNull();
+  });
+
+  it("still cannot compose governance, and names the chain that stops it", () => {
+    const { app, construction } = readiness(FULLY_DECLARED);
+
+    // COMPOSING `identity-access` THROUGH THE SINK DID NOT COMPOSE `governance`,
+    // AND THIS CASE EXISTS SO NOBODY READS IT THAT WAY. All ten of governance's
+    // DRIVEN ports are satisfied -- the partition below proves it -- and the
+    // context is still absent, because `GovernanceDependencies.agents` needs a
+    // COMPOSED peer that is four contexts and six unbound ports away.
+    expect(app.contexts.governance).toBeUndefined();
+
+    // THE CHAIN, JOINED TO THE BINDING TABLE AND TO THE UNIMPLEMENTED LIST
+    // rather than to a sentence. Five of the six must appear on NO row; the
+    // sixth, `ObjectStore`, IS declared and its directory is unimplemented, and
+    // those are different facts that must not be allowed to look alike.
+    const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
+    expect(GOVERNANCE_UNCOMPOSABLE_CHAIN).toHaveLength(6);
+    for (const port of GOVERNANCE_UNCOMPOSABLE_CHAIN.filter((name) => name !== "ObjectStore")) {
+      expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
+    }
+    const objectStore = ADAPTER_BINDINGS.find((binding) => binding.port === "ObjectStore");
+    expect(objectStore?.adapter).toBe("objectstore-minio");
+    expect(UNIMPLEMENTED_ADAPTERS).toContain("objectstore-minio");
+    expect(construction.adapters["objectstore-minio"]).toBeUndefined();
+
+    // AND THE TWO AGENTS PORTS ARE THE SAME TWO `AGENTS_UNBOUND_PORTS` NAMES, so
+    // the chain constant cannot drift away from the list G3 wrote.
+    expect(GOVERNANCE_UNCOMPOSABLE_CHAIN).toEqual(expect.arrayContaining([...AGENTS_UNBOUND_PORTS]));
+  });
+
+  it("holds the governance port partition, and the sink it does build", () => {
+    const { assembly, construction } = readiness(FULLY_DECLARED);
+    const declined = assembly.unassembled.find((row) => row.context === "governance");
     // THE ONE THAT IS LEFT, AND IT IS NOT AN ADAPTER QUESTION. `SafetyEventSink`
     // is on NO row of the binding table: it is a CONTEXT that is missing, not a
     // directory. `redis-ratelimit` is asserted separately because it is the
@@ -562,7 +663,6 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(0);
     for (const port of GOVERNANCE_UNBOUND_PORTS) {
       expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
-      expect(declined?.reason).toContain(port);
     }
 
     // `EvalRunQueue` LEFT BY GAINING A BINDING, so the assertion is the exact
@@ -577,7 +677,6 @@ describe("the context bundles those adapters can satisfy", () => {
     ).toEqual([
       { adapter: "postgres-tenancy", port: "EvalRunQueue", owner: "governance" },
     ]);
-    expect(declined?.reason).not.toContain("EvalRunQueue");
 
     // `Judge` LEFT WITHOUT ONE. It must stay off this table -- an adapter
     // directory for it is forbidden by `provider-sdk-only`, which is why the
@@ -587,7 +686,6 @@ describe("the context bundles those adapters can satisfy", () => {
       expect(GOVERNANCE_UNBOUND_PORTS).not.toContain(port);
     }
     expect(GOVERNANCE_ROOT_SATISFIED_PORTS).toContain("Judge");
-    expect(declined?.reason).not.toContain("Judge");
 
     // AND THE THREE THAT LEFT THAT LIST ARE CHECKED IN THE OTHER DIRECTION,
     // WHICH IS THE HALF THAT MAKES THE SHRINKING FALSIFIABLE. WIN-267 G2 moved
@@ -612,7 +710,6 @@ describe("the context bundles those adapters can satisfy", () => {
         construction.adapters[binding?.adapter ?? ("" as AdapterName)],
         `${port} needs ${binding?.adapter} constructed`,
       ).toBeDefined();
-      expect(declined?.reason, `${port} is satisfied and must not be named`).not.toContain(port);
     }
 
     // THE PARTITION, WHICH IS WHAT REPLACES THE LENGTH CHECK ABOVE.
@@ -789,8 +886,13 @@ describe("the context bundles those adapters can satisfy", () => {
     // withdrawn wording is gone, and the replacement names the factory that
     // withdrew it, so a future edit cannot quietly restore the old claim without
     // failing here.
+    // THE SENTENCE THAT CARRIES THE CLAIM MOVED WITH THE COMPOSITION. It used to
+    // be `identity-access`' refusal; that context is composed now, so the
+    // wording lives on `governance`'s own `/readyz` row, which is where an
+    // operator would look for it.
     const { assembly } = readiness(FULLY_DECLARED);
-    const declined = assembly.unassembled.find((row) => row.context === "identity-access");
+    const declined = assembly.unassembled.find((row) => row.context === "governance");
+    expect(declined?.reason).toBe(GOVERNANCE_UNCOMPOSABLE);
     expect(declined?.reason).not.toContain("no factory assembles");
     expect(declined?.reason).not.toContain("publishes its use cases one by one");
     expect(declined?.reason).toContain("agentsContract");
@@ -801,7 +903,7 @@ describe("the context bundles those adapters can satisfy", () => {
     // root cannot hand `governance` an `AgentsContract` because it cannot BUILD
     // one, and `AgentsDependencies`' four driven ports split two and two.
     const { assembly } = readiness(FULLY_DECLARED);
-    const declined = assembly.unassembled.find((row) => row.context === "identity-access");
+    const declined = assembly.unassembled.find((row) => row.context === "governance");
     const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
 
     // THE TWO THAT ARE SATISFIED, derived from the binding table BY OWNER rather
@@ -822,18 +924,20 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(AGENTS_UNBOUND_PORTS).toHaveLength(2);
     for (const port of AGENTS_UNBOUND_PORTS) {
       expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
-      expect(declined?.reason).toContain(port);
+      expect(declined?.reason, `${port} must be NAMED in governance's refusal`).toContain(port);
     }
     // The two sets must not overlap, or "unbound" would be a list of things that
     // are in fact bound and the loop above would be vacuous.
     for (const binding of owned) expect(AGENTS_UNBOUND_PORTS).not.toContain(binding.port);
   });
 
-  it("cannot import eight context factories, and partitions all seventeen manifests", () => {
+  it("cannot import SEVEN context factories, and partitions all seventeen manifests", () => {
     // THE OTHER HALF OF THE SAME CORRECTION, and the one that will bite the next
     // tranche. Every one of the seventeen contexts publishes a factory over its
-    // whole contract; EIGHT of them keep it in `application/` behind a manifest
+    // whole contract; SEVEN of them keep it in `application/` behind a manifest
     // that publishes no `./application/index.js`, so this package cannot name it.
+    // It was EIGHT until WIN-267 published `governance`'s subpath, which this
+    // file's own import of `createGovernanceSafetyEventSink` required.
     //
     // JOINED TO THE MANIFESTS, WHICH IS WHAT THE RESOLVER READS. A negative
     // about packaging is exactly the kind of claim this file has been wrong
@@ -886,8 +990,16 @@ describe("the context bundles those adapters can satisfy", () => {
       secrets: secretsContract,
       tools: toolsContract,
     } as const;
-    // ROUTE TWO, PROVED THE SAME WAY, through the subpath the eight do not have.
+    // ROUTE TWO, PROVED THE SAME WAY, through the subpath the remaining SEVEN do
+    // not have. WIN-267 adds `governance`: this file imports
+    // `createGovernanceSafetyEventSink` from that subpath, which is why the
+    // manifest publishes it, and `createGovernanceContract` rides the same
+    // barrel. It is named here by the CONTRACT factory rather than by the sink,
+    // because what this partition measures is whether the context's assembler
+    // can be reached -- and the answer for `governance` is now yes, while the
+    // context still cannot be BUILT for the reasons three cases above state.
     const onApplicationEntry = {
+      governance: createGovernanceContract,
       "identity-access": createIdentityAccessService,
       skills: createSkillsContract,
       tenancy: createTenancyService,
@@ -907,21 +1019,28 @@ describe("the context bundles those adapters can satisfy", () => {
     expect([...publishesEntry].sort()).toEqual(
       [...Object.keys(onApplicationEntry), "agents", "secrets"].sort(),
     );
+    // AND `governance` MUST HAVE LEFT THE UNIMPORTABLE LIST, in both directions:
+    // the list shrank by exactly one and the name that left is the one whose
+    // manifest changed. A list edited without the manifest, or a manifest
+    // changed without the list, fails here.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(7);
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("governance");
+    expect(publishesEntry).toContain("governance");
 
     // AND THE PARTITION OVER ALL SEVENTEEN. Importable is the UNION of the two
     // routes -- `agents` and `secrets` are in both -- and the complement is the
-    // list. 9 + 8 = 17, so a context cannot fall out of both halves and be
+    // list. 10 + 7 = 17, so a context cannot fall out of both halves and be
     // counted by neither, which is what a list checked only against itself
-    // allows.
+    // allows. It was 9 + 8 until WIN-267 published `governance`'s subpath.
     const importable = new Set([
       ...Object.keys(onDotEntry),
       ...Object.keys(onApplicationEntry),
     ]);
-    expect(importable.size).toBe(9);
+    expect(importable.size).toBe(10);
     expect([...contexts].filter((context) => !importable.has(context)).sort()).toEqual(
       [...UNIMPORTABLE_CONTEXT_FACTORIES].sort(),
     );
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(8);
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(7);
     for (const context of UNIMPORTABLE_CONTEXT_FACTORIES) {
       expect(contexts, `${context} must be one of the seventeen`).toContain(context);
       // The manifest IS there and publishes `.` -- so each of these is a context
@@ -931,10 +1050,14 @@ describe("the context bundles those adapters can satisfy", () => {
       expect(manifestOf(context).exports?.["./application/index.js"]).toBeUndefined();
     }
 
-    // `governance` IS THE ONE THAT MATTERS. A tranche that lands all five of
-    // `GOVERNANCE_UNBOUND_PORTS` still could not compose it, because
-    // `createGovernanceContract` cannot be named from here at all.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toContain("governance");
+    // `governance` WAS THE ONE THAT MATTERED, and WIN-267 closed it. G3's
+    // finding was that a tranche landing all five of `GOVERNANCE_UNBOUND_PORTS`
+    // still could not compose the context because `createGovernanceContract`
+    // could not be NAMED from here. Both halves moved in this tranche: the five
+    // ports landed and the subpath is published, so what is left is the peer
+    // chain and nothing about packaging.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("governance");
+    expect(typeof createGovernanceContract).toBe("function");
   });
 
   it("declines secrets and providers by NAMING the directory that is missing", () => {

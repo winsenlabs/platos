@@ -16,6 +16,10 @@
       "types": "./dist/application/ports/index.d.ts",
       "import": "./dist/application/ports/index.js"
     },
+    "./application/index.js": {
+      "types": "./dist/application/index.d.ts",
+      "import": "./dist/application/index.js"
+    },
     "./application/testing/index.js": {
       "types": "./dist/application/testing/index.d.ts",
       "import": "./dist/application/testing/index.js"

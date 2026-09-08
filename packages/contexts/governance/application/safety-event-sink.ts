@@ -39,7 +39,50 @@ import { appendSafetyEvent } from "./record-safety-event.js";
 /** The log message every drop carries. One string, so a query can count them. */
 export const SAFETY_SINK_DROP_MESSAGE = "governance safety sink dropped an observation";
 
-export function createGovernanceSafetyEventSink(dependencies: GovernanceDependencies): SafetyEventSink {
+/**
+ * THE SLICE OF `GovernanceDependencies` THIS SINK ACTUALLY READS, and the reason
+ * it is declared rather than taken whole.
+ *
+ * WIN-267. `identity-access` already publishes this convention and states it
+ * plainly: "Each use case declares the SLICE it needs --
+ * `Pick<IdentityAccessPorts, "clock" | "hasher">` -- so a signature tells a
+ * reader what the use case can reach, and a test supplies three fakes rather
+ * than eleven." `agents` makes the same move at a context boundary with
+ * `SkillsPeer`, and says why: "A handle typed as all fifteen makes every
+ * in-memory double in this package a hostage to all fifteen."
+ *
+ * HERE IT IS LOAD-BEARING RATHER THAN TIDY, AND THIS IS THE MEASUREMENT. The
+ * whole bundle is SEVENTEEN slots. This sink reaches THREE of them, and the
+ * compiler is the join: `record` calls `draftFromObservation` (pure domain),
+ * `appendSafetyEvent` (which reads `policy.safety` and calls `safety.append`)
+ * and `drop` (which writes to `logger`). It never touches `ratings`,
+ * `criteria`, `evals`, `goldenSets`, `ratingTargets`, `transcripts`,
+ * `activity`, `judge`, `evalRuns`, `clock`, `ids`, `unitOfWork`, `tenancy` or
+ * `agents`. Narrow the type by one more slot and this file stops compiling;
+ * that is what makes the three a checked figure rather than a claim.
+ *
+ * WHAT IT UNBLOCKS, STATED SO NOBODY HAS TO INFER IT. `identity-access`'
+ * `consume-rate-limit.ts` writes `identity.rate_limit.degraded` into the kernel
+ * `SafetyEventSink`, whose ONLY implementation is this function. Taking the
+ * whole bundle made the sink unbuildable until every one of the seventeen slots
+ * could be filled -- including `agents`, a peer that needs two adapter
+ * directories and a `skills` context that needs three more and an object store.
+ * So `identity-access` was blocked on a `Judge`, an `EvalRunQueue` and an agent
+ * version lock that its rate limiter has no use for and never calls.
+ *
+ * IT IS NOT A WEAKENING. `createGovernanceContract` still hands the whole bundle
+ * in -- a `GovernanceDependencies` satisfies this type structurally, so that
+ * call site is unchanged and the sink it mints is the same object it always was.
+ * The narrowing says which slots a caller must have, not which it may have.
+ */
+export type GovernanceSafetySinkDependencies = Pick<
+  GovernanceDependencies,
+  "safety" | "policy" | "logger"
+>;
+
+export function createGovernanceSafetyEventSink(
+  dependencies: GovernanceSafetySinkDependencies,
+): SafetyEventSink {
   return {
     async record(observation: SafetyObservation): Promise<void> {
       try {
@@ -69,7 +112,7 @@ export function createGovernanceSafetyEventSink(dependencies: GovernanceDependen
 }
 
 function drop(
-  dependencies: GovernanceDependencies,
+  dependencies: GovernanceSafetySinkDependencies,
   observation: SafetyObservation,
   reason: string,
   thrown?: unknown,

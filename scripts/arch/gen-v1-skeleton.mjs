@@ -1209,6 +1209,25 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // alternative — a second double living in the adapter — would measure the
   // adapter against a copy of itself.
   "packages/contexts/skills",
+  // WIN-267 — imported by `apps/core-api/src/composition/context-ports.ts`,
+  // which is the ORIGINAL reason this list exists rather than the widening the
+  // three entries above are: the composition root names a factory from it.
+  //
+  // WHAT IT IMPORTS AND WHY THE ENTRY IS NOT PREMATURE. The list's rule is "the
+  // contexts whose `application/index.js` a V1 project actually imports", and
+  // the note below records that WIN-267 T3 added nothing here because an entry
+  // without a matching import is dead surface. This entry HAS its import:
+  // `createGovernanceSafetyEventSink`, the only implementation of the kernel
+  // `SafetyEventSink` in this tree, without which `identity-access` cannot be
+  // composed at all -- `consume-rate-limit.ts` writes
+  // `identity.rate_limit.degraded` into that sink on every refusal.
+  //
+  // THE CONTEXT ITSELF IS STILL NOT COMPOSED, and the entry does not claim it
+  // is. `GOVERNANCE_UNCOMPOSABLE_CHAIN` in `composition/context-ports.ts` names
+  // the six unbound ports across four contexts that stop it. What this line
+  // publishes is a factory for a KERNEL PORT, which is why the import is real
+  // today rather than a placeholder for a composition that has not happened.
+  "packages/contexts/governance",
 ];
 
 // ---------------------------------------------------------------------------
