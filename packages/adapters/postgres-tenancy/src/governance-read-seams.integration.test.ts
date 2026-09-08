@@ -82,6 +82,32 @@ function unnarrowableScope(scope: EnvironmentScope): EnvironmentScope {
 }
 
 /**
+ * The same, with the PROJECT unusable instead — and then the ORGANIZATION.
+ *
+ * THREE LIMBS, THREE CASES, BECAUSE A MUTATION PROVED TWO OF THEM UNCOVERED.
+ * `narrowableScope` checks all three identifiers and the suite only ever blanked
+ * the environment; deleting the project's check left every case green. A
+ * non-uuid project would then have reached the driver, which raises, which
+ * `refuse()` folds into `GOVERNANCE_LEDGER_UNAVAILABLE` — the one shared code
+ * these three constructors exist to stay out of. Each limb now has a case.
+ */
+function unnarrowableProject(scope: EnvironmentScope): EnvironmentScope {
+  return environmentScope(
+    asIdentifier(scope.organizationId),
+    asIdentifier("not-a-uuid"),
+    asIdentifier(scope.environmentId),
+  );
+}
+
+function unnarrowableOrganization(scope: EnvironmentScope): EnvironmentScope {
+  return environmentScope(
+    asIdentifier(""),
+    asIdentifier(scope.projectId),
+    asIdentifier(scope.environmentId),
+  );
+}
+
+/**
  * A REAL environment under SOMEBODY ELSE'S project and organization.
  *
  * Every identifier in it exists; only the RELATION between them is a lie. This
@@ -383,6 +409,23 @@ describe("ActivityReader", () => {
     expect(counted.ok).toBe(true);
     expect(counted.ok && counted.value).toHaveLength(0);
   });
+});
+
+test("every LIMB of the tenant triple refuses, not only the environment", async () => {
+  // THE CASE A MUTATION ASKED FOR. `narrowableScope` guards three identifiers
+  // and the suite above blanks one of them; a mutation that deleted the
+  // project's check and the organization's check survived every other case here.
+  // An unguarded limb is not a smaller guard — the value reaches a uuid column,
+  // the driver raises, and `refuse()` reports it as `GOVERNANCE_LEDGER_UNAVAILABLE`,
+  // which is the shared code all three constructors exist to avoid.
+  for (const scope of [unnarrowableProject(home.scope), unnarrowableOrganization(home.scope)]) {
+    const found = await seams.ratingTargets.find(scope, turnId(home.turnId));
+    expect(!found.ok && found.error.code).toBe("GOVERNANCE_RATING_TARGET_UNREADABLE");
+    const read = await seams.transcripts.read(scope, threadId(home.threadId), null);
+    expect(!read.ok && read.error.code).toBe("GOVERNANCE_TRANSCRIPT_UNREADABLE");
+    const counted = await seams.activity.countByAgent(scope, BEFORE_EVERYTHING);
+    expect(!counted.ok && counted.error.code).toBe("GOVERNANCE_ACTIVITY_UNREADABLE");
+  }
 });
 
 test("the three seams refuse under three DISTINCT codes", async () => {

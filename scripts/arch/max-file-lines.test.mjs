@@ -834,7 +834,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   // Measured with THIS MODULE'S OWN `effectiveLineCount`, for the reason stated
   // above:
   //
-  //   268  governance-read-seams.integration.test.ts
+  //   292  governance-read-seams.integration.test.ts
   //   117  governance-seam-conversations.ts
   //   101  governance-seam-activity.ts
   //    93  governance-read-seams.test.ts

@@ -2498,11 +2498,11 @@ export const EXPECTED = Object.freeze({
   // M2 INTEGRATION: postgres-tenancy 132 + 3 + 1 = 136 files,
   // 1483 + 14 + 9 = 1506 cases -- the two WIN-259 dimensions and WIN-260's
   // correlation integration suite, which add DIFFERENT files.
-  // WIN-267 G2: 136 + 2 = 138 files, 1506 + 27 = 1533 cases. The two files are
+  // WIN-267 G2: 136 + 2 = 138 files, 1506 + 28 = 1534 cases. The two files are
   // `governance-read-seams.test.ts` (9 cases, no container -- it joins the
   // readers' load-bearing claims to `schema.prisma`, to the initial migration
   // and to `docs/error-taxonomy.json`) and
-  // `governance-read-seams.integration.test.ts` (18 cases, container: every one
+  // `governance-read-seams.integration.test.ts` (19 cases, container: every one
   // of them issued against TWO tenants, which is the only way a missing
   // narrowing on a table with no environment column can be seen).
   //
@@ -2510,7 +2510,12 @@ export const EXPECTED = Object.freeze({
   // narrows by the WHOLE tenant triple and these readers narrowed by the
   // environment alone; the three added cases build a REAL environment under a
   // FOREIGN project, one per seam, which is a scope only two tenants can make.
-  "packages/adapters/postgres-tenancy": { files: 138, cases: 1533 },
+  //
+  // 18 -> 19 WHEN A MUTATION SURVIVED. Deleting the project limb of
+  // `narrowableScope`'s uuid guard left every case green: the suite only ever
+  // blanked the ENVIRONMENT. The nineteenth blanks the project and the
+  // organization instead, across all three seams.
+  "packages/adapters/postgres-tenancy": { files: 138, cases: 1534 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -3363,7 +3368,7 @@ export const EXPECTED = Object.freeze({
  *
  * WIN-267 G2 DELTA, `governance`'s three inverted read seams. ONE row moves:
  *
- *   packages/adapters/postgres-tenancy 136 -> 138 files, 1506 -> 1533 cases.
+ *   packages/adapters/postgres-tenancy 136 -> 138 files, 1506 -> 1534 cases.
  *
  * NO OTHER ROW MOVES, and the `governance` row is the one worth saying so
  * about: that context gained three error constructors, three re-exports on its
@@ -3372,16 +3377,16 @@ export const EXPECTED = Object.freeze({
  * adapter. Its two pins DID move (`errors.test.ts`'s constructor list and
  * `contracts/index.test.ts`'s 33 -> 36) and neither is a new case.
  *
- * EIGHTEEN of the twenty-seven carry `.integration.` in the name and need a
+ * NINETEEN of the twenty-eight carry `.integration.` in the name and need a
  * container; the other nine read the schema, the migrations and the shipped
  * taxonomy off disk and run anywhere.
  *
- * 8071 + 27 = 8098 over 545 + 2 = 547 files, READ BACK from
+ * 8071 + 28 = 8099 over 545 + 2 = 547 files, READ BACK from
  * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
  * Two sibling branches move this pin for the remaining governance ports, so the
  * integrator SUMS the deltas rather than taking any one branch's total.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8098;
+export const EXPECTED_RUNTIME_TOTAL = 8099;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
