@@ -135,6 +135,22 @@
       "killCount": 1,
       "control": "Call count stays at 815 and inventory length stays at 329 - both assertions PASSED, and the run reached line 338 before failing. That is the proof the digest is a third independent assertion and not a restatement of the other two.",
       "note": "`skill.count` had exactly one call site in the tree, so swapping it removes `skill.count` from the inventory and adds `skill.aggregate`: same cardinality, different set, different digest. A pin that only checked the two lengths would have stayed green through this."
+    },
+    {
+      "name": "A07 a delegate that does not exist is called inside an untyped `tx: any` transaction callback",
+      "guards": "apps/agent/src/clean-prisma-delegates.test.ts - `expect(violations).toEqual([])`. THE ROW THAT SIZES WHAT WAS DARK: for the 41 `tx: any` transaction callbacks in apps/agent/src, this gate is the ONLY thing checking that a delegate name is real, and it was not running.",
+      "file": "apps/agent/src/memory/memory-import.service.ts",
+      "from": "the `replace`-mode transaction body, whose callback is declared `async (tx: any)`",
+      "to": "the same body preceded by `await tx.notARealModel.deleteMany({ where: {} });`",
+      "command": "census",
+      "exit": 1,
+      "kills": [
+        "x uses the type checker to inventory every production delegate operation",
+        "-> expected [ { delegate: 'notARealModel', ...(3) } ] to deeply equal []"
+      ],
+      "killCount": 1,
+      "control": "The COMPILER accepts the same line. Measured on a minimal standalone probe rather than argued from the language spec: `declare const tx: any; await tx.notARealModel.deleteMany({ where: {} });` under `tsc --noEmit --strict` exits 0. So the refusal here is not a restatement of a type error - there is no type error to restate.",
+      "note": "This is why the analyzer tracks `$transaction` callback parameters by SYMBOL rather than by declared type: `tx: any` defeats `delegateFromType`, and the fallback resolves the delegate lexically from the property name and checks it against the generated datamodel. The gate is strictly stronger than the compiler at these 41 sites, which is the strongest single argument in this tranche for the CI wiring."
     }
   ],
   "declared": [
@@ -158,6 +174,13 @@
       "result": "NOT VERIFIED. All three assertions are order-independent by construction - a total, a de-duplicated set's cardinality, and a digest over that set AFTER sorting - so directory-iteration order cannot move them, and TypeScript resolution does not vary by platform for a workspace built the same way. That is an argument, not a measurement.",
       "why-unfalsifiable": "It is falsifiable, and it was simply not run: the only second machine available here is a Mac mini, which is the same OS family and would not test the thing in question. Docker may not run on the laptop. The honest statement is that this is the one claim in the tranche whose first real test is the first CI run.",
       "measured": "815 / 329 / 0c4fd159 on darwin/arm64 Node 24.3.0, in two build states (with and without `pnpm build:v1`)."
+    },
+    {
+      "name": "whether a whole-project `tsc --noEmit` would catch A07",
+      "tried": "`pnpm --filter platos-agent exec tsc --noEmit -p tsconfig.json` with A07 applied.",
+      "result": "NO ANSWER. The compiler ran for 146 seconds and died with `FATAL ERROR: Ineffective mark-compacts near heap limit - JavaScript heap out of memory` at roughly 2GB, so its exit code says nothing about `notARealModel`. The word does not appear anywhere in its output.",
+      "why-unfalsifiable": "Not unfalsifiable - wrong instrument. The claim is about how TypeScript treats a property read on `any`, which a five-line file answers exactly and a 2GB whole-project build answers not at all. The minimal probe in A07's `control` is the measurement; this row records that the first tool was the wrong one rather than passing its null result off as evidence.",
+      "measured": "tsc OOM at 2042MB after 146s; minimal probe exit 0."
     }
   ]
 }
