@@ -83,7 +83,11 @@ export type { EnqueuedEvalRun, EvalRunQueue, EvalRunRequest } from "./eval-run-q
 // `GOVERNANCE_LEDGER_UNAVAILABLE` when a dispatcher declines work would make
 // "the queue would not take it" and "a table is down" indistinguishable at every
 // transport downstream, which is the thing the port's own header forbids.
-export type { EvalPair, EvalRunId, JudgeModel, TranscriptTurn } from "../../domain/index.js";
+// `TranscriptTurn` IS NOT IN THIS LINE and the omission is deliberate: WIN-267
+// G2 published it in the alphabetical block below, and the two branches naming
+// the same type in two places auto-merged without a textual conflict into a
+// DUPLICATE EXPORT that only `tsc` caught. One name, one export site.
+export type { EvalPair, EvalRunId, JudgeModel } from "../../domain/index.js";
 export { judgeUnavailable, queueUnavailable } from "../../domain/index.js";
 // AND `parseJudgeModel`, WHICH IS THE ONLY WAY TO GET A LEGITIMATE `JudgeModel`.
 //

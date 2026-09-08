@@ -413,6 +413,7 @@ export interface PostgresTenancyAdapter
    * `governance-repository.ts` used to raise against satisfying this port here.
    */
   readonly evalRuns: EvalRunStore;
+  /**
    * WIN-267 G2 — `governance`'s THREE inverted READ SEAMS.
    *
    * Properties, and named as `GovernanceDependencies` names them, for the same
