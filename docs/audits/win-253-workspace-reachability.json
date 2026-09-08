@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "b0753f38835fa81a07f610a640a49d72ee0ba916018fa5a50f7053c12d0773df",
+  "evidenceSha256": "570bad1406b0d61596bd89ec9d369d6b08be2eb0bbc8be82b914d085ede77572",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "2809b1847dd91a89e5d4be466c8f3c2ee1872dd781ebe53ef3ab68912ed62ac4",
+    "aggregateSha256": "4a0091d132b0a455c48b8f5165f86777b98b66c26957e015a2d05857f7d733c1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4227,7 +4227,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/advisory-policy.json",
-        "sha256": "2e2d3c7fa59b7f5e34d96dcd124f27fe3bf3147cfb4d906f239c69ddaa5f7bad"
+        "sha256": "f3bcc57896293d617ff2fe1d5174fdf6f442b5f392fdf12c84ca876c893b6055"
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",

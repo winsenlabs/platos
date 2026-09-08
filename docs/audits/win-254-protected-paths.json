@@ -943,7 +943,7 @@
     {
       "path": "docs/audits/sbom/advisory/advisory-policy.json",
       "mode": "100644",
-      "sha256": "2e2d3c7fa59b7f5e34d96dcd124f27fe3bf3147cfb4d906f239c69ddaa5f7bad"
+      "sha256": "f3bcc57896293d617ff2fe1d5174fdf6f442b5f392fdf12c84ca876c893b6055"
     },
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "6923e234feb8614b7d465e705cdf1b4b33f5ee4215f20b0f1c76f547a8a38342"
+      "sha256": "da10c2c0c75294317fde497d95b65fe8c2737639d9140980ae57d25b5d4164c3"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "d99032a8a3982d2c875c1fc98572a48676bae58e5a2149f863b77c61c3479861"
+      "sha256": "a4e9e78239c5f8a79bcc14e14c72a3f67a937621631a12cff4d1fb2cac0a2b40"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1073,7 +1073,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "2ac2eb931a0d4e7f824f49cf2193e93357dd5190425531314574a332409ca7e4"
+      "sha256": "25d706263378d5420e162b8f891339362250f8432f59c18156f81c1d838ff269"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
