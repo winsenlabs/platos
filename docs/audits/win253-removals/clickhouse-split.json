@@ -1899,7 +1899,7 @@
   },
   "integration": {
     "lockfileSha256": "7bc02ffe59f77cd1b599433d2e0d79e5a80323b3d3c045fc2d4ae83b25c49055",
-    "vocabularySha256": "85637f6dbb2a41acebb3bcc9711289a8b3c3fd8d90f9d0b57b78af0c04bd7274",
+    "vocabularySha256": "b656de1214b801e8a8ef62237fcdfb544801a6cd32ceee3d2e79de601ee85c9d",
     "retainedSchemaVocabularyRows": 251,
     "deletedPathVocabularyRows": 0
   }

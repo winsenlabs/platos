@@ -948,7 +948,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "6fab948a9cb804da6c8a18daddd97f8efcdcedae10954bf12e32cdc527e9d0c8"
+      "sha256": "88ccb63800014ffc43b4fa480502a144b35af6d00b978d963a7ea4e8d66ee4c2"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "cf1f1b897f2c55ed4c869020c7a74251eff9f9e93f6a53d403efc64e66883f26"
+      "sha256": "6923e234feb8614b7d465e705cdf1b4b33f5ee4215f20b0f1c76f547a8a38342"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "3adcb8ce973a4a4698e64bd4ec62376720dbc3658d51296c1a6777637b2949c0"
+      "sha256": "d99032a8a3982d2c875c1fc98572a48676bae58e5a2149f863b77c61c3479861"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "205f5513c10030e66785ccbf2d3cd05b03c5af5d408fbebb8b58e7cb20dc3fec"
+      "sha256": "f1ac12783a38ff94345e8bb03d2008dacb9e722896423daafe97a96de9287679"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1073,7 +1073,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "ef00fedb338548ab3edbb4f19fc2cfdcbd7325a55d1689ee0e18c07ebb81f2c5"
+      "sha256": "2ac2eb931a0d4e7f824f49cf2193e93357dd5190425531314574a332409ca7e4"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3508,7 +3508,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "85637f6dbb2a41acebb3bcc9711289a8b3c3fd8d90f9d0b57b78af0c04bd7274"
+      "sha256": "b656de1214b801e8a8ef62237fcdfb544801a6cd32ceee3d2e79de601ee85c9d"
     },
     {
       "path": "docs/vocabulary-boundary.md",
