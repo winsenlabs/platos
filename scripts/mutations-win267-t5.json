@@ -1,0 +1,145 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-267",
+  "tranche": "T5 — identity/tenancy REST, the BFF transport, and the webapp cutover",
+  "branch": "tejas/win-267-t5-identity-rest",
+  "base": "007007f2 (v1, M4.1 foundation #152)",
+  "purpose": [
+    "T5's first act is a repair, and the repair is the reason the tranche can be",
+    "measured at all. `tenancy-prisma-only` is the containment rule whose own",
+    "comment says the wrapper package is banned because it 'is the exact door the",
+    "legacy tree walks through today' — meaning `apps/webapp`. It could not see",
+    "that door.",
+    "",
+    "WHY, MEASURED RATHER THAN ARGUED. Every alternative in the rule's `to`",
+    "pattern was anchored on `node_modules/`. `@platos/tenancy-database` is a pnpm",
+    "WORKSPACE package, so a module resolver reports the workspace path. Node's",
+    "own resolver, run from apps/webapp/app/services/, answers:",
+    "",
+    "    @platos/tenancy-database  ->  internal-packages/tenancy-database/dist/index.js",
+    "",
+    "There is no `node_modules/` segment anywhere in that path. That is the",
+    "resolution model dependency-cruiser uses through enhanced-resolve, and",
+    "`.dependency-cruiser.js` is generated FROM this rule — so the enforcer the",
+    "rule is compiled for was the one guaranteed to miss the tree the rule names.",
+    "",
+    "THE HALF THAT DID WORK, STATED SO THE FIX IS NOT OVERSOLD.",
+    "`scripts/arch/arch-boundaries.mjs` resolves a bare specifier to",
+    "`node_modules/<specifier>` rather than to a file, so under THAT enforcer the",
+    "old pattern did match — and was still inert, because `DEFAULT_SCAN_ROOTS`",
+    "excludes `apps/webapp` during the strangler window. Measured on the base",
+    "commit: `arch-boundaries.mjs --scan-root apps/webapp/app` reports 9",
+    "violations, all `tenancy-prisma-only`, and `webapp-no-prisma` — whose `to`",
+    "pattern DOES carry the workspace path — reports 0, because it cannot see the",
+    "specifier form. Each rule was blind to the half of the shape the other could",
+    "see. The fix gives `tenancy-prisma-only` both spellings; widening the scan",
+    "root is the cutover's to land, and is NOT claimed here.",
+    "",
+    "NOTHING IN THIS LEDGER NEEDS A DATABASE, A CONTAINER OR A DOCKER DAEMON.",
+    "Every entry is a file edit plus one `node --test` process."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST. The unmutated tree ran green before and after every entry",
+    "below: 24 cases in `node --test scripts/arch/arch-boundaries.test.mjs`, and",
+    "`node scripts/arch/gen-dependency-cruiser.mjs --check` reporting that the",
+    "generated config matches the rules module. An entry whose suite was already",
+    "red proves nothing, and a 'kill' with no named failing line is VACUOUS.",
+    "",
+    "EVERY ENTRY BELOW WAS APPLIED, RUN, AND REVERTED. The `kills` array quotes",
+    "the case names the runner actually printed as failing, and `killCount` is the",
+    "number of cases that went from pass to fail. An entry that could not be made",
+    "to fail is in `declared`, with the measured reason it could not — never",
+    "omitted, and never counted as a kill."
+  ],
+  "commands": {
+    "boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
+    "config-fixpoint": "node scripts/arch/gen-dependency-cruiser.mjs --check",
+    "webapp-scan": "node scripts/arch/arch-boundaries.mjs --scan-root apps/webapp/app"
+  },
+  "mutations": [
+    {
+      "name": "M01 the `to` pattern loses the workspace path and reverts to its pre-fix, node_modules-only form",
+      "guards": "scripts/arch/boundary-rules.mjs — TENANCY_DATABASE_SOURCE. THE ENTRY THIS TRANCHE'S FIRST CLAUSE EXISTS FOR: this is the exact byte state of v1 @ 007007f2.",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "from": "  \"(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))\" +\n  `|${TENANCY_DATABASE_HOME_PATH.replace(/\\/$/u, \"\")}(?:/|$))`;",
+      "to": "  \"node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))\";",
+      "command": "boundaries",
+      "exit": 1,
+      "kills": [
+        "x the rule matches the workspace path the package is actually built at",
+        "-> tenancy-prisma-only cannot see internal-packages/tenancy-database/dist/index.js — the resolved form of its own banned specifier",
+        "x REGRESSION: the pre-fix node_modules-anchored pattern could NOT see it",
+        "x CORROBORATION: Node's own resolver reports the path the rule now matches",
+        "-> tenancy-prisma-only does not match internal-packages/tenancy-database/dist/index.js, the path a resolver hands an enforcer"
+      ],
+      "killCount": 3,
+      "control": "`node scripts/arch/arch-boundaries.mjs` over the default scan roots stays at exit 0 and 1580 files with zero violations, and the webapp scan still reports its 9 violations, because that enforcer resolves the SPECIFIER and not the file. That is precisely the reason the hole survived a milestone: the gate that runs in CI could not tell the two patterns apart.",
+      "note": "The kill is not a re-statement of the pattern. The path it is tested against is DISCOVERED — the suite walks internal-packages/*/package.json for the one declaring `@platos/tenancy-database` — so moving or renaming the package fails these cases until the pattern moves with it."
+    },
+    {
+      "name": "M02 the home is widened from the one workspace package to the whole internal-packages tree",
+      "guards": "scripts/arch/boundary-rules.mjs — TENANCY_DATABASE_HOME. The cheapest way to make the rule vacuous while leaving it looking enforced.",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "from": "const TENANCY_DATABASE_HOME = `^(packages/adapters/postgres-tenancy|${TENANCY_DATABASE_HOME_PATH.replace(/\\/$/u, \"\")})/`;",
+      "to": "const TENANCY_DATABASE_HOME = \"^(packages/adapters/postgres-tenancy|internal-packages)/\";",
+      "command": "boundaries",
+      "exit": 1,
+      "kills": [
+        "x MUTATION: the generating package's own home cannot be widened to its parent",
+        "-> the home must name ONE workspace package, not the whole internal-packages tree"
+      ],
+      "killCount": 1,
+      "control": "The other 23 cases stay green, including the ACCEPTANCE scan of the webapp — the webapp is not under internal-packages, so a reader checking only the headline figure would see no change at all.",
+      "note": "Adding the generating package to the home is a NECESSARY part of the fix — a package cannot violate a containment rule about itself — and this entry is what stops that necessity being used as cover for a blanket exemption."
+    },
+    {
+      "name": "M03 the workspace alternative becomes a bare prefix instead of a segment match",
+      "guards": "scripts/arch/boundary-rules.mjs — the `(?:/|$)` segment anchor the rules file already argues for in the `ai` case (ADR M0.3 §14).",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "from": "`|${TENANCY_DATABASE_HOME_PATH.replace(/\\/$/u, \"\")}(?:/|$))`;",
+      "to": "`|${TENANCY_DATABASE_HOME_PATH.replace(/\\/$/u, \"\")})`;",
+      "command": "boundaries",
+      "exit": 1,
+      "kills": [
+        "x the widened pattern still matches by SEGMENT and has not become a prefix",
+        "-> expected true to be false (internal-packages/tenancy-database-legacy/src/x.ts)"
+      ],
+      "killCount": 1,
+      "control": "Every other case stays green: a prefix match is strictly WIDER, so nothing the rule is supposed to catch stops being caught. The damage is a future sibling package condemned for the first bytes of its name, which no headline count would ever show.",
+      "note": "The same argument the rules file makes for why `ai` is matched as `ai(?:/|$)` and not as a two-letter prefix, applied to the shape this tranche introduced."
+    },
+    {
+      "name": "M05 the checker's import parser stops seeing `export ... from` and bare `import \"x\"`",
+      "guards": "scripts/arch/arch-boundaries.mjs — IMPORT_PATTERNS. Guards the ACCEPTANCE case's reach: a rule with a correct pattern and a parser that cannot find the import is a rule that reports zero violations and looks healthy.",
+      "file": "scripts/arch/arch-boundaries.mjs",
+      "from": "/\\b(?:import|export)\\s+(?:[^'\"]*?\\sfrom\\s*)?[\"']([^\"']+)[\"']/g,",
+      "to": "/\\bimport\\s+[^'\"]*?\\sfrom\\s*[\"']([^\"']+)[\"']/g,",
+      "command": "boundaries",
+      "exit": 1,
+      "with": "applied together with a re-export of the banned specifier added to apps/webapp/app/root.tsx, which the narrowed parser can no longer see",
+      "kills": [
+        "x ACCEPTANCE: the rule names exactly the webapp files that still import the client",
+        "-> the checker and the tree disagree about which webapp files import the canonical client"
+      ],
+      "killCount": 1,
+      "control": "`gen-dependency-cruiser.mjs --check` stays at exit 0 — the generated config is derived from the RULES module, which this mutation does not touch, so the config-fixpoint gate is blind to a parser that has stopped reading half the import forms.",
+      "note": "This is what makes the ACCEPTANCE case load-bearing rather than a tautology. Its two sides are gathered by DIFFERENT mechanisms — the checker's import parser, and a byte scan of the same files — so a checker that stops seeing an import shape is caught by the disagreement."
+    }
+  ],
+  "declared": [
+    {
+      "name": "M04 a new webapp file imports the banned specifier",
+      "attempted": "Four shapes were added to apps/webapp/app/root.tsx, one at a time: `export * from`, a bare `import \"...\"`, `await import(...)` and `require(...)`.",
+      "result": "NOT KILLED, and not a gap. The checker saw all four (measured: `arch-boundaries.mjs --scan-root apps/webapp/app` named root.tsx in every case), so the ACCEPTANCE case's two sides both grew by one file and continued to agree — which is the case doing its job, not failing to.",
+      "why-unfalsifiable": "The ACCEPTANCE case is a BIJECTION between the checker's findings and a byte scan of the tree, deliberately rather than a pinned count. A pinned count would have to be edited by every commit of the cutover, and an assertion a branch edits to stay green is the assertion shape this project has already paid for once (contract-map.mjs's `count: 18`). The property that a new importer must be VISIBLE is what M05 falsifies, from the other side.",
+      "measured": "9 violations on the base commit and 9 on this branch — the same nine files, named individually rather than counted."
+    },
+    {
+      "name": "the dependency-cruiser enforcer's own behaviour on the repaired pattern",
+      "attempted": "Running dependency-cruiser over apps/webapp with the regenerated .dependency-cruiser.js.",
+      "result": "NOT RUN. dependency-cruiser is not a dependency of this workspace — `.dependency-cruiser.js` is a GENERATED artifact whose only gate is `gen-dependency-cruiser.mjs --check`, which compares it to the rules module and never executes it. Adding the tool is a lockfile change this tranche did not take.",
+      "why-unfalsifiable": "The claim under test is about a resolver's answer, not about that tool's reporting. It is measured directly instead: Node's own resolver — the same model dependency-cruiser uses through enhanced-resolve — is called from apps/webapp/app/services/ in the CORROBORATION case, and the path it returns is the path the pattern is asserted against. The case names its skip reason when no install is present rather than passing silently.",
+      "measured": "internal-packages/tenancy-database/dist/index.js, with no node_modules/ segment."
+    }
+  ]
+}
