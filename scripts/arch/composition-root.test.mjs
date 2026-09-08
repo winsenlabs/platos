@@ -363,14 +363,24 @@ test("C7: a directory left on the unimplemented list after it gains a constructo
 
 test("C7: a directory dropped from the list while still a generated interface fails", () => {
   // The OTHER direction, and the one that matters more: `constructAdapters` would
-  // then be silent about `redis-ratelimit`, so `/readyz` would report its binding
+  // then be silent about the directory, so `/readyz` would report its binding
   // unsatisfied with no reason at all — and an operator would go looking for a
   // variable that does not exist.
+  //
+  // WIN-267 A3 REPOINTED THIS CONTROL, and the reason is the whole point of the
+  // rule. It named `redis-ratelimit`, which now HAS a constructor — so dropping
+  // it from the list is no longer a lie and this case would have gone quietly
+  // green while proving nothing. `clickhouse-observability` is still a generated
+  // interface, which is what makes the control live again. The next tranche to
+  // implement it must repoint this the same way; the assertion names the file it
+  // reads, so there is no way to do that by accident.
   const root = realTreeCopy();
-  edit(root, COMPOSITION_ROOT_FILE, (source) => source.replace('  "redis-ratelimit",\n', ""));
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace('  "clickhouse-observability",\n', "")
+  );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("packages/adapters/redis-ratelimit/src/index.ts exports no constructor")
+      problem.includes("packages/adapters/clickhouse-observability/src/index.ts exports no constructor")
     )
   );
 });
@@ -416,8 +426,14 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // none did — the two controls above would still pass and prove nothing about
   // the real tree. This reads BOTH sides off the live repository.
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
+  // 8 -> 7 (WIN-267 A3). `redis-ratelimit` is the FIRST directory ever to leave
+  // this list: it gained `createRedisRatelimitAdapter` and a real
+  // implementation, so the constructible set below gains it and the count
+  // drops. Both halves move in one commit — the C7 rule itself joins the list to
+  // the filesystem in both directions, so a list edited without an
+  // implementation, or an implementation added without the list edit, fails.
   const listed = parseUnimplementedAdapters(source);
-  assert.equal(listed.length, 8, "eight of the thirteen directories are still generated interfaces");
+  assert.equal(listed.length, 7, "seven of the thirteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
   assert.deepEqual(constructible, [
     "keyring-envelope",
@@ -425,6 +441,7 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
     "outbox",
     "postgres-tenancy",
     "redis-cache",
+    "redis-ratelimit",
   ]);
   assert.equal(listed.length + constructible.length, ADAPTERS.length);
 });

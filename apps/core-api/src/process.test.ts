@@ -309,9 +309,16 @@ describe("the built binary starts, serves and stops", () => {
     const response = await fetch(`http://127.0.0.1:${port}/readyz`, {
       headers: { authorization: `Bearer ${token}` },
     });
-    // STILL 503, and that is the honest answer: eight directories are generated
-    // interfaces, so eight bindings cannot be satisfied by any configuration and
+    // STILL 503, and that is the honest answer: seven directories are generated
+    // interfaces, so seven bindings cannot be satisfied by any configuration and
     // this process cannot serve the routes that need them.
+    //
+    // 41/8 -> 42/7 (WIN-267 A3). `redis-ratelimit` is the first directory ever
+    // to gain an implementation, and it is CONSTRUCTED here off the same
+    // `PLATOS_STORE_REDIS_URL` that builds the cache — which is why this
+    // end-to-end figure moves and the one in `installation.test.ts` moves with
+    // it. Two independent observations of one fact: that one reads the
+    // construction, this one reads a real socket on a real process.
     expect(response.status).toBe(503);
     const body = (await response.json()) as {
       reason: string;
@@ -323,18 +330,18 @@ describe("the built binary starts, serves and stops", () => {
       };
     };
     expect(body.detail.declaredBindings).toBe(49);
-    expect(body.detail.satisfiedBindings).toHaveLength(41);
-    expect(body.reason).toBe("41 of 49 adapter bindings are satisfied; 8 are not");
+    expect(body.detail.satisfiedBindings).toHaveLength(42);
+    expect(body.reason).toBe("42 of 49 adapter bindings are satisfied; 7 are not");
     // The context composed over a REAL PostgreSQL adapter rather than over a
     // bundle an install had to hand in — the first one in this programme.
     expect(body.detail.composedContexts).toEqual(["tenancy"]);
     // And every remaining directory says which kind of gap it is.
-    expect(body.detail.unwiredAdapters).toHaveLength(8);
+    expect(body.detail.unwiredAdapters).toHaveLength(7);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("41/49 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("42/49 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

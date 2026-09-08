@@ -81,7 +81,7 @@ test("the composition root's declared external dependencies are exactly the revi
   });
 });
 
-test("exactly FOUR projects may hold an external dependency, and they are named", () => {
+test("exactly FIVE projects may hold an external dependency, and they are named", () => {
   // The list is short on purpose and its shortness is the property. A fourth
   // entry appearing here is a reviewed decision to let a registry package into
   // the V1 layout, and it has to be made by moving this line.
@@ -99,26 +99,46 @@ test("exactly FOUR projects may hold an external dependency, and they are named"
   // workspace link and no new resolution — but "it costs nothing in the
   // lockfile" is not the same argument as "it may be here", and only this line
   // makes the second one.
+  //
+  // WIN-267 A3 makes the FIFTH: `packages/adapters/redis-ratelimit` declares
+  // `ioredis`, and this is the line where that was argued for rather than
+  // noticed. The argument is ADR M0.3 §4's own layout — it names THREE `redis-*`
+  // directories, each with "one namespaced keyspace, one owner", so the second
+  // one to be adopted holds a second CLIENT by design rather than by accident.
+  // The lockfile cost is again seven lines and no new resolution, and again that
+  // is not the argument: this line is.
   assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
     "apps/core-api",
     "packages/adapters/model-router-providers",
     "packages/adapters/postgres-tenancy",
     "packages/adapters/redis-cache",
+    "packages/adapters/redis-ratelimit",
   ]);
 });
 
-test("the Redis client is declared in exactly ONE project, at exactly one range", () => {
-  // WIN-260 (M2.5). Three directories in the layout are named `redis-*` and only
-  // ONE of them holds a Redis client: `redis-ratelimit` and `redis-streams` are
-  // still declaration-only, and the day either is adopted this list is where the
-  // second holder has to be argued for.
+test("the Redis client is declared in exactly the TWO adopted redis-* projects", () => {
+  // WIN-260 (M2.5) admitted the first. WIN-267 A3 admits the second, and the
+  // shape of this case is what changed rather than its purpose: it is still an
+  // EXACT list, so a third holder cannot appear without moving this line.
+  // `redis-streams` is still declaration-only and holds no client; the day it is
+  // adopted, this is where its holder has to be argued for.
+  //
+  // BOTH RANGES ARE THE SAME STRING, deliberately. Two `redis-*` directories at
+  // two ranges would be two resolutions of one client in one lockfile, and the
+  // process would ship both.
   assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/redis-cache"], {
+    ioredis: "^5.6.1",
+  });
+  assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/redis-ratelimit"], {
     ioredis: "^5.6.1",
   });
   const holders = Object.entries(EXPECTED_EXTERNAL_DEPENDENCIES)
     .filter(([, declared]) => Object.keys(declared).some((name) => name === "ioredis"))
     .map(([project]) => project);
-  assert.deepEqual(holders, ["packages/adapters/redis-cache"]);
+  assert.deepEqual(holders, [
+    "packages/adapters/redis-cache",
+    "packages/adapters/redis-ratelimit",
+  ]);
 });
 
 test("the PostgreSQL client is declared in exactly ONE project, as a workspace link", () => {
