@@ -360,7 +360,7 @@ describe("an operator authenticating through the composed identity-access", () =
 
     let allowed = 0;
     let refusal: { readonly code: string } | null = null;
-    for (let attempt = 0; attempt < 20 && refusal === null; attempt += 1) {
+    for (let call = 0; call < 20 && refusal === null; call += 1) {
       const decision = await identityAccess.consumeRateLimit(request);
       if (decision.ok) {
         // `degraded` would mean the limiter was UNREACHABLE and the fail-open
@@ -374,7 +374,7 @@ describe("an operator authenticating through the composed identity-access", () =
       refusal = decision.error;
     }
 
-    expect(refusal, "the limiter must refuse within twenty attempts").not.toBeNull();
+    expect(refusal, "the limiter must refuse within twenty calls").not.toBeNull();
     expect(refusal?.code).toBe("RATE_LIMITED");
     // JOINED TO THE COMMITTED TAXONOMY, not to a literal here: the status a
     // transport will map this to is a fact the repository ships.
