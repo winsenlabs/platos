@@ -39,11 +39,11 @@
     "nine STATIC imports for the present half. Every mutation below was re-applied",
     "against that shape rather than carried over from the first.",
     "",
-    "G3-M08 IS RECORDED HONESTLY AS A SECOND ATTEMPT. Renaming",
+    "G3-M08 IS RECORDED HONESTLY AS A SECOND APPLICATION. Renaming",
     "`agentsContract` in packages/contexts/agents/contracts/index.ts and",
     "rebuilding FAILED the build -- the agents package's own contracts",
     "suite imports it -- so dist was never regenerated and the runner still",
-    "resolved the old artifact and stayed GREEN. That first attempt was a",
+    "resolved the old artifact and stayed GREEN. That first application was a",
     "VACUOUS pass, not a survivor, and it is written down because counting it",
     "as one would have been the exact accounting error this project's mutation",
     "discipline exists to stop. The mutation was re-applied to",
@@ -158,7 +158,7 @@
       "suites": [
         "vitest"
       ],
-      "note": "The deepest one, and the only mutation in this sweep outside apps/core-api's own source. The correction rests on a VALUE import of another package's factory; if that import were decorative the case would pass without it. Renaming the export in packages/contexts/agents/dist/contracts/index.js -- the file @platos/context-agents's `.` condition resolves to -- makes the import undefined and TWO cases red: the correction's own, and the importability partition, which counts `agents` among the six factories reachable from a `.` entry point. See `procedure` for the first attempt, which was vacuous and is not counted.",
+      "note": "The deepest one, and the only mutation in this sweep outside apps/core-api's own source. The correction rests on a VALUE import of another package's factory; if that import were decorative the case would pass without it. Renaming the export in packages/contexts/agents/dist/contracts/index.js -- the file @platos/context-agents's `.` condition resolves to -- makes the import undefined and TWO cases red: the correction's own, and the importability partition, which counts `agents` among the six factories reachable from a `.` entry point. See `procedure` for the first application of it, which was vacuous and is not counted.",
       "kills": [
         "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble",
         "the context bundles those adapters can satisfy > cannot import eight context factories, and partitions all seventeen manifests"
