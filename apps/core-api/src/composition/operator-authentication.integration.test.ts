@@ -34,6 +34,14 @@
 // "governance is composed" would be wrong. `installation.test.ts` carries the
 // chain that stops it.
 //
+// IT READS ONE THING FROM THE AMBIENT ENVIRONMENT, DECLARED IN
+// `scripts/arch/env-access.mjs`: the spawn that applies the migrations, which
+// needs PATH to run the ORM's CLI at all. The SEVEN configuration variables
+// below are a plain object handed to `loadPlatformConfiguration`, never read
+// from `process.env` -- so nothing under test takes its configuration from the
+// machine this happens to run on. The gate refused an earlier draft of this file
+// that claimed no read at all.
+//
 // IT FAILS WHEN DOCKER IS ABSENT RATHER THAN SKIPPING. A skipped integration
 // suite and a passing one look identical in a CI summary.
 

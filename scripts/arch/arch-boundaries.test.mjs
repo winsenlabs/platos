@@ -1223,7 +1223,14 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // branch could state this figure -- G1 pinned 1614 and G2 pinned 1616,
     // both over the same 1610 base -- which is the same shape as the
     // A1+A2/A3 pair recorded above.
-    assert.equal(result.fileCount, 1620, "the generated V1 source census must stay exact");
+    //
+    // AND THE INTEGRATION ITSELF ADDS ONE: `apps/core-api/src/composition/
+    // operator-authentication.integration.test.ts`, the suite that authenticates
+    // an operator through the composed context against a real PostgreSQL. It is
+    // the first file this programme has added under `apps/core-api/src/` that is
+    // an integration suite, and it lands in this census for the reason G1's did:
+    // the scan does not exclude them. 1620 + 1 = 1621.
+    assert.equal(result.fileCount, 1621, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1247,7 +1254,10 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       2 + 2 +
       // WIN-267 G2: postgres-tenancy 6 -- four source modules for `governance`'s
       // three inverted read seams plus the guard they share, and two suites.
-      6);
+      6 +
+      // WIN-267 integration: the operator-authentication suite in
+      // `apps/core-api/src/composition/`.
+      1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

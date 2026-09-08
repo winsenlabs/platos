@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d1329cac21a867b28b4f24f366f09f542a7c1f7d3228961122f0da2d10b9427a",
+  "evidenceSha256": "c2788cfadbf9eee79bff5ad60e4f4efdb3950eba12b98a7c469a3d40ab347e2e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ae44a4bd3111b51cb19e1db44f4b978ec071c272bd9348780f4f196b60fa9b70",
+    "aggregateSha256": "954784fd93f355e63a0451a6c508a5f93fdcd35a965003eee6368a1d1037018a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2499,7 +2499,7 @@
       },
       {
         "path": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
-        "sha256": "b866d7444caad6eb93cec70479e945ea3fb44c6fb98f476a3bb1f6c65be4b539"
+        "sha256": "611cb73c68c5d2df433a9827f4f3d430af58c3fa6ce707f6b0717b4f66a3aa96"
       },
       {
         "path": "apps/core-api/src/composition/registry.ts",
@@ -6243,7 +6243,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "3695fb359380e9c2a68b3841bb9b1be050a390509c204dffc755983133b9f4c9"
+        "sha256": "308f6ff87f7d4ea2b874da923e7993383e46e36d40b0847d7e6da443704be74d"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -19815,7 +19815,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "136c015cbfa08492dc27c3ea0271a1312ae057df8a355465019b9fc1f863fbfa"
+        "sha256": "8863c7b07462f92d3b0dce2f48188e02f9d6089169f41f1761167478492248c6"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -19847,7 +19847,7 @@
       },
       {
         "path": "scripts/arch/env-access.mjs",
-        "sha256": "1dc0bdca970eacf5e84a8c722ba2151d05b12f8b96d1cab1121b1812ce41f89d"
+        "sha256": "754c292ee523dcda4a9ce7bcf31d61cb170a0d8a1c440d65369a2dc1bc500a28"
       },
       {
         "path": "scripts/arch/env-access.test.mjs",
@@ -34582,7 +34582,7 @@
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "kind": "reference",
-              "line": 58
+              "line": 66
             },
             {
               "from": "apps/core-api/src/config/sections.test.ts",
@@ -35062,7 +35062,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "87d90edd10ce3a383ada49ef852288473d4c2ce5ff526b5ed67d15fa86d1a0e6",
+      "evidenceSha256": "1056b0e4e846813acb8c79d58b786bee17a397875ee7493751de94042fc7afc8",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -36537,7 +36537,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1349
+              "line": 1359
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -36652,7 +36652,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1d3ad99cba8a11757b5c21ac03219c709210670ee3268c9dba2aa9106318a4ff",
+      "evidenceSha256": "b14b38b79bd335f68d65a0ddf4d18e8efa9a2bddf9ce125af4f80a6e1a3264cd",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -38897,7 +38897,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1372
+              "line": 1382
             }
           ],
           "reversePaths": [
@@ -38987,7 +38987,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "59ab3adbcd15a8db513ffe46d5334471305cfc419b67c93b05c85035525df4ee",
+      "evidenceSha256": "a779e7c1e1979e30afae2bc32d9fb1ae398f26977b1043e79d49c7d539d8ef9f",
       "manifestSha256": "2848f0f02171494d6112ab9631f2b0ed74a98d740454f7a2e43a442b2b3d6c16",
       "name": "@internal/redis",
       "ociImageClosure": {
@@ -41347,7 +41347,7 @@
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "kind": "reference",
-              "line": 135
+              "line": 143
             },
             {
               "from": "apps/core-api/src/runtime/log-redaction.test.ts",
@@ -41642,7 +41642,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1344
+              "line": 1354
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -42454,7 +42454,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "244304294f976b8e5ed1d6f19afb1c274ce4f54a261e0028246f0e5fd754acb4",
+      "evidenceSha256": "41a2ed9bb86c94947e0a98a9943983c03314dd062d0fb1fe00f605874e128a09",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -50105,7 +50105,7 @@
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "kind": "reference",
-              "line": 102
+              "line": 110
             },
             {
               "from": "apps/core-api/src/http/rest-chassis.test.ts",
@@ -51749,7 +51749,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "08d9c6456d98a8c08e341ac59a4d898c491eed166c104a3e84872469bf2a7d67",
+      "evidenceSha256": "f3929ea579f029e8b244d08afa475784d9e5665e029f128d3543ea1fe4eae9d5",
       "manifestSha256": "c3c49b3941820594e187dcbb86c78001443c58add67ce25009e535c3f1374927",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -86093,7 +86093,7 @@
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "kind": "reference",
-              "line": 48
+              "line": 56
             },
             {
               "from": "apps/core-api/src/http/failure.test.ts",
@@ -89424,7 +89424,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "9d5c55eb414ad19623846eb4f4f175f2bcfeb38ff0aae7fae840b7f1f12893d2",
+      "evidenceSha256": "db7be2dea5e1af68355ea582e88bcca661b594f8c44a700b47befec96180fd5b",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

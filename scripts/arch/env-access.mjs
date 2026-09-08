@@ -196,6 +196,22 @@ export const ALLOWED = Object.freeze([
     }),
   ),
   Object.freeze({
+    // WIN-267 — the operator-authentication suite. It applies the repository's
+    // OWN migrations to its container by spawning the ORM's CLI, exactly as the
+    // fourteen harnesses above do, and for the same reason: the CLI needs PATH
+    // and the rest of the inherited environment in order to run at all, and the
+    // container's URL is layered over it.
+    //
+    // ONE READ, AND THE SEVEN VARIABLES THE SUITE SETS ARE NOT AMONG THEM. It
+    // builds a plain object and hands it to `loadPlatformConfiguration`, the way
+    // `installation.test.ts` does, so the configuration under test never comes
+    // from the ambient environment. The single read is this spawn.
+    path: "apps/core-api/src/composition/operator-authentication.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL integration suite for the composition root. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+  }),
+  Object.freeze({
     path: "packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts",
     role: "test-support",
     reads: 1,
@@ -433,8 +449,17 @@ export const VIOLATION_CODES = Object.freeze({
  * four) = 1620, a figure neither branch stated. The DECLARED table is
  * unmoved by all ten, which is the claim this pin exists to make: ten files
  * landed and not one new door was opened.
+ *
+ * AND THE INTEGRATION ADDS ONE MORE, `apps/core-api/src/composition/
+ * operator-authentication.integration.test.ts`, WITH THE DECLARED TABLE STILL
+ * UNMOVED -- and that is worth stating rather than passing over, because that
+ * suite DOES set seven environment variables. It sets them in a plain object it
+ * hands to `loadPlatformConfiguration`, exactly as `installation.test.ts` does,
+ * so no variable is READ from `process.env` and no new door is opened. A suite
+ * that had reached for the ambient environment instead would move this table and
+ * fail the gate. 1620 + 1 = 1621.
  */
-export const EXPECTED_FILE_COUNT = 1620;
+export const EXPECTED_FILE_COUNT = 1621;
 
 function listSourceFiles(root) {
   const found = [];

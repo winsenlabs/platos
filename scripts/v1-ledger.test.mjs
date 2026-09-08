@@ -643,8 +643,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `scripts/arch/gen-v1-skeleton.mjs` carries the same correction to the
     // second, staler copy of the claim. 44 + 3 + 10 + 1 = 58.
     //
-    // SUMMED FOR THE INTEGRATION: 57 + 2 (G1) + 1 (G3) = 60.
-    "apps-core-api": 60,
+    // SUMMED FOR THE INTEGRATION: 57 + 2 (G1) + 1 (G3) = 60, plus ONE the
+    // integration itself adds -- `src/composition/operator-authentication
+    // .integration.test.ts`, the suite that authenticates an operator through
+    // the composed context against a real PostgreSQL. It classifies under
+    // `apps-core-api.test.suites`, a rule WIN-297 wrote, so no ledger rule is
+    // new for it either. 60 + 1 = 61.
+    "apps-core-api": 61,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1645,10 +1650,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `installation.test.ts` that already existed, which is also why the
   // test-case census does not move (`apps/core-api` is outside PACKAGE_ROOTS).
   // 1640 + 1 = 1641.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1641);
   //
-  // SUMMED FOR THE INTEGRATION: 1640 + 5 (G1) + 7 (G2) + 1 (G3) = 1653.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1653);
+  // SUMMED FOR THE INTEGRATION: 1640 + 5 (G1) + 7 (G2) + 1 (G3) = 1653, and the
+  // integration's own operator-authentication suite makes it 1654. Every one of
+  // the fourteen is additive: no ledger rule changed and no project was adopted.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1654);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1786,7 +1792,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // one file is `apps/core-api/mutations-win267-g3.json`, in `apps-core-api`,
     // matching that area's 57 -> 58; it ADOPTS NO PROJECT and CHANGES NO LEDGER
     // RULE, so this delta too is purely additive: 1640 + 1 = 1641.
-    rulesDocument.baseline.totalFiles + 1653
+    rulesDocument.baseline.totalFiles + 1654
   );
 });
 
