@@ -19,7 +19,7 @@
     "sense read against two different dimensions."
   ],
   "procedure": [
-    "  node apps/core-api/mutation-sweep.mjs",
+    "  node scripts/mutation-sweep-win267-t4.mjs",
     "",
     "Suites, by the key each entry names:",
     "  mint    src/transports/rest/secret-mint.test.ts",

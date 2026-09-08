@@ -13,9 +13,14 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-const LEDGER = fileURLToPath(new URL("./mutations-win267-t4.json", import.meta.url));
-const ROOT = fileURLToPath(new URL("../../", import.meta.url));
-const PACKAGE = fileURLToPath(new URL("./", import.meta.url));
+// IT LIVES IN `scripts/` AND THE LEDGER LIVES BESIDE THE CODE. The ledger is
+// read by a human reviewing `apps/core-api`, so it sits there; the runner is
+// repository tooling like every other `.mjs` here, and `docs/v1-ledger-rules.json`
+// already classifies `scripts/**` — a runner at a package root would have needed
+// a rule invented for it, which is a worse trade than one relative path.
+const ROOT = fileURLToPath(new URL("../", import.meta.url));
+const PACKAGE = `${ROOT}apps/core-api/`;
+const LEDGER = `${PACKAGE}mutations-win267-t4.json`;
 
 const SUITES = {
   mint: "src/transports/rest/secret-mint.test.ts",
@@ -90,9 +95,6 @@ for (const entry of ledger.mutations) {
   );
 }
 
-writeFileSync(
-  fileURLToPath(new URL("./mutation-sweep-observed.json", import.meta.url)),
-  `${JSON.stringify(results, null, 2)}\n`,
-);
+writeFileSync(`${PACKAGE}mutation-sweep-observed.json`, `${JSON.stringify(results, null, 2)}\n`);
 const killed = results.filter((r) => r.verdict === "KILLED").length;
 process.stdout.write(`\n${killed}/${results.length} killed\n`);

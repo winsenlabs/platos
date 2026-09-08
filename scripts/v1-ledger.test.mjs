@@ -617,8 +617,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `in-flight.ts`, `lifecycle.ts`, `lifecycle.test.ts`, `mutations.json` and
     // `transports/rest/index.ts` -- is edited in place and adds nothing.
     //
-    // NO LEDGER RULE CHANGED BY EITHER. 44 + 3 + 10 = 57.
-    "apps-core-api": 57,
+    //
+    // T4 +7, the first one-time-secret mint, and again on rules that already
+    // existed:
+    //   `apps-core-api.source.transports` -- `transports/rest/secret-mint.ts`,
+    //     the operation itself, and `transports/rest/mint-errors.ts`, the four
+    //     distinct refusals it owns (11 -> 13);
+    //   `apps-core-api.source.process`   -- `http/secret-mint.controller.ts`
+    //     and `http/api-surface.ts`, which spells the major ONCE so no route in
+    //     this process carries an `api/v1` literal (30 -> 32);
+    //   `apps-core-api.test.suites`      -- `transports/rest/secret-mint.test.ts`
+    //     and `http/secret-mint.controller.test.ts` (19 -> 21);
+    //   `apps-core-api.config.package`   -- `mutations-win267-t4.json`, this
+    //     tranche's guard ledger, beside the code a reviewer reads it against
+    //     and on the rule that already matches `apps/core-api/*.json` (5 -> 6).
+    // Everything else T4 touches -- `http/http.module.ts`, `runtime/lifecycle.ts`,
+    // `http/health.controller.ts`, `http/not-found.controller.ts` and
+    // `http/idempotency-policy.ts` -- is edited in place and adds nothing. NO
+    // LEDGER RULE CHANGED. The sweep RUNNER is not here: it went to `scripts/`,
+    // where `root-infra.tooling.scripts` already classifies it, rather than
+    // needing a rule invented for a `.mjs` at a package root.
+    //
+    // 44 + 3 + 10 + 7 = 64.
+    "apps-core-api": 64,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1483,12 +1504,26 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
     // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
     // and add no file.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
-    "root-infra": 55,
+    // WIN-267 (M4.1, T4) 55 -> 56: `scripts/mutation-sweep-win267-t4.mjs`, the
+    // runner that PRODUCES T4's ledger rather than restating it — it applies
+    // each entry, runs the named suites through vitest's JSON reporter, records
+    // the case titles that actually went red and restores the file, so `kills`
+    // is observed rather than intended. It is CODE, unlike the three ledger
+    // JSONs above it, so the split T0 imagined for non-code files under
+    // `scripts/` is untouched by it and is still not being done inside a tranche
+    // that would be its own beneficiary. T4's own ledger JSON is NOT here: it
+    // sits at `apps/core-api/mutations-win267-t4.json`, beside the code, on that
+    // area's existing `*.json` rule.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 = 56.
+    "root-infra": 56,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
+  //
+  // M4.1: T0-T3 carried it to 1598 (3469 + 1598 = 5067). WIN-267 T4 adds EIGHT
+  // files — seven under `apps/core-api` (57 -> 64) and one under `scripts/`
+  // (55 -> 56) — so 1598 + 8 = 1606, and 3469 + 1606 = 5075.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1606);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1594,7 +1629,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1598
+    //
+    // WIN-267 T4: 1598 + 8 = 1606, the same eight files (apps-core-api +7,
+    // root-infra +1). This assertion is deliberately the SAME number reached a
+    // DIFFERENT way — the one above reads the summary's own `totalFiles`, this
+    // one sums `areaCounts` — so a tranche that moved one and not the other is
+    // caught here rather than agreed with.
+    rulesDocument.baseline.totalFiles + 1606
   );
 });
 
