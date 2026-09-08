@@ -44,17 +44,33 @@
 //
 // `enqueue-eval-run.ts` builds the key over the set id, EVERY PAIR IN PLAN ORDER
 // and the baseline, and `DEFAULT_GOVERNANCE_POLICY.goldenSets` caps a set at
-// five hundred pairs. At that ceiling the key is roughly 37 kB. A btree index
-// row may not exceed about 2704 bytes, so a UNIQUE index over the key ITSELF
-// refuses the insert -- naming neither the column nor the run -- on exactly the
-// large runs the ceiling exists to permit. The port anticipates this: the key
-// "is a plain joined string rather than a digest because this context owns no
-// hashing port ... the adapter behind `EvalRunQueue` may digest it".
+// five hundred pairs. At that ceiling the key is roughly 37 kB. The port
+// anticipates the consequence: the key "is a plain joined string rather than a
+// digest because this context owns no hashing port ... the adapter behind
+// `EvalRunQueue` may digest it".
 //
-// So the unique index is over a SHA-256 hex digest and the key is kept beside
-// it, unindexed. BOTH, not either: a digest alone cannot tell a repeated request
-// from a collision, and this store refuses a collision rather than answering
-// `alreadyQueued` for a run that is not the same run.
+// WHAT THE LIMIT ACTUALLY IS, MEASURED RATHER THAN REMEMBERED. This paragraph
+// first said "a btree index row may not exceed about 2704 bytes, so a unique
+// index over the key itself refuses the insert". Against a real PostgreSQL 16
+// that is wrong twice, and `governance-eval-runs.integration.test.ts` exhibits
+// both:
+//
+//   * a unique index over the key ACCEPTS a 37 kB key, because an index datum
+//     is COMPRESSED before it is measured and this key repeats one thread id
+//     twenty-five times over in any real set;
+//   * the refusal, when it comes, is the index-tuple limit and not the btree
+//     "version 4 maximum" -- `index row requires 19440 bytes, maximum size is
+//     8191`, SQLSTATE 54000 -- and it comes only for a key that does not
+//     compress.
+//
+// So the failure is reached by ENTROPY and not by length, which is worse than
+// the rule first written down: an install would meet it on some golden sets and
+// not others, with nothing at the port or in the schema to say which. A 64-hex
+// digest is the same size for every key, so the unique index is over the digest
+// and the key is kept beside it, unindexed. BOTH, not either: a digest alone
+// cannot tell a repeated request from a collision, and this store refuses a
+// collision rather than answering `alreadyQueued` for a run that is not the
+// same run.
 //
 // ---------------------------------------------------------------------------
 // THE CONSUMER HALF IS NOT ON THE PORT, AND IS HERE ANYWAY

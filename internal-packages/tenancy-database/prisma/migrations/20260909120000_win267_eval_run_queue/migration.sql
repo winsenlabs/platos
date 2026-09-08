@@ -15,14 +15,22 @@
 -- `enqueue-eval-run.ts` builds the key from the set id, EVERY PAIR IN PLAN ORDER
 -- and the baseline -- `eval-run/<uuid>/<uuid|no-baseline>/<threadId>:<criterionId>|...`
 -- -- and `DEFAULT_GOVERNANCE_POLICY.goldenSets` caps a set at five hundred pairs.
--- At that ceiling the key is roughly 37 kB. A btree index row may not exceed
--- about 2704 bytes (a third of an 8 kB page), so a UNIQUE index over the key
--- ITSELF refuses the insert with `index row size ... exceeds btree version 4
--- maximum` -- naming neither the column nor the run -- and it does so on exactly
--- the large runs the ceiling exists to permit. The port anticipates this in as
--- many words: the key "is a plain joined string rather than a digest because
--- this context owns no hashing port ... the adapter behind `EvalRunQueue` may
--- digest it".
+-- At that ceiling the key is roughly 37 kB. The port anticipates the
+-- consequence in as many words: the key "is a plain joined string rather than a
+-- digest because this context owns no hashing port ... the adapter behind
+-- `EvalRunQueue` may digest it".
+--
+-- WHAT THE LIMIT IS, MEASURED ON A REAL POSTGRESQL 16 RATHER THAN QUOTED. A
+-- UNIQUE index over the key itself ACCEPTS a 37 kB key, because an index datum
+-- is COMPRESSED before it is measured and this key repeats one thread id
+-- twenty-five times over in any real set. It refuses a key of the same length
+-- whose identifiers are all distinct, with `index row requires 19440 bytes,
+-- maximum size is 8191` under SQLSTATE 54000 -- the index-TUPLE limit, not the
+-- 2704-byte btree "version 4 maximum" this comment first named. So the failure
+-- is reached by ENTROPY and not by length: an install would meet it on some
+-- golden sets and not others, and nothing at the port or in this schema would
+-- say which. `governance-eval-runs.integration.test.ts` exhibits both halves
+-- against this very column.
 --
 -- So the UNIQUE index is over a SHA-256 hex digest, and the key itself is kept
 -- beside it, unindexed, in an unbounded `TEXT` column that PostgreSQL will TOAST.

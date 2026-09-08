@@ -166,17 +166,26 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
 
   test("whether the port's key fits a btree depends on how it COMPRESSES, and the digest removes the question", async () => {
     // THIS CASE WAS WRITTEN TO ASSERT SOMETHING SIMPLER AND MEASURED SOMETHING
-    // WORSE. The claim was "the port's key cannot be a unique index, because at
-    // the five-hundred-pair ceiling it is ~37 kB and a btree index row may not
-    // exceed ~2704 bytes". A unique index over the real column ACCEPTED it. The
-    // reason is that PostgreSQL compresses an index datum before measuring it,
-    // and `enqueue-eval-run.ts` builds the key by joining `<threadId>:<criterionId>`
-    // — a string that repeats one thread id twenty-five times over in any real
-    // set, and compresses to a fraction of its length.
+    // WORSE, TWICE. The claim was "the port's key cannot be a unique index,
+    // because at the five-hundred-pair ceiling it is ~37 kB and a btree index
+    // row may not exceed ~2704 bytes". Both halves were wrong against a real
+    // PostgreSQL 16:
     //
-    // So the limit is not reached by SIZE, it is reached by ENTROPY, and that is
-    // the worse property: an install would meet it on some golden sets and not
-    // others, with no rule at the port or the schema to predict which. Both
+    //   * A unique index over the real column ACCEPTED the 37 kB key, because
+    //     PostgreSQL compresses an index datum before measuring it and
+    //     `enqueue-eval-run.ts` builds the key by joining
+    //     `<threadId>:<criterionId>` — a string that repeats one thread id
+    //     twenty-five times over in any real set.
+    //   * The refusal, when it does come, is NOT the 2704-byte "btree version 4
+    //     maximum". It is the index-tuple limit, and PostgreSQL's own words are
+    //     `index row requires 19440 bytes, maximum size is 8191` under SQLSTATE
+    //     54000. The number quoted from memory was the wrong one; this is the
+    //     one the database raises, and the case matches its shape rather than a
+    //     phrase.
+    //
+    // So the limit is not reached by LENGTH, it is reached by ENTROPY, and that
+    // is the worse property: an install would meet it on some golden sets and
+    // not others, with no rule at the port or the schema to predict which. Both
     // halves are measured below, against the same index, on the same column.
     const repetitive = request({ pairs: pairs(500), idempotencyKey: `eval-run/${goldenSetId}/compressible` });
     const distinct = request({
@@ -185,7 +194,7 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
         .map((pair) => `${pair.threadId}:${pair.criterionId}`)
         .join("|")}`,
     });
-    expect(distinct.idempotencyKey.length).toBeGreaterThan(2_704);
+    expect(distinct.idempotencyKey.length).toBeGreaterThan(8_191);
     expect(repetitive.idempotencyKey.length).toBeLessThan(distinct.idempotencyKey.length * 2);
 
     harness.applyPeerRows(
@@ -202,7 +211,9 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     expect(incompressible.ok).toBe(false);
     if (incompressible.ok) throw new Error("unreachable");
     expect(incompressible.error.code).toBe("GOVERNANCE_QUEUE_UNAVAILABLE");
-    expect(String(incompressible.error.details?.reason)).toMatch(/index row size/iu);
+    expect(String(incompressible.error.details?.reason)).toMatch(
+      /index row requires \d+ bytes, maximum size is \d+/iu,
+    );
 
     // AND THE DIGEST REMOVES THE QUESTION. With the probe index gone, the SAME
     // run the index refused is accepted, and a repeat of it answers
