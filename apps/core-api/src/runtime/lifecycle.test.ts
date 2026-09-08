@@ -103,6 +103,9 @@ function fullySupplied(): SuppliedAdapters {
     // filled, so a directory added without being wired leaves this test red
     // instead of quietly passing.
     "keyring-envelope",
+    // WIN-267 A1. The fourteenth, listed by name for the same reason: readiness
+    // going green must require a slot somebody deliberately filled.
+    "node-crypto-digest",
   ];
   return Object.fromEntries(names.map((name) => [name, adapterDouble(name)])) as SuppliedAdapters;
 }
@@ -132,7 +135,7 @@ describe("the process starts and serves", () => {
     expect(messages).toContain("process.starting");
     expect(messages).toContain("process.started");
     const started = harness.lines().find((line) => line["message"] === "process.started");
-    expect(started).toMatchObject({ bindings: "0/49 adapter bindings satisfied", unsatisfied: 49 });
+    expect(started).toMatchObject({ bindings: "0/51 adapter bindings satisfied", unsatisfied: 51 });
   });
 });
 
@@ -166,7 +169,7 @@ describe("readiness tells the truth about what is wired", () => {
       headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
     });
     const body = (await response.json()) as { detail: { unsatisfiedBindings: string[]; declaredBindings: number } };
-    expect(body.detail.declaredBindings).toBe(49);
+    expect(body.detail.declaredBindings).toBe(51);
     // Named per BINDING (ADR M0.3 §15), so an operator reading a 503 learns
     // WHICH port is unserved rather than only which package is absent.
     expect(body.detail.unsatisfiedBindings).toContain("postgres-tenancy:TenancyRepository");

@@ -382,8 +382,47 @@ export const ADAPTERS = [
     additional: [
       { port: "AeadCipher", owner: "secrets" },
       { port: "Hasher", owner: "secrets" },
+      // WIN-267 A1 — the FOURTH port, and the first on this directory owned by a
+      // context other than `secrets`.
+      //
+      // `MfaSecretCipher` needs AES-256 key material and there is exactly one
+      // place in the tree that holds any: `root-key-ring.ts`, whose `resolve` is
+      // reachable only through the closure `createRootKeyRing` returns and is
+      // published by no export. A composition root cannot obtain the bytes to
+      // hand to another directory, and rule (j2) `adapter-is-self-contained`
+      // forbids a second directory from importing this one to get at them. The
+      // only alternative would be a directory parsing its OWN root key out of its
+      // OWN variable — a second key hierarchy for one installation, which is the
+      // arrangement this directory was created to end.
+      //
+      // It makes `keyring-envelope` the second MULTI-OWNER adapter, which is a
+      // row in `EXPECTED_MULTI_OWNER_ADAPTERS` and one new project edge
+      // (`keyring-envelope` -> `identity-access`); the contexts themselves stay
+      // apart, exactly as seventeen contexts share `postgres-tenancy` without
+      // importing each other.
+      { port: "MfaSecretCipher", owner: "identity-access" },
     ],
     note: "the versioned root key ring and the AES-256-GCM envelope over it",
+  },
+  // WIN-267 A1 — the FOURTEENTH directory, and the only one in the table that
+  // holds no client, no connection and no key.
+  //
+  // `SecretHasher` is SHA-256 hex, a constant-time comparison and the RFC 7636
+  // challenge derivation. §15's "one vendor client, one directory" rule sends a
+  // new binding to an existing directory when it shares that directory's client;
+  // this shares nothing with anything, because `node:crypto` is not a client an
+  // install wires. It is not `keyring-envelope`'s fourth port for two reasons
+  // that both stand alone: the argument that put `secrets`' `Hasher` beside the
+  // keys was about a COST PARAMETER, which this port cannot have (it is
+  // synchronous, and the ADR paragraph on it says a work factor "would only make
+  // every request slower"); and `Hasher.hash` and `SecretHasher.hash` are two
+  // signatures under one name, so the flat `extends` shape that directory uses
+  // could not take it even if the custody argument had held.
+  {
+    dir: "node-crypto-digest",
+    port: "SecretHasher",
+    owner: "identity-access",
+    note: "the stored-verifier digest, the constant-time comparison and the PKCE challenge",
   },
 ];
 
@@ -639,8 +678,16 @@ export function adapterOwnerPackages(adapter) {
 // WIN-260, whose two bindings are rows on a directory that already existed:
 // 12 + 1 = 13. The BINDING pin takes both: 44 + 3 + 2 = 49. The two moving by
 // different amounts is exactly what the separate pins exist to show.
-export const EXPECTED_ADAPTER_COUNT = 13;
-export const EXPECTED_BINDING_COUNT = 49;
+// WIN-267 A1. The DIRECTORY pin moves for the second time ever, 13 -> 14, and
+// the BINDING pin moves by two, 49 -> 51. The two amounts differ again and the
+// difference is the whole statement: `keyring-envelope:MfaSecretCipher` is a row
+// on an EXISTING directory, because AES-256 root key bytes have exactly one
+// custodian in this tree and `adapter-is-self-contained` forbids a second
+// directory from borrowing them; `node-crypto-digest:SecretHasher` is a NEW
+// directory, because a keyless SHA-256 shares no client with anything and §15's
+// consolidation rule is about sharing a client.
+export const EXPECTED_ADAPTER_COUNT = 14;
+export const EXPECTED_BINDING_COUNT = 51;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -667,7 +714,13 @@ export const ROOT_SOLUTION_PATH = "tsconfig.json";
 // §2 lets only an adapter package implement a driven port: without its own
 // tsconfig and its own package it could not be referenced by the composition
 // root, and `secrets`' three cryptography ports would have stayed unimplemented.
-export const EXPECTED_PROJECT_COUNT = 33;
+// 33 -> 34 (WIN-267 A1). `packages/adapters/node-crypto-digest`, the fourteenth
+// adapter directory and the second V1 project ever added. Same argument as the
+// thirteenth and one clause further: only an adapter package may implement a
+// driven port, and this is the only port of the four `context-ports.ts` names as
+// missing whose implementation needs no key, no client and no configuration —
+// so it is the one that could not be a row on an existing directory either.
+export const EXPECTED_PROJECT_COUNT = 34;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -860,7 +913,14 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // thirteenth directory) + 3 (WIN-260's postgres-tenancy -> kernel consumer edge
 // and redis-cache's two further owner edges) = 116. READ BACK from
 // `gen-v1-skeleton --check` rather than trusted from this arithmetic.
-export const EXPECTED_EDGE_COUNT = 116;
+//
+// WIN-267 A1: 116 + 3 = 119 — `keyring-envelope` -> `identity-access` (the
+// fourth binding's owner edge), `node-crypto-digest` -> `identity-access` (the
+// fourteenth directory's owner edge) and `apps/core-api` ->
+// `node-crypto-digest` (the composition-root edge every adapter gets). READ BACK
+// from `gen-v1-skeleton --check` rather than trusted from this arithmetic, and
+// carried independently in `scripts/arch/v1-project-graph.mjs`.
+export const EXPECTED_EDGE_COUNT = 119;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -875,7 +935,10 @@ export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.m
 // comment that said so is corrected rather than deleted: it was true for as long
 // as every port had a home, and `secrets`' three cryptography ports did not.
 // The thirteenth directory brings the three files every project brings.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 100;
+//
+// 100 -> 103 (WIN-267 A1): 34 projects x 3 files + 1. The fourteenth directory
+// brings the same three, for the same reason.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 103;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
 // kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
@@ -896,7 +959,15 @@ export const EXPECTED_SCAFFOLDING_FILE_COUNT = 100;
 // DIRECTORY; WIN-260 adopts `redis-cache`, and adoption releases placeholders
 // from the emitted set rather than adding to what a fully unadopted skeleton
 // would hold.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 106;
+//
+// 106 -> 108 (WIN-267 A1). `packages/adapters/node-crypto-digest`'s
+// `src/index.ts` and `src/adapter.ts`, on the same terms: both are emitted for an
+// UNADOPTED project and immediately released by this issue's adoption, so the
+// released count moves by two in the same run and the EMITTED placeholder count
+// does not move at all. Raising the CEILING rather than the floor is what keeps
+// un-adoption failing closed — remove the adoption entry while the real source
+// is on disk and the two files reappear as MISSING.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 108;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -937,6 +1008,7 @@ export const ADOPTED_PROJECTS = [
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
   "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
+  "packages/adapters/node-crypto-digest", // WIN-267 A1 — the identity-access SecretHasher: SHA-256 hex over the extraction source's own digests, a constant-time comparison, and RFC 7636's S256 challenge
 ];
 
 // ---------------------------------------------------------------------------

@@ -76,6 +76,19 @@ const BUILT_FROM_ANOTHER_ADAPTER: Readonly<Record<string, AdapterName>> = Object
   outbox: "postgres-tenancy",
 });
 
+/**
+ * The directories built from NOTHING — no group, no other adapter.
+ *
+ * WIN-267 A1 creates this category and `node-crypto-digest` is its only member.
+ * It reads no configuration because there is none to read: a SHA-256 has no key,
+ * no endpoint and no connection, so there is no state an operator could set
+ * wrongly and none they could forget. Naming it here rather than letting it fall
+ * out of `constructAdapters` is what makes "it is always wired" a claim this
+ * suite checks in both directions — it must be absent from `unwired` in EVERY
+ * configuration, including the one where nothing at all is declared.
+ */
+const BUILT_UNCONDITIONALLY: readonly AdapterName[] = Object.freeze(["node-crypto-digest"]);
+
 const opened: AdapterConstruction[] = [];
 
 afterEach(async () => {
@@ -155,7 +168,12 @@ describe("constructing the adapters an install declared", () => {
     // group of its own. An install with no database gets neither, and the reason
     // says so instead of naming a variable that would not have helped.
     const withoutDatabase = construct({ ...NOTHING_DECLARED, PLATOS_STORE_REDIS_URL: "redis://127.0.0.1:1" });
-    expect(Object.keys(withoutDatabase.adapters)).toEqual(["redis-cache"]);
+    // `node-crypto-digest` is here beside `redis-cache` and is not a Redis
+    // directory: it is the one built unconditionally, so it appears under every
+    // configuration including this one.
+    expect([...Object.keys(withoutDatabase.adapters)].sort()).toEqual(
+      ["node-crypto-digest", "redis-cache"].sort(),
+    );
     const declined = withoutDatabase.unwired.find((row) => row.adapter === "outbox");
     expect(declined?.cause).toBe("configuration");
     expect(declined?.reason).toContain(BUILT_FROM_ANOTHER_ADAPTER["outbox"]);
@@ -169,10 +187,18 @@ describe("constructing the adapters an install declared", () => {
     const construction = construct(NOTHING_DECLARED);
     const byCause = new Map(construction.unwired.map((row) => [row.adapter, row.cause]));
 
-    // Nothing is configured, so all thirteen are unwired — and the thirteen split
-    // by a reason that is not this file's opinion: `UNIMPLEMENTED_ADAPTERS` is
-    // joined to the adapter packages' own source by composition-root.mjs (C7).
+    // Nothing is configured, so THIRTEEN OF THE FOURTEEN are unwired — and the
+    // thirteen split by a reason that is not this file's opinion:
+    // `UNIMPLEMENTED_ADAPTERS` is joined to the adapter packages' own source by
+    // composition-root.mjs (C7). The fourteenth is `node-crypto-digest`, which
+    // reads no configuration and is therefore wired even here; asserting its
+    // ABSENCE from `unwired` is what makes "built unconditionally" falsifiable
+    // rather than a comment.
     expect(construction.unwired).toHaveLength(13);
+    for (const adapter of BUILT_UNCONDITIONALLY) {
+      expect(byCause.get(adapter)).toBeUndefined();
+      expect(construction.adapters[adapter]).toBeDefined();
+    }
     for (const adapter of UNIMPLEMENTED_ADAPTERS) expect(byCause.get(adapter)).toBe("implementation");
     for (const adapter of Object.values(GROUP_BUILDS)) expect(byCause.get(adapter)).toBe("configuration");
     // An operator reading `/readyz` has to be able to act on the reason, so it
@@ -283,7 +309,7 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 41 of 49, and the 8 that remain are exactly the bindings with no implementation", () => {
+  it("reports 43 of 51, and the 8 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the eight directories sees both
@@ -293,7 +319,7 @@ describe("readiness over what was actually constructed", () => {
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
     expect(unimplementable).toHaveLength(8);
-    expect(verdict.detail.satisfiedBindings).toHaveLength(41);
+    expect(verdict.detail.satisfiedBindings).toHaveLength(43);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(8);
     // STILL RED, AND HONESTLY SO. Eight ports have no implementation in this
@@ -303,11 +329,16 @@ describe("readiness over what was actually constructed", () => {
     expect(verdict.ready).toBe(false);
   });
 
-  it("is still 0 of 49 with nothing wired, and now says which kind of nothing", () => {
+  it("is 1 of 51 with nothing wired, and says which kind of nothing the other 50 are", () => {
+    // IT USED TO BE 0, AND THE CHANGE IS THE POINT RATHER THAN AN ADJUSTMENT.
+    // WIN-267 A1 added the one directory an install cannot fail to provide, so
+    // an unconfigured process is no longer red BY CONSTRUCTION on every single
+    // binding — it is red on the fifty that need something an operator has not
+    // set or that nobody has written yet.
     const { verdict } = readiness(NOTHING_DECLARED);
-    expect(verdict.detail.satisfiedBindings).toEqual([]);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length);
-    expect(verdict.reason).toContain(`0 of ${ADAPTER_BINDINGS.length}`);
+    expect(verdict.detail.satisfiedBindings).toEqual(["node-crypto-digest:SecretHasher"]);
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - 1);
+    expect(verdict.reason).toContain(`1 of ${ADAPTER_BINDINGS.length}`);
     // The half that was missing before: an unsatisfied binding list alone cannot
     // tell an unset variable from a package that was never written.
     const causes = new Set(verdict.detail.unwiredAdapters.map((row) => row.cause));
@@ -359,16 +390,35 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(declined?.reason).toBe(IDENTITY_ACCESS_UNASSEMBLED);
 
     // THE REASON IS CHECKED, NOT TAKEN ON TRUST. `RateLimiter` is a declared
-    // binding on a directory with no implementation, and the other four ports
+    // binding on a directory with no implementation, and the two ports beside it
     // appear on no row of the table at all — so no adapter in this tree could
     // satisfy them however an install were configured.
     const rateLimiter = ADAPTER_BINDINGS.filter((binding) => binding.port === "RateLimiter");
     expect(rateLimiter.map((binding) => binding.adapter)).toEqual(["redis-ratelimit"]);
     expect(UNIMPLEMENTED_ADAPTERS).toContain("redis-ratelimit");
     const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
-    for (const port of ["SecretHasher", "TokenMinter", "TotpCodeVerifier", "MfaSecretCipher"]) {
+    for (const port of ["TokenMinter", "TotpCodeVerifier"]) {
       expect(ports, `${port} must be bound to no adapter`).not.toContain(port);
       expect(declined?.reason).toContain(port);
+    }
+
+    // AND THE OTHER DIRECTION, WHICH IS THE HALF WIN-267 A1 ADDED. Two ports
+    // LEFT this sentence, and a sentence that merely stopped naming them would
+    // be an unchecked claim. Each is joined to the directory that satisfies it
+    // and to the constructed adapter that carries it, so the reason cannot shed
+    // a port the tree has not actually gained.
+    const landed: Readonly<Record<string, AdapterName>> = {
+      SecretHasher: "node-crypto-digest",
+      MfaSecretCipher: "keyring-envelope",
+    };
+    const { construction } = readiness(FULLY_DECLARED);
+    for (const [port, adapter] of Object.entries(landed)) {
+      expect(ADAPTER_BINDINGS.filter((binding) => binding.port === port).map((b) => b.adapter)).toEqual([
+        adapter,
+      ]);
+      expect(UNIMPLEMENTED_ADAPTERS).not.toContain(adapter);
+      expect(construction.adapters[adapter as AdapterName]).toBeDefined();
+      expect(declined?.reason, `${port} is satisfied and must not be named`).not.toContain(port);
     }
   });
 });

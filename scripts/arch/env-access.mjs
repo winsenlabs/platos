@@ -341,7 +341,22 @@ export const VIOLATION_CODES = Object.freeze({
  * true as `apps/core-api` grows a transport: the six sections still arrive
  * through `readProcessEnvironment()` and nothing added a second door.
  */
-export const EXPECTED_FILE_COUNT = 1580;
+/*
+ * WIN-267 A1: 1580 + 8 = 1588, and every one of the eight is nameable.
+ *
+ *   packages/adapters/node-crypto-digest/src   6 — adapter.ts, index.ts,
+ *     secret-hasher.ts, oracle-vectors.ts, secret-hasher.test.ts,
+ *     oracle-source-anchor.test.ts
+ *   packages/adapters/keyring-envelope/src     2 — mfa-secret-cipher.ts and its
+ *     suite
+ *
+ * The DECLARED table is unmoved, which is the property worth stating. Neither
+ * adapter reads `process.env`: a SHA-256 has nothing to configure, and the MFA
+ * envelope takes its key ring from the composition root exactly as the three
+ * ports beside it do. A fourteenth directory arrived and nothing added a second
+ * door.
+ */
+export const EXPECTED_FILE_COUNT = 1588;
 
 function listSourceFiles(root) {
   const found = [];

@@ -34,7 +34,9 @@ import type {
 
 import type {
   IdentityAccessRepository,
+  MfaSecretCipher,
   RateLimiter,
+  SecretHasher,
 } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -136,6 +138,8 @@ import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
 import { buildKeyringEnvelope } from "@platos/adapter-keyring-envelope";
+import type { NodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-digest";
+import { createNodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-digest";
 
 import type { ProvidersConfiguration } from "../config/providers.js";
 import type { SecurityConfiguration } from "../config/security.js";
@@ -184,6 +188,15 @@ export interface AdapterInstances {
   // every envelope the ORM stores. `secrets-repository.ts` declined all three of
   // its ports on exactly that ground.
   readonly "keyring-envelope": KeyringEnvelopeAdapter;
+  // WIN-267 A1 — the FOURTEENTH slot, and the only one an install cannot
+  // misconfigure. It holds no vendor client, so §15's consolidation rule has
+  // nothing to consolidate it INTO: that rule collapses directories that would
+  // otherwise open a second connection to one server, and a SHA-256 opens
+  // nothing. It is not a row on `keyring-envelope` for the reason that
+  // directory's own header gives for keeping `Hasher` there — the cost
+  // parameter — which this port cannot have, being synchronous and digesting
+  // only high-entropy random tokens.
+  readonly "node-crypto-digest": NodeCryptoDigestAdapter;
 }
 
 export type AdapterName = keyof AdapterInstances;
@@ -481,6 +494,24 @@ interface PortSatisfaction {
   readonly "keyring-envelope:KeyRing": Satisfies<KeyringEnvelopeAdapter, KeyRing>;
   readonly "keyring-envelope:AeadCipher": Satisfies<KeyringEnvelopeAdapter, AeadCipher>;
   readonly "keyring-envelope:Hasher": Satisfies<KeyringEnvelopeAdapter, Hasher>;
+  // WIN-267 A1. The FOURTH port on this directory, and the first one indexed
+  // through a PROPERTY — for the same forced reason `secrets`', `memory`'s and
+  // `jobs`' store bindings are. `AeadCipher.seal(request): Promise<Result<...>>`
+  // and `MfaSecretCipher.seal(plaintext): string` are one name with two
+  // signatures, so `KeyringEnvelopeAdapter` cannot extend both and
+  // `Satisfies<KeyringEnvelopeAdapter, MfaSecretCipher>` would resolve to
+  // `never` and fail a binding that holds. Indexing `["mfaSecrets"]` makes the
+  // obligation the TRUE one, and the day that property is renamed or re-typed
+  // `pnpm build:v1` fails here.
+  readonly "keyring-envelope:MfaSecretCipher": Satisfies<
+    KeyringEnvelopeAdapter["mfaSecrets"],
+    MfaSecretCipher
+  >;
+  // WIN-267 A1. The fourteenth directory's ONE binding, proven through the
+  // adapter itself: `hash`, `equals` and `deriveCodeChallenge` collide with
+  // nothing else it publishes, so `NodeCryptoDigestAdapter extends SecretHasher`
+  // resolves directly.
+  readonly "node-crypto-digest:SecretHasher": Satisfies<NodeCryptoDigestAdapter, SecretHasher>;
 }
 
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
@@ -533,6 +564,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "keyring-envelope:KeyRing": true,
   "keyring-envelope:AeadCipher": true,
   "keyring-envelope:Hasher": true,
+  "keyring-envelope:MfaSecretCipher": true,
+  "node-crypto-digest:SecretHasher": true,
 });
 
 /**
@@ -924,13 +957,25 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   Object.freeze({ adapter: "keyring-envelope", port: "KeyRing", owner: "secrets" }),
   Object.freeze({ adapter: "keyring-envelope", port: "AeadCipher", owner: "secrets" }),
   Object.freeze({ adapter: "keyring-envelope", port: "Hasher", owner: "secrets" }),
+  // WIN-267 A1. The FIFTIETH binding, and the first on this directory owned by a
+  // context other than `secrets`. It is here rather than in a directory of its
+  // own because `root-key-ring.ts` is the tree's only holder of AES-256 root key
+  // bytes and publishes no export that hands them out, and rule (j2)
+  // `adapter-is-self-contained` forbids a second directory from importing this
+  // one to reach them — so the alternative was not a fourteenth slot but a
+  // SECOND key hierarchy.
+  Object.freeze({ adapter: "keyring-envelope", port: "MfaSecretCipher", owner: "identity-access" }),
+  // WIN-267 A1. The FIFTY-FIRST binding and the fourteenth directory's only one.
+  // It sits at the END for the reason the three above it do: every ordinal
+  // already written stays true.
+  Object.freeze({ adapter: "node-crypto-digest", port: "SecretHasher", owner: "identity-access" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-NINE rows across
- * thirteen directories: a caller iterating this list to construct or close
+ * De-duplicated because `ADAPTER_BINDINGS` now holds FIFTY-ONE rows across
+ * fourteen directories: a caller iterating this list to construct or close
  * adapters would otherwise build `postgres-tenancy` THIRTY-THREE times and
  * open thirty-three pools over the one database.
  */
@@ -1162,6 +1207,21 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     if (ring.ok) adapters["keyring-envelope"] = ring.value;
     else faults.push(`keyring-envelope could not be constructed: ${ring.error.code}`);
   }
+
+  // WIN-267 A1. THE ONLY DIRECTORY BUILT UNCONDITIONALLY, and the reason is the
+  // whole of its design rather than an exemption. Every other constructor above
+  // is behind an `if`: a group is declared or it is not, and a directory with no
+  // configuration to read cannot be built from configuration that was not set.
+  // This one reads nothing. There is no key, no endpoint, no credential and no
+  // pool, so there is no state an operator could get wrong and no `Result` a
+  // failure could arrive on — and putting it behind a group would invent a
+  // variable whose only effect would be to turn sign-in off.
+  //
+  // It therefore appears in NEITHER report: not in `unwired`, because it is
+  // always wired, and not in `faults`, because nothing it does can fault. The
+  // group table in `installation.test.ts` says the same thing from the other
+  // side — it is the second directory no configuration group produces.
+  adapters["node-crypto-digest"] = createNodeCryptoDigestAdapter();
 
   if (input.providers.modelRouter === null) {
     decline(

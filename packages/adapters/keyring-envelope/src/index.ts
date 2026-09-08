@@ -16,6 +16,15 @@ export { createRootKeyRing } from "./root-key-ring.js";
 export { createEnvelopeCipher } from "./envelope-cipher.js";
 export { createSecretHasher } from "./secret-hasher.js";
 
+// WIN-267 A1. The identity-access MFA envelope, and its refusal type beside it.
+// `MfaEnvelopeError` is exported because it is what `open` THROWS — the port has
+// no failure channel — so a process that wants to log the reason rather than the
+// message needs the class. `createMfaSecretCipher` follows the precedent
+// `createEnvelopeCipher` set: a suite that wants the port without the
+// `adapterName` tag should not have to go through the barrel adapter to get it.
+export type { MfaEnvelopeRefusal } from "./mfa-secret-cipher.js";
+export { MfaEnvelopeError, createMfaSecretCipher } from "./mfa-secret-cipher.js";
+
 // WIN-259 M2.4. `LegacyKeyInput` is exported for the same reason
 // `RootKeyRingInput` is: the composition root is the one place entitled to name
 // this package, and it is the place that reads the legacy encryption keys out of

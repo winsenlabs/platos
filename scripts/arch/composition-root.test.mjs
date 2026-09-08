@@ -142,7 +142,15 @@ test("the live repository satisfies both the boundary rules and the composition-
   // RequestIdempotency, both rows on an EXISTING directory) = 49 bindings across
   // THIRTEEN directories. The two pins move by different amounts, which is the
   // whole reason they are pinned separately.
-  assert.equal(audit.bindingCount, 49);
+  //
+  // WIN-267 A1: 49 + 2 = 51 across FOURTEEN directories, and by different
+  // amounts a further time. `keyring-envelope:MfaSecretCipher` is a row on an
+  // EXISTING directory, because `root-key-ring.ts` is the tree's only holder of
+  // AES-256 root key bytes and rule (j2) forbids a second package from reaching
+  // them; `node-crypto-digest:SecretHasher` is the fourteenth DIRECTORY, because
+  // a keyless SHA-256 shares no vendor client with anything and §15's
+  // consolidation rule is about sharing one.
+  assert.equal(audit.bindingCount, 51);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -166,7 +174,15 @@ test("the live repository satisfies both the boundary rules and the composition-
   // drawn. `keyring-envelope` holds no rows and no database client: it holds the
   // AES-256 root keys, which ADR M0.3 §15's "one vendor client, one directory"
   // does not reach.
-  assert.equal(ADAPTERS.length, 13);
+  //
+  // WIN-267 A1 MOVES IT AGAIN, 13 -> 14. `node-crypto-digest` holds no rows, no
+  // client and no key: it is a SHA-256 and a constant-time comparison. §15's
+  // consolidation rule collapses directories that would otherwise open a second
+  // connection to one server, and this opens none — so there is nothing to
+  // collapse it into, and `keyring-envelope`'s own reason for holding `secrets`'
+  // `Hasher` (the cost parameter that belongs with the keys) does not carry: this
+  // port is synchronous and can never have one.
+  assert.equal(ADAPTERS.length, 14);
 });
 
 // ---------------------------------------------------------------------------
@@ -320,7 +336,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -417,11 +433,14 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // the real tree. This reads BOTH sides off the live repository.
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const listed = parseUnimplementedAdapters(source);
-  assert.equal(listed.length, 8, "eight of the thirteen directories are still generated interfaces");
+  assert.equal(listed.length, 8, "eight of the fourteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
   assert.deepEqual(constructible, [
     "keyring-envelope",
     "model-router-providers",
+    // WIN-267 A1. The sixth constructible directory, and the only one in the
+    // list that takes no configuration at all.
+    "node-crypto-digest",
     "outbox",
     "postgres-tenancy",
     "redis-cache",
@@ -469,13 +488,13 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FORTY-NINE bindings, across thirteen directories", () => {
+test("the binding-table parser reads all FIFTY-ONE bindings, across fourteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 49);
-  assert.equal(ADAPTERS.length, 13);
+  assert.equal(bindings.length, 51);
+  assert.equal(ADAPTERS.length, 14);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
@@ -502,8 +521,14 @@ test("the binding-table parser reads all FORTY-NINE bindings, across thirteen di
   // flattening and once in the directory set, which is the same both-halves
   // check the postgres row above gets: a change that collapsed its three
   // cryptography bindings back to one row per directory cannot pass here.
-  assert.equal(entries.filter((entry) => entry.adapter === "keyring-envelope").length, 3);
-  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 13);
+  // WIN-267 A1 3 -> 4: `identity-access`'s `MfaSecretCipher`, the first port on
+  // this directory owned by a context other than `secrets`.
+  assert.equal(entries.filter((entry) => entry.adapter === "keyring-envelope").length, 4);
+  // And the fourteenth directory appears ONCE in both halves, which is the same
+  // both-ways check: a single-binding directory must not be double-counted in
+  // the flattening, and must not vanish from the directory set.
+  assert.equal(entries.filter((entry) => entry.adapter === "node-crypto-digest").length, 1);
+  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 14);
 });
 
 test("the parser reads a WRAPPED entry, not only a one-line one", () => {
@@ -548,7 +573,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 49 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 51 declared bindings")
     )
   );
 });
@@ -579,7 +604,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

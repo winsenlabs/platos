@@ -113,6 +113,9 @@
       "path": "./packages/adapters/keyring-envelope"
     },
     {
+      "path": "./packages/adapters/node-crypto-digest"
+    },
+    {
       "path": "./apps/core-api"
     },
     {

@@ -1162,7 +1162,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //      mutations.json were widened in place.
     // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
     // M2 INTEGRATION, ALL FOUR: 1397 + 10 + 28 + 12 + 7 = 1454.
-    packages: 1454,
+    //
+    // WIN-267 (M4.1, A1) 1454 -> 1465, ELEVEN files and every one nameable.
+    //   +9 packages/adapters/node-crypto-digest — the FOURTEENTH adapter
+    //      directory, adopted in the same run that creates it. Three scaffolding
+    //      files (package.json, tsconfig.json, README.md) on the existing
+    //      packages.adapters config/doc rules, and six source files on the
+    //      existing source and test rules: adapter.ts, index.ts,
+    //      secret-hasher.ts, oracle-vectors.ts and the two suites. Its
+    //      generated `src/adapter.ts` and `src/index.ts` placeholders are
+    //      RELEASED by the adoption rather than added, exactly as
+    //      `redis-cache`'s were — the census records the same fact from the
+    //      other side, 90 placeholders released rather than 92.
+    //   +3 packages/adapters/keyring-envelope — mfa-secret-cipher.ts, its suite,
+    //      and `mutations-mfa-secret-cipher.json`, this dimension's guard
+    //      ledger. adapter.ts, index.ts, package.json and tsconfig.json were
+    //      widened IN PLACE and a widened file is not a new one.
+    //   +1 the second guard ledger,
+    //      `packages/adapters/node-crypto-digest/mutations-node-crypto-digest.json`.
+    // 9 + 3 + 1 = 13, so 1454 + 13 = 1467. No ledger rule is new:
+    // `packages.adapters.source`, `.test`, `.config` and `.doc` already match
+    // every path above, and the two JSON ledgers land on `.config` exactly as
+    // `postgres-tenancy`'s twenty-one do.
+    packages: 1467,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1488,7 +1510,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
+  // WIN-267 (M4.1, A1) 1598 -> 1611: the thirteen files above, all in `packages`.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1611);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1594,7 +1617,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1598
+    //
+    // and WIN-267 (M4.1, A1) +13, ALL of them `packages` and ALL of them
+    // `packages/adapters` — TEN in the newly adopted fourteenth directory
+    // `node-crypto-digest` (three generator-owned scaffolding files, six source
+    // files and its guard ledger) and THREE in `keyring-envelope` (the MFA
+    // envelope, its suite and that dimension's guard ledger). It ADOPTS ONE
+    // PROJECT and CHANGES NO LEDGER RULE, so this delta too is purely additive:
+    // 1598 + 13 = 1611, re-derived here by summing the per-area counts
+    // independently of the assertion above, so the two can DISAGREE and be
+    // caught.
+    rulesDocument.baseline.totalFiles + 1611
   );
 });
 
