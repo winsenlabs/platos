@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "6fb441c177818aafbddb8fc256a952b991d91ea8ddc4014edbd399551f0613f8"
+      "sha256": "aafaa673f31f794a28b0b50221b9268a02e35226eba7e0f42cc98b4f961d49db"
     },
     {
       "path": "LICENSE",

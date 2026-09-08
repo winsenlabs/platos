@@ -142,6 +142,15 @@ const v1ReleaseGateCommands = [
   "pnpm test:secret-response-census",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
+  // WIN-267 (M4.1) T5. The M2 clause "webapp database credentials can be
+  // removed" is one number reaching zero, and NOTHING counted it: rule (j)'s
+  // enforcer excludes apps/webapp during the strangler window, and
+  // .dependency-cruiser.js is a generated artifact this workspace never
+  // executes. So the denominator could grow between two green runs. The meter
+  // parses the tree, attributes every call site through ADR M0.3 s5.2's
+  // ownership map, and fails on any drift from the committed artifact.
+  "pnpm audit:webapp-cutover",
+  "pnpm test:webapp-cutover",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   // WIN-299 (M2.6). audit:advisory:check now fails on any un-dispositioned
@@ -342,6 +351,15 @@ const expectedV1EvidenceCommands = [
   "pnpm test:secret-response-census",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
+  // WIN-267 (M4.1) T5. The M2 clause "webapp database credentials can be
+  // removed" is one number reaching zero, and NOTHING counted it: rule (j)'s
+  // enforcer excludes apps/webapp during the strangler window, and
+  // .dependency-cruiser.js is a generated artifact this workspace never
+  // executes. So the denominator could grow between two green runs. The meter
+  // parses the tree, attributes every call site through ADR M0.3 s5.2's
+  // ownership map, and fails on any drift from the committed artifact.
+  "pnpm audit:webapp-cutover",
+  "pnpm test:webapp-cutover",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm audit:advisory:nonvacuity",
@@ -451,6 +469,8 @@ const expectedV1PackageScripts = new Map([
   ["test:max-file-lines", "node --test scripts/arch/max-file-lines.test.mjs"],
   ["test:webapp-image-inventory", "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs"],
   ["test:webapp-inventory-contract", "node --test scripts/webapp-inventory-contract.test.mjs"],
+  ["audit:webapp-cutover", "node scripts/webapp-cutover.mjs --check"],
+  ["test:webapp-cutover", "node --test scripts/webapp-cutover.test.mjs"],
   // WIN-299 (M2.6): test:advisory now covers the disposition gate's unit suite
   // alongside the receipt suite, the same two-file shape test:webapp-image-inventory
   // already uses above.
@@ -2298,10 +2318,18 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      secret-response-census (audit + test). Both gates existed and neither
   //      ran here, and the composition proved the taxonomy one goes stale across
   //      a branch boundary in a way nothing else in this repository can see.
-  // 26 + 2 + 4 = 32.
+  //   +2 WIN-267 (M4.1, T5): webapp-cutover (audit + test), the meter for the M2
+  //      clause "webapp database credentials can be removed". It joins the
+  //      release gate rather than sitting beside it because the property it
+  //      holds is a NUMBER THAT MUST NOT GROW, and nothing else in the
+  //      repository counts it: `arch-boundaries.mjs` excludes `apps/webapp`
+  //      during the strangler window and `.dependency-cruiser.js` is a generated
+  //      artifact this workspace never executes. A denominator that can move
+  //      between two green runs is the one thing a cutover cannot survive.
+  // 26 + 2 + 4 + 2 = 34.
   assert.equal(
     v1ReleaseGateCommands.length,
-    32,
+    34,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate and the secret-response census"
   );
   assert.equal(
@@ -4492,12 +4520,20 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   gains one: a release gate that could be neutralised by appending `|| true`
   //   is a gate that runs and cannot fail.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 = 367. The count is pinned rather than
-  // derived so that a control silently disappearing is a failure rather than a
-  // smaller number nobody reads.
+  //
+  //   WIN-267 (M4.1) T5, +4 AND NOT +2. audit/test:webapp-cutover are TWO
+  //   commands, and each appears in BOTH the release-gate selector and the
+  //   evidence list — the same shape every pair above takes — so the control
+  //   table gains four entries for two gates. Reading the +2 off the selector
+  //   assertion and expecting it here is the arithmetic slip this note exists to
+  //   stop.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 4 = 371. The count is pinned rather
+  // than derived so that a control silently disappearing is a failure rather
+  // than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    367,
+    371,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

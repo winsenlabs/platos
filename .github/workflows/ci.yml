@@ -163,6 +163,8 @@ jobs:
           pnpm test:secret-response-census
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
+          pnpm audit:webapp-cutover
+          pnpm test:webapp-cutover
           pnpm test:advisory
           pnpm audit:advisory:check
           pnpm audit:advisory:nonvacuity
