@@ -223,7 +223,7 @@ test("removing a root solution reference fails independently", () => {
   const root = fixture();
   mutateJson(root, "tsconfig.json", (config) => config.references.pop());
   const result = checkV1ProjectGraph(root);
-  assert.ok(errorIncludes(result, "root references must list the exact 33 projects"));
+  assert.ok(errorIncludes(result, "root references must list the exact 34 projects"));
 });
 
 test("removing a project reference fails even when source and dependencies still declare the edge", () => {
@@ -295,7 +295,7 @@ test("an extra discovered project fails the exact project-count contract", () =>
   writeFileSync(join(root, rogue, "tsconfig.json"), '{"compilerOptions":{"composite":true},"include":["src/**/*.ts"],"references":[]}\n');
   mutateJson(root, "tsconfig.json", (config) => config.references.push({ path: `./${rogue}` }));
   const result = checkV1ProjectGraph(root);
-  assert.ok(errorIncludes(result, "root references must list the exact 33 projects"));
+  assert.ok(errorIncludes(result, "root references must list the exact 34 projects"));
   assert.ok(errorIncludes(result, "discovered project set"));
 });
 
@@ -474,8 +474,19 @@ test("the live owner map passes its own check", () => {
   // ONE owner, so many-ports-one-edge leaves it out of the exception list. The
   // DIRECTORY count takes WIN-259's move and nothing from WIN-260, whose two
   // bindings are rows on a directory that already existed. 12 + 1 = 13.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 17, "redis-cache": 3 });
-  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 13);
+  //
+  // WIN-267 A1 MOVES BOTH, AND STILL BY DIFFERENT AMOUNTS. The multi-owner map
+  // gains `keyring-envelope` at 2: its FOURTH port is `identity-access`'s
+  // `MfaSecretCipher`, so the sentence above — three ports, one owner — stops
+  // being true and the entry it justified leaving out is now earned. The
+  // DIRECTORY count takes `node-crypto-digest` and nothing from that fourth
+  // binding: 13 + 1 = 14.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, {
+    "postgres-tenancy": 17,
+    "redis-cache": 3,
+    "keyring-envelope": 2,
+  });
+  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 14);
 });
 
 test("§15 refusal: an adapter granted an owner edge it was not given fails", () => {

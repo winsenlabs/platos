@@ -794,7 +794,18 @@ test("the live selectors scan an exact nonzero source census", () => {
   // list below is unchanged. A controller monolith remains structurally
   // forbidden in the directory the routes are coming TO and in the directory
   // they are registered IN.
-  assert.equal(result.fileCount, 1542);
+  //
+  // WIN-267 A1 adds EIGHT to this selector, all under `packages/adapters/**`:
+  // six in the new fourteenth directory `node-crypto-digest` and two in
+  // `keyring-envelope`. 1542 + 8 = 1550.
+  //
+  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured, not assumed:
+  // the largest of the eight is `mfa-secret-cipher.test.ts` at 190 effective
+  // lines, then `mfa-secret-cipher.ts` at 141 and `secret-hasher.test.ts` at
+  // 128; the four remaining production modules run 11 to 108. Nothing crosses
+  // the 400-line warning, let alone the 500-line error, and the warning list
+  // below is unchanged.
+  assert.equal(result.fileCount, 1550);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -811,7 +822,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       12 +
       // WIN-267 T2, the REST chassis: 5 under `src/transports/rest/` and 4 under
       // `src/http/`, newly WRITTEN and inside selectors that already existed.
-      5 + 4
+      5 + 4 +
+      // WIN-267 A1: node-crypto-digest 6 and keyring-envelope 2, both inside the
+      // `packages/adapters/**` selector that already existed.
+      6 + 2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -926,7 +940,16 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   APPS-TRANSPORTS  13
   //   APPS-HTTP        16
   // 27 + 1075 + 411 + 13 + 16 = 1542.
-  assert.equal(result.fileCount, 27 + 1075 + 411 + 13 + 16);
+  //
+  // WIN-267 (M4.1, A1) MOVES ONLY THE ADAPTERS TERM, 411 -> 419, and that is the
+  // claim: two driven ports got implementations and nothing else changed shape.
+  // Six of the eight are the new fourteenth directory `node-crypto-digest` and
+  // two are `keyring-envelope`'s MFA envelope with its suite. A tranche that
+  // widened a context while calling itself an adapter would show up here as a
+  // moved contexts term; this one does not.
+  //   ADAPTERS        419
+  // 27 + 1075 + 419 + 13 + 16 = 1550.
+  assert.equal(result.fileCount, 27 + 1075 + 419 + 13 + 16);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
