@@ -25,10 +25,20 @@
 // when THREE things are true at once, and the count falls away fast:
 //
 //   1. the context publishes a factory that assembles its whole contract.
-//      ELEVEN do (`createTenancyService`, `createIdentityAccessService`, and the
-//      nine `create*Contract` functions); SIX do not — `agents`, `tools`,
-//      `secrets`, `memory`, `cost-monitoring` and `providers` publish their use
-//      cases one by one and no assembler over them.
+//      THIRTEEN do; FOUR do not -- `agents`, `tools`, `memory` and
+//      `cost-monitoring` publish their use cases one by one and no assembler
+//      over them.
+//
+//      THIS SENTENCE USED TO SAY ELEVEN AND SIX, AND IT NAMED `secrets` AND
+//      `providers` AMONG THE SIX. It was wrong on both, and it was wrong at v1
+//      rather than newly wrong: `secretsContract` has been exported from
+//      `packages/contexts/secrets/contracts/index.ts` and `providersContract`
+//      from `packages/contexts/providers/contracts/index.ts` since before this
+//      note was written, and both are on the `.` entry point every package
+//      already publishes. WIN-267 A3 repeated the claim in
+//      `PROVIDERS_UNASSEMBLED` and made a decision on it. It is corrected here by
+//      MEASUREMENT and, more to the point, by acting on it: both contexts are
+//      composed below.
 //
 //   2. every driven port in its dependency bundle has an implementation SOMEWHERE
 //      in this tree.
@@ -111,6 +121,8 @@
 
 import type { Clock, IdGenerator, Logger } from "@platos/kernel";
 
+import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/context-providers";
+
 import type { SuppliedContextPorts } from "../app.module.js";
 import type { SuppliedAdapters } from "./adapter-bindings.js";
 
@@ -152,32 +164,6 @@ export interface ContextPortAssembly {
  * not compose. `installation.test.ts` checks that clause too, by asserting no
  * binding row satisfies `SafetyEventSink`.
  */
-/**
- * The reason `providers` is not assembled here, stated once.
- *
- * WIN-267 A3. It is recorded for the first time, and the reason it moved is the
- * reason it is worth recording: `ProviderProbeCache` was satisfied by no adapter
- * in this tree, and now it is — `redis-cache`'s fourth port. So the only thing
- * left between this root and a composed `providers` is condition (1) of the
- * three above, which is a FACTORY and not an adapter.
- *
- * READ BACK BY `installation.test.ts`, like the sentence below it: every claim
- * in it is checked against the binding table and the constructed adapters rather
- * than taken on trust, so this sentence and the tree cannot drift apart.
- *
- * ALSO SAID PLAINLY: this tranche did NOT make `providers` composable, and an
- * agent brief that says otherwise is wrong about this tree. `secrets` publishes
- * no assembler either, and `ProvidersDependencies` names a whole `SecretsPeer`,
- * so composing `providers` needs two contexts to publish factories first. What
- * changed is that the ADAPTER gap closed.
- */
-export const PROVIDERS_UNASSEMBLED =
-  "it publishes its use cases one by one and no factory that assembles its whole" +
-  " contract, so this root has nothing to call; every driven port it names now has" +
-  " an implementation — ProvidersRepository and ModelRouter already did, and WIN-267" +
-  " A3 gave ProviderProbeCache one on redis-cache — and its secrets peer is a context" +
-  " that publishes no assembler either";
-
 export const IDENTITY_ACCESS_UNASSEMBLED =
   "every one of its six driven ports now has an implementation and its kernel" +
   " SafetyEventSink slot does not: IdentityAccessRepository is postgres-tenancy," +
@@ -221,6 +207,9 @@ export function assembleContextPorts(
 ): ContextPortAssembly {
   const unassembled: UnassembledContext[] = [];
   const postgres = adapters["postgres-tenancy"];
+  const keyring = adapters["keyring-envelope"];
+  const cache = adapters["redis-cache"];
+  const router = adapters["model-router-providers"];
 
   if (postgres === undefined) {
     unassembled.push(
@@ -233,27 +222,105 @@ export function assembleContextPorts(
   unassembled.push(
     Object.freeze({ context: "identity-access", reason: IDENTITY_ACCESS_UNASSEMBLED }),
   );
-  unassembled.push(Object.freeze({ context: "providers", reason: PROVIDERS_UNASSEMBLED }));
+
+  // WIN-267 composition. `secrets` needs a store, a variable store and the three
+  // cryptography ports, and every one of them is a NAMED property of a
+  // constructed adapter. It declines on the FIRST directory that is missing, and
+  // it names WHICH — an operator reading `/readyz` with a database but no
+  // `PLATOS_SECURITY_ENCRYPTION_KEY` must be told about the key ring rather than
+  // about "secrets".
+  const secretsMissing: string[] = [];
+  if (postgres === undefined) secretsMissing.push("postgres-tenancy (SecretsRepository, EnvironmentVariableRepository, UnitOfWork)");
+  if (keyring === undefined) secretsMissing.push("keyring-envelope (KeyRing, AeadCipher, Hasher)");
+  if (secretsMissing.length > 0) {
+    unassembled.push(
+      Object.freeze({
+        context: "secrets",
+        reason: `its driven ports are all satisfied and ${secretsMissing.join(" and ")} ${secretsMissing.length === 1 ? "is" : "are"} not constructed`,
+      }),
+    );
+  }
+
+  // `providers` takes eight of its ten slots from adapters and kernel ports, and
+  // TWO from composed PEERS — `tenancy` for the authorization seam and `secrets`
+  // for the vault hand-off. Those two are built in `app.module.ts`, which is why
+  // this file hands over everything BUT them: a bundle assembled here would have
+  // to hold a context contract, and contexts are what the composition root
+  // builds. `policy` and `catalogue` are DOMAIN VALUES with published defaults —
+  // `providers/domain/catalogue.ts` says outright that "every rule takes it as a
+  // parameter, so an installation can extend the provider list without a code
+  // change" — so taking the shipped ones here is the documented default and not
+  // an invention of this file's.
+  const providersMissing: string[] = [];
+  if (postgres === undefined) providersMissing.push("postgres-tenancy (ProvidersRepository, UnitOfWork)");
+  if (router === undefined) providersMissing.push("model-router-providers (ModelRouter)");
+  if (cache === undefined) providersMissing.push("redis-cache (ProviderProbeCache)");
+  if (keyring === undefined) providersMissing.push("keyring-envelope, through the secrets peer it calls on every path that touches key material");
+  if (providersMissing.length > 0) {
+    unassembled.push(
+      Object.freeze({
+        context: "providers",
+        reason: `every driven port it names has an implementation and ${providersMissing.join(", ")} ${providersMissing.length === 1 ? "is" : "are"} not constructed`,
+      }),
+    );
+  }
+
+  const ports: {
+    -readonly [Key in keyof SuppliedContextPorts]?: SuppliedContextPorts[Key];
+  } = {};
+
+  if (postgres !== undefined) {
+    ports.tenancy = {
+      repository: postgres,
+      locks: postgres.locks,
+      sessionRevoker: postgres.sessionRevoker,
+      accessKeyRevocation: postgres.accessKeyRevocation,
+      invitationTokens: postgres.invitationTokens,
+      operators: postgres.operators,
+      unitOfWork: postgres.unitOfWork,
+      clock: dependencies.clock,
+      ids: dependencies.ids,
+      logger: dependencies.logger,
+    };
+  }
+
+  if (postgres !== undefined && keyring !== undefined) {
+    // `secrets` and `secretsVariables` are two DIFFERENT properties of the ORM
+    // adapter and the only two of this bundle's ports that could not be spread
+    // into it, which `PORT_SATISFACTION` records by indexing both through the
+    // property rather than through the adapter. Naming them here is what makes a
+    // transposition impossible: `SecretsRepository` and
+    // `EnvironmentVariableRepository` are structurally different, so a
+    // positional bundle would fail the compiler, but the three cryptography
+    // ports below are all satisfied by the SAME object and a positional bundle
+    // of those three would type-check with any two of them swapped.
+    ports.secrets = {
+      repository: postgres.secrets,
+      variables: postgres.secretsVariables,
+      keyRing: keyring,
+      cipher: keyring,
+      hasher: keyring,
+      clock: dependencies.clock,
+      ids: dependencies.ids,
+      unitOfWork: postgres.unitOfWork,
+    };
+  }
+
+  if (postgres !== undefined && keyring !== undefined && router !== undefined && cache !== undefined) {
+    ports.providers = {
+      repository: postgres,
+      modelRouter: router,
+      probeCache: cache.probes,
+      clock: dependencies.clock,
+      ids: dependencies.ids,
+      unitOfWork: postgres.unitOfWork,
+      policy: DEFAULT_PROVIDERS_POLICY,
+      catalogue: DEFAULT_PROVIDER_CATALOGUE,
+    };
+  }
 
   return Object.freeze({
-    ports: Object.freeze(
-      postgres === undefined
-        ? {}
-        : {
-            tenancy: {
-              repository: postgres,
-              locks: postgres.locks,
-              sessionRevoker: postgres.sessionRevoker,
-              accessKeyRevocation: postgres.accessKeyRevocation,
-              invitationTokens: postgres.invitationTokens,
-              operators: postgres.operators,
-              unitOfWork: postgres.unitOfWork,
-              clock: dependencies.clock,
-              ids: dependencies.ids,
-              logger: dependencies.logger,
-            },
-          },
-    ),
+    ports: Object.freeze({ ...ports }),
     unassembled: Object.freeze([...unassembled]),
   });
 }

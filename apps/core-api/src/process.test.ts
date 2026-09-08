@@ -345,9 +345,14 @@ describe("the built binary starts, serves and stops", () => {
     // UNSATISFIED remainder falls from eight to SEVEN: `redis-ratelimit` is the
     // first directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
     expect(body.reason).toBe("47 of 54 adapter bindings are satisfied; 7 are not");
-    // The context composed over a REAL PostgreSQL adapter rather than over a
-    // bundle an install had to hand in — the first one in this programme.
-    expect(body.detail.composedContexts).toEqual(["tenancy"]);
+    // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
+    // BINARY rather than computed. `tenancy` was the first composed over a REAL
+    // PostgreSQL adapter rather than over a bundle an install had to hand in;
+    // WIN-267's composition adds `secrets` and `providers`, and the ORDER is
+    // load-bearing rather than incidental — `providers` names `tenancy` and
+    // `secrets` as PEERS, so it can only exist after both do, and it is the
+    // first context in this tree built from another context at all.
+    expect(body.detail.composedContexts).toEqual(["tenancy", "secrets", "providers"]);
     // And every remaining directory says which kind of gap it is.
     expect(body.detail.unwiredAdapters).toHaveLength(7);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
