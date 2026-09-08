@@ -15,3 +15,4 @@ export { createRedisIdempotencyStore, reservationKey } from "./idempotency-store
 export { createRedisCache } from "./cache.js";
 export type { RedisRequestIdempotency } from "./request-idempotency.js";
 export { createRedisRequestIdempotency, requestReservationKey } from "./request-idempotency.js";
+export { createRedisProviderProbeCache, evictionPattern } from "./provider-probe-cache.js";

@@ -102,7 +102,15 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // than computed.
   // M2 INTEGRATION: 33 projects (only WIN-259 adds one; WIN-260 adopts one that
   // already existed) and 111 + 2 + 3 = 116 edges. Still READ BACK, not computed.
-  assert.match(output, /33 V1 projects and 116 project edges/u);
+  //
+  // WIN-267 A3: 116 + 1 = 117. `packages/adapters/redis-cache` ->
+  // `packages/contexts/providers`, a FOURTH owner edge on that directory. Its
+  // other half — `redis-ratelimit` becoming a real adapter — adds no edge and
+  // no project: the reference into `identity-access` has existed since the
+  // skeleton was generated, and adoption changes what a project CONTAINS rather
+  // than what it points at. That is exactly why the count below is read back off
+  // `--check` rather than derived here.
+  assert.match(output, /33 V1 projects and 117 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -591,10 +599,15 @@ const LIVE_ADAPTERS = [
   // `IdempotencyStore` behind the SAME Redis client as `memory`'s `Cache`.
   // The fixture copy has to carry it, or the non-vacuity anchor below is
   // comparing the refusals against a table the tree no longer has.
+  // WIN-267 A3 adds the FOURTH, `providers:ProviderProbeCache`. The fixture copy
+  // has to carry it for the reason the header above states: without it,
+  // `checkAdapterTable(LIVE_ADAPTERS)` is a table the tree no longer has, and
+  // every refusal below would be measured against a stale baseline.
   { dir: "redis-cache", port: "Cache", owner: "memory", note: "n",
     additional: [
       { port: "IdempotencyStore", owner: "jobs" },
       { port: "RequestIdempotency", owner: "kernel" },
+      { port: "ProviderProbeCache", owner: "providers" },
     ] },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
@@ -634,7 +647,7 @@ test("§15 refusal: a FOURTEENTH adapter directory fails, even though bindings m
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FIFTIETH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTY-FIRST binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -644,14 +657,19 @@ test("§15 refusal: a FIFTIETH binding fails, even though a directory may hold m
   // §15 amendment anywhere but `postgres-tenancy`. Its errors-and-idempotency
   // dimension moved it again to forty-six, in the same directory and for the
   // kernel: `redis-cache:RequestIdempotency`, M0.4 §2's Idempotency-Key
-  // envelope.
+  // envelope. WIN-267 A3 moved it to FIFTY, in the same directory again and for
+  // `providers`: `redis-cache:ProviderProbeCache`.
+  //
+  // The MUTATION still adds `memory:Cache` to `postgres-tenancy`, which fires
+  // the count rule and the second-home rule at once; only the count is asserted,
+  // because that is the rule this case is about.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 49 adapter bindings; ADAPTERS flattens to 50")));
+  assert.ok(errors.some((error) => error.includes("declares 50 adapter bindings; ADAPTERS flattens to 51")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

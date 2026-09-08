@@ -343,9 +343,23 @@ export const ADAPTERS = [
     // their keyspaces are disjoint by prefix so neither can read the other's
     // records. Its owner is `kernel`, which is what gives this directory its
     // `packages/kernel` project reference and moves EXPECTED_EDGE_COUNT.
+    // WIN-267 A3 ADDS A FOURTH, `providers:ProviderProbeCache`, and the question
+    // it answers is "does the adapter that already exists satisfy the port".
+    // Half of that is NO: `memory`'s `Cache` and this port share not one
+    // signature, and ADR M0.3 §1 row 4 gives `providers` an allow-list of
+    // `tenancy`, `secrets` and `kernel`, so it could not reach `Cache` even if
+    // the shapes matched — the port's own header records that as the reason it
+    // exists. The other half is YES, at the level §15's amendment operates on:
+    // one VENDOR CLIENT is one DIRECTORY, and this is the same Redis, the same
+    // connection and the same namespace discipline as the three ports above. A
+    // fourteenth directory would have been a second Redis client for one Redis.
+    //
+    // It is the FOURTH owner of this directory and therefore its fourth project
+    // reference, which moves EXPECTED_EDGE_COUNT by one.
     additional: [
       { port: "IdempotencyStore", owner: "jobs" },
       { port: "RequestIdempotency", owner: "kernel" },
+      { port: "ProviderProbeCache", owner: "providers" },
     ],
     note: "one namespaced keyspace behind one Redis client",
   },
@@ -640,7 +654,12 @@ export function adapterOwnerPackages(adapter) {
 // 12 + 1 = 13. The BINDING pin takes both: 44 + 3 + 2 = 49. The two moving by
 // different amounts is exactly what the separate pins exist to show.
 export const EXPECTED_ADAPTER_COUNT = 13;
-export const EXPECTED_BINDING_COUNT = 49;
+// WIN-267 A3: 49 -> 50. ONE binding, `redis-cache:ProviderProbeCache`, and no
+// new directory — the count of DIRECTORIES is unmoved at thirteen, which is the
+// distinction §15's amendment is entirely about. `redis-ratelimit` gained an
+// implementation in the same tranche and moved no binding at all: it was already
+// declared, it was simply unsatisfiable.
+export const EXPECTED_BINDING_COUNT = 50;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -860,7 +879,15 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // thirteenth directory) + 3 (WIN-260's postgres-tenancy -> kernel consumer edge
 // and redis-cache's two further owner edges) = 116. READ BACK from
 // `gen-v1-skeleton --check` rather than trusted from this arithmetic.
-export const EXPECTED_EDGE_COUNT = 116;
+// WIN-267 A3: 116 -> 117. ONE edge, `packages/adapters/redis-cache` ->
+// `packages/contexts/providers`, carrying `ProviderProbeCache`. A FOURTH owner
+// edge on a directory that had three, and a reference per PACKAGE rather than
+// per port, so one new binding is again exactly one new edge. It cannot create a
+// cycle: `providers` depends on `tenancy`, `secrets` and `kernel` and on no
+// adapter, and `adapters-only-from-core` makes the return edge unrepresentable.
+// READ BACK from `gen-v1-skeleton --check` rather than trusted from this
+// arithmetic.
+export const EXPECTED_EDGE_COUNT = 117;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project

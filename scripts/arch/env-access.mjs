@@ -354,8 +354,17 @@ export const VIOLATION_CODES = Object.freeze({
  * `process.env`. The limiter takes its URL from `AdapterConstructionInput`,
  * which is `stores.redis` off the composed configuration — the same door
  * `redis-cache` uses and the reason this adapter needed no second one.
+ *
+ * Its SECOND half adds THREE, all under `packages/adapters/redis-cache/src/`,
+ * where `providers`' `ProviderProbeCache` becomes that directory's fourth port:
+ * `provider-probe-cache.ts`, `provider-probe-cache.test.ts` and
+ * `provider-probe.integration.test.ts`. `client.ts` gained a verb and
+ * `adapter.ts` a slot, and a widened file is not a new one.
+ *
+ * 1587 + 3 = 1590, and the DECLARED table is again unmoved: a probe cache reads
+ * no environment either, for the same reason — the connection is handed to it.
  */
-export const EXPECTED_FILE_COUNT = 1587;
+export const EXPECTED_FILE_COUNT = 1590;
 
 function listSourceFiles(root) {
   const found = [];

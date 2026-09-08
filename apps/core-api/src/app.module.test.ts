@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FORTY-NINE bindings across ADR M0.3 §4's THIRTEEN adapter directories", () => {
+  it("declares FIFTY bindings across ADR M0.3 §4's THIRTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -184,9 +184,21 @@ describe("the declared binding table", () => {
     // fact worth stating: bindings 44 + 3 + 2 = 49, directories 12 + 1 = 13.
     // WIN-259 adds a directory and three rows on it; WIN-260 adds two rows on a
     // directory that already existed.
-    expect(ADAPTER_BINDINGS).toHaveLength(49);
-    expect(DECLARED_BINDING_COUNT).toBe(49);
+    // WIN-267 A3: bindings 49 -> 50, directories 13 -> 13. The FOURTH port on
+    // `redis-cache` — `providers:ProviderProbeCache` — is the twentieth time the
+    // directory count has held while the binding count moved, and it is the
+    // cleanest instance of the property this pair exists to state: the port has
+    // a new home and the system has no new vendor client.
+    expect(ADAPTER_BINDINGS).toHaveLength(50);
+    expect(DECLARED_BINDING_COUNT).toBe(50);
     expect(ADAPTER_NAMES).toHaveLength(13);
+    // And it went on the directory that already held the Redis client, which is
+    // §15's amendment applied rather than asserted.
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.port === "ProviderProbeCache").map(
+        (binding) => binding.adapter,
+      ),
+    ).toEqual(["redis-cache"]);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "keyring-envelope").map(
         (binding) => binding.port,
@@ -317,9 +329,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(49);
+    expect(report.unsatisfied).toHaveLength(50);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/49 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/50 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -346,7 +358,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(48);
+    expect(report.unsatisfied).toHaveLength(49);
 
     expect(report.faults).toEqual([]);
   });
@@ -376,7 +388,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(49);
+    expect(app.bindings.unsatisfied).toHaveLength(50);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -398,13 +410,18 @@ describe("composing the application", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(CompositionFault);
       const fault = error as CompositionFault;
-      // THREE faults, not one, since WIN-260 (M2.5): `redis-cache` carries
-      // `Cache`, `IdempotencyStore` and — since this dimension —
-      // `RequestIdempotency`, so an adapter wired into that slot that identifies
-      // as something else fails every binding on the directory. A pin of `1`
-      // would have gone green on a directory that had quietly stopped satisfying
-      // its second and third ports.
-      expect(fault.faults).toHaveLength(3);
+      // FOUR faults, not one. `redis-cache` carries `Cache`,
+      // `IdempotencyStore`, `RequestIdempotency` (WIN-260) and —
+      // since WIN-267 A3 — `ProviderProbeCache`, so an adapter wired into that
+      // slot that identifies as something else fails every binding on the
+      // directory. A pin of `1` would have gone green on a directory that had
+      // quietly stopped satisfying its second, third or fourth port, and this
+      // number is derived rather than chosen: it is the row count for that
+      // directory in the binding table.
+      expect(fault.faults).toHaveLength(
+        ADAPTER_BINDINGS.filter((binding) => binding.adapter === "redis-cache").length,
+      );
+      expect(fault.faults).toHaveLength(4);
       expect(fault.message).not.toContain("127.0.0.1");
     }
   });
@@ -412,7 +429,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(48);
+    expect(app.bindings.unsatisfied).toHaveLength(49);
 
   });
 

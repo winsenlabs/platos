@@ -24,7 +24,11 @@ import {
   type AdapterConstruction,
   type AdapterName,
 } from "./adapter-bindings.js";
-import { IDENTITY_ACCESS_UNASSEMBLED, assembleContextPorts } from "./context-ports.js";
+import {
+  IDENTITY_ACCESS_UNASSEMBLED,
+  PROVIDERS_UNASSEMBLED,
+  assembleContextPorts,
+} from "./context-ports.js";
 
 /**
  * A platform an install could really set, with every group this tranche can
@@ -286,22 +290,33 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 42 of 49, and the 7 that remain are exactly the bindings with no implementation", () => {
+  it("reports 43 of 50, and the 7 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the remaining directories sees both
     // move together and knows which it changed.
     //
-    // WIN-267 A3 IS THE FIRST TRANCHE TO MOVE IT, and this is the arithmetic:
-    // eight unimplemented directories held one binding each, `redis-ratelimit`
-    // gained an implementation, so 8 - 1 = 7 remain and 49 - 7 = 42 are
-    // satisfied. 41 -> 42 and 8 -> 7 in the same commit; either alone is drift.
+    // WIN-267 A3 IS THE FIRST TRANCHE TO MOVE IT, and this is the arithmetic,
+    // in TWO independent steps that happen to land in one commit:
+    //
+    //   the LIMITER. Eight unimplemented directories held one binding each;
+    //   `redis-ratelimit` gained an implementation, so 8 - 1 = 7 remain and
+    //   49 - 7 = 42 are satisfied.
+    //
+    //   the PROBE CACHE. `redis-cache:ProviderProbeCache` is a FIFTIETH binding
+    //   on a directory that was already constructed, so it lands directly in the
+    //   satisfied set: 50 - 7 = 43. The unimplemented count does NOT move for
+    //   it, because no directory changed state — which is the distinction §15's
+    //   amendment is about, and the reason both numbers are asserted.
+    //
+    // 41/8 of 49 -> 43/7 of 50. Any one of the three moving alone is drift.
     const { verdict } = readiness(FULLY_DECLARED);
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
+    expect(ADAPTER_BINDINGS).toHaveLength(50);
     expect(unimplementable).toHaveLength(7);
-    expect(verdict.detail.satisfiedBindings).toHaveLength(42);
+    expect(verdict.detail.satisfiedBindings).toHaveLength(43);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
     // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
@@ -387,5 +402,32 @@ describe("the context bundles those adapters can satisfy", () => {
       expect(ports, `${port} must be bound to no adapter`).not.toContain(port);
       expect(declined?.reason).toContain(port);
     }
+  });
+
+  it("does not compose providers either, and for a reason that is NOT a missing adapter", () => {
+    const { assembly, construction } = readiness(FULLY_DECLARED);
+    const declined = assembly.unassembled.find((row) => row.context === "providers");
+    expect(declined?.reason).toBe(PROVIDERS_UNASSEMBLED);
+
+    // THE REASON IS CHECKED, NOT TAKEN ON TRUST, and this one is checked in the
+    // POSITIVE direction: the sentence claims every driven port `providers`
+    // names now has an implementation, so all three must be bound to a directory
+    // this install actually constructed. A sentence that said "the adapters are
+    // there" while one of them was still a placeholder would be exactly the
+    // overclaim this file exists to catch.
+    const built = new Set(Object.keys(construction.adapters));
+    const providerPorts = ADAPTER_BINDINGS.filter((binding) => binding.owner === "providers");
+    expect(providerPorts.map((binding) => binding.port).sort()).toEqual([
+      "ModelRouter",
+      "ProviderProbeCache",
+      "ProvidersRepository",
+    ]);
+    for (const binding of providerPorts) {
+      expect(built, `${binding.port} is bound to ${binding.adapter}`).toContain(binding.adapter);
+    }
+    // And the probe cache is the SAME object the cache adapter carries, under
+    // its own name — the identity check the tenancy bundle above makes, for the
+    // one port this tranche added.
+    expect(construction.adapters["redis-cache"]?.probes).toBeDefined();
   });
 });

@@ -2475,7 +2475,16 @@ export const EXPECTED = Object.freeze({
   // correlation integration suite, which add DIFFERENT files.
   "packages/adapters/postgres-tenancy": { files: 136, cases: 1506 },
   // WIN-260 adopts this project and gives it its first suites.
-  "packages/adapters/redis-cache": { files: 4, cases: 65 },
+  //
+  // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
+  // becomes this directory's FOURTH port. `provider-probe-cache.test.ts` 15 (the
+  // miss/outage split, the round trip, the absolute-instant write, and the four
+  // cases pinning the leaked-key eviction) and
+  // `provider-probe.integration.test.ts` 4 (that a real server honours `PXAT`
+  // and that the eviction pattern matches under Redis's own glob). 65 + 15 + 4 =
+  // 84. `cache.test.ts` gained a `writeUntil` stub in its connection double and
+  // no case; a widened file is not a new one.
+  "packages/adapters/redis-cache": { files: 6, cases: 84 },
   // WIN-267 A3 adopts this project and gives it its first suites. THREE files,
   // 26 cases: `rate-limiter.test.ts` 14 (the key, the window, the count, the
   // TTL clamp and the fail-closed refusal), `oracle-differential.test.ts` 5
@@ -3281,8 +3290,21 @@ export const EXPECTED = Object.freeze({
  * domain error factory and four re-exports and not one case — a widened file is
  * not a new one, and the new code's behaviour is asserted where it is USED,
  * in the adapter.
+ *
+ * ITS SECOND HALF, the `ProviderProbeCache`, moves ONE more package:
+ *
+ *   packages/adapters/redis-cache 4 -> 6 files, 65 -> 84 cases;
+ *   7859 + 19 = 7878 total, over 533 + 2 = 535 files.
+ *
+ * 15 + 4 = 19, checked against what
+ * `pnpm --filter @platos/adapter-redis-cache exec vitest run` prints. FOUR of
+ * the nineteen carry `.integration.` and need a container.
+ *
+ * `packages/contexts/providers` gains no case: this tranche added three
+ * re-exports to its port entry point and changed no rule, and the behaviour of
+ * what it published is asserted where it is USED.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7859;
+export const EXPECTED_RUNTIME_TOTAL = 7878;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

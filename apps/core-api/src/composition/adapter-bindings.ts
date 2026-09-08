@@ -73,6 +73,7 @@ import type {
 } from "@platos/context-memory/application/ports/index.js";
 import type {
   ModelRouter,
+  ProviderProbeCache,
   ProvidersRepository,
 } from "@platos/context-providers/application/ports/index.js";
 import type {
@@ -468,6 +469,16 @@ interface PortSatisfaction {
     RedisCacheAdapter["requests"],
     RequestIdempotency
   >;
+  // WIN-267 A3. The FOURTH port on this directory, indexed through the PROPERTY
+  // for the reason the three above it are: the adapter is one object serving
+  // four contracts, and `Satisfies<RedisCacheAdapter, ProviderProbeCache>` would
+  // ask whether the whole adapter is a probe cache, which it is not. The
+  // obligation that matters is that `probes` IS one, so the day the adapter
+  // renames or re-types it, `pnpm build:v1` fails here.
+  readonly "redis-cache:ProviderProbeCache": Satisfies<
+    RedisCacheAdapter["probes"],
+    ProviderProbeCache
+  >;
   readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
   readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
   readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
@@ -530,6 +541,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "redis-cache:Cache": true,
   "redis-cache:IdempotencyStore": true,
   "redis-cache:RequestIdempotency": true,
+  "redis-cache:ProviderProbeCache": true,
   "redis-streams:EventBus": true,
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
@@ -918,6 +930,24 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // of them decides anything with the key, which is the test `CorrelationSource`
   // passed to become a kernel port.
   Object.freeze({ adapter: "redis-cache", port: "RequestIdempotency", owner: "kernel" }),
+  // WIN-267 A3. The FOURTH row on this directory and the FIFTIETH binding —
+  // `providers`' `ProviderProbeCache`, the port T3 recorded as having no
+  // implementation anywhere in this tree.
+  //
+  // IT IS A ROW HERE AND NOT A FOURTEENTH DIRECTORY, and the question was asked
+  // in that order. `redis-cache`'s `Cache` does NOT satisfy it — the two share
+  // not one signature, and ADR M0.3 §1 row 4 gives `providers` an allow-list of
+  // `tenancy`, `secrets` and `kernel`, so `memory`'s port is not one it could be
+  // handed at all. What DOES satisfy it is the directory, under §15's amendment:
+  // one vendor client is one directory, and this is the same Redis, the same
+  // connection and the same namespace discipline as the three rows above.
+  //
+  // ITS OWNER IS `providers` AND THAT IS A FINDING RATHER THAN A CHOICE. ADR
+  // M0.3 §13 publishes an "exhaustive" port-to-owner map and this port is not on
+  // it; the port's own header records the gap and resolves it by §13's stated
+  // principle — "an adapter-facing port belongs to the context whose capability
+  // it serves" — rather than by amending an accepted ADR.
+  Object.freeze({ adapter: "redis-cache", port: "ProviderProbeCache", owner: "providers" }),
   Object.freeze({ adapter: "redis-streams", port: "EventBus", owner: "kernel" }),
   Object.freeze({ adapter: "model-router-providers", port: "ModelRouter", owner: "providers" }),
   Object.freeze({ adapter: "channel-slack", port: "ChannelAdapter", owner: "channels" }),

@@ -494,7 +494,14 @@ test("the live owner map passes its own check", () => {
   // ONE owner, so many-ports-one-edge leaves it out of the exception list. The
   // DIRECTORY count takes WIN-259's move and nothing from WIN-260, whose two
   // bindings are rows on a directory that already existed. 12 + 1 = 13.
-  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 17, "redis-cache": 3 });
+  //
+  // WIN-267 A3 takes that entry from three to FOUR: `providers`'
+  // `ProviderProbeCache` is the same client again, so `redis-cache` carries an
+  // owner edge into `packages/contexts/providers` alongside `memory`, `jobs` and
+  // `kernel`. The DIRECTORY count is unmoved at thirteen a twentieth time, and
+  // the two numbers moving apart on adjacent lines is exactly what this pair
+  // exists to show.
+  assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, { "postgres-tenancy": 17, "redis-cache": 4 });
   assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 13);
 });
 
@@ -516,17 +523,25 @@ test("§15 refusal: an adapter granted an owner edge it was not given fails", ()
 });
 
 test("§15 refusal: a directory ON the allow-list is still held to its exact count", () => {
-  // WIN-260 (M2.5). `redis-cache` is now permitted THREE owners and no more: an
-  // allow-list entry is a counted exception, not a licence. Without this case
-  // the entry the same issue added would be the one place in the map that had
-  // gained a permission with no refusal beside it.
+  // WIN-260 (M2.5). `redis-cache` is permitted an EXACT number of owners and no
+  // more: an allow-list entry is a counted exception, not a licence. Without
+  // this case the entry the same issue added would be the one place in the map
+  // that had gained a permission with no refusal beside it.
+  //
+  // WIN-267 A3 moved the number from three to four and moved the MUTATION with
+  // it, which is the part that matters. Had the mutation stayed at four owners
+  // it would now be a PERMITTED arrangement, the refusal would not fire, and the
+  // case would have gone red for the right reason — or, if the assertion had
+  // been loosened instead, green while proving nothing. `tenancy` is the fifth
+  // owner here for the same reason it was the fourth before: it is a context
+  // this directory has no port from.
   const errors = checkAdapterOwnerCounts(
-    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "jobs", "kernel", "tenancy"] },
+    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "jobs", "kernel", "providers", "tenancy"] },
     EXPECTED_MULTI_OWNER_ADAPTERS,
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/redis-cache expects 4 owner edge(s); 3 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/redis-cache expects 5 owner edge(s); 4 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

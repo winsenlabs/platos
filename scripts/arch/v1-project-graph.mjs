@@ -209,7 +209,16 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // the count by DIFFERENT models -- one walks the discovered graph, one derives a
 // reference per row owner -- and are maintained separately on purpose, so the
 // two can disagree and be caught.
-export const EXPECTED_EDGE_COUNT = 116;
+//
+// WIN-267 (M4.1, A3): 116 -> 117. `packages/adapters/redis-cache` ->
+// `packages/contexts/providers`, carrying `ProviderProbeCache`. A FOURTH owner
+// edge on the directory that had three, and a reference per PACKAGE rather than
+// per port, so one new binding is again exactly one new edge. The tranche's
+// OTHER half — `redis-ratelimit` becoming a real adapter — moves NO edge: its
+// `identity-access` reference has existed since the skeleton was generated, and
+// a placeholder that becomes real changes what a project contains rather than
+// what it points at.
+export const EXPECTED_EDGE_COUNT = 117;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -382,7 +391,13 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "clickhouse-observability": ["observability"],
   "objectstore-minio": ["files"],
   "redis-ratelimit": ["identity-access"],
-  "redis-cache": ["memory", "jobs", "kernel"],
+  // WIN-267 A3 adds `providers`, the FOURTH owner. It is an owner edge and not
+  // an `ADAPTER_EXTRA_PROJECTS` row because `providers` PUBLISHES
+  // `ProviderProbeCache` — its own `application/ports/index.ts` calls it "a
+  // context-owned cache seam" and records why ADR M0.3 §13's map has no home for
+  // it — so this directory reaches the context through a port the context owns,
+  // which is exactly what an owner edge is.
+  "redis-cache": ["memory", "jobs", "kernel", "providers"],
   "redis-streams": ["kernel"],
   "model-router-providers": ["providers"],
   "channel-slack": ["channels"],
@@ -407,7 +422,7 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 3 };
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 4 };
 
 /**
  * Edges an adapter has that are NOT owner edges, declared separately.

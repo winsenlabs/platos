@@ -104,6 +104,32 @@ export interface ContextPortAssembly {
  * implementation" is checked against the adapter directories rather than
  * asserted, so this sentence and the check cannot drift apart silently.
  */
+/**
+ * The reason `providers` is not assembled here, stated once.
+ *
+ * WIN-267 A3. It is recorded for the first time, and the reason it moved is the
+ * reason it is worth recording: `ProviderProbeCache` was satisfied by no adapter
+ * in this tree, and now it is — `redis-cache`'s fourth port. So the only thing
+ * left between this root and a composed `providers` is condition (1) of the
+ * three above, which is a FACTORY and not an adapter.
+ *
+ * READ BACK BY `installation.test.ts`, like the sentence below it: every claim
+ * in it is checked against the binding table and the constructed adapters rather
+ * than taken on trust, so this sentence and the tree cannot drift apart.
+ *
+ * ALSO SAID PLAINLY: this tranche did NOT make `providers` composable, and an
+ * agent brief that says otherwise is wrong about this tree. `secrets` publishes
+ * no assembler either, and `ProvidersDependencies` names a whole `SecretsPeer`,
+ * so composing `providers` needs two contexts to publish factories first. What
+ * changed is that the ADAPTER gap closed.
+ */
+export const PROVIDERS_UNASSEMBLED =
+  "it publishes its use cases one by one and no factory that assembles its whole" +
+  " contract, so this root has nothing to call; every driven port it names now has" +
+  " an implementation — ProvidersRepository and ModelRouter already did, and WIN-267" +
+  " A3 gave ProviderProbeCache one on redis-cache — and its secrets peer is a context" +
+  " that publishes no assembler either";
+
 export const IDENTITY_ACCESS_UNASSEMBLED =
   "four of its six driven ports have no implementation: SecretHasher," +
   " TokenMinter, TotpCodeVerifier and MfaSecretCipher are satisfied by no adapter" +
@@ -139,6 +165,7 @@ export function assembleContextPorts(
   unassembled.push(
     Object.freeze({ context: "identity-access", reason: IDENTITY_ACCESS_UNASSEMBLED }),
   );
+  unassembled.push(Object.freeze({ context: "providers", reason: PROVIDERS_UNASSEMBLED }));
 
   return Object.freeze({
     ports: Object.freeze(

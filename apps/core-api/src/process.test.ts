@@ -329,9 +329,9 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(49);
-    expect(body.detail.satisfiedBindings).toHaveLength(42);
-    expect(body.reason).toBe("42 of 49 adapter bindings are satisfied; 7 are not");
+    expect(body.detail.declaredBindings).toBe(50);
+    expect(body.detail.satisfiedBindings).toHaveLength(43);
+    expect(body.reason).toBe("43 of 50 adapter bindings are satisfied; 7 are not");
     // The context composed over a REAL PostgreSQL adapter rather than over a
     // bundle an install had to hand in — the first one in this programme.
     expect(body.detail.composedContexts).toEqual(["tenancy"]);
@@ -341,7 +341,7 @@ describe("the built binary starts, serves and stops", () => {
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("42/49 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("43/50 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

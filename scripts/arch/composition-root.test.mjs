@@ -142,7 +142,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // RequestIdempotency, both rows on an EXISTING directory) = 49 bindings across
   // THIRTEEN directories. The two pins move by different amounts, which is the
   // whole reason they are pinned separately.
-  assert.equal(audit.bindingCount, 49);
+  assert.equal(audit.bindingCount, 50);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -320,7 +320,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 49 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -486,12 +486,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FORTY-NINE bindings, across thirteen directories", () => {
+test("the binding-table parser reads all FIFTY bindings, across thirteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 49);
+  assert.equal(bindings.length, 50);
   assert.equal(ADAPTERS.length, 13);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -565,7 +565,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 49 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 50 declared bindings")
     )
   );
 });
@@ -596,7 +596,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 49 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {
