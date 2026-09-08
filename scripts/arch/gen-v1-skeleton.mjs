@@ -1799,7 +1799,16 @@ const CORE_API_RUNTIME_DEPENDENCIES = {
 // a container. The specifier is byte-identical to the two already in the
 // lockfile, so pnpm resolves it to @testcontainers/redis@10.28.0 rather than
 // opening a new resolution.
+//
+// WIN-267 ADDS `@testcontainers/postgresql`, and it is the SAME argument one
+// step further: the composition root now COMPOSES `identity-access`, and the
+// only honest proof that an operator can authenticate through it is a real
+// PostgreSQL holding a real `OperatorSession` -- `InMemoryIdentityAccessRepository`
+// hashes nothing and would pass against a `SecretHasher` that returned a
+// constant. Byte-identical to the specifier `postgres-tenancy` already uses, so
+// it resolves to the entry already in the lockfile.
 const CORE_API_DEV_DEPENDENCIES = {
+  "@testcontainers/postgresql": "^10.28.0",
   "@testcontainers/redis": "^10.28.0",
 };
 
