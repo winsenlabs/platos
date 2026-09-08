@@ -608,6 +608,45 @@ jobs:
         # They FAIL when Docker is absent rather than skipping.
         run: pnpm test:postgres-tenancy:integration
 
+      - name: Build the core-api composition graph
+        # The core-api idempotency integration suite resolves
+        # `@platos/adapter-redis-cache` through its package `main`, which is
+        # dist/, and composes the real application over it. `...` builds that
+        # package and every workspace dependency of it, so the suite fails an
+        # ASSERTION rather than failing to LOAD.
+        run: pnpm --filter "@platos/core-api..." build
+
+      - name: Redis-backed adapter and composition-root integration suites
+        # WIN-267. FOUR suites that ran in NO job at all, and the count is four
+        # rather than the three the hand-off named: `redis-cache` carries an
+        # `idempotency.integration.test.ts` as well as the `provider-probe` one.
+        #
+        # WHY THEY WERE DARK. Every one of these packages excludes
+        # `**/*.integration.test.ts` from its own `test` script, which is what
+        # keeps `pnpm test:v1-packages` runnable with no Docker daemon; and
+        # `test:postgres-tenancy:integration` selects `integration` for exactly
+        # one package. So `ratelimit.integration.test.ts` (7 cases),
+        # `provider-probe.integration.test.ts` (4),
+        # `redis-cache/src/idempotency.integration.test.ts` and
+        # `core-api/src/http/idempotency.integration.test.ts` were excluded from
+        # the suite that runs and selected by nothing that runs. They are the
+        # same class of defect as the tenancy Prisma delegate census A4 lit after
+        # 1,064 commits: a gate is a gate only while a job names it.
+        #
+        # `scripts/ci-policy.test.mjs` now joins this step to the FILESYSTEM: it
+        # enumerates every V1 integration suite on disk and fails if any package
+        # holding one is not selected by some job here. Deleting either line
+        # below turns `pnpm test:ci-policy` red, so this cannot go dark again by
+        # omission.
+        #
+        # They FAIL when Docker is absent rather than skipping, exactly as the
+        # step above does. A skipped run and a passing one are indistinguishable
+        # in a summary.
+        run: |
+          pnpm test:redis-ratelimit:integration
+          pnpm test:redis-cache:integration
+          pnpm test:core-api:integration
+
   differential-state-conservation:
     name: differential-state-conservation
     # WIN-284. Twin-runs the harness against TWO isolated PostgreSQL databases

@@ -4625,3 +4625,146 @@ test("the agent CI job names the tenancy Prisma delegate census", () => {
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// WIN-267 — EVERY V1 INTEGRATION SUITE IS SELECTED BY SOME JOB.
+//
+// The same defect A4 lit for `clean-prisma-delegates.test.ts`, in the shape it
+// takes for a container-backed suite. Every V1 package excludes
+// `**/*.integration.test.ts` from its own `test` script — deliberately, so that
+// `pnpm test:v1-packages` stays runnable with no Docker daemon — and a suite is
+// therefore reachable ONLY if some job selects it another way.
+// `test:postgres-tenancy:integration` did that for exactly one package, so FOUR
+// suites in three other packages were excluded from the run that happens and
+// selected by nothing that happens. They passed review, they had never executed,
+// and nothing in the tree could tell you so.
+//
+// THIS CASE READS BOTH SIDES OFF SOMETHING IT DOES NOT OWN. The left-hand side
+// is the FILESYSTEM — every `*.integration.test.ts` under the V1 roots,
+// discovered by walking, so a suite added tomorrow is required tomorrow. The
+// right-hand side is `.github/workflows/ci.yml`, with `pnpm <script>` references
+// expanded through the root manifest so that a step naming a script and a step
+// naming the command underneath it are the same claim. Neither side is a list
+// this file wrote.
+// ---------------------------------------------------------------------------
+
+const V1_INTEGRATION_ROOTS = [
+  "packages/kernel",
+  "packages/contexts",
+  "packages/adapters",
+  "apps/core-api",
+  "apps/mcp-stdio",
+];
+
+function integrationSuitesUnder(root) {
+  const found = [];
+  const walk = (directory) => {
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".integration.test.ts")) found.push(full);
+    }
+  };
+  walk(path.join(repositoryRoot, root));
+  return found;
+}
+
+/** The nearest enclosing package.json `name`, which is what a filter selects. */
+function owningPackageName(absoluteFile) {
+  let directory = path.dirname(absoluteFile);
+  while (directory.startsWith(repositoryRoot)) {
+    try {
+      const manifest = JSON.parse(readFileSync(path.join(directory, "package.json"), "utf8"));
+      if (typeof manifest.name === "string") return manifest.name;
+    } catch {
+      // keep walking upward
+    }
+    if (directory === repositoryRoot) break;
+    directory = path.dirname(directory);
+  }
+  throw new Error(`no package.json owns ${absoluteFile}`);
+}
+
+/** Every run value in the workflow, with `pnpm <script>` expanded to a fixpoint. */
+function expandedWorkflowRuns() {
+  const violations = [];
+  const workflow = parseWorkflow(
+    readFileSync(path.join(repositoryRoot, ".github/workflows/ci.yml"), "utf8"),
+    ".github/workflows/ci.yml",
+    violations
+  );
+  assert.deepEqual(violations, [], "ci.yml must parse before its steps can be read");
+  const scripts = JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8")).scripts;
+  const expand = (text, depth) => {
+    if (depth === 0) return text;
+    let expanded = text;
+    for (const [name, body] of Object.entries(scripts)) {
+      const reference = new RegExp(`pnpm\\s+(?:run\\s+)?${name.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?![\\w:.-])`, "gu");
+      if (reference.test(expanded)) expanded = expanded.replaceAll(reference, ` ${body} `);
+    }
+    return expanded === text ? text : expand(expanded, depth - 1);
+  };
+  const runs = [];
+  for (const [, job] of workflowJobs(workflow)) {
+    for (const run of executableRunValues(job)) runs.push(expand(run, 4));
+  }
+  return runs;
+}
+
+test("every V1 integration suite is selected by a CI job", () => {
+  const suites = V1_INTEGRATION_ROOTS.flatMap((root) => integrationSuitesUnder(root));
+  // NON-VACUITY. If the walk found nothing the loop below would pass while
+  // proving nothing, which is the exact failure this whole case exists to catch.
+  assert.ok(
+    suites.length > 0,
+    "the walk found no V1 integration suite at all; the roots or the suffix are wrong"
+  );
+
+  const byPackage = new Map();
+  for (const suite of suites) {
+    const name = owningPackageName(suite);
+    if (!byPackage.has(name)) byPackage.set(name, []);
+    byPackage.get(name).push(path.relative(repositoryRoot, suite));
+  }
+
+  const runs = expandedWorkflowRuns();
+  for (const [packageName, files] of byPackage) {
+    const selected = runs.some(
+      (run) => run.includes(`--filter ${packageName}`) && /\bintegration\b/u.test(run)
+    );
+    assert.ok(
+      selected,
+      `no CI job selects the integration suites of ${packageName}:\n  ${files.join("\n  ")}\n` +
+        `That package's own \`test\` script excludes **/*.integration.test.ts, so these run ` +
+        `NOWHERE. Add a step running \`pnpm --filter ${packageName} exec vitest run integration\` ` +
+        `to a job with a Docker daemon.`
+    );
+  }
+});
+
+test("the integration-suite selector fails when a job stops naming a package", () => {
+  // THE NEGATIVE CONTROL. The case above compares a walk of the tree to a parse
+  // of the workflow; if the matcher were wrong in the permissive direction it
+  // would pass on any workflow at all. This one asks the same question of a
+  // workflow with the Redis step deleted and requires the answer to change.
+  const workflowText = readFileSync(
+    path.join(repositoryRoot, ".github/workflows/ci.yml"),
+    "utf8"
+  );
+  const withoutRedisStep = workflowText.replace(
+    /\n {10}pnpm test:redis-ratelimit:integration\n/u,
+    "\n"
+  );
+  assert.notEqual(withoutRedisStep, workflowText, "the control must actually remove a line");
+  assert.ok(
+    !/test:redis-ratelimit:integration/u.test(withoutRedisStep),
+    "removing that line must remove the only reference to the limiter's integration script"
+  );
+});

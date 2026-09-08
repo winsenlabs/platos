@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e0b1ced9b41ce8d3592c00919e4bf783167ab29897a893c7298619605b4eb421",
+  "evidenceSha256": "597cab9eab800384963e92966662424ec639dadfa1ee4766c74de7b71857f8cf",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5d25a5c0a4f9a227922f1f50f36ba1f661f6ca74baacc304714d5f14da74cd4f",
+    "aggregateSha256": "c38c73018823427959751be87ab036da0d5f889a24b864e7dcaa56d876ae55fd",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -267,7 +267,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "af96381f2d374f34c06cec09e6cf806d78a606d243fcef5a956838dbffb918cb"
+        "sha256": "259f5880a49daeb0afb876f43a97b94d3efc05ea77f95a77d6130a4bb945f53c"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -4223,7 +4223,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "43188c2c9ddd60457e6290c567787669544b55b2a63e7185d4d6a66d97ca0f69"
+        "sha256": "a4565627a22bc29e4b5b519e73ebf5ba693b97425bffa98a3d2f180689ba6988"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -11067,7 +11067,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "4f9b99c09707db927491542bad25ebcf4a3dfb22694fb8e2844da6af49532d87"
+        "sha256": "8e0e59fc0b0840a8398448b71c772ed818206d8efbc25992e457b18ecdcc88e0"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -19927,7 +19927,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "0750acb02463ab3e5fda4c593a86b2a47f7170f9012865ccf9bdb35979eee7f8"
+        "sha256": "2696f28c3c018954b87b76deff8d1a4e3514d86685cd1d1f257fb49a2fc19144"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -25276,6 +25276,11 @@
               "kind": "workspace-wide-install"
             },
             {
+              "from": ".github/workflows/ci.yml",
+              "kind": "reference",
+              "line": 617
+            },
+            {
               "from": ".github/workflows/trigger-deploy.yml",
               "kind": "workspace-wide-install"
             }
@@ -25714,6 +25719,12 @@
               "from": "package.json",
               "kind": "root-turbo-task",
               "script": "start"
+            },
+            {
+              "command": "pnpm --filter @platos/core-api exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:core-api:integration"
             },
             {
               "command": "turbo run test --concurrency=1 --filter @platos/kernel --filter \"@platos/context-*\" --filter \"@platos/adapter-*\" --filter @platos/core-api --filter @platos/mcp-stdio",
@@ -26246,7 +26257,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "e21505c67859345d5d2525219a6ad7dac6be31af80e5732b0dcd05b7ba420a7e",
+      "evidenceSha256": "f62621c47abb81e1ef38e9fca61a800e850882bc3623b61a9093ffc4d95c299a",
       "manifestSha256": "bd89f518f79171e1322d4772b1626eaae34510619a28d846e617923797ddb3b2",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -51632,6 +51643,11 @@
               "kind": "workspace-wide-install"
             },
             {
+              "from": ".github/workflows/ci.yml",
+              "kind": "reference",
+              "line": 613
+            },
+            {
               "from": ".github/workflows/trigger-deploy.yml",
               "kind": "workspace-wide-install"
             }
@@ -51771,6 +51787,12 @@
               "from": "package.json",
               "kind": "root-turbo-task",
               "script": "clean"
+            },
+            {
+              "command": "pnpm --filter @platos/adapter-redis-cache exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:redis-cache:integration"
             },
             {
               "from": "package.json",
@@ -52084,7 +52106,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "d9afe5267973d5bf37be58ff3bf21bcb8061907928a7999555854554e5083a72",
+      "evidenceSha256": "48678432dec206c3cf94778bc38cfdd4020c255d9aeb8041924153f7536ba565",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -52303,6 +52325,12 @@
               "from": "package.json",
               "kind": "root-turbo-task",
               "script": "clean"
+            },
+            {
+              "command": "pnpm --filter @platos/adapter-redis-ratelimit exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:redis-ratelimit:integration"
             },
             {
               "from": "package.json",
@@ -52546,7 +52574,7 @@
           "packages/adapters/redis-ratelimit"
         ]
       },
-      "evidenceSha256": "7a2581f381e690f2f5526b5d4ed36263463db2dbbdd93dc77bb15506cac365a6",
+      "evidenceSha256": "c7801b6afa4ad32cf5739c1a7169b9494e304852bac6b884d52ac81a1c9ff056",
       "manifestSha256": "c34050bbafd7dbb339e9a1a8dabffc4ab2ab84203fc1f1739d9045c883563955",
       "name": "@platos/adapter-redis-ratelimit",
       "ociImageClosure": {
@@ -76522,6 +76550,12 @@
               "script": "dev"
             },
             {
+              "command": "pnpm --filter @platos/core-api exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "test:core-api:integration"
+            },
+            {
               "command": "turbo run test --concurrency=1 --filter @platos/kernel --filter \"@platos/context-*\" --filter \"@platos/adapter-*\" --filter @platos/core-api --filter @platos/mcp-stdio",
               "from": "package.json",
               "kind": "script-reference",
@@ -77777,7 +77811,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "d2e8fdcb24c24c4a22fee01d234d022ded2dfe05eb6986ccb78b75765fad0fd1",
+      "evidenceSha256": "d1ae004000a14ce54736e0df9153e64aea07937b8f57c8c21a01ee429eee2d04",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
