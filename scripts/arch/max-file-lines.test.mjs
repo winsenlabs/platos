@@ -806,7 +806,8 @@ test("the live selectors scan an exact nonzero source census", () => {
   // drawn; what changed is that one of its directories stopped being two
   // declaration files.
   //
-  // 1542 + 20 + 10 = 1572, a figure NO branch stated: A1+A2 pinned 1562 and A3
+  // 1542 + 20 + 10 = 1572, then G1's +2 makes 1574. A figure NO branch stated:
+  // A1+A2 pinned 1562 and A3
   // pinned 1552, both over the same 1542 base.
   //
   // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured with THIS
@@ -827,7 +828,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // warning list below is unchanged -- which is the property that matters for a
   // directory about to grow: an adapter that needed a 500-line file to hold one
   // port would be an adapter holding more than one job.
-  assert.equal(result.fileCount, 1572);
+  //
+  // WIN-267 G1 +2, both under the `packages/adapters/**` selector that already
+  // existed: `postgres-tenancy/src/governance-eval-runs.ts` (265) and its
+  // integration suite (403). The tranche's two `apps/core-api` files are NOT
+  // counted here and that is the selector rather than an omission -- this gate
+  // scans `src/http/**` and `src/transports/rest/**` in that deployable, and
+  // `src/composition/**` is in neither.
+  assert.equal(result.fileCount, 1574);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -850,7 +858,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       // `packages/adapters/redis-ratelimit/src/` and 3 under
       // `packages/adapters/redis-cache/src/`. All thirty newly WRITTEN, and all
       // thirty inside the `packages/adapters/**` selector that already existed.
-      6 + 2 + 12 + 7 + 3
+      6 + 2 + 12 + 7 + 3 +
+      // WIN-267 G1: the eval-run queue store and its integration suite, both
+      // under `packages/adapters/postgres-tenancy/src/`.
+      2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -979,7 +990,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   // already existed and move no count.
   //   ADAPTERS        441
   // 27 + 1075 + 441 + 13 + 16 = 1572.
-  assert.equal(result.fileCount, 27 + 1075 + 441 + 13 + 16);
+  //
+  // WIN-267 G1 MOVES ONLY THE ADAPTERS TERM AGAIN, 441 -> 443: the eval-run
+  // queue store and its integration suite, both in
+  // `packages/adapters/postgres-tenancy/src/`. KERNEL, CONTEXTS and BOTH APPS
+  // TERMS ARE BYTE-FOR-BYTE THE SAME SCAN, and that is the mirror claim of this
+  // half of the tranche -- the `Judge` half lands two files in
+  // `apps/core-api/src/composition/`, which no selector here scans, so a term
+  // moving in `apps-http` or `apps-transports` would mean this tranche had
+  // grown a transport while calling itself an adapter. The context edits it does
+  // make -- three re-exports and a paragraph on `governance`'s port barrel --
+  // are EDITS to files that already existed and move no count.
+  //   ADAPTERS        443
+  // 27 + 1075 + 443 + 13 + 16 = 1574.
+  assert.equal(result.fileCount, 27 + 1075 + 443 + 13 + 16);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -1143,6 +1167,20 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/adapters/postgres-tenancy/src/governance-conformance.ts",
       effectiveLines: 420,
+      severity: "warning",
+    },
+    {
+      // WIN-267 G1. THE NINETEENTH, and it is in the band on purpose rather than
+      // queued for the hard error. Its length is thirteen cases that each need
+      // the SAME container: the enqueue half, the consumer half and the two
+      // refusal codes are one queue's behaviour, and four of the thirteen exist
+      // only because a mutation survived. Splitting it along any seam would put
+      // a second `startGovernanceHarness` and a second PostgreSQL container in
+      // the CI job for a file that is 403 against a 500 error -- which is the
+      // difference this list's own note draws between "a warning that is a
+      // shape" and "one that is a queue for the hard error".
+      path: "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
+      effectiveLines: 403,
       severity: "warning",
     },
     {

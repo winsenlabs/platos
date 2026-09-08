@@ -154,7 +154,14 @@ test("the live repository satisfies both the boundary rules and the composition-
   // port that READS it must share one base32 alphabet; and
   // `redis-cache:ProviderProbeCache` is a row on an existing directory again,
   // for the plainest §15 reason there is -- it is the same Redis client.
-  assert.equal(audit.bindingCount, 54);
+  //
+  // WIN-267 G1: 54 + 1 = 55 across the SAME FIFTEEN directories.
+  // `postgres-tenancy:EvalRunQueue` is a row on an existing directory, for the
+  // plainest §15 reason there is -- the eval run it records is a row in the one
+  // PostgreSQL database, so it is written from the one directory that holds
+  // that database's client. The DIRECTORY pin does not move, which is the
+  // distinction the two pins exist to state.
+  assert.equal(audit.bindingCount, 55);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -342,7 +349,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 53 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 54 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -520,12 +527,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FIFTY-FOUR bindings, across fifteen directories", () => {
+test("the binding-table parser reads all FIFTY-FIVE bindings, across fifteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 54);
+  assert.equal(bindings.length, 55);
   assert.equal(ADAPTERS.length, 15);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -535,7 +542,7 @@ test("the binding-table parser reads all FIFTY-FOUR bindings, across fifteen dir
     parseSatisfactionKeys(source).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
   );
-  // A directory with thirty-three bindings appears THIRTY-THREE TIMES in the
+  // A directory with thirty-four bindings appears THIRTY-FOUR TIMES in the
   // flattening and once in the directory set. Both halves are asserted so a
   // change that collapsed the table back to one row per directory cannot pass
   // here. It is thirty-three rather than two because WIN-258 T5 landed all of
@@ -547,8 +554,10 @@ test("the binding-table parser reads all FIFTY-FOUR bindings, across fifteen dir
   // them, and WIN-258 T5 then added `providers`' one, `conversations`' four,
   // `skills`' one, `memory`'s two, `privacy`'s one, `jobs`' two, `files`' one,
   // `observability`'s one and `eventing`'s one.
-  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1 = 33.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 33);
+  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1 = 33,
+  // and WIN-267 G1 then added `governance`'s SIXTH -- `EvalRunQueue`, the first
+  // binding on this directory that is not a canonical-store CRUD port. 33 + 1 = 34.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 34);
   // WIN-259 (M2.4) 12 -> 13. `keyring-envelope` appears THREE times in the
   // flattening and once in the directory set, which is the same both-halves
   // check the postgres row above gets: a change that collapsed its three
@@ -606,7 +615,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 54 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 55 declared bindings")
     )
   );
 });
@@ -637,7 +646,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 53 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 54 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

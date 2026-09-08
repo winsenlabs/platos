@@ -42,7 +42,12 @@ test("the denominator matches the M0 censuses exactly", () => {
   // invented. If a census moves, this fails and someone has to look.
   assert.equal(summary.bySurface.rest.total, 300, "WIN-247 counted 300 REST operations");
   assert.equal(summary.bySurface.mcp.total, 202, "WIN-247 counted 202 MCP tools");
-  assert.equal(summary.bySurface.store.total, 93, "WIN-247 counted 93 tenancy models");
+  // WIN-267 G1: 93 -> 94. `EvalRun` is the canonical row `governance`'s
+  // `EvalRunQueue` port enqueues into — ADR M0.3 §1 row 14's "eval runs enqueue
+  // as durable jobs", which the legacy tree had no table for at all. The store
+  // census is the model count in `internal-packages/tenancy-database`, so it
+  // moves with the schema and this assertion is what makes that visible.
+  assert.equal(summary.bySurface.store.total, 94, "WIN-247 counted 93 tenancy models; WIN-267 G1 adds EvalRun");
   assert.equal(summary.bySurface.bff.total, 117, "WIN-294 counted 117 BFF entrypoints");
   assert.equal(summary.cells, Object.values(summary.bySurface).reduce((total, entry) => total + entry.total, 0));
 });
