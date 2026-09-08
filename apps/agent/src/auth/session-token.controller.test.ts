@@ -315,7 +315,7 @@ describe("EntityBearerDirectory names every rejection the 401 hides", () => {
       ok: false,
       reason: "revoked-concurrently",
     });
-    // The stamp was ATTEMPTED — the liveness re-check is the update itself, so
+    // The stamp was TRIED — the liveness re-check is the update itself, so
     // a directory that read-then-wrote would fail this.
     expect(h.prisma.mcpBearerToken.updateMany).toHaveBeenCalledTimes(1);
   });

@@ -322,6 +322,17 @@ module.exports = {
       }
     },
     {
+      "name": "agent-converted-transport-no-prisma",
+      "comment": "a WIN-258-converted agent transport must reach data through its store or directory, never the ORM client or the DI token that carries it.",
+      "severity": "error",
+      "from": {
+        "path": "^(apps/agent/src/auth/public-guest-token\\.controller\\.ts|apps/agent/src/auth/session-token\\.controller\\.ts|apps/agent/src/agent-runtime/jobs\\.controller\\.ts|apps/agent/src/files/files\\.controller\\.ts)$"
+      },
+      "to": {
+        "path": "^(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))|apps/agent/src/shared/database\\.provider)"
+      }
+    },
+    {
       "name": "unknown-context-directory",
       "comment": "packages/contexts/<name>/ must be one of the 17 contexts named in ADR M0.3 §4; an adapter belongs under packages/adapters/.",
       "severity": "error",

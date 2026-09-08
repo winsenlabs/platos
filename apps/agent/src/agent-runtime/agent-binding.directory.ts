@@ -51,7 +51,7 @@ export interface BoundAgentView {
   readonly name: string | null;
 }
 
-/** A public-guest deployment, flattened to what a token minter needs. */
+/** A public-guest binding, flattened to what a token minter needs. */
 export interface PublicGuestBindingView {
   readonly agentId: string;
   readonly organizationId: string;
@@ -79,7 +79,7 @@ function bindingInScope(scope: AgentBindingScope, agentId: string) {
 }
 
 /**
- * Is this deployment visible to an anonymous guest?
+ * Is this binding visible to an anonymous guest?
  *
  * EXPORTED AND PURE so it can be falsified without a database. The rule has two
  * spellings in the stored configuration — `memoryConfig.__runtime.visibility` and
@@ -146,12 +146,12 @@ export class AgentBindingDirectory {
   }
 
   /**
-   * Every ACTIVE, public-guest-visible deployment of one agent in one
+   * Every ACTIVE, public-guest-visible binding of one agent in one
    * environment.
    *
    * Returns a list rather than "the one" on purpose: the caller's rule is that
    * exactly one must match, and collapsing two matches to the first here would
-   * silently pick a deployment. Ambiguity is the caller's to refuse, and it
+   * silently pick a binding. Ambiguity is the caller's to refuse, and it
    * refuses it with a 404 so the existence of a private agent never leaks.
    */
   async listPublicGuestBindings(

@@ -67,16 +67,17 @@ export class PublicGuestTokenController {
       throw new HttpException("environmentId is required", HttpStatus.BAD_REQUEST);
     }
 
-    // Agent is project-owned and may be deployed into more than one
-    // Environment. The binding resolves the Organization and Project ancestry;
-    // Environment is required because one project-owned Agent may have
-    // different visibility and active versions in multiple deployments.
-    //
     // WIN-258: the query, the `isActive` check and the two spellings of the
     // public-guest visibility rule all moved into `AgentBindingDirectory`. What
     // stays here is the only part that is a TRANSPORT decision — that anything
     // other than exactly one match is a 404, so the existence of a private
     // agent never leaks through a distinguishable status.
+    //
+    // Agent is project-owned and may be deployed into more than one
+    // Environment. Resolve the binding first, then derive Project and
+    // Organization through the database relation graph. Environment is required
+    // because one project-owned Agent may have different visibility and active
+    // versions in multiple deployments.
     const publicBindings = await this.agentBindings.listPublicGuestBindings(
       body.agentId,
       body.environmentId,

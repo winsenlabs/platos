@@ -524,7 +524,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // CHANGED. The 28 controllers T1 rewrites and `main.ts` are edited IN PLACE
     // and add no file — which is the whole shape of this tranche: 24 literals
     // deleted, one declaration added.
-    "apps-agent": 2,
+    //
+    // WIN-258 (M4.1, T6) 2 -> 6. Four stores and directories, one per group of
+    // reads taken off an agent HTTP transport:
+    // `agent-runtime/agent-binding.directory.ts` (the forged-id scope guard that
+    // was written out three times), `agent-runtime/job-store.ts` (nine `job`
+    // delegate calls and four Prisma input types),
+    // `auth/entity-bearer.directory.ts` (the ten-clause bearer admission
+    // predicate) and `files/file-browser.store.ts` (eight attachment-browser
+    // queries). All four match `apps-agent.source.runtime`, a rule that already
+    // existed; NO LEDGER RULE CHANGED.
+    //
+    // The seven transports and five suites T6 rewrites are edited IN PLACE and
+    // add no file, which is the shape of this tranche too: the code MOVED, and a
+    // move that added a file per call site would have been the wrong refactor.
+    // apps-agent 2 + 4 = 6.
+    "apps-agent": 6,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1488,7 +1503,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
+  //
+  // WIN-258 (M4.1, T6) 1598 -> 1602: the four stores and directories named in
+  // the apps-agent delta above, and nothing else. 3469 + 1602 = 5071.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1602);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1594,7 +1612,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1598
+    //
+    // WIN-258 (M4.1, T6) 1598 -> 1602, the same four files. This identity is
+    // the one that would catch T6 having moved a per-area counter without
+    // moving the total, or the reverse — which is exactly why it re-derives the
+    // sum rather than reading the figure the assertion above already checked.
+    rulesDocument.baseline.totalFiles + 1602
   );
 });
 

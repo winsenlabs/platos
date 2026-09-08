@@ -83,7 +83,7 @@ describe("PublicGuestTokenController Environment binding", () => {
   // removed. Under the old harness all three passed vacuously, because the
   // filtering happened in the double.
 
-  it("refuses an inactive agent even when the deployment is public-guest", async () => {
+  it("refuses an inactive agent even when the binding is public-guest", async () => {
     const { controller, req, findMany } = harness();
     findMany.mockResolvedValue([binding({ agent: { id: "agent-1", isActive: false } })]);
 
@@ -95,7 +95,7 @@ describe("PublicGuestTokenController Environment binding", () => {
     expect((error as HttpException).getStatus()).toBe(404);
   });
 
-  it("refuses a private deployment rather than distinguishing it from a missing one", async () => {
+  it("refuses a private binding rather than distinguishing it from a missing one", async () => {
     const { controller, req, findMany } = harness();
     findMany.mockResolvedValue([
       binding({
