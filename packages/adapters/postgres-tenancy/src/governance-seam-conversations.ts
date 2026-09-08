@@ -37,7 +37,7 @@
 // double that was told to hide the row.
 //
 // WHAT THE MIGRATIONS GUARANTEE, AND WHAT THEY DO NOT. `Turn_ancestry`
-// (00000000000000_initial, the `enforce_domain_ancestry` trigger) refuses any
+// (00000000000000_initial, the `enforce_domain_ancestry` rule) refuses any
 // turn whose `AgentVersion.agentId` is not its thread's `agentId`. That is why
 // `RatingTarget.agentId` is taken from the THREAD and `agentVersionId` from the
 // TURN and the two cannot disagree: the database will not hold a row where they

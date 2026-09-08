@@ -385,9 +385,19 @@ export const VIOLATION_CODES = Object.freeze({
  * unmoved by all three: a SHA-256, a TOTP alphabet, a rate limiter and a probe
  * cache each take what they need from the composition root, so thirty new files
  * added not one new door.
+ *
+ * WIN-267 G2: 1610 + 6 = 1616, and the DECLARED table is unmoved a fourth time.
+ * The six are `governance`'s three inverted read seams in
+ * `packages/adapters/postgres-tenancy/src/` -- `governance-read-seams.ts`,
+ * `governance-seam-guards.ts`, `governance-seam-conversations.ts`,
+ * `governance-seam-activity.ts` and the two suites beside them. They read rows,
+ * not configuration: every one takes its transactions from the adapter that
+ * already holds the one database URL, so six new files added not one new door.
+ * Two sibling branches move this pin for the remaining governance ports, so the
+ * integrator SUMS the deltas rather than taking any one branch's total.
  */
 
-export const EXPECTED_FILE_COUNT = 1610;
+export const EXPECTED_FILE_COUNT = 1616;
 
 function listSourceFiles(root) {
   const found = [];

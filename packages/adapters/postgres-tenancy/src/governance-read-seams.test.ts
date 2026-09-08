@@ -21,7 +21,7 @@
 // rather than a comment that quietly stopped being true.
 //
 // IT READS THE MIGRATIONS AND NOT ONLY THE SCHEMA. `enforce_domain_ancestry` is
-// a trigger function that exists in NO Prisma model: claim 3 is unreachable from
+// a database RULE that exists in NO Prisma model: claim 3 is unreachable from
 // `schema.prisma` alone, which is the same reason `governance-guards.ts` had to
 // read `MessageRating_rating_check` out of the migration file twice.
 
@@ -99,7 +99,7 @@ describe("the tenancy shape the readers narrow by", () => {
     // because the database refuses a turn whose version belongs to another
     // agent. Read out of `enforce_domain_ancestry`'s `Turn` branch.
     expect(initialMigration).toContain(
-      'CREATE TRIGGER "Turn_ancestry" BEFORE INSERT OR UPDATE ON "public"."Turn"',
+      '"Turn_ancestry" BEFORE INSERT OR UPDATE ON "public"."Turn"',
     );
     const turnBranch = /WHEN 'Turn' THEN([\s\S]*?)WHEN 'Artifact' THEN/u.exec(initialMigration);
     expect(turnBranch).not.toBeNull();

@@ -606,6 +606,13 @@ const LIVE_ADAPTERS = [
       // live one, so a copy missing a binding would make the refusal COUNTS
       // wrong rather than the refusals.
       { port: "NotificationRuleRepository", owner: "eventing" },
+      // WIN-267 G2. `governance`'s THREE inverted read seams, in the fixture
+      // copy for the reason every binding above is: this copy is the
+      // non-vacuity anchor every refusal below stands on, so a copy behind the
+      // tree makes the refusal COUNTS wrong rather than the refusals.
+      { port: "RatingTargetReader", owner: "governance" },
+      { port: "TranscriptReader", owner: "governance" },
+      { port: "ActivityReader", owner: "governance" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
@@ -688,7 +695,7 @@ test("§15 refusal: a SIXTEENTH adapter directory fails, even though bindings ma
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FIFTY-FIFTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTY-EIGHTH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -719,7 +726,13 @@ test("§15 refusal: a FIFTY-FIFTH binding fails, even though a directory may hol
   // `node-crypto-digest:SecretHasher` on a new one, `tokenmint-totp`'s two on
   // another new one, and A3's `redis-cache:ProviderProbeCache` on an existing
   // one again.
-  assert.ok(errors.some((error) => error.includes("declares 54 adapter bindings; ADAPTERS flattens to 55")));
+  //
+  // WIN-267 G2 moved it to FIFTY-SEVEN, and back inside `postgres-tenancy`:
+  // `governance`'s three inverted read seams are three rows on the directory
+  // that already owns the four tables they read. The DIRECTORY pin above did
+  // not move with it, which is the distinction §15's amendment is entirely
+  // about and the reason these two pins are separate.
+  assert.ok(errors.some((error) => error.includes("declares 57 adapter bindings; ADAPTERS flattens to 58")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

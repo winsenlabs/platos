@@ -64,10 +64,17 @@ describe("the published error codes", () => {
     expect(new Set(GOVERNANCE_ERROR_CODES).size).toBe(GOVERNANCE_ERROR_CODES.length);
   });
 
-  it("publishes one code per distinguishable refusal — 33 of them", () => {
+  it("publishes one code per distinguishable refusal — 36 of them", () => {
     // Pinned as a literal so a code merged into another, which is how two guards
     // become indistinguishable, cannot pass unnoticed.
-    expect(GOVERNANCE_ERROR_CODES).toHaveLength(33);
+    //
+    // WIN-267 G2: 33 -> 36. The three read seams each refuse under their own
+    // code when handed a scope they cannot narrow by, and the reason they are
+    // three is the reason this pin is a literal — `risk-report.ts` DEGRADES on
+    // the activity seam's failure rather than refusing, so a shared code would
+    // leave the one failure an operator cannot see indistinguishable from the
+    // two they can.
+    expect(GOVERNANCE_ERROR_CODES).toHaveLength(36);
   });
 
   it("keeps the four golden-set refusals apart from each other", () => {

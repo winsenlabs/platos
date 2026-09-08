@@ -1193,9 +1193,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     // 1580 + 20 + 10 = 1610, a figure NO branch stated: A1+A2 pinned 1600 and A3
     // pinned 1590, both over the same 1580 base.
+    //
+    // WIN-267 G2: 1610 + 6 = 1616. All six are under
+    // `packages/adapters/postgres-tenancy/src/` -- `governance`'s three inverted
+    // read seams, the guard they share, and their two suites. No context and no
+    // app term moves: the three ports were declared by `governance` already, and
+    // the three names on its ports barrel, the three error constructors in its
+    // domain and the composition root's three rows are all EDITS.
     // `scripts/arch/env-access.mjs` pins the same census independently and moves
     // with it.
-    assert.equal(result.fileCount, 1610, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 1616, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1213,7 +1220,10 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // WIN-267 A3: redis-ratelimit 7, redis-cache 3. The FIRST terms this sum
       // has ever taken under `packages/adapters/` for a directory that was a
       // generated placeholder, and the last two adapter terms in it.
-      7 + 3);
+      7 + 3 +
+      // WIN-267 G2: postgres-tenancy 6 -- four source modules for `governance`'s
+      // three inverted read seams plus the guard they share, and two suites.
+      6);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

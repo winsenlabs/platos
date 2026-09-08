@@ -20,6 +20,7 @@ import {
   goldenSetTooManyCriteria,
   goldenSetTooManyPairs,
   goldenSetTooManyThreads,
+  activityUnreadable,
   judgeModelInvalid,
   judgeUnavailable,
   ledgerUnavailable,
@@ -28,6 +29,7 @@ import {
   ratingActorForbidden,
   ratingCommentTooLong,
   ratingTargetNotFound,
+  ratingTargetUnreadable,
   ratingValueInvalid,
   safetyActionUnknown,
   safetyDetectorUnknown,
@@ -35,12 +37,20 @@ import {
   safetySeverityUnknown,
   scopeMismatch,
   transcriptNotFound,
+  transcriptUnreadable,
 } from "./errors.js";
 
 const EVERY_CONSTRUCTOR = [
   scopeMismatch("a", "b"),
   ledgerUnavailable("down"),
   queueUnavailable("down"),
+  // WIN-267 G2 — the three read seams' refusals. Three constructors and not
+  // one, so this suite's uniqueness assertion is what keeps them apart: they are
+  // raised by ONE guard over ONE value in three files, which is the exact shape
+  // that collapses into a shared code.
+  ratingTargetUnreadable("no environment"),
+  transcriptUnreadable("no environment"),
+  activityUnreadable("no environment"),
   pageRequestInvalid("bad"),
   safetyRuleMalformed("nope"),
   safetyDetectorUnknown("nope"),
