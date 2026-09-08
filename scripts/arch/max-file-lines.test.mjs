@@ -794,7 +794,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   // list below is unchanged. A controller monolith remains structurally
   // forbidden in the directory the routes are coming TO and in the directory
   // they are registered IN.
-  assert.equal(result.fileCount, 1542);
+  // WIN-267 (M4.1, A3) 1542 -> 1552, and it moves the TREE rather than the
+  // selector too: `packages/adapters/**` is already inside the enforced slice at
+  // WARNING 400 / ERROR 500 effective lines, and this tranche lands ten files
+  // there — seven in `redis-ratelimit/src/` and three in `redis-cache/src/`.
+  //
+  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured, not assumed:
+  // the largest of the ten is `provider-probe-cache.test.ts` at 176 effective
+  // lines, then `rate-limiter.test.ts` at 168 and `provider-probe-cache.ts` at
+  // 105; the four production modules and the two harness/oracle files run 61 to
+  // 105. Nothing crosses 400 and the warning list below is unchanged — which is
+  // the property that matters for a directory about to grow: an adapter that
+  // needed a 500-line file to hold one port would be an adapter holding more
+  // than one job.
+  assert.equal(result.fileCount, 1552);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -811,7 +824,14 @@ test("the live selectors scan an exact nonzero source census", () => {
       12 +
       // WIN-267 T2, the REST chassis: 5 under `src/transports/rest/` and 4 under
       // `src/http/`, newly WRITTEN and inside selectors that already existed.
-      5 + 4
+      5 + 4 +
+      // WIN-267 A3, the two Redis adapters: 7 under
+      // `packages/adapters/redis-ratelimit/src/` and 3 under
+      // `packages/adapters/redis-cache/src/`, also newly WRITTEN and also inside
+      // a selector that already existed. `packages/adapters/**` has been in the
+      // enforced slice since it was drawn; what changed is that one of its
+      // directories stopped being two declaration files.
+      7 + 3
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -926,7 +946,16 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   APPS-TRANSPORTS  13
   //   APPS-HTTP        16
   // 27 + 1075 + 411 + 13 + 16 = 1542.
-  assert.equal(result.fileCount, 27 + 1075 + 411 + 13 + 16);
+  //
+  // WIN-267 (M4.1, A3) MOVES ONLY THE ADAPTERS TERM, and that is the mirror
+  // claim: this tranche is two adapter directories and nothing else. ADAPTERS
+  // 411 -> 421 (7 in `redis-ratelimit`, 3 in `redis-cache`); kernel, contexts
+  // and both apps terms are byte-for-byte the same scan. A tranche that grew a
+  // transport while calling itself an adapter would show up here as a moved
+  // APPS term — which is exactly how T2's move was read, in the other direction.
+  //   ADAPTERS        421
+  // 27 + 1075 + 421 + 13 + 16 = 1552.
+  assert.equal(result.fileCount, 27 + 1075 + 421 + 13 + 16);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

@@ -1159,7 +1159,19 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     // 1568 + 2 + 10 = 1580. `scripts/arch/env-access.mjs` pins the same census
     // independently, which is why the two are allowed to disagree and be caught.
-    assert.equal(result.fileCount, 1580, "the generated V1 source census must stay exact");
+    //
+    // WIN-267 A3 adds TEN, all under `packages/adapters/`, and both halves are
+    // named so a reader can check them rather than trust the sum. SEVEN in
+    // `redis-ratelimit/src/`, which this tranche adopts — `client.ts`,
+    // `rate-limiter.ts`, `oracle-source.ts`, `harness.ts` and the three suites
+    // `rate-limiter.test.ts`, `oracle-differential.test.ts` and
+    // `ratelimit.integration.test.ts`. THREE in `redis-cache/src/`, where
+    // `providers`' `ProviderProbeCache` becomes the fourth port —
+    // `provider-probe-cache.ts` and its two suites. Every other file the tranche
+    // touches is an EDIT: `adapter.ts` and `index.ts` in both directories,
+    // `client.ts` in the cache, the two composition files, and the context port
+    // entry points. 1580 + 10 = 1590.
+    assert.equal(result.fileCount, 1590, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1170,7 +1182,11 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // WIN-267 T3: composition/context-ports.ts + composition/installation.test.ts.
       2 +
       // WIN-267 T2 chassis: transports/rest 5, http 4, runtime 1.
-      5 + 4 + 1);
+      5 + 4 + 1 +
+      // WIN-267 A3: redis-ratelimit 7, redis-cache 3. The FIRST terms this sum
+      // has ever taken under `packages/adapters/` for a directory that was a
+      // generated placeholder, and the last two adapter terms in it.
+      7 + 3);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
