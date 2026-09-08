@@ -318,21 +318,21 @@
   "declared": [
     {
       "name": "M04 a new webapp file imports the banned specifier",
-      "attempted": "Four shapes were added to apps/webapp/app/root.tsx, one at a time: `export * from`, a bare `import \"...\"`, `await import(...)` and `require(...)`.",
+      "tried": "Four shapes were added to apps/webapp/app/root.tsx, one at a time: `export * from`, a bare `import \"...\"`, `await import(...)` and `require(...)`.",
       "result": "NOT KILLED, and not a gap. The checker saw all four (measured: `arch-boundaries.mjs --scan-root apps/webapp/app` named root.tsx in every case), so the ACCEPTANCE case's two sides both grew by one file and continued to agree — which is the case doing its job, not failing to.",
       "why-unfalsifiable": "The ACCEPTANCE case is a BIJECTION between the checker's findings and a byte scan of the tree, deliberately rather than a pinned count. A pinned count would have to be edited by every commit of the cutover, and an assertion a branch edits to stay green is the assertion shape this project has already paid for once (contract-map.mjs's `count: 18`). The property that a new importer must be VISIBLE is what M05 falsifies, from the other side.",
       "measured": "9 violations on the base commit and 9 on this branch — the same nine files, named individually rather than counted."
     },
     {
       "name": "the dependency-cruiser enforcer's own behaviour on the repaired pattern",
-      "attempted": "Running dependency-cruiser over apps/webapp with the regenerated .dependency-cruiser.js.",
+      "tried": "Running dependency-cruiser over apps/webapp with the regenerated .dependency-cruiser.js.",
       "result": "NOT RUN. dependency-cruiser is not a dependency of this workspace — `.dependency-cruiser.js` is a GENERATED artifact whose only gate is `gen-dependency-cruiser.mjs --check`, which compares it to the rules module and never executes it. Adding the tool is a lockfile change this tranche did not take.",
       "why-unfalsifiable": "The claim under test is about a resolver's answer, not about that tool's reporting. It is measured directly instead: Node's own resolver — the same model dependency-cruiser uses through enhanced-resolve — is called from apps/webapp/app/services/ in the CORROBORATION case, and the path it returns is the path the pattern is asserted against. The case names its skip reason when no install is present rather than passing silently.",
       "measured": "internal-packages/tenancy-database/dist/index.js, with no node_modules/ segment."
     },
     {
       "name": "C8 catching a reach through a variable that is not obviously the composed application",
-      "attempted": "`const m = app; m.adapters['postgres-tenancy']` and `function f(x: { adapters: SuppliedAdapters }) { return x.adapters; }` — the reach laundered through an alias or a structural parameter type.",
+      "tried": "`const m = app; m.adapters['postgres-tenancy']` and `function f(x: { adapters: SuppliedAdapters }) { return x.adapters; }` — the reach laundered through an alias or a structural parameter type.",
       "result": "CAUGHT, but for a reason that is weaker than it looks and is therefore declared rather than counted. C8 refuses ANY `.adapters` property read inside `apps/core-api/src/transports/**`, whatever the receiver is named, so an alias changes nothing. What it does NOT do is prove the receiver is the composed application.",
       "why-unfalsifiable": "A transport that defined its own unrelated object with an `adapters` property would be refused too — a false positive this rule accepts on purpose. Establishing that a receiver IS the `AppModule` needs the type checker rather than the parser, and a type-directed gate is a different instrument with a different cost. The false positive is cheap (rename the property) and the false NEGATIVE it trades away is not (a canonical-store read no gate can see), which is the direction a containment rule should err in. Stated here rather than left for a reader to discover when the rule fires on something innocent.",
       "measured": "5 reach spellings caught, 1 prose-only file correctly ignored, live tree at 0 violations across 1580 files."
