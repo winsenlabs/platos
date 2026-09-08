@@ -79,8 +79,18 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // M2 INTEGRATION: the two additions are DIFFERENT files and different
   // categories, so both counts move: 250 -> 252, ACCEPTED 225 -> 226 and
   // POINT-IN-TIME 20 -> 21. Either branch figure alone (251) is wrong merged.
-  assert.equal(manifest.entryCount, 252, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, and the WIN-260 M2.5 milestone note");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 226, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  // WIN-267 (M4.1) T5 +1 ACCEPTED: docs/audits/M4.1-webapp-cutover.json, the
+  // measurement of the webapp's remaining canonical-store reach. ACCEPTED and not
+  // POINT-IN-TIME on the same terms as the WIN-299 advisory pair: it binds
+  // CURRENT repository truth rather than a dated snapshot, because
+  // `audit:webapp-cutover` regenerates it from the tree on every run and fails
+  // unless the committed bytes match. The number in it IS the M2 acceptance
+  // clause "webapp database credentials can be removed" — 15 operations in 11
+  // files today, and the clause is met when it reads 0.
+  // 252 -> 253 and ACCEPTED 226 -> 227; POINT-IN-TIME, SUPERSEDED-BY and DRAFT
+  // are unchanged.
+  assert.equal(manifest.entryCount, 253, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, and the WIN-267 webapp cutover measurement");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 227, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

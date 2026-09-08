@@ -7,8 +7,8 @@
     "docs/audits/win-254-protected-paths.json",
     "docs/audits/win-254-evidence-lifecycle.json"
   ],
-  "pathCount": 792,
-  "pathSetSha256": "cd008a1779efb3dfcc39fa6df66a4ada346a2ec3440b0ef02b9ff551ac19f395",
+  "pathCount": 793,
+  "pathSetSha256": "a63e255597c058a4fbeb208a4c612a445552887c8a8c42d6ab24ed9fe1a8fb5e",
   "entries": [
     {
       "path": ".github/workflows/ci.yml",
@@ -859,6 +859,11 @@
       "path": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
       "mode": "100644",
       "sha256": "536e7c893703595dff85d2eb56062f0857bf27903d86584ea3f53f92b6e6ec68"
+    },
+    {
+      "path": "docs/audits/M4.1-webapp-cutover.json",
+      "mode": "100644",
+      "sha256": "5709f90220dd2b519a91e0a9b505bbd31d910395a0b370f0d30bff347ad7b7f5"
     },
     {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",
@@ -3483,7 +3488,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "48a924a0a7eb137846d428d87bb4501153f1699e954ce443b3ca35c0a57054b6"
+      "sha256": "353ac12fead5278de2b215be853a5f6295aa35e652c22eddec9630366cab36f0"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3658,7 +3663,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "4f9b99c09707db927491542bad25ebcf4a3dfb22694fb8e2844da6af49532d87"
+      "sha256": "2812ed071d5d8bf15f03cc1df4d7a21065f84b4a053eee82b06bc6ae4602e3d3"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3873,12 +3878,12 @@
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "87823f321a8876ace9e9047378ac75b0c62ccb5c244a700b14d593d0615f0a8f"
+      "sha256": "0c57bdab19e05602475d9febae2932d8c2ee0d33555152b90fa8702b4b1b808c"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
       "mode": "100644",
-      "sha256": "51ccae8665148b79b3974115017d9435801bac36632a4f0b81ca9207acca02ed"
+      "sha256": "29be0c1ac683dfc421e5d802a7d0cf22865d6b6305dd3dfa1a3c3bfb81eeb31e"
     },
     {
       "path": "scripts/lib/advisory-dispositions.mjs",
@@ -3898,7 +3903,7 @@
     {
       "path": "scripts/protected-paths.mjs",
       "mode": "100644",
-      "sha256": "570507c7c5dadce59fbaaedd7d79551170f50ce42145c7cc879729af7a29ca1b"
+      "sha256": "a32246943ca69a7eca1b189ab5b2423b99a59fe687c6813bcb01dde69ae78659"
     },
     {
       "path": "scripts/protected-paths.test.mjs",
@@ -3923,7 +3928,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "e9d3b73c29f685acb4ad3f8f37a94b56a18e3dfba7d27238120707bed19e71f9"
+      "sha256": "f376ceb0210fc79e7c3ec64a633994af3cec879152ad2443a260bd0f255fe230"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

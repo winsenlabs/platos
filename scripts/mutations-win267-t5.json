@@ -93,7 +93,32 @@
     "",
     "So the surface is blocked on adapters that are WIN-251/WIN-258's to write, not on",
     "anything T5 could have done. Building the routes anyway would have produced the",
-    "dead surface WIN-297 declined to create, with a cross-tenant hole in it."
+    "dead surface WIN-297 declined to create, with a cross-tenant hole in it.",
+    "",
+    "T5's THIRD act is the cutover METER, and it exists because the denominator of",
+    "the acceptance clause could grow between two green CI runs.",
+    "",
+    "Nothing in this repository counts the webapp's canonical-store call sites.",
+    "`arch-boundaries.mjs` is the enforcer that would and its `DEFAULT_SCAN_ROOTS`",
+    "excludes `apps/webapp` during the strangler window; `.dependency-cruiser.js` is",
+    "a generated artifact and dependency-cruiser is not a dependency of this",
+    "workspace, so nothing executes it. A cutover whose denominator moves while you",
+    "are cutting over is a cutover that does not finish.",
+    "",
+    "THE FIGURE REPRODUCES A THIRD TIME, AND IT CAUGHT THIS GATE'S OWN FIRST DRAFT.",
+    "The brief states 15 operations in 11 files, reproduced twice. An independent",
+    "AST parse joined to ADR M0.3 §5.2's ownership map first reported 14 in 10 — and",
+    "the missing one was `app/services/auth.server.ts:75`, which imports the client",
+    "as `./database.server` while the ten route files use the `~/` alias. The draft",
+    "matched the alias STRING. That is precisely the failure this tranche's first",
+    "commit repaired in `tenancy-prisma-only`: a pattern written against one",
+    "spelling of an import, blind to the other. The gate now resolves specifiers to",
+    "FILES and reports 15 in 11.",
+    "",
+    "AND THE ATTRIBUTION IS THE NEW INFORMATION. The 15 split as tenancy 10,",
+    "identity-access 2, secrets 2, and one `$transaction` that owns no row. So FOUR",
+    "of the fifteen belong to contexts the composition root cannot build at all —",
+    "which is what makes the cutover a multi-tranche job rather than a long one."
   ],
   "procedure": [
     "PROVE GREEN FIRST. The unmutated tree ran green before and after every entry",
@@ -113,7 +138,9 @@
     "config-fixpoint": "node scripts/arch/gen-dependency-cruiser.mjs --check",
     "webapp-scan": "node scripts/arch/arch-boundaries.mjs --scan-root apps/webapp/app",
     "composition": "node --test scripts/arch/composition-root.test.mjs",
-    "composition-audit": "node scripts/arch/composition-root.mjs"
+    "composition-audit": "node scripts/arch/composition-root.mjs",
+    "cutover": "node --test scripts/webapp-cutover.test.mjs",
+    "cutover-audit": "node scripts/webapp-cutover.mjs --check"
   },
   "mutations": [
     {
@@ -231,6 +258,61 @@
       ],
       "killCount": 4,
       "control": "This mutation fails in BOTH directions at once, which is the point of the entry: it condemns a comment (false positive) and misses all three destructuring reaches (false negative). The same blindness produces both, exactly as the parse banner says."
+    },
+    {
+      "name": "M09 the cutover meter matches the specifier SPELLING instead of resolving to a file",
+      "guards": "scripts/webapp-cutover.mjs — resolveSpecifier. This is the meter's own first-draft bug, preserved as an entry: it under-reported the acceptance clause by one operation and one file.",
+      "file": "scripts/webapp-cutover.mjs",
+      "from": "the relative-specifier arm of resolveSpecifier: `} else if (specifier.startsWith(\".\"))`",
+      "to": "`} else if (false)`",
+      "command": "cutover",
+      "exit": 1,
+      "kills": [
+        "x BASELINE: the live tree reports 15 operations in 11 files, and every row resolves",
+        "-> expected 14 to equal 15",
+        "x the attribution is the ADR's, not this gate's: 10 tenancy, 2 identity-access, 2 secrets",
+        "x MUTATION: a NEW canonical-store call in the webapp moves the count",
+        "x MUTATION: the RELATIVE import shape is followed, not just the `~/` alias",
+        "x MUTATION: a write inside a $transaction callback is attributed, not lost",
+        "x ACCEPTANCE: deleting the client module with a call site left behind is a FAILURE"
+      ],
+      "killCount": 6,
+      "control": "`audit:webapp-cutover` would go GREEN after one regeneration, reporting 14 in 10 and a tidy per-context split — a wrong denominator that looks exactly like a right one. That is why the BASELINE case pins the figure against the brief's independently reproduced count rather than against whatever the meter last wrote.",
+      "note": "The lost operation is the one in `auth.server.ts`, which resolves the operator's session — the single most security-relevant call site in the tree."
+    },
+    {
+      "name": "M10 the meter stops following the $transaction callback parameter",
+      "guards": "scripts/webapp-cutover.mjs — the second pass in clientBindings. The two creates inside `projects.new`'s transaction name `database` nowhere; they are called on the callback's parameter.",
+      "file": "scripts/webapp-cutover.mjs",
+      "from": "the `<client>.$transaction(callback)` fixpoint pass in clientBindings",
+      "to": "(removed)",
+      "command": "cutover",
+      "exit": 1,
+      "kills": [
+        "x BASELINE: the live tree reports 15 operations in 11 files, and every row resolves",
+        "-> expected 13 to equal 15",
+        "x the attribution is the ADR's, not this gate's: 10 tenancy, 2 identity-access, 2 secrets",
+        "x MUTATION: a write inside a $transaction callback is attributed, not lost",
+        "x MUTATION: a NEW canonical-store call in the webapp moves the count",
+        "x MUTATION: the RELATIVE import shape is followed, not just the `~/` alias",
+        "x ACCEPTANCE: deleting the client module with a call site left behind is a FAILURE"
+      ],
+      "killCount": 6,
+      "control": "The meter reports 13 and calls the cutover 87% done. The two operations it loses are the atomic project+membership creation — the one invariant ADR M0.3 records as having 'only ever lived' in that Remix `$transaction`."
+    },
+    {
+      "name": "M11 an unclassified delegate method is silently counted as a read",
+      "guards": "scripts/webapp-cutover.mjs — the kind ternary. `table-ownership.mjs` owns the read/write vocabulary; a method it does not know has a blast radius this gate cannot state.",
+      "file": "scripts/webapp-cutover.mjs",
+      "from": "            : \"unclassified\";",
+      "to": "            : \"read\";",
+      "command": "cutover",
+      "exit": 1,
+      "kills": [
+        "x an unclassified delegate method is REPORTED rather than silently counted as a read"
+      ],
+      "killCount": 1,
+      "control": "The count is unchanged and every other case stays green. Guessing 'read' understates exactly the operations that matter most — a write the vocabulary has not learned yet reads as harmless."
     }
   ],
   "declared": [

@@ -2082,37 +2082,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 5068,
+    "totalFiles": 5071,
     "areaCounts": {
       "apps-agent": 516,
       "apps-core-api": 68,
       "apps-mcp-stdio": 8,
       "apps-webapp": 183,
-      "docs-content": 737,
+      "docs-content": 738,
       "internal-packages": 1173,
       "packages": 2091,
-      "root-infra": 292
+      "root-infra": 294
     },
     "kindCounts": {
       "asset": 155,
       "config": 303,
       "doc": 608,
       "fixture": 6,
-      "generated": 44,
+      "generated": 45,
       "legal": 14,
       "lockfile": 3,
       "migration": 895,
-      "source": 2029,
-      "test": 1011
+      "source": 2030,
+      "test": 1012
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1629,
-      "regenerate": 39,
+      "move-refactor": 1631,
+      "regenerate": 40,
       "retain": 3391,
       "unresolved": 2
     },
-    "protectedCount": 1632,
+    "protectedCount": 1633,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2157,7 +2157,7 @@
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
       "docs-content.evidence.audit-notes": 12,
-      "docs-content.evidence.audit-receipts": 19,
+      "docs-content.evidence.audit-receipts": 20,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2245,11 +2245,11 @@
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 15,
       "root-infra.test.harness": 69,
-      "root-infra.test.script-suites": 32,
+      "root-infra.test.script-suites": 33,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 89,
+      "root-infra.tooling.scripts": 90,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "f6a41f74dd851708da84f551aa83c9659c3154422aca194bbdc0d2593391c4df"
+    "classificationSha256": "1c9f8ae60a79d36e66732d25ac23a2b49ef428122bedcc6a4b33641a0d9fb422"
   }
 }

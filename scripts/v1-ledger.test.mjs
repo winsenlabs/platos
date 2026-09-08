@@ -1467,7 +1467,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // mine. No other area moves: T0 edits enumerators and censuses in place, and
     // an edited file is not a new one.
     // root-infra 43 + 2 + 2 + 4 + 2 = 53.
-    "docs-content": 17,
+    // WIN-267 (M4.1, T5) 17 -> 18: `docs/audits/M4.1-webapp-cutover.json`, the
+    // generated measurement of the webapp's remaining canonical-store reach. It
+    // classifies as kind `generated` rather than `doc`, which is right — it is
+    // written by `scripts/webapp-cutover.mjs` and a hand edit to it fails
+    // `audit:webapp-cutover`.
+    "docs-content": 18,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1496,16 +1501,26 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // files this slice touches — `.dependency-cruiser.js`,
     // `scripts/arch/boundary-rules.mjs` and `scripts/arch/arch-boundaries.test.mjs`
     // — are all tracked already, and an edited file is not a new one.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 = 56.
-    "root-infra": 56,
+    // WIN-267 (M4.1, T5) 56 -> 58: `scripts/webapp-cutover.mjs` and its suite —
+    // the meter for the M2 clause "webapp database credentials can be removed".
+    // Kind `source` and kind `test` respectively, both on
+    // `root-infra.tooling.scripts`. They are TWO files rather than one because
+    // the meter is a gate with a `--check` mode wired into the root package
+    // scripts, not a fixture: `audit:webapp-cutover` fails on any drift between
+    // the tree and the committed artifact.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 2 = 58.
+    "root-infra": 58,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  // WIN-267 (M4.1, T5) 1598 -> 1599: the one file above. The identity this
+  // WIN-267 (M4.1, T5) 1598 -> 1602: FOUR files across two areas —
+  // `scripts/mutations-win267-t5.json`, `scripts/webapp-cutover.mjs` and its
+  // suite in `root-infra`, and the generated
+  // `docs/audits/M4.1-webapp-cutover.json` in `docs-content`. The identity this
   // number exists to hold is that the total delta and the per-area deltas are
-  // the SAME arithmetic — 2 + 0 + 57 + 4 + 1454 + 9 + 17 + 56 = 1599 — so a file
+  // the SAME arithmetic — 2 + 0 + 57 + 4 + 1454 + 9 + 18 + 58 = 1602 — so a file
   // that arrives in one and not the other cannot pass both halves of this case.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1599);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1602);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1612,12 +1627,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
     //
-    // WIN-267 (M4.1, T5) 1598 -> 1599, from `scripts/mutations-win267-t5.json`
-    // in `root-infra`. This is the SECOND, independent derivation — it sums the
-    // per-area counts rather than reading the total — which is exactly why it is
-    // moved separately and by hand: if T5 had added a file to one side and not
-    // the other, one of these two assertions would still be red.
-    rulesDocument.baseline.totalFiles + 1599
+    // WIN-267 (M4.1, T5) 1598 -> 1602, from four files: the tranche's mutation
+    // ledger, the cutover meter and its suite (`root-infra` +3), and the meter's
+    // generated artifact (`docs-content` +1). This is the SECOND, independent
+    // derivation — it sums the per-area counts rather than reading the total —
+    // which is exactly why it is moved separately and by hand: if T5 had added a
+    // file to one side and not the other, one of these two assertions would
+    // still be red.
+    rulesDocument.baseline.totalFiles + 1602
   );
 });
 

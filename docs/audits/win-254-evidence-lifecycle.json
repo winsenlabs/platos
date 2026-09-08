@@ -68,6 +68,7 @@
         "docs/audits/M0.8-operator-operations.md",
         "docs/audits/M0.9-rest-census-independent.json",
         "docs/audits/M0.9-webapp-bff-matrix.json",
+        "docs/audits/M4.1-webapp-cutover.json",
         "docs/audits/sbom/NON-VACUITY-PROOF.md",
         "docs/audits/sbom/README.md",
         "docs/audits/sbom/advisory/README.md",
@@ -125,7 +126,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "cd008a1779efb3dfcc39fa6df66a4ada346a2ec3440b0ef02b9ff551ac19f395",
+  "protectedPathSetSha256": "a63e255597c058a4fbeb208a4c612a445552887c8a8c42d6ab24ed9fe1a8fb5e",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -135,9 +136,9 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 252,
+  "entryCount": 253,
   "counts": {
-    "ACCEPTED": 226,
+    "ACCEPTED": 227,
     "SUPERSEDED-BY": 4,
     "POINT-IN-TIME": 21,
     "DRAFT": 1
@@ -1242,6 +1243,13 @@
       "sourceSnapshot": "repository report captured for its named milestone or research baseline",
       "baseline": "mixed or historical report; current acceptance is provided by executable checked evidence",
       "date": "2026-08-30"
+    },
+    {
+      "path": "docs/audits/M4.1-webapp-cutover.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "5709f90220dd2b519a91e0a9b505bbd31d910395a0b370f0d30bff347ad7b7f5",
+      "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",

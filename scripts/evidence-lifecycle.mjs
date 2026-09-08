@@ -77,6 +77,14 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   "docs/audits/M0.8-operator-operations.md",
   "docs/audits/M0.9-rest-census-independent.json",
   "docs/audits/M0.9-webapp-bff-matrix.json",
+  // WIN-267 (M4.1) T5. ACCEPTED rather than POINT-IN-TIME, on the same reasoning
+  // the advisory pair above records: it binds CURRENT repository truth, not a
+  // dated snapshot. `audit:webapp-cutover` regenerates the measurement from the
+  // tree on every run and fails unless the committed file is byte-identical, so
+  // it cannot fall behind the code it describes — and the number in it is the M2
+  // acceptance clause "webapp database credentials can be removed", which is
+  // current acceptance by definition.
+  "docs/audits/M4.1-webapp-cutover.json",
   "docs/audits/sbom/NON-VACUITY-PROOF.md",
   "docs/audits/sbom/README.md",
   // WIN-299 (M2.6). Both bind CURRENT repository truth rather than a snapshot:

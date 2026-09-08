@@ -71,10 +71,22 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // inside the existing `docs/**` selection rather than widening it, and none of
 // the scanners beside them is added to SCRIPT_PREFIXES.
 //
+// WIN-267 (M4.1) T5: 792 -> 793, ONE addition and no removals:
+//   docs/audits/M4.1-webapp-cutover.json   (the webapp cutover measurement)
+// VERIFIED SET-WISE and not only by count, the way the M2 integration note above
+// requires: the 793 paths at this head are exactly the 792-path set at the
+// previous commit plus that one file — nothing in the head that is not in the
+// union, nothing in the union that is not in the head. It falls inside the
+// existing `docs/**` selection rather than widening it, and the tranche's other
+// three new files are not protected paths: `scripts/webapp-cutover.mjs` and its
+// suite are already covered by the `scripts/` prefix, and
+// `scripts/mutations-win267-t5.json` is a mutation ledger rather than evidence a
+// gate reads.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "cd008a1779efb3dfcc39fa6df66a4ada346a2ec3440b0ef02b9ff551ac19f395";
+export const EXPECTED_PATH_SET_SHA256 = "a63e255597c058a4fbeb208a4c612a445552887c8a8c42d6ab24ed9fe1a8fb5e";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
