@@ -13,7 +13,12 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // thirteenth adapter directory. This expectation is derived independently of
 // `scripts/arch/gen-v1-skeleton.mjs` and is maintained separately on purpose,
 // so the two agreeing is evidence rather than a tautology.
-export const EXPECTED_PROJECT_COUNT = 33;
+// WIN-267 A2 33 -> 34. `packages/adapters/tokenmint-totp`, the fourteenth
+// adapter directory. Derived independently of `scripts/arch/gen-v1-skeleton.mjs`
+// for the reason above, and it is not a formality: the two models disagreed on
+// the EDGE count on the first run of this tranche, which is exactly what
+// maintaining them separately is for.
+export const EXPECTED_PROJECT_COUNT = 34;
 // 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
 // `packages/kernel`.
 //
@@ -209,7 +214,15 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // the count by DIFFERENT models -- one walks the discovered graph, one derives a
 // reference per row owner -- and are maintained separately on purpose, so the
 // two can disagree and be caught.
-export const EXPECTED_EDGE_COUNT = 116;
+//
+// WIN-267 A2: 116 -> 118. `packages/adapters/tokenmint-totp` ->
+// `packages/contexts/identity-access` (its one owner, carrying TWO ports in ONE
+// reference) and `apps/core-api` -> `packages/adapters/tokenmint-totp` (the
+// composition root, which references every adapter directory). The SOURCE model
+// is the one that makes the second of those real rather than declared: a
+// reference core-api never imports leaves source at 117 while reference and
+// dependency read 118, and this gate reports the split.
+export const EXPECTED_EDGE_COUNT = 118;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -381,6 +394,15 @@ export const EXPECTED_ADAPTER_OWNERS = {
   // and the omission is the claim: the one directory entitled to more than one
   // OWNER is still `postgres-tenancy`, at seventeen.
   "keyring-envelope": ["secrets"],
+  // WIN-267 A2. ONE owner and TWO bindings, for the same reason
+  // `keyring-envelope` above has one owner and three: this map is keyed by
+  // OWNER, and `identity-access` publishing `TokenMinter` and
+  // `TotpCodeVerifier` separately is still one project reference.
+  //
+  // No row in `EXPECTED_MULTI_OWNER_ADAPTERS`, and the omission is again the
+  // claim: `postgres-tenancy` at seventeen and `redis-cache` at three remain the
+  // only directories entitled to more than one owner.
+  "tokenmint-totp": ["identity-access"],
 };
 
 /**

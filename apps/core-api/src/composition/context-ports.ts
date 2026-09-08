@@ -43,16 +43,22 @@
 // `identity-access` is the near miss, and naming why is the point of this note.
 // Its bundle has eight slots. `repository` is on the same adapter — WIN-258
 // tranche 2 put it there — and `logger`, `clock` and `ids` are kernel ports this
-// process already holds. The other four have NO implementation in this
-// repository: `rateLimiter` is `packages/adapters/redis-ratelimit`, whose
-// `src/adapter.ts` is still a generated interface; `hasher`, `minter`, `totp` and
-// `cipher` are named on the context's own ports and satisfied by no adapter
-// directory at all — `keyring-envelope`'s `Hasher` is `secrets`' port, a
-// different type in a different package, and nothing implements
-// `SecretHasher`, `TokenMinter`, `TotpCodeVerifier` or `MfaSecretCipher`. So the
-// context is still composed from a SUPPLIED bundle, exactly as it was, and this
-// file returns none for it rather than assembling seven slots out of eight and
-// leaving the eighth to crash at first sign-in.
+// process already holds.
+//
+// WIN-267 A2 MOVES THIS COUNT FOR THE FIRST TIME, and moves it by two rather
+// than by four. `minter` and `totp` are now `packages/adapters/tokenmint-totp`,
+// a constructed adapter that needs no configuration, so the two ports T3
+// recorded as "satisfied by no adapter directory" are satisfied. What is left is
+// two: `rateLimiter` is `packages/adapters/redis-ratelimit`, whose
+// `src/adapter.ts` is still a generated interface, and `hasher` and `cipher` are
+// named on the context's own ports and satisfied by no adapter directory at all
+// — `keyring-envelope`'s `Hasher` is `secrets`' port, a different type in a
+// different package, and nothing implements `SecretHasher` or `MfaSecretCipher`.
+//
+// So the context is STILL composed from a SUPPLIED bundle and this file still
+// returns none for it. Assembling six slots out of eight and leaving the
+// remaining two to crash at first sign-in would be worse than assembling seven,
+// not better, and a partial bundle is not a step towards a whole one.
 //
 // THAT IS WHY `APPLICATION_ENTRY_PROJECTS` GAINS NO ENTRY IN THIS TRANCHE. The
 // generator's own rule for that list is "the contexts `apps/core-api` ACTUALLY
@@ -89,15 +95,21 @@ export interface ContextPortAssembly {
  * The reason `identity-access` is not assembled here, stated once.
  *
  * A constant rather than an inline string because it is READ BACK by
- * `installation.test.ts`: the claim "four of its eight slots have no
+ * `installation.test.ts`: the claim "two of its eight slots have no
  * implementation" is checked against the adapter directories rather than
  * asserted, so this sentence and the check cannot drift apart silently.
+ *
+ * WIN-267 A2 SHRANK IT FROM FOUR TO TWO, and the shrink is the deliverable
+ * rather than a wording change. `TokenMinter` and `TotpCodeVerifier` left this
+ * sentence because `ADAPTER_BINDINGS` gained two rows naming
+ * `packages/adapters/tokenmint-totp`, and the suite that reads this constant
+ * fails BOTH ways: it now requires those two ports to appear in the bindings
+ * table and requires the two still named here NOT to.
  */
 export const IDENTITY_ACCESS_UNASSEMBLED =
-  "four of its eight driven ports have no implementation: RateLimiter is" +
-  " packages/adapters/redis-ratelimit, a generated interface, and SecretHasher," +
-  " TokenMinter, TotpCodeVerifier and MfaSecretCipher are satisfied by no adapter" +
-  " directory";
+  "two of its eight driven ports have no implementation: RateLimiter is" +
+  " packages/adapters/redis-ratelimit, a generated interface, and SecretHasher" +
+  " and MfaSecretCipher are satisfied by no adapter directory";
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.

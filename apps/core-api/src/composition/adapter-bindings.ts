@@ -35,6 +35,8 @@ import type {
 import type {
   IdentityAccessRepository,
   RateLimiter,
+  TokenMinter,
+  TotpCodeVerifier,
 } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -136,6 +138,8 @@ import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
 import { buildKeyringEnvelope } from "@platos/adapter-keyring-envelope";
+import type { TokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
+import { createTokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
 
 import type { ProvidersConfiguration } from "../config/providers.js";
 import type { SecurityConfiguration } from "../config/security.js";
@@ -143,14 +147,16 @@ import type { StoresConfiguration } from "../config/stores.js";
 import type { Drainable } from "../runtime/shutdown-drain.js";
 
 /**
- * The thirteen adapter slots, keyed by directory name.
+ * The fourteen adapter slots, keyed by directory name.
  *
  * The key is the adapter's directory because that is the name every other gate
  * already uses — `scripts/arch/boundary-rules.mjs`, the generator's `ADAPTERS`
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * THIRTEEN SLOTS, FORTY-SEVEN BINDINGS (ADR M0.3 §15, amended by WIN-259). An
+ * FOURTEEN SLOTS, FIFTY-ONE BINDINGS (ADR M0.3 §15, amended by WIN-259, and
+ * WIN-267 A2 for the case §15 does not reach at all — a directory with NO vendor
+ * client). An
  * install wires a DIRECTORY — one process-lifetime object holding one vendor
  * client — so this table stays keyed by directory. What a directory SATISFIES is
  * a different question, and `PORT_SATISFACTION` below answers it per binding.
@@ -184,6 +190,19 @@ export interface AdapterInstances {
   // every envelope the ORM stores. `secrets-repository.ts` declined all three of
   // its ports on exactly that ground.
   readonly "keyring-envelope": KeyringEnvelopeAdapter;
+  // WIN-267 A2 — the FOURTEENTH slot. It is a slot rather than a row on an
+  // existing directory because an install wires ONE process-lifetime object per
+  // directory and this one holds no vendor client at all: it is `node:crypto`'s
+  // CSPRNG and the base32 alphabet that the minted TOTP secret and the verifier
+  // that reads it must share. `keyring-envelope` declined it for the reason it
+  // states about the ORM's directory in reverse — the custodian of reversible
+  // envelopes should not also be the generator of the secrets they seal.
+  //
+  // IT IS THE ONLY SLOT NO CONFIGURATION GROUP DECLARES. Every other entry above
+  // needs a URL, a key or a model name; this one needs nothing, so
+  // `constructAdapters` builds it unconditionally and it is present in the
+  // NOTHING_DECLARED install as well as the fully declared one.
+  readonly "tokenmint-totp": TokenmintTotpAdapter;
 }
 
 export type AdapterName = keyof AdapterInstances;
@@ -481,6 +500,16 @@ interface PortSatisfaction {
   readonly "keyring-envelope:KeyRing": Satisfies<KeyringEnvelopeAdapter, KeyRing>;
   readonly "keyring-envelope:AeadCipher": Satisfies<KeyringEnvelopeAdapter, AeadCipher>;
   readonly "keyring-envelope:Hasher": Satisfies<KeyringEnvelopeAdapter, Hasher>;
+  // WIN-267 A2. `identity-access`' TWO randomness ports, both proven against the
+  // ADAPTER rather than through a property: `mint`, `mintTotpSecret`,
+  // `mintRecoveryCodes`, `verify` and `generate` are five names with no
+  // collision, so one interface extends both.
+  //
+  // TWO OBLIGATIONS AND NOT ONE, for the reason `keyring-envelope`'s three are
+  // three: a missing obligation is not a wrong one, so collapsing them would
+  // leave the compiler silent the day `verify` changed shape.
+  readonly "tokenmint-totp:TokenMinter": Satisfies<TokenmintTotpAdapter, TokenMinter>;
+  readonly "tokenmint-totp:TotpCodeVerifier": Satisfies<TokenmintTotpAdapter, TotpCodeVerifier>;
 }
 
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
@@ -533,6 +562,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "keyring-envelope:KeyRing": true,
   "keyring-envelope:AeadCipher": true,
   "keyring-envelope:Hasher": true,
+  "tokenmint-totp:TokenMinter": true,
+  "tokenmint-totp:TotpCodeVerifier": true,
 });
 
 /**
@@ -924,6 +955,14 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   Object.freeze({ adapter: "keyring-envelope", port: "KeyRing", owner: "secrets" }),
   Object.freeze({ adapter: "keyring-envelope", port: "AeadCipher", owner: "secrets" }),
   Object.freeze({ adapter: "keyring-envelope", port: "Hasher", owner: "secrets" }),
+  // WIN-267 A2. The two bindings of the fourteenth directory, appended at the
+  // END for the reason the thirteenth's three were: every ordinal above stays
+  // true. They are the FIFTIETH and FIFTY-FIRST, and they are the first two rows
+  // in this table to fill a slot `composition/context-ports.ts` had recorded as
+  // empty — its `IDENTITY_ACCESS_UNASSEMBLED` sentence named four ports
+  // "satisfied by no adapter directory" and now names two.
+  Object.freeze({ adapter: "tokenmint-totp", port: "TokenMinter", owner: "identity-access" }),
+  Object.freeze({ adapter: "tokenmint-totp", port: "TotpCodeVerifier", owner: "identity-access" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1162,6 +1201,22 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     if (ring.ok) adapters["keyring-envelope"] = ring.value;
     else faults.push(`keyring-envelope could not be constructed: ${ring.error.code}`);
   }
+
+  // WIN-267 A2. UNCONDITIONAL, AND THE ONLY UNCONDITIONAL CONSTRUCTION HERE.
+  //
+  // Every other adapter above is guarded by a configuration group because every
+  // other adapter holds something an operator has to supply — a database URL, a
+  // Redis URL, root key material, a default model. This one holds the process's
+  // CSPRNG. There is no group to declare, nothing to parse, and no failure mode
+  // that a `Result` could report: `createTokenmintTotpAdapter` closes over two
+  // pure functions and `node:crypto`.
+  //
+  // So it is built before the guarded ones can decline, it never appears in
+  // `unwired`, and an install with NOTHING configured still has it. That is the
+  // observable difference between this slot and the thirteen above it, and
+  // `installation.test.ts` asserts it on the nothing-declared install rather
+  // than only on the fully declared one.
+  adapters["tokenmint-totp"] = createTokenmintTotpAdapter();
 
   if (input.providers.modelRouter === null) {
     decline(

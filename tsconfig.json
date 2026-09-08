@@ -113,6 +113,9 @@
       "path": "./packages/adapters/keyring-envelope"
     },
     {
+      "path": "./packages/adapters/tokenmint-totp"
+    },
+    {
       "path": "./apps/core-api"
     },
     {

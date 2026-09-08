@@ -107,10 +107,29 @@ export type {
   OperatorSessionRecord,
   OperatorUserRecord,
   PrincipalTier,
+  RawToken,
   RecoveryCodeRecord,
   RotationFamilyId,
   TokenHash,
+  TokenKind,
   TokenPairPlan,
   TotpCredential,
   UserId,
 } from "../../domain/index.js";
+
+// WIN-267 A2. The three VALUES an implementation of `TokenMinter` and
+// `TotpCodeVerifier` cannot be written without, republished for exactly the
+// reason the WIN-258 T2 block above states: `packages/adapters/tokenmint-totp`
+// implements both ports and its only edges are to this package, so without them
+// it would have to reach into `../../domain/`, which
+// `cross-context-contracts-only` exists to stop.
+//
+// NOTHING NEW IS PUBLISHED. All three are already public from
+// `../../domain/index.js`, and `RawToken` and `TokenKind` above are the types
+// `TokenMinter.mint`'s own signature is written in.
+//
+// `TOTP_DIGITS` is here rather than copied into the adapter deliberately. Six is
+// a number the DOMAIN owns — `domain/mfa.ts` records it as an RFC 6238 parameter
+// taken from the extraction source — and an adapter holding its own `6` could
+// disagree with it while every test in both packages stayed green.
+export { prefixOf, TOKEN_KINDS, TOTP_DIGITS } from "../../domain/index.js";

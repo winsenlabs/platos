@@ -155,7 +155,12 @@ describe("constructing the adapters an install declared", () => {
     // group of its own. An install with no database gets neither, and the reason
     // says so instead of naming a variable that would not have helped.
     const withoutDatabase = construct({ ...NOTHING_DECLARED, PLATOS_STORE_REDIS_URL: "redis://127.0.0.1:1" });
-    expect(Object.keys(withoutDatabase.adapters)).toEqual(["redis-cache"]);
+    // WIN-267 A2 adds `tokenmint-totp` to this list and it is NOT a weakening of
+    // the case. It is here because it needs no configuration at all, so it is
+    // present on every install including this one; `redis-cache` is here because
+    // its group was declared, and the outbox is absent because its dependency was
+    // not. The three states are what the case is about.
+    expect(Object.keys(withoutDatabase.adapters)).toEqual(["redis-cache", "tokenmint-totp"]);
     const declined = withoutDatabase.unwired.find((row) => row.adapter === "outbox");
     expect(declined?.cause).toBe("configuration");
     expect(declined?.reason).toContain(BUILT_FROM_ANOTHER_ADAPTER["outbox"]);
@@ -283,7 +288,7 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 41 of 49, and the 8 that remain are exactly the bindings with no implementation", () => {
+  it("reports 43 of 51, and the 8 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the eight directories sees both
@@ -293,7 +298,11 @@ describe("readiness over what was actually constructed", () => {
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
     expect(unimplementable).toHaveLength(8);
-    expect(verdict.detail.satisfiedBindings).toHaveLength(41);
+    // WIN-267 A2: 41 -> 43. The fourteenth directory brought TWO bindings and is
+    // constructible, so both are satisfied; the eight that remain are the same
+    // eight, which is what the identity on the next line says and the literal
+    // here cannot.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(43);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(8);
     // STILL RED, AND HONESTLY SO. Eight ports have no implementation in this
@@ -303,11 +312,21 @@ describe("readiness over what was actually constructed", () => {
     expect(verdict.ready).toBe(false);
   });
 
-  it("is still 0 of 49 with nothing wired, and now says which kind of nothing", () => {
+  it("is 2 of 51 with nothing wired, and says which kind of nothing the rest are", () => {
+    // IT USED TO BE 0 OF 49, AND THE CHANGE IS THE DELIVERABLE RATHER THAN A
+    // RELAXATION. Before WIN-267 A2 there was no port in this tree an install
+    // could satisfy without configuring something, so "nothing configured" and
+    // "nothing satisfied" were the same sentence. `tokenmint-totp` needs no
+    // configuration, so it is the one directory that separates them — and the
+    // two bindings it satisfies are named here rather than counted, so a THIRD
+    // arriving unconfigured would fail this case instead of widening a number.
     const { verdict } = readiness(NOTHING_DECLARED);
-    expect(verdict.detail.satisfiedBindings).toEqual([]);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length);
-    expect(verdict.reason).toContain(`0 of ${ADAPTER_BINDINGS.length}`);
+    expect([...verdict.detail.satisfiedBindings].sort()).toEqual([
+      "tokenmint-totp:TokenMinter",
+      "tokenmint-totp:TotpCodeVerifier",
+    ]);
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - 2);
+    expect(verdict.reason).toContain(`2 of ${ADAPTER_BINDINGS.length}`);
     // The half that was missing before: an unsatisfied binding list alone cannot
     // tell an unset variable from a package that was never written.
     const causes = new Set(verdict.detail.unwiredAdapters.map((row) => row.cause));
@@ -359,16 +378,58 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(declined?.reason).toBe(IDENTITY_ACCESS_UNASSEMBLED);
 
     // THE REASON IS CHECKED, NOT TAKEN ON TRUST. `RateLimiter` is a declared
-    // binding on a directory with no implementation, and the other four ports
+    // binding on a directory with no implementation, and the other two ports
     // appear on no row of the table at all — so no adapter in this tree could
     // satisfy them however an install were configured.
     const rateLimiter = ADAPTER_BINDINGS.filter((binding) => binding.port === "RateLimiter");
     expect(rateLimiter.map((binding) => binding.adapter)).toEqual(["redis-ratelimit"]);
     expect(UNIMPLEMENTED_ADAPTERS).toContain("redis-ratelimit");
     const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
-    for (const port of ["SecretHasher", "TokenMinter", "TotpCodeVerifier", "MfaSecretCipher"]) {
+    for (const port of ["SecretHasher", "MfaSecretCipher"]) {
       expect(ports, `${port} must be bound to no adapter`).not.toContain(port);
       expect(declined?.reason).toContain(port);
     }
+
+    // WIN-267 A2 — THE OTHER HALF, WITHOUT WHICH THE LOOP ABOVE WOULD PASS BY
+    // SHRINKING. Dropping two names from a "these are unsatisfied" list is
+    // indistinguishable from forgetting them unless the same case asserts where
+    // they went. These two must be bound, must be bound to THIS directory, and
+    // that directory must be one the composition root can actually construct.
+    for (const port of ["TokenMinter", "TotpCodeVerifier"]) {
+      expect(ports, `${port} must now be bound`).toContain(port);
+      expect(declined?.reason, `${port} must no longer be named as unsatisfied`).not.toContain(port);
+      const bound = ADAPTER_BINDINGS.filter((binding) => binding.port === port);
+      expect(bound.map((binding) => binding.adapter)).toEqual(["tokenmint-totp"]);
+    }
+    expect(UNIMPLEMENTED_ADAPTERS).not.toContain("tokenmint-totp");
+  });
+
+  it("constructs the randomness adapter with nothing configured at all", () => {
+    // THE ONE ADAPTER NO CONFIGURATION GROUP DECLARES. Every other constructed
+    // directory needs a URL, key material or a model name, so every other one is
+    // absent from the nothing-declared install. This case is what makes
+    // "unconditional" a checked property rather than a comment in
+    // `adapter-bindings.ts`, and it is asserted on the install that declares
+    // NOTHING precisely because that is where a guard would show up.
+    const { construction, app } = readiness(NOTHING_DECLARED);
+    const minter = construction.adapters["tokenmint-totp"];
+    expect(minter?.adapterName).toBe("tokenmint-totp");
+    expect(construction.unwired.map((row) => row.adapter)).not.toContain("tokenmint-totp");
+
+    // AND IT IS A REAL ONE. A token carrying the domain's registered prefix, a
+    // 32-character base32 secret, and a code the same object verifies back to the
+    // counter it was generated for. `installation.test.ts` is not where the
+    // adapter's own suites live, so this is deliberately the shallowest possible
+    // end-to-end statement: the object the composition root wired is the object
+    // that works.
+    expect(minter?.mint("operatorSession")).toMatch(/^plt_os_[A-Za-z0-9_-]{43}$/u);
+    const secret = minter?.mintTotpSecret() ?? "";
+    expect(secret).toMatch(/^[A-Z2-7]{32}$/u);
+    const code = minter?.generate(secret, 42n) ?? "";
+    expect(minter?.verify({ secret, code, candidateCounters: [41n, 42n, 43n] })).toBe(42n);
+
+    // No context becomes composable: `identity-access` needs `SecretHasher` and
+    // `MfaSecretCipher` too, and neither exists.
+    expect(app.contexts.identityAccess).toBeUndefined();
   });
 });
