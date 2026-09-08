@@ -834,18 +834,18 @@ test("the live selectors scan an exact nonzero source census", () => {
   // Measured with THIS MODULE'S OWN `effectiveLineCount`, for the reason stated
   // above:
   //
-  //   231  governance-read-seams.integration.test.ts
-  //   110  governance-seam-conversations.ts
+  //   268  governance-read-seams.integration.test.ts
+  //   117  governance-seam-conversations.ts
+  //   101  governance-seam-activity.ts
   //    93  governance-read-seams.test.ts
-  //    91  governance-seam-activity.ts
   //    23  governance-read-seams.ts
-  //    10  governance-seam-guards.ts
+  //    19  governance-seam-guards.ts
   //
   // The largest is the integration suite, and it is the largest for the reason
   // this tranche exists: every case in it is issued twice, once per tenant. All
   // six are under the 400 warning band -- and the split into four source files
   // rather than one is what keeps them there, since a single
-  // `governance-read-seams.ts` holding all three seams would have been 234.
+  // `governance-read-seams.ts` holding all three seams would have been 260.
   assert.equal(result.fileCount, 1578);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
