@@ -2500,9 +2500,29 @@ export const EXPECTED = Object.freeze({
   // correlation integration suite, which add DIFFERENT files.
   "packages/adapters/postgres-tenancy": { files: 136, cases: 1506 },
   // WIN-260 adopts this project and gives it its first suites.
-  "packages/adapters/redis-cache": { files: 4, cases: 65 },
-  "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
-  // WIN-267 A2 — a NEW ROW, and the fourteenth adapter directory's first suites:
+  //
+  // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
+  // becomes this directory's FOURTH port. `provider-probe-cache.test.ts` 15 (the
+  // miss/outage split, the round trip, the absolute-instant write, and the four
+  // cases pinning the leaked-key eviction) and
+  // `provider-probe.integration.test.ts` 4 (that a real server honours `PXAT`
+  // and that the eviction pattern matches under Redis's own glob). 65 + 15 + 4 =
+  // 84. `cache.test.ts` gained a `writeUntil` stub in its connection double and
+  // no case; a widened file is not a new one.
+  "packages/adapters/redis-cache": { files: 6, cases: 84 },
+  // WIN-267 A3 adopts this project and gives it its first suites. THREE files,
+  // 26 cases: `rate-limiter.test.ts` 14 (the key, the window, the count, the
+  // TTL clamp and the fail-closed refusal), `oracle-differential.test.ts` 5
+  // (the extraction source's own expressions, lifted and evaluated), and
+  // `ratelimit.integration.test.ts` 7 (the atomicity claim, which needs a real
+  // server and, until WIN-267's composition tranche, ran in no job at all).
+  //
+  // The differential's five sweep the three policies INSIDE each case rather
+  // than declaring an `it()` per policy, because this census refuses a case
+  // declared in a loop -- the count would otherwise be one nobody could derive by
+  // reading, which is the property the whole file exists to keep.
+  "packages/adapters/redis-ratelimit": { files: 3, cases: 26 },
+  // WIN-267 A2 -- a NEW ROW, and the fifteenth adapter directory's first suites:
   // 0 -> 7 files, 0 -> 136 cases.
   //
   // WHERE THE 136 ARE. base32 32 (RFC 4648 §10's seven vectors read three ways,
@@ -3291,16 +3311,45 @@ export const EXPECTED = Object.freeze({
  */
 /*
  * WIN-267 A1 + A2: 7833 + 57 + 136 = 8026 over 530 + 3 + 7 = 540 files.
- * THREE rows move and one is an EDIT rather than an addition —
+ * THREE rows move and one is an EDIT rather than an addition --
  * `keyring-envelope` 76 -> 103 over 6 -> 7 files (A1's MFA envelope suite),
  * `node-crypto-digest` 0 -> 30 over 0 -> 2 as a new row (A1), and
  * `tokenmint-totp` 0 -> 136 over 0 -> 7 as a new row (A2). 27 + 30 + 136 = 193.
  * Every one of the 193 is runnable by `pnpm test:v1-packages`: none of the three
  * needs a container, which is what a keyless digest, an in-memory key ring and a
- * CSPRNG are for. READ BACK from `node scripts/arch/test-case-census.mjs`
- * rather than trusted from this sum.
+ * CSPRNG are for.
+ *
+ * WIN-267 A3 DELTA, the RateLimiter adapter and the ProviderProbeCache. TWO
+ * more rows move:
+ *
+ *   packages/adapters/redis-ratelimit 0 -> 3 files, 0 -> 26 cases;
+ *   packages/adapters/redis-cache     4 -> 6 files, 65 -> 84 cases.
+ *
+ * `redis-ratelimit` is the FIRST row under `packages/adapters` to go from zero
+ * to a real count -- every previous adapter adoption started from a row that
+ * already held something -- which is why its FILE term moves by three rather
+ * than by a widening.
+ *
+ * 14 + 5 + 7 = 26 and 15 + 4 = 19, each checked against what that package's own
+ * `vitest run` prints. ELEVEN of the forty-five carry `.integration.` in the
+ * name and need a container: seven in the limiter and four in the cache. Until
+ * WIN-267's composition tranche wired them into the containers job, NO job ran
+ * them -- the split this census does not model and the packages' own `test`
+ * scripts do.
+ *
+ * NO OTHER ROW MOVES. `apps/core-api` gained no case: `installation.test.ts` is
+ * outside PACKAGE_ROOTS. `packages/contexts/identity-access` gained a domain
+ * error factory and nine re-exports and not one case, and
+ * `packages/contexts/providers` gained three re-exports and none -- a widened
+ * file is not a new one, and the new code's behaviour is asserted where it is
+ * USED, in the adapters.
+ *
+ * 7833 + 193 + 45 = 8071 over 530 + 10 + 5 = 545 files. THAT TOTAL IS STATED BY
+ * NO BRANCH: A1+A2 pinned 8026 and A3 pinned 7878, both over the same 7833 base.
+ * READ BACK from `node scripts/arch/test-case-census.mjs` rather than trusted
+ * from this sum.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8026;
+export const EXPECTED_RUNTIME_TOTAL = 8071;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

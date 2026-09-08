@@ -218,19 +218,38 @@ export const EXPECTED_PROJECT_COUNT = 35;
 // reference per row owner -- and are maintained separately on purpose, so the
 // two can disagree and be caught.
 //
-// WIN-267 A1: 116 -> 119, three edges and each one nameable.
+// WIN-267 A1: three edges, each one nameable.
 //   1. `keyring-envelope` -> `identity-access`, the owner edge carrying
 //      `MfaSecretCipher`. A reference is per PACKAGE, so a directory that
 //      already served `secrets` and now serves a second context gains exactly
-//      one — and becomes the layout's second multi-owner directory.
+//      one -- and becomes the layout's second multi-owner directory.
 //   2. `node-crypto-digest` -> `identity-access`, the fourteenth directory's
 //      only owner edge.
 //   3. `apps/core-api` -> `node-crypto-digest`, the composition-root edge every
 //      adapter gets.
-// NO CYCLE. `identity-access` is ADR M0.3 §1's strictest allow-list — the kernel
-// and nothing else — so it names no adapter and cannot name either of these, and
+// NO CYCLE. `identity-access` is ADR M0.3 §1's strictest allow-list -- the kernel
+// and nothing else -- so it names no adapter and cannot name either of these, and
 // `apps/core-api` is the sink of the whole graph.
-export const EXPECTED_EDGE_COUNT = 121;
+//
+// WIN-267 A2: two more of the same two shapes, for the fifteenth directory --
+// `tokenmint-totp` -> `identity-access` and `apps/core-api` -> `tokenmint-totp`.
+// 116 + 3 + 2 = 121.
+//
+// WIN-267 A3: ONE more. `packages/adapters/redis-cache` ->
+// `packages/contexts/providers`, carrying `ProviderProbeCache`. A FOURTH owner
+// edge on the directory that had three, and a reference per PACKAGE rather than
+// per port, so one new binding is again exactly one new edge. The tranche's
+// OTHER half -- `redis-ratelimit` becoming a real adapter -- moves NO edge: its
+// `identity-access` reference has existed since the skeleton was generated, and
+// a placeholder that becomes real changes what a project CONTAINS rather than
+// what it points AT. That is also why WIN-267's composition tranche adds none:
+// `apps/core-api` already referenced `@platos/context-secrets` and
+// `@platos/context-providers` for their contract TYPES, and composing them turns
+// two type imports into value imports off the same package entry.
+//
+// 121 + 1 = 122, the merged figure, which no single branch stated: A1+A2 pinned
+// 121 for themselves and A3 pinned 117 for itself, both over the same 116 base.
+export const EXPECTED_EDGE_COUNT = 122;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -301,6 +320,22 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   // runtime set would follow the adapter into the production image and into the
   // SBOM of a process that never starts a container.
   "packages/adapters/redis-cache": {
+    ioredis: "^5.6.1",
+  },
+  // WIN-267 A3. The SECOND directory to declare the Redis client, and it is a
+  // widening of the entry above rather than a breach of it. `ioredis` is
+  // deliberately absent from `SDK_CONTAINMENT` in
+  // scripts/arch/boundary-rules.mjs — ADR M0.3 §4 lists THREE `redis-*`
+  // directories, each with "one namespaced keyspace, one owner", so a
+  // containment rule naming one home would refuse the other two. What §4 asks
+  // for is one CLIENT per directory, which is what `src/client.ts` in each of
+  // them is, and this table is where that second client becomes a reviewed line
+  // rather than an accident. Range byte-identical to the entry above and to
+  // `apps/agent`'s, so the lockfile gained seven lines and no new resolution.
+  //
+  // `@testcontainers/redis` is deliberately NOT here, for the reason the entry
+  // above states: it is a devDependency and this axis is about what SHIPS.
+  "packages/adapters/redis-ratelimit": {
     ioredis: "^5.6.1",
   },
   "packages/adapters/model-router-providers": {
@@ -387,7 +422,13 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "clickhouse-observability": ["observability"],
   "objectstore-minio": ["files"],
   "redis-ratelimit": ["identity-access"],
-  "redis-cache": ["memory", "jobs", "kernel"],
+  // WIN-267 A3 adds `providers`, the FOURTH owner. It is an owner edge and not
+  // an `ADAPTER_EXTRA_PROJECTS` row because `providers` PUBLISHES
+  // `ProviderProbeCache` — its own `application/ports/index.ts` calls it "a
+  // context-owned cache seam" and records why ADR M0.3 §13's map has no home for
+  // it — so this directory reaches the context through a port the context owns,
+  // which is exactly what an owner edge is.
+  "redis-cache": ["memory", "jobs", "kernel", "providers"],
   "redis-streams": ["kernel"],
   "model-router-providers": ["providers"],
   "channel-slack": ["channels"],
@@ -433,10 +474,16 @@ export const EXPECTED_ADAPTER_OWNERS = {
  */
 // WIN-267 A1 adds the THIRD entry: `keyring-envelope` at 2 (`secrets` and
 // `identity-access`). It is an exception with a reason no other directory can
-// borrow — it is the sole custodian of AES-256 root key bytes, and rule (j2)
+// borrow -- it is the sole custodian of AES-256 root key bytes, and rule (j2)
 // `adapter-is-self-contained` makes "put the second port in its own directory"
 // unrepresentable for anything that needs those bytes.
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 3, "keyring-envelope": 2 };
+//
+// WIN-267 A3 takes `redis-cache` from three to FOUR: `providers`'
+// `ProviderProbeCache` is the same client again, so that directory carries an
+// owner edge into `packages/contexts/providers` alongside `memory`, `jobs` and
+// `kernel`. `tokenmint-totp` earns NO row: two ports, ONE owner, so it is
+// multi-PORT without being multi-OWNER.
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 4, "keyring-envelope": 2 };
 
 /**
  * Edges an adapter has that are NOT owner edges, declared separately.

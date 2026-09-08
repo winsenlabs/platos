@@ -143,7 +143,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // THIRTEEN directories. The two pins move by different amounts, which is the
   // whole reason they are pinned separately.
   //
-  // WIN-267 A1 + A2: 49 + 2 + 2 = 53 across FIFTEEN directories, and by
+  // WIN-267 A1 + A2 + A3: 49 + 2 + 2 + 1 = 54 across FIFTEEN directories, and by
   // different amounts a further time. `keyring-envelope:MfaSecretCipher` is a
   // row on an EXISTING directory, because `root-key-ring.ts` is the tree's only
   // holder of AES-256 root key bytes and rule (j2) forbids a second package from
@@ -151,8 +151,10 @@ test("the live repository satisfies both the boundary rules and the composition-
   // a keyless SHA-256 shares no vendor client with anything and §15's
   // consolidation rule is about sharing one; `tokenmint-totp` is a new directory
   // carrying TWO bindings, because the port that MINTS a TOTP secret and the
-  // port that READS it must share one base32 alphabet.
-  assert.equal(audit.bindingCount, 51);
+  // port that READS it must share one base32 alphabet; and
+  // `redis-cache:ProviderProbeCache` is a row on an existing directory again,
+  // for the plainest §15 reason there is -- it is the same Redis client.
+  assert.equal(audit.bindingCount, 54);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -186,7 +188,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // parameter that belongs with the keys) does not carry: this port is
   // synchronous and can never have one. `tokenmint-totp` holds no rows, no
   // database client and no key material either.
-  assert.equal(ADAPTERS.length, 14);
+  assert.equal(ADAPTERS.length, 15);
 });
 
 // ---------------------------------------------------------------------------
@@ -340,7 +342,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 53 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -383,14 +385,24 @@ test("C7: a directory left on the unimplemented list after it gains a constructo
 
 test("C7: a directory dropped from the list while still a generated interface fails", () => {
   // The OTHER direction, and the one that matters more: `constructAdapters` would
-  // then be silent about `redis-ratelimit`, so `/readyz` would report its binding
+  // then be silent about the directory, so `/readyz` would report its binding
   // unsatisfied with no reason at all — and an operator would go looking for a
   // variable that does not exist.
+  //
+  // WIN-267 A3 REPOINTED THIS CONTROL, and the reason is the whole point of the
+  // rule. It named `redis-ratelimit`, which now HAS a constructor — so dropping
+  // it from the list is no longer a lie and this case would have gone quietly
+  // green while proving nothing. `clickhouse-observability` is still a generated
+  // interface, which is what makes the control live again. The next tranche to
+  // implement it must repoint this the same way; the assertion names the file it
+  // reads, so there is no way to do that by accident.
   const root = realTreeCopy();
-  edit(root, COMPOSITION_ROOT_FILE, (source) => source.replace('  "redis-ratelimit",\n', ""));
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace('  "clickhouse-observability",\n', "")
+  );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("packages/adapters/redis-ratelimit/src/index.ts exports no constructor")
+      problem.includes("packages/adapters/clickhouse-observability/src/index.ts exports no constructor")
     )
   );
 });
@@ -436,13 +448,23 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // none did — the two controls above would still pass and prove nothing about
   // the real tree. This reads BOTH sides off the live repository.
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
+  // 8 -> 7 (WIN-267 A3). `redis-ratelimit` is the FIRST directory ever to leave
+  // this list: it gained `createRedisRatelimitAdapter` and a real
+  // implementation, so the constructible set below gains it and the count
+  // drops. Both halves move in one commit — the C7 rule itself joins the list to
+  // the filesystem in both directions, so a list edited without an
+  // implementation, or an implementation added without the list edit, fails.
   const listed = parseUnimplementedAdapters(source);
-  assert.equal(listed.length, 8, "eight of the fourteen directories are still generated interfaces");
+  assert.equal(listed.length, 7, "seven of the fifteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
-  // WIN-267 A2 adds the SIXTH constructible directory. The unimplemented count
-  // is UNCHANGED at eight, which is this tranche's claim from the other side: it
-  // built a new directory rather than filling in a generated one, so the two
-  // numbers move independently and the identity below still holds.
+  // WIN-267 A1 and A2 add the SIXTH and SEVENTH constructible directories while
+  // the unimplemented count stays at EIGHT, which is their claim from the other
+  // side: they built new directories rather than filling in generated ones, so
+  // the two numbers move independently. A3 is the mirror image and the FIRST of
+  // its kind -- it adds no directory and takes `redis-ratelimit` OFF the
+  // unimplemented list, 8 -> 7, so the constructible set gains an EIGHTH member
+  // without ADAPTERS.length moving at all. The identity below is what holds the
+  // two apart: 7 + 8 = 15.
   assert.deepEqual(constructible, [
     "keyring-envelope",
     "model-router-providers",
@@ -452,6 +474,7 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
     "outbox",
     "postgres-tenancy",
     "redis-cache",
+    "redis-ratelimit",
     "tokenmint-totp",
   ]);
   assert.equal(listed.length + constructible.length, ADAPTERS.length);
@@ -497,13 +520,13 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FIFTY-ONE bindings, across fourteen directories", () => {
+test("the binding-table parser reads all FIFTY-FOUR bindings, across fifteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 51);
-  assert.equal(ADAPTERS.length, 14);
+  assert.equal(bindings.length, 54);
+  assert.equal(ADAPTERS.length, 15);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
@@ -538,7 +561,7 @@ test("the binding-table parser reads all FIFTY-ONE bindings, across fourteen dir
   // the flattening, and must not vanish from the directory set.
   assert.equal(entries.filter((entry) => entry.adapter === "node-crypto-digest").length, 1);
   assert.equal(entries.filter((entry) => entry.adapter === "tokenmint-totp").length, 2);
-  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 14);
+  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 15);
 });
 
 test("the parser reads a WRAPPED entry, not only a one-line one", () => {
@@ -583,7 +606,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 51 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 54 declared bindings")
     )
   );
 });
@@ -614,7 +637,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 53 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

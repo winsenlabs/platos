@@ -81,7 +81,7 @@ test("the composition root's declared external dependencies are exactly the revi
   });
 });
 
-test("exactly FOUR projects may hold an external dependency, and they are named", () => {
+test("exactly FIVE projects may hold an external dependency, and they are named", () => {
   // The list is short on purpose and its shortness is the property. A fourth
   // entry appearing here is a reviewed decision to let a registry package into
   // the V1 layout, and it has to be made by moving this line.
@@ -99,26 +99,46 @@ test("exactly FOUR projects may hold an external dependency, and they are named"
   // workspace link and no new resolution — but "it costs nothing in the
   // lockfile" is not the same argument as "it may be here", and only this line
   // makes the second one.
+  //
+  // WIN-267 A3 makes the FIFTH: `packages/adapters/redis-ratelimit` declares
+  // `ioredis`, and this is the line where that was argued for rather than
+  // noticed. The argument is ADR M0.3 §4's own layout — it names THREE `redis-*`
+  // directories, each with "one namespaced keyspace, one owner", so the second
+  // one to be adopted holds a second CLIENT by design rather than by accident.
+  // The lockfile cost is again seven lines and no new resolution, and again that
+  // is not the argument: this line is.
   assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
     "apps/core-api",
     "packages/adapters/model-router-providers",
     "packages/adapters/postgres-tenancy",
     "packages/adapters/redis-cache",
+    "packages/adapters/redis-ratelimit",
   ]);
 });
 
-test("the Redis client is declared in exactly ONE project, at exactly one range", () => {
-  // WIN-260 (M2.5). Three directories in the layout are named `redis-*` and only
-  // ONE of them holds a Redis client: `redis-ratelimit` and `redis-streams` are
-  // still declaration-only, and the day either is adopted this list is where the
-  // second holder has to be argued for.
+test("the Redis client is declared in exactly the TWO adopted redis-* projects", () => {
+  // WIN-260 (M2.5) admitted the first. WIN-267 A3 admits the second, and the
+  // shape of this case is what changed rather than its purpose: it is still an
+  // EXACT list, so a third holder cannot appear without moving this line.
+  // `redis-streams` is still declaration-only and holds no client; the day it is
+  // adopted, this is where its holder has to be argued for.
+  //
+  // BOTH RANGES ARE THE SAME STRING, deliberately. Two `redis-*` directories at
+  // two ranges would be two resolutions of one client in one lockfile, and the
+  // process would ship both.
   assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/redis-cache"], {
+    ioredis: "^5.6.1",
+  });
+  assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/redis-ratelimit"], {
     ioredis: "^5.6.1",
   });
   const holders = Object.entries(EXPECTED_EXTERNAL_DEPENDENCIES)
     .filter(([, declared]) => Object.keys(declared).some((name) => name === "ioredis"))
     .map(([project]) => project);
-  assert.deepEqual(holders, ["packages/adapters/redis-cache"]);
+  assert.deepEqual(holders, [
+    "packages/adapters/redis-cache",
+    "packages/adapters/redis-ratelimit",
+  ]);
 });
 
 test("the PostgreSQL client is declared in exactly ONE project, as a workspace link", () => {
@@ -223,7 +243,7 @@ test("removing a root solution reference fails independently", () => {
   const root = fixture();
   mutateJson(root, "tsconfig.json", (config) => config.references.pop());
   const result = checkV1ProjectGraph(root);
-  assert.ok(errorIncludes(result, "root references must list the exact 34 projects"));
+  assert.ok(errorIncludes(result, "root references must list the exact 35 projects"));
 });
 
 test("removing a project reference fails even when source and dependencies still declare the edge", () => {
@@ -295,7 +315,7 @@ test("an extra discovered project fails the exact project-count contract", () =>
   writeFileSync(join(root, rogue, "tsconfig.json"), '{"compilerOptions":{"composite":true},"include":["src/**/*.ts"],"references":[]}\n');
   mutateJson(root, "tsconfig.json", (config) => config.references.push({ path: `./${rogue}` }));
   const result = checkV1ProjectGraph(root);
-  assert.ok(errorIncludes(result, "root references must list the exact 34 projects"));
+  assert.ok(errorIncludes(result, "root references must list the exact 35 projects"));
   assert.ok(errorIncludes(result, "discovered project set"));
 });
 
@@ -476,19 +496,24 @@ test("the live owner map passes its own check", () => {
   // bindings are rows on a directory that already existed. 12 + 1 = 13.
   //
   // WIN-267 MOVES BOTH, AND STILL BY DIFFERENT AMOUNTS. The multi-owner map
-  // gains `keyring-envelope` at 2 and nothing else: its FOURTH port is
-  // `identity-access`'s `MfaSecretCipher`, so the sentence above — three ports,
-  // one owner — stops being true and the entry it justified leaving out is now
-  // earned. `tokenmint-totp` does NOT earn one: two ports, ONE owner, so it is
-  // multi-PORT without being multi-OWNER and gets no row. The DIRECTORY count
-  // takes both new directories: 13 + 2 = 15. Two adjacent lines that move by
-  // different amounts is exactly what asserting them separately is for.
+  // gains `keyring-envelope` at 2 -- its FOURTH port is `identity-access`'s
+  // `MfaSecretCipher`, so the sentence "three ports, one owner" stops being true
+  // and the entry it justified leaving out is now earned -- and A3 takes
+  // `redis-cache` from 3 to 4, because `providers`' `ProviderProbeCache` is that
+  // directory's fourth port and its fourth OWNER. `tokenmint-totp` does NOT earn
+  // a row: two ports, ONE owner, so it is multi-PORT without being multi-OWNER.
+  // The DIRECTORY count takes the two new directories and only those: 13 + 2 =
+  // 15, and it is MEASURED here rather than recalled -- `outbox` carries an
+  // owner row too, owned by the KERNEL, so every one of the fifteen appears.
+  // Two adjacent lines that move by different amounts is exactly what asserting
+  // them separately is for, and neither branch's figure survives alone: A1+A2
+  // pinned {17,3,2}/15 and A3 pinned {17,4}/13 over the same base.
   assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, {
     "postgres-tenancy": 17,
-    "redis-cache": 3,
+    "redis-cache": 4,
     "keyring-envelope": 2,
   });
-  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 14);
+  assert.equal(Object.keys(EXPECTED_ADAPTER_OWNERS).length, 15);
 });
 
 test("§15 refusal: an adapter granted an owner edge it was not given fails", () => {
@@ -509,17 +534,25 @@ test("§15 refusal: an adapter granted an owner edge it was not given fails", ()
 });
 
 test("§15 refusal: a directory ON the allow-list is still held to its exact count", () => {
-  // WIN-260 (M2.5). `redis-cache` is now permitted THREE owners and no more: an
-  // allow-list entry is a counted exception, not a licence. Without this case
-  // the entry the same issue added would be the one place in the map that had
-  // gained a permission with no refusal beside it.
+  // WIN-260 (M2.5). `redis-cache` is permitted an EXACT number of owners and no
+  // more: an allow-list entry is a counted exception, not a licence. Without
+  // this case the entry the same issue added would be the one place in the map
+  // that had gained a permission with no refusal beside it.
+  //
+  // WIN-267 A3 moved the number from three to four and moved the MUTATION with
+  // it, which is the part that matters. Had the mutation stayed at four owners
+  // it would now be a PERMITTED arrangement, the refusal would not fire, and the
+  // case would have gone red for the right reason — or, if the assertion had
+  // been loosened instead, green while proving nothing. `tenancy` is the fifth
+  // owner here for the same reason it was the fourth before: it is a context
+  // this directory has no port from.
   const errors = checkAdapterOwnerCounts(
-    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "jobs", "kernel", "tenancy"] },
+    { ...EXPECTED_ADAPTER_OWNERS, "redis-cache": ["memory", "jobs", "kernel", "providers", "tenancy"] },
     EXPECTED_MULTI_OWNER_ADAPTERS,
   );
   assert.ok(
     errors.some((error) =>
-      error.includes("packages/adapters/redis-cache expects 4 owner edge(s); 3 is what ADR M0.3 §4/§15 grants it")
+      error.includes("packages/adapters/redis-cache expects 5 owner edge(s); 4 is what ADR M0.3 §4/§15 grants it")
     )
   );
 });

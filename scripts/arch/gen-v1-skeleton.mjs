@@ -343,9 +343,23 @@ export const ADAPTERS = [
     // their keyspaces are disjoint by prefix so neither can read the other's
     // records. Its owner is `kernel`, which is what gives this directory its
     // `packages/kernel` project reference and moves EXPECTED_EDGE_COUNT.
+    // WIN-267 A3 ADDS A FOURTH, `providers:ProviderProbeCache`, and the question
+    // it answers is "does the adapter that already exists satisfy the port".
+    // Half of that is NO: `memory`'s `Cache` and this port share not one
+    // signature, and ADR M0.3 §1 row 4 gives `providers` an allow-list of
+    // `tenancy`, `secrets` and `kernel`, so it could not reach `Cache` even if
+    // the shapes matched — the port's own header records that as the reason it
+    // exists. The other half is YES, at the level §15's amendment operates on:
+    // one VENDOR CLIENT is one DIRECTORY, and this is the same Redis, the same
+    // connection and the same namespace discipline as the three ports above. A
+    // fourteenth directory would have been a second Redis client for one Redis.
+    //
+    // It is the FOURTH owner of this directory and therefore its fourth project
+    // reference, which moves EXPECTED_EDGE_COUNT by one.
     additional: [
       { port: "IdempotencyStore", owner: "jobs" },
       { port: "RequestIdempotency", owner: "kernel" },
+      { port: "ProviderProbeCache", owner: "providers" },
     ],
     note: "one namespaced keyspace behind one Redis client",
   },
@@ -717,12 +731,22 @@ export function adapterOwnerPackages(adapter) {
 // directory from borrowing them; `node-crypto-digest:SecretHasher` is a NEW
 // directory, because a keyless SHA-256 shares no client with anything and §15's
 // consolidation rule is about sharing a client.
-// WIN-267 A2: 13 -> 14 directories, 49 -> 51 bindings. The FOURTEENTH directory
+//
+// WIN-267 A2: 14 -> 15 directories, 51 -> 53 bindings. The FIFTEENTH directory
 // takes TWO bindings with it (`identity-access:TokenMinter` and
 // `identity-access:TotpCodeVerifier`), so both pins move and they move by
-// different amounts — which is again what the separate pins exist to show.
+// different amounts -- which is again what the separate pins exist to show.
+//
+// WIN-267 A3: 53 -> 54 bindings and the DIRECTORY pin does not move at all.
+// `redis-cache:ProviderProbeCache` is a row on an existing directory, which is
+// the distinction §15's amendment is entirely about; and `redis-ratelimit`
+// gained an IMPLEMENTATION in the same tranche while moving no binding, because
+// it was already declared and was simply unsatisfiable.
+//
+// THE MERGED FIGURES ARE STATED BY NO SINGLE BRANCH. Over the same 13/49 base
+// A1+A2 pinned 15/53 and A3 pinned 13/50; the tree now holds 15 and 54.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 53;
+export const EXPECTED_BINDING_COUNT = 54;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -955,13 +979,23 @@ export const EXPECTED_PROJECT_COUNT = 35;
 // and redis-cache's two further owner edges) = 116. READ BACK from
 // `gen-v1-skeleton --check` rather than trusted from this arithmetic.
 //
-// WIN-267 A1: 116 + 3 = 119 — `keyring-envelope` -> `identity-access` (the
+// WIN-267 A1: 116 + 3 = 119 -- `keyring-envelope` -> `identity-access` (the
 // fourth binding's owner edge), `node-crypto-digest` -> `identity-access` (the
 // fourteenth directory's owner edge) and `apps/core-api` ->
-// `node-crypto-digest` (the composition-root edge every adapter gets). READ BACK
-// from `gen-v1-skeleton --check` rather than trusted from this arithmetic, and
-// carried independently in `scripts/arch/v1-project-graph.mjs`.
-export const EXPECTED_EDGE_COUNT = 121;
+// `node-crypto-digest` (the composition-root edge every adapter gets).
+//
+// WIN-267 A2: 119 + 2 = 121 -- the same two shapes for the fifteenth directory.
+//
+// WIN-267 A3: 121 + 1 = 122 -- `packages/adapters/redis-cache` ->
+// `packages/contexts/providers`, carrying `ProviderProbeCache`. A FOURTH owner
+// edge on a directory that had three, and a reference per PACKAGE rather than
+// per port, so one new binding is again exactly one new edge. It cannot create a
+// cycle: `providers` depends on `tenancy`, `secrets` and `kernel` and on no
+// adapter, and `adapters-only-from-core` makes the return edge unrepresentable.
+//
+// READ BACK from `gen-v1-skeleton --check` rather than trusted from this
+// arithmetic, and carried independently in `scripts/arch/v1-project-graph.mjs`.
+export const EXPECTED_EDGE_COUNT = 122;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -1061,6 +1095,7 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
   "packages/adapters/node-crypto-digest", // WIN-267 A1 — the identity-access SecretHasher: SHA-256 hex over the extraction source's own digests, a constant-time comparison, and RFC 7636's S256 challenge
   "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
+  "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
 ];
 
 // ---------------------------------------------------------------------------
@@ -1331,6 +1366,13 @@ const PROJECT_TEST_SCRIPTS = {
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "packages/adapters/redis-cache":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  // WIN-267 A3 adds `packages/adapters/redis-ratelimit` for the same reason and
+  // with a byte-identical run: it ships a real-Redis suite that proves two
+  // concurrent consumers cannot both take the last token of a window, which
+  // needs a container and therefore a daemon `pnpm test:v1-packages` does not
+  // have. Byte-identical to the two above so the three cannot drift.
+  "packages/adapters/redis-ratelimit":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "apps/core-api":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
@@ -1457,6 +1499,19 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   "redis-cache": {
     ioredis: "^5.6.1",
   },
+  // WIN-267 A3. The SECOND of the three redis-* directories to hold a client,
+  // and it is a second CLIENT rather than a second copy of one: ADR M0.3 §4
+  // gives `redis-ratelimit` its own directory with "one namespaced keyspace, one
+  // owner", so the limiter's `platos:identity:ratelimit:` keyspace and the
+  // cache's `platos:jobs:idem:`/`platos:http:idem:` are held by different
+  // objects with different lifetimes. `ioredis` is deliberately absent from
+  // SDK_CONTAINMENT for exactly that reason — the ADR's own layout has three
+  // homes for it, and a containment rule naming one would refuse the other two.
+  // The specifier is byte-identical to `redis-cache`'s and to `apps/agent`'s, so
+  // pnpm resolves it to the entry already in pnpm-lock.yaml (ioredis@5.10.1).
+  "redis-ratelimit": {
+    ioredis: "^5.6.1",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -1488,6 +1543,14 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // SBOM of something that never starts a container. Byte-identical to the
   // specifier already in the lockfile (@testcontainers/redis@10.28.0).
   "redis-cache": {
+    "@testcontainers/redis": "^10.28.0",
+  },
+  // WIN-267 A3. The Redis container the atomicity of the last token is proved
+  // against. A DEV dependency for the reason the two above are, and with the
+  // same specifier: a sequential test cannot tell an atomic `INCR` from a
+  // `GET`-then-`SET`, so the only proof of the port's own "MUST make the
+  // read-and-increment atomic" is real concurrent consumers on a real server.
+  "redis-ratelimit": {
     "@testcontainers/redis": "^10.28.0",
   },
 };

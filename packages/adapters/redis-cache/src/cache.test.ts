@@ -30,6 +30,15 @@ function connection(overrides: Partial<RedisConnection> = {}): {
       (async (key, value, ttlSeconds) => {
         log.writes.push({ key, value, ttlSeconds });
       }),
+    // WIN-267 A3. `Cache` never calls it — `set` takes a relative TTL and this
+    // verb takes an absolute instant — so this double throws rather than
+    // recording: a `Cache` implementation that reached for the wrong verb would
+    // otherwise pass every case in this file with the wrong expiry semantics.
+    writeUntil:
+      overrides.writeUntil ??
+      (async () => {
+        throw new Error("the Cache port must not write with an absolute expiry");
+      }),
     remove:
       overrides.remove ??
       (async (keys) => {

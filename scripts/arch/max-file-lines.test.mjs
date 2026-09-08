@@ -797,14 +797,37 @@ test("the live selectors scan an exact nonzero source census", () => {
   //
   // WIN-267 A1 + A2 add TWENTY to this selector, all under
   // `packages/adapters/**`: six in `node-crypto-digest`, two in
-  // `keyring-envelope` and twelve in `tokenmint-totp`. 1542 + 8 + 12 = 1562.
+  // `keyring-envelope` and twelve in `tokenmint-totp`.
   //
-  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured, not assumed:
-  // the largest of the twenty is `mfa-secret-cipher.test.ts` at 190 effective
-  // lines, then `mfa-secret-cipher.ts` at 141 and `secret-hasher.test.ts` at
-  // 128. Nothing crosses the 400-line warning, let alone the 500-line error, and
-  // the warning list below is unchanged.
-  assert.equal(result.fileCount, 1562);
+  // WIN-267 A3 adds TEN more to the same selector -- seven in
+  // `redis-ratelimit/src/` and three in `redis-cache/src/`. It moves the TREE
+  // rather than the selector too: `packages/adapters/**` has been inside the
+  // enforced slice at WARNING 400 / ERROR 500 effective lines since it was
+  // drawn; what changed is that one of its directories stopped being two
+  // declaration files.
+  //
+  // 1542 + 20 + 10 = 1572, a figure NO branch stated: A1+A2 pinned 1562 and A3
+  // pinned 1552, both over the same 1542 base.
+  //
+  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured with THIS
+  // MODULE'S OWN `effectiveLineCount` rather than eyeballed -- A3's first
+  // figures were the author's recollection and were wrong by 44 on the largest
+  // file, which is the reason the method is stated. The largest of the thirty:
+  //
+  //   220  redis-cache/src/provider-probe-cache.test.ts
+  //   190  keyring-envelope/src/mfa-secret-cipher.test.ts
+  //   165  redis-ratelimit/src/rate-limiter.test.ts
+  //   141  keyring-envelope/src/mfa-secret-cipher.ts
+  //   136  redis-ratelimit/src/ratelimit.integration.test.ts
+  //   128  node-crypto-digest/src/secret-hasher.test.ts
+  //   103  redis-ratelimit/src/oracle-source.ts
+  //    98  redis-cache/src/provider-probe-cache.ts
+  //
+  // Nothing reaches the 400 warning band, let alone the 500 error, and the
+  // warning list below is unchanged -- which is the property that matters for a
+  // directory about to grow: an adapter that needed a 500-line file to hold one
+  // port would be an adapter holding more than one job.
+  assert.equal(result.fileCount, 1572);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -823,9 +846,11 @@ test("the live selectors scan an exact nonzero source census", () => {
       // `src/http/`, newly WRITTEN and inside selectors that already existed.
       5 + 4 +
       // WIN-267 A1: node-crypto-digest 6 and keyring-envelope 2; A2:
-      // tokenmint-totp 5 source + 7 suites. All inside the
-      // `packages/adapters/**` selector that already existed.
-      6 + 2 + 12
+      // tokenmint-totp 5 source + 7 suites; A3: 7 under
+      // `packages/adapters/redis-ratelimit/src/` and 3 under
+      // `packages/adapters/redis-cache/src/`. All thirty newly WRITTEN, and all
+      // thirty inside the `packages/adapters/**` selector that already existed.
+      6 + 2 + 12 + 7 + 3
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -941,17 +966,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   APPS-HTTP        16
   // 27 + 1075 + 411 + 13 + 16 = 1542.
   //
-  // WIN-267 (M4.1) MOVES ONLY THE ADAPTERS TERM, 411 -> 431, and that is the
-  // claim: four driven ports got implementations and nothing else changed shape.
-  // Six files are `node-crypto-digest`, two are `keyring-envelope`'s MFA
-  // envelope with its suite, and twelve are `tokenmint-totp`. A tranche that
-  // widened a context while calling itself an adapter would show up here as a
-  // moved contexts term; this one does not — A2 adds three names to
-  // `identity-access`'s ports barrel, which is an EDIT to a file that already
-  // existed and moves no count.
-  //   ADAPTERS        431
-  // 27 + 1075 + 431 + 13 + 16 = 1562.
-  assert.equal(result.fileCount, 27 + 1075 + 431 + 13 + 16);
+  // WIN-267 (M4.1) MOVES ONLY THE ADAPTERS TERM, 411 -> 441, and that is the
+  // mirror claim of the whole issue: five driven ports got implementations and
+  // nothing else changed shape. Six files are `node-crypto-digest`, two are
+  // `keyring-envelope`'s MFA envelope with its suite, twelve are
+  // `tokenmint-totp`, seven are `redis-ratelimit` and three are `redis-cache`.
+  // Kernel, contexts and both apps terms are byte-for-byte the same scan. A
+  // tranche that widened a context or grew a transport while calling itself an
+  // adapter would show up here as a moved CONTEXTS or APPS term -- which is
+  // exactly how T2's move was read, in the other direction. A2's three new names
+  // on `identity-access`'s ports barrel and A3's five are EDITS to files that
+  // already existed and move no count.
+  //   ADAPTERS        441
+  // 27 + 1075 + 441 + 13 + 16 = 1572.
+  assert.equal(result.fileCount, 27 + 1075 + 441 + 13 + 16);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

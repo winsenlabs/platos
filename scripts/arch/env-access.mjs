@@ -341,21 +341,21 @@ export const VIOLATION_CODES = Object.freeze({
  * true as `apps/core-api` grows a transport: the six sections still arrive
  * through `readProcessEnvironment()` and nothing added a second door.
  *
- * WIN-267 A2: 1580 + 12 = 1592. The fourteenth adapter directory's twelve `.ts`
- * files -- five source and seven suites -- and NOT ONE of them reads the
- * environment, so the DECLARED table is unmoved again. That is not a discipline
- * this directory had to keep: `createTokenmintTotpAdapter()` takes no argument
- * at all and holds no configuration, so it is the first adapter in the layout
- * that could not have grown an environment read even by mistake -- there is
- * nothing for one to configure.
+ * WIN-267 A2: the fourteenth adapter directory's twelve `.ts` files -- five
+ * source and seven suites -- and NOT ONE of them reads the environment, so the
+ * DECLARED table is unmoved again. That is not a discipline this directory had
+ * to keep: `createTokenmintTotpAdapter()` takes no argument at all and holds no
+ * configuration, so it is the first adapter in the layout that could not have
+ * grown an environment read even by mistake -- there is nothing for one to
+ * configure.
  */
 /*
- * WIN-267 A1: 1580 + 8 = 1588, and every one of the eight is nameable.
+ * WIN-267 A1: eight files, and every one is nameable.
  *
- *   packages/adapters/node-crypto-digest/src   6 — adapter.ts, index.ts,
+ *   packages/adapters/node-crypto-digest/src   6 -- adapter.ts, index.ts,
  *     secret-hasher.ts, oracle-vectors.ts, secret-hasher.test.ts,
  *     oracle-source-anchor.test.ts
- *   packages/adapters/keyring-envelope/src     2 — mfa-secret-cipher.ts and its
+ *   packages/adapters/keyring-envelope/src     2 -- mfa-secret-cipher.ts and its
  *     suite
  *
  * The DECLARED table is unmoved, which is the property worth stating. Neither
@@ -364,8 +364,30 @@ export const VIOLATION_CODES = Object.freeze({
  * ports beside it do. A fourteenth directory arrived and nothing added a second
  * door.
  */
+/*
+ * WIN-267 A3 adds TEN more, and every one is named so this pin stays a claim
+ * rather than a number somebody raised until the gate went quiet. SEVEN under
+ * `packages/adapters/redis-ratelimit/src/`: `client.ts` (the one holder of the
+ * Redis client), `rate-limiter.ts` (the port implementation), `oracle-source.ts`
+ * (the differential's reader), `harness.ts` (the three connections its suites
+ * drive), and the three suites `rate-limiter.test.ts`,
+ * `oracle-differential.test.ts` and `ratelimit.integration.test.ts`. THREE under
+ * `packages/adapters/redis-cache/src/`, where `providers`' `ProviderProbeCache`
+ * becomes that directory's fourth port: `provider-probe-cache.ts`,
+ * `provider-probe-cache.test.ts` and `provider-probe.integration.test.ts`.
+ * `client.ts` gained a verb and `adapter.ts` a slot, and a widened file is not a
+ * new one.
+ *
+ * THE MERGED SUM, WHICH NO BRANCH STATED. Each tranche pinned this constant for
+ * ITSELF over the 1580 they all branched from: A1+A2 measured 1600, A3 measured
+ * 1590. Neither figure survives the merge and neither is wrong -- 1580 + 20 + 10
+ * = 1610, and that is the number the tree now holds. The DECLARED table is
+ * unmoved by all three: a SHA-256, a TOTP alphabet, a rate limiter and a probe
+ * cache each take what they need from the composition root, so thirty new files
+ * added not one new door.
+ */
 
-export const EXPECTED_FILE_COUNT = 1600;
+export const EXPECTED_FILE_COUNT = 1610;
 
 function listSourceFiles(root) {
   const found = [];

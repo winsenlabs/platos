@@ -309,9 +309,16 @@ describe("the built binary starts, serves and stops", () => {
     const response = await fetch(`http://127.0.0.1:${port}/readyz`, {
       headers: { authorization: `Bearer ${token}` },
     });
-    // STILL 503, and that is the honest answer: eight directories are generated
-    // interfaces, so eight bindings cannot be satisfied by any configuration and
+    // STILL 503, and that is the honest answer: seven directories are generated
+    // interfaces, so seven bindings cannot be satisfied by any configuration and
     // this process cannot serve the routes that need them.
+    //
+    // 41/8 -> 42/7 (WIN-267 A3). `redis-ratelimit` is the first directory ever
+    // to gain an implementation, and it is CONSTRUCTED here off the same
+    // `PLATOS_STORE_REDIS_URL` that builds the cache — which is why this
+    // end-to-end figure moves and the one in `installation.test.ts` moves with
+    // it. Two independent observations of one fact: that one reads the
+    // construction, this one reads a real socket on a real process.
     expect(response.status).toBe(503);
     const body = (await response.json()) as {
       reason: string;
@@ -322,22 +329,32 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(53);
-    expect(body.detail.satisfiedBindings).toHaveLength(45);
+    expect(body.detail.declaredBindings).toBe(54);
+    expect(body.detail.satisfiedBindings).toHaveLength(47);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
-    expect(body.reason).toBe("45 of 53 adapter bindings are satisfied; 8 are not");
+    //
+    // WIN-267 A3: 45 -> 47 of 53 -> 54, and the two figures move by DIFFERENT
+    // amounts, which is the whole of what that tranche did. It DECLARES one new
+    // binding -- `redis-cache:ProviderProbeCache`, satisfied from the same
+    // `PLATOS_STORE_REDIS_URL` the cache is -- and it IMPLEMENTS a directory
+    // that was already declared, `redis-ratelimit`, whose `RateLimiter` binding
+    // has been unsatisfiable since the skeleton was generated. So the satisfied
+    // count moves by two while the declared count moves by one, and the
+    // UNSATISFIED remainder falls from eight to SEVEN: `redis-ratelimit` is the
+    // first directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
+    expect(body.reason).toBe("47 of 54 adapter bindings are satisfied; 7 are not");
     // The context composed over a REAL PostgreSQL adapter rather than over a
     // bundle an install had to hand in — the first one in this programme.
     expect(body.detail.composedContexts).toEqual(["tenancy"]);
     // And every remaining directory says which kind of gap it is.
-    expect(body.detail.unwiredAdapters).toHaveLength(8);
+    expect(body.detail.unwiredAdapters).toHaveLength(7);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("45/53 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("47/54 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

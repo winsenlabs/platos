@@ -186,3 +186,27 @@ export function identityStoreUnavailable(): DomainError {
     retryAfterSeconds: 1,
   });
 }
+
+/**
+ * The RATE LIMITER — not the identity store — could not be consulted.
+ *
+ * A SECOND unavailability code, and the separation is the whole reason it
+ * exists. Before it, the only refusal an implementation of `RateLimiter` could
+ * mint was `IDENTITY_STORE_UNAVAILABLE`, which the canonical store also mints:
+ * two guards answering under one code cannot be told apart, and
+ * `consume-rate-limit.ts` copies `consumed.error.code` verbatim into the
+ * `identity.rate_limit.degraded` safety event and into its log line. So an
+ * operator reading that event could not distinguish "the limiter's Redis is
+ * gone" from "the identity store's PostgreSQL is gone" — two outages with two
+ * owners, two runbooks and two blast radii.
+ *
+ * WHAT IT MUST NEVER CARRY. `reason` is the driver's MESSAGE and nothing else. A
+ * Redis client error OBJECT carries the connection URL, which carries the
+ * password, and `details` is rendered into logs.
+ */
+export function rateLimiterUnavailable(reason: string): DomainError {
+  return domainError("RATE_LIMITER_UNAVAILABLE", "unavailable", "Rate limiter is unavailable", {
+    retryAfterSeconds: 1,
+    details: { reason },
+  });
+}
