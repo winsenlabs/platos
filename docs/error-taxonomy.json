@@ -1934,6 +1934,34 @@
         "identity-access"
       ]
     },
+    "MINT_CONTEXT_UNCOMPOSED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "MINT_CREDENTIAL_UNKNOWN": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "MINT_PRINCIPAL_NOT_OPERATOR": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "MINT_SCOPE_NOT_ENVIRONMENT": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "core-api"
+      ]
+    },
     "MISSING_PERMISSION": {
       "category": "forbidden",
       "status": 403,

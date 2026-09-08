@@ -334,14 +334,25 @@ export const VIOLATION_CODES = Object.freeze({
  * T0 and T1 add nothing here: T0's two files are under `scripts/`, T1's two are
  * under `apps/agent/src/http/`, and neither root is in this census.
  *
- * 1568 + 2 + 10 = 1580. The DECLARED table is unmoved by either tranche. T3's
- * `main.ts` gained a great deal of wiring and not one environment read, and not
- * one of T2's ten reads `process.env` -- the chassis takes its configuration
- * from the composed `AppModule`. That is the property this gate exists to keep
+ * T4, the first one-time-secret mint, adds SIX, each named for the same reason.
+ * Four under `apps/core-api/src/`: `transports/rest/secret-mint.ts` (the
+ * operation), `transports/rest/mint-errors.ts` (its four distinct refusals),
+ * `http/secret-mint.controller.ts` (the route) and `http/api-surface.ts` (the
+ * major, spelled once). Two suites beside them:
+ * `transports/rest/secret-mint.test.ts` and `http/secret-mint.controller.test.ts`.
+ * T4's other two files are outside this census -- one guard ledger under
+ * `apps/core-api/` that is JSON rather than source, and one runner under
+ * `scripts/`.
+ *
+ * 1568 + 2 + 10 + 6 = 1586. The DECLARED table is unmoved by any of them. T3's
+ * `main.ts` gained a great deal of wiring and not one environment read, not one
+ * of T2's ten reads `process.env`, and not one of T4's six does either -- the
+ * mint takes its three contracts from the composed `AppModule` and its
+ * randomness from `node:crypto`. That is the property this gate exists to keep
  * true as `apps/core-api` grows a transport: the six sections still arrive
  * through `readProcessEnvironment()` and nothing added a second door.
  */
-export const EXPECTED_FILE_COUNT = 1580;
+export const EXPECTED_FILE_COUNT = 1586;
 
 function listSourceFiles(root) {
   const found = [];
