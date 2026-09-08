@@ -325,7 +325,7 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 47 of 54, and the 7 that remain are exactly the bindings with no implementation", () => {
+  it("reports 50 of 57, and the 7 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the remaining directories sees both
@@ -345,17 +345,28 @@ describe("readiness over what was actually constructed", () => {
     //   amendment is about, and the reason both numbers are asserted.
     //
     // 41/8 of 49 -> 43/7 of 50. Any one of the three moving alone is drift.
+    //
+    // WIN-267 G2 MOVES THE SATISFIED SET AND THE DECLARED SET AND NOT THE
+    // UNIMPLEMENTED ONE, which is the same shape as the probe cache above and
+    // for a stronger reason. `governance`'s three inverted read seams are three
+    // rows on `postgres-tenancy` -- a directory a fully declared install already
+    // constructs -- so all three land straight in the satisfied set: 47 + 3 = 50
+    // of 54 + 3 = 57, with the seven unimplemented directories untouched. A
+    // tranche that moved the declared count without moving the satisfied one
+    // would have bound a port to a directory nothing constructs, and this pair
+    // is what makes that visible.
     const { verdict } = readiness(FULLY_DECLARED);
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
-    expect(ADAPTER_BINDINGS).toHaveLength(54);
+    expect(ADAPTER_BINDINGS).toHaveLength(57);
     expect(unimplementable).toHaveLength(7);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
     // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(47);
+    // WIN-267 G2: 47 -> 50 of 54 -> 57, all three on a constructed directory.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(50);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
     // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
@@ -365,7 +376,7 @@ describe("readiness over what was actually constructed", () => {
     expect(verdict.ready).toBe(false);
   });
 
-  it("is 3 of 54 with nothing wired, and says which kind of nothing the other 51 are", () => {
+  it("is 3 of 57 with nothing wired, and says which kind of nothing the other 54 are", () => {
     // IT USED TO BE 0 OF 49, AND THE CHANGE IS THE DELIVERABLE RATHER THAN A
     // RELAXATION. Before WIN-267 there was no port in this tree an install could
     // satisfy without configuring something, so "nothing configured" and

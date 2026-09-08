@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FIFTY-FOUR bindings across ADR M0.3 §4's FIFTEEN adapter directories", () => {
+  it("declares FIFTY-SEVEN bindings across ADR M0.3 §4's FIFTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -200,8 +200,15 @@ describe("the declared binding table", () => {
     // port on `redis-cache`, the cleanest instance of the property this pair
     // exists to state -- the port has a new home and the system has no new
     // vendor client.
-    expect(ADAPTER_BINDINGS).toHaveLength(54);
-    expect(DECLARED_BINDING_COUNT).toBe(54);
+    //
+    // WIN-267 G2 adds THREE ROWS AND NO DIRECTORY, and it is the sharpest
+    // instance of that property yet: `governance`'s three inverted read seams go
+    // on `postgres-tenancy`, which is not merely an existing directory but the
+    // canonical store of all four tables they read -- `Thread` and `Turn` for
+    // `conversations`, `ToolCallAudit` for `tools`, `AgentApproval` for `jobs`.
+    // 54 + 3 = 57, directories unmoved at 15.
+    expect(ADAPTER_BINDINGS).toHaveLength(57);
+    expect(DECLARED_BINDING_COUNT).toBe(57);
     expect(ADAPTER_NAMES).toHaveLength(15);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
@@ -280,6 +287,13 @@ describe("the declared binding table", () => {
       "CriteriaRepository",
       "EvalsRepository",
       "GoldenSetsRepository",
+      // WIN-267 G2. The three inverted READ SEAMS, and the only rows on this
+      // directory that are not canonical stores: they read `Thread`, `Turn`,
+      // `ToolCallAudit` and `AgentApproval`, four tables this same directory
+      // owns on behalf of `conversations`, `tools` and `jobs`.
+      "RatingTargetReader",
+      "TranscriptReader",
+      "ActivityReader",
       "SecretsRepository",
       "EnvironmentVariableRepository",
       "ProvidersRepository",
@@ -315,6 +329,14 @@ describe("the declared binding table", () => {
       "governance",
       "governance",
       "governance",
+      // WIN-267 G2. The three read seams' OWNER is `governance` because the
+      // owner column names who owns the PORT, and `read-seams.ts` declares all
+      // three -- in `governance`'s vocabulary, which is the whole point of a
+      // dependency-inverted seam. The rows behind them belong to three other
+      // contexts, all delegated to this same directory.
+      "governance",
+      "governance",
+      "governance",
       "secrets",
       "secrets",
       "providers",
@@ -342,7 +364,7 @@ describe("the declared binding table", () => {
     ]);
   });
 
-  it("names each adapter DIRECTORY exactly once, even though one has THIRTY-THREE bindings", () => {
+  it("names each adapter DIRECTORY exactly once, even though one has THIRTY-SIX bindings", () => {
     // `ADAPTER_NAMES` is what an install iterates to CONSTRUCT adapters. A
     // duplicate there would open a second pool over the one database.
     expect(new Set(ADAPTER_NAMES).size).toBe(ADAPTER_NAMES.length);
@@ -379,9 +401,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(54);
+    expect(report.unsatisfied).toHaveLength(57);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/54 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/57 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -408,7 +430,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(53);
+    expect(report.unsatisfied).toHaveLength(56);
 
     expect(report.faults).toEqual([]);
   });
@@ -438,7 +460,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(54);
+    expect(app.bindings.unsatisfied).toHaveLength(57);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -479,7 +501,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(53);
+    expect(app.bindings.unsatisfied).toHaveLength(56);
 
   });
 
