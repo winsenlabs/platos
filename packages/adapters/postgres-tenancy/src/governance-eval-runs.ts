@@ -129,24 +129,6 @@ export const EVAL_RUN_LEASE_INVALID = "governance.write.eval_run_lease_invalid";
 /** Stored plan arrays this binary cannot read back as a plan. */
 export const UNREADABLE_EVAL_RUN_PAIRS = "governance.row.unreadable_eval_run_pairs";
 
-const EVAL_RUN_COLUMNS = {
-  id: true,
-  environmentId: true,
-  goldenSetId: true,
-  agentId: true,
-  baselineVersionId: true,
-  requestedBy: true,
-  idempotencyKey: true,
-  idempotencyDigest: true,
-  pairCount: true,
-  pairThreadIds: true,
-  pairCriterionIds: true,
-  status: true,
-  deliveries: true,
-  leaseOwner: true,
-  leaseExpiresAt: true,
-} as const;
-
 /** One run a dispatcher now holds the lease on. */
 export interface ClaimedEvalRun {
   readonly runId: EvalRunId;
@@ -465,6 +447,3 @@ function alreadyQueued(row: EvalRunRow, request: EvalRunRequest): Result<Enqueue
     alreadyQueued: true,
   });
 }
-
-/** Every column this store reads, published so a suite can assert the projection. */
-export const EVAL_RUN_PROJECTION = EVAL_RUN_COLUMNS;

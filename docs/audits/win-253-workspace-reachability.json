@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2f9e3cefa4b60e6971b3e3a34aef96e65747a9861f67367b5ac35cd0c53ce70f",
+  "evidenceSha256": "8633be23a92df37a2baf651e107a8920d00204959a34b458bb3f44fbad00035e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "1ac2fca056734036b166d676f82925c4ec2e6217f3338c92e65b0c7987db6d53",
+    "aggregateSha256": "191ccd081aca5eb306d316055336cfb85c93b5a69dfda838b583736c5e480c4d",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -12095,7 +12095,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-eval-runs.ts",
-        "sha256": "04895e1e932fd704b6f41ae6f55218aa46a2280c7b1e7d9945f121a0ce73fbbd"
+        "sha256": "e9ca9e319b968f4a955b3e921013fa9d8d3d507d06c15b42d0d89f8bf9ea02b2"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-evals.ts",
