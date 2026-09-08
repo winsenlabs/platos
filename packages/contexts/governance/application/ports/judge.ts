@@ -17,6 +17,16 @@
 // `Result`, and `run-judge.ts` decides which failures become a stored
 // zero-scored eval and which are refused outright.
 //
+// WIN-267 G1 NAMES THE REFUSAL, because leaving it unnamed was the same hazard
+// in a quieter form. A failure to reach the model MUST be
+// `GOVERNANCE_JUDGE_UNAVAILABLE`. `run-judge.ts` writes `error.message` into
+// `AgentEval.rawResponse` as the rationale for a zero, so an implementation that
+// answered some other context's code would put that code's wording in a stored
+// eval and would be indistinguishable, at every transport downstream, from the
+// store having failed. `application/ports/index.ts` publishes `judgeUnavailable`
+// for this reason; before WIN-267 it did not, and the only refusal an outside
+// implementation could mint was `GOVERNANCE_LEDGER_UNAVAILABLE`.
+//
 // THE COST COMES BACK WITH THE ANSWER AND IS NOT RECORDED HERE. Pricing is
 // `providers`' knowledge and the central spend ledger is `cost-monitoring`'s
 // table (ADR M0.3 §1 rows 4 and 13), neither of which this context may write or

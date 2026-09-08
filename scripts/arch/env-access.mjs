@@ -387,7 +387,19 @@ export const VIOLATION_CODES = Object.freeze({
  * added not one new door.
  */
 
-export const EXPECTED_FILE_COUNT = 1610;
+/*
+ * WIN-267 G1 adds TWO, both under `apps/core-api/src/composition/`:
+ * `governance-judge.ts`, which satisfies `governance`'s `Judge` port over the
+ * composed `providers` contract, and `governance-judge.test.ts`. The DECLARED
+ * table is unmoved by both, and that is the point of naming them here rather
+ * than raising the number until the gate went quiet: a judge reads NO
+ * environment variable. It cannot. Every provider credential in this tree comes
+ * out of the vault through `providers`, and `apps/core-api/src/config/
+ * providers.ts` declares four variables of which not one is a key -- which is
+ * the same measurement that says this port could never have been an adapter.
+ * 1610 + 2 = 1612.
+ */
+export const EXPECTED_FILE_COUNT = 1612;
 
 function listSourceFiles(root) {
   const found = [];

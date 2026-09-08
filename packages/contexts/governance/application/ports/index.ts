@@ -54,6 +54,56 @@ export type { Judge, JudgeAnswer, JudgeRequest, JudgeUsage } from "./judge.js";
 
 export type { EnqueuedEvalRun, EvalRunQueue, EvalRunRequest } from "./eval-run-queue.js";
 
+// WIN-267 G1 — THE FIFTH INSTANCE OF THE OMISSION THE BLOCK BELOW DOCUMENTS
+// FOUR OF, and the one that made `governance` uncomposable.
+//
+// The paragraph under it repairs the FIVE CANONICAL-STORE ports. It does not
+// reach the other three modules, and every one of those three names a domain
+// value this entry point does not publish:
+//
+//   `judge.ts`          `JudgeRequest.model` is a `JudgeModel`
+//   `eval-run-queue.ts` `EvalRunRequest.pairs` is `EvalPair[]`, and
+//                       `EnqueuedEvalRun.runId` is an `EvalRunId`
+//   `read-seams.ts`     `Transcript.turns` is `TranscriptTurn[]`
+//
+// So all three were UNIMPLEMENTABLE OUTSIDE THIS PACKAGE for exactly the reason
+// `SafetyLedger.append` was: the signature is declared in a vocabulary the port
+// entry point does not hand out. `apps/core-api/src/composition/context-ports.ts`
+// records `Judge`, `EvalRunQueue` and the three read seams as "no adapter
+// directory satisfies"; that is true, and this is one of the reasons it was
+// true — nothing outside this package could spell their arguments.
+//
+// AND THE TWO REFUSAL FACTORIES WITH THEM, WHICH IS THE STRONGER HALF.
+// `eval-run-queue.ts` says a refusal "MUST be `GOVERNANCE_QUEUE_UNAVAILABLE`,
+// not the ledger code", and `judge.ts` says a judge failure "is an answer, not
+// an exception" carried on a `Result`. `ledgerUnavailable` is published below
+// and those two were not, so the only refusal an outside implementation could
+// mint was the WRONG ONE — the precise defect lesson 5 is about, arrived at by
+// omission rather than by choice. An adapter forced to answer
+// `GOVERNANCE_LEDGER_UNAVAILABLE` when a dispatcher declines work would make
+// "the queue would not take it" and "a table is down" indistinguishable at every
+// transport downstream, which is the thing the port's own header forbids.
+export type { EvalPair, EvalRunId, JudgeModel, TranscriptTurn } from "../../domain/index.js";
+export { judgeUnavailable, queueUnavailable } from "../../domain/index.js";
+// AND `parseJudgeModel`, WHICH IS THE ONLY WAY TO GET A LEGITIMATE `JudgeModel`.
+//
+// The type alone is not enough and the reason is the field that makes it useful.
+// `JudgeModel.spec` is the CANONICAL `<provider>:<model>` spelling — the string
+// an implementation hands to whatever actually calls the model — and
+// `judge-model.ts` is the one place that derives it, refuses a leading colon and
+// closes the provider set. A type published without its constructor can only be
+// forged as a literal, and a forged one whose `spec` disagrees with its
+// `provider` and `model` is precisely the defect that file was written to fix:
+// the source resolved `":gpt-4o"` to the wrong vendor and compared prefixed and
+// unprefixed spellings as strings.
+//
+// It is published so the AGREEMENT can be tested. The spec crosses a boundary
+// and is parsed AGAIN on the other side — `providers` resolves it with
+// `modelLookupKeys` and `resolveModelRoute` — and a suite that wrote the string
+// by hand would be testing its own literal rather than whether this context's
+// canonical form is one the consumer can route and price.
+export { parseJudgeModel } from "../../domain/index.js";
+
 // WIN-258 T5 — the domain values the five canonical-store ports' SIGNATURES
 // already name.
 //
