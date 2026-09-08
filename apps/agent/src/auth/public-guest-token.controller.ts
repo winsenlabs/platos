@@ -11,7 +11,7 @@ import { API_VERSION } from "../http/api-surface";
 import { type Request } from "express";
 import * as crypto from "node:crypto";
 import { AuthService } from "./auth.service";
-import { PRISMA_TOKEN } from "../shared/database.provider";
+import { AgentBindingDirectory } from "../agent-runtime/agent-binding.directory";
 import { REDIS_TOKEN } from "../shared/redis.provider";
 import type Redis from "ioredis";
 import { env } from "../shared/env";
@@ -54,7 +54,7 @@ function extractClientIp(req: Request): string {
 export class PublicGuestTokenController {
   constructor(
     private readonly authService: AuthService,
-    @Inject(PRISMA_TOKEN) private readonly prisma: any,
+    private readonly agentBindings: AgentBindingDirectory,
     @Inject(REDIS_TOKEN) private readonly redis: Redis,
   ) {}
 
@@ -68,37 +68,24 @@ export class PublicGuestTokenController {
     }
 
     // Agent is project-owned and may be deployed into more than one
-    // Environment. Resolve the binding first, then derive Project and
-    // Organization through the database relation graph. Environment is required
-    // because one project-owned Agent may have different visibility and active
-    // versions in multiple deployments.
-    const bindings = await this.prisma.agentBinding.findMany({
-      where: {
-        agentId: body.agentId,
-        environmentId: body.environmentId,
-      },
-      include: {
-        agent: true,
-        environment: { include: { project: true } },
-        activeAgentVersion: { select: { memoryConfig: true, toolsBlockConfig: true } },
-      },
-    });
-    const publicBindings = bindings.filter((binding: any) => {
-      const memory = binding.activeAgentVersion?.memoryConfig;
-      const runtime = memory && typeof memory === "object" && !Array.isArray(memory)
-        ? (memory as Record<string, unknown>).__runtime
-        : null;
-      const runtimeVisibility = runtime && typeof runtime === "object" && !Array.isArray(runtime)
-        ? (runtime as Record<string, unknown>).visibility
-        : undefined;
-      const toolsVisibility = binding.activeAgentVersion?.toolsBlockConfig?.visibility;
-      return binding.agent.isActive && (runtimeVisibility ?? toolsVisibility) === "public-guest";
-    });
+    // Environment. The binding resolves the Organization and Project ancestry;
+    // Environment is required because one project-owned Agent may have
+    // different visibility and active versions in multiple deployments.
+    //
+    // WIN-258: the query, the `isActive` check and the two spellings of the
+    // public-guest visibility rule all moved into `AgentBindingDirectory`. What
+    // stays here is the only part that is a TRANSPORT decision — that anything
+    // other than exactly one match is a 404, so the existence of a private
+    // agent never leaks through a distinguishable status.
+    const publicBindings = await this.agentBindings.listPublicGuestBindings(
+      body.agentId,
+      body.environmentId,
+    );
     if (publicBindings.length !== 1) {
       throw new HttpException("Agent not found", HttpStatus.NOT_FOUND);
     }
-    const binding = publicBindings[0];
-    const agent = binding.agent;
+    // Non-null: the length check above is exactly one.
+    const binding = publicBindings[0]!;
 
     const clientIp = extractClientIp(req);
     const ipLimit = env.PLATOS_PUBLIC_GUEST_IP_LIMIT ?? 20;
@@ -107,7 +94,7 @@ export class PublicGuestTokenController {
     try {
       const nowBucket = Math.floor(Date.now() / (WINDOW_SECONDS * 1000));
       const ipKey = `guest_tok:ip:${clientIp}:${nowBucket}`;
-      const agentKey = `guest_tok:agent:${agent.id}:${nowBucket}`;
+      const agentKey = `guest_tok:agent:${binding.agentId}:${nowBucket}`;
       const [ipCount, agentCount] = await Promise.all([
         this.redis.incr(ipKey),
         this.redis.incr(agentKey),
@@ -142,12 +129,12 @@ export class PublicGuestTokenController {
     const iat = Math.floor(Date.now() / 1000);
     const token = await this.authService.createPlatformSessionToken(
       {
-        organizationId: binding.environment.project.organizationId,
-        projectId: binding.environment.projectId,
+        organizationId: binding.organizationId,
+        projectId: binding.projectId,
         environmentId: binding.environmentId,
         userId: guestId,
         extraClaims: {
-          agentId: agent.id,
+          agentId: binding.agentId,
           isGuest: true,
         },
       },
@@ -164,7 +151,7 @@ export class PublicGuestTokenController {
       token,
       guestId,
       expiresAt: iat + ttlSeconds,
-      agentId: agent.id,
+      agentId: binding.agentId,
       environmentId: binding.environmentId,
     };
   }
