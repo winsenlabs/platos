@@ -8,7 +8,15 @@
 // A liveness probe that moved when the API's major moved would be a liveness
 // probe that fails a fleet on a routine release.
 
-import { Controller, Get, HttpException, HttpStatus, Inject, Req } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Req,
+  VERSION_NEUTRAL,
+} from "@nestjs/common";
 
 import type { AppModule } from "../app.module.js";
 import {
@@ -20,6 +28,19 @@ import {
 import { constantTimeEquals } from "./token.js";
 
 export const HEALTH_DEPENDENCIES = Symbol("platos.core-api.health-dependencies");
+
+/**
+ * The three paths this controller answers, at the ROOT and unversioned.
+ *
+ * WIN-267 T4 exported it because `runtime/lifecycle.ts` now installs
+ * `setGlobalPrefix("api")` and has to exclude these three — and a second list of
+ * them living in that file would be a list that goes stale the day a fourth
+ * probe is added. THE DECORATORS BELOW ARE WRITTEN FROM THIS ARRAY, so the
+ * exclusion and the routes are the same source rather than two spellings of one
+ * intention. `as const` so a reader sees the literal paths and a mistyped index
+ * is a compile error rather than an `undefined` route.
+ */
+export const HEALTH_ROUTE_PATHS = ["livez", "healthz", "readyz"] as const;
 
 export interface HealthDependencies {
   readonly app: AppModule;
@@ -38,7 +59,17 @@ function bearerToken(request: InboundRequest): string | null {
   return match?.[1] ?? null;
 }
 
-@Controller()
+// WIN-267 T4 — `VERSION_NEUTRAL`, WHICH IS THIS BANNER'S OWN CLAIM MADE TRUE.
+//
+// The banner above says these paths "sit at the root and are not versioned". Up
+// to T4 that held because nothing in this process was versioned at all. It now
+// is: `runtime/lifecycle.ts` installs URI versioning with the prefix `api/v`, and
+// every controller that does not say otherwise would answer at `/api/v1/...`.
+// `VERSION_NEUTRAL` is how a controller says otherwise, and it exempts the
+// prefix with the version — which is what a probe needs and what
+// `setGlobalPrefix`'s `exclude` could not have given, since that exempts the
+// prefix alone.
+@Controller({ version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(@Inject(HEALTH_DEPENDENCIES) private readonly dependencies: HealthDependencies) {}
 
@@ -49,18 +80,18 @@ export class HealthController {
    * not wedged, which is the entire question. Making it depend on a downstream
    * store is how a database blip becomes a fleet-wide restart storm.
    */
-  @Get("livez")
+  @Get(HEALTH_ROUTE_PATHS[0])
   liveness(): Record<string, unknown> {
     return { status: "alive", phase: this.dependencies.state.phase };
   }
 
   /** Alias for the conventional name; the same unconditional answer. */
-  @Get("healthz")
+  @Get(HEALTH_ROUTE_PATHS[1])
   health(): Record<string, unknown> {
     return this.liveness();
   }
 
-  @Get("readyz")
+  @Get(HEALTH_ROUTE_PATHS[2])
   readiness(@Req() request: InboundRequest): Record<string, unknown> {
     const verdict = evaluateReadiness(this.dependencies.app, this.dependencies.state);
     const configured = this.dependencies.app.configuration.adminHealthToken;

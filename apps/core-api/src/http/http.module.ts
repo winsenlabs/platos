@@ -29,6 +29,11 @@ import { DomainExceptionFilter } from "./domain-exception.filter.js";
 import { HEALTH_DEPENDENCIES, HealthController, type HealthDependencies } from "./health.controller.js";
 import { createIdempotencyGate } from "./idempotency-middleware.js";
 import { NotFoundController } from "./not-found.controller.js";
+import {
+  SECRET_MINT_DEPENDENCIES,
+  SecretMintController,
+  type SecretMintDependencies,
+} from "./secret-mint.controller.js";
 
 @Module({})
 export class CoreApiHttpModule implements NestModule {
@@ -56,11 +61,32 @@ export class CoreApiHttpModule implements NestModule {
    */
   static forApplication(app: AppModule, state: LifecycleState): DynamicModule {
     const dependencies: HealthDependencies = { app, state };
+    const mint: SecretMintDependencies = { app };
     return {
       module: CoreApiHttpModule,
-      controllers: [HealthController, NotFoundController],
+      // WIN-267 T4 adds `SecretMintController` BETWEEN the two, which is the
+      // only place it can go: after `HealthController` because nothing about it
+      // may shadow a probe, and before `NotFoundController` because that one
+      // answers `{*path}` and swallows whatever follows it.
+      controllers: [HealthController, SecretMintController, NotFoundController],
       providers: [
         { provide: HEALTH_DEPENDENCIES, useValue: dependencies },
+        {
+          /**
+           * WIN-267 T4. The mint controller's own value.
+           *
+           * `useValue`, and the CONTROLLER IS NOT ALSO PROVIDED HERE. Nest
+           * instantiates the classes listed in `controllers` itself; a
+           * `{provide: SecretMintController, useFactory}` entry beside this one
+           * would be a provider nothing ever resolves, and the controller would
+           * still be built by the container from its constructor metadata. The
+           * only thing that makes it resolvable is the `@Inject` on that
+           * constructor naming this token — which is where the wiring belongs,
+           * because that is the file that declares the dependency.
+           */
+          provide: SECRET_MINT_DEPENDENCIES,
+          useValue: mint,
+        },
         {
           /**
            * WIN-267 (M4.1) / WIN-260 (c). The global exception filter.

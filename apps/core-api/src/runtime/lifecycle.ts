@@ -53,6 +53,7 @@
 // neither the in-flight register nor the idle set. Both are now pinned by tests
 // that hang for 18 seconds and fail when this step is removed.
 
+import { VersioningType } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 
 import type { Clock, IdGenerator, Logger } from "@platos/kernel";
@@ -62,6 +63,7 @@ import type { SuppliedAdapters, UnwiredAdapter } from "../composition/adapter-bi
 import { describeAdapterSupply } from "../composition/registry.js";
 import type { CoreApiConfiguration } from "../config/schema.js";
 import type { LifecycleState } from "../health/readiness.js";
+import { API_PREFIX, API_VERSION } from "../http/api-surface.js";
 import { CoreApiHttpModule } from "../http/http.module.js";
 import { createEdgeMiddleware } from "./edge-middleware.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
@@ -184,6 +186,42 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     // ahead of the parser, and hand the bytes back — a correctness hazard the
     // gate would then own for every request in the process.
     rawBody: true,
+  });
+
+  // WIN-267 T4 — THE VERSION IS EXPRESSED ONCE HERE TOO, AND ONLY ONCE.
+  //
+  // T2 removed twenty-four hand-written `api/v1` literals from `apps/agent` and
+  // replaced them with a prefix plus URI versioning plus `@Version`.
+  // `apps/core-api` had none of that because it had no business route to apply
+  // it to; the first route this process serves is the first chance to get it
+  // right, and a controller spelling `@Controller("api/v1/agent/channels")`
+  // would be the twenty-fifth literal, reintroduced in the process that exists
+  // to replace them.
+  //
+  // THE PREFIX RIDES ON THE VERSIONING RATHER THAN ON `setGlobalPrefix`, and
+  // that is a MEASURED choice, not a stylistic one. `setGlobalPrefix("api",
+  // {exclude})` cannot express what this process needs: `isRouteExcluded` in
+  // `@nestjs/core` tests EVERY route path against EVERY excluded pattern, so the
+  // one pattern that would exempt the terminal `{*path}` handler exempts every
+  // other route with it and the prefix stops applying to anything. And
+  // `exclude` exempts a route from the PREFIX only — the version segment is
+  // still inserted — so the health probes would have moved to `/v1/livez` even
+  // when the exclusion worked.
+  //
+  // `VERSION_NEUTRAL` is the mechanism that answers both, and it answers them in
+  // the CONTROLLER, where the fact lives. `HealthController` and
+  // `NotFoundController` declare it and therefore answer at the root, unprefixed
+  // and unversioned: the health banner says why ("a liveness probe that moved
+  // when the API's major moved would be a liveness probe that fails a fleet on a
+  // routine release"), and the terminal 404 must stay terminal for EVERY path in
+  // the process rather than only for those under `/api`.
+  nest.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: API_VERSION,
+    // `api/v` and not `v`: Nest concatenates `prefix + version`, so a route with
+    // `@Version("1")` answers at `/api/v1/...` and the string `api/v1` exists
+    // nowhere else in this process.
+    prefix: `${API_PREFIX}/v`,
   });
 
   // Correlation is installed BEFORE the in-flight register so that the register's
