@@ -2082,7 +2082,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 5115,
+    "totalFiles": 5116,
     "areaCounts": {
       "apps-agent": 516,
       "apps-core-api": 68,
@@ -2091,7 +2091,7 @@
       "docs-content": 737,
       "internal-packages": 1173,
       "packages": 2136,
-      "root-infra": 294
+      "root-infra": 295
     },
     "kindCounts": {
       "asset": 155,
@@ -2102,12 +2102,12 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 895,
-      "source": 2050,
+      "source": 2051,
       "test": 1028
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1631,
+      "move-refactor": 1632,
       "regenerate": 39,
       "retain": 3436,
       "unresolved": 2
@@ -2247,9 +2247,9 @@
       "root-infra.test.harness": 69,
       "root-infra.test.script-suites": 32,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 91,
+      "root-infra.tooling.scripts": 92,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "33ef6c179fbfa4d1ac760ddcca16f19a83f666041ab76c67193a8a81a236faaf"
+    "classificationSha256": "2dde8760aea85661bba1102c219533a2bbdbe7159568af39a0be1b1a34c524aa"
   }
 }

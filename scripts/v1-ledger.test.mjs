@@ -1561,8 +1561,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `apps/agent/src/clean-prisma-delegates.test.ts` are all tracked already,
     // and an edited file is not a new one. In particular `apps-agent` does NOT
     // move: re-pinning a suite's assertions changes bytes, not the census.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 = 58.
-    "root-infra": 58,
+    // WIN-267 G2 adds ONE: `scripts/mutations-win267-g2.json`, this tranche's
+    // guard ledger, on the same `root-infra.tooling.scripts` rule every earlier
+    // tranche's landed on.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 59.
+    "root-infra": 59,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1577,11 +1580,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // A3's 1609. The identity this number exists to hold is that the total delta
   // and the per-area deltas are the SAME arithmetic, so a file that arrives in
   // one and not the other cannot pass both halves of this case.
-  // WIN-267 G2: 1640 + 6 = 1646, all six in `packages`. Two sibling branches
+  // WIN-267 G2: 1640 + 6 + 1 = 1647 -- SIX in `packages` and ONE in
+  // `root-infra`, this tranche's mutation ledger. Two sibling branches
   // move this same delta for the remaining governance ports, so the
   // integrator SUMS rather than taking any one branch's total -- the exact
   // mistake the paragraph above records for A1+A2 and A3.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1646);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1647);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1707,7 +1711,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // green, and STILL landed red on both of these assertions: the sixth and
     // seventh time this second reconciliation has caught what the first one
     // signed off.
-    rulesDocument.baseline.totalFiles + 1646
+    rulesDocument.baseline.totalFiles + 1647
   );
 });
 
