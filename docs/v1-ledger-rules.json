@@ -2082,7 +2082,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 5080,
+    "totalFiles": 5069,
     "areaCounts": {
       "apps-agent": 516,
       "apps-core-api": 68,
@@ -2090,26 +2090,26 @@
       "apps-webapp": 183,
       "docs-content": 737,
       "internal-packages": 1173,
-      "packages": 2104,
-      "root-infra": 291
+      "packages": 2091,
+      "root-infra": 293
     },
     "kindCounts": {
       "asset": 155,
-      "config": 307,
-      "doc": 609,
+      "config": 303,
+      "doc": 608,
       "fixture": 6,
       "generated": 44,
       "legal": 14,
       "lockfile": 3,
       "migration": 895,
-      "source": 2033,
-      "test": 1014
+      "source": 2030,
+      "test": 1011
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1628,
+      "move-refactor": 1630,
       "regenerate": 39,
-      "retain": 3404,
+      "retain": 3391,
       "unresolved": 2
     },
     "protectedCount": 1632,
@@ -2200,11 +2200,11 @@
       "internal-packages.source.typescript": 112,
       "internal-packages.test.suites": 63,
       "internal-packages.tooling.scripts": 9,
-      "packages.adapters.config": 55,
-      "packages.adapters.doc": 14,
+      "packages.adapters.config": 51,
+      "packages.adapters.doc": 13,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 250,
-      "packages.adapters.test": 169,
+      "packages.adapters.source": 245,
+      "packages.adapters.test": 166,
       "packages.config.build": 28,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
@@ -2247,9 +2247,9 @@
       "root-infra.test.harness": 69,
       "root-infra.test.script-suites": 32,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 88,
+      "root-infra.tooling.scripts": 90,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "ed15b4549a4e20409932fdddc797aa0ec72475359d3fc89b513f59628f2cf5ff"
+    "classificationSha256": "2fa8c9c992b85feed8643d08cca253aba939717105f8e0bce14e33d01ba5ccd8"
   }
 }

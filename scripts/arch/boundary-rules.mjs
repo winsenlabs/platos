@@ -83,7 +83,8 @@ const INFERENCE_SDK_SOURCE = "node_modules/(ai(?:/|$)|@ai-sdk/)";
 // The one directory that may hold the canonical PostgreSQL client (ADR M0.3 §4,
 // which spells it "the tenancy-database client; per-context repositories,
 // owner-tagged").
-const POSTGRES_TENANCY_ADAPTER = "^packages/adapters/postgres-tenancy/";
+// (Folded into `TENANCY_DATABASE_HOME` below, which names this directory and the
+// workspace package that generates the client it wraps.)
 
 // The ORM and the generated client package built from the canonical schema.
 //
@@ -112,8 +113,58 @@ const POSTGRES_TENANCY_ADAPTER = "^packages/adapters/postgres-tenancy/";
 // here would also condemn any future package whose name merely opens with those
 // bytes, and the point of a containment rule is that a violation names the thing
 // that was actually imported.
+//
+// ---------------------------------------------------------------------------
+// WIN-267 (M4.1) T5 — THE PATTERN COULD NOT SEE THE ONE DOOR IT NAMES.
+//
+// The paragraph above says the wrapper is banned because it "is the exact door
+// the legacy tree walks through today". It was not. Every alternative was
+// anchored on `node_modules/`, and `@platos/tenancy-database` is a pnpm
+// WORKSPACE package: the specifier the webapp writes resolves through a symlink
+// straight into the workspace, so the path an import resolver actually reports
+// for `apps/webapp/app/services/database.server.ts` is
+//
+//     internal-packages/tenancy-database/dist/index.js
+//
+// — measured with Node's own resolver, which is the resolution model
+// dependency-cruiser uses through enhanced-resolve. There is no `node_modules/`
+// segment anywhere in it, so the `to` pattern could not match, and the rule
+// written specifically to catch the webapp's import was the one enforcer
+// guaranteed to miss it. `TENANCY_DATABASE_HOME_PATH` below is the real path,
+// derived from the workspace rather than spelled here twice, and
+// `arch-boundaries.test.mjs` joins the pattern to it by READING the package's
+// own `package.json` off disk.
+//
+// BOTH SPELLINGS ARE KEPT, because the two enforcers resolve differently and a
+// rule that matched only one of them would be half a rule.
+// `scripts/arch/arch-boundaries.mjs` turns a bare specifier into
+// `node_modules/<specifier>` (see `resolveTargetVirtualPath`), so it needs the
+// `node_modules/@platos/tenancy-database` form; dependency-cruiser resolves the
+// module and needs the workspace form. Neither spelling is dead.
+// ---------------------------------------------------------------------------
+
+/**
+ * The workspace directory that BUILDS the generated client — the real path a
+ * module resolver reports for `@platos/tenancy-database`.
+ *
+ * It is a second HOME rather than a second banned source. The package cannot
+ * violate a containment rule about itself: `internal-packages/tenancy-database`
+ * is where `prisma generate` writes the client and where the re-export that
+ * every other file is banned from importing is authored. Leaving it out of the
+ * home would make the rule condemn the generated client for containing itself,
+ * which is a rule that can only be satisfied by deleting the package.
+ */
+const TENANCY_DATABASE_HOME_PATH = "internal-packages/tenancy-database/";
+
 const TENANCY_DATABASE_SOURCE =
-  "node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))";
+  "(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))" +
+  `|${TENANCY_DATABASE_HOME_PATH.replace(/\/$/u, "")}(?:/|$))`;
+
+/**
+ * The two directories entitled to hold the canonical PostgreSQL client: the
+ * adapter ADR M0.3 §4 names, and the workspace package that generates it.
+ */
+const TENANCY_DATABASE_HOME = `^(packages/adapters/postgres-tenancy|${TENANCY_DATABASE_HOME_PATH.replace(/\/$/u, "")})/`;
 
 // Per-vendor single-adapter containment (ADR M0.3 §5.1 rule (h)). Each SDK lives
 // in exactly one place; any file outside that place importing the SDK fails.
@@ -146,7 +197,7 @@ export const SDK_CONTAINMENT = [
   },
   {
     id: "tenancy-prisma-only",
-    home: POSTGRES_TENANCY_ADAPTER,
+    home: TENANCY_DATABASE_HOME,
     source: TENANCY_DATABASE_SOURCE,
   },
   {

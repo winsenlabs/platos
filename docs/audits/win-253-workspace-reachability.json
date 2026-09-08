@@ -22,10 +22,10 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "311db70888d40c7ec7b4fe586998e9b7d4cf93cea4b72c0f13c43e2976422d5d",
+  "evidenceSha256": "41270d7bd50a148d9ec1e96c447ddc674439b8a68e591dad7faa4a353b0302a0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
-    "generatedProjectCount": 38,
+    "generatedProjectCount": 37,
     "generatedProjects": [
       "apps/core-api",
       "apps/mcp-stdio",
@@ -36,7 +36,6 @@
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
       "packages/adapters/model-router-providers",
-      "packages/adapters/node-crypto-digest",
       "packages/adapters/notifier-email",
       "packages/adapters/notifier-webhook",
       "packages/adapters/objectstore-minio",
@@ -69,12 +68,12 @@
     "generators": [
       {
         "generator": "scripts/arch/gen-v1-skeleton.mjs",
-        "outputCount": 119,
-        "sha256": "37cd66c45207ec0352dc4b69e9cd6d778235a0f8023ec1152a8d4f6af6ea3a91"
+        "outputCount": 116,
+        "sha256": "e13600ad04eb166556343ad41d06afffd954d8a87566628118a3eeafcea3e470"
       }
     ],
-    "ownedOutputCount": 119,
-    "ownedOutputProjectCount": 34,
+    "ownedOutputCount": 116,
+    "ownedOutputProjectCount": 33,
     "ownedOutputProjects": [
       "apps/core-api",
       "apps/mcp-stdio",
@@ -83,7 +82,6 @@
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
       "packages/adapters/model-router-providers",
-      "packages/adapters/node-crypto-digest",
       "packages/adapters/notifier-email",
       "packages/adapters/notifier-webhook",
       "packages/adapters/objectstore-minio",
@@ -113,7 +111,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "067170280abb69a12cbc54001dfc808e48c943c598935cd3ce5c7f3bb3bf1dd4",
+    "aggregateSha256": "530a5fa0ee20f7e2363cd23883a3735b48929cc01b51bfffb4297ff2e391d318",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -221,7 +219,7 @@
       },
       {
         "path": ".dependency-cruiser.js",
-        "sha256": "df1cf3948cc070efc8307f2e77ca94f6781a9a642aa597f343a78ce5b4b77241"
+        "sha256": "dc49ce561f5122db8f0079af37da67721c5577f9a840a886a624437ffbd47790"
       },
       {
         "path": ".dockerignore",
@@ -265,7 +263,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "6fb441c177818aafbddb8fc256a952b991d91ea8ddc4014edbd399551f0613f8"
+        "sha256": "af96381f2d374f34c06cec09e6cf806d78a606d243fcef5a956838dbffb918cb"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -929,7 +927,7 @@
       },
       {
         "path": "apps/agent/src/clean-prisma-delegates.test.ts",
-        "sha256": "3c4daa0765fbae114c9931a3907862358cd5ccc0f2944c6edaa3ef38319f2115"
+        "sha256": "0fad8df237d4aa9b0451a14890875ea28fae18b6b59a808e82abcc4139a980a0"
       },
       {
         "path": "apps/agent/src/connections/connections.gateway-auth.test.ts",
@@ -2461,11 +2459,11 @@
       },
       {
         "path": "apps/core-api/package.json",
-        "sha256": "1059c84a717ce9aa7b3c627d35ecc0c2c49948fbe200e45edef0fc9ee3e10fe5"
+        "sha256": "d412269cbb94bb81b70fe4d8b281eb1b77da6db0b5ed7c9615ae9fb8dc0c9042"
       },
       {
         "path": "apps/core-api/src/app.module.test.ts",
-        "sha256": "892fde5622a6e53b563317f1c0a661ac522b9ccdb4beb60235c455e47d850a62"
+        "sha256": "8332031b955d4c6d7364b15849cc7cb709a4bac1472f19233d3bf9eb8af62892"
       },
       {
         "path": "apps/core-api/src/app.module.ts",
@@ -2473,15 +2471,15 @@
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
-        "sha256": "febb80fd9f2c4970bc1c8b2b144c4ee75ddf58da0209eeb12f9b4475953e85d5"
+        "sha256": "b7a92af49c9fa65060c5fd9f42fe34cac57b30f1256cad28be8f85be765edf47"
       },
       {
         "path": "apps/core-api/src/composition/context-ports.ts",
-        "sha256": "d8464fec16dd8cf18d37249a9a19febeac66188decf0eb2c69d6be55ff028787"
+        "sha256": "36a89fcb6f56b3b5f3cfbc80666b4da023ee2b00ce453362d661f1c894c1da59"
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
-        "sha256": "3f259bc49891e564233509f23c012a8e3f03986ecb569133ebc9ecc60ba857e1"
+        "sha256": "1154643d01ba0090bd43744b162b07208fb14c8b4baf1124baad5c40e1f1e603"
       },
       {
         "path": "apps/core-api/src/composition/registry.ts",
@@ -2537,7 +2535,7 @@
       },
       {
         "path": "apps/core-api/src/health/readiness.ts",
-        "sha256": "97e5288855b1cd6979be0eaf4bd72a9f0e52333b02aa190b08fb4a8e82d53823"
+        "sha256": "537e85be09487b953b3d580ce52b1b16e9e76d486aefbc13f86577757690988e"
       },
       {
         "path": "apps/core-api/src/http/domain-exception.filter.ts",
@@ -2609,7 +2607,7 @@
       },
       {
         "path": "apps/core-api/src/process.test.ts",
-        "sha256": "1d9414fc4da5124723edff401fcc095ce9958e991ce2fb5834d28891d27e169d"
+        "sha256": "90f81d1f3579bca246677922db8d1971a68e1229662d12bf7539a28fe7fbcd44"
       },
       {
         "path": "apps/core-api/src/runtime/correlation.test.ts",
@@ -2633,7 +2631,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "1b86b4501ad6e8058ca2fa86c9c8372b5f6a6652c8a306fef58068854f68fdd9"
+        "sha256": "7633d7c3717099a016da8f698b917c2d3a31732ee23e827d25f4cf46b2239a84"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
@@ -2713,7 +2711,7 @@
       },
       {
         "path": "apps/core-api/tsconfig.json",
-        "sha256": "4251fbca32a62fb5c4ccd63af1fd2b7af55964428dfe392ecf73886bd924f23a"
+        "sha256": "36d80149e89bd72428ef60ce9b9b5a5de26e19bf74cee7689e8eed7591a9d99e"
       },
       {
         "path": "apps/mcp-stdio/README.md",
@@ -4213,7 +4211,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "0ac615fdcc3ffe6ee8033512224a2f5c76633431b555731bf12b321886377f59"
+        "sha256": "b4b7fe44c5c078f1435ae646c0a1c897a83c5a8349353b687418186e374cb997"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -4221,7 +4219,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "f0cbcfdb5d3904ffaa3e65dae4c3436c69ccb5da9a56e3fe8669c6bc124ab715"
+        "sha256": "63f267300d0f54864670c4ef3f315e3ae7ca8d1180489a7f83eff4ac133ecc52"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4297,7 +4295,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "bdd86178dccfbc4a6454393e19b580858e1f2e44f5f7862916de0c365249aeff"
+        "sha256": "f0a56b12e279778c18c7978bc3cb0898775c67e275061e43d63d4f2e3f5e3bce"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6225,7 +6223,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "a0e6d5f31cee3178f65b74acd5eb4ca7fffb5083720ce290651cfcf07158caab"
+        "sha256": "660c4772f6f1d944fd38ca48acb7f79752e10a18a137909e08260c4892ee3c67"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -6245,7 +6243,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "6df824845d7b255271e25916a4633a7794188779da76c7cbe5b02b20fd278e49"
+        "sha256": "07cce10202c99a474609b3d53964e91cacdcc33a024d2e9a571240f295df57ed"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -11129,23 +11127,19 @@
       },
       {
         "path": "packages/adapters/keyring-envelope/README.md",
-        "sha256": "a78115672d65e6c4cd3e5fa065c453a34f1b2c4663452e4eba482c3ad271c9b7"
+        "sha256": "70b845b171dee0152dabb49d2345c53e9ced8c16064505aaf879f1f8f698ddb8"
       },
       {
         "path": "packages/adapters/keyring-envelope/mutations-keyring-envelope.json",
         "sha256": "db1962b3d45bb39653f7b08c470c5bc41def2857d73c75e0716f2769dfa6ddd3"
       },
       {
-        "path": "packages/adapters/keyring-envelope/mutations-mfa-secret-cipher.json",
-        "sha256": "63cc18e2e5db0287d8948443e9d36775855b2e5c1ffe7e2adec6391ad6c96beb"
-      },
-      {
         "path": "packages/adapters/keyring-envelope/package.json",
-        "sha256": "ae371bc6b627e6693e9a7b45f6a789d1df3f4489f8b93db1ed61c9c2fefdd854"
+        "sha256": "34b81e0cd2c336a8d9a795f6f271938258b50c0f18e5ba23d2b4010f8d2b5009"
       },
       {
         "path": "packages/adapters/keyring-envelope/src/adapter.ts",
-        "sha256": "d632f75303a9a5fa51aecc95bea07901b3560b6e9daff04d11d139893d21b168"
+        "sha256": "b2aa0d5119e7bc837b26f8507ef26d59c2364e7a5aa72d498d547d6309cd1b03"
       },
       {
         "path": "packages/adapters/keyring-envelope/src/envelope-cipher.ts",
@@ -11153,7 +11147,7 @@
       },
       {
         "path": "packages/adapters/keyring-envelope/src/index.ts",
-        "sha256": "0dc6d599ab6c4b22e4ce7a0f283c314f3dd96ac8faf2ad3409584a03473c2c77"
+        "sha256": "7f789a3e88eb51ed3ca574712ed7e5a022875c9b9c577aacbaf73bbfb8fb4924"
       },
       {
         "path": "packages/adapters/keyring-envelope/src/key-version-integrity.test.ts",
@@ -11174,14 +11168,6 @@
       {
         "path": "packages/adapters/keyring-envelope/src/legacy-wire-vectors.ts",
         "sha256": "a795604328aed504b2d114d49b49a2e70948aff9ada92b59d7bd6661c45c036b"
-      },
-      {
-        "path": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
-        "sha256": "05320560d4fbbe4facfee7a8d0fee79c04b555c7f1a9402160190dc15a184f32"
-      },
-      {
-        "path": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.ts",
-        "sha256": "030489f729f6f43d1d7307272c0cd6bd09c338287d525ac0446e0bc614ac9587"
       },
       {
         "path": "packages/adapters/keyring-envelope/src/root-key-ring.test.ts",
@@ -11209,7 +11195,7 @@
       },
       {
         "path": "packages/adapters/keyring-envelope/tsconfig.json",
-        "sha256": "b7c7b6579779757d9ea530eed8bbb5bc1e8fdccaa3f6a893f79fc983c52ba3dd"
+        "sha256": "6fb88bf5bb31f7d06ec306f9dfc0e4164b8edc48b33533553681bd5303b17f85"
       },
       {
         "path": "packages/adapters/model-router-providers/README.md",
@@ -11350,46 +11336,6 @@
       {
         "path": "packages/adapters/model-router-providers/tsconfig.json",
         "sha256": "8696b22ff052c4ae8e65dcd2e9553f4d6f4adb66124fb60fc3a8f42ff4ff8eee"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/README.md",
-        "sha256": "21d30d21a162ffd4e4e1986ff61f9cf87514e8f8872c9253fb45bc3b4d02beda"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/mutations-node-crypto-digest.json",
-        "sha256": "362d9904bca4375555b699de04fd3090b370d1667a450e022dfc899989fb22e5"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/package.json",
-        "sha256": "229fe0120b22a0df9fb190c46ea80e762a3efc68e6e509531147796557ea58ce"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/src/adapter.ts",
-        "sha256": "6ab2fe12986cb1fe0205030c562647980ec30f5230ae0fd3efbda100cadff878"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/src/index.ts",
-        "sha256": "6300f3e053c71ddc86d8b11e4630f70821df8046f4562bbe2f7d5ea97bae4548"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-        "sha256": "ebf1247e83d9356e2f268f483cda911f366f1e1e1211ba9c380e9625a667fbab"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/src/oracle-vectors.ts",
-        "sha256": "ce4857ab4790fea6c009a6cc34071697ed29e2387f91b119cf422f3c9f5842a2"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-        "sha256": "aaf0bcea558664109201c78f7f46d090f04954218bb58447644765148842fe32"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
-        "sha256": "aabb45ca0e7c59dad31e82837a75da09630a6b2a00563d912bdc9d6d6d26d89d"
-      },
-      {
-        "path": "packages/adapters/node-crypto-digest/tsconfig.json",
-        "sha256": "d3b9433fabd38f2ec6ce57d95a1bb774085f3173f5826af8a6d0047424411190"
       },
       {
         "path": "packages/adapters/notifier-email/README.md",
@@ -19505,7 +19451,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "f603708c54fcad278b4ff6372cac5abcafaf820fb3e8dd8a85ab062a311fcb30"
+        "sha256": "64e965ebebddf3700c12259bec33dc7b35212666cd1499330187202e54c70d9b"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -19657,27 +19603,27 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "69540fc9a56612aa69412563f898a6d330c838df2d6a2603140ac690328aae9b"
+        "sha256": "30824057b9cfdf218c3f6937776064c614c4cff7a6b92083809ad8e9efe25fe1"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
-        "sha256": "75bc62dc335d27f84a218aaf9925b2ba6be458dc0b5062ee3c09ac1b901ba869"
+        "sha256": "3803361281b331ea72cf4796103442e9e9a3f111bca7db676aae610733b37fa2"
       },
       {
         "path": "scripts/arch/clean-v1.mjs",
-        "sha256": "feafe775bcbfb592cf6780d4b73d6ed3df7ce4b85eace7f99b9d04ef9af9d70c"
+        "sha256": "0439116d8a127e51cb21b2debc53aa3fbb1825feee2910ceee2275825a423e2b"
       },
       {
         "path": "scripts/arch/clean-v1.test.mjs",
-        "sha256": "2cd91be3291fe6977c70526b254c2f0ebbd0013c5cfc8e43afd5dd130919ed22"
+        "sha256": "c90c8b0cf19957e11aa3301fe3e50f0d143d3f6c43cf08b519564ea193ba0fcf"
       },
       {
         "path": "scripts/arch/composition-root.mjs",
-        "sha256": "d565866979ebea93ee619db9145f51b21a07e7e0597e061f2b5654bd9eaa52a0"
+        "sha256": "485c79b16350377cb875ae6ad561f63822c1679fac6261d72d5f66e244087211"
       },
       {
         "path": "scripts/arch/composition-root.test.mjs",
-        "sha256": "ec83874506b068769608421d343fc49046a32f126961e9a89de177fd770216ca"
+        "sha256": "f2b6812c77124c2eef816f5de11920350132faabff6515e9b1b75cbc040a4df0"
       },
       {
         "path": "scripts/arch/contract-map.mjs",
@@ -19689,7 +19635,7 @@
       },
       {
         "path": "scripts/arch/env-access.mjs",
-        "sha256": "45325dfd1fec8a469a6a446665f9b14e417c83164a0b680e427d0fd91720bdb6"
+        "sha256": "e9ebb84d372bfa308954938b7d4aeaba7d0e0f30161100e9340cd7ce5e2bae82"
       },
       {
         "path": "scripts/arch/env-access.test.mjs",
@@ -19701,11 +19647,11 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "02600319388a058aea6c9eba0a591a6f0d8b8a9dc1e52ef5f4973d6ec92e515c"
+        "sha256": "46f67366fec3f178c11e466dd8ddc282b8545103b63058cb63d06b54a9475055"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "ca40db4ced44157bafe11536d9ec57bafbec8111348f29f3365ec108af3adaf6"
+        "sha256": "c739dc6ace29804ebbae099fcdecf8044f3f4ff3528c5061e097ec9a57c5928c"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -19721,7 +19667,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "c1d731d5baa3a6e24ee714442c4faa59178dcbabf66e611f0ef630fca02c1c21"
+        "sha256": "e46b4609e4f9b6abf1cb6f17497a25e62064494ce1449a90a38468105e1d0838"
       },
       {
         "path": "scripts/arch/route-ownership.mjs",
@@ -19749,11 +19695,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "b383fc658df1a2c269f80fadcdf25c9c10f63ec8d4936928aa9aa05e5db077e7"
+        "sha256": "481e9c084fbe3eec56ce8eb71a643fd5009e78826221f1d19490c3065be5f1f9"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "d2983347c12008290808aa87e14b9b117f0b84e61ba88f3c3e9fde72aee6f20a"
+        "sha256": "7b935368115c2d568659c3e029b69d1560e45d787cb08569269a2abc9c521d74"
       },
       {
         "path": "scripts/arch/transaction-outcome.mjs",
@@ -19765,11 +19711,11 @@
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
-        "sha256": "6b1b262bc072e036e80a3de2540d8aaab51317b22791586c4bcd60e51f9ee3a6"
+        "sha256": "6d1703123648da2f3205cf771acddfe26b1569d08693f3f0120b872e4a727b04"
       },
       {
         "path": "scripts/arch/v1-project-graph.test.mjs",
-        "sha256": "a7d211691a9cc72c6eaad1eddebcae4d61646afdc9196412edea776f6b18ae97"
+        "sha256": "0ff560d455b6d80a2645ef56c54fd0313df4a3ad404c16f3898e5a91f462efb5"
       },
       {
         "path": "scripts/audit-advisory.mjs",
@@ -19821,7 +19767,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "c971401cade5f17eaa436a7f6ea867be7f77c7b50861164bb8a28acb99d0e45c"
+        "sha256": "0750acb02463ab3e5fda4c593a86b2a47f7170f9012865ccf9bdb35979eee7f8"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -19928,6 +19874,10 @@
         "sha256": "20e6602824cf4e2b47a6a0f3e28623da21eb5bb849108b42cda10463364f434b"
       },
       {
+        "path": "scripts/mutations-win267-a4.json",
+        "sha256": "dcbb3f0767239cb1249a42f40582e6f2156738647d083600a4396d0da5a71b5a"
+      },
+      {
         "path": "scripts/mutations-win267-t0.json",
         "sha256": "5635b7971fe220607cee25a5433db1401d07edca4a92589066ecf0596bfcb808"
       },
@@ -19938,6 +19888,10 @@
       {
         "path": "scripts/mutations-win267-t2.json",
         "sha256": "e41a417b55d32a2fc5cb33962b190c070a59b28e094bc65022bfb6a16bd920c6"
+      },
+      {
+        "path": "scripts/mutations-win267-t5.json",
+        "sha256": "d69daa782f4d42ee5a3968fc229a767d16ce88606af5a03888f5ddb84712fd4b"
       },
       {
         "path": "scripts/operator-operations.mjs",
@@ -20017,7 +19971,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "1d2c508e5f47c7454f191a69fb638a951b81087b1f7dde982e147864f86c6415"
+        "sha256": "e1b6b3c04fe717e0bdd35a3982547f36b6b8c5c3ba6529fb13b12c9e9b37d56b"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -20125,7 +20079,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "994a6a457ead8dae02c297608058e6fd28b6229511a54e838dc7672c2c1c6320"
+        "sha256": "874bee5809a02c9a0fb1c6fce7b92d0f21fa8281e0c08c5ab74c225d665751d8"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -20405,7 +20359,7 @@
       },
       {
         "path": "tsconfig.json",
-        "sha256": "8b56c8de3a54a8ba609715f854a81fd52de15c0bd577a03fcb34130d0a54af3b"
+        "sha256": "e9517f8a21764cde4c21f163d57789db99298bcfe830818b3800533671c80852"
       },
       {
         "path": "turbo.json",
@@ -20883,12 +20837,6 @@
             "kind": "root-typescript-reference"
           }
         ],
-        "packages/adapters/node-crypto-digest": [
-          {
-            "from": "tsconfig.json",
-            "kind": "root-typescript-reference"
-          }
-        ],
         "packages/adapters/notifier-email": [
           {
             "from": "tsconfig.json",
@@ -21059,7 +21007,6 @@
         "packages/adapters/durable-runtime",
         "packages/adapters/keyring-envelope",
         "packages/adapters/model-router-providers",
-        "packages/adapters/node-crypto-digest",
         "packages/adapters/notifier-email",
         "packages/adapters/notifier-webhook",
         "packages/adapters/objectstore-minio",
@@ -21102,7 +21049,6 @@
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
       "packages/adapters/model-router-providers",
-      "packages/adapters/node-crypto-digest",
       "packages/adapters/notifier-email",
       "packages/adapters/notifier-webhook",
       "packages/adapters/objectstore-minio",
@@ -21163,7 +21109,6 @@
       "packages/adapters/durable-runtime",
       "packages/adapters/keyring-envelope",
       "packages/adapters/model-router-providers",
-      "packages/adapters/node-crypto-digest",
       "packages/adapters/notifier-email",
       "packages/adapters/notifier-webhook",
       "packages/adapters/objectstore-minio",
@@ -21207,30 +21152,30 @@
   },
   "schemaVersion": 2,
   "summary": {
-    "applicationDeployableWorkspaceCount": 39,
+    "applicationDeployableWorkspaceCount": 38,
     "channelReachableCounts": {
-      "ci": 62,
+      "ci": 61,
       "dockerImage": 7,
-      "docsExamples": 59,
-      "generated": 42,
-      "license": 48,
-      "packageScripts": 62,
+      "docsExamples": 58,
+      "generated": 41,
+      "license": 47,
+      "packageScripts": 61,
       "patches": 17,
       "sourceDynamic": 2,
-      "sourceStatic": 45,
-      "testsFixtures": 58
+      "sourceStatic": 44,
+      "testsFixtures": 57
     },
     "configuredPatchCount": 5,
-    "deploymentUnionWorkspaceCount": 40,
+    "deploymentUnionWorkspaceCount": 39,
     "externalProductionSnapshotNodesByImage": {
       "agent": 718,
       "webapp": 335
     },
-    "installTraversalWorkspaceCount": 62,
+    "installTraversalWorkspaceCount": 61,
     "ociImageWorkspaceCount": 6,
     "publicBoundaryCount": 8,
     "reconciledPatchCount": 5,
-    "registeredWorkspaceCount": 62,
+    "registeredWorkspaceCount": 61,
     "repositoryDevWorkspaceCount": 10,
     "reviewCandidateCount": 22
   },
@@ -23504,16 +23449,6 @@
               "line": 6
             },
             {
-              "from": "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-              "kind": "reference",
-              "line": 14
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-              "kind": "reference",
-              "line": 201
-            },
-            {
               "from": "packages/contexts/channels/domain/routing.test.ts",
               "kind": "reference",
               "line": 85
@@ -23541,7 +23476,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1158
+              "line": 1170
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -23626,7 +23561,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 337
+              "line": 329
             },
             {
               "from": "tests/persisted-state-gate/agent-runtime-health.mjs",
@@ -24559,14 +24494,6 @@
               "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts"
             ],
             [
-              "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-              "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-              "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts"
-            ],
-            [
               "packages/contexts/channels/domain/routing.test.ts",
               "packages/contexts/channels/domain/routing.test.ts"
             ],
@@ -24925,8 +24852,6 @@
             "internal-packages/docs/src/frontmatter.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-migration.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts",
-            "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-            "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
             "packages/contexts/channels/domain/routing.test.ts",
             "packages/contexts/secrets/domain/envelope.test.ts",
             "packages/contexts/secrets/domain/legacy-envelope.test.ts",
@@ -25014,7 +24939,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "4088d662d2acf470f7f6a05181b5469bfa6a0b4dd8d9498099a3d3585878b0f8",
+      "evidenceSha256": "5097e256c3d5bf8938e9d1d2f5b713518a7e9c9828c3930b9595e6f0ee40d108",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -25265,15 +25190,10 @@
             {
               "from": "packages/adapters/keyring-envelope/README.md",
               "kind": "reference",
-              "line": 15
+              "line": 14
             },
             {
               "from": "packages/adapters/model-router-providers/README.md",
-              "kind": "reference",
-              "line": 6
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/README.md",
               "kind": "reference",
               "line": 6
             },
@@ -25400,10 +25320,6 @@
               "packages/adapters/model-router-providers/README.md"
             ],
             [
-              "packages/adapters/node-crypto-digest/README.md",
-              "packages/adapters/node-crypto-digest/README.md"
-            ],
-            [
               "packages/adapters/notifier-email/README.md",
               "packages/adapters/notifier-email/README.md"
             ],
@@ -25457,7 +25373,6 @@
             "packages/adapters/durable-runtime/README.md",
             "packages/adapters/keyring-envelope/README.md",
             "packages/adapters/model-router-providers/README.md",
-            "packages/adapters/node-crypto-digest/README.md",
             "packages/adapters/notifier-email/README.md",
             "packages/adapters/notifier-webhook/README.md",
             "packages/adapters/objectstore-minio/README.md",
@@ -25777,7 +25692,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 306
+              "line": 318
             },
             {
               "from": "scripts/arch/clean-v1.test.mjs",
@@ -25852,7 +25767,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 247
+              "line": 513
             }
           ],
           "reversePaths": [
@@ -26099,8 +26014,8 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "ee0937e26ff7085a54969ffa85156dce2a5422ee80378a692ada20e0575a933f",
-      "manifestSha256": "1059c84a717ce9aa7b3c627d35ecc0c2c49948fbe200e45edef0fc9ee3e10fe5",
+      "evidenceSha256": "a923817a6beaabcc80d59168ea8fbc4be81599e083a383b1c7ac9bccdff0113b",
+      "manifestSha256": "d412269cbb94bb81b70fe4d8b281eb1b77da6db0b5ed7c9615ae9fb8dc0c9042",
       "name": "@platos/core-api",
       "ociImageClosure": {
         "reachable": false,
@@ -26432,7 +26347,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 370
+              "line": 382
             },
             {
               "from": "scripts/arch/clean-v1.test.mjs",
@@ -26452,7 +26367,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 136
+              "line": 130
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -26472,7 +26387,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 523
+              "line": 515
             }
           ],
           "reversePaths": [
@@ -26574,7 +26489,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "8b1d1d181080e0585e4a34f5e7ffcc40623163c2f636c67e6e9ef1f84da99c47",
+      "evidenceSha256": "c885cb07fb78ddfb001f71a642ce20657b43c4fae5487dd3de35342d47b60135",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -27994,7 +27909,7 @@
             {
               "from": "apps/core-api/src/app.module.test.ts",
               "kind": "reference",
-              "line": 742
+              "line": 718
             },
             {
               "from": "apps/webapp/package.json",
@@ -28174,7 +28089,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 330
+              "line": 342
             },
             {
               "from": "scripts/arch/secret-response-census.test.mjs",
@@ -28279,7 +28194,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 426
+              "line": 418
             },
             {
               "from": "tests/browser-evidence/artifact-schema.json",
@@ -28825,7 +28740,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "1cfb4dac8f55578ca7243aa777a738971b688e8e5a3d2fa7b5b5caed81b49a79",
+      "evidenceSha256": "9132939563ffc114ff3fb20d99586f25fad2d8d49cc8048fea8ae41530140a94",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -35505,7 +35420,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 287
+              "line": 306
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -36261,6 +36176,11 @@
               "line": 48
             },
             {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 1284
+            },
+            {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
               "line": 92
@@ -36336,6 +36256,10 @@
               "packages/contexts/eventing/domain/legacy-rows.test.ts"
             ],
             [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
+            ],
+            [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
             ]
@@ -36358,6 +36282,7 @@
             "internal-packages/run-engine/src/run-queue/tests/nack.test.ts",
             "internal-packages/run-engine/src/run-queue/tests/releaseConcurrency.test.ts",
             "packages/contexts/eventing/domain/legacy-rows.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
             "scripts/v1-ledger.test.mjs"
           ]
         }
@@ -36368,7 +36293,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "dc3bc6f4e7d3f580b0c6a9b81538dfa4ab5abd72735e554a0c265a5a706f7c6c",
+      "evidenceSha256": "742be7405bb075f9c60be538e3de1ae583e66eecd56908a0b2c4c0fcfa3b45e0",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -38033,7 +37958,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1660
+              "line": 1672
             }
           ],
           "reversePaths": [
@@ -38058,7 +37983,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "61ea14bcd905812f6c89a1d538a784d1040358815490c359c317d823a6092e12",
+      "evidenceSha256": "f63cd04cbb70c08bfe9dca9243544ded8ede219a15c35b7785a4c5a49beb3e5a",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -38609,6 +38534,11 @@
               "from": "packages/redis-worker/src/worker.test.ts",
               "kind": "reference",
               "line": 7
+            },
+            {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 1307
             }
           ],
           "reversePaths": [
@@ -38667,6 +38597,10 @@
             [
               "packages/redis-worker/src/worker.test.ts",
               "packages/redis-worker/src/worker.test.ts"
+            ],
+            [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
             ]
           ],
           "roots": [
@@ -38683,7 +38617,8 @@
             "packages/redis-worker/src/fair-queue/tests/tenantDispatch.test.ts",
             "packages/redis-worker/src/fair-queue/tests/visibility.test.ts",
             "packages/redis-worker/src/queue.test.ts",
-            "packages/redis-worker/src/worker.test.ts"
+            "packages/redis-worker/src/worker.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs"
           ]
         }
       },
@@ -38693,7 +38628,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "08d45dbdf86429ec1315924b00bbf0216eb8bc768df68f2ab3b392248499e99e",
+      "evidenceSha256": "7a8c96d4968e4f2afc9674d705fe4c5dff77bb2837815555cd28e026a41146cb",
       "manifestSha256": "2848f0f02171494d6112ab9631f2b0ed74a98d740454f7a2e43a442b2b3d6c16",
       "name": "@internal/redis",
       "ociImageClosure": {
@@ -39189,12 +39124,12 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1659
+              "line": 1671
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 347
+              "line": 339
             }
           ],
           "reversePaths": [
@@ -39414,7 +39349,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "4ec396a93ef152ce6f35a0405a0bb2abf5206bb68d44f4a32160f6e608294ff7",
+      "evidenceSha256": "7c56891b004837e3a85fc19410288b970ae143d3357e11cec5d9afc089bf3349",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -40928,7 +40863,7 @@
             {
               "from": "apps/agent/src/clean-prisma-delegates.test.ts",
               "kind": "reference",
-              "line": 4
+              "line": 359
             },
             {
               "from": "apps/agent/src/evals/eval-runtime-cutover.test.ts",
@@ -41166,24 +41101,9 @@
               "line": 5
             },
             {
-              "from": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
-              "kind": "reference",
-              "line": 16
-            },
-            {
               "from": "packages/adapters/keyring-envelope/src/wire-compatibility.test.ts",
               "kind": "reference",
               "line": 4
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-              "kind": "reference",
-              "line": 18
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-              "kind": "reference",
-              "line": 5
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
@@ -41316,6 +41236,11 @@
               "line": 70
             },
             {
+              "from": "scripts/arch/arch-boundaries.test.mjs",
+              "kind": "reference",
+              "line": 1279
+            },
+            {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
               "line": 2737
@@ -41368,7 +41293,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 656
+              "line": 648
             },
             {
               "from": "tests/differential-harness/postgres-conservation.mjs",
@@ -41620,20 +41545,8 @@
               "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts"
             ],
             [
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts"
-            ],
-            [
               "packages/adapters/keyring-envelope/src/wire-compatibility.test.ts",
               "packages/adapters/keyring-envelope/src/wire-compatibility.test.ts"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-              "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-              "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
@@ -41738,6 +41651,10 @@
             [
               "packages/contexts/secrets/domain/legacy-envelope.test.ts",
               "packages/contexts/secrets/domain/legacy-envelope.test.ts"
+            ],
+            [
+              "scripts/arch/arch-boundaries.test.mjs",
+              "scripts/arch/arch-boundaries.test.mjs"
             ],
             [
               "scripts/arch/sole-writer.test.mjs",
@@ -41866,10 +41783,7 @@
             "internal-packages/tenancy-database/src/win124.integration.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-migration.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts",
-            "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
             "packages/adapters/keyring-envelope/src/wire-compatibility.test.ts",
-            "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-            "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
             "packages/adapters/postgres-tenancy/src/agents-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/channels-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/conversations-constraints.integration.test.ts",
@@ -41896,6 +41810,7 @@
             "packages/contexts/secrets/contracts/index.test.ts",
             "packages/contexts/secrets/domain/envelope.test.ts",
             "packages/contexts/secrets/domain/legacy-envelope.test.ts",
+            "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
@@ -42070,7 +41985,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "15fa641db179cceb5ea0c4989cb075060130d1d1533afa77ffcb47f4b2c220ff",
+      "evidenceSha256": "a123a1c6da1180a98da05791ca0786d1acd97c0d05c776120a926655acf5e71a",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -42487,7 +42402,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 287
+              "line": 306
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -42929,7 +42844,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 337
+              "line": 329
             }
           ],
           "reversePaths": [
@@ -43184,7 +43099,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f6b273e64c23a705e89096c6f1a94597ab63603ab40eaf75c2b22cfb7636a394",
+      "evidenceSha256": "0993ede4a22baa60c83964fb91bb7366f2bf99d91ca257e119322862b18edca0",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -44404,6 +44319,11 @@
               "line": 25
             },
             {
+              "from": "apps/agent/src/clean-prisma-delegates.test.ts",
+              "kind": "reference",
+              "line": 370
+            },
+            {
               "from": "internal-packages/workload-identity/src/index.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -44440,6 +44360,10 @@
               "apps/agent/src/auth/scope.guard.test.ts"
             ],
             [
+              "apps/agent/src/clean-prisma-delegates.test.ts",
+              "apps/agent/src/clean-prisma-delegates.test.ts"
+            ],
+            [
               "internal-packages/workload-identity/src/index.test.ts",
               "internal-packages/workload-identity/src/index.test.ts"
             ],
@@ -44466,6 +44390,7 @@
           ],
           "roots": [
             "apps/agent/src/auth/scope.guard.test.ts",
+            "apps/agent/src/clean-prisma-delegates.test.ts",
             "internal-packages/workload-identity/src/index.test.ts",
             "scripts/audit-sbom.test.mjs",
             "scripts/ci-policy.test.mjs",
@@ -44578,7 +44503,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "2067eaa6c9eeec35a3dee5d836106e099212bc5120c68b6ccb2e638392d84bf5",
+      "evidenceSha256": "1e22022c7c11d50205376fed577816ec92fb9b24612ed20520d3316d41da6177",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -45198,7 +45123,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 136,
+              "line": 134,
               "specifier": "@platos/adapter-channel-slack"
             }
           ],
@@ -45297,7 +45222,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "f035dabcbb2b21f8aa7b3dc1cd11ad0b0219aa3dbf5fb5a83f807da5812d2545",
+      "evidenceSha256": "0f407b02e138bf3246cf2565a6f12c8de56c6fbe6ce648a10a70fa312f32d569",
       "manifestSha256": "1a96d65bdf3ef715636b959dbc9e51bd4cb1340b7339539dca003fe7a18fb41e",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
@@ -45593,7 +45518,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 128,
+              "line": 126,
               "specifier": "@platos/adapter-clickhouse-observability"
             }
           ],
@@ -45613,7 +45538,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 318
+              "line": 330
             }
           ],
           "reversePaths": [
@@ -45682,7 +45607,7 @@
           "packages/adapters/clickhouse-observability"
         ]
       },
-      "evidenceSha256": "36ad118f545c8c28eaa5fcf3026bcc3cae33790418da5b4b41e2fb9695ab5562",
+      "evidenceSha256": "553c09186a07767eeacb5802ad6d26b208579c9fa59326efebcbb59d6e9493d5",
       "manifestSha256": "40bd79d6088e4c71073e849ecff745f0dfa79e7add5ff2ae33406f67a3f01acf",
       "name": "@platos/adapter-clickhouse-observability",
       "ociImageClosure": {
@@ -45978,7 +45903,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 127,
+              "line": 125,
               "specifier": "@platos/adapter-durable-runtime"
             }
           ],
@@ -46003,7 +45928,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 150
+              "line": 144
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -46013,7 +45938,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 753
+              "line": 738
             }
           ],
           "reversePaths": [
@@ -46097,7 +46022,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "b845de7e9e351f509272b19716a351cfeec01132e83fa528224433d55cfc3bf8",
+      "evidenceSha256": "ad85b7775fffc01b6a867d6bef90415babefa14494db3c6f024202d4bc2a3e54",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
@@ -46394,13 +46319,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 139,
+              "line": 137,
               "specifier": "@platos/adapter-keyring-envelope"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 140,
+              "line": 138,
               "specifier": "@platos/adapter-keyring-envelope"
             }
           ],
@@ -46438,11 +46363,6 @@
               "line": 1
             },
             {
-              "from": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 331
-            },
-            {
               "from": "packages/adapters/keyring-envelope/src/root-key-ring.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -46470,7 +46390,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1064
+              "line": 1076
             },
             {
               "from": "scripts/arch/composition-root.test.mjs",
@@ -46490,7 +46410,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1682
+              "line": 1663
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -46519,10 +46439,6 @@
             [
               "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts",
               "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts"
-            ],
-            [
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts"
             ],
             [
               "packages/adapters/keyring-envelope/src/root-key-ring.test.ts",
@@ -46578,7 +46494,6 @@
             "packages/adapters/keyring-envelope/src/key-version-integrity.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-migration.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts",
-            "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
             "packages/adapters/keyring-envelope/src/root-key-ring.test.ts",
             "packages/adapters/keyring-envelope/src/secret-hasher.test.ts",
             "packages/adapters/keyring-envelope/src/wire-compatibility.test.ts",
@@ -46649,8 +46564,8 @@
           "packages/adapters/keyring-envelope"
         ]
       },
-      "evidenceSha256": "dbc3b59baaaa065ad3c2584e140fa5e8b38252bb6e1d301e0a6ed86da92dbd82",
-      "manifestSha256": "ae371bc6b627e6693e9a7b45f6a789d1df3f4489f8b93db1ed61c9c2fefdd854",
+      "evidenceSha256": "c27fb2963c685e70e6e87ea3bd3fd5ea8d4167eb6570a85c224c21dd18c93ded",
+      "manifestSha256": "34b81e0cd2c336a8d9a795f6f271938258b50c0f18e5ba23d2b4010f8d2b5009",
       "name": "@platos/adapter-keyring-envelope",
       "ociImageClosure": {
         "reachable": false,
@@ -46936,13 +46851,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 134,
+              "line": 132,
               "specifier": "@platos/adapter-model-router-providers"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 135,
+              "line": 133,
               "specifier": "@platos/adapter-model-router-providers"
             }
           ],
@@ -47042,7 +46957,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 250
+              "line": 262
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -47052,7 +46967,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1188
+              "line": 1172
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -47067,7 +46982,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 546
+              "line": 538
             }
           ],
           "reversePaths": [
@@ -47241,7 +47156,7 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "55c5801b709e3dd9c43c99b9e0c923037a07104b7eaf0d4dc16106b947366c03",
+      "evidenceSha256": "fcdf59d1005f8c018ce6c597d9527e4a54c01306485c1947e4163022241e207c",
       "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
@@ -47251,428 +47166,6 @@
         "roots": []
       },
       "path": "packages/adapters/model-router-providers",
-      "private": true,
-      "repositoryDevClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      }
-    },
-    {
-      "applicationDeployableClosure": {
-        "reachable": true,
-        "reasons": [
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "apps/core-api",
-              "packages/adapters/node-crypto-digest"
-            ],
-            "root": "apps/core-api",
-            "rootReasons": [
-              {
-                "from": "apps/core-api/package.json",
-                "kind": "executable-manifest"
-              },
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "packages/adapters/node-crypto-digest"
-            ],
-            "root": "packages/adapters/node-crypto-digest",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          }
-        ],
-        "reversePaths": [
-          [
-            "apps/core-api",
-            "packages/adapters/node-crypto-digest"
-          ],
-          [
-            "packages/adapters/node-crypto-digest"
-          ]
-        ],
-        "roots": [
-          "apps/core-api",
-          "packages/adapters/node-crypto-digest"
-        ]
-      },
-      "boundaries": {
-        "externalPublic": false,
-        "externalPublicReasons": [],
-        "kind": "private-workspace",
-        "ownerDecisionReasons": [],
-        "ownerDecisionRequired": false
-      },
-      "candidate": {
-        "basis": "Derived dependency path from the current OCI image or application/deployable graph.",
-        "deletionAuthorized": false,
-        "reviewCandidate": false,
-        "status": "retain-application-deployable"
-      },
-      "channels": {
-        "ci": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": ".github/workflows/build-images.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/ci.yml",
-              "kind": "workspace-wide-install"
-            },
-            {
-              "from": ".github/workflows/trigger-deploy.yml",
-              "kind": "workspace-wide-install"
-            }
-          ],
-          "reversePaths": [
-            [
-              ".github/workflows/build-images.yml",
-              ".github/workflows/build-images.yml"
-            ],
-            [
-              ".github/workflows/ci.yml",
-              ".github/workflows/ci.yml"
-            ],
-            [
-              ".github/workflows/trigger-deploy.yml",
-              ".github/workflows/trigger-deploy.yml"
-            ]
-          ],
-          "roots": [
-            ".github/workflows/build-images.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/trigger-deploy.yml"
-          ]
-        },
-        "dockerImage": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "docsExamples": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/adapters/node-crypto-digest/README.md",
-              "kind": "workspace-owned-file",
-              "line": 1
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/adapters/node-crypto-digest/README.md",
-              "packages/adapters/node-crypto-digest/README.md"
-            ]
-          ],
-          "roots": [
-            "packages/adapters/node-crypto-digest/README.md"
-          ]
-        },
-        "generated": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/adapters/node-crypto-digest/package.json",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/README.md",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/tsconfig.json",
-              "generator": "scripts/arch/gen-v1-skeleton.mjs",
-              "kind": "generator-owned-output"
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/adapters/node-crypto-digest/package.json",
-              "packages/adapters/node-crypto-digest/package.json"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/README.md",
-              "packages/adapters/node-crypto-digest/README.md"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/tsconfig.json",
-              "packages/adapters/node-crypto-digest/tsconfig.json"
-            ]
-          ],
-          "roots": [
-            "packages/adapters/node-crypto-digest/README.md",
-            "packages/adapters/node-crypto-digest/package.json",
-            "packages/adapters/node-crypto-digest/tsconfig.json"
-          ]
-        },
-        "license": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/adapters/node-crypto-digest/package.json",
-              "kind": "manifest-license",
-              "license": "Apache-2.0"
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/adapters/node-crypto-digest/package.json",
-              "packages/adapters/node-crypto-digest/package.json"
-            ]
-          ],
-          "roots": [
-            "packages/adapters/node-crypto-digest/package.json"
-          ]
-        },
-        "packageScripts": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "build"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "clean"
-            },
-            {
-              "from": "package.json",
-              "kind": "root-turbo-task",
-              "script": "test"
-            },
-            {
-              "command": "tsc -b",
-              "from": "packages/adapters/node-crypto-digest/package.json",
-              "kind": "workspace-script",
-              "script": "build"
-            },
-            {
-              "command": "tsc -b --clean",
-              "from": "packages/adapters/node-crypto-digest/package.json",
-              "kind": "workspace-script",
-              "script": "clean"
-            },
-            {
-              "command": "vitest run",
-              "from": "packages/adapters/node-crypto-digest/package.json",
-              "kind": "workspace-script",
-              "script": "test"
-            }
-          ],
-          "reversePaths": [
-            [
-              "package.json",
-              "package.json"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/package.json",
-              "packages/adapters/node-crypto-digest/package.json"
-            ]
-          ],
-          "roots": [
-            "package.json",
-            "packages/adapters/node-crypto-digest/package.json"
-          ]
-        },
-        "patches": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceDynamic": {
-          "reachable": false,
-          "reasons": [],
-          "reversePaths": [],
-          "roots": []
-        },
-        "sourceStatic": {
-          "reachable": true,
-          "reasons": [
-            {
-              "file": "apps/core-api/src/composition/adapter-bindings.ts",
-              "from": "apps/core-api",
-              "line": 141,
-              "specifier": "@platos/adapter-node-crypto-digest"
-            },
-            {
-              "file": "apps/core-api/src/composition/adapter-bindings.ts",
-              "from": "apps/core-api",
-              "line": 142,
-              "specifier": "@platos/adapter-node-crypto-digest"
-            }
-          ],
-          "reversePaths": [
-            [
-              "apps/core-api",
-              "apps/core-api/src/composition/adapter-bindings.ts"
-            ]
-          ],
-          "roots": [
-            "apps/core-api"
-          ]
-        },
-        "testsFixtures": {
-          "reachable": true,
-          "reasons": [
-            {
-              "from": "packages/adapters/node-crypto-digest/package.json",
-              "kind": "test-script",
-              "script": "test"
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-              "kind": "workspace-owned-file",
-              "line": 1
-            },
-            {
-              "from": "scripts/arch/test-case-census.test.mjs",
-              "kind": "reference",
-              "line": 1743
-            },
-            {
-              "from": "scripts/v1-ledger.test.mjs",
-              "kind": "reference",
-              "line": 1167
-            },
-            {
-              "from": "scripts/workspace-reachability.test.mjs",
-              "kind": "reference",
-              "line": 245
-            }
-          ],
-          "reversePaths": [
-            [
-              "packages/adapters/node-crypto-digest/package.json",
-              "packages/adapters/node-crypto-digest/package.json"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-              "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts"
-            ],
-            [
-              "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-              "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts"
-            ],
-            [
-              "scripts/arch/test-case-census.test.mjs",
-              "scripts/arch/test-case-census.test.mjs"
-            ],
-            [
-              "scripts/v1-ledger.test.mjs",
-              "scripts/v1-ledger.test.mjs"
-            ],
-            [
-              "scripts/workspace-reachability.test.mjs",
-              "scripts/workspace-reachability.test.mjs"
-            ]
-          ],
-          "roots": [
-            "packages/adapters/node-crypto-digest/package.json",
-            "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
-            "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
-            "scripts/arch/test-case-census.test.mjs",
-            "scripts/v1-ledger.test.mjs",
-            "scripts/workspace-reachability.test.mjs"
-          ]
-        }
-      },
-      "deploymentUnionClosure": {
-        "reachable": true,
-        "reasons": [
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "apps/core-api",
-              "packages/adapters/node-crypto-digest"
-            ],
-            "root": "apps/core-api",
-            "rootReasons": [
-              {
-                "from": "apps/core-api/package.json",
-                "kind": "executable-manifest"
-              },
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "packages/adapters/node-crypto-digest"
-            ],
-            "root": "packages/adapters/node-crypto-digest",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          }
-        ],
-        "reversePaths": [
-          [
-            "apps/core-api",
-            "packages/adapters/node-crypto-digest"
-          ],
-          [
-            "packages/adapters/node-crypto-digest"
-          ]
-        ],
-        "roots": [
-          "apps/core-api",
-          "packages/adapters/node-crypto-digest"
-        ]
-      },
-      "evidenceSha256": "aba59e62fe6e2aa806560b190bacd5e8bdbf0fa1a719739f6189c5888cb0949c",
-      "manifestSha256": "229fe0120b22a0df9fb190c46ea80e762a3efc68e6e509531147796557ea58ce",
-      "name": "@platos/adapter-node-crypto-digest",
-      "ociImageClosure": {
-        "reachable": false,
-        "reasons": [],
-        "reversePaths": [],
-        "roots": []
-      },
-      "path": "packages/adapters/node-crypto-digest",
       "private": true,
       "repositoryDevClosure": {
         "reachable": false,
@@ -47949,7 +47442,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 137,
+              "line": 135,
               "specifier": "@platos/adapter-notifier-email"
             }
           ],
@@ -48025,7 +47518,7 @@
           "packages/adapters/notifier-email"
         ]
       },
-      "evidenceSha256": "ba50422bfc30fa4845f641da0fdb146880d1b3c4ba0db9f8d28bd2ab87b296e5",
+      "evidenceSha256": "55c5fa57e1a3bb868c60bf2a73a31f3602bbfab6b5affd88a273e8878e6f7c89",
       "manifestSha256": "d588b586308cc20ed7e78f71ca261ad5de04772b80eaf54ce1d0601908361f66",
       "name": "@platos/adapter-notifier-email",
       "ociImageClosure": {
@@ -48311,7 +47804,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 138,
+              "line": 136,
               "specifier": "@platos/adapter-notifier-webhook"
             }
           ],
@@ -48400,7 +47893,7 @@
           "packages/adapters/notifier-webhook"
         ]
       },
-      "evidenceSha256": "6e5bd28551d2edeb1dfc926055942bc671c732e785a84496989abe53ea0fc8aa",
+      "evidenceSha256": "90c0ff11d8b65e3777a103f3bedfc3e6bdeca769fb1ebce2077df43d97e149f5",
       "manifestSha256": "a5c1fd70b86c907c02a4fc57d582bc8c3b654208fedc056c2761b248ea1683cd",
       "name": "@platos/adapter-notifier-webhook",
       "ociImageClosure": {
@@ -48696,7 +48189,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 129,
+              "line": 127,
               "specifier": "@platos/adapter-objectstore-minio"
             }
           ],
@@ -48716,7 +48209,7 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 504
+              "line": 493
             }
           ],
           "reversePaths": [
@@ -48785,7 +48278,7 @@
           "packages/adapters/objectstore-minio"
         ]
       },
-      "evidenceSha256": "e7d0f36e04467cd8f34b889fcd97c1d32e751d696a8719e2e04168b2593f67df",
+      "evidenceSha256": "0f0df09ddaa21e5eb1052431e00d5a777f8a1f1f4907f381ba2157d34fde35b7",
       "manifestSha256": "8e1920de7ae2081a0fdd6854c321467200fa8b07d67b3503449c10ec385c6077",
       "name": "@platos/adapter-objectstore-minio",
       "ociImageClosure": {
@@ -49082,13 +48575,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 125,
+              "line": 123,
               "specifier": "@platos/adapter-outbox"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 126,
+              "line": 124,
               "specifier": "@platos/adapter-outbox"
             }
           ],
@@ -49148,12 +48641,12 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 690
+              "line": 702
             },
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 628
+              "line": 603
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -49168,7 +48661,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1627
+              "line": 1611
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -49178,7 +48671,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 667
+              "line": 659
             }
           ],
           "reversePaths": [
@@ -49317,7 +48810,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "d9f7907874c43a5a08bc3e37fd4ccd2c03d951b676abca50fd4a7a777f8c3ff7",
+      "evidenceSha256": "66dfded7ff05c27036f617e3a6b3b92c580af8c5feb21cb6e614d39c26dcb43c",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -49650,13 +49143,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 108,
+              "line": 106,
               "specifier": "@platos/adapter-postgres-tenancy"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 124,
+              "line": 122,
               "specifier": "@platos/adapter-postgres-tenancy"
             }
           ],
@@ -50396,7 +49889,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 639
+              "line": 651
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -50416,7 +49909,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1285
+              "line": 1269
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -50436,7 +49929,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 562
+              "line": 554
             }
           ],
           "reversePaths": [
@@ -51265,7 +50758,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "ae08f45dfd95c1b591c159c7e853f2f280ab56d6d7e1fa96cbdd640aed188ace",
+      "evidenceSha256": "aa1df117c910987a8dad5897dcab79a44706eb9530f498f411a98ac0b0f89035",
       "manifestSha256": "8b4ac128fa6e660cb1132d155aaa0668fc2e907f366422dbbb922599f2917a71",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -51562,13 +51055,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 131,
+              "line": 129,
               "specifier": "@platos/adapter-redis-cache"
             },
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 132,
+              "line": 130,
               "specifier": "@platos/adapter-redis-cache"
             }
           ],
@@ -51618,12 +51111,12 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 261
+              "line": 273
             },
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 272
+              "line": 256
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -51658,7 +51151,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 689
+              "line": 681
             }
           ],
           "reversePaths": [
@@ -51797,7 +51290,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "d7b878e453ae6705c45843e36135d76926db69a3c9e63b4474619f52f9f951f2",
+      "evidenceSha256": "578e103860dfed0e3c43481a246e6122b5a3c51f9b758f882b30e901174870b2",
       "manifestSha256": "5a766cabb6ec0325aca2f6f4b999495fa6a1d20fecfc2c33fa61f0c797c00158",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -52083,7 +51576,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 130,
+              "line": 128,
               "specifier": "@platos/adapter-redis-ratelimit"
             }
           ],
@@ -52108,7 +51601,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 389
+              "line": 373
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -52192,7 +51685,7 @@
           "packages/adapters/redis-ratelimit"
         ]
       },
-      "evidenceSha256": "2b5edc76a0d6f30d31b477f6950833a0b46a6c99703164416b1721bc3eb8f841",
+      "evidenceSha256": "cb595f94f699fc4983c9da394b5ac3b10bbba4e225058812fbf7c5d4794f547f",
       "manifestSha256": "1876f004322992388473664a1891d884af26ad344b16e50b76f2cbd68598226b",
       "name": "@platos/adapter-redis-ratelimit",
       "ociImageClosure": {
@@ -52478,7 +51971,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 133,
+              "line": 131,
               "specifier": "@platos/adapter-redis-streams"
             }
           ],
@@ -52498,7 +51991,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 399
+              "line": 383
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -52577,7 +52070,7 @@
           "packages/adapters/redis-streams"
         ]
       },
-      "evidenceSha256": "f6cee8d13a1c2ee81e9e9737cbc60bb8d01017ee41f90034428ba89299900821",
+      "evidenceSha256": "fe1286bc6ed8b31acc7298b3de901035cf7d3ad3ec5b3f0c1597e8947a805aaf",
       "manifestSha256": "2508c7fb6e2fe960f0795eee57be18935e7d22a76cc0dbc56eaed36e5b64ad3e",
       "name": "@platos/adapter-redis-streams",
       "ociImageClosure": {
@@ -52745,7 +52238,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 376
+              "line": 395
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -52951,7 +52444,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 58,
+              "line": 56,
               "specifier": "@platos/context-agents/application/ports/index.js"
             },
             {
@@ -53352,7 +52845,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 432
+              "line": 420
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -53362,7 +52855,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1071
+              "line": 1055
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -53697,7 +53190,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "ebbf7d456e7b823b5498a4e72858a215f2ae700b40adab23c05cb8da37ad539e",
+      "evidenceSha256": "d5249893889a44bfe64d2c125b799460f0a46d761feae0edf5df373e61220dcd",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -53843,7 +53336,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 398
+              "line": 417
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -54048,7 +53541,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 80,
+              "line": 78,
               "specifier": "@platos/context-channels/application/ports/index.js"
             },
             {
@@ -54346,7 +53839,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1135
+              "line": 1119
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54594,7 +54087,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "63da876f66f27bc81ed31318962a26f48c879a209e2d358b45b2338548c459e2",
+      "evidenceSha256": "ed870e47c82fe1e3e2d52d8df7f407525fe7cf7be7bcdad927b4beaa2de776a4",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -54718,7 +54211,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 447
+              "line": 466
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -54914,7 +54407,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 96,
+              "line": 94,
               "specifier": "@platos/context-conversations/application/ports/index.js"
             },
             {
@@ -55271,7 +54764,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 475
+              "line": 487
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -55291,7 +54784,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1264
+              "line": 1248
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -55612,7 +55105,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "13ae85a9dcc8b916676d4060a59a42381c2df1ba2583374e072ea865479fc9b7",
+      "evidenceSha256": "5bf948ff8b01059f4a57b8b5465daa09ac60022fa513f8628308da453730d6a9",
       "manifestSha256": "218c32b5c5b423bdf39bf215d6365c07bbd746fca291a1b0609da87e2cebd4d8",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -55802,7 +55295,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 386
+              "line": 405
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -56016,7 +55509,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 85,
+              "line": 83,
               "specifier": "@platos/context-cost-monitoring/application/ports/index.js"
             },
             {
@@ -56378,7 +55871,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 958
+              "line": 942
             }
           ],
           "reversePaths": [
@@ -56695,7 +56188,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "d70fc9fc60617bcc6da402ae41e027f5d3376ac740c526fb14dd582bad4a16d9",
+      "evidenceSha256": "cd541a913e97fbfa5ad89a58ceb52cfb918f6d2474bd612aff7f2cf3ab2cc6df",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -56819,7 +56312,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 532
+              "line": 551
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -57025,7 +56518,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 84,
+              "line": 82,
               "specifier": "@platos/context-eventing/application/ports/index.js"
             },
             {
@@ -57310,7 +56803,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 996
+              "line": 1008
             },
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
@@ -57551,7 +57044,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "026d66fc8a5caaa148c2cea9ffd4371ead2226df2b179fb881923b03454076d0",
+      "evidenceSha256": "e4b74cc0bf013d07b5845991ebddbdd021e7f7f8aecb26e5aacd0bb0c70d76fa",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -57791,7 +57284,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 507
+              "line": 526
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -57996,7 +57489,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 62,
+              "line": 60,
               "specifier": "@platos/context-files/application/ports/index.js"
             },
             {
@@ -58360,12 +57853,12 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 963
+              "line": 975
             },
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 234
+              "line": 218
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -58390,7 +57883,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1390
+              "line": 1368
             }
           ],
           "reversePaths": [
@@ -58742,7 +58235,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "1de4d68f498a38055e0c1a71e4e0316787b419b7594ca07c09667ab563850fb9",
+      "evidenceSha256": "6ea9b8e10e4b58e5bf530ded1091a1cc2eeddba7f9a26c50f88198b02502c7a2",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -58866,7 +58359,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 409
+              "line": 428
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -59062,7 +58555,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 89,
+              "line": 87,
               "specifier": "@platos/context-governance/application/ports/index.js"
             },
             {
@@ -59495,7 +58988,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1161
+              "line": 1145
             }
           ],
           "reversePaths": [
@@ -59786,7 +59279,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "464f979d20c4d0d0d71d6391ed32f61a08a1d7d0cfb8b493a710d089563e7633",
+      "evidenceSha256": "8b23b46a9bde30f311f8b2c98c720c984ba6bdb1ab08f6f7a340c1939218b2dd",
       "manifestSha256": "c6c9eb63ca632d454591f95884a0e51f26305204031c2cdd7167c50f646b895e",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -59894,46 +59387,12 @@
               "optionalDependencies"
             ],
             "path": [
-              "packages/adapters/keyring-envelope",
-              "packages/contexts/identity-access"
-            ],
-            "root": "packages/adapters/keyring-envelope",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
               "packages/adapters/model-router-providers",
               "packages/contexts/providers",
               "packages/contexts/tenancy",
               "packages/contexts/identity-access"
             ],
             "root": "packages/adapters/model-router-providers",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "packages/adapters/node-crypto-digest",
-              "packages/contexts/identity-access"
-            ],
-            "root": "packages/adapters/node-crypto-digest",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -60357,17 +59816,9 @@
             "packages/contexts/identity-access"
           ],
           [
-            "packages/adapters/keyring-envelope",
-            "packages/contexts/identity-access"
-          ],
-          [
             "packages/adapters/model-router-providers",
             "packages/contexts/providers",
             "packages/contexts/tenancy",
-            "packages/contexts/identity-access"
-          ],
-          [
-            "packages/adapters/node-crypto-digest",
             "packages/contexts/identity-access"
           ],
           [
@@ -60483,9 +59934,7 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
-          "packages/adapters/keyring-envelope",
           "packages/adapters/model-router-providers",
-          "packages/adapters/node-crypto-digest",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
           "packages/adapters/objectstore-minio",
@@ -60538,7 +59987,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 359
+              "line": 378
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -60776,36 +60225,6 @@
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
               "line": 35,
-              "specifier": "@platos/context-identity-access/application/ports/index.js"
-            },
-            {
-              "file": "packages/adapters/keyring-envelope/src/adapter.ts",
-              "from": "packages/adapters/keyring-envelope",
-              "line": 27,
-              "specifier": "@platos/context-identity-access/application/ports/index.js"
-            },
-            {
-              "file": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.ts",
-              "from": "packages/adapters/keyring-envelope",
-              "line": 83,
-              "specifier": "@platos/context-identity-access/application/ports/index.js"
-            },
-            {
-              "file": "packages/adapters/node-crypto-digest/src/adapter.ts",
-              "from": "packages/adapters/node-crypto-digest",
-              "line": 33,
-              "specifier": "@platos/context-identity-access/application/ports/index.js"
-            },
-            {
-              "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
-              "from": "packages/adapters/node-crypto-digest",
-              "line": 59,
-              "specifier": "@platos/context-identity-access/application/ports/index.js"
-            },
-            {
-              "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
-              "from": "packages/adapters/node-crypto-digest",
-              "line": 63,
               "specifier": "@platos/context-identity-access/application/ports/index.js"
             },
             {
@@ -61059,22 +60478,6 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
-              "packages/adapters/keyring-envelope",
-              "packages/adapters/keyring-envelope/src/adapter.ts"
-            ],
-            [
-              "packages/adapters/keyring-envelope",
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.ts"
-            ],
-            [
-              "packages/adapters/node-crypto-digest",
-              "packages/adapters/node-crypto-digest/src/adapter.ts"
-            ],
-            [
-              "packages/adapters/node-crypto-digest",
-              "packages/adapters/node-crypto-digest/src/secret-hasher.ts"
-            ],
-            [
               "packages/adapters/postgres-tenancy",
               "packages/adapters/postgres-tenancy/src/adapter.ts"
             ],
@@ -61173,8 +60576,6 @@
           ],
           "roots": [
             "apps/core-api",
-            "packages/adapters/keyring-envelope",
-            "packages/adapters/node-crypto-digest",
             "packages/adapters/postgres-tenancy",
             "packages/contexts/channels",
             "packages/contexts/tenancy",
@@ -61352,17 +60753,17 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 123
+              "line": 135
             },
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 226
+              "line": 210
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 195
+              "line": 183
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -61372,7 +60773,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 642
+              "line": 630
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -61670,46 +61071,12 @@
               "optionalDependencies"
             ],
             "path": [
-              "packages/adapters/keyring-envelope",
-              "packages/contexts/identity-access"
-            ],
-            "root": "packages/adapters/keyring-envelope",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
               "packages/adapters/model-router-providers",
               "packages/contexts/providers",
               "packages/contexts/tenancy",
               "packages/contexts/identity-access"
             ],
             "root": "packages/adapters/model-router-providers",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "packages/adapters/node-crypto-digest",
-              "packages/contexts/identity-access"
-            ],
-            "root": "packages/adapters/node-crypto-digest",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -62133,17 +61500,9 @@
             "packages/contexts/identity-access"
           ],
           [
-            "packages/adapters/keyring-envelope",
-            "packages/contexts/identity-access"
-          ],
-          [
             "packages/adapters/model-router-providers",
             "packages/contexts/providers",
             "packages/contexts/tenancy",
-            "packages/contexts/identity-access"
-          ],
-          [
-            "packages/adapters/node-crypto-digest",
             "packages/contexts/identity-access"
           ],
           [
@@ -62259,9 +61618,7 @@
           "apps/mcp-stdio",
           "packages/adapters/channel-slack",
           "packages/adapters/clickhouse-observability",
-          "packages/adapters/keyring-envelope",
           "packages/adapters/model-router-providers",
-          "packages/adapters/node-crypto-digest",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
           "packages/adapters/objectstore-minio",
@@ -62286,7 +61643,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d71d742d34f1d6badaf71214205a1894ab9870f7cf1ae121e5b1a6236cc9091a",
+      "evidenceSha256": "4ddaf99bdf3db0dfe347e7270f7c95513e8f5a48da52392ec3e7dc0c8398def4",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -62454,7 +61811,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 496
+              "line": 515
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -62650,7 +62007,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 102,
+              "line": 100,
               "specifier": "@platos/context-jobs/application/ports/index.js"
             },
             {
@@ -63014,7 +62371,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 948
+              "line": 960
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -63039,7 +62396,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1389
+              "line": 1367
             }
           ],
           "reversePaths": [
@@ -63334,7 +62691,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "9394e10363aa0b8cf8931f94ac2b5a8ed62b43f56f8ac8bc3ca4638c118f0d4f",
+      "evidenceSha256": "8301676562b4942b9d088352ff700bd59395bcad0a010200143d97daeead690f",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -63502,7 +62859,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 468
+              "line": 487
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -63698,7 +63055,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 71,
+              "line": 69,
               "specifier": "@platos/context-memory/application/ports/index.js"
             },
             {
@@ -64164,7 +63521,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 903
+              "line": 915
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -64184,7 +63541,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 928
+              "line": 912
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -64534,7 +63891,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "17874952113577c15b25ee00cabf15657a7b74b796021cfd0b50ac637bc16339",
+      "evidenceSha256": "a9e4de2bd54af76799be4590a71db914eb5dbd40346d0e3efda421a27c69bf96",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -64680,7 +64037,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 520
+              "line": 539
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -64875,7 +64232,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 67,
+              "line": 65,
               "specifier": "@platos/context-observability/application/ports/index.js"
             },
             {
@@ -65099,7 +64456,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 165
+              "line": 177
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -65114,7 +64471,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1029
+              "line": 1013
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -65357,7 +64714,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "98bc02675b5e50b6f93f17e25e17a758275fc82eabae5dd9757d5457f4f71b0f",
+      "evidenceSha256": "83a9a024306e2ca6e5522a8749fa501d3da5d2617845d1c4a59c6f56272ce505",
       "manifestSha256": "09d858b658a326451d6bdd026af44df9ba5d1b195ce0c71deffc0cb972afc6d7",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -65481,7 +64838,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 483
+              "line": 502
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -65667,7 +65024,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 66,
+              "line": 64,
               "specifier": "@platos/context-privacy/application/ports/index.js"
             },
             {
@@ -65946,7 +65303,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 108
+              "line": 120
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -65961,7 +65318,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 996
+              "line": 980
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -66187,7 +65544,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "505d98194f313325d472e1e75b21315eb10b50daab33e1d5a785ae7a6819eee8",
+      "evidenceSha256": "d1139614fda1f39af91837d410706d72d6efa6b0cdf01cc6df947e7e4edac947",
       "manifestSha256": "8d9032044280327b5d3d795c13039f78e41ca275c9d6bce9f093b794a97473f1",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -66567,7 +65924,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 433
+              "line": 452
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -66773,7 +66130,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 76,
+              "line": 74,
               "specifier": "@platos/context-providers/application/ports/index.js"
             },
             {
@@ -67478,7 +66835,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 532
+              "line": 544
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -67498,7 +66855,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 743
+              "line": 731
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -68105,7 +67462,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "0176ad82f5d0b4b742656d46a65803ca4d7c3581f8bb7bec8fa9407567934712",
+      "evidenceSha256": "6c7ceb6127384e24a4e941598c6287b896922aedc6ef3f0b4b8af210ada4918d",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -68545,7 +67902,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 420
+              "line": 439
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -68751,13 +68108,13 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 51,
+              "line": 49,
               "specifier": "@platos/context-secrets/application/ports/index.js"
             },
             {
               "file": "packages/adapters/keyring-envelope/src/adapter.ts",
               "from": "packages/adapters/keyring-envelope",
-              "line": 28,
+              "line": 27,
               "specifier": "@platos/context-secrets/application/ports/index.js"
             },
             {
@@ -68782,18 +68139,6 @@
               "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
               "from": "packages/adapters/keyring-envelope",
               "line": 42,
-              "specifier": "@platos/context-secrets/application/ports/index.js"
-            },
-            {
-              "file": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.ts",
-              "from": "packages/adapters/keyring-envelope",
-              "line": 84,
-              "specifier": "@platos/context-secrets/application/ports/index.js"
-            },
-            {
-              "file": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.ts",
-              "from": "packages/adapters/keyring-envelope",
-              "line": 85,
               "specifier": "@platos/context-secrets/application/ports/index.js"
             },
             {
@@ -69042,10 +68387,6 @@
             ],
             [
               "packages/adapters/keyring-envelope",
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.ts"
-            ],
-            [
-              "packages/adapters/keyring-envelope",
               "packages/adapters/keyring-envelope/src/root-key-ring.ts"
             ],
             [
@@ -69179,11 +68520,6 @@
               "from": "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts",
               "kind": "reference",
               "line": 15
-            },
-            {
-              "from": "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
-              "kind": "reference",
-              "line": 113
             },
             {
               "from": "packages/adapters/keyring-envelope/src/root-key-ring.test.ts",
@@ -69393,7 +68729,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 808
+              "line": 820
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -69438,10 +68774,6 @@
             [
               "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts",
               "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts"
-            ],
-            [
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
-              "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts"
             ],
             [
               "packages/adapters/keyring-envelope/src/root-key-ring.test.ts",
@@ -69640,7 +68972,6 @@
             "packages/adapters/keyring-envelope/src/key-version-integrity.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-migration.test.ts",
             "packages/adapters/keyring-envelope/src/legacy-wire-compatibility.test.ts",
-            "packages/adapters/keyring-envelope/src/mfa-secret-cipher.test.ts",
             "packages/adapters/keyring-envelope/src/root-key-ring.test.ts",
             "packages/adapters/keyring-envelope/src/secret-hasher.test.ts",
             "packages/adapters/keyring-envelope/src/wire-compatibility.test.ts",
@@ -70085,7 +69416,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "aa376ee8e72d0fe5c763666132ca1ed4d64f151c3c948819d504ba81340fecc4",
+      "evidenceSha256": "884c898391d177741b1773fd6b3bdd6420743aba473c89534c5a4d085ace4a6c",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -70277,7 +69608,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 457
+              "line": 476
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -70487,7 +69818,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 49,
+              "line": 47,
               "specifier": "@platos/context-skills/application/ports/index.js"
             },
             {
@@ -70857,7 +70188,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 876
+              "line": 888
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -70872,7 +70203,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 786
+              "line": 774
             }
           ],
           "reversePaths": [
@@ -71181,7 +70512,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "fae925c0b7cc36bbea939c65365ecf3894b489380c908490dc87cc7210996027",
+      "evidenceSha256": "cbd3a19ff511b65b78bea9b721ea998fe7892dfa3f5ccfae5c5133e8862e485f",
       "manifestSha256": "f1e56a67ae6b3d846f0887d8a17048ad19d4e0356bf7f38d1056b58507a2e7e2",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -71809,7 +71140,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 352
+              "line": 371
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -72017,7 +71348,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 41,
+              "line": 39,
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
@@ -73071,7 +72402,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 122
+              "line": 134
             },
             {
               "from": "scripts/arch/clean-v1.test.mjs",
@@ -73081,7 +72412,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 194
+              "line": 178
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -73091,7 +72422,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 502
+              "line": 490
             },
             {
               "from": "scripts/arch/kernel-content.test.mjs",
@@ -73106,7 +72437,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 681
+              "line": 669
             },
             {
               "from": "scripts/arch/transaction-outcome.test.mjs",
@@ -73971,7 +73302,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "c631967591a86396cdf3ffdfa42e0c431234f856f82dd1506861787d2a27b041",
+      "evidenceSha256": "5eeee73b02acce5ff79cf1148c58335fa8870522631da645c6b36c7179aea371",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -74143,7 +73474,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 363
+              "line": 382
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -74349,7 +73680,7 @@
             {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
-              "line": 50,
+              "line": 48,
               "specifier": "@platos/context-tools/application/ports/index.js"
             },
             {
@@ -74523,7 +73854,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 1884,
+              "line": 1812,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -74763,7 +74094,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 88
+              "line": 100
             },
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
@@ -74783,7 +74114,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1100
+              "line": 1084
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -74793,7 +74124,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1251
+              "line": 1229
             }
           ],
           "reversePaths": [
@@ -75102,7 +74433,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "2c239495f7f56edad91c506627c61838fe895a9a1f1d7b4ce4f4f1334f5b055c",
+      "evidenceSha256": "b821317e8b3f10daad982db0378faf283c85e3d291435eaa916637be031dcb70",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -75159,7 +74490,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 296
+              "line": 315
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -76461,7 +75792,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 337
+              "line": 329
             }
           ],
           "reversePaths": [
@@ -76741,7 +76072,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "4b2af15c36457ca429c86392b2168256a4bcd87748acdfe5d7de9bccedf9f9c0",
+      "evidenceSha256": "369b3849c197cc4f1bd7c8069664a3b2ee3457aacdb249a6a8543813ad38c23e",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -76894,7 +76225,7 @@
             ],
             "path": [
               "packages/adapters/keyring-envelope",
-              "packages/contexts/identity-access",
+              "packages/contexts/secrets",
               "packages/kernel"
             ],
             "root": "packages/adapters/keyring-envelope",
@@ -76916,24 +76247,6 @@
               "packages/kernel"
             ],
             "root": "packages/adapters/model-router-providers",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "packages/adapters/node-crypto-digest",
-              "packages/contexts/identity-access",
-              "packages/kernel"
-            ],
-            "root": "packages/adapters/node-crypto-digest",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -77413,17 +76726,12 @@
           ],
           [
             "packages/adapters/keyring-envelope",
-            "packages/contexts/identity-access",
+            "packages/contexts/secrets",
             "packages/kernel"
           ],
           [
             "packages/adapters/model-router-providers",
             "packages/contexts/providers",
-            "packages/kernel"
-          ],
-          [
-            "packages/adapters/node-crypto-digest",
-            "packages/contexts/identity-access",
             "packages/kernel"
           ],
           [
@@ -77542,7 +76850,6 @@
           "packages/adapters/durable-runtime",
           "packages/adapters/keyring-envelope",
           "packages/adapters/model-router-providers",
-          "packages/adapters/node-crypto-digest",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
           "packages/adapters/objectstore-minio",
@@ -77860,7 +77167,7 @@
             {
               "file": "apps/core-api/src/composition/context-ports.ts",
               "from": "apps/core-api",
-              "line": 67,
+              "line": 59,
               "specifier": "@platos/kernel"
             },
             {
@@ -82018,7 +81325,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 1765,
+              "line": 1693,
               "specifier": "@platos/kernel"
             }
           ],
@@ -85680,7 +84987,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 135
+              "line": 147
             },
             {
               "from": "scripts/arch/clean-v1.test.mjs",
@@ -85690,7 +84997,7 @@
             {
               "from": "scripts/arch/composition-root.test.mjs",
               "kind": "reference",
-              "line": 652
+              "line": 627
             },
             {
               "from": "scripts/arch/env-access.test.mjs",
@@ -85740,7 +85047,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 515
+              "line": 507
             }
           ],
           "reversePaths": [
@@ -87105,7 +86412,7 @@
             ],
             "path": [
               "packages/adapters/keyring-envelope",
-              "packages/contexts/identity-access",
+              "packages/contexts/secrets",
               "packages/kernel"
             ],
             "root": "packages/adapters/keyring-envelope",
@@ -87127,24 +86434,6 @@
               "packages/kernel"
             ],
             "root": "packages/adapters/model-router-providers",
-            "rootReasons": [
-              {
-                "from": "tsconfig.json",
-                "kind": "root-typescript-reference"
-              }
-            ]
-          },
-          {
-            "groups": [
-              "dependencies",
-              "optionalDependencies"
-            ],
-            "path": [
-              "packages/adapters/node-crypto-digest",
-              "packages/contexts/identity-access",
-              "packages/kernel"
-            ],
-            "root": "packages/adapters/node-crypto-digest",
             "rootReasons": [
               {
                 "from": "tsconfig.json",
@@ -87624,17 +86913,12 @@
           ],
           [
             "packages/adapters/keyring-envelope",
-            "packages/contexts/identity-access",
+            "packages/contexts/secrets",
             "packages/kernel"
           ],
           [
             "packages/adapters/model-router-providers",
             "packages/contexts/providers",
-            "packages/kernel"
-          ],
-          [
-            "packages/adapters/node-crypto-digest",
-            "packages/contexts/identity-access",
             "packages/kernel"
           ],
           [
@@ -87753,7 +87037,6 @@
           "packages/adapters/durable-runtime",
           "packages/adapters/keyring-envelope",
           "packages/adapters/model-router-providers",
-          "packages/adapters/node-crypto-digest",
           "packages/adapters/notifier-email",
           "packages/adapters/notifier-webhook",
           "packages/adapters/objectstore-minio",
@@ -87782,7 +87065,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "af6b0699cfc6a9313b6c3bff6402de917a3cab8f4ca158760869980aa09504cc",
+      "evidenceSha256": "fa754e236f165c81b3b45ba3a359f76dd9f540047948c34b488524059ed9df4b",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -89162,7 +88445,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 344
+              "line": 336
             }
           ],
           "reversePaths": [
@@ -89237,7 +88520,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2d586956a197048a184efee720c3a025a60d79b7b99b78300bde2225ebcf8bb6",
+      "evidenceSha256": "c9b50bcd3d321696ed7508dec0c6cd219372de7e2415bc21e71fff423498ed95",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {

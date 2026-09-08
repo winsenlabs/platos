@@ -216,6 +216,25 @@ jobs:
       - name: Reproduce clean hosted-CI focused Agent Vitest consumers
         run: pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
 
+      - name: Tenancy Prisma delegate boundary and census
+        # WIN-267 A4. This suite existed since before PR #120 and NO job ran
+        # it, because this job names its Vitest files one at a time and this
+        # was not among them. It was consequently RED on `v1` for 1,064
+        # commits (`expected 815 to be 751`) while 64 production delegate call
+        # sites accumulated unobserved. Naming it here is the repair; the
+        # re-pin alone would only have reset the clock on the same failure.
+        #
+        # It is its own step rather than an argument appended to the step
+        # above so that a future reader of a red log sees WHICH gate failed
+        # without opening the Vitest summary, and so that deleting it from the
+        # workflow is a visible deletion rather than a quiet edit to a list.
+        #
+        # It must stay AFTER "Generate and build compiled Agent dependencies":
+        # the census is type-checker driven, and with
+        # `@platos/tenancy-database` unbuilt the client type is opaque and the
+        # analyzer finds fewer call sites than the pin expects.
+        run: pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts
+
       - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
         run: pnpm test:win-290
 

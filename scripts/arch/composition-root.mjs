@@ -30,6 +30,13 @@
 //     directories it tells readiness an operator CANNOT wire — must agree with
 //     the adapter packages' own source, in both directions.
 //
+//   * (WIN-267 T5) no file under `apps/core-api/src/transports/**` may READ the
+//     `adapters` property of the composed application. This is the third time
+//     this file has had to say "necessary and not sufficient", and the first
+//     time the insufficient thing is C1 above: rule (j) and C1 are both about
+//     IMPORTS, and `app.adapters["postgres-tenancy"].findOrganizationBySlug(...)`
+//     imports nothing. See C8 for the measurement.
+//
 //   node scripts/arch/composition-root.mjs            # audit this repository
 //   node scripts/arch/composition-root.mjs --root DIR # audit a fixture tree
 //   node scripts/arch/composition-root.mjs --json
@@ -148,6 +155,42 @@ function listSourceFiles(root) {
   };
   for (const scanRoot of SCAN_ROOTS) walk(join(root, scanRoot));
   return found.sort();
+}
+
+/**
+ * Every `<something>.adapters` property read in this file, as written.
+ *
+ * FROM THE COMPILER'S PARSE AND NOT A REGEX, for the reason the `parse` banner
+ * above already paid for once: `.adapters` appears in prose in this repository's
+ * comments more often than it appears in code, and a gate that fails on a
+ * sentence is a gate somebody deletes. Property ACCESS is a syntax node, so a
+ * mention in a comment or a string is invisible to this and a real read is not.
+ *
+ * BOTH SPELLINGS ARE COLLECTED. `app.adapters["postgres-tenancy"]` is a property
+ * access followed by an element access, and `app.adapters?.["x"]` and
+ * `const { adapters } = app` are the same reach written differently — the
+ * destructuring form especially, because it is the one a reader scanning for the
+ * word `adapters.` beside a dot would miss.
+ */
+function adapterPropertyReads(file) {
+  const reads = [];
+  const visit = (node) => {
+    if (ts.isPropertyAccessExpression(node) && node.name.text === "adapters") {
+      reads.push(`${node.expression.getText()}.adapters`);
+    }
+    // `const { adapters } = app` / `function f({ adapters }: AppModule)`.
+    if (ts.isObjectBindingPattern(node)) {
+      for (const element of node.elements) {
+        const source = element.propertyName ?? element.name;
+        if (ts.isIdentifier(source) && source.text === "adapters") {
+          reads.push("{ adapters } destructured from the composed application");
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return reads;
 }
 
 function importedAdapters(file) {
@@ -454,6 +497,62 @@ export function auditCompositionRoot(root = repositoryRoot) {
       );
     } else if (!source.includes(DYNAMIC_IMPORT_DECLARATION)) {
       problems.push(`${path} has a run-time-resolved import but no longer carries its declared finding`);
+    }
+  }
+
+  // --- (C8) a TRANSPORT may not reach a canonical store off the composed app ---
+  //
+  // WIN-267 (M4.1) T5. THE THIRD TIME THIS FILE HAS HAD TO SAY "NECESSARY AND
+  // NOT SUFFICIENT", and the first time the insufficient thing is this audit's
+  // own C1.
+  //
+  // Rule (j) says only `apps/core-api` may import an adapter. C1 narrows that to
+  // ONE FILE. Both are about IMPORTS, and the reach this rule refuses needs no
+  // import at all: `AppModule` publishes `adapters: SuppliedAdapters`, and
+  // `PostgresTenancyAdapter` extends `TenancyRepository`, so a transport handed
+  // the composed application can write
+  //
+  //     app.adapters["postgres-tenancy"].findOrganizationBySlug(slug)
+  //
+  // and read the canonical store directly. MEASURED, not argued: that exact file
+  // was placed under `apps/core-api/src/transports/bff/`, it TYPECHECKS, and
+  // `audit:arch-boundaries`, `audit:composition-root`, `audit:max-file-lines`
+  // and `audit:sole-writer` all stayed at exit 0. No adapter package is named,
+  // so C1 sees nothing; no banned specifier is imported, so `tenancy-prisma-only`
+  // sees nothing; the file is inside `apps/core-api`, so rule (j) permits it.
+  //
+  // WHY THE RULE IS "THE PROPERTY", NOT "THE STORE". Naming the canonical stores
+  // would mean maintaining a list of which adapters happen to be repositories,
+  // and a list is a thing that goes stale the day a directory is added. The
+  // property a transport must have is simpler and does not decay: a transport
+  // reads the system through `contexts` — the published contracts, which is what
+  // ADR M0.3 §2's `cross-context-contracts-only` means at the edge — plus its
+  // own `configuration`, `logger`, `clock` and `ids`. `adapters` is the
+  // composition root's working material and readiness's evidence, and readiness
+  // already reads `bindings` rather than `adapters` for exactly this reason.
+  //
+  // THE `requestIdempotency` PORT IS THE PRECEDENT THIS RULE GENERALISES.
+  // `app.module.ts` lifts that ONE port out of `adapters` into its own property,
+  // and says why in a comment this rule could have been written from: "reaching
+  // for `adapters["redis-cache"].requests` would put an adapter's NAME in a
+  // transport, and the day the store moved behind a different directory the
+  // transport would move with it." That argument was already the rule; nothing
+  // enforced it.
+  //
+  // THE SEAM FILES CARRY NO ROUTES YET AND THAT IS WHY THIS LANDS NOW. All six
+  // transports are still 20-line seams whose comments say "M4 OWNS THE SURFACE".
+  // A containment rule is cheapest to write while the thing it contains is
+  // empty, and this is the last moment at which the rule costs nobody a rewrite.
+  const TRANSPORT_ROOT = "apps/core-api/src/transports/";
+  for (const path of files) {
+    if (!path.startsWith(TRANSPORT_ROOT)) continue;
+    const reaches = adapterPropertyReads(parsed.get(path));
+    for (const reach of reaches) {
+      problems.push(
+        `${path} reads \`${reach}\` — a transport may not reach an adapter off the composed` +
+          ` application; read the system through \`contexts\`, and if a port genuinely belongs` +
+          ` to the edge, lift it onto AppModule the way \`requestIdempotency\` is`,
+      );
     }
   }
 

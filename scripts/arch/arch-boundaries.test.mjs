@@ -11,13 +11,25 @@
 // stays within the repository vocabulary boundary; the rule logic is identical
 // across every vendor entry in the banned/containment lists.
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { after, describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
 import { check } from "./arch-boundaries.mjs";
+import { ALL_RULES } from "./boundary-rules.mjs";
 
 const tempRoots = [];
 after(() => {
@@ -1185,5 +1197,190 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // WIN-267 A2: tokenmint-totp 5 source + 7 suites.
       6 + 2 + 12);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WIN-267 (M4.1) T5 — `tenancy-prisma-only` MUST BE ABLE TO SEE THE DOOR IT
+// NAMES.
+//
+// The rule's own comment in `boundary-rules.mjs` says the wrapper package is
+// banned because it "is the exact door the legacy tree walks through today". It
+// could not see that door. Every alternative in the `to` pattern was anchored on
+// `node_modules/`, and `@platos/tenancy-database` is a pnpm WORKSPACE package —
+// an import resolver reports the workspace path, with no `node_modules/` segment
+// in it at all.
+//
+// THESE CASES DO NOT COMPARE THE PATTERN TO A STRING THIS FILE WROTE. That is
+// the assertion shape this project has already paid for once: `contract-map.mjs`
+// asserted `count: 18` against its own constant and no change could ever fire
+// it. Each case below joins the pattern to something OUTSIDE it —
+//
+//   * the workspace itself: the home directory is DISCOVERED by reading the
+//     `name` field out of every `internal-packages/*/package.json`, so moving or
+//     renaming the package fails these cases until the pattern moves with it;
+//   * Node's own module resolver, when an install is present — the same
+//     resolution model dependency-cruiser uses through enhanced-resolve;
+//   * the real webapp tree, scanned by the real checker.
+//
+// The REGRESSION case reconstructs the pre-fix pattern and asserts it MISSES,
+// which is what makes the fix load-bearing rather than decorative: delete the
+// workspace alternative from the rule and the first case goes red.
+// ---------------------------------------------------------------------------
+describe("(h) tenancy-prisma-only reaches the workspace path a resolver actually reports", () => {
+  const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
+
+  /**
+   * WHERE THE PACKAGE ACTUALLY LIVES, read out of the workspace rather than
+   * spelled here. `internal-packages/*` is walked and the directory whose
+   * `package.json` declares the name is returned, so this is the tree's answer
+   * and not a second copy of the rule.
+   */
+  function tenancyDatabaseHome() {
+    const parent = join(repoRoot, "internal-packages");
+    for (const entry of readdirSync(parent)) {
+      const manifest = join(parent, entry, "package.json");
+      if (!existsSync(manifest)) continue;
+      const parsed = JSON.parse(readFileSync(manifest, "utf8"));
+      if (parsed.name === "@platos/tenancy-database") return `internal-packages/${entry}`;
+    }
+    return null;
+  }
+
+  function tenancyRule() {
+    const rule = ALL_RULES.find((r) => r.id === "tenancy-prisma-only");
+    assert.ok(rule, "the tenancy-prisma-only rule must exist");
+    return rule;
+  }
+
+  it("the rule matches the workspace path the package is actually built at", () => {
+    const home = tenancyDatabaseHome();
+    assert.ok(
+      home,
+      "no internal-packages/* declares @platos/tenancy-database; the rule's home has moved and the pattern must move with it",
+    );
+    const banned = new RegExp(tenancyRule().to.path, "u");
+    // `dist/index.js` is the package's own declared `main`, so this is the exact
+    // shape a resolver hands an enforcer for an
+    // `import ... from "@platos/tenancy-database"`.
+    assert.ok(
+      banned.test(`${home}/dist/index.js`),
+      `tenancy-prisma-only cannot see ${home}/dist/index.js — the resolved form of its own banned specifier`,
+    );
+  });
+
+  it("REGRESSION: the pre-fix node_modules-anchored pattern could NOT see it", () => {
+    const home = tenancyDatabaseHome();
+    // The pattern exactly as it stood on v1 @ 007007f2.
+    const preFix = /node_modules\/(@prisma\/|prisma(?:\/|$)|@platos\/tenancy-database(?:\/|$))/u;
+    assert.equal(
+      preFix.test(`${home}/dist/index.js`),
+      false,
+      "the pre-fix pattern is being credited with a match it never had",
+    );
+    // …and the fixed one does. Without this pairing the case above could pass on
+    // a pattern that matches everything.
+    const banned = new RegExp(tenancyRule().to.path, "u");
+    assert.ok(banned.test(`${home}/dist/index.js`));
+  });
+
+  it("the widened pattern still matches by SEGMENT and has not become a prefix", () => {
+    const banned = new RegExp(tenancyRule().to.path, "u");
+    // The §14 argument the rules file already makes for `ai`, applied to the new
+    // shape. A prefix match here would condemn any future sibling package whose
+    // name merely opens with these bytes.
+    assert.equal(banned.test("internal-packages/tenancy-database-legacy/src/x.ts"), false);
+    assert.equal(banned.test("node_modules/prismatic/index.js"), false);
+    // `internal-packages/database` is the DURABLE-RUNTIME store's client, which
+    // ADR M0.3 §7 decision 10 puts behind a different port with a different
+    // adapter. Condemning it here would assign it to the wrong home — the same
+    // argument the rules file already makes for why `@platos/database` is absent.
+    assert.equal(banned.test("internal-packages/database/src/x.ts"), false);
+  });
+
+  it("the two owning directories are exempt and nothing else is", () => {
+    const home = tenancyDatabaseHome();
+    const exempt = new RegExp(tenancyRule().from.pathNot, "u");
+    // The package cannot violate a containment rule about itself: this is where
+    // `prisma generate` writes the client and where the re-export is authored.
+    assert.ok(exempt.test(`${home}/src/index.ts`), "the generating package must be its own home");
+    assert.ok(exempt.test("packages/adapters/postgres-tenancy/src/client.ts"));
+    // The door the rule exists for stays shut.
+    assert.equal(exempt.test("apps/webapp/app/services/database.server.ts"), false);
+    assert.equal(exempt.test("apps/core-api/src/transports/rest/x.ts"), false);
+    assert.equal(exempt.test("packages/contexts/tenancy/application/x.ts"), false);
+  });
+
+  it("MUTATION: the generating package's own home cannot be widened to its parent", () => {
+    // `internal-packages/` as a home would exempt every workspace package, which
+    // is the cheapest way to make this rule vacuous while leaving it looking
+    // enforced.
+    const exempt = new RegExp(tenancyRule().from.pathNot, "u");
+    assert.equal(
+      exempt.test("internal-packages/redis/src/x.ts"),
+      false,
+      "the home must name ONE workspace package, not the whole internal-packages tree",
+    );
+  });
+
+  it("CORROBORATION: Node's own resolver reports the path the rule now matches", (t) => {
+    const home = tenancyDatabaseHome();
+    const from = join(repoRoot, "apps/webapp/app/services/");
+    let resolved;
+    try {
+      resolved = createRequire(from).resolve("@platos/tenancy-database");
+    } catch {
+      // SKIPPED, WITH THE REASON NAMED. Resolution needs an install and a built
+      // `dist/`; on a clean checkout there is neither, and a case that silently
+      // passed in that state would be corroborating nothing. The cases above are
+      // joined to the committed workspace and need no install.
+      t.skip("no resolvable install of @platos/tenancy-database in this tree");
+      return;
+    }
+    const relative = resolved.startsWith(repoRoot) ? resolved.slice(repoRoot.length) : resolved;
+    assert.ok(
+      relative.startsWith(`${home}/`),
+      `the resolver reports ${relative}, which is not under the workspace home ${home}`,
+    );
+    assert.ok(
+      new RegExp(tenancyRule().to.path, "u").test(relative),
+      `tenancy-prisma-only does not match ${relative}, the path a resolver hands an enforcer`,
+    );
+  });
+
+  it("ACCEPTANCE: the rule names exactly the webapp files that still import the client", () => {
+    // The real checker over the real tree — not a fixture. This is the figure the
+    // "webapp database credentials can be removed" clause is measured by: when
+    // the cutover is complete this is empty, and until then it must name exactly
+    // the files that still hold the import. The two sides are gathered by
+    // DIFFERENT mechanisms — the checker's import parser, and a byte scan of the
+    // files — so they have to agree rather than the checker agreeing with itself.
+    const result = check(repoRoot, { scanRoots: ["apps/webapp/app"] });
+    const offenders = [
+      ...new Set(
+        result.violations.filter((v) => v.rule === "tenancy-prisma-only").map((v) => v.from),
+      ),
+    ].sort();
+
+    const importers = [];
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir)) {
+        const abs = join(dir, entry);
+        if (statSync(abs).isDirectory()) {
+          if (entry !== "node_modules") walk(abs);
+        } else if (/\.(?:ts|tsx)$/u.test(entry)) {
+          if (readFileSync(abs, "utf8").includes('"@platos/tenancy-database"')) {
+            importers.push(abs.slice(repoRoot.length));
+          }
+        }
+      }
+    };
+    walk(join(repoRoot, "apps/webapp/app"));
+
+    assert.deepEqual(
+      offenders,
+      importers.sort(),
+      "the checker and the tree disagree about which webapp files import the canonical client",
+    );
   });
 });

@@ -676,3 +676,107 @@ test("PORT_SATISFACTION rejects an adapter that stops implementing its port", ()
   assert.notEqual(broken.status, 0, "an adapter that stops implementing its port must break the build");
   assert.match(`${broken.stdout}${broken.stderr}`, /is not assignable to type 'never'/u);
 });
+
+// ---------------------------------------------------------------------------
+// C8 — A TRANSPORT MAY NOT REACH A CANONICAL STORE OFF THE COMPOSED APPLICATION.
+//
+// WIN-267 (M4.1) T5. Every case below mutates the REAL tree and asserts TWICE:
+// that the ADR boundary rule set stays CLEAN — which is the finding, and the
+// reason the rule had to be written — and that C8 fires. A case that only
+// checked the second half would be proving that a gate this branch wrote agrees
+// with itself.
+//
+// The reach is not hypothetical. The first shape below was placed under
+// `apps/core-api/src/transports/bff/`, TYPECHECKED against the real project
+// graph, and `audit:arch-boundaries`, `audit:composition-root`,
+// `audit:max-file-lines` and `audit:sole-writer` all stayed at exit 0.
+// ---------------------------------------------------------------------------
+
+/** The five spellings of one reach, plus the prose that must not be one. */
+const C8_SHAPES = [
+  ["a property read with an element access", `export const sneak = (app: AppModule) => app.adapters["postgres-tenancy"];`],
+  ["optional chaining", `export const sneak = (app: AppModule) => app?.adapters?.["postgres-tenancy"];`],
+  ["a destructured parameter", `export const sneak = ({ adapters }: AppModule) => adapters["postgres-tenancy"];`],
+  ["a destructured const", `export const sneak = (app: AppModule) => { const { adapters } = app; return adapters["postgres-tenancy"]; };`],
+  ["a RENAMED destructure", `export const sneak = (app: AppModule) => { const { adapters: a } = app; return a["postgres-tenancy"]; };`],
+];
+
+for (const [shape, body] of C8_SHAPES) {
+  test(`C8: a bff transport reaching the canonical store through ${shape} fails`, () => {
+    const root = realTreeCopy();
+    edit(root, "apps/core-api/src/transports/bff/index.ts", (source) => `${source}\n${body}\n`);
+
+    // THE FINDING, ASSERTED FIRST. No adapter package is named, so rule (j) and
+    // C1 have nothing to see; no banned specifier is imported, so
+    // `tenancy-prisma-only` has nothing to see. This is a canonical-store read
+    // that the whole ADR rule set permits.
+    assert.deepEqual(
+      check(root).violations,
+      [],
+      "the reach must be legal under the ADR rule set — that is what C8 exists for",
+    );
+
+    const problems = auditCompositionRoot(root).problems;
+    assert.ok(
+      problems.some((problem) => problem.includes("transports/bff/index.ts") && problem.includes("may not reach an adapter")),
+      `C8 did not fire on ${shape}: ${problems.join("\n")}`,
+    );
+  });
+}
+
+test("C8: the rule reads the compiler's parse, so PROSE naming app.adapters is not a violation", () => {
+  // The `parse` banner in this audit records that its first draft used a regex
+  // and produced two false positives on the real tree within a minute. This file
+  // and `app.module.ts` between them name `adapters` in prose dozens of times; a
+  // gate that failed on a sentence is a gate somebody deletes.
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/bff/index.ts", (source) =>
+    `${source}\n// A transport must never read app.adapters, and "adapters" is not its business.\nexport const note = "app.adapters is off limits";\n`,
+  );
+  const problems = auditCompositionRoot(root).problems;
+  assert.deepEqual(
+    problems.filter((problem) => problem.includes("may not reach an adapter")),
+    [],
+    "a comment and a string literal are not a property read",
+  );
+});
+
+test("C8: the rule binds every transport, not just the bff", () => {
+  // Six seams live under `transports/`, and the rule is about the DIRECTORY
+  // rather than about the one seam this tranche had a reason to touch. A rule
+  // written for `bff/` alone would be re-learned by whoever lands the rest,
+  // websocket or webhook surface.
+  const root = realTreeCopy();
+  for (const seam of ["rest", "mcp", "ws", "webhook", "channels-ingress"]) {
+    edit(root, `apps/core-api/src/transports/${seam}/index.ts`, (source) =>
+      `${source}\nexport const sneak = (app: AppModule) => app.adapters["postgres-tenancy"];\n`,
+    );
+  }
+  const problems = auditCompositionRoot(root).problems.filter((problem) =>
+    problem.includes("may not reach an adapter"),
+  );
+  assert.equal(problems.length, 5, `every transport seam must be bound: ${problems.join("\n")}`);
+});
+
+test("C8 NON-VACUITY: the live tree reaches no adapter from a transport, and the property is REACHABLE", () => {
+  // Two halves, because either alone is worthless. The first is that the rule
+  // passes on the tree as it stands. The second is that `AppModule` really does
+  // publish `adapters` — if it did not, C8 would be a rule about a property that
+  // does not exist, and would pass forever no matter what a transport did.
+  assert.deepEqual(
+    auditCompositionRoot(repositoryRoot).problems.filter((problem) =>
+      problem.includes("may not reach an adapter"),
+    ),
+    [],
+  );
+  const appModule = readFileSync(join(repositoryRoot, "apps/core-api/src/app.module.ts"), "utf8");
+  assert.match(
+    appModule,
+    /readonly adapters: SuppliedAdapters;/u,
+    "AppModule must still publish `adapters` — without it C8 guards nothing",
+  );
+  // And that the transports are handed the whole `AppModule`, which is what makes
+  // the property reachable from one.
+  const bff = readFileSync(join(repositoryRoot, "apps/core-api/src/transports/bff/index.ts"), "utf8");
+  assert.match(bff, /readonly app: AppModule;/u, "a transport must still hold the composed application");
+});

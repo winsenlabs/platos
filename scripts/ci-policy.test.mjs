@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { parseDocument } from "yaml";
@@ -4512,5 +4512,116 @@ test("CI policy controls fail under generated semantic source mutations", async 
         )}: ${violations.join("; ")}`
       );
     });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WIN-267 A4 — the agent job must NAME the tenancy Prisma delegate census.
+//
+// This suite exists because CI steps are the only thing that makes a gate real,
+// and this repository has now paid for that lesson in the most expensive way
+// available: `apps/agent/src/clean-prisma-delegates.test.ts` sat RED on `v1` for
+// 1,064 commits without a single red build, because the agent job executes its
+// Vitest files ONE AT A TIME by name and that file was not among them. Sixty-four
+// production Prisma delegate call sites accumulated behind a gate nobody ran.
+//
+// Re-pinning the assertion repairs the symptom for exactly as long as it takes
+// the next call site to land. THIS is the repair: the wiring itself is now
+// asserted, so deleting the step turns a gate red instead of turning a gate off.
+//
+// WHY IT IS NOT JOINED TO ITSELF. The suite's path is DISCOVERED from the tree —
+// the one non-`.d.ts` test under `apps/agent/src` that both pins a delegate
+// inventory digest and reads the generated datamodel — and not spelled as a
+// constant this file could quietly edit. Renaming or moving that file without
+// updating the workflow fails here; so does deleting the step; so does moving
+// the step ahead of the build it depends on.
+//
+// THE ORDERING HALF IS NOT DECORATION, AND ITS TWO FAILURE MODES WERE MEASURED
+// RATHER THAN ASSUMED. With `internal-packages/tenancy-database/dist` removed
+// entirely, the suite does not under-count — it does not run at all: Vitest
+// reports `Failed to resolve entry for package "@platos/tenancy-database"` and
+// collects no tests. That is the loud mode. The quiet mode is the one this
+// assertion is really for: restore `dist` but delete its fifteen `.d.ts` files,
+// so the runtime import succeeds and only the TYPES are missing, and the census
+// reads 812 where it should read 815. Three call sites vanish with no error and
+// no warning, because a client the checker cannot type is a client the analyzer
+// cannot follow. A gate whose answer moves with the build state has to have that
+// build state asserted, not described in a comment somebody is trusted to read.
+// ---------------------------------------------------------------------------
+
+const AGENT_SOURCE_ROOT = "apps/agent/src";
+const TENANCY_BUILD_FRAGMENT = "pnpm --filter @platos/tenancy-database build";
+
+function agentTestFiles(relativeDirectory) {
+  const absolute = path.join(repositoryRoot, relativeDirectory);
+  return readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
+    const next = `${relativeDirectory}/${entry.name}`;
+    if (entry.isDirectory()) return agentTestFiles(next);
+    if (!entry.isFile() || !entry.name.endsWith(".test.ts")) return [];
+    return [next];
+  });
+}
+
+function delegateCensusSuitePath() {
+  const candidates = agentTestFiles(AGENT_SOURCE_ROOT).filter((file) => {
+    const contents = readFileSync(path.join(repositoryRoot, file), "utf8");
+    return contents.includes("inventoryDigest") && contents.includes("Prisma.dmmf");
+  });
+  assert.equal(
+    candidates.length,
+    1,
+    `exactly one agent suite must carry the Prisma delegate census; found ${
+      candidates.length === 0 ? "none" : candidates.join(", ")
+    }`
+  );
+  return candidates[0];
+}
+
+test("the agent CI job names the tenancy Prisma delegate census", () => {
+  const suitePath = delegateCensusSuitePath();
+  const argument = suitePath.slice(`${AGENT_SOURCE_ROOT}/`.length);
+  const vitestArgument = `src/${argument}`;
+
+  const violations = [];
+  const workflow = parseWorkflow(
+    readFileSync(path.join(repositoryRoot, ".github/workflows/ci.yml"), "utf8"),
+    ".github/workflows/ci.yml",
+    violations
+  );
+  assert.deepEqual(violations, [], "ci.yml must parse before its steps can be read");
+
+  const jobs = workflowJobs(workflow);
+  const runningJobs = [...jobs.entries()].filter(([, job]) =>
+    executableRunValues(job).some(
+      (run) => run.includes("platos-agent") && run.includes(vitestArgument)
+    )
+  );
+
+  assert.ok(
+    runningJobs.length > 0,
+    `no CI job runs ${suitePath}. It is a gate only while a job names it: this suite was ` +
+      `red on v1 for 1,064 commits precisely because none did. Add ` +
+      `\`pnpm --filter platos-agent exec vitest run ${vitestArgument}\` to the agent job.`
+  );
+
+  for (const [jobName, job] of runningJobs) {
+    const runs = executableRunValues(job);
+    const censusIndex = runs.findIndex(
+      (run) => run.includes("platos-agent") && run.includes(vitestArgument)
+    );
+    const buildIndex = runs.findIndex((run) => run.includes(TENANCY_BUILD_FRAGMENT));
+    assert.ok(
+      buildIndex !== -1,
+      `job ${jobName} runs the delegate census but never runs ${JSON.stringify(
+        TENANCY_BUILD_FRAGMENT
+      )}. The census is type-checker driven and reads an opaque client type without it.`
+    );
+    assert.ok(
+      buildIndex < censusIndex,
+      `job ${jobName} runs the delegate census at step ${censusIndex} but builds ` +
+        `@platos/tenancy-database at step ${buildIndex}. The census must run AFTER the build, ` +
+        `or the type checker resolves the client to \`any\` and the pin is measured against a ` +
+        `census that silently stopped seeing call sites.`
+    );
   }
 });

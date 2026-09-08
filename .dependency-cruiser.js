@@ -387,13 +387,13 @@ module.exports = {
     },
     {
       "name": "tenancy-prisma-only",
-      "comment": "node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$)) may be imported only from its single owning adapter.",
+      "comment": "(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))|internal-packages/tenancy-database(?:/|$)) may be imported only from its single owning adapter.",
       "severity": "error",
       "from": {
-        "pathNot": "^packages/adapters/postgres-tenancy/"
+        "pathNot": "^(packages/adapters/postgres-tenancy|internal-packages/tenancy-database)/"
       },
       "to": {
-        "path": "node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))"
+        "path": "(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))|internal-packages/tenancy-database(?:/|$))"
       }
     },
     {

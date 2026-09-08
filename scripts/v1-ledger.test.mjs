@@ -1519,14 +1519,46 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
     // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
     // and add no file.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
-    "root-infra": 55,
+    // WIN-267 (M4.1, T5) 55 -> 56: `scripts/mutations-win267-t5.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same stated reason. It is the FOURTH non-code file under
+    // `scripts/`. T0 said the rule would be worth splitting once a second
+    // arrived; four is past that, and it is STILL not being split inside a
+    // tranche that would be its own beneficiary — the split wants a change that
+    // reclassifies all four at once and answers for the `kind: source` verdict
+    // on data, which is a different piece of work from this one.
+    //
+    // T5 ADDS EXACTLY ONE FILE HERE AND EDITS THE REST IN PLACE. The three other
+    // files this slice touches — `.dependency-cruiser.js`,
+    // `scripts/arch/boundary-rules.mjs` and `scripts/arch/arch-boundaries.test.mjs`
+    // — are all tracked already, and an edited file is not a new one.
+    // WIN-267 (M4.1, A4) 56 -> 57: `scripts/mutations-win267-a4.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same stated reason. It is the FIFTH non-code file under
+    // `scripts/`. A4 carries T5's two rescued gates, so it inherits T5's file
+    // as well as adding its own; both are counted here, and neither is being
+    // reclassified inside a tranche that would be its own beneficiary.
+    //
+    // A4 ADDS EXACTLY ONE FILE AND EDITS THE REST IN PLACE. The other paths this
+    // slice touches — `.github/workflows/ci.yml`, `scripts/ci-policy.test.mjs`,
+    // `apps/agent/src/clean-prisma-delegates.test.ts` and the three T5 files
+    // above — are all tracked already, and an edited file is not a new one. In
+    // particular `apps-agent` does NOT move: re-pinning a suite's assertions
+    // changes bytes, not the census.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 = 57.
+    "root-infra": 57,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  // WIN-267 (M4.1, A1 + A2) 1598 -> 1627: the twenty-nine files above, all in
-  // `packages`.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1627);
+  // WIN-267 (M4.1) 1598 -> 1629, SUMMED across the three branches that landed
+  // rather than side-picked: A1 + A2 contribute twenty-nine files, all in
+  // `packages`; A4 contributes two, both in `root-infra`
+  // (`scripts/mutations-win267-t5.json`, which arrives with the rescued T5
+  // gates, and `scripts/mutations-win267-a4.json`). The identity this number
+  // exists to hold is that the total delta and the per-area deltas are the SAME
+  // arithmetic, so a file that arrives in one and not the other cannot pass both
+  // halves of this case.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1629);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1633,16 +1665,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
     //
-    // and WIN-267 (M4.1, A1 + A2) +29, ALL of them `packages` and ALL of them
-    // `packages/adapters` — TEN in `node-crypto-digest` (three generator-owned
-    // scaffolding files, six source files and its guard ledger), THREE in
-    // `keyring-envelope` (the MFA envelope, its suite and that dimension's guard
-    // ledger) and SIXTEEN in `tokenmint-totp` (three scaffolding, five source,
-    // seven suites and its guard ledger). It ADOPTS TWO PROJECTS and CHANGES NO
-    // LEDGER RULE, so this delta too is purely additive: 1598 + 29 = 1627,
-    // re-derived here by summing the per-area counts independently of the
-    // assertion above, so the two can DISAGREE and be caught.
-    rulesDocument.baseline.totalFiles + 1627
+    // and WIN-267 (M4.1) +31, from three branches. TWENTY-NINE are `packages`
+    // and all of them `packages/adapters` — TEN in `node-crypto-digest` (three
+    // generator-owned scaffolding files, six source files and its guard ledger),
+    // THREE in `keyring-envelope` (the MFA envelope, its suite and that
+    // dimension's guard ledger) and SIXTEEN in `tokenmint-totp` (three
+    // scaffolding, five source, seven suites and its guard ledger). TWO are
+    // `root-infra`: `scripts/mutations-win267-t5.json` and
+    // `scripts/mutations-win267-a4.json`. It ADOPTS TWO PROJECTS and CHANGES NO
+    // LEDGER RULE, so this delta too is purely additive: 1598 + 31 = 1629.
+    //
+    // This is the SECOND, INDEPENDENT derivation — it sums the per-area counts
+    // rather than reading the total — which is exactly why it is moved
+    // separately and by hand. A4 ran `--write`, watched `audit:v1-ledger` go
+    // green, and STILL landed red on both of these assertions: the sixth and
+    // seventh time this second reconciliation has caught what the first one
+    // signed off.
+    rulesDocument.baseline.totalFiles + 1629
   );
 });
 
