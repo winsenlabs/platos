@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FORTY-NINE bindings across ADR M0.3 §4's THIRTEEN adapter directories", () => {
+  it("declares FIFTY-ONE bindings across ADR M0.3 §4's FOURTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -184,9 +184,17 @@ describe("the declared binding table", () => {
     // fact worth stating: bindings 44 + 3 + 2 = 49, directories 12 + 1 = 13.
     // WIN-259 adds a directory and three rows on it; WIN-260 adds two rows on a
     // directory that already existed.
-    expect(ADAPTER_BINDINGS).toHaveLength(49);
-    expect(DECLARED_BINDING_COUNT).toBe(49);
-    expect(ADAPTER_NAMES).toHaveLength(13);
+    // WIN-267 A2: bindings 49 + 2 = 51, directories 13 + 1 = 14. BOTH move this
+    // time and they move by different amounts again -- one directory carrying
+    // two ports -- which is the fact the two separate assertions exist to state.
+    expect(ADAPTER_BINDINGS).toHaveLength(51);
+    expect(DECLARED_BINDING_COUNT).toBe(51);
+    expect(ADAPTER_NAMES).toHaveLength(14);
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
+        (binding) => binding.port,
+      ),
+    ).toEqual(["TokenMinter", "TotpCodeVerifier"]);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "keyring-envelope").map(
         (binding) => binding.port,
@@ -198,10 +206,20 @@ describe("the declared binding table", () => {
     // three ports and exactly ONE owner, so it is multi-PORT without being
     // multi-OWNER, and `EXPECTED_MULTI_OWNER_ADAPTERS` in the graph gate stays
     // at two entries while this list goes to three.
+    //
+    // WIN-267 A2 makes it FOUR, and `tokenmint-totp` is the second entry of that
+    // same shape: two ports, one owner, so this list grows while the graph
+    // gate's multi-OWNER allow-list stays at two. The two lists diverging is the
+    // point of keeping them apart.
     const multiPort = [...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter))].filter(
       (adapter) => ADAPTER_BINDINGS.filter((binding) => binding.adapter === adapter).length > 1,
     );
-    expect(multiPort.sort()).toEqual(["keyring-envelope", "postgres-tenancy", "redis-cache"]);
+    expect(multiPort.sort()).toEqual([
+      "keyring-envelope",
+      "postgres-tenancy",
+      "redis-cache",
+      "tokenmint-totp",
+    ]);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
     );
@@ -317,9 +335,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(49);
+    expect(report.unsatisfied).toHaveLength(51);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/49 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/51 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -346,7 +364,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(48);
+    expect(report.unsatisfied).toHaveLength(50);
 
     expect(report.faults).toEqual([]);
   });
@@ -369,14 +387,14 @@ describe("adapter supply validation", () => {
 
   it("rejects an adapter name that is not one of the declared bindings", () => {
     const report = reportAdapterSupply({ "redis-queue": adapterDouble("redis-queue") } as SuppliedAdapters);
-    expect(report.faults[0]).toContain("is not one of the 13 declared adapters");
+    expect(report.faults[0]).toContain("is not one of the 14 declared adapters");
   });
 });
 
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(49);
+    expect(app.bindings.unsatisfied).toHaveLength(51);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -412,7 +430,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(48);
+    expect(app.bindings.unsatisfied).toHaveLength(50);
 
   });
 
