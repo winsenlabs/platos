@@ -3,6 +3,7 @@ import { HttpException } from "@nestjs/common";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthService } from "./auth.service";
 import { ScopeGuard } from "./scope.guard";
+import { EntityBearerDirectory } from "./entity-bearer.directory";
 import { SessionTokenController } from "./session-token.controller";
 
 const RAW_BEARER = `plt_ent_${"a".repeat(64)}`;
@@ -78,7 +79,8 @@ function makeHarness() {
     state,
     prisma,
     auth,
-    controller: new SessionTokenController(auth, prisma as any),
+    directory: new EntityBearerDirectory(prisma as any),
+    controller: new SessionTokenController(auth, new EntityBearerDirectory(prisma as any)),
   };
 }
 
@@ -196,5 +198,125 @@ describe("SessionTokenController clean bearer mint", () => {
     );
     await expect(h.auth.validateSessionToken(result.token)).resolves.not.toBeNull();
     expect(h.prisma.mcpBearerToken.findUnique).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * WIN-258 T6 — the guards the controller could not tell apart.
+ *
+ * `session-token.controller.ts` decided admission in one ten-clause `if` and
+ * threw the same `Invalid entity bearer` for every branch of it. Deleting any
+ * single clause left every suite above green, because the only observable was a
+ * 401 that all ten produce. That is this programme's fifth lesson exactly.
+ *
+ * The response is still one opaque 401 on purpose — a caller must not be able to
+ * use the status to probe which of an entity id, project id, organization id or
+ * environment id was the wrong one. The DISTINCTION lives inside the process,
+ * and this is where it is asserted: each case names the clause it kills, and
+ * removing that clause from `EntityBearerDirectory.authenticate` turns exactly
+ * one of these red.
+ */
+describe("EntityBearerDirectory names every rejection the 401 hides", () => {
+  const claim = {
+    entityId: SCOPE.entityId,
+    organizationId: SCOPE.organizationId,
+    projectId: SCOPE.projectId,
+    environmentId: SCOPE.environmentId,
+  };
+  const hash = createHash("sha256").update(RAW_BEARER).digest("hex");
+
+  it("admits a live bearer whose claimed scope matches on every axis", async () => {
+    const h = makeHarness();
+    const result = await h.directory.authenticate(hash, claim, new Date());
+    expect(result).toMatchObject({
+      ok: true,
+      bearer: {
+        entityId: SCOPE.entityId,
+        organizationId: SCOPE.organizationId,
+        projectId: SCOPE.projectId,
+        environmentId: SCOPE.environmentId,
+      },
+    });
+  });
+
+  it("distinguishes an unknown token from a revoked one", async () => {
+    const h = makeHarness();
+    await expect(
+      h.directory.authenticate("not-a-known-hash", claim, new Date()),
+    ).resolves.toEqual({ ok: false, reason: "unknown-token" });
+
+    h.state.bearer.revokedAt = new Date();
+    await expect(h.directory.authenticate(hash, claim, new Date())).resolves.toEqual({
+      ok: false,
+      reason: "revoked",
+    });
+  });
+
+  it("distinguishes an expired bearer from a live one at the boundary", async () => {
+    const h = makeHarness();
+    const expiry = new Date(Date.now() + 60_000);
+    h.state.bearer.expiresAt = expiry;
+
+    // Exactly AT the expiry the token is dead: the clause is `<=`, and an
+    // assertion one millisecond either side is what tells `<` from `<=`.
+    await expect(h.directory.authenticate(hash, claim, expiry)).resolves.toEqual({
+      ok: false,
+      reason: "expired",
+    });
+    await expect(
+      h.directory.authenticate(hash, claim, new Date(expiry.getTime() - 1)),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
+  it.each([
+    ["entity-mismatch", { entityId: "entity-other" }],
+    ["project-mismatch", { projectId: "project-other" }],
+    ["organization-mismatch", { organizationId: "org-other" }],
+  ])("names a %s rather than folding it into its neighbours", async (reason, override) => {
+    const h = makeHarness();
+    await expect(
+      h.directory.authenticate(hash, { ...claim, ...override }, new Date()),
+    ).resolves.toEqual({ ok: false, reason });
+  });
+
+  it("separates an environment the bearer does not carry from one that does not exist", async () => {
+    const h = makeHarness();
+
+    // The bearer's own environmentId disagrees with the claim.
+    await expect(
+      h.directory.authenticate(hash, { ...claim, environmentId: "environment-other" }, new Date()),
+    ).resolves.toEqual({ ok: false, reason: "environment-mismatch" });
+
+    // The claim agrees with the bearer, but no such environment row exists.
+    h.state.bearer.environmentId = "environment-missing";
+    await expect(
+      h.directory.authenticate(hash, { ...claim, environmentId: "environment-missing" }, new Date()),
+    ).resolves.toEqual({ ok: false, reason: "environment-unknown" });
+  });
+
+  it("refuses an environment owned by another project even when the ids line up", async () => {
+    const h = makeHarness();
+    h.state.bearer.environmentId = "environment-foreign";
+    h.state.environment = {
+      id: "environment-foreign",
+      project: { id: "project-elsewhere", organizationId: SCOPE.organizationId },
+    };
+
+    await expect(
+      h.directory.authenticate(hash, { ...claim, environmentId: "environment-foreign" }, new Date()),
+    ).resolves.toEqual({ ok: false, reason: "environment-foreign" });
+  });
+
+  it("treats a lost compare-and-set as its own rejection, not a stale read", async () => {
+    const h = makeHarness();
+    h.state.activeCount = 0;
+
+    await expect(h.directory.authenticate(hash, claim, new Date())).resolves.toEqual({
+      ok: false,
+      reason: "revoked-concurrently",
+    });
+    // The stamp was ATTEMPTED — the liveness re-check is the update itself, so
+    // a directory that read-then-wrote would fail this.
+    expect(h.prisma.mcpBearerToken.updateMany).toHaveBeenCalledTimes(1);
   });
 });

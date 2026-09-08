@@ -7,6 +7,7 @@ import { PublicGuestTokenController } from "./public-guest-token.controller";
 import { ProvidersModule } from "../providers/providers.module";
 import { ToolGatewayModule } from "../tool-gateway/tool-gateway.module";
 import { AgentBindingDirectory } from "../agent-runtime/agent-binding.directory";
+import { EntityBearerDirectory } from "./entity-bearer.directory";
 
 @Module({
   imports: [SecretsModule, ProvidersModule, ToolGatewayModule],
@@ -25,6 +26,9 @@ import { AgentBindingDirectory } from "../agent-runtime/agent-binding.directory"
     // rather than imported from a ChannelsModule because it depends on nothing
     // but the @Global PRISMA_TOKEN and is stateless.
     AgentBindingDirectory,
+    // WIN-258 T6 — entity-bearer admission, so SessionTokenController holds no
+    // ORM client and the ten guards behind its single 401 are nameable.
+    EntityBearerDirectory,
   ],
   exports: [AuthService, SecretsModule, ProviderHealthService],
 })

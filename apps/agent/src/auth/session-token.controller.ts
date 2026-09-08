@@ -4,17 +4,13 @@ import {
   Headers,
   HttpException,
   HttpStatus,
-  Inject,
   Param,
   Post,
 } from "@nestjs/common";
 import { API_VERSION } from "../http/api-surface";
 import { createHash } from "node:crypto";
 import { AuthService } from "./auth.service";
-import {
-  type ControlDatabaseClient,
-  PRISMA_TOKEN,
-} from "../shared/database.provider";
+import { EntityBearerDirectory } from "./entity-bearer.directory";
 
 /**
  * EOBD.95 — entity-scoped session-token mint endpoint.
@@ -89,7 +85,7 @@ function sanitizeUserIdentities(
 export class SessionTokenController {
   constructor(
     private readonly authService: AuthService,
-    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+    private readonly entityBearers: EntityBearerDirectory,
   ) {}
 
   @Post(":entityId/session-tokens")
@@ -153,51 +149,26 @@ export class SessionTokenController {
 
     const tokenHash = createHash("sha256").update(secret).digest("hex");
     const now = new Date();
-    const bearer = await this.prisma.mcpBearerToken.findUnique({
-      where: { tokenHash },
-      select: {
-        id: true,
-        environmentId: true,
-        expiresAt: true,
-        revokedAt: true,
-        entity: {
-          select: {
-            externalId: true,
-            project: { select: { id: true, organizationId: true } },
-          },
-        },
-      },
-    });
-    const environment = await this.prisma.environment.findUnique({
-      where: { id: body.environmentId },
-      select: { id: true, project: { select: { id: true, organizationId: true } } },
-    });
-    if (
-      !bearer ||
-      bearer.revokedAt ||
-      (bearer.expiresAt && bearer.expiresAt.getTime() <= now.getTime()) ||
-      bearer.environmentId !== body.environmentId ||
-      bearer.entity.externalId !== entityId ||
-      bearer.entity.project.id !== body.projectId ||
-      bearer.entity.project.organizationId !== body.organizationId ||
-      !environment ||
-      environment.project.id !== bearer.entity.project.id ||
-      environment.project.organizationId !== bearer.entity.project.organizationId
-    ) {
-      throw new HttpException("Invalid entity bearer", HttpStatus.UNAUTHORIZED);
-    }
-    const active = await this.prisma.mcpBearerToken.updateMany({
-      where: {
-        id: bearer.id,
+
+    // WIN-258: the two reads, the ten-clause admission predicate and the
+    // liveness compare-and-set moved into EntityBearerDirectory. The rejection
+    // it returns is NAMED so a suite can tell the organization check from the
+    // project one; the response stays a single opaque 401 so an unauthenticated
+    // caller cannot use the status as an oracle for probing ids.
+    const admission = await this.entityBearers.authenticate(
+      tokenHash,
+      {
+        entityId,
+        organizationId: body.organizationId,
+        projectId: body.projectId,
         environmentId: body.environmentId,
-        revokedAt: null,
-        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       },
-      data: { lastUsedAt: now },
-    });
-    if (active.count !== 1) {
+      now,
+    );
+    if (!admission.ok) {
       throw new HttpException("Invalid entity bearer", HttpStatus.UNAUTHORIZED);
     }
+    const bearer = admission.bearer;
 
     const rawTtl =
       typeof body.ttlSeconds === "number" && Number.isFinite(body.ttlSeconds)
@@ -252,11 +223,11 @@ export class SessionTokenController {
     const token = await this.authService.createEntitySessionToken(
       {
         ...safeClaims,
-        organizationId: bearer.entity.project.organizationId,
-        projectId: bearer.entity.project.id,
-        environmentId: environment.id,
+        organizationId: bearer.organizationId,
+        projectId: bearer.projectId,
+        environmentId: bearer.environmentId,
         userId: body.userId,
-        entityId: bearer.entity.externalId,
+        entityId: bearer.entityId,
         ...(body.userToken ? { userToken: body.userToken } : {}),
         ...(body.agentId ? { agentId: body.agentId } : {}),
         // M2 — restore the display-identity passthrough via the typed field
@@ -267,7 +238,7 @@ export class SessionTokenController {
         // settable only through this typed field.
         ...(userIdentities ? { userIdentities } : {}),
       } as any,
-      bearer.id,
+      bearer.bearerId,
       ttlSeconds,
     );
     if (!token) {
