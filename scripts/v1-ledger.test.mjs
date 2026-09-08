@@ -1483,12 +1483,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
     // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
     // and add no file.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
-    "root-infra": 55,
+    // WIN-267 (M4.1, T5) 55 -> 56: `scripts/mutations-win267-t5.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same stated reason. It is the FOURTH non-code file under
+    // `scripts/`. T0 said the rule would be worth splitting once a second
+    // arrived; four is past that, and it is STILL not being split inside a
+    // tranche that would be its own beneficiary — the split wants a change that
+    // reclassifies all four at once and answers for the `kind: source` verdict
+    // on data, which is a different piece of work from this one.
+    //
+    // T5 ADDS EXACTLY ONE FILE HERE AND EDITS THE REST IN PLACE. The three other
+    // files this slice touches — `.dependency-cruiser.js`,
+    // `scripts/arch/boundary-rules.mjs` and `scripts/arch/arch-boundaries.test.mjs`
+    // — are all tracked already, and an edited file is not a new one.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 = 56.
+    "root-infra": 56,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
+  // WIN-267 (M4.1, T5) 1598 -> 1599: the one file above. The identity this
+  // number exists to hold is that the total delta and the per-area deltas are
+  // the SAME arithmetic — 2 + 0 + 57 + 4 + 1454 + 9 + 17 + 56 = 1599 — so a file
+  // that arrives in one and not the other cannot pass both halves of this case.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1599);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1594,7 +1611,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1598
+    //
+    // WIN-267 (M4.1, T5) 1598 -> 1599, from `scripts/mutations-win267-t5.json`
+    // in `root-infra`. This is the SECOND, independent derivation — it sums the
+    // per-area counts rather than reading the total — which is exactly why it is
+    // moved separately and by hand: if T5 had added a file to one side and not
+    // the other, one of these two assertions would still be red.
+    rulesDocument.baseline.totalFiles + 1599
   );
 });
 
