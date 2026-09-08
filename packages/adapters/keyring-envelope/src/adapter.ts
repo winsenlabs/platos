@@ -24,6 +24,7 @@
 // use, and it is available here for the same reason: nothing forces the
 // indirection.
 
+import type { MfaSecretCipher } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   AeadCipher,
   Hasher,
@@ -36,12 +37,27 @@ import type {
 import { createEnvelopeCipher } from "./envelope-cipher.js";
 import type { LegacyKeyInput } from "./legacy-envelope-reader.js";
 import { createLegacyEnvelopeReader } from "./legacy-envelope-reader.js";
+import { createMfaSecretCipher } from "./mfa-secret-cipher.js";
 import type { RootKeyRingInput, RootKeyRingResolver } from "./root-key-ring.js";
 import { createRootKeyRing } from "./root-key-ring.js";
 import { createSecretHasher } from "./secret-hasher.js";
 
 export interface KeyringEnvelopeAdapter extends KeyRing, AeadCipher, Hasher {
   readonly adapterName: "keyring-envelope";
+  /**
+   * WIN-267 A1 — the FOURTH port, and the one that is NOT spread flat.
+   *
+   * The three above collapse into one interface because `state`/`handle`,
+   * `seal`/`open` and `hash`/`verify` are six names with no collision. This one
+   * collides on BOTH of its names: `AeadCipher.seal` takes a `SealRequest` and
+   * answers a `Promise<Result<SealedEnvelope>>`, and `MfaSecretCipher.seal`
+   * takes a string and answers a string, synchronously. Two different contracts
+   * cannot share a property name, so this port arrives as one — which is the
+   * arrangement `postgres-tenancy` uses for the ports whose names would clash,
+   * and which `context-ports.ts` binds BY NAME rather than positionally for
+   * exactly the reason that file gives.
+   */
+  readonly mfaSecrets: MfaSecretCipher;
 }
 
 /**
@@ -99,6 +115,10 @@ export function createKeyringEnvelopeAdapter(
     openLegacy: legacyReader.openLegacy,
     hash: hasher.hash,
     verify: hasher.verify,
+    // WIN-267 A1. Built from the RESOLVER, like the cipher above it, so the MFA
+    // envelope can reach key BYTES and cannot reach `seal`, `openLegacy` or
+    // anything else this directory publishes.
+    mfaSecrets: createMfaSecretCipher(ring),
   };
 }
 

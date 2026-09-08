@@ -13,7 +13,10 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // thirteenth adapter directory. This expectation is derived independently of
 // `scripts/arch/gen-v1-skeleton.mjs` and is maintained separately on purpose,
 // so the two agreeing is evidence rather than a tautology.
-export const EXPECTED_PROJECT_COUNT = 33;
+// WIN-267 A1 33 -> 34. `packages/adapters/node-crypto-digest`, the fourteenth
+// adapter directory: the identity-access `SecretHasher`, which holds no key and
+// no client and therefore could not be a row on an existing directory.
+export const EXPECTED_PROJECT_COUNT = 34;
 // 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
 // `packages/kernel`.
 //
@@ -209,7 +212,20 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // the count by DIFFERENT models -- one walks the discovered graph, one derives a
 // reference per row owner -- and are maintained separately on purpose, so the
 // two can disagree and be caught.
-export const EXPECTED_EDGE_COUNT = 116;
+//
+// WIN-267 A1: 116 -> 119, three edges and each one nameable.
+//   1. `keyring-envelope` -> `identity-access`, the owner edge carrying
+//      `MfaSecretCipher`. A reference is per PACKAGE, so a directory that
+//      already served `secrets` and now serves a second context gains exactly
+//      one — and becomes the layout's second multi-owner directory.
+//   2. `node-crypto-digest` -> `identity-access`, the fourteenth directory's
+//      only owner edge.
+//   3. `apps/core-api` -> `node-crypto-digest`, the composition-root edge every
+//      adapter gets.
+// NO CYCLE. `identity-access` is ADR M0.3 §1's strictest allow-list — the kernel
+// and nothing else — so it names no adapter and cannot name either of these, and
+// `apps/core-api` is the sink of the whole graph.
+export const EXPECTED_EDGE_COUNT = 119;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -380,7 +396,17 @@ export const EXPECTED_ADAPTER_OWNERS = {
   // It gets no row in `EXPECTED_MULTI_OWNER_ADAPTERS` for exactly that reason,
   // and the omission is the claim: the one directory entitled to more than one
   // OWNER is still `postgres-tenancy`, at seventeen.
-  "keyring-envelope": ["secrets"],
+  // WIN-267 A1. A SECOND owner, and the first on this directory that is not
+  // `secrets`: `identity-access`'s `MfaSecretCipher`. One more owner is one more
+  // edge, because a project reference is per package — and it is here rather
+  // than in a fourteenth directory because AES-256 root key bytes have exactly
+  // one custodian in this tree and rule (j2) forbids a second directory from
+  // reaching them. It therefore joins `postgres-tenancy` and `redis-cache` in
+  // `EXPECTED_MULTI_OWNER_ADAPTERS` below, and the sentence that used to say the
+  // omission was the claim is now false and is corrected rather than deleted.
+  "keyring-envelope": ["secrets", "identity-access"],
+  // WIN-267 A1. The fourteenth directory: one owner, one edge, one port.
+  "node-crypto-digest": ["identity-access"],
 };
 
 /**
@@ -391,7 +417,12 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 3 };
+// WIN-267 A1 adds the THIRD entry: `keyring-envelope` at 2 (`secrets` and
+// `identity-access`). It is an exception with a reason no other directory can
+// borrow — it is the sole custodian of AES-256 root key bytes, and rule (j2)
+// `adapter-is-self-contained` makes "put the second port in its own directory"
+// unrepresentable for anything that needs those bytes.
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 3, "keyring-envelope": 2 };
 
 /**
  * Edges an adapter has that are NOT owner edges, declared separately.

@@ -2467,7 +2467,28 @@ export const EXPECTED = Object.freeze({
   // the SECRET REFERENCE has real AES-256-GCM for the first time and five cases
   // in `wire-compatibility.test.ts` say what it does. The FILE count does not
   // move: they were appended to a suite that already existed.
-  "packages/adapters/keyring-envelope": { files: 6, cases: 76 },
+  // WIN-267 A1: keyring-envelope 6 + 1 = 7 files, 76 + 22 = 98 cases. ONE file,
+  // `mfa-secret-cipher.test.ts`, carrying the identity-access `MfaSecretCipher`
+  // this directory gained as a FOURTH port — six sealing cases, nine refusals,
+  // one rotation, four about the legacy columns `auth.ts` wrote and one about
+  // the port's place on the adapter.
+  //
+  // ITS THREE LEGACY CASES ARE THREE `it()`s RATHER THAN A LOOP, for the reason
+  // `wire-compatibility.test.ts`'s three are: this census REFUSES `it()` inside
+  // a `for`, and a construct it cannot count is one that can silently lose a
+  // case. The first draft was a loop and was refused here, which is the gate
+  // working.
+  "packages/adapters/keyring-envelope": { files: 7, cases: 98 },
+  // WIN-267 A1: the FOURTEENTH adapter directory's first row, 0 -> 2 files and
+  // 0 -> 30 cases. `secret-hasher.test.ts` (23) is the differential — three
+  // FIPS 180-4 vectors, seven produced by executing
+  // `internal-packages/tenancy-database/src/auth.ts`, RFC 7636 Appendix B's
+  // PKCE pair, and the equality cases that separate a byte comparison from a
+  // string one and from a hex-decoding one. `oracle-source-anchor.test.ts` (7)
+  // is the standing join: it reads the extraction source OFF DISK and asserts
+  // the expressions those vectors were taken from are still there, so a frozen
+  // vector cannot keep passing while the oracle moves underneath it.
+  "packages/adapters/node-crypto-digest": { files: 2, cases: 30 },
   // M2 INTEGRATION: 132 + 1 (projection's fence split) + 2 (lifecycle's two
   // legacy/key-version suites) = 135 files; 1483 + 2 + 12 = 1497 cases.
   // M2 INTEGRATION: postgres-tenancy 132 + 3 + 1 = 136 files,
@@ -3247,7 +3268,14 @@ export const EXPECTED = Object.freeze({
  * kernel 60 -> 129, outbox 46 -> 68 and eventing 149 -> 157; every other row is
  * carried from the composition of the first three.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7833;
+/*
+ * WIN-267 A1: 7833 + 52 = 7885 over 530 + 3 = 533 files. TWO rows move —
+ * `keyring-envelope` 76 -> 98 over 6 -> 7 files, and `node-crypto-digest`
+ * 0 -> 30 over 0 -> 2 as a new row — and 22 + 30 = 52. Every one of the 52 is
+ * runnable by `pnpm test:v1-packages`: neither adapter needs a container, which
+ * is what a keyless digest and an in-memory key ring are for.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7885;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
