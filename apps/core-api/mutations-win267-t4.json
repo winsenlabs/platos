@@ -1,0 +1,221 @@
+{
+  "$schema-note": "Hand-written, machine-swept. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-267 T4 (M4.1) — serving the one-time-secret mints",
+    "`http/idempotency-policy.ts` classes `required`. One entry per refusal,",
+    "carrying the file it lives in (repository-relative), the EXACT text that",
+    "implements it (`from`), the edit that removes it (`to`), the suites run, and",
+    "the NAMED cases that were SEEN to go red (`kills`).",
+    "",
+    "`kills` IS OBSERVED, NOT INTENDED. `mutation-sweep.mjs` applies each entry,",
+    "runs the named suites through vitest's JSON reporter, records the failing",
+    "case titles and restores the file. An entry whose whole suite goes red is",
+    "reported VACUOUS — a module-load failure proves nothing about any single",
+    "guard — and an entry nothing kills is reported SURVIVED. Both are defects in",
+    "the ledger, not results.",
+    "",
+    "SEPARATE FROM mutations-win267-t3.json, which is the adapter-construction",
+    "ledger. Appending here would have made one file whose entries only make",
+    "sense read against two different dimensions."
+  ],
+  "procedure": [
+    "  node apps/core-api/mutation-sweep.mjs",
+    "",
+    "Suites, by the key each entry names:",
+    "  mint    src/transports/rest/secret-mint.test.ts",
+    "  route   src/http/secret-mint.controller.test.ts",
+    "  policy  src/http/idempotency-policy.test.ts",
+    "",
+    "NONE of these entries needs a database, a container or a network. The mint's",
+    "three contracts are doubles in the `mint` suite by design — what a double",
+    "can witness is which method was called and with what — and the `route` suite",
+    "reads decorator metadata and two committed files off disk. Whether the vault",
+    "actually advances a revision in PostgreSQL is that context's own integration",
+    "suite's claim and is NOT re-asserted here."
+  ],
+  "sweep": {
+    "head": "the tree of the commit that carries this file, on tejas/win-267-t4-mints (base v1 @ 007007f2)",
+    "entries": 12,
+    "killed": 12,
+    "survived": 0,
+    "vacuous": 0
+  },
+  "mutations": [
+    {
+      "name": "T01 the mint asks for a WEAKER access level, so a read-only operator may rotate a live secret",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "    access: \"secret:mutate\",\n  });\n  if (!grant.ok) return err(grant.error);",
+      "to": "    access: \"secret:metadata\",\n  });\n  if (!grant.ok) return err(grant.error);",
+      "suites": [
+        "mint"
+      ],
+      "note": "The headline privilege defect. Nothing about the response shape changes, every status assertion still passes, and the operation becomes callable by an operator with read-only access. Killed by the case that reads the ARGUMENT the tenancy double recorded.",
+      "kills": [
+        "the channel webhook-secret mint the authorization gate asks for secret:mutate and not for a weaker level"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T02 the caller is handed a DIFFERENT secret from the one sealed in the vault",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "    webhookSecret: material,",
+      "to": "    webhookSecret: defaultMintSecret(),",
+      "suites": [
+        "mint"
+      ],
+      "note": "The defect worth the most and the cheapest to introduce: every caller gets a live-looking secret that authenticates nothing, and no status code or shape assertion can see it. Killed by reading the sealed value back out of the command the vault was handed.",
+      "kills": [
+        "the channel webhook-secret mint the rotation mints one secret and hands the caller the same bytes it sealed"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T03 the minted secret is quietly narrowed below the width the frozen oracle mints",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "export const MINTED_SECRET_BYTES = 32;",
+      "to": "export const MINTED_SECRET_BYTES = 16;",
+      "suites": [
+        "mint"
+      ],
+      "note": "A security regression invisible in a diff. The case that kills it reads `randomBytes(N)` off `apps/agent/src/agent-runtime/channels.controller.ts` — a file this dimension does not control — precisely so that narrowing the constant cannot move both sides of the assertion.",
+      "kills": [
+        "the channel webhook-secret mint the rotation mints exactly as wide a secret as the FROZEN ORACLE mints"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T04 an END_USER credential may mint an operator's secret",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "  if (principal.value.tier !== \"OPERATOR\") return err(mintPrincipalNotOperator(principal.value.tier));",
+      "to": "  void mintPrincipalNotOperator;",
+      "suites": [
+        "mint"
+      ],
+      "note": "The tier gate. `identity-access` answers who the caller is; requiring OPERATOR is this operation's own rule, so removing it is invisible to that context's suites.",
+      "kills": [
+        "the channel webhook-secret mint the identity gate refuses an END_USER credential"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T05 an ORGANIZATION-scoped credential is treated as naming an environment vault",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "  return scope.level === \"environment\" ? scope.environmentId : null;",
+      "to": "  return (scope.level === \"environment\" ? scope.environmentId : scope.organizationId) as EnvironmentId;",
+      "suites": [
+        "mint"
+      ],
+      "note": "Deleting the `null` check outright is a COMPILE ERROR, not a defect — `environmentId` would stop satisfying the tenancy call's parameter — so the mutation that models the real hazard is one level up: widen the resolver so an organization-scoped bearer yields an id the vault will happily be keyed by. That is a genuine cross-tenant reach and it type-checks.",
+      "kills": [
+        "the channel webhook-secret mint the identity gate refuses a credential addressed above one environment"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T06 the vault rotates whatever credential happens to be FIRST, not the one this channel names",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "  const credential = listed.value.find((row) => row.name === name);",
+      "to": "  const credential = listed.value[0];",
+      "suites": [
+        "mint"
+      ],
+      "note": "A cross-tenant rotation primitive: one channel's rotate call destroys another channel's live webhook secret. Killed by the case that hands the listing a credential under a DIFFERENT name and expects a refusal.",
+      "kills": [
+        "the channel webhook-secret mint finding the credential looks for the name channelWebhookCredentialName builds"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T07 an empty secret is sealed instead of refused, defeating WIN-259's write-only guard",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "  const held = acceptPlaintext(material);",
+      "to": "  const held = acceptPlaintext(material.length === 0 ? \" \" : material);",
+      "suites": [
+        "mint"
+      ],
+      "note": "Deleting the `!held.ok` branch is a COMPILE ERROR — `held.value` is only present on the ok arm — so the mutation that models the real hazard is the one that makes the guard unreachable by substituting a value it accepts. A generator that failed would then seal a one-character secret instead of refusing, which is the exact outcome WIN-259's write-only guard exists to prevent.",
+      "kills": [
+        "the channel webhook-secret mint the rotation refuses an empty minted secret rather than sealing one"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T08 the three uncomposed-context refusals collapse into ONE name, so an operator cannot tell them apart",
+      "file": "apps/core-api/src/transports/rest/secret-mint.ts",
+      "from": "  if (tenancy === undefined) return err(mintContextUncomposed(\"tenancy\"));",
+      "to": "  if (tenancy === undefined) return err(mintContextUncomposed(\"identity-access\"));",
+      "suites": [
+        "mint"
+      ],
+      "note": "The fifth lesson this programme paid for — two guards returning the same value cannot be told apart. Three different repairs (wire an adapter, fix the caller, create the credential) hide behind one message.",
+      "kills": [
+        "the channel webhook-secret mint refuses before it reaches a context it does not have names tenancy when tenancy is uncomposed"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T09 the 404 echoes the attacker-controlled path parameter back into the log and onto the wire",
+      "file": "apps/core-api/src/transports/rest/mint-errors.ts",
+      "from": "          message: \"This channel connection has no webhook credential to rotate.\",",
+      "to": "          message: `Channel ${_channelConnectionId} has no webhook credential to rotate.`,",
+      "suites": [
+        "mint"
+      ],
+      "note": "The log-forging primitive `transport-errors.ts` refuses to build. Killed by the case that sends a marker id and asserts it appears nowhere in the serialised refusal.",
+      "kills": [
+        "the channel webhook-secret mint finding the credential does NOT echo the channel connection id back in the refusal"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T10 the route loses its version segment and stops being the operation the policy binds",
+      "file": "apps/core-api/src/http/secret-mint.controller.ts",
+      "from": "  @Version(API_VERSION)\n  @Post(\":id/rotate-secret\")",
+      "to": "  @Post(\":id/rotate-secret\")",
+      "suites": [
+        "route"
+      ],
+      "note": "The route would answer at `/api/v1/...` anyway via `defaultVersion`, so nothing about the process visibly breaks — but the mounted template reconstructed from the decorators no longer matches the policy's, which is exactly the drift the join exists to catch.",
+      "kills": [
+        "the secret-mint controller's mounted routes carries the version segment, so `api/v1` appears in NO source literal",
+        "the secret-mint controller's mounted routes serves a template the idempotency policy classes `required`",
+        "the secret-mint controller's mounted routes is classified `required` by the gate's own matcher on a CONCRETE path",
+        "the secret-mint controller's mounted routes serves an operation the FROZEN SURFACE'S generated manifest already has"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T11 the controller is mounted one segment off, so the gate reserves keys for an operation nothing serves",
+      "file": "apps/core-api/src/http/secret-mint.controller.ts",
+      "from": "@Controller(\"agent/channels\")",
+      "to": "@Controller(\"channels\")",
+      "suites": [
+        "route"
+      ],
+      "note": "The failure every behavioural test in the suite is blind to: the handler works perfectly and is unreachable. Killed by both joins — the policy has no such template and neither does the frozen surface's generated manifest.",
+      "kills": [
+        "the secret-mint controller's mounted routes serves a template the idempotency policy classes `required`",
+        "the secret-mint controller's mounted routes is classified `required` by the gate's own matcher on a CONCRETE path",
+        "the secret-mint controller's mounted routes serves an operation the FROZEN SURFACE'S generated manifest already has"
+      ],
+      "verdict": "KILLED"
+    },
+    {
+      "name": "T12 the mint's template is DEMOTED in the policy, so the gate stops requiring a key on it",
+      "file": "apps/core-api/src/http/idempotency-policy.ts",
+      "from": "    template: \"/api/v1/agent/channels/:id/rotate-secret\",\n    class: \"required\",",
+      "to": "    template: \"/api/v1/agent/channels/:id/rotate-secret\",\n    class: \"exempt\",",
+      "suites": [
+        "route",
+        "policy"
+      ],
+      "note": "The mint would still work and would still hand back a secret — it would simply no longer be protected against being run twice on a retry, which is the entire contract. Killed by the route join and by the policy suite's own reconciliation against the manifest.",
+      "kills": [
+        "the secret-mint controller's mounted routes serves a template the idempotency policy classes `required`",
+        "the secret-mint controller's mounted routes is classified `required` by the gate's own matcher on a CONCRETE path",
+        "the policy table against the frozen operation manifest gives every row a reason, and every family M0.4 §2 names a required row"
+      ],
+      "verdict": "KILLED"
+    }
+  ]
+}
