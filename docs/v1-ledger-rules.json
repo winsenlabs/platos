@@ -2082,7 +2082,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 5078,
+    "totalFiles": 5109,
     "areaCounts": {
       "apps-agent": 516,
       "apps-core-api": 68,
@@ -2090,26 +2090,26 @@
       "apps-webapp": 183,
       "docs-content": 737,
       "internal-packages": 1173,
-      "packages": 2101,
-      "root-infra": 292
+      "packages": 2130,
+      "root-infra": 294
     },
     "kindCounts": {
       "asset": 155,
-      "config": 303,
-      "doc": 608,
+      "config": 310,
+      "doc": 610,
       "fixture": 6,
       "generated": 44,
       "legal": 14,
       "lockfile": 3,
       "migration": 895,
-      "source": 2034,
-      "test": 1016
+      "source": 2046,
+      "test": 1026
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1629,
+      "move-refactor": 1631,
       "regenerate": 39,
-      "retain": 3401,
+      "retain": 3430,
       "unresolved": 2
     },
     "protectedCount": 1632,
@@ -2200,11 +2200,11 @@
       "internal-packages.source.typescript": 112,
       "internal-packages.test.suites": 63,
       "internal-packages.tooling.scripts": 9,
-      "packages.adapters.config": 51,
-      "packages.adapters.doc": 13,
+      "packages.adapters.config": 58,
+      "packages.adapters.doc": 15,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 250,
-      "packages.adapters.test": 171,
+      "packages.adapters.source": 260,
+      "packages.adapters.test": 181,
       "packages.config.build": 28,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
@@ -2247,9 +2247,9 @@
       "root-infra.test.harness": 69,
       "root-infra.test.script-suites": 32,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 89,
+      "root-infra.tooling.scripts": 91,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "a82a0bb780e445b72a08dbcd5f9bf5855c07c6ce11ba0cbcb5f23f5e18aef6ec"
+    "classificationSha256": "1ddac8cff3c3c815ab3c64290581dccdf20dfc634c34c7736498678810bd769a"
   }
 }

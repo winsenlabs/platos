@@ -948,7 +948,7 @@
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "mode": "100644",
-      "sha256": "0ac615fdcc3ffe6ee8033512224a2f5c76633431b555731bf12b321886377f59"
+      "sha256": "6fab948a9cb804da6c8a18daddd97f8efcdcedae10954bf12e32cdc527e9d0c8"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -958,7 +958,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "e0faef7c233008913ae6fe4330a5559ee6332129c976f7fa2c2080334b257130"
+      "sha256": "43188c2c9ddd60457e6290c567787669544b55b2a63e7185d4d6a66d97ca0f69"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "6beeaf47c9428af6389eb1dc24e678609ce766f9274560de8f6faf3a8f5d6d1f"
+      "sha256": "b48bb3e8be6f9337f19cca6dd869b13092d705e6eb658a7604e66454e25aca3b"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "e9ce6d62229955bd3e2cffcce71027e130584f82d70d664a1a0217cffef7061d"
+      "sha256": "8daa4bbb9b7a70e54888326a5f1e2b70aed6da4fe6651c4fd598263fe2326ab9"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1063,7 +1063,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "859c7e63202fc4f2eb804f30ab4521f2a94bacade2773982d679a2bffd9a9c21"
+      "sha256": "4e71947333bd146f3fc37de795c980017848eb602be1af4895f1bae62b6467cc"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1073,7 +1073,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "2a337f4c991e2f1159a4195ac24b64fc787e4801d1f8de18c79fe7b754fe285f"
+      "sha256": "a09f851806131d9620988ccff697e2bcb5aeae5dd585b6c488ac539e6daec56a"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1413,7 +1413,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "871811fd57eec7bc350301dc347611bd2b0b6768fd6d6afebf7ded5d2c5ab6f6"
+      "sha256": "88a0bb0d7ec0a0fa48034eedb1444cdfc8ef4772976aa5ca35fa3c2374edc4b8"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "95736e0155eba1c26b4eee6bfd1a415216f0b8beaf1bbd61e462340f684305a1"
+      "sha256": "d4b3fc0c3bd80aa39c84785c889bf2a6661bb349fd220d1357f45701bbeef39a"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3508,7 +3508,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "6df824845d7b255271e25916a4633a7794188779da76c7cbe5b02b20fd278e49"
+      "sha256": "85637f6dbb2a41acebb3bcc9711289a8b3c3fd8d90f9d0b57b78af0c04bd7274"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3663,7 +3663,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "a29e78cda330a991099ba0e922f331f13dd26f6d7f8c086377a493e1dcf3a84f"
+      "sha256": "5c1115bd7ed55c05a22744f82b37dbe7642209c8795aadd488c7b2cd1d75a94e"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3923,7 +3923,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "719d81caab3de006e6154493f3860ee6758a6507a75414b124aa935395e5682e"
+      "sha256": "7ecbb3b41683244d56bdbd243664a30aec1817ce3014719034ebade182d7c7ea"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3968,7 +3968,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "994a6a457ead8dae02c297608058e6fd28b6229511a54e838dc7672c2c1c6320"
+      "sha256": "50a3ab870b163eb86043d7619571a3a3eb14837a52384a618625ac44b85a5274"
     }
   ]
 }
