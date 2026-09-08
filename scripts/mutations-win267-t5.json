@@ -36,7 +36,64 @@
     "root is the cutover's to land, and is NOT claimed here.",
     "",
     "NOTHING IN THIS LEDGER NEEDS A DATABASE, A CONTAINER OR A DOCKER DAEMON.",
-    "Every entry is a file edit plus one `node --test` process."
+    "Every entry is a file edit plus one `node --test` process.",
+    "",
+    "T5's SECOND act is the BFF/canonical-store refusal, and it found a hole no gate",
+    "in this repository could see.",
+    "",
+    "THE BRIEF SAYS: \"The BFF may set secure cookies and perform redirects; it may",
+    "NOT query canonical stores. Prove that boundary with a refusal.\" The IMPORT half",
+    "of that boundary was already enforced — composition-root C1 permits exactly one",
+    "file in the tree to name an adapter package, which is stricter than rule (j) and",
+    "does bind a transport. The REACH half was not enforced at all.",
+    "",
+    "`AppModule` publishes `adapters: SuppliedAdapters`, every transport is handed the",
+    "whole `AppModule`, and `PostgresTenancyAdapter` extends `TenancyRepository`. So a",
+    "BFF transport can write",
+    "",
+    "    app.adapters[\"postgres-tenancy\"].findOrganizationBySlug(slug)",
+    "",
+    "and read the canonical store with NO IMPORT AT ALL. That file was written, placed",
+    "under apps/core-api/src/transports/bff/, and TYPECHECKED against the real project",
+    "graph. Then every gate was run against it:",
+    "",
+    "    audit:arch-boundaries    PASS — blind to it",
+    "    audit:composition-root   PASS — blind to it",
+    "    audit:max-file-lines     PASS — blind to it",
+    "    audit:sole-writer        PASS — blind to it",
+    "    audit:env-access         FAIL — on its FILE-COUNT pin only, not the reach",
+    "",
+    "C8 is the refusal. It is expressed as the PROPERTY rather than as a list of which",
+    "adapters happen to be stores, because a list goes stale the day a directory is",
+    "added: a transport reads the system through `contexts`, and `adapters` is the",
+    "composition root's working material. `app.module.ts` had already made this exact",
+    "argument in prose for the ONE port it lifts out — \"reaching for",
+    "`adapters['redis-cache'].requests` would put an adapter's NAME in a transport\" —",
+    "and nothing enforced it.",
+    "",
+    "WHAT THIS TRANCHE DID NOT BUILD, AND THE MEASUREMENT THAT DECIDED IT.",
+    "",
+    "The identity/tenancy REST surface is NOT in this branch, and the reason is not",
+    "budget. `apps/core-api` cannot authenticate an operator, so every route on that",
+    "surface would have had to take a `userId` from the request — an unauthenticated",
+    "cross-tenant read of every organization in the install.",
+    "",
+    "`identity-access` is the only context that can say who a caller is, and it is not",
+    "composable. `composition/context-ports.ts` declines it and `installation.test.ts`",
+    "already checks the reason against the binding table rather than asserting it:",
+    "`RateLimiter` is bound to `redis-ratelimit`, which is on `UNIMPLEMENTED_ADAPTERS`",
+    "(its `src/adapter.ts` is an 8-line generated interface), and `SecretHasher`,",
+    "`TokenMinter`, `TotpCodeVerifier` and `MfaSecretCipher` appear on NO row of",
+    "`ADAPTER_BINDINGS` at all. Searched independently for this tranche: the only",
+    "implementations of those four in the entire tree are in",
+    "`packages/contexts/identity-access/application/testing.ts` — the context's own",
+    "in-memory doubles. Composing production identity from those is the failure mode",
+    "this programme has already named: \"Test doubles lie: the contexts' own fakes mint",
+    "values PostgreSQL refuses, and every use-case suite passes with them.\"",
+    "",
+    "So the surface is blocked on adapters that are WIN-251/WIN-258's to write, not on",
+    "anything T5 could have done. Building the routes anyway would have produced the",
+    "dead surface WIN-297 declined to create, with a cross-tenant hole in it."
   ],
   "procedure": [
     "PROVE GREEN FIRST. The unmutated tree ran green before and after every entry",
@@ -54,7 +111,9 @@
   "commands": {
     "boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
     "config-fixpoint": "node scripts/arch/gen-dependency-cruiser.mjs --check",
-    "webapp-scan": "node scripts/arch/arch-boundaries.mjs --scan-root apps/webapp/app"
+    "webapp-scan": "node scripts/arch/arch-boundaries.mjs --scan-root apps/webapp/app",
+    "composition": "node --test scripts/arch/composition-root.test.mjs",
+    "composition-audit": "node scripts/arch/composition-root.mjs"
   },
   "mutations": [
     {
@@ -124,6 +183,54 @@
       "killCount": 1,
       "control": "`gen-dependency-cruiser.mjs --check` stays at exit 0 — the generated config is derived from the RULES module, which this mutation does not touch, so the config-fixpoint gate is blind to a parser that has stopped reading half the import forms.",
       "note": "This is what makes the ACCEPTANCE case load-bearing rather than a tautology. Its two sides are gathered by DIFFERENT mechanisms — the checker's import parser, and a byte scan of the same files — so a checker that stops seeing an import shape is caught by the disagreement."
+    },
+    {
+      "name": "M06 C8 loses its destructuring arm and sees only the property-access spelling",
+      "guards": "scripts/arch/composition-root.mjs — adapterPropertyReads. The reach written as `const { adapters } = app` is the one a reader scanning for the word beside a dot would miss, which is exactly why it needs the gate.",
+      "file": "scripts/arch/composition-root.mjs",
+      "from": "the ts.isObjectBindingPattern arm of adapterPropertyReads",
+      "to": "(removed)",
+      "command": "composition",
+      "exit": 1,
+      "kills": [
+        "x C8: a bff transport reaching the canonical store through a destructured parameter fails",
+        "x C8: a bff transport reaching the canonical store through a destructured const fails",
+        "x C8: a bff transport reaching the canonical store through a RENAMED destructure fails"
+      ],
+      "killCount": 3,
+      "control": "audit:composition-root stays at exit 0 on the live tree, because no transport reaches an adapter today in ANY spelling. The rule looks healthy and has lost two thirds of its reach."
+    },
+    {
+      "name": "M07 C8 narrows from the transports directory to the bff seam alone",
+      "guards": "scripts/arch/composition-root.mjs — TRANSPORT_ROOT. Six seams live under transports/; a rule written for the one this tranche had a reason to touch would be re-learned by whoever lands the rest, ws or webhook surface.",
+      "file": "scripts/arch/composition-root.mjs",
+      "from": "const TRANSPORT_ROOT = \"apps/core-api/src/transports/\";",
+      "to": "const TRANSPORT_ROOT = \"apps/core-api/src/transports/bff/\";",
+      "command": "composition",
+      "exit": 1,
+      "kills": [
+        "x C8: the rule binds every transport, not just the bff",
+        "-> every transport seam must be bound: expected 1 to equal 5"
+      ],
+      "killCount": 1,
+      "control": "The five bff-shaped cases stay green and the live audit stays at exit 0. Four fifths of the surface is unguarded and the headline says ok."
+    },
+    {
+      "name": "M08 C8 matches on TEXT instead of the compiler parse",
+      "guards": "scripts/arch/composition-root.mjs — the choice this file already paid for once. Its own `parse` banner records that the first draft used a regex and produced two false positives on the real tree within a minute.",
+      "file": "scripts/arch/composition-root.mjs",
+      "from": "const reaches = adapterPropertyReads(parsed.get(path));",
+      "to": "const reaches = /\\.adapters/u.test(read(path)) ? [\"app.adapters\"] : [];",
+      "command": "composition",
+      "exit": 1,
+      "kills": [
+        "x C8: the rule reads the compiler's parse, so PROSE naming app.adapters is not a violation",
+        "x C8: a bff transport reaching the canonical store through a destructured parameter fails",
+        "x C8: a bff transport reaching the canonical store through a destructured const fails",
+        "x C8: a bff transport reaching the canonical store through a RENAMED destructure fails"
+      ],
+      "killCount": 4,
+      "control": "This mutation fails in BOTH directions at once, which is the point of the entry: it condemns a comment (false positive) and misses all three destructuring reaches (false negative). The same blindness produces both, exactly as the parse banner says."
     }
   ],
   "declared": [
@@ -140,6 +247,13 @@
       "result": "NOT RUN. dependency-cruiser is not a dependency of this workspace — `.dependency-cruiser.js` is a GENERATED artifact whose only gate is `gen-dependency-cruiser.mjs --check`, which compares it to the rules module and never executes it. Adding the tool is a lockfile change this tranche did not take.",
       "why-unfalsifiable": "The claim under test is about a resolver's answer, not about that tool's reporting. It is measured directly instead: Node's own resolver — the same model dependency-cruiser uses through enhanced-resolve — is called from apps/webapp/app/services/ in the CORROBORATION case, and the path it returns is the path the pattern is asserted against. The case names its skip reason when no install is present rather than passing silently.",
       "measured": "internal-packages/tenancy-database/dist/index.js, with no node_modules/ segment."
+    },
+    {
+      "name": "C8 catching a reach through a variable that is not obviously the composed application",
+      "attempted": "`const m = app; m.adapters['postgres-tenancy']` and `function f(x: { adapters: SuppliedAdapters }) { return x.adapters; }` — the reach laundered through an alias or a structural parameter type.",
+      "result": "CAUGHT, but for a reason that is weaker than it looks and is therefore declared rather than counted. C8 refuses ANY `.adapters` property read inside `apps/core-api/src/transports/**`, whatever the receiver is named, so an alias changes nothing. What it does NOT do is prove the receiver is the composed application.",
+      "why-unfalsifiable": "A transport that defined its own unrelated object with an `adapters` property would be refused too — a false positive this rule accepts on purpose. Establishing that a receiver IS the `AppModule` needs the type checker rather than the parser, and a type-directed gate is a different instrument with a different cost. The false positive is cheap (rename the property) and the false NEGATIVE it trades away is not (a canonical-store read no gate can see), which is the direction a containment rule should err in. Stated here rather than left for a reader to discover when the rule fires on something innocent.",
+      "measured": "5 reach spellings caught, 1 prose-only file correctly ignored, live tree at 0 violations across 1580 files."
     }
   ]
 }
