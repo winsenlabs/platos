@@ -500,6 +500,68 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
     expect(fresh).toBe(1);
   }, 180_000);
 
+  test("the queue is FIFO: the oldest run is claimed first", async () => {
+    // FOUND BY MUTATION. Deleting the `ORDER BY` from the claim left every case
+    // green, while the statement's own comment says "`LIMIT` without a total
+    // order takes an arbitrary subset". Without this, a run enqueued first could
+    // sit behind every later one indefinitely — a starvation nothing else here
+    // would notice, because every other case claims the whole queue at once.
+    const scoped = await harness.freshScope();
+    const peer = await harness.seedChain(scoped);
+    const set = harness.base.freshId("00e3");
+    harness.applyPeerRows(
+      `INSERT INTO "GoldenSet" ("id", "environmentId", "agentId", "name", "threadIds", "criterionIds", "createdBy", "createdAt", "updatedAt")
+       VALUES ('${set}', '${scoped.environmentId}', '${peer.agentId}', 'fifo',
+               ARRAY['${peer.threadId}']::text[], ARRAY[]::text[], 'fixture',
+               '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');`,
+    );
+
+    const order: string[] = [];
+    for (const label of ["first", "second", "third"]) {
+      const enqueued = await harness.base.adapter.evalRuns.enqueue({
+        scope: scoped,
+        goldenSetId: asGovernanceIdentifier(set),
+        agentId: asGovernanceIdentifier(peer.agentId),
+        pairs: pairs(1),
+        baselineVersionId: null,
+        requestedBy: asGovernanceIdentifier("fixture-operator"),
+        idempotencyKey: `eval-run/${set}/fifo/${label}`,
+      });
+      if (!enqueued.ok) throw new Error(`unreachable: ${enqueued.error.code}`);
+      order.push(enqueued.value.runId);
+    }
+
+    const seen: string[] = [];
+    for (let round = 0; round < 3; round += 1) {
+      const claim = await harness.base.adapter.evalRuns.claim(`fifo-${String(round)}`, 60_000, 1);
+      if (!claim.ok) throw new Error("unreachable");
+      for (const run of claim.value) {
+        if (order.includes(run.runId)) seen.push(run.runId);
+      }
+    }
+    // The order they were enqueued in, not a set: `toEqual` on an array.
+    expect(seen).toEqual(order);
+  }, 180_000);
+
+  test("a claim that cannot bound anything is refused before a statement is sent", async () => {
+    // FOUND BY MUTATION TOO: the three guards were unreachable from this suite.
+    // A blank owner is the one that matters — it writes `leaseOwner = ''`, and
+    // every OTHER consumer that also passed a blank owner would then pass the
+    // ownership fences on `acknowledge` and `abandon`, which is the whole
+    // protection those two predicates exist for.
+    for (const [owner, leaseMs, limit] of [
+      ["", 60_000, 1],
+      ["consumer", 0, 1],
+      ["consumer", 60_000, 0],
+    ] as const) {
+      const refused = await harness.base.adapter.evalRuns.claim(owner, leaseMs, limit);
+      expect([owner, leaseMs, limit, refused.ok]).toEqual([owner, leaseMs, limit, false]);
+      if (refused.ok) throw new Error("unreachable");
+      expect(refused.error.code).toBe("GOVERNANCE_QUEUE_UNAVAILABLE");
+      expect(String(refused.error.details?.reason)).toContain("eval_run_lease_invalid");
+    }
+  }, 180_000);
+
   test("the claim reads the plan back as pairs, in the order it was planned", async () => {
     const plan = pairs(4);
     const enqueued = await harness.base.adapter.evalRuns.enqueue(
