@@ -547,6 +547,23 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
     }
     // An array, not a set: `toEqual` is what makes this about ORDER.
     expect(seen).toEqual(order);
+
+    // AND THE STATEMENT THE DRIVER ACTUALLY SENT, because the OUTCOME above
+    // cannot separate a claim that ORDERS from one that does not. Deleting the
+    // `ORDER BY` leaves every assertion in this file green: a small heap with no
+    // deletes is scanned in insertion order, so FIFO is what PostgreSQL happens
+    // to do rather than what this statement asks for. The property is not
+    // observable at this scale and manufacturing a scale where it is would be
+    // measuring the planner, so the join is to the SQL on the wire — the same
+    // shape `agents-statements.integration.test.ts` uses for its `FOR UPDATE OF`.
+    harness.base.resetStatements();
+    const observed = await harness.base.adapter.evalRuns.claim("statement-probe", 60_000, 1);
+    if (!observed.ok) throw new Error("unreachable");
+    const sql = harness.base.statements().join(" ");
+    expect(sql).toMatch(/ORDER BY[\s\S]*"createdAt" ASC[\s\S]*"id" ASC/iu);
+    // The two halves of the claim's guarantee, in one statement: the order and
+    // the exclusivity. Neither is observable from the rows alone.
+    expect(sql).toMatch(/FOR UPDATE SKIP LOCKED/iu);
   }, 180_000);
 
   test("a claim that cannot bound anything is refused before a statement is sent", async () => {
