@@ -436,6 +436,70 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
     expect((await readRun(enqueued.value.runId))?.lastError).toBe("judge unreachable");
   }, 180_000);
 
+  test("a consumer past its lease cannot ABANDON the run another consumer now holds", async () => {
+    // FOUND BY MUTATION, NOT BY READING. Deleting `leaseOwner` from
+    // `abandon`'s predicate left every case in this file green, and the
+    // acknowledge half was already pinned — so the two halves of the same rule
+    // had one proof between them. The failure mode is worse on this side:
+    // acknowledging somebody else's attempt marks it DONE, abandoning it puts a
+    // run another consumer is actively scoring back on the queue, so the fan-out
+    // is paid for twice.
+    const enqueued = await harness.base.adapter.evalRuns.enqueue(
+      request({ pairs: pairs(1), idempotencyKey: `eval-run/${goldenSetId}/abandon-fence` }),
+    );
+    if (!enqueued.ok) throw new Error("unreachable");
+
+    const stale = await harness.base.adapter.evalRuns.claim("stale-consumer", 1, 50);
+    if (!stale.ok) throw new Error("unreachable");
+    expect(stale.value.map((run) => run.runId)).toContain(enqueued.value.runId);
+    await new Promise((wait) => setTimeout(wait, 50));
+
+    const holder = await harness.base.adapter.evalRuns.claim("holding-consumer", 60_000, 50);
+    if (!holder.ok) throw new Error("unreachable");
+    expect(holder.value.map((run) => run.runId)).toContain(enqueued.value.runId);
+
+    const stolen = await harness.base.adapter.evalRuns.abandon(
+      enqueued.value.runId,
+      "stale-consumer",
+      "woke up late",
+    );
+    if (!stolen.ok) throw new Error("unreachable");
+    expect(stolen.value).toBe(false);
+    // The holder still holds it: nothing was put back on the queue underneath it.
+    expect((await readRun(enqueued.value.runId))?.lastError).toBeNull();
+    const interloper = await harness.base.adapter.evalRuns.claim("interloper", 60_000, 50);
+    if (!interloper.ok) throw new Error("unreachable");
+    expect(interloper.value.map((run) => run.runId)).not.toContain(enqueued.value.runId);
+  }, 180_000);
+
+  test("sixteen concurrent enqueues of one key cost ONE run", async () => {
+    // The port's own sentence: "a double-clicked `run` button costs one run and
+    // the second answer says `alreadyQueued`". Sequentially that is a read
+    // followed by an insert; CONCURRENTLY the read can miss for every caller at
+    // once, and what decides the outcome is the unique index plus
+    // `skipDuplicates` — a raise there would take the caller's transaction away
+    // along with the answer.
+    const command = request({
+      pairs: pairs(2),
+      idempotencyKey: `eval-run/${goldenSetId}/double-click`,
+    });
+    const answers = await Promise.all(
+      Array.from({ length: 16 }, () => harness.base.adapter.evalRuns.enqueue(command)),
+    );
+
+    const runIds = new Set<string>();
+    let fresh = 0;
+    for (const answer of answers) {
+      if (!answer.ok) throw new Error(`unreachable: ${answer.error.code}`);
+      runIds.add(answer.value.runId);
+      if (!answer.value.alreadyQueued) fresh += 1;
+    }
+    // ONE run, ONE identifier handed to all sixteen, and exactly one of them
+    // told it was the first.
+    expect(runIds.size).toBe(1);
+    expect(fresh).toBe(1);
+  }, 180_000);
+
   test("the claim reads the plan back as pairs, in the order it was planned", async () => {
     const plan = pairs(4);
     const enqueued = await harness.base.adapter.evalRuns.enqueue(
