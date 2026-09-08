@@ -38,6 +38,7 @@
 // suite and a passing one look identical in a CI summary.
 
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
@@ -52,6 +53,17 @@ import { loadPlatformConfiguration } from "../config/platform.js";
 import { createProcessDefaults } from "../runtime/lifecycle.js";
 import { constructAdapters, type AdapterConstruction } from "./adapter-bindings.js";
 import { assembleContextPorts, type ContextPortAssembly } from "./context-ports.js";
+
+const TAXONOMY = JSON.parse(
+  readFileSync(new URL("../../../../docs/error-taxonomy.json", import.meta.url), "utf8"),
+) as { readonly codes: Readonly<Record<string, { readonly status: number }>> };
+
+/** The status the COMMITTED taxonomy records — never a literal written here. */
+function committedStatus(code: string): number {
+  const entry = TAXONOMY.codes[code];
+  if (entry === undefined) throw new Error(`${code} is not in the committed taxonomy`);
+  return entry.status;
+}
 
 const AT = new Date("2026-05-01T09:00:00.000Z");
 const ORGANIZATION = "aaaaaaaa-0001-4000-8000-000000000001";
@@ -325,29 +337,61 @@ describe("an operator authenticating through the composed identity-access", () =
 
     const before = await countSafetyEvents();
 
-    // A POLICY OF ONE REQUEST, SO THE SECOND CALL IS REFUSED. The limiter is a
-    // real Redis running the adapter's own Lua script; the refusal is Redis's
-    // answer, not a flag this file set.
+    // THE POLICY IS THE CONTEXT'S OWN AND THIS FILE CANNOT SET IT.
+    // `RateLimitRequest` carries no `policy` field -- the CONTRACT deliberately
+    // exposes action, identifier, scope and principal and nothing else -- so the
+    // limit that applies is `DEFAULT_POLICIES.MFA_VERIFY`, decided in
+    // `identity-access/domain/rate-limit.ts` and enforced by a Lua script in
+    // real Redis. That is the point: the refusal below is the DOMAIN's number
+    // and the STORE's counter, neither of which this suite controls.
+    //
+    // THE FIRST DRAFT OF THIS CASE PASSED A `policy` AND ASSERTED `ok` WITH A
+    // "limited" OUTCOME. Both halves were wrong and the container said so: the
+    // field is not on the request type, so the default applied; and
+    // `asResult` turns a limited decision into an `err`, so `ok` is FALSE when
+    // the limiter refuses. Recorded rather than quietly fixed -- it is the
+    // difference between reading the contract and assuming it.
     const request = {
-      action: "LOGIN" as const,
+      action: "MFA_VERIFY" as const,
       identifier: "operator@example.test",
       scope: SCOPE,
       principalId: null,
-      policy: { requests: 1, windowMs: 60_000 },
     };
-    const first = await identityAccess.consumeRateLimit(request);
-    expect(first.ok).toBe(true);
-    if (first.ok) expect(first.value.outcome).toBe("allowed");
 
-    const second = await identityAccess.consumeRateLimit(request);
-    expect(second.ok).toBe(true);
-    if (second.ok) expect(second.value.outcome, "the second call must be limited").toBe("limited");
+    let allowed = 0;
+    let refusal: { readonly code: string } | null = null;
+    for (let attempt = 0; attempt < 20 && refusal === null; attempt += 1) {
+      const decision = await identityAccess.consumeRateLimit(request);
+      if (decision.ok) {
+        // `degraded` would mean the limiter was UNREACHABLE and the fail-open
+        // policy applied. That is a different path with a different rule
+        // (`identity.rate_limit.degraded`), and a case that accepted it would be
+        // asserting the sink works when Redis is DOWN -- the opposite of this.
+        expect(decision.value.outcome, "the limiter must be reachable").toBe("allowed");
+        allowed += 1;
+        continue;
+      }
+      refusal = decision.error;
+    }
 
-    // THE ROW, ON THE OBSERVER'S CONNECTION. This is the whole claim of the
-    // suite's second half: the kernel `SafetyEventSink` this process holds is
-    // governance's real implementation over the canonical store, not a recorder.
-    const after = await countSafetyEvents();
-    expect(after, "the refusal must have appended exactly one row").toBe(before + 1);
+    expect(refusal, "the limiter must refuse within twenty attempts").not.toBeNull();
+    expect(refusal?.code).toBe("RATE_LIMITED");
+    // JOINED TO THE COMMITTED TAXONOMY, not to a literal here: the status a
+    // transport will map this to is a fact the repository ships.
+    expect(committedStatus("RATE_LIMITED")).toBe(429);
+    // AND THE COUNT IS THE DOMAIN'S. `DEFAULT_MFA_VERIFY_POLICY` is five
+    // requests and `decide` refuses when the bucket EXCEEDS it, so five pass and
+    // the sixth is refused. A Lua script that reset the window, or an adapter
+    // that counted per call rather than per bucket, changes this number.
+    expect(allowed).toBe(5);
+
+    // THE ROW, COUNTED FROM A PROCESS INSIDE THE CONTAINER. This is the whole
+    // claim of the suite's second half: the kernel `SafetyEventSink` this
+    // process holds is governance's real implementation over the canonical
+    // store, not a recorder that appends to an array.
+    expect(await countSafetyEvents(), "the refusal must have appended exactly one row").toBe(
+      before + 1,
+    );
 
     const rows = await observe(
       `SELECT "detector", "action", "severity", "environmentId"
