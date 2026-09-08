@@ -78,15 +78,25 @@
 // interfaces and cannot be, and every one of them reaches readiness with a cause
 // saying which of those two it is.
 //
-// WHAT REMAINS OPEN, restated to the one sentence that is still true: TWO
-// contexts are composed and only ONE of them can be composed from an adapter.
+// WHAT REMAINS OPEN, restated after WIN-267 T4 because the count moved: THREE
+// contexts are composed and TWO of them are composed from adapters.
 // `tenancy`'s six driven ports and its unit of work are all properties of one
 // `PostgresTenancyAdapter`, so a database URL is the whole of what it needs;
-// `identity-access` still takes a supplied bundle because four of its eight
-// slots — a rate limiter, a secret hasher, a token minter, a TOTP verifier and a
-// MFA cipher — are satisfied by no adapter directory in this tree.
-// `composition/context-ports.ts` states that per context and is the file that
-// assembles what CAN be assembled.
+// `secrets`' eight are that adapter's `secrets`, `secretsVariables` and
+// `unitOfWork` plus `keyring-envelope` under all three of its ports and the two
+// kernel ports this process holds, so a database URL and a root key are the
+// whole of what IT needs. `identity-access` still takes a supplied bundle
+// because four of its eight slots — a rate limiter, a secret hasher, a token
+// minter, a TOTP verifier and a MFA cipher — are satisfied by no adapter
+// directory in this tree. `composition/context-ports.ts` states that per context
+// and is the file that assembles what CAN be assembled.
+//
+// NOTHING WAS BUILT TO MAKE `secrets` COMPOSABLE, which is the finding worth
+// carrying rather than the code. Its bindings were declared in WIN-258 T5, its
+// adapters were constructed in T3, and the only thing between them was a
+// sentence in `context-ports.ts` saying this context published no factory. It
+// publishes `secretsContract`, and it always did. `CONTEXT_FACTORIES` in that
+// file is now the measurement, joined to the packages' own source.
 // ---------------------------------------------------------------------------
 
 import type {
@@ -104,6 +114,8 @@ import type { TenancyContract } from "@platos/context-tenancy";
 import { createTenancyService } from "@platos/context-tenancy/application/index.js";
 import type { TenancyDependencies } from "@platos/context-tenancy/application/index.js";
 import type { SecretsContract } from "@platos/context-secrets";
+import { secretsContract } from "@platos/context-secrets";
+import type { SecretsDependencies } from "@platos/context-secrets/application/index.js";
 import type { ProvidersContract } from "@platos/context-providers";
 import type { AgentsContract } from "@platos/context-agents";
 import type { SkillsContract } from "@platos/context-skills";
@@ -238,6 +250,18 @@ export interface SuppliedContextPorts {
    * the one thing `changeMembershipRole` exists to guarantee.
    */
   readonly tenancy?: TenancyDependencies;
+  /**
+   * WIN-267 T4. The vault's eight slots, all of them off constructed adapters.
+   *
+   * It is a whole `SecretsDependencies` for the same reason tenancy's is a whole
+   * `TenancyDependencies`: five of the eight are not repositories. Two are
+   * canonical stores on `postgres-tenancy`, three are the key ring, the AEAD
+   * cipher and the hasher on `keyring-envelope`, and the last three are the unit
+   * of work and the two kernel ports. An install that supplied only the stores
+   * would produce a vault that cannot seal an envelope, which is the one thing
+   * every mutating operation on this context does.
+   */
+  readonly secrets?: SecretsDependencies;
 }
 
 export interface CompositionInput {
@@ -290,6 +314,9 @@ export function composeApplication(input: CompositionInput): AppModule {
     ...(input.ports?.tenancy === undefined
       ? {}
       : { tenancy: createTenancyService(input.ports.tenancy) }),
+    ...(input.ports?.secrets === undefined
+      ? {}
+      : { secrets: secretsContract(input.ports.secrets) }),
   });
 
   return Object.freeze({

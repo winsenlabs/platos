@@ -325,9 +325,17 @@ describe("the built binary starts, serves and stops", () => {
     expect(body.detail.declaredBindings).toBe(49);
     expect(body.detail.satisfiedBindings).toHaveLength(41);
     expect(body.reason).toBe("41 of 49 adapter bindings are satisfied; 8 are not");
-    // The context composed over a REAL PostgreSQL adapter rather than over a
-    // bundle an install had to hand in — the first one in this programme.
-    expect(body.detail.composedContexts).toEqual(["tenancy"]);
+    // The contexts composed over REAL adapters rather than over a bundle an
+    // install had to hand in. `tenancy` was the first in this programme (T3);
+    // WIN-267 T4 adds `secrets`, which needs the same PostgreSQL adapter plus
+    // the key ring this configuration also declares.
+    //
+    // ASSERTED AS A SET, NOT AS A LIST. The order is the insertion order of the
+    // frozen object `composeApplication` builds, which is a fact about that
+    // function's source and not a fact about the install — pinning it here would
+    // make a harmless reordering of two spread expressions a failure of the
+    // process's readiness contract.
+    expect(new Set(body.detail.composedContexts)).toEqual(new Set(["tenancy", "secrets"]));
     // And every remaining directory says which kind of gap it is.
     expect(body.detail.unwiredAdapters).toHaveLength(8);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
