@@ -4727,10 +4727,10 @@
     }
   ],
   "integration": {
-    "lockfileSha256": "64e965ebebddf3700c12259bec33dc7b35212666cd1499330187202e54c70d9b",
-    "vocabularySha256": "07cce10202c99a474609b3d53964e91cacdcc33a024d2e9a571240f295df57ed",
-    "ledgerRulesSha256": "660c4772f6f1d944fd38ca48acb7f79752e10a18a137909e08260c4892ee3c67",
-    "reachabilitySha256": "900db183ffdf90441514c6d2fc299bb4e48d9ee52617a648dfa84cb72963320d",
+    "lockfileSha256": "a29e78cda330a991099ba0e922f331f13dd26f6d7f8c086377a493e1dcf3a84f",
+    "vocabularySha256": "6df824845d7b255271e25916a4633a7794188779da76c7cbe5b02b20fd278e49",
+    "ledgerRulesSha256": "95736e0155eba1c26b4eee6bfd1a415216f0b8beaf1bbd61e462340f684305a1",
+    "reachabilitySha256": "6beeaf47c9428af6389eb1dc24e678609ce766f9274560de8f6faf3a8f5d6d1f",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

@@ -423,7 +423,8 @@ export const ADAPTERS = [
     port: "SecretHasher",
     owner: "identity-access",
     note: "the stored-verifier digest, the constant-time comparison and the PKCE challenge",
-  // WIN-267 A2. THE FOURTEENTH DIRECTORY, and the second one added since the §15
+  },
+  // WIN-267 A2. THE FIFTEENTH DIRECTORY, and the second one added since the §15
   // amendment — for a reason §15 does not cover at all.
   //
   // §15 is a rule about a VENDOR CLIENT: one client is one directory, however
