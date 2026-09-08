@@ -937,6 +937,7 @@ export const ADOPTED_PROJECTS = [
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
   "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
+  "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
 ];
 
 // ---------------------------------------------------------------------------
@@ -1207,6 +1208,13 @@ const PROJECT_TEST_SCRIPTS = {
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "packages/adapters/redis-cache":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  // WIN-267 A3 adds `packages/adapters/redis-ratelimit` for the same reason and
+  // with a byte-identical run: it ships a real-Redis suite that proves two
+  // concurrent consumers cannot both take the last token of a window, which
+  // needs a container and therefore a daemon `pnpm test:v1-packages` does not
+  // have. Byte-identical to the two above so the three cannot drift.
+  "packages/adapters/redis-ratelimit":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "apps/core-api":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
@@ -1333,6 +1341,19 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   "redis-cache": {
     ioredis: "^5.6.1",
   },
+  // WIN-267 A3. The SECOND of the three redis-* directories to hold a client,
+  // and it is a second CLIENT rather than a second copy of one: ADR M0.3 §4
+  // gives `redis-ratelimit` its own directory with "one namespaced keyspace, one
+  // owner", so the limiter's `platos:identity:ratelimit:` keyspace and the
+  // cache's `platos:jobs:idem:`/`platos:http:idem:` are held by different
+  // objects with different lifetimes. `ioredis` is deliberately absent from
+  // SDK_CONTAINMENT for exactly that reason — the ADR's own layout has three
+  // homes for it, and a containment rule naming one would refuse the other two.
+  // The specifier is byte-identical to `redis-cache`'s and to `apps/agent`'s, so
+  // pnpm resolves it to the entry already in pnpm-lock.yaml (ioredis@5.10.1).
+  "redis-ratelimit": {
+    ioredis: "^5.6.1",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -1364,6 +1385,14 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // SBOM of something that never starts a container. Byte-identical to the
   // specifier already in the lockfile (@testcontainers/redis@10.28.0).
   "redis-cache": {
+    "@testcontainers/redis": "^10.28.0",
+  },
+  // WIN-267 A3. The Redis container the atomicity of the last token is proved
+  // against. A DEV dependency for the reason the two above are, and with the
+  // same specifier: a sequential test cannot tell an atomic `INCR` from a
+  // `GET`-then-`SET`, so the only proof of the port's own "MUST make the
+  // read-and-increment atomic" is real concurrent consumers on a real server.
+  "redis-ratelimit": {
     "@testcontainers/redis": "^10.28.0",
   },
 };

@@ -340,8 +340,22 @@ export const VIOLATION_CODES = Object.freeze({
  * from the composed `AppModule`. That is the property this gate exists to keep
  * true as `apps/core-api` grows a transport: the six sections still arrive
  * through `readProcessEnvironment()` and nothing added a second door.
+ *
+ * WIN-267 A3 adds SEVEN, all of them under
+ * `packages/adapters/redis-ratelimit/src/`, and every one is named so this pin
+ * stays a claim rather than a number somebody raised until the gate went quiet:
+ * `client.ts` (the one holder of the Redis client), `rate-limiter.ts` (the port
+ * implementation), `oracle-source.ts` (the differential's reader),
+ * `harness.ts` (the three connections its suites drive), and the three suites
+ * `rate-limiter.test.ts`, `oracle-differential.test.ts` and
+ * `ratelimit.integration.test.ts`.
+ *
+ * 1580 + 7 = 1587. The DECLARED table is unmoved: not one of the seven reads
+ * `process.env`. The limiter takes its URL from `AdapterConstructionInput`,
+ * which is `stores.redis` off the composed configuration — the same door
+ * `redis-cache` uses and the reason this adapter needed no second one.
  */
-export const EXPECTED_FILE_COUNT = 1580;
+export const EXPECTED_FILE_COUNT = 1587;
 
 function listSourceFiles(root) {
   const found = [];

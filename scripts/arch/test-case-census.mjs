@@ -2476,7 +2476,18 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/postgres-tenancy": { files: 136, cases: 1506 },
   // WIN-260 adopts this project and gives it its first suites.
   "packages/adapters/redis-cache": { files: 4, cases: 65 },
-  "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
+  // WIN-267 A3 adopts this project and gives it its first suites. THREE files,
+  // 26 cases: `rate-limiter.test.ts` 14 (the key, the window, the count, the
+  // TTL clamp and the fail-closed refusal), `oracle-differential.test.ts` 5
+  // (the extraction source's own expressions, lifted and evaluated), and
+  // `ratelimit.integration.test.ts` 7 (the atomicity claim, which needs a real
+  // server and is excluded from the laptop run).
+  //
+  // The differential's five sweep the three policies INSIDE each case rather
+  // than declaring an `it()` per policy, because this census refuses a case
+  // declared in a loop — the count would otherwise be one nobody could derive by
+  // reading, which is the property the whole file exists to keep.
+  "packages/adapters/redis-ratelimit": { files: 3, cases: 26 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
   "packages/contexts/channels": { files: 15, cases: 269 },
@@ -3247,7 +3258,31 @@ export const EXPECTED = Object.freeze({
  * kernel 60 -> 129, outbox 46 -> 68 and eventing 149 -> 157; every other row is
  * carried from the composition of the first three.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7833;
+/*
+ * WIN-267 A3 DELTA (M4.1), the RateLimiter adapter. ONE package moves:
+ *
+ *   packages/adapters/redis-ratelimit 0 -> 3 files, 0 -> 26 cases;
+ *   7833 + 26 = 7859 total.
+ *
+ * It is the FIRST row under `packages/adapters` to go from zero to a real
+ * count — every previous adapter adoption started from a row that already held
+ * something — which is why the FILE term moves by three rather than by a
+ * widening: 530 + 3 = 533.
+ *
+ * 14 + 5 + 7 = 26, checked against what
+ * `pnpm --filter @platos/adapter-redis-ratelimit exec vitest run` prints. Seven
+ * of the twenty-six carry `.integration.` in the name and need a container, so
+ * the laptop run reports 19 and the full run 26 — the split this census does
+ * not model and the package's own `test` script does.
+ *
+ * No other row moves. `apps/core-api` gained no case: `installation.test.ts` is
+ * outside PACKAGE_ROOTS and, in any event, its three moved pins are edits to
+ * cases that already existed. `packages/contexts/identity-access` gained a
+ * domain error factory and four re-exports and not one case — a widened file is
+ * not a new one, and the new code's behaviour is asserted where it is USED,
+ * in the adapter.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7859;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

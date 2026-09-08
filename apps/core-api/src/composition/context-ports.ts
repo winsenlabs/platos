@@ -41,18 +41,29 @@
 // whole of what it needs.
 //
 // `identity-access` is the near miss, and naming why is the point of this note.
-// Its bundle has eight slots. `repository` is on the same adapter — WIN-258
-// tranche 2 put it there — and `logger`, `clock` and `ids` are kernel ports this
-// process already holds. The other four have NO implementation in this
-// repository: `rateLimiter` is `packages/adapters/redis-ratelimit`, whose
-// `src/adapter.ts` is still a generated interface; `hasher`, `minter`, `totp` and
-// `cipher` are named on the context's own ports and satisfied by no adapter
-// directory at all — `keyring-envelope`'s `Hasher` is `secrets`' port, a
-// different type in a different package, and nothing implements
-// `SecretHasher`, `TokenMinter`, `TotpCodeVerifier` or `MfaSecretCipher`. So the
-// context is still composed from a SUPPLIED bundle, exactly as it was, and this
-// file returns none for it rather than assembling seven slots out of eight and
-// leaving the eighth to crash at first sign-in.
+//
+// WIN-267 A3 COUNTED THE SLOTS AND THE OLD SENTENCE WAS WRONG THREE TIMES OVER,
+// which is recorded here rather than quietly corrected because a figure repeated
+// without being verified is how this programme has been wrong before. It read
+// "its bundle has eight slots ... the other four have NO implementation" and
+// then named FIVE of them. `application/dependencies.ts` declares TEN:
+// `repository`, `rateLimiter`, `hasher`, `minter`, `totp` and `cipher` — the SIX
+// driven ports its own `ports/index.ts` header enumerates — plus FOUR kernel
+// ports, `clock`, `ids`, `safety` and `logger`. The old sentence omitted `safety`
+// from the kernel list, which is the third error and the one that mattered: the
+// kernel `SafetyEventSink` is implemented by `governance`, which this root does
+// not compose, so it is not a port "this process already holds" either.
+//
+// AFTER THIS TRANCHE, FOUR OF THE SIX ARE STILL UNSATISFIED. `repository` is on
+// the ORM adapter (WIN-258 tranche 2) and `rateLimiter` is now
+// `packages/adapters/redis-ratelimit`, constructed from the same
+// `PLATOS_STORE_REDIS_URL` the cache is. `hasher`, `minter`, `totp` and `cipher`
+// are named on the context's own ports and satisfied by no adapter directory at
+// all — `keyring-envelope`'s `Hasher` is `secrets`' port, a different type in a
+// different package, and nothing implements `SecretHasher`, `TokenMinter`,
+// `TotpCodeVerifier` or `MfaSecretCipher`. So the context is still composed from
+// a SUPPLIED bundle, and this file returns none for it rather than assembling
+// six slots out of ten and leaving the rest to crash at first sign-in.
 //
 // THAT IS WHY `APPLICATION_ENTRY_PROJECTS` GAINS NO ENTRY IN THIS TRANCHE. The
 // generator's own rule for that list is "the contexts `apps/core-api` ACTUALLY
@@ -94,10 +105,12 @@ export interface ContextPortAssembly {
  * asserted, so this sentence and the check cannot drift apart silently.
  */
 export const IDENTITY_ACCESS_UNASSEMBLED =
-  "four of its eight driven ports have no implementation: RateLimiter is" +
-  " packages/adapters/redis-ratelimit, a generated interface, and SecretHasher," +
+  "four of its six driven ports have no implementation: SecretHasher," +
   " TokenMinter, TotpCodeVerifier and MfaSecretCipher are satisfied by no adapter" +
-  " directory";
+  " directory. RateLimiter is packages/adapters/redis-ratelimit, which WIN-267 A3" +
+  " turned from a generated interface into a constructed adapter, and the kernel" +
+  " SafetyEventSink its bundle also names is implemented by governance, which this" +
+  " root does not compose";
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.

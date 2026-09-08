@@ -155,7 +155,10 @@ describe("constructing the adapters an install declared", () => {
     // group of its own. An install with no database gets neither, and the reason
     // says so instead of naming a variable that would not have helped.
     const withoutDatabase = construct({ ...NOTHING_DECLARED, PLATOS_STORE_REDIS_URL: "redis://127.0.0.1:1" });
-    expect(Object.keys(withoutDatabase.adapters)).toEqual(["redis-cache"]);
+    // WIN-267 A3: `PLATOS_STORE_REDIS_URL` now builds TWO directories, because
+    // ADR M0.3 §4 gives the limiter its own keyspace and its own client. One
+    // variable, two objects, two lifetimes.
+    expect(Object.keys(withoutDatabase.adapters)).toEqual(["redis-cache", "redis-ratelimit"]);
     const declined = withoutDatabase.unwired.find((row) => row.adapter === "outbox");
     expect(declined?.cause).toBe("configuration");
     expect(declined?.reason).toContain(BUILT_FROM_ANOTHER_ADAPTER["outbox"]);
@@ -283,20 +286,25 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 41 of 49, and the 8 that remain are exactly the bindings with no implementation", () => {
+  it("reports 42 of 49, and the 7 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
-    // future tranche that implements one of the eight directories sees both
+    // future tranche that implements one of the remaining directories sees both
     // move together and knows which it changed.
+    //
+    // WIN-267 A3 IS THE FIRST TRANCHE TO MOVE IT, and this is the arithmetic:
+    // eight unimplemented directories held one binding each, `redis-ratelimit`
+    // gained an implementation, so 8 - 1 = 7 remain and 49 - 7 = 42 are
+    // satisfied. 41 -> 42 and 8 -> 7 in the same commit; either alone is drift.
     const { verdict } = readiness(FULLY_DECLARED);
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
-    expect(unimplementable).toHaveLength(8);
-    expect(verdict.detail.satisfiedBindings).toHaveLength(41);
+    expect(unimplementable).toHaveLength(7);
+    expect(verdict.detail.satisfiedBindings).toHaveLength(42);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(8);
-    // STILL RED, AND HONESTLY SO. Eight ports have no implementation in this
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
+    // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
     // build, so this process cannot serve the routes that need them. Going green
     // on "everything this install could have wired" would be comparing the
     // supply to itself.
@@ -320,7 +328,9 @@ describe("readiness over what was actually constructed", () => {
     // and this case stayed green. Both ends are compared now, and to each other
     // rather than to a literal, so a row dropped anywhere between them shows up.
     const { app, verdict, construction } = readiness(FULLY_DECLARED);
-    expect(construction.unwired).toHaveLength(8);
+    // 8 -> 7 (WIN-267 A3): one row per directory NOT built, and
+    // `redis-ratelimit` is now built. The same subtraction as the case above.
+    expect(construction.unwired).toHaveLength(7);
     expect(app.unwired).toEqual(construction.unwired);
     expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });
@@ -353,18 +363,25 @@ describe("the context bundles those adapters can satisfy", () => {
   });
 
   it("does not compose identity-access, and its reason holds against the binding table", () => {
-    const { assembly, app } = readiness(FULLY_DECLARED);
+    const { assembly, app, construction } = readiness(FULLY_DECLARED);
     expect(app.contexts.identityAccess).toBeUndefined();
     const declined = assembly.unassembled.find((row) => row.context === "identity-access");
     expect(declined?.reason).toBe(IDENTITY_ACCESS_UNASSEMBLED);
 
-    // THE REASON IS CHECKED, NOT TAKEN ON TRUST. `RateLimiter` is a declared
-    // binding on a directory with no implementation, and the other four ports
-    // appear on no row of the table at all — so no adapter in this tree could
+    // THE REASON IS CHECKED, NOT TAKEN ON TRUST. The four remaining ports appear
+    // on no row of the binding table at all — so no adapter in this tree could
     // satisfy them however an install were configured.
+    //
+    // WIN-267 A3 FLIPPED THE `RateLimiter` HALF, and the assertion flips with it
+    // rather than being deleted: the binding is still declared against
+    // `redis-ratelimit`, that directory is no longer unimplemented, and a fully
+    // declared install now CONSTRUCTS it. The reason string must therefore stop
+    // naming it as missing, which is what the `toBe` above already checks.
     const rateLimiter = ADAPTER_BINDINGS.filter((binding) => binding.port === "RateLimiter");
     expect(rateLimiter.map((binding) => binding.adapter)).toEqual(["redis-ratelimit"]);
-    expect(UNIMPLEMENTED_ADAPTERS).toContain("redis-ratelimit");
+    expect(UNIMPLEMENTED_ADAPTERS).not.toContain("redis-ratelimit");
+    expect(construction.adapters["redis-ratelimit"]).toBeDefined();
+    expect(declined?.reason).not.toContain("RateLimiter is a generated interface");
     const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
     for (const port of ["SecretHasher", "TokenMinter", "TotpCodeVerifier", "MfaSecretCipher"]) {
       expect(ports, `${port} must be bound to no adapter`).not.toContain(port);

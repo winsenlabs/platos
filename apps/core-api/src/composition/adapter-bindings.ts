@@ -126,6 +126,11 @@ import type { DurableRuntimeAdapter } from "@platos/adapter-durable-runtime";
 import type { ClickhouseObservabilityAdapter } from "@platos/adapter-clickhouse-observability";
 import type { ObjectstoreMinioAdapter } from "@platos/adapter-objectstore-minio";
 import type { RedisRatelimitAdapter } from "@platos/adapter-redis-ratelimit";
+// WIN-267 A3 — the SIXTH value import, and the first that turns a generated
+// placeholder into a constructed object. `redis-ratelimit` left
+// `UNIMPLEMENTED_ADAPTERS` in the same commit, which rule (C7) checks against the
+// directory's own source in both directions.
+import { createRedisRatelimitAdapter } from "@platos/adapter-redis-ratelimit";
 import type { RedisCacheAdapter } from "@platos/adapter-redis-cache";
 import { createRedisCacheAdapter } from "@platos/adapter-redis-cache";
 import type { RedisStreamsAdapter } from "@platos/adapter-redis-streams";
@@ -992,7 +997,11 @@ export const UNIMPLEMENTED_ADAPTERS: readonly AdapterName[] = Object.freeze([
   "durable-runtime",
   "clickhouse-observability",
   "objectstore-minio",
-  "redis-ratelimit",
+  // WIN-267 A3 — `redis-ratelimit` LEFT THIS LIST. It is the first directory
+  // ever to do so, and rule (C7) is what makes the removal honest rather than
+  // optimistic: it reads this list back and joins it to the filesystem, so a
+  // directory dropped from here without gaining a `create*Adapter` fails, and
+  // one that gained a factory and stayed here fails too.
   "redis-streams",
   "channel-slack",
   "notifier-email",
@@ -1138,10 +1147,30 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
       "configuration",
       "PLATOS_STORE_REDIS_URL is not set, so the stores.redis group is undeclared",
     );
+    // WIN-267 A3 — the SAME variable declines BOTH Redis directories, and they
+    // are two declines rather than one because they are two objects. ADR M0.3 §4
+    // gives `redis-ratelimit` its own directory with "one namespaced keyspace,
+    // one owner": the limiter holds `platos:identity:ratelimit:` and the cache
+    // holds `platos:jobs:idem:` and `platos:http:idem:`, and an install that
+    // wired one and not the other would be a state this table has to be able to
+    // report.
+    decline(
+      "redis-ratelimit",
+      "configuration",
+      "PLATOS_STORE_REDIS_URL is not set, so the stores.redis group is undeclared",
+    );
   } else {
     const adapter = createRedisCacheAdapter({ url: redis.url });
     adapters["redis-cache"] = adapter;
     closers.push(() => adapter.close());
+    // A SECOND CLIENT AGAINST THE SAME URL, DELIBERATELY. Sharing one connection
+    // between the two directories would make `adapter-is-self-contained` a
+    // sentence nobody could check — the limiter would hold an object built by
+    // another adapter — and it would tie two lifetimes together, so closing the
+    // cache would silently disarm authentication rate limiting.
+    const limiter = createRedisRatelimitAdapter({ url: redis.url });
+    adapters["redis-ratelimit"] = limiter;
+    closers.push(() => limiter.close());
   }
 
   const encryption = input.security.encryption;

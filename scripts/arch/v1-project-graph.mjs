@@ -282,6 +282,22 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   "packages/adapters/redis-cache": {
     ioredis: "^5.6.1",
   },
+  // WIN-267 A3. The SECOND directory to declare the Redis client, and it is a
+  // widening of the entry above rather than a breach of it. `ioredis` is
+  // deliberately absent from `SDK_CONTAINMENT` in
+  // scripts/arch/boundary-rules.mjs — ADR M0.3 §4 lists THREE `redis-*`
+  // directories, each with "one namespaced keyspace, one owner", so a
+  // containment rule naming one home would refuse the other two. What §4 asks
+  // for is one CLIENT per directory, which is what `src/client.ts` in each of
+  // them is, and this table is where that second client becomes a reviewed line
+  // rather than an accident. Range byte-identical to the entry above and to
+  // `apps/agent`'s, so the lockfile gained seven lines and no new resolution.
+  //
+  // `@testcontainers/redis` is deliberately NOT here, for the reason the entry
+  // above states: it is a devDependency and this axis is about what SHIPS.
+  "packages/adapters/redis-ratelimit": {
+    ioredis: "^5.6.1",
+  },
   "packages/adapters/model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",

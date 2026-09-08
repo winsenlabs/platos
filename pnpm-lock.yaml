@@ -1167,6 +1167,13 @@ importers:
       '@platos/context-identity-access':
         specifier: workspace:*
         version: link:../../contexts/identity-access
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
+    devDependencies:
+      '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
 
   packages/adapters/redis-streams:
     dependencies:
