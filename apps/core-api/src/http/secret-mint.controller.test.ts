@@ -28,7 +28,9 @@ import { readFileSync } from "node:fs";
 import { RequestMethod } from "@nestjs/common";
 import { describe, expect, it } from "vitest";
 
+import type { AppModule } from "../app.module.js";
 import { API_PREFIX, API_VERSION } from "./api-surface.js";
+import { CoreApiHttpModule } from "./http.module.js";
 import { classifyRequest, OPERATION_POLICIES } from "./idempotency-policy.js";
 import { SecretMintController } from "./secret-mint.controller.js";
 
@@ -83,9 +85,9 @@ interface MountedRoute {
  * `@Version` reconstructs without the version segment and stops matching the
  * policy — which is the failure, not a false pass.
  */
-function mountedRoutes(): readonly MountedRoute[] {
-  const controllerPath = Reflect.getMetadata(PATH_METADATA, SecretMintController) as string;
-  const prototype = SecretMintController.prototype as unknown as Record<string, unknown>;
+function mountedRoutes(controller: Function = SecretMintController): readonly MountedRoute[] {
+  const controllerPath = Reflect.getMetadata(PATH_METADATA, controller) as string;
+  const prototype = controller.prototype as unknown as Record<string, unknown>;
   const routes: MountedRoute[] = [];
   for (const property of Object.getOwnPropertyNames(prototype)) {
     if (property === "constructor") continue;
@@ -170,5 +172,103 @@ describe("the secret-mint controller's mounted routes", () => {
     for (const route of routes) {
       expect([...known]).toContain(`${route.method} ${route.template}`);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// HOW MANY OF THE EIGHT ARE SERVED, AS A MEASUREMENT RATHER THAN A SENTENCE.
+//
+// WIN-260 (d) closes when all eight `required` mints have a handler in
+// `apps/core-api`. A commit message claiming "one of eight" is worth nothing the
+// day after it is written, so the split is pinned HERE, derived from the
+// module's OWN controller list and the policy's OWN table:
+//
+//   * every `required` template is either SERVED (some controller in
+//     `CoreApiHttpModule` mounts it) or UNSERVED and named below with the issue
+//     that owns it;
+//   * the two sets together are exactly the eight, so a mint cannot be dropped
+//     from both and disappear.
+//
+// A tranche that serves another mint FAILS this suite until it moves the pin,
+// which is the point: progress against (d) becomes visible in a diff instead of
+// being asserted in prose.
+// ---------------------------------------------------------------------------
+
+/**
+ * Why each unserved mint is unserved, and whose ground it is.
+ *
+ * NOT A LIST OF EXCUSES — a list of ADDRESSES. Each value names the issue that
+ * owns the route, so a reader chasing "why is (d) still open" gets four issue
+ * numbers rather than a shrug.
+ */
+const UNSERVED: Readonly<Record<string, string>> = Object.freeze({
+  "POST /api/v1/agent/access-key":
+    "WIN-261 (M3.1) — AgentController.createOrRotateAccessKey; decomposing that 7k-line controller is its ground, not T4's.",
+  "POST /api/v1/agent/entities/:entityId/regenerate-secret":
+    "WIN-261 (M3.1) — AgentController.regenerateEntitySecret; same owner, same reason.",
+  "POST /mcp/platform/tokens": "M4.2 (MCP) — the MCP transport's own ground.",
+  "POST /mcp/entity/:entityId/tokens": "M4.2 (MCP) — the MCP transport's own ground.",
+  "POST /api/v1/entities/:entityId/session-tokens":
+    "T4's, and BLOCKED: minting a bearer session token needs identity-access's TokenMinter port, which no adapter directory satisfies. Serving it would add a route that can only ever answer MINT_CONTEXT_UNCOMPOSED.",
+  "POST /api/v1/public/guest-token":
+    "T4's, and BLOCKED on the same TokenMinter port, which is identity-access's alone.",
+  "POST /api/v1/agent/providers/keys/:id/rotate-secret":
+    "T4's, and BLOCKED: providers.rotateProviderKeySecret IS published, but the providers context is unassembled — ProviderProbeCache is bound to no adapter (see PROVIDERS_UNASSEMBLED).",
+});
+
+/** Every controller the process actually registers, from the module itself. */
+function registeredControllers(): readonly Function[] {
+  const stub = { contexts: {}, configuration: {} } as unknown as AppModule;
+  const dynamic = CoreApiHttpModule.forApplication(stub, { phase: "starting" });
+  return (dynamic.controllers ?? []) as readonly Function[];
+}
+
+describe("the eight one-time-secret mints, and how many have a handler", () => {
+  const required = OPERATION_POLICIES.filter((policy) => policy.class === "required").map(
+    (policy) => `${policy.method} ${policy.template}`,
+  );
+  const mounted = new Set(
+    registeredControllers()
+      .flatMap((controller) => mountedRoutes(controller))
+      .map((route) => `${route.method} ${route.template}`),
+  );
+  const served = required.filter((operation) => mounted.has(operation));
+  const unserved = required.filter((operation) => !mounted.has(operation));
+
+  it("still has exactly EIGHT required mints, so the denominator cannot drift", () => {
+    // Joined to the policy table. If a ninth mint is classed `required` — or one
+    // of the eight is demoted — this fails before any count below is read.
+    expect(required).toHaveLength(8);
+  });
+
+  it("serves exactly the mints this tranche took, and no others by accident", () => {
+    // THE PIN. T4 took ONE. Serving a second without moving this line is the
+    // failure; so is silently losing the one that is served.
+    expect(served).toEqual(["POST /api/v1/agent/channels/:id/rotate-secret"]);
+  });
+
+  it("names an owning issue for every mint that is NOT served", () => {
+    // Every unserved mint must be ACCOUNTED FOR. A route that is neither served
+    // nor named here is a mint nobody has taken and nobody has admitted to.
+    for (const operation of unserved) {
+      expect(Object.keys(UNSERVED)).toContain(operation);
+      expect(UNSERVED[operation]?.length ?? 0).toBeGreaterThan(20);
+    }
+  });
+
+  it("accounts for all eight exactly once, so none is dropped from both sets", () => {
+    expect(served.length + unserved.length).toBe(8);
+    expect(new Set([...served, ...unserved]).size).toBe(8);
+    // And the excuse table describes the unserved set exactly — no stale entry
+    // for a mint that has since been served, and no missing one.
+    expect(new Set(Object.keys(UNSERVED))).toEqual(new Set(unserved));
+  });
+
+  it("leaves WIN-260 (d) OPEN, and says so in a way that fails when it closes", () => {
+    // The honest statement of where the clause stands, written so that CLOSING
+    // it breaks this case. A tranche that serves the eighth mint must come here
+    // and delete this — which is the only kind of "not done yet" worth having.
+    expect(served.length).toBeLessThan(8);
+    expect(served).toHaveLength(1);
   });
 });

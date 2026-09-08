@@ -180,7 +180,11 @@
         "the secret-mint controller's mounted routes carries the version segment, so `api/v1` appears in NO source literal",
         "the secret-mint controller's mounted routes serves a template the idempotency policy classes `required`",
         "the secret-mint controller's mounted routes is classified `required` by the gate's own matcher on a CONCRETE path",
-        "the secret-mint controller's mounted routes serves an operation the FROZEN SURFACE'S generated manifest already has"
+        "the secret-mint controller's mounted routes serves an operation the FROZEN SURFACE'S generated manifest already has",
+        "the eight one-time-secret mints, and how many have a handler serves exactly the mints this tranche took, and no others by accident",
+        "the eight one-time-secret mints, and how many have a handler names an owning issue for every mint that is NOT served",
+        "the eight one-time-secret mints, and how many have a handler accounts for all eight exactly once, so none is dropped from both sets",
+        "the eight one-time-secret mints, and how many have a handler leaves WIN-260 (d) OPEN, and says so in a way that fails when it closes"
       ],
       "verdict": "KILLED"
     },
@@ -196,7 +200,11 @@
       "kills": [
         "the secret-mint controller's mounted routes serves a template the idempotency policy classes `required`",
         "the secret-mint controller's mounted routes is classified `required` by the gate's own matcher on a CONCRETE path",
-        "the secret-mint controller's mounted routes serves an operation the FROZEN SURFACE'S generated manifest already has"
+        "the secret-mint controller's mounted routes serves an operation the FROZEN SURFACE'S generated manifest already has",
+        "the eight one-time-secret mints, and how many have a handler serves exactly the mints this tranche took, and no others by accident",
+        "the eight one-time-secret mints, and how many have a handler names an owning issue for every mint that is NOT served",
+        "the eight one-time-secret mints, and how many have a handler accounts for all eight exactly once, so none is dropped from both sets",
+        "the eight one-time-secret mints, and how many have a handler leaves WIN-260 (d) OPEN, and says so in a way that fails when it closes"
       ],
       "verdict": "KILLED"
     },
@@ -213,6 +221,10 @@
       "kills": [
         "the secret-mint controller's mounted routes serves a template the idempotency policy classes `required`",
         "the secret-mint controller's mounted routes is classified `required` by the gate's own matcher on a CONCRETE path",
+        "the eight one-time-secret mints, and how many have a handler still has exactly EIGHT required mints, so the denominator cannot drift",
+        "the eight one-time-secret mints, and how many have a handler serves exactly the mints this tranche took, and no others by accident",
+        "the eight one-time-secret mints, and how many have a handler accounts for all eight exactly once, so none is dropped from both sets",
+        "the eight one-time-secret mints, and how many have a handler leaves WIN-260 (d) OPEN, and says so in a way that fails when it closes",
         "the policy table against the frozen operation manifest gives every row a reason, and every family M0.4 §2 names a required row"
       ],
       "verdict": "KILLED"
