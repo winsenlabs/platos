@@ -1674,10 +1674,11 @@ test("every V1 package has a pinned row, including the ones with no tests yet", 
   // count is the second, independent one: a row added to EXPECTED for a package
   // that does not exist, or a package added with no row, fails the first, and a
   // pair of those errors that cancelled would fail this.
-  // WIN-267 A1 31 -> 32. `packages/adapters/node-crypto-digest`, the fourteenth
-  // adapter directory and the second V1 package added since this census was
-  // written.
-  assert.equal(live.length, 32);
+  // WIN-267 A1 31 -> 32 (`packages/adapters/node-crypto-digest`) and A2
+  // 32 -> 33 (`packages/adapters/tokenmint-totp`): the fourteenth and fifteenth
+  // adapter directories, and the second and third V1 packages added since this
+  // census was written.
+  assert.equal(live.length, 33);
 });
 
 test("the key-management adapter is pinned at what vitest prints", () => {

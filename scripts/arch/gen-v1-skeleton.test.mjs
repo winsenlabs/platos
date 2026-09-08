@@ -663,17 +663,17 @@ test("the live adapter table passes its own check, and the fixture copy of it do
 // anything, which is what §15's consolidation rule is about. The refusal this
 // case proves is unchanged in any rename: a directory beyond the declared count
 // still fails.
-test("§15 refusal: a FIFTEENTH adapter directory fails, even though bindings may exceed fourteen", () => {
+test("§15 refusal: a SIXTEENTH adapter directory fails, even though bindings may exceed fifteen", () => {
   const errors = checkAdapterTable([
     ...LIVE_ADAPTERS,
     { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
   ]);
-  assert.ok(errors.some((error) => error.includes("names 14 concrete adapter directories; ADAPTERS has 15")));
+  assert.ok(errors.some((error) => error.includes("names 15 concrete adapter directories; ADAPTERS has 16")));
 });
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FIFTY-SECOND binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTY-FOURTH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -689,16 +689,12 @@ test("§15 refusal: a FIFTY-SECOND binding fails, even though a directory may ho
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
-  // WIN-267 A2 moved it to fifty-one, and again NOT in `postgres-tenancy`: the
-  // fiftieth and fifty-first are `tokenmint-totp:TokenMinter` and
-  // `tokenmint-totp:TotpCodeVerifier`, the first two bindings in the layout on a
-  // directory that holds no vendor client at all.
   const errors = checkAdapterTable(widened);
   // WIN-267 moved it to fifty-three, by four rows across three directories:
   // `keyring-envelope:MfaSecretCipher` on an existing one,
   // `node-crypto-digest:SecretHasher` on a new one, and `tokenmint-totp`'s two
   // on another new one.
-  assert.ok(errors.some((error) => error.includes("declares 51 adapter bindings; ADAPTERS flattens to 52")));
+  assert.ok(errors.some((error) => error.includes("declares 53 adapter bindings; ADAPTERS flattens to 54")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

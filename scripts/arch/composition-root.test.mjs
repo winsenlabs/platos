@@ -152,7 +152,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // consolidation rule is about sharing one; `tokenmint-totp` is a new directory
   // carrying TWO bindings, because the port that MINTS a TOTP secret and the
   // port that READS it must share one base32 alphabet.
-  assert.equal(audit.bindingCount, 51);
+  assert.equal(audit.bindingCount, 53);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -186,7 +186,7 @@ test("the live repository satisfies both the boundary rules and the composition-
   // parameter that belongs with the keys) does not carry: this port is
   // synchronous and can never have one. `tokenmint-totp` holds no rows, no
   // database client and no key material either.
-  assert.equal(ADAPTERS.length, 14);
+  assert.equal(ADAPTERS.length, 15);
 });
 
 // ---------------------------------------------------------------------------
@@ -340,7 +340,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 52 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -497,13 +497,13 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FIFTY-ONE bindings, across fourteen directories", () => {
+test("the binding-table parser reads all FIFTY-THREE bindings, across fifteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 51);
-  assert.equal(ADAPTERS.length, 14);
+  assert.equal(bindings.length, 53);
+  assert.equal(ADAPTERS.length, 15);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
@@ -538,7 +538,7 @@ test("the binding-table parser reads all FIFTY-ONE bindings, across fourteen dir
   // the flattening, and must not vanish from the directory set.
   assert.equal(entries.filter((entry) => entry.adapter === "node-crypto-digest").length, 1);
   assert.equal(entries.filter((entry) => entry.adapter === "tokenmint-totp").length, 2);
-  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 14);
+  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 15);
 });
 
 test("the parser reads a WRAPPED entry, not only a one-line one", () => {
@@ -583,7 +583,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 51 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 53 declared bindings")
     )
   );
 });
@@ -614,7 +614,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 52 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {
