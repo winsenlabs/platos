@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "a6a36a432f24922c57e59e8f6bdc44ef5081a2001625d7adb2a50ab326d44e02",
+  "evidenceSha256": "e0b1ced9b41ce8d3592c00919e4bf783167ab29897a893c7298619605b4eb421",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "7f2d129b29a7751e8a2b2683e20a40b71d6437124d10ee95a074586ec3dd3bc5",
+    "aggregateSha256": "5d25a5c0a4f9a227922f1f50f36ba1f661f6ca74baacc304714d5f14da74cd4f",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2471,7 +2471,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.ts",
-        "sha256": "d4f95194deca63f5081707987ca4bff136accc00721f8bd5a683335593a0e467"
+        "sha256": "503f0d372ebc1ed96687320d12eb6670638cfd5eac10af9576007caa97da74f3"
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
@@ -2479,11 +2479,11 @@
       },
       {
         "path": "apps/core-api/src/composition/context-ports.ts",
-        "sha256": "6955461cf02bb4b61fe22ddcda73d2fdec60b7673e1c028b906031be9eadfc9a"
+        "sha256": "e6b0fade8d27d6ae012d23eeaa026c3324937c1ae73ddbbd4a14d9e49eae49b6"
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
-        "sha256": "2a8daea97cb510a21c65c525e3c1905f251232bf234de9edca6773a1d623a1c9"
+        "sha256": "4d48beb4a61469228a6f04fcd665b35302db54030f60f13703e8a579d8a8e173"
       },
       {
         "path": "apps/core-api/src/composition/registry.ts",
@@ -2611,7 +2611,7 @@
       },
       {
         "path": "apps/core-api/src/process.test.ts",
-        "sha256": "93162e0f717bddc70c7cc1b493a1489c36407736c9e5fe416ccce53fa7cb9abd"
+        "sha256": "18255775006c5052542ddf9475bfe738f0a80ae9861e2aafde5d398d769406d4"
       },
       {
         "path": "apps/core-api/src/runtime/correlation.test.ts",
@@ -16783,7 +16783,7 @@
       },
       {
         "path": "packages/contexts/secrets/contracts/index.ts",
-        "sha256": "e41376fd44fab80b4f11505fb53375921001d1b68e801a150ca2553e0815f2c8"
+        "sha256": "b96ea71c811e109e94ed065ea295507ab6eb695fef881aa21e98673fadd23f85"
       },
       {
         "path": "packages/contexts/secrets/domain/access-rules.ts",
@@ -53771,7 +53771,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 108,
+              "line": 110,
               "specifier": "@platos/context-agents"
             },
             {
@@ -54523,7 +54523,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "1872e1322a3fb0497a4489f2c29f267ba7c24a40138ac44c1952baa61b68365d",
+      "evidenceSha256": "799413c03a36c9017f5d004a15270da44f40a20baae53ba05d815d8898c1bcd6",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -54868,7 +54868,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 112,
+              "line": 114,
               "specifier": "@platos/context-channels"
             },
             {
@@ -55420,7 +55420,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "93bb33aac9d3e4ebbbea9cde20407f7c1ea755bfa717ea68c10e83f86d51ae51",
+      "evidenceSha256": "e6b28d5e3b55689e3f882edc0548d1e213fe1e95928f862a9ad81d12146dbc8a",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -55734,7 +55734,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 118,
+              "line": 120,
               "specifier": "@platos/context-conversations"
             },
             {
@@ -56438,7 +56438,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "c1bc75ad539b486bbcff7e646782e82484ccaa1ea36bb68c64e8fe7e3b51b46c",
+      "evidenceSha256": "04d422f8c8cde4a7946db141e01b2150c62c67ca13679aabeea4a5b3acfc9640",
       "manifestSha256": "218c32b5c5b423bdf39bf215d6365c07bbd746fca291a1b0609da87e2cebd4d8",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -56836,7 +56836,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 115,
+              "line": 117,
               "specifier": "@platos/context-cost-monitoring"
             },
             {
@@ -57521,7 +57521,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "8f4b2fb36bbcf27211bb719f339dd3dbb5d37e8e32c4a2077543e211d98896ca",
+      "evidenceSha256": "3822420485a4f340a72a05b640b71ab047b5d1225396aec537bf269e25ebbe75",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -57845,7 +57845,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 119,
+              "line": 121,
               "specifier": "@platos/context-eventing"
             },
             {
@@ -58377,7 +58377,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "67ca2b023d2b8de03a74ad1355314d6545ef386df76305b8bb8f953465d57ba2",
+      "evidenceSha256": "bf40c9610a7e4c397470d94378f4ee48903fa774efd2a0bab6a42e825477885d",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -58816,7 +58816,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 113,
+              "line": 115,
               "specifier": "@platos/context-files"
             },
             {
@@ -59568,7 +59568,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "70e72e5d7445936fbc8d900838b872ba1f90959947da78fb0f24e30376b9f849",
+      "evidenceSha256": "455eb83b1aea4c83cbc0b9d72c93b14af2a8c4e975437654c6b7f8f9b778ad09",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -59882,7 +59882,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 116,
+              "line": 118,
               "specifier": "@platos/context-governance"
             },
             {
@@ -60612,7 +60612,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "ca7212925685d3ac511bc45407ecd5c03915ed00179bc24b673f341f2439a5c3",
+      "evidenceSha256": "1626341503f495ecf0a6bbf390884e3a31793269f1e162b1f358fbabb475d8d3",
       "manifestSha256": "c6c9eb63ca632d454591f95884a0e51f26305204031c2cdd7167c50f646b895e",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -63625,7 +63625,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 117,
+              "line": 119,
               "specifier": "@platos/context-jobs"
             },
             {
@@ -64315,7 +64315,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "dc7b7b645202a5a7970414f4a0d0cd53fc11761a6291436cf31bd1db72bc192d",
+      "evidenceSha256": "7c0cdbeb7d6bb2946b4b6b41fe35a97b5d21f02d368adb357e61d90ad4137919",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -64673,7 +64673,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 111,
+              "line": 113,
               "specifier": "@platos/context-memory"
             },
             {
@@ -65515,7 +65515,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "adeb3f6701e8c1e8e6c345679e1ae9f95acde7e072452e671a6ca7544073f532",
+      "evidenceSha256": "6146f6f6054ba73a54b2040bd2592aa383d05efb11c0de2d2d8d49b24da18f64",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -65850,7 +65850,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 114,
+              "line": 116,
               "specifier": "@platos/context-observability"
             },
             {
@@ -66338,7 +66338,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "b3941e2df8a369c5480f4f3771321a74566df3eda2230d5353c42d874f88403b",
+      "evidenceSha256": "c17112856c454e618eeb0765acbe71fc2f52cd17cc6d4ac29eca9b6edeeab435",
       "manifestSha256": "09d858b658a326451d6bdd026af44df9ba5d1b195ce0c71deffc0cb972afc6d7",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -66642,7 +66642,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 120,
+              "line": 122,
               "specifier": "@platos/context-privacy"
             },
             {
@@ -67168,7 +67168,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "2496aed2a26454cfff1192fe65b7bb1cd8c2de6ee83f07d613a20be7dfe4a4a1",
+      "evidenceSha256": "fcde7b2dc96b67c51de6037107a13d7d1a4786512d76e0141376c0b025bd1055",
       "manifestSha256": "8d9032044280327b5d3d795c13039f78e41ca275c9d6bce9f093b794a97473f1",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -67746,7 +67746,13 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 107,
+              "line": 108,
+              "specifier": "@platos/context-providers"
+            },
+            {
+              "file": "apps/core-api/src/app.module.ts",
+              "from": "apps/core-api",
+              "line": 109,
               "specifier": "@platos/context-providers"
             },
             {
@@ -67754,6 +67760,12 @@
               "from": "apps/core-api",
               "line": 78,
               "specifier": "@platos/context-providers/application/ports/index.js"
+            },
+            {
+              "file": "apps/core-api/src/composition/context-ports.ts",
+              "from": "apps/core-api",
+              "line": 124,
+              "specifier": "@platos/context-providers"
             },
             {
               "file": "packages/adapters/model-router-providers/src/adapter.ts",
@@ -68060,6 +68072,10 @@
               "apps/core-api/src/composition/adapter-bindings.ts"
             ],
             [
+              "apps/core-api",
+              "apps/core-api/src/composition/context-ports.ts"
+            ],
+            [
               "packages/adapters/model-router-providers",
               "packages/adapters/model-router-providers/src/adapter.ts"
             ],
@@ -68235,6 +68251,11 @@
         "testsFixtures": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "apps/core-api/src/composition/installation.test.ts",
+              "kind": "reference",
+              "line": 559
+            },
             {
               "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
               "kind": "reference",
@@ -68508,6 +68529,10 @@
           ],
           "reversePaths": [
             [
+              "apps/core-api/src/composition/installation.test.ts",
+              "apps/core-api/src/composition/installation.test.ts"
+            ],
+            [
               "packages/adapters/model-router-providers/src/adapter.test.ts",
               "packages/adapters/model-router-providers/src/adapter.test.ts"
             ],
@@ -68725,6 +68750,7 @@
             ]
           ],
           "roots": [
+            "apps/core-api/src/composition/installation.test.ts",
             "packages/adapters/model-router-providers/src/adapter.test.ts",
             "packages/adapters/model-router-providers/src/generation.test.ts",
             "packages/adapters/model-router-providers/src/messages.test.ts",
@@ -69113,7 +69139,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "54f26271966afade358817f18807d4d4ae887c8d1762f5ba126e7bf0815b2b71",
+      "evidenceSha256": "3108c79605d212b5e2dab3184a5afb7d1dce3bbfc0cd588c44fcb4b33592007b",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -69752,6 +69778,12 @@
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
               "line": 106,
+              "specifier": "@platos/context-secrets"
+            },
+            {
+              "file": "apps/core-api/src/app.module.ts",
+              "from": "apps/core-api",
+              "line": 107,
               "specifier": "@platos/context-secrets"
             },
             {
@@ -71089,7 +71121,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ea3567733a64edde0bb1114ed6bd066d2efe0e6eabbf50c90ada7ada045ec905",
+      "evidenceSha256": "5d8762608de614b5aa1337b99fc07efe00abd7ec7dbf8a0aad0cd9e355f5cead",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -71485,7 +71517,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 109,
+              "line": 111,
               "specifier": "@platos/context-skills"
             },
             {
@@ -72185,7 +72217,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "b5cde9de1841d595b93993f17a790fbb3c8027e13a91bfd332db1f9cb484bbaa",
+      "evidenceSha256": "8ac592d4817073e0ceaefd80f8b26442978722428a6ea26920c0f78f2a45d66d",
       "manifestSha256": "f1e56a67ae6b3d846f0887d8a17048ad19d4e0356bf7f38d1056b58507a2e7e2",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -75347,7 +75379,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 110,
+              "line": 112,
               "specifier": "@platos/context-tools"
             },
             {
@@ -76106,7 +76138,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "1f3c24ccdd58b587e1cd3dac972c96bbf2341a28094f04a1d2ab3f0be8fa3093",
+      "evidenceSha256": "b0abdc59bd68436bd5146413912c836cb7d55ac4b0458e9f13139dbec2bf517d",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -78888,7 +78920,7 @@
             {
               "file": "apps/core-api/src/composition/context-ports.ts",
               "from": "apps/core-api",
-              "line": 106,
+              "line": 116,
               "specifier": "@platos/kernel"
             },
             {
@@ -88834,7 +88866,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "710f5a482e7c4f9827b55af02b7cd6b9fce970ab420ce023c53fefc5d169d7f7",
+      "evidenceSha256": "63da857b878602a681a548304ebf9c7fdd9ceec4c6f7780fcc48f0b16506d1ce",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

@@ -12,6 +12,8 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
+import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/context-providers";
+
 import { composeApplication } from "../app.module.js";
 import { loadPlatformConfiguration } from "../config/platform.js";
 import { evaluateReadiness } from "../health/readiness.js";
@@ -27,7 +29,6 @@ import {
 import {
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
-  PROVIDERS_UNASSEMBLED,
   assembleContextPorts,
 } from "./context-ports.js";
 
@@ -550,17 +551,24 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(app.contexts.identityAccess).toBeUndefined();
   });
 
-  it("does not compose providers either, and for a reason that is NOT a missing adapter", () => {
-    const { assembly, construction } = readiness(FULLY_DECLARED);
-    const declined = assembly.unassembled.find((row) => row.context === "providers");
-    expect(declined?.reason).toBe(PROVIDERS_UNASSEMBLED);
+  it("COMPOSES providers, and every one of its ten slots is checked", () => {
+    // WIN-267. This context was declared unassembled for a reason that was FALSE
+    // at v1 and stayed false through A3: the sentence said `providers` "publishes
+    // its use cases one by one and no factory that assembles its whole contract",
+    // and `providersContract` has been exported from
+    // `packages/contexts/providers/contracts/index.ts` — the `.` entry every
+    // consumer already imports — since before that sentence was written. So did
+    // `secretsContract`, which is what the same sentence claimed about the peer.
+    // Both are composed now, and the case that recorded the refusal is replaced
+    // by the case that proves the composition rather than deleted.
+    const { app, assembly, construction } = readiness(FULLY_DECLARED);
+    expect(app.contexts.providers).toBeDefined();
+    expect(app.contexts.secrets).toBeDefined();
+    expect(assembly.unassembled.map((row) => row.context)).not.toContain("providers");
+    expect(assembly.unassembled.map((row) => row.context)).not.toContain("secrets");
 
-    // THE REASON IS CHECKED, NOT TAKEN ON TRUST, and this one is checked in the
-    // POSITIVE direction: the sentence claims every driven port `providers`
-    // names now has an implementation, so all three must be bound to a directory
-    // this install actually constructed. A sentence that said "the adapters are
-    // there" while one of them was still a placeholder would be exactly the
-    // overclaim this file exists to catch.
+    // ITS THREE DRIVEN PORTS, JOINED TO THE BINDING TABLE BY OWNER rather than
+    // to a list this file wrote — the same join the identity-access case makes.
     const built = new Set(Object.keys(construction.adapters));
     const providerPorts = ADAPTER_BINDINGS.filter((binding) => binding.owner === "providers");
     expect(providerPorts.map((binding) => binding.port).sort()).toEqual([
@@ -571,9 +579,70 @@ describe("the context bundles those adapters can satisfy", () => {
     for (const binding of providerPorts) {
       expect(built, `${binding.port} is bound to ${binding.adapter}`).toContain(binding.adapter);
     }
-    // And the probe cache is the SAME object the cache adapter carries, under
-    // its own name -- the identity check the tenancy bundle above makes, for the
-    // one port A3 added.
-    expect(construction.adapters["redis-cache"]?.probes).toBeDefined();
+
+    // IDENTITY, NOT SHAPE, for every slot an adapter carries. `repository` is the
+    // ORM adapter spread in; `probeCache` is the cache adapter's OWN property and
+    // not the adapter; `modelRouter` is its own directory; and `unitOfWork` is
+    // the ORM's. A bundle assembled positionally would type-check with
+    // `probeCache` and `modelRouter` transposed.
+    const bundle = assembly.ports.providers;
+    expect(bundle?.repository).toBe(construction.adapters["postgres-tenancy"]);
+    expect(bundle?.modelRouter).toBe(construction.adapters["model-router-providers"]);
+    expect(bundle?.probeCache).toBe(construction.adapters["redis-cache"]?.probes);
+    expect(bundle?.unitOfWork).toBe(construction.adapters["postgres-tenancy"]?.unitOfWork);
+    // The two DOMAIN VALUES are the published defaults, taken by identity so a
+    // copy could not pass for the catalogue an installation may replace.
+    expect(bundle?.policy).toBe(DEFAULT_PROVIDERS_POLICY);
+    expect(bundle?.catalogue).toBe(DEFAULT_PROVIDER_CATALOGUE);
+
+    // AND THE TWO PEERS, WHICH ARE THE HALF `context-ports.ts` CANNOT SUPPLY.
+    // They are contexts, so `app.module.ts` fills them from the contracts it has
+    // just built — and the assembled bundle must NOT carry them, or this root
+    // would be holding a context in the file that holds only adapters.
+    expect(bundle).not.toHaveProperty("tenancy");
+    expect(bundle).not.toHaveProperty("secrets");
+    expect(app.contexts.providers?.name).toBe("providers");
+    expect(app.contexts.secrets?.name).toBe("secrets");
+  });
+
+  it("composes secrets from the two directories that carry its ports, by name", () => {
+    const { app, assembly, construction } = readiness(FULLY_DECLARED);
+    const postgres = construction.adapters["postgres-tenancy"];
+    const keyring = construction.adapters["keyring-envelope"];
+    expect(app.contexts.secrets).toBeDefined();
+
+    // THE TWO STORE PORTS ARE DIFFERENT PROPERTIES OF THE SAME ADAPTER, and the
+    // three cryptography ports are the SAME OBJECT under three names — which is
+    // exactly why identity is asserted here. `keyRing`, `cipher` and `hasher`
+    // are structurally satisfied by one `KeyringEnvelopeAdapter`, so a bundle
+    // that had swapped any two of them would compile and this is the only place
+    // that could notice.
+    const bundle = assembly.ports.secrets;
+    expect(bundle?.repository).toBe(postgres?.secrets);
+    expect(bundle?.variables).toBe(postgres?.secretsVariables);
+    expect(bundle?.keyRing).toBe(keyring);
+    expect(bundle?.cipher).toBe(keyring);
+    expect(bundle?.hasher).toBe(keyring);
+    expect(bundle?.unitOfWork).toBe(postgres?.unitOfWork);
+  });
+
+  it("declines secrets and providers by NAMING the directory that is missing", () => {
+    // FALSIFIABILITY, FROM THE OTHER SIDE. An install with a database and no
+    // root key ring composes tenancy and neither of the two new contexts, and
+    // the reason must say WHICH directory — "secrets is not composed" is not an
+    // operator-actionable sentence, and neither is one that blames the context.
+    const { app, assembly } = readiness({
+      PLATOS_ENVIRONMENT: "test",
+      PLATOS_CORE_API_PORT: "0",
+      PLATOS_STORE_POSTGRES_URL: "postgresql://platos:password-here@db.internal:5432/platos_control",
+    });
+    expect(app.contexts.tenancy).toBeDefined();
+    expect(app.contexts.secrets).toBeUndefined();
+    expect(app.contexts.providers).toBeUndefined();
+    const reasons = new Map(assembly.unassembled.map((row) => [row.context, row.reason]));
+    expect(reasons.get("secrets")).toContain("keyring-envelope");
+    expect(reasons.get("providers")).toContain("model-router-providers");
+    expect(reasons.get("providers")).toContain("redis-cache");
+    expect(reasons.get("secrets")).not.toContain("postgres-tenancy");
   });
 });
