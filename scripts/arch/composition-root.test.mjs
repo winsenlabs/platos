@@ -142,7 +142,10 @@ test("the live repository satisfies both the boundary rules and the composition-
   // RequestIdempotency, both rows on an EXISTING directory) = 49 bindings across
   // THIRTEEN directories. The two pins move by different amounts, which is the
   // whole reason they are pinned separately.
-  assert.equal(audit.bindingCount, 49);
+  // WIN-267 A2: 49 + 2 = 51 bindings across FOURTEEN directories. Both pins
+  // move this time, and by different amounts -- one directory, two bindings --
+  // which is again why they are pinned separately.
+  assert.equal(audit.bindingCount, 51);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -166,7 +169,12 @@ test("the live repository satisfies both the boundary rules and the composition-
   // drawn. `keyring-envelope` holds no rows and no database client: it holds the
   // AES-256 root keys, which ADR M0.3 §15's "one vendor client, one directory"
   // does not reach.
-  assert.equal(ADAPTERS.length, 13);
+  //
+  // WIN-267 A2 MOVES IT AGAIN, 13 -> 14, and further outside §15 than the
+  // thirteenth went. `tokenmint-totp` holds no rows, no database client and no
+  // key material either: it is `node:crypto` and the one base32 alphabet that
+  // the port MINTING a TOTP secret and the port READING it back must share.
+  assert.equal(ADAPTERS.length, 14);
 });
 
 // ---------------------------------------------------------------------------
@@ -320,7 +328,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -417,14 +425,19 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // the real tree. This reads BOTH sides off the live repository.
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const listed = parseUnimplementedAdapters(source);
-  assert.equal(listed.length, 8, "eight of the thirteen directories are still generated interfaces");
+  assert.equal(listed.length, 8, "eight of the fourteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
+  // WIN-267 A2 adds the SIXTH constructible directory. The unimplemented count
+  // is UNCHANGED at eight, which is this tranche's claim from the other side: it
+  // built a new directory rather than filling in a generated one, so the two
+  // numbers move independently and the identity below still holds.
   assert.deepEqual(constructible, [
     "keyring-envelope",
     "model-router-providers",
     "outbox",
     "postgres-tenancy",
     "redis-cache",
+    "tokenmint-totp",
   ]);
   assert.equal(listed.length + constructible.length, ADAPTERS.length);
 });
@@ -469,13 +482,13 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FORTY-NINE bindings, across thirteen directories", () => {
+test("the binding-table parser reads all FIFTY-ONE bindings, across fourteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 49);
-  assert.equal(ADAPTERS.length, 13);
+  assert.equal(bindings.length, 51);
+  assert.equal(ADAPTERS.length, 14);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
@@ -503,7 +516,10 @@ test("the binding-table parser reads all FORTY-NINE bindings, across thirteen di
   // check the postgres row above gets: a change that collapsed its three
   // cryptography bindings back to one row per directory cannot pass here.
   assert.equal(entries.filter((entry) => entry.adapter === "keyring-envelope").length, 3);
-  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 13);
+  // WIN-267 A2 13 -> 14. `tokenmint-totp` appears TWICE in the flattening and
+  // once in the directory set, the same both-halves check for the same reason.
+  assert.equal(entries.filter((entry) => entry.adapter === "tokenmint-totp").length, 2);
+  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 14);
 });
 
 test("the parser reads a WRAPPED entry, not only a one-line one", () => {
@@ -548,7 +564,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 49 declared bindings")
+      problem.includes("binding table names outbox -> memory Cache, which is not one of the 51 declared bindings")
     )
   );
 });
@@ -579,7 +595,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+  assert.ok(problems.some((problem) => problem.includes("declares 50 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

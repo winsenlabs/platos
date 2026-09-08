@@ -1159,7 +1159,10 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     // 1568 + 2 + 10 = 1580. `scripts/arch/env-access.mjs` pins the same census
     // independently, which is why the two are allowed to disagree and be caught.
-    assert.equal(result.fileCount, 1580, "the generated V1 source census must stay exact");
+    // WIN-267 A2: 1580 + 12 = 1592, the fourteenth adapter directory's five
+    // source modules and seven suites. `scripts/arch/env-access.mjs` pins the
+    // same census independently and moves with it.
+    assert.equal(result.fileCount, 1592, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1170,7 +1173,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // WIN-267 T3: composition/context-ports.ts + composition/installation.test.ts.
       2 +
       // WIN-267 T2 chassis: transports/rest 5, http 4, runtime 1.
-      5 + 4 + 1);
+      5 + 4 + 1 +
+      // WIN-267 A2: the fourteenth adapter directory, 5 source + 7 suites.
+      12);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

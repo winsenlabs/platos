@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "7b10acefe863d4af27b4f3d63a25939010cd63b611add00ef8f6ab968d1d9f6f"
+      "sha256": "de2d1cd99a71c689750f0e1a9222ed40823b248c3ffd7047243e618f57d18c76"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3663,7 +3663,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "64e965ebebddf3700c12259bec33dc7b35212666cd1499330187202e54c70d9b"
+      "sha256": "4fe183a55792667a637bab0373833716a17d97af39a021b803379baecd3e5bb6"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3923,7 +3923,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "9ad7a90f70834b0bd6407b6938cb6b693aaaa4bc1c017e69da7c7314d0e3bd14"
+      "sha256": "43eb28cbdeb3718fdc1adb85f97a0e99d7f6c919311503634404a5d2ee3c3050"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

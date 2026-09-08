@@ -102,7 +102,14 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // than computed.
   // M2 INTEGRATION: 33 projects (only WIN-259 adds one; WIN-260 adopts one that
   // already existed) and 111 + 2 + 3 = 116 edges. Still READ BACK, not computed.
-  assert.match(output, /33 V1 projects and 116 project edges/u);
+  //
+  // WIN-267 A2: 34 projects and 118 edges. The fourteenth adapter directory
+  // brings TWO edges for TWO bindings, and they are two for the reason
+  // `keyring-envelope`'s three bindings were still only two edges: one owner
+  // reference (`tokenmint-totp` -> `identity-access`) plus the composition
+  // root's, because a project reference is per PACKAGE. Read back from the
+  // generator's own output, not computed here.
+  assert.match(output, /34 V1 projects and 118 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -165,7 +172,9 @@ test("the scaffolding tier is exactly 100 files and is only ever manifests, tsco
   // scaffolding files and two source placeholders; 97 + 3 = 100 and
   // 104 + 2 = 106. The literal is asserted BESIDE the two constants above so a
   // pin moved without the tree moving, or the reverse, cannot pass here.
-  assert.equal(total, 206, "an unadopted skeleton is the M1 tree plus the thirteenth adapter");
+  // WIN-267 A2 206 -> 211, by the same arithmetic for the fourteenth:
+  // 100 + 3 = 103 and 106 + 2 = 108.
+  assert.equal(total, 211, "an unadopted skeleton is the M1 tree plus the fourteenth adapter");
 
   const scaffoldingPaths = [...files.keys()].filter((path) => isScaffoldingPath(path));
   assert.equal(scaffoldingPaths.length, EXPECTED_SCAFFOLDING_FILE_COUNT);
@@ -608,6 +617,14 @@ const LIVE_ADAPTERS = [
       { port: "AeadCipher", owner: "secrets" },
       { port: "Hasher", owner: "secrets" },
     ], note: "n" },
+  // WIN-267 A2. The fixture copy carries the fourteenth directory and its two
+  // bindings, for the reason the thirteenth's three are here: this copy is the
+  // non-vacuity anchor every refusal below stands on, so a copy that is one
+  // directory or two bindings behind the tree makes the refusal COUNTS wrong
+  // rather than the refusals.
+  { dir: "tokenmint-totp", port: "TokenMinter", owner: "identity-access", additional: [
+      { port: "TotpCodeVerifier", owner: "identity-access" },
+    ], note: "n" },
 ];
 
 test("the live adapter table passes its own check, and the fixture copy of it does too", () => {
@@ -624,17 +641,24 @@ test("the live adapter table passes its own check, and the fixture copy of it do
 // holds no rows and no database client — `keyring-envelope`, which holds the
 // AES-256 root keys the ORM's own adapter refused to hold. The refusal it
 // proves is unchanged: a directory beyond the declared count still fails.
-test("§15 refusal: a FOURTEENTH adapter directory fails, even though bindings may exceed thirteen", () => {
+// WIN-267 A2 RENAMES IT AGAIN, FROM FOURTEENTH TO FIFTEENTH, and the second
+// rename records the second exception. The first was `keyring-envelope`: a
+// directory that holds no rows and no database client, but DOES hold a vendor-
+// shaped thing, the AES-256 root keys. `tokenmint-totp` is the case §15 does not
+// reach at all -- it holds no client of any kind, only `node:crypto` and the one
+// base32 alphabet its two ports must agree on. The refusal this case proves is
+// unchanged in either rename: a directory beyond the declared count still fails.
+test("§15 refusal: a FIFTEENTH adapter directory fails, even though bindings may exceed fourteen", () => {
   const errors = checkAdapterTable([
     ...LIVE_ADAPTERS,
     { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
   ]);
-  assert.ok(errors.some((error) => error.includes("names 13 concrete adapter directories; ADAPTERS has 14")));
+  assert.ok(errors.some((error) => error.includes("names 14 concrete adapter directories; ADAPTERS has 15")));
 });
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FIFTIETH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTY-SECOND binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -650,8 +674,12 @@ test("§15 refusal: a FIFTIETH binding fails, even though a directory may hold m
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
+  // WIN-267 A2 moved it to fifty-one, and again NOT in `postgres-tenancy`: the
+  // fiftieth and fifty-first are `tokenmint-totp:TokenMinter` and
+  // `tokenmint-totp:TotpCodeVerifier`, the first two bindings in the layout on a
+  // directory that holds no vendor client at all.
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 49 adapter bindings; ADAPTERS flattens to 50")));
+  assert.ok(errors.some((error) => error.includes("declares 51 adapter bindings; ADAPTERS flattens to 52")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

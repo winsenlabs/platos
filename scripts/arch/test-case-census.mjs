@@ -2477,6 +2477,23 @@ export const EXPECTED = Object.freeze({
   // WIN-260 adopts this project and gives it its first suites.
   "packages/adapters/redis-cache": { files: 4, cases: 65 },
   "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
+  // WIN-267 A2 — a NEW ROW, and the fourteenth adapter directory's first suites:
+  // 0 -> 7 files, 0 -> 136 cases.
+  //
+  // WHERE THE 136 ARE. base32 32 (RFC 4648 §10's seven vectors read three ways,
+  // plus the alphabet and refusal cases), rfc-vectors 21 (RFC 4226 Appendix D's
+  // ten and RFC 6238 Appendix B's six, plus the seed and three verify cases),
+  // oracle-totp-differential 21 (eighteen frozen answers from the extraction
+  // source's own `generateTotp`, plus three), oracle-mint-widths 20 (eleven kinds
+  // against the widths parsed out of five extraction-source files, plus the four
+  // non-vacuity controls and the three secret/recovery widths),
+  // token-minter 20, totp-code-verifier 15 and adapter 7.
+  //
+  // THE COUNT IS DOMINATED BY VECTORS AND THAT IS DELIBERATE. Every `it.each`
+  // row here is a published answer or a recorded one, so the census's own
+  // "it says nothing about whether a case ASSERTS anything" limitation bites
+  // less than usual: an emptied body would drop an authority, not a repetition.
+  "packages/adapters/tokenmint-totp": { files: 7, cases: 136 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
   "packages/contexts/channels": { files: 15, cases: 269 },
@@ -3247,7 +3264,14 @@ export const EXPECTED = Object.freeze({
  * kernel 60 -> 129, outbox 46 -> 68 and eventing 149 -> 157; every other row is
  * carried from the composition of the first three.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7833;
+/*
+ * WIN-267 A2: 7833 -> 7969 over 530 -> 537 files. One new row, and one row only:
+ * `packages/adapters/tokenmint-totp` at 136 cases over 7 files. No existing
+ * package's suites are touched by this tranche, so every other row is carried
+ * unchanged and the delta is exactly the new row. READ BACK from
+ * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 7969;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

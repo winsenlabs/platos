@@ -1162,7 +1162,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //      mutations.json were widened in place.
     // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
     // M2 INTEGRATION, ALL FOUR: 1397 + 10 + 28 + 12 + 7 = 1454.
-    packages: 1454,
+    packages: 1470,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1409,6 +1409,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
+    //
+    // WIN-267 A2: 1454 -> 1470, ALL SIXTEEN under
+    // `packages/adapters/tokenmint-totp`, the fourteenth adapter directory and
+    // the FIRST V1 project added since `keyring-envelope`. Three of the sixteen
+    // are the generator-owned scaffolding every project brings (package.json,
+    // tsconfig.json, README.md); five are source (base32, the minter, the
+    // verifier, the adapter and its index); seven are suites; and the
+    // sixteenth is `mutations-tokenmint-totp.json`, this tranche's guard ledger,
+    // on the same existing `packages.adapters.config` rule every guard ledger
+    // above it took. NO LEDGER RULE CHANGED and no other area moves: the
+    // composition root, the two arch gates, the census and the ports index are
+    // all edited IN PLACE, and an edited file is not a new one. The `identity-access`
+    // ports index gains three re-exported names and no file.
     // 13 -> 15. WIN-260's errors dimension adds TWO top-level docs/*.json, each
     // on a NEW rule, because no existing docs rule matches a top-level
     // docs/*.json and the audits rule would have called both `regenerate`, which
@@ -1488,7 +1501,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1614);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1594,7 +1607,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1598
+    rulesDocument.baseline.totalFiles + 1614
   );
 });
 
