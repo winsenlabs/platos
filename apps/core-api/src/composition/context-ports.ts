@@ -24,8 +24,23 @@
 // Seventeen contexts are declared. `app.module.ts` can compose a context only
 // when THREE things are true at once, and the count falls away fast:
 //
-//   1. the context publishes a factory that assembles its whole contract.
-//      ALL SEVENTEEN DO.
+//   1. the context publishes a factory that assembles its whole contract, AND
+//      this package can import it. SEVENTEEN publish one; NINE are importable.
+//
+//      THIS CONDITION USED TO BE ONE CLAUSE AND IT WAS FALSE THREE TIMES OVER.
+//      It read "THIRTEEN do; FOUR do not -- `agents`, `tools`, `memory` and
+//      `cost-monitoring` publish their use cases one by one and no assembler
+//      over them", and before that "ELEVEN and SIX", naming `secrets` and
+//      `providers` among the six. Every version of it has been wrong in the same
+//      direction and wrong at v1 rather than newly wrong. `agentsContract`,
+//      `toolsContract`, `memoryContract` and `costMonitoringContract` sit in
+//      their own packages' `contracts/index.ts` beside `secretsContract` and
+//      `providersContract` -- the `.` entry point this file already imports
+//      `DEFAULT_PROVIDERS_POLICY` from -- and the other eleven contexts publish
+//      a `create*Contract` or `create*Service` in `application/`. WIN-267 G3
+//      grepped for the four the way A3 should have grepped for the two, and
+//      found the same answer: there is no context in this tree without an
+//      assembler, and there never was.
 //
 //      THIS SENTENCE HAS NOW BEEN WRONG TWICE, THE SAME WAY, AND THE COUNT ONLY
 //      EVER MOVED WHEN SOMEBODY LOOKED. It said ELEVEN and SIX and named
@@ -51,6 +66,18 @@
 //      assembler exists and whose bundle cannot be filled is still unassembled;
 //      what is no longer true is that four contexts publish "use cases one by
 //      one".
+//
+//      SO THE CONDITION IS SPLIT, because the half that is real is a MANIFEST
+//      question and not an authoring one. Nine factories can be named from here:
+//      six from `.`, and `identity-access`, `tenancy` and `skills` from the
+//      `./application/index.js` their manifests publish. The other eight --
+//      `UNIMPORTABLE_CONTEXT_FACTORIES` below -- publish only `.`,
+//      `./application/ports/index.js` and `./application/testing/index.js`, so
+//      their factory exists, is tested, and cannot be imported by the one file
+//      entitled to call it. That is WIN-297's finding, unchanged and still open
+//      for eight contexts; the fix is a line of `APPLICATION_ENTRY_PROJECTS`
+//      each, and that generator's own rule holds it back until the context is
+//      actually composed.
 //
 //   2. every driven port in its dependency bundle has an implementation SOMEWHERE
 //      in this tree.
@@ -135,8 +162,22 @@
 // SO `GOVERNANCE_UNBOUND_PORTS` IS EMPTY AND GOVERNANCE STILL DOES NOT COMPOSE.
 // What is left is not a driven port at all. Its bundle names `AgentsContract`,
 // and `@platos/context-governance` publishes no `./application/index.js`, so the
-// factory is not importable from here. That is a MANIFEST line and a peer
-// context, not an adapter, and neither G1 nor G2 could close it alone.
+// factory is not importable from here -- see `UNIMPORTABLE_CONTEXT_FACTORIES`
+// below. That is a MANIFEST line and a peer context, not an adapter, and
+// neither G1 nor G2 could close it alone.
+//
+// AND THE `AgentsContract` SLOT IS NOT AN ASSEMBLER PROBLEM EITHER, WHICH IS
+// WIN-267 G3's FINDING. This paragraph used to end "and `agents` publishes its
+// use cases one by one", and that was false: `agentsContract` is exported from
+// `packages/contexts/agents/contracts/index.ts`, the same `.` entry point
+// `app.module.ts` already imports the `AgentsContract` TYPE from. What actually
+// blocks the slot is that the root must hand over a COMPOSED `agents`, and
+// `agents` is itself short: `AgentVersionLock` and `MacroRecorder` are on no row
+// of `ADAPTER_BINDINGS` (`AGENTS_UNBOUND_PORTS`), and its `skills` peer is a
+// tenth context this root does not compose -- `skills` needs
+// `SkillSourceFetcher`, `EnvironmentKeyDirectory` and `SkillSandbox`, none of
+// which has a directory, and a `files` peer whose `ObjectStore` is
+// `objectstore-minio`, still on `UNIMPLEMENTED_ADAPTERS`.
 //
 // IT WAS FIVE UNTIL WIN-267 G2, AND THE THREE THAT LEFT WERE LEFT FOR A REASON
 // THAT WAS NEVER TRUE. The sentence said `RatingTargetReader`,
@@ -235,12 +276,17 @@ export const IDENTITY_ACCESS_UNASSEMBLED =
   " RateLimiter is redis-ratelimit, SecretHasher is node-crypto-digest," +
   " MfaSecretCipher is keyring-envelope, TokenMinter is tokenmint-totp and" +
   " TotpCodeVerifier is tokenmint-totp; SafetyEventSink is implemented only by" +
-  " the governance context, whose own bundle now names NO driven port an adapter" +
-  " directory fails to satisfy -- G2 bound RatingTargetReader, TranscriptReader" +
-  " and ActivityReader, G1 bound EvalRunQueue and satisfied Judge in this" +
-  " deployable -- but which still holds an AgentsContract this root does not" +
-  " assemble and is published from no ./application/index.js, so this root" +
-  " cannot compose it";
+  " the governance context. G1 and G2 CLOSED ALL FIVE of the driven ports this" +
+  " sentence used to name -- RatingTargetReader, TranscriptReader and" +
+  " ActivityReader are postgres-tenancy, EvalRunQueue is postgres-tenancy, and" +
+  " Judge is satisfied in this deployable -- so GOVERNANCE_UNBOUND_PORTS is now" +
+  " EMPTY. What is left is not a driven port: createGovernanceContract cannot be" +
+  " imported here because @platos/context-governance publishes no" +
+  " ./application/index.js, and its AgentsContract slot needs a COMPOSED agents" +
+  " -- agentsContract does assemble that contract, from the package own . entry" +
+  " point, but agents names two driven ports no adapter directory satisfies" +
+  " (AgentVersionLock, MacroRecorder) and a skills peer this root does not" +
+  " compose; so this root cannot compose it";
 
 /**
  * The governance ports that keep the sink out of reach, named once.
@@ -319,6 +365,82 @@ export const GOVERNANCE_BOUND_READ_SEAMS: readonly string[] = Object.freeze([
  * against the context that owns the keys, the routes and the rate cards.
  */
 export const GOVERNANCE_ROOT_SATISFIED_PORTS: readonly string[] = Object.freeze(["Judge"]);
+
+/**
+ * The two `agents` ports that keep the peer BEHIND that sink out of reach.
+ *
+ * WIN-267 G3. They exist because the clause they replace was FALSE. The sentence
+ * above used to end "and an AgentsContract no factory assembles", and
+ * `agentsContract` has been exported from
+ * `packages/contexts/agents/contracts/index.ts` -- the `.` entry point
+ * `app.module.ts` already imports `AgentsContract` FROM -- since before that
+ * sentence was written. It is the third claim of that exact shape this
+ * programme has had to withdraw: `secrets` and `providers` sat uncomposed
+ * against the same wording and were composed the moment somebody grepped.
+ *
+ * SO THE BLOCKER IS RESTATED WHERE IT ACTUALLY IS, and it is two adapter
+ * directories rather than an assembler. `AgentsDependencies` names FOUR driven
+ * ports: `AgentsRepository` and `ScaffoldingRepository` are `postgres-tenancy`
+ * (WIN-258 T5, two rows of `ADAPTER_BINDINGS`), and these two are on no row of
+ * that table and in no `packages/adapters/` directory.
+ *
+ * READ BACK BY `installation.test.ts` AGAINST `ADAPTER_BINDINGS`, in both
+ * directions, exactly as `GOVERNANCE_UNBOUND_PORTS` is: each name here must
+ * appear on NO binding row, and the two that ARE bound must be present by owner.
+ * The day a directory implements one of these, that case fails and this list has
+ * to move -- which is what stops a correction from going stale the way the
+ * sentence it replaced did.
+ */
+export const AGENTS_UNBOUND_PORTS: readonly string[] = Object.freeze([
+  "AgentVersionLock",
+  "MacroRecorder",
+]);
+
+/**
+ * The eight contexts whose contract factory this root cannot IMPORT.
+ *
+ * WIN-267 G3, and it is the other half of the same correction. The note at the
+ * head of this file used to say FOUR contexts "publish their use cases one by
+ * one and no assembler over them", naming `agents`, `tools`, `memory` and
+ * `cost-monitoring`. All four publish one, and all four publish it from `.`:
+ * `agentsContract`, `toolsContract`, `memoryContract` and
+ * `costMonitoringContract` sit in their packages' own `contracts/index.ts`
+ * beside `secretsContract` and `providersContract`. SEVENTEEN of seventeen
+ * contexts publish a factory over their whole contract; ZERO do not.
+ *
+ * WHAT IS REAL IS A DIFFERENT PROBLEM WITH A DIFFERENT FIX. Nine factories are
+ * reachable from here -- six from `.` and three (`identity-access`, `tenancy`,
+ * `skills`) from the `./application/index.js` their manifests publish. The eight
+ * below keep theirs in `application/` behind a manifest that publishes only
+ * `.`, `./application/ports/index.js` and `./application/testing/index.js`, so
+ * `createGovernanceContract` and its seven siblings cannot be named here at all.
+ * That is one line of `APPLICATION_ENTRY_PROJECTS` per context, not an assembler
+ * to write -- and `gen-v1-skeleton.mjs`'s own rule says why the line is not here
+ * yet: the list is "the contexts `apps/core-api` ACTUALLY composes", so the
+ * entry follows the composition rather than leading it.
+ *
+ * IT MATTERS MOST FOR `governance`. A tranche that lands all five of
+ * `GOVERNANCE_UNBOUND_PORTS` still cannot compose the context, because the
+ * factory is not importable -- so the port work and the manifest line have to
+ * land together, and this constant is what says so before somebody discovers it
+ * at the end.
+ *
+ * READ BACK BY `installation.test.ts` BY IMPORTING: each subpath is resolved at
+ * run time and must REJECT. A negative about packaging is exactly the kind of
+ * claim this file has been wrong about before, so it is measured against Node's
+ * own resolver rather than asserted, and the day a manifest publishes one of
+ * these the case fails and this list has to move.
+ */
+export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([
+  "channels",
+  "conversations",
+  "eventing",
+  "files",
+  "governance",
+  "jobs",
+  "observability",
+  "privacy",
+]);
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.

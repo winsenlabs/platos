@@ -10,9 +10,35 @@
 // operator hits when a store is down at boot — which is the path that used to
 // kill the process, and which two of the cases below now pin.
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
 import { afterEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/context-providers";
+// WIN-267 G3. Imported as a VALUE, from the `.` entry point `app.module.ts`
+// already imports the `AgentsContract` TYPE from. The import itself is the
+// assertion: the sentence this suite reads back used to claim no factory
+// assembles this contract, and a claim about another package's exports is only
+// worth anything if the module graph is what settles it.
+import { agentsContract } from "@platos/context-agents";
+import { secretsContract } from "@platos/context-secrets";
+import { providersContract } from "@platos/context-providers";
+// WIN-267 G3. THE OTHER THREE FACTORIES ON A `.` ENTRY POINT, imported for the
+// same reason: the sentence this suite reads back named `agents`, `tools`,
+// `memory` and `cost-monitoring` as the four contexts with no assembler, and
+// the only honest way to withdraw a claim about another package's exports is to
+// resolve them. Nothing composes these three; the import IS the assertion.
+import { toolsContract } from "@platos/context-tools";
+import { memoryContract } from "@platos/context-memory";
+import { costMonitoringContract } from "@platos/context-cost-monitoring";
+// And the THREE reached through `./application/index.js` instead. STATIC, so
+// rule (C4) can see them: `composition-root.mjs` refuses a specifier assembled
+// at run time, and this is the shape that proves the resolver rather than
+// evading it. `app.module.ts` already imports the first two this way.
+import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
+import { createTenancyService } from "@platos/context-tenancy/application/index.js";
+import { createSkillsContract } from "@platos/context-skills/application/index.js";
 
 import { composeApplication } from "../app.module.js";
 import { loadPlatformConfiguration } from "../config/platform.js";
@@ -27,10 +53,12 @@ import {
   type AdapterName,
 } from "./adapter-bindings.js";
 import {
+  AGENTS_UNBOUND_PORTS,
   GOVERNANCE_BOUND_READ_SEAMS,
   GOVERNANCE_ROOT_SATISFIED_PORTS,
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
+  UNIMPORTABLE_CONTEXT_FACTORIES,
   assembleContextPorts,
 } from "./context-ports.js";
 
@@ -730,6 +758,183 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(bundle?.cipher).toBe(keyring);
     expect(bundle?.hasher).toBe(keyring);
     expect(bundle?.unitOfWork).toBe(postgres?.unitOfWork);
+  });
+
+  it("names an AgentsContract that a published factory DOES assemble", () => {
+    // WIN-267 G3 — THE CLAIM THIS CASE EXISTS TO KILL. `IDENTITY_ACCESS_UNASSEMBLED`
+    // used to end "and an AgentsContract no factory assembles". That was the
+    // THIRD claim of this exact shape the programme has had to withdraw: the
+    // same wording stood over `secrets` and `providers` until WIN-267 grepped,
+    // and both had been composable since v1.
+    //
+    // THE IMPORT AT THE HEAD OF THIS FILE IS THE ASSERTION, and it is a join to
+    // the agents package's own module graph rather than to a string this file
+    // wrote. `agentsContract` resolves through `@platos/context-agents`'s `.`
+    // condition -- `dist/contracts/index.js` -- which is the same specifier
+    // `app.module.ts` already imports `AgentsContract` from, so this cannot pass
+    // by reaching somewhere the composition root may not reach.
+    expect(typeof agentsContract).toBe("function");
+    // SAME SHAPE AS THE TWO COMPOSED PEERS, checked rather than described. The
+    // brief for this tranche was "build the assembler the way `secretsContract`
+    // and `providersContract` are built"; there was nothing to build, and the
+    // way to show that is that all three are already one function of one bundle
+    // off one entry point.
+    expect(typeof secretsContract).toBe("function");
+    expect(typeof providersContract).toBe("function");
+    for (const factory of [agentsContract, secretsContract, providersContract]) {
+      expect(factory).toHaveLength(1);
+    }
+
+    // AND THE SENTENCE MUST NOT SAY OTHERWISE AGAIN. Two directions: the
+    // withdrawn wording is gone, and the replacement names the factory that
+    // withdrew it, so a future edit cannot quietly restore the old claim without
+    // failing here.
+    const { assembly } = readiness(FULLY_DECLARED);
+    const declined = assembly.unassembled.find((row) => row.context === "identity-access");
+    expect(declined?.reason).not.toContain("no factory assembles");
+    expect(declined?.reason).not.toContain("publishes its use cases one by one");
+    expect(declined?.reason).toContain("agentsContract");
+  });
+
+  it("blocks that contract on two agents ports instead, and joins them to the table", () => {
+    // WHERE THE BLOCKER ACTUALLY IS, once the assembler claim is withdrawn. The
+    // root cannot hand `governance` an `AgentsContract` because it cannot BUILD
+    // one, and `AgentsDependencies`' four driven ports split two and two.
+    const { assembly } = readiness(FULLY_DECLARED);
+    const declined = assembly.unassembled.find((row) => row.context === "identity-access");
+    const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
+
+    // THE TWO THAT ARE SATISFIED, derived from the binding table BY OWNER rather
+    // than from a list this file wrote -- the same join the identity-access and
+    // providers cases make. A port that left the table, or one that arrived,
+    // changes this set without anybody editing the case.
+    const owned = ADAPTER_BINDINGS.filter((binding) => binding.owner === "agents");
+    expect(owned.map((binding) => binding.port).sort()).toEqual([
+      "AgentsRepository",
+      "ScaffoldingRepository",
+    ]);
+    for (const binding of owned) expect(UNIMPLEMENTED_ADAPTERS).not.toContain(binding.adapter);
+
+    // AND THE TWO THAT ARE NOT, joined the way `GOVERNANCE_UNBOUND_PORTS` is:
+    // each must appear on NO row, and must be NAMED in the reason. The day a
+    // directory implements one, this case fails and the sentence has to be
+    // re-derived -- which is precisely what the wording it replaced never had.
+    expect(AGENTS_UNBOUND_PORTS).toHaveLength(2);
+    for (const port of AGENTS_UNBOUND_PORTS) {
+      expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
+      expect(declined?.reason).toContain(port);
+    }
+    // The two sets must not overlap, or "unbound" would be a list of things that
+    // are in fact bound and the loop above would be vacuous.
+    for (const binding of owned) expect(AGENTS_UNBOUND_PORTS).not.toContain(binding.port);
+  });
+
+  it("cannot import eight context factories, and partitions all seventeen manifests", () => {
+    // THE OTHER HALF OF THE SAME CORRECTION, and the one that will bite the next
+    // tranche. Every one of the seventeen contexts publishes a factory over its
+    // whole contract; EIGHT of them keep it in `application/` behind a manifest
+    // that publishes no `./application/index.js`, so this package cannot name it.
+    //
+    // JOINED TO THE MANIFESTS, WHICH IS WHAT THE RESOLVER READS. A negative
+    // about packaging is exactly the kind of claim this file has been wrong
+    // about three times, so it is measured against the `exports` map of every
+    // context package rather than asserted -- and against ALL SEVENTEEN, as a
+    // PARTITION, so a context cannot fall out of both halves and be counted by
+    // neither. The day a manifest publishes the subpath, it moves from one side
+    // of the partition to the other and this case fails.
+    //
+    // IT READS THE FILES RATHER THAN IMPORTING THE SUBPATHS, and that is rule
+    // (C4) rather than a preference: a specifier assembled at run time is one
+    // `composition-root.mjs` refuses outside `apps/mcp-stdio/src/runtime.ts`,
+    // because no boundary rule can see it, and a LITERAL dynamic import of a
+    // subpath that does not exist fails in Vite's transform -- the whole file
+    // fails to load and no case runs, which is a vacuous red rather than an
+    // assertion. `config/sections.test.ts` reads the platform's own files the
+    // same way for the same reason.
+    const root = fileURLToPath(new URL("../../../../", import.meta.url));
+    const manifestOf = (context: string): { readonly exports?: Record<string, unknown> } =>
+      JSON.parse(readFileSync(`${root}packages/contexts/${context}/package.json`, "utf8")) as {
+        readonly exports?: Record<string, unknown>;
+      };
+
+    // The seventeen ADR M0.3 §4 names, spelled out rather than globbed: a
+    // directory listing would shrink silently with the tree and make the
+    // partition below a statement about whatever happened to be there.
+    const contexts = [
+      "identity-access", "tenancy", "secrets", "providers", "agents", "skills",
+      "tools", "memory", "channels", "files", "observability", "cost-monitoring",
+      "governance", "jobs", "conversations", "eventing", "privacy",
+    ] as const;
+    expect(contexts).toHaveLength(17);
+
+    // A FACTORY IS IMPORTABLE BY EITHER OF TWO ROUTES, and getting that wrong is
+    // how the sentence being withdrawn stayed wrong: `cost-monitoring`, `memory`,
+    // `providers` and `tools` publish NO `./application/index.js` and are
+    // importable anyway, because their factory is on the `.` entry point. A
+    // partition drawn on the manifest subpath alone would put those four on the
+    // wrong side and reproduce the original error in a new place.
+    //
+    // ROUTE ONE, PROVED BY THE MODULE GRAPH. Every one of these was imported
+    // statically at the head of this file, from the `.` specifier
+    // `app.module.ts` already imports each context's TYPE from. Delete any of
+    // the six exports and this file stops resolving.
+    const onDotEntry = {
+      agents: agentsContract,
+      "cost-monitoring": costMonitoringContract,
+      memory: memoryContract,
+      providers: providersContract,
+      secrets: secretsContract,
+      tools: toolsContract,
+    } as const;
+    // ROUTE TWO, PROVED THE SAME WAY, through the subpath the eight do not have.
+    const onApplicationEntry = {
+      "identity-access": createIdentityAccessService,
+      skills: createSkillsContract,
+      tenancy: createTenancyService,
+    } as const;
+    for (const [context, factory] of [
+      ...Object.entries(onDotEntry),
+      ...Object.entries(onApplicationEntry),
+    ]) {
+      expect(typeof factory, `${context} publishes an importable factory`).toBe("function");
+    }
+
+    // THE MANIFEST HALF, which is the only instrument that can speak for the
+    // absent: route two exists exactly when the package publishes the subpath.
+    const publishesEntry = contexts.filter(
+      (context) => manifestOf(context).exports?.["./application/index.js"] !== undefined,
+    );
+    expect([...publishesEntry].sort()).toEqual(
+      [...Object.keys(onApplicationEntry), "agents", "secrets"].sort(),
+    );
+
+    // AND THE PARTITION OVER ALL SEVENTEEN. Importable is the UNION of the two
+    // routes -- `agents` and `secrets` are in both -- and the complement is the
+    // list. 9 + 8 = 17, so a context cannot fall out of both halves and be
+    // counted by neither, which is what a list checked only against itself
+    // allows.
+    const importable = new Set([
+      ...Object.keys(onDotEntry),
+      ...Object.keys(onApplicationEntry),
+    ]);
+    expect(importable.size).toBe(9);
+    expect([...contexts].filter((context) => !importable.has(context)).sort()).toEqual(
+      [...UNIMPORTABLE_CONTEXT_FACTORIES].sort(),
+    );
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(8);
+    for (const context of UNIMPORTABLE_CONTEXT_FACTORIES) {
+      expect(contexts, `${context} must be one of the seventeen`).toContain(context);
+      // The manifest IS there and publishes `.` -- so each of these is a context
+      // that declined to publish the subpath, not a package that is missing,
+      // which is what a misspelled name on the list would be.
+      expect(Object.keys(manifestOf(context).exports ?? {})).toContain(".");
+      expect(manifestOf(context).exports?.["./application/index.js"]).toBeUndefined();
+    }
+
+    // `governance` IS THE ONE THAT MATTERS. A tranche that lands all five of
+    // `GOVERNANCE_UNBOUND_PORTS` still could not compose it, because
+    // `createGovernanceContract` cannot be named from here at all.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toContain("governance");
   });
 
   it("declines secrets and providers by NAMING the directory that is missing", () => {
