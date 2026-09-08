@@ -11,15 +11,17 @@
     "So the tranche's deliverable is a CORRECTION, and a correction is worth",
     "nothing unless something would notice it going stale again. That is what",
     "this sweep measures. The three cases added to installation.test.ts each",
-    "join a claim to something apps/core-api does not own -- the agents",
-    "package's module graph, ADAPTER_BINDINGS, and the resolver reading each",
-    "context package's own exports map -- and the mutations below break each",
-    "join in both directions.",
+    "join a claim to something apps/core-api does not own -- the nine context",
+    "packages' module graphs, ADAPTER_BINDINGS, and the seventeen context",
+    "manifests' own exports maps -- and the mutations below break each join",
+    "from both sides.",
     "",
-    "TWO OF THE EIGHT ARE THE POINT. G3-M07 makes the claim BECOME TRUE by",
-    "publishing governance's ./application/index.js, and G3-M08 removes the",
-    "factory the correction rests on, in the artifact the runner actually",
-    "resolves. A correction that survived either of those would be prose."
+    "THREE OF THE NINE ARE THE POINT. G3-M07 makes the claim BECOME TRUE by",
+    "publishing governance's ./application/index.js. G3-M08 and G3-M09 remove",
+    "the factories the correction rests on -- `agents` and `tools`, two of the",
+    "four contexts the withdrawn sentence accused -- in the artifacts the",
+    "runner actually resolves. A correction that survived any of those would",
+    "be prose."
   ],
   "procedure": [
     "Base: tejas/win-267-compose @ ff06655f (the head of PR #153, open against v1).",
@@ -28,6 +30,14 @@
     "Each mutation applied to the working tree, the runner re-run, the tree",
     "restored from a byte copy taken before the sweep, and the baseline",
     "re-confirmed green at the end (20 passed).",
+    "",
+    "THE SWEEP WAS RE-RUN IN FULL after rule (C4) forced the third case to change",
+    "instrument. Its first shape resolved a specifier assembled at run time, which",
+    "`composition-root.mjs` refuses outside apps/mcp-stdio/src/runtime.ts; a LITERAL",
+    "dynamic import of a subpath that does not exist then failed in Vite's transform,",
+    "so no case ran at all. The case now joins the manifests for the absent half and",
+    "nine STATIC imports for the present half. Every mutation below was re-applied",
+    "against that shape rather than carried over from the first.",
     "",
     "G3-M08 IS RECORDED HONESTLY AS A SECOND ATTEMPT. Renaming",
     "`agentsContract` in packages/contexts/agents/contracts/index.ts and",
@@ -42,8 +52,8 @@
   ],
   "sweep": {
     "head": "the tree of the commit that carries this file, on tejas/win-267-g3-agents (base tejas/win-267-compose @ ff06655f)",
-    "entries": 8,
-    "killed": 8,
+    "entries": 9,
+    "killed": 9,
     "equivalent": 0,
     "vacuous": 0,
     "rejected": 0
@@ -54,7 +64,9 @@
       "file": "apps/core-api/src/composition/context-ports.ts",
       "from": "\" whose AgentsContract slot needs a composed agents -- agentsContract does\" +",
       "to": "\" and an AgentsContract no factory assembles\" +",
-      "suites": ["vitest"],
+      "suites": [
+        "vitest"
+      ],
       "note": "The headline. The sentence this tranche withdrew is put back verbatim; the case that exists to stop it coming back must notice. It asserts the ABSENCE of the wording rather than only the presence of the correction, because a future edit that reintroduced the claim alongside the correction would otherwise pass.",
       "kills": [
         "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble"
@@ -65,7 +77,9 @@
       "file": "apps/core-api/src/composition/context-ports.ts",
       "from": "agentsContract does\" +\n  \" assemble",
       "to": "a factory does\" +\n  \" assemble",
-      "suites": ["vitest"],
+      "suites": [
+        "vitest"
+      ],
       "note": "The other direction of M01. A reason that says 'a factory does assemble it' is unfalsifiable prose; naming `agentsContract` is what lets a reader grep for the thing and what makes G3-M08 able to kill. Without this case the correction could decay into a vaguer sentence with nothing going red.",
       "kills": [
         "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble"
@@ -76,7 +90,9 @@
       "file": "apps/core-api/src/composition/context-ports.ts",
       "from": "Object.freeze([\n  \"AgentVersionLock\",",
       "to": "Object.freeze([\n  \"AgentsRepository\",\n  \"AgentVersionLock\",",
-      "suites": ["vitest"],
+      "suites": [
+        "vitest"
+      ],
       "note": "`AgentsRepository` is on a row of ADAPTER_BINDINGS against postgres-tenancy. The list is joined to that table rather than to itself, so a name that is in fact bound cannot sit on it -- which is the failure mode that made the sentence this tranche withdrew wrong for three tranches.",
       "kills": [
         "the context bundles those adapters can satisfy > blocks that contract on two agents ports instead, and joins them to the table"
@@ -87,7 +103,9 @@
       "file": "apps/core-api/src/composition/context-ports.ts",
       "from": "  \"AgentVersionLock\",\n  \"MacroRecorder\",\n]);",
       "to": "  \"AgentVersionLock\",\n]);",
-      "suites": ["vitest"],
+      "suites": [
+        "vitest"
+      ],
       "note": "The shrinking direction, which is how a list of blockers goes quietly optimistic. Both the length and the membership are pinned, and each member must also be NAMED in the reason an operator reads, so dropping one fails twice.",
       "kills": [
         "the context bundles those adapters can satisfy > blocks that contract on two agents ports instead, and joins them to the table"
@@ -98,10 +116,12 @@
       "file": "apps/core-api/src/composition/context-ports.ts",
       "from": "  \"governance\",\n  \"jobs\",",
       "to": "  \"jobs\",",
-      "suites": ["vitest"],
+      "suites": [
+        "vitest"
+      ],
       "note": "The one entry a future tranche has the strongest incentive to remove, because governance is what identity-access is waiting on. Its membership is asserted by name and not only by the count, so removing it cannot be hidden by adding another.",
       "kills": [
-        "the context bundles those adapters can satisfy > cannot import eight context factories, and proves it against Node's resolver"
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and partitions all seventeen manifests"
       ]
     },
     {
@@ -109,10 +129,12 @@
       "file": "apps/core-api/src/composition/context-ports.ts",
       "from": "  \"channels\",\n  \"conversations\",",
       "to": "  \"tenancy\",\n  \"conversations\",",
-      "suites": ["vitest"],
+      "suites": [
+        "vitest"
+      ],
       "note": "`tenancy` publishes ./application/index.js and app.module.ts imports createTenancyService through it. The import RESOLVES, so the rejects assertion fails. This is the case's non-vacuity guard from the pessimistic side: the list cannot be padded with contexts that are fine.",
       "kills": [
-        "the context bundles those adapters can satisfy > cannot import eight context factories, and proves it against Node's resolver"
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and partitions all seventeen manifests"
       ]
     },
     {
@@ -120,10 +142,12 @@
       "file": "packages/contexts/governance/package.json",
       "from": "\"exports\": { \".\": ..., \"./application/ports/index.js\": ..., \"./application/testing/index.js\": ... }",
       "to": "the same map plus \"./application/index.js\": { \"types\": \"./dist/application/index.d.ts\", \"import\": \"./dist/application/index.js\" }",
-      "suites": ["vitest"],
+      "suites": [
+        "vitest"
+      ],
       "note": "THE MUTATION THIS TRANCHE WAS ASKED FOR: the claim becoming true again. Nothing else changed -- dist/application/index.js was already built, so publishing the subpath is the whole of it -- and the import stops rejecting. A tranche that composes governance will hit this case on its first run, which is the intended way for it to learn that the manifest line and the adapters have to land together.",
       "kills": [
-        "the context bundles those adapters can satisfy > cannot import eight context factories, and proves it against Node's resolver"
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and partitions all seventeen manifests"
       ]
     },
     {
@@ -131,10 +155,26 @@
       "file": "packages/contexts/agents/dist/contracts/index.js",
       "from": "agentsContract",
       "to": "assembleAgents",
-      "suites": ["vitest"],
-      "note": "The deepest one, and the only mutation in this sweep outside apps/core-api's own source. The correction rests on a VALUE import of another package's factory; if that import were decorative the case would pass without it. Renaming the export in packages/contexts/agents/dist/contracts/index.js -- the file @platos/context-agents's `.` condition resolves to -- makes the import undefined and the case red. See `procedure` for the first attempt, which was vacuous and is not counted.",
+      "suites": [
+        "vitest"
+      ],
+      "note": "The deepest one, and the only mutation in this sweep outside apps/core-api's own source. The correction rests on a VALUE import of another package's factory; if that import were decorative the case would pass without it. Renaming the export in packages/contexts/agents/dist/contracts/index.js -- the file @platos/context-agents's `.` condition resolves to -- makes the import undefined and TWO cases red: the correction's own, and the importability partition, which counts `agents` among the six factories reachable from a `.` entry point. See `procedure` for the first attempt, which was vacuous and is not counted.",
       "kills": [
-        "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble"
+        "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble",
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and partitions all seventeen manifests"
+      ]
+    },
+    {
+      "name": "G3-M09 toolsContract is renamed in the artifact the runner resolves",
+      "file": "packages/contexts/tools/dist/contracts/index.js",
+      "from": "toolsContract",
+      "to": "assembleTools",
+      "suites": [
+        "vitest"
+      ],
+      "note": "`tools` is one of the four contexts the withdrawn sentence named as publishing 'their use cases one by one and no assembler over them'. Nothing in this repository composes it, so without a mutation its side of the partition would rest on an import nobody exercises. Renaming the export in the artifact @platos/context-tools's `.` condition resolves to makes the partition red, which is what makes the withdrawal of the claim about `tools` -- not just about `agents` -- a measured result.",
+      "kills": [
+        "the context bundles those adapters can satisfy > cannot import eight context factories, and partitions all seventeen manifests"
       ]
     }
   ],
