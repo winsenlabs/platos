@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "df40f720b203a17e52eef8e7868cec689a6e950bdc791176353469935cce59f0"
+      "sha256": "cd8ebda750e73dc2fca115a2d6a6bce75265dcce0bce1bec1c1c40bc15beee50"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "0eb6a81b19bdbb25ac92fc6c541762e1daa577d47595f5dc16b0367739dcd0ab"
+      "sha256": "f6525b410289c72c4fa24238c1233b07dfb32d4b2de122be673ebb7bc0cfbf29"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "7b10acefe863d4af27b4f3d63a25939010cd63b611add00ef8f6ab968d1d9f6f"
+      "sha256": "a0e6d5f31cee3178f65b74acd5eb4ca7fffb5083720ce290651cfcf07158caab"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3663,7 +3663,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "64e965ebebddf3700c12259bec33dc7b35212666cd1499330187202e54c70d9b"
+      "sha256": "f603708c54fcad278b4ff6372cac5abcafaf820fb3e8dd8a85ab062a311fcb30"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",
@@ -3923,7 +3923,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "9ad7a90f70834b0bd6407b6938cb6b693aaaa4bc1c017e69da7c7314d0e3bd14"
+      "sha256": "1d2c508e5f47c7454f191a69fb638a951b81087b1f7dde982e147864f86c6415"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
