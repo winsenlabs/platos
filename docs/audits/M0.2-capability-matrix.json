@@ -8,7 +8,7 @@
     "restOperations": 300,
     "operatorProtectedRest": 120,
     "mcpTools": 202,
-    "tenancyModels": 93,
+    "tenancyModels": 94,
     "endUserRestrictedModels": 14,
     "restOperationsByScanRoot": {
       "agent": 300,
@@ -5838,6 +5838,7 @@
         "EvalCriterion",
         "AgentEval",
         "GoldenSet",
+        "EvalRun",
         "Job",
         "Skill",
         "ProjectSkill",
@@ -5957,5 +5958,5 @@
     }
   ],
   "acceptanceCriterion": "Every REST binding in operation-manifest.generated.json and every tenancy Prisma model appears here; counts are read from source, never hardcoded; --check fails on any drift. Every row names an ADR M0.3 §1 context, or the one non-context value `<platform-transport>` under the admission rule in scripts/arch/route-ownership.mjs; the retired unresolved-owner placeholder is neither producible nor accepted, and is refused by its own named rule.",
-  "sourceDigest": "c482c0344c930f3c40928aca8c538b5e151a1fb63bfaa3a98d249ca2a98751a9"
+  "sourceDigest": "882206dffd128c86e9a27d6eb150ceb470b51dbbffc0fe3dd9258fca76017f95"
 }

@@ -36,9 +36,9 @@ missing is the second system, not the instrument.
 
 ## Totals
 
-- capability cells enumerated: **773**
+- capability cells enumerated: **774**
 - covered by a twin-run scenario: **2**
-- uncovered, each attributed to an owning issue: **771**
+- uncovered, each attributed to an owning issue: **772**
 
 ## By surface
 
@@ -49,7 +49,7 @@ missing is the second system, not the instrument.
 | rest | 300 | 0 | 300 | WIN-267 (M4) |
 | screen | 47 | 0 | 47 | WIN-272 (M4) |
 | sdk | 5 | 0 | 5 | WIN-269 (M4) |
-| store | 93 | 2 | 91 | WIN-285 (M7) |
+| store | 94 | 2 | 92 | WIN-285 (M7) |
 | streaming | 9 | 0 | 9 | WIN-271 (M4) |
 
 ## Covered cells
@@ -72,4 +72,4 @@ Each row names the scenario that twin-runs it against two isolated equivalent st
 - **screen** — WIN-272 (M4): screen contracts land with the transports that serve them
 - **store** — WIN-285 (M7): the store is twin-runnable today; enumerating every model is coverage execution, which M7.2 owns
 
-Matrix digest: `755b162d7dcae9de83fb5bfacd7805e73bb91957f18c784177e90d3be704efa7`
+Matrix digest: `a806296165aa0f4c179582706ae31d2e4cf3d8ae87a4c64e2618dcbaef63f879`

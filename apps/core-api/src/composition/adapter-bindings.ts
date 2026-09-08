@@ -91,6 +91,7 @@ import type {
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type {
   CriteriaRepository,
+  EvalRunQueue,
   EvalsRepository,
   GoldenSetsRepository,
   RatingsRepository,
@@ -295,6 +296,15 @@ interface PortSatisfaction {
   readonly "postgres-tenancy:GoldenSetsRepository": Satisfies<
     PostgresTenancyAdapter["goldenSets"],
     GoldenSetsRepository
+  >;
+  // WIN-267 G1. `governance`'s SIXTH port on this directory, and the first that
+  // is not a canonical-store CRUD pair. Proven through the property for the same
+  // reason the five above are — `enqueue` would not collide, but the consumer
+  // half beside it (`claim`, `acknowledge`, `abandon`) must not become reachable
+  // by spreading a queue into an object seventeen contexts read.
+  readonly "postgres-tenancy:EvalRunQueue": Satisfies<
+    PostgresTenancyAdapter["evalRuns"],
+    EvalRunQueue
   >;
   // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, proven through the
   // PROPERTY that carries each one rather than through the adapter itself.
@@ -573,6 +583,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:CriteriaRepository": true,
   "postgres-tenancy:EvalsRepository": true,
   "postgres-tenancy:GoldenSetsRepository": true,
+  "postgres-tenancy:EvalRunQueue": true,
   "postgres-tenancy:TenancyLocks": true,
   "postgres-tenancy:OperatorSessionRevoker": true,
   "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": true,
@@ -737,16 +748,32 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // safety event is never touched again, and a golden set is a pinned sample
   // that shares no invariant with any of them.
   //
-  // The context's other five ports get no row here, and that is a claim rather
-  // than an omission: `read-seams.ts` declares three READERS of rows
-  // `conversations`, `tools` and `jobs` own, `judge.ts` is a provider transport,
-  // and `eval-run-queue.ts` is durable work whose own refusal code exists to
-  // stay separable from a store outage.
+  // The context's other five ports got no row here, and the sentence that said
+  // why has been HALVED BY MEASUREMENT rather than edited quietly. It read:
+  // "`read-seams.ts` declares three READERS of rows `conversations`, `tools` and
+  // `jobs` own, `judge.ts` is a provider transport, and `eval-run-queue.ts` is
+  // durable work whose own refusal code exists to stay separable from a store
+  // outage."
+  //
+  // THE LAST CLAUSE WAS FALSE. What mints `GOVERNANCE_LEDGER_UNAVAILABLE` is one
+  // helper the five stores share, not the directory;
+  // `packages/adapters/postgres-tenancy/src/governance-eval-runs.ts` has its own
+  // and mints `GOVERNANCE_QUEUE_UNAVAILABLE`, so one induced outage answers the
+  // two codes on the two ports in the same process against the same database.
+  // Its integration suite pins exactly that. The two clauses that stand are the
+  // three read seams — still readers of other owners' rows — and `judge.ts`,
+  // which `apps/core-api/src/composition/governance-judge.ts` measures three
+  // ways as unable to be an adapter at all.
   Object.freeze({ adapter: "postgres-tenancy", port: "SafetyLedger", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "RatingsRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "CriteriaRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "EvalsRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "GoldenSetsRepository", owner: "governance" }),
+  // WIN-267 G1. The SIXTEENTH binding of this directory and the SIXTH row
+  // `governance` owns: `EvalRunQueue`, ADR M0.3 §1 row 14's "eval runs enqueue
+  // as durable jobs", landed as a row because §15 says a row in the one
+  // PostgreSQL database is written from the one directory that holds its client.
+  Object.freeze({ adapter: "postgres-tenancy", port: "EvalRunQueue", owner: "governance" }),
   // WIN-258 T5 (ADR M0.3 §15). The THIRTEENTH and FOURTEENTH bindings of the
   // same directory, and the eighth owner of the one PostgreSQL client. They are two
   // rows and not one because `secrets` publishes two ports:

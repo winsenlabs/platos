@@ -287,6 +287,7 @@ import type {
   RatingsRepository,
   SafetyLedger,
 } from "@platos/context-governance/application/ports/index.js";
+import type { EvalRunStore } from "./governance-eval-runs.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   ApprovalsRepository,
@@ -321,7 +322,8 @@ import { createConversationsStores } from "./conversations-repository.js";
 import { createNotificationRuleRepository } from "./eventing-repository.js";
 import { createCostMonitoringRepository } from "./cost-repository.js";
 import { createFilesRepository } from "./files-repository.js";
-import { createGovernanceStores } from "./governance-repository.js";
+import { createEvalRunStore } from "./governance-eval-runs.js";
+import { createGovernanceStores, createInstantSource } from "./governance-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createInvitationTokenIssuer } from "./invitation-token.js";
@@ -392,6 +394,21 @@ export interface PostgresTenancyAdapter
   readonly criteria: CriteriaRepository;
   readonly evals: EvalsRepository;
   readonly goldenSets: GoldenSetsRepository;
+  /**
+   * WIN-267 G1 — `governance`'s SIXTH port here, and the first that is not a
+   * canonical-store read/write pair: `EvalRunQueue`, the durable hand-over of a
+   * planned golden-set run.
+   *
+   * A PROPERTY for the same forced reason as the five above — its `enqueue`
+   * would not collide, but `claim`, `acknowledge` and `abandon` are a
+   * consumer's surface that no context declares and that must not be reachable
+   * by spreading. It is `evalRuns` because that is
+   * `GovernanceDependencies`' own slot name.
+   *
+   * `governance-eval-runs.ts` answers the objection this directory's own
+   * `governance-repository.ts` used to raise against satisfying this port here.
+   */
+  readonly evalRuns: EvalRunStore;
 
   /**
    * WIN-258 T5 — `secrets`' two canonical-store ports.
@@ -544,6 +561,12 @@ export function buildPostgresTenancyAdapter(
     // target that counts a subject's safety events and ratings and then
     // anonymises the first and destroys the second is ONE transaction.
     ...createGovernanceStores(transactions),
+    // WIN-267 G1. `governance`'s SIXTH port, built beside the five and from the
+    // SAME `transactions`, which is what lets `enqueue` join a unit of work the
+    // caller already opened rather than committing on its own. It is a separate
+    // factory because `createGovernanceStores` returns the canonical-store half
+    // of that context's bundle and this is not one of those.
+    evalRuns: createEvalRunStore(transactions, createInstantSource()),
     // WIN-258 T5. Built from the SAME `transactions` as everything else here,
     // so a `setEnvironmentVariable` that seals a credential, writes an envelope,
     // points the credential at it, writes the variable row and appends two audit

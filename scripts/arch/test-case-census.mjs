@@ -2498,7 +2498,36 @@ export const EXPECTED = Object.freeze({
   // M2 INTEGRATION: postgres-tenancy 132 + 3 + 1 = 136 files,
   // 1483 + 14 + 9 = 1506 cases -- the two WIN-259 dimensions and WIN-260's
   // correlation integration suite, which add DIFFERENT files.
-  "packages/adapters/postgres-tenancy": { files: 136, cases: 1506 },
+  //
+  // WIN-267 G1 adds ONE file and EIGHT cases, all in
+  // `governance-eval-runs.integration.test.ts`, and each is named so this stays
+  // a claim rather than a number raised until the gate went quiet:
+  //
+  //   4 on the ENQUEUE half -- a repeated key costing one run; a unique index
+  //     over the key itself ACCEPTING a 37 kB key that compresses and REFUSING
+  //     one of the same length that does not, while the digest takes both; a
+  //     forged row whose digest matches a DIFFERENT key being refused rather
+  //     than answered `alreadyQueued`; and an error `Result` inside the unit of
+  //     work leaving NO row behind while the same shape committed does.
+  //   8 on the CONSUMER half -- thirty-two concurrent claims never taking one
+  //     run twice and losing none; a consumer that dies between claiming and
+  //     acknowledging getting its run back with its `deliveries` count raised; an
+  //     abandoned run returning with its reason; a consumer PAST its lease
+  //     unable to abandon the run another now holds; sixteen concurrent
+  //     enqueues of one key costing ONE run; the queue answering FIFO; the three
+  //     claim guards refusing before a statement is sent; and the plan reading
+  //     back in plan order.
+  //
+  //   FOUR of the eleven were added after a MUTATION SURVIVED -- the abandon
+  //     ownership fence, the concurrent double-click, the FIFO order and the
+  //     claim guards -- which is the only reason this row reads 1517 and not
+  //     1511.
+  //   1 on the two REFUSAL CODES -- one induced outage, two ports, two codes,
+  //     which is the claim `governance-repository.ts` used to give as the reason
+  //     this port could not live in this directory at all.
+  //
+  // 136 + 1 = 137 files, 1506 + 13 = 1519 cases.
+  "packages/adapters/postgres-tenancy": { files: 137, cases: 1519 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -3348,8 +3377,15 @@ export const EXPECTED = Object.freeze({
  * NO BRANCH: A1+A2 pinned 8026 and A3 pinned 7878, both over the same 7833 base.
  * READ BACK from `node scripts/arch/test-case-census.mjs` rather than trusted
  * from this sum.
+ *
+ * WIN-267 G1: 8071 -> 8084 over 545 -> 546 files. THIRTEEN cases in ONE file,
+ * `packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts`,
+ * itemised on that package's row above. `apps/core-api` gains eleven cases in
+ * `governance-judge.test.ts` and moves NOTHING here, for the reason
+ * `installation.test.ts` moves nothing: that directory is outside PACKAGE_ROOTS.
+ * READ BACK the same way.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8071;
+export const EXPECTED_RUNTIME_TOTAL = 8084;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

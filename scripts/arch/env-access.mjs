@@ -182,8 +182,16 @@ export const ALLOWED = Object.freeze([
       path: `packages/adapters/postgres-tenancy/src/${name}.ts`,
       role: "test-support",
       // `harness.ts` applies the migrations twice — once per baseline it sets up —
-      // so it carries two spawns where its thirteen siblings carry one.
-      reads: name === "harness" ? 2 : 1,
+      // so it carries two spawns where its twelve siblings carry one.
+      //
+      // `governance-harness.ts` carries two since WIN-267 G1, and the second is
+      // a READ rather than a second migration run: `readPeerRows` hands the
+      // CLI's output back, which is what lets the eval-run queue's suite count
+      // rows on a connection none of this package's stores holds. That is the
+      // only way "the transaction rolled back" is a fact about the DATABASE
+      // rather than the store's opinion of itself, and it is declared here
+      // rather than spawned from the suite so the door stays in one file.
+      reads: name === "harness" || name === "governance-harness" ? 2 : 1,
       why: "Real-PostgreSQL integration harness. It applies the repository's OWN migrations by spawning the ORM's CLI, which reads DATABASE_URL from the environment it is given, so the container's URL is layered over the inherited one.",
     }),
   ),
@@ -387,7 +395,31 @@ export const VIOLATION_CODES = Object.freeze({
  * added not one new door.
  */
 
-export const EXPECTED_FILE_COUNT = 1610;
+/*
+ * WIN-267 G1 adds TWO, both under `apps/core-api/src/composition/`:
+ * `governance-judge.ts`, which satisfies `governance`'s `Judge` port over the
+ * composed `providers` contract, and `governance-judge.test.ts`. The DECLARED
+ * table is unmoved by both, and that is the point of naming them here rather
+ * than raising the number until the gate went quiet: a judge reads NO
+ * environment variable. It cannot. Every provider credential in this tree comes
+ * out of the vault through `providers`, and `apps/core-api/src/config/
+ * providers.ts` declares four variables of which not one is a key -- which is
+ * the same measurement that says this port could never have been an adapter.
+ * 1610 + 2 = 1612.
+ *
+ * WIN-267 G1 adds a THIRD in its second half:
+ * `packages/adapters/postgres-tenancy/src/governance-eval-runs.ts`, the
+ * `EvalRunQueue` store. The DECLARED table is unmoved by it too, and for the
+ * same reason every other file in that directory leaves it unmoved: the ORM's
+ * connection string reaches this package as a constructor argument from the
+ * composition root, never as a read. 1612 + 1 = 1613.
+ *
+ * And a FOURTH: `governance-eval-runs.integration.test.ts`. That suite reads no
+ * environment of its own — it counts rows through `governance-harness.ts`'s
+ * `readPeerRows`, which is why the DECLARED table gains one READ on an entry it
+ * already had and no new path. 1613 + 1 = 1614.
+ */
+export const EXPECTED_FILE_COUNT = 1614;
 
 function listSourceFiles(root) {
   const found = [];

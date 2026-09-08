@@ -2082,15 +2082,15 @@
     ]
   },
   "expected": {
-    "totalFiles": 5109,
+    "totalFiles": 5114,
     "areaCounts": {
       "apps-agent": 516,
-      "apps-core-api": 68,
+      "apps-core-api": 70,
       "apps-mcp-stdio": 8,
       "apps-webapp": 183,
       "docs-content": 737,
-      "internal-packages": 1173,
-      "packages": 2130,
+      "internal-packages": 1174,
+      "packages": 2132,
       "root-infra": 294
     },
     "kindCounts": {
@@ -2101,18 +2101,18 @@
       "generated": 44,
       "legal": 14,
       "lockfile": 3,
-      "migration": 895,
-      "source": 2046,
-      "test": 1026
+      "migration": 896,
+      "source": 2048,
+      "test": 1028
     },
     "dispositionCounts": {
       "archive": 7,
       "move-refactor": 1631,
       "regenerate": 39,
-      "retain": 3430,
+      "retain": 3435,
       "unresolved": 2
     },
-    "protectedCount": 1632,
+    "protectedCount": 1633,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2127,9 +2127,9 @@
       "apps-core-api.config.package": 5,
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
-      "apps-core-api.source.process": 30,
+      "apps-core-api.source.process": 31,
       "apps-core-api.source.transports": 11,
-      "apps-core-api.test.suites": 19,
+      "apps-core-api.test.suites": 20,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2193,7 +2193,7 @@
       "internal-packages.infra.container": 1,
       "internal-packages.legal.attribution": 1,
       "internal-packages.lockfile.migration-image": 1,
-      "internal-packages.migration.canonical": 858,
+      "internal-packages.migration.canonical": 859,
       "internal-packages.migration.image": 4,
       "internal-packages.schema.analytics": 34,
       "internal-packages.schema.prisma": 3,
@@ -2203,8 +2203,8 @@
       "packages.adapters.config": 58,
       "packages.adapters.doc": 15,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 260,
-      "packages.adapters.test": 181,
+      "packages.adapters.source": 261,
+      "packages.adapters.test": 182,
       "packages.config.build": 28,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
@@ -2250,6 +2250,6 @@
       "root-infra.tooling.scripts": 91,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "1ddac8cff3c3c815ab3c64290581dccdf20dfc634c34c7736498678810bd769a"
+    "classificationSha256": "701c984b9f4a3a4885224a16e01ef034e9018e93f45eea14b8a28e4f9b559161"
   }
 }

@@ -214,7 +214,12 @@ describe("origin/main to integrated tenancy upgrade contract", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(orderedMigrations.at(-1)).toBe("20260906120000_win258_thread_listing_index");
+    // WIN-267 G1 appends `20260909120000_win267_eval_run_queue`, the row
+    // `governance`'s `EvalRunQueue` port enqueues into. It is purely ADDITIVE --
+    // one new table, its constraints, its indexes and its three foreign keys --
+    // so the expand/contract rehearsal below still runs the OLD binary's schema
+    // against a database this migration has been applied to.
+    expect(orderedMigrations.at(-1)).toBe("20260909120000_win267_eval_run_queue");
     expect(accessKeyRuntime).toContain("accessKeyRevocationVersion");
     assertUpgradeRehearsalPrecedesCandidateEvidence(imageWorkflow);
     expect(imageWorkflow).not.toContain("  publish-images:");

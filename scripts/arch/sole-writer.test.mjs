@@ -549,21 +549,27 @@ test("only channels' own two directories may write its six rows", () => {
   }
 });
 
-test("only governance's own two directories may write its five rows", () => {
+test("only governance's own two directories may write its six rows", () => {
   // WIN-258 T5. The delegation added for `governance` is a permission, and a
   // permission is only worth anything if the thing it does NOT permit goes red.
-  // Every one of the five rows is checked, not a representative one, because the
+  // Every one of the rows is checked, not a representative one, because the
   // grant is per row and a map entry lost for a single model would otherwise sit
   // here unnoticed behind a green case for `SafetyEvent`.
-  const FIVE = [
+  //
+  // WIN-267 G1 adds the SIXTH, `EvalRun` — the durable hand-over ADR M0.3 §1
+  // row 14 needs and the legacy tree never had. It is checked here on the same
+  // terms as the five: the delegation is per row, so a row added to the schema
+  // and not to the map would leave the queue writable from anywhere.
+  const SIX = [
     ["safetyEvent", "SafetyEvent"],
     ["messageRating", "MessageRating"],
     ["evalCriterion", "EvalCriterion"],
     ["agentEval", "AgentEval"],
     ["goldenSet", "GoldenSet"],
+    ["evalRun", "EvalRun"],
   ];
 
-  for (const [delegate, model] of FIVE) {
+  for (const [delegate, model] of SIX) {
     // The delegate directory: legal, and the reason the five repositories can
     // exist at all.
     assert.deepEqual(
@@ -1996,7 +2002,23 @@ test("an element-access member that is not a delegate is still not a write", () 
 // M2 INTEGRATION: 307 + 1 + 4 = 312. The two dimensions add raw statements in
 // DIFFERENT files of the same permitted directory, so the counts add and the
 // violation list stays empty.
-const LIVE_TREE_WRITE_COUNT = 312;
+//
+// WIN-267 G1 adds FOUR, all in `governance-eval-runs.ts` and all on `EvalRun`,
+// the sixth row `governance` owns. Named so this stays a claim rather than a
+// number raised until the gate went quiet:
+//
+//   `evalRun.createManyAndReturn`  the enqueue, with `skipDuplicates` so a lost
+//                                  race is zero rows and not a raised constraint
+//   the raw `UPDATE ... FOR UPDATE SKIP LOCKED`  the claim, ONE statement because
+//                                  a read-then-update has a window two consumers
+//                                  both see through
+//   `evalRun.updateMany` x2        `acknowledge` and `abandon`, each predicated
+//                                  on the lease OWNER as well as the id
+//
+// All four are inside `packages/adapters/postgres-tenancy`, which is
+// `governance`'s `CANONICAL_STORE_ADAPTERS` directory, so the violation list
+// stays empty and it is again the COUNT that moved. 312 + 4 = 316.
+const LIVE_TREE_WRITE_COUNT = 316;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();
@@ -2349,6 +2371,7 @@ test("the canonical-store delegation is the ONLY reason those writes are legal",
   assert.deepEqual(governanceRows, [
     "AgentEval",
     "EvalCriterion",
+    "EvalRun",
     "GoldenSet",
     "MessageRating",
     "SafetyEvent",

@@ -52,9 +52,9 @@
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {
-    "cells": 773,
+    "cells": 774,
     "covered": 2,
-    "uncovered": 771,
+    "uncovered": 772,
     "bySurface": {
       "bff": {
         "total": 117,
@@ -82,9 +82,9 @@
         "uncovered": 5
       },
       "store": {
-        "total": 93,
+        "total": 94,
         "covered": 2,
-        "uncovered": 91
+        "uncovered": 92
       },
       "streaming": {
         "total": 9,
@@ -93,7 +93,7 @@
       }
     }
   },
-  "digest": "755b162d7dcae9de83fb5bfacd7805e73bb91957f18c784177e90d3be704efa7",
+  "digest": "a806296165aa0f4c179582706ae31d2e4cf3d8ae87a4c64e2618dcbaef63f879",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -7742,6 +7742,17 @@
     },
     {
       "id": "store:EvalCriterion",
+      "surface": "store",
+      "owner": "tenancy",
+      "endUserReachable": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-285",
+      "milestone": "M7",
+      "reason": "the store is twin-runnable today; enumerating every model is coverage execution, which M7.2 owns"
+    },
+    {
+      "id": "store:EvalRun",
       "surface": "store",
       "owner": "tenancy",
       "endUserReachable": false,
