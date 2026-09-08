@@ -37,6 +37,8 @@ import type {
   MfaSecretCipher,
   RateLimiter,
   SecretHasher,
+  TokenMinter,
+  TotpCodeVerifier,
 } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -140,6 +142,8 @@ import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
 import { buildKeyringEnvelope } from "@platos/adapter-keyring-envelope";
 import type { NodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-digest";
 import { createNodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-digest";
+import type { TokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
+import { createTokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
 
 import type { ProvidersConfiguration } from "../config/providers.js";
 import type { SecurityConfiguration } from "../config/security.js";
@@ -147,14 +151,16 @@ import type { StoresConfiguration } from "../config/stores.js";
 import type { Drainable } from "../runtime/shutdown-drain.js";
 
 /**
- * The thirteen adapter slots, keyed by directory name.
+ * The fourteen adapter slots, keyed by directory name.
  *
  * The key is the adapter's directory because that is the name every other gate
  * already uses — `scripts/arch/boundary-rules.mjs`, the generator's `ADAPTERS`
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * THIRTEEN SLOTS, FORTY-SEVEN BINDINGS (ADR M0.3 §15, amended by WIN-259). An
+ * FOURTEEN SLOTS, FIFTY-ONE BINDINGS (ADR M0.3 §15, amended by WIN-259, and
+ * WIN-267 A2 for the case §15 does not reach at all — a directory with NO vendor
+ * client). An
  * install wires a DIRECTORY — one process-lifetime object holding one vendor
  * client — so this table stays keyed by directory. What a directory SATISFIES is
  * a different question, and `PORT_SATISFACTION` below answers it per binding.
@@ -197,6 +203,20 @@ export interface AdapterInstances {
   // parameter — which this port cannot have, being synchronous and digesting
   // only high-entropy random tokens.
   readonly "node-crypto-digest": NodeCryptoDigestAdapter;
+  // WIN-267 A2 — the FIFTEENTH slot. It is a slot rather than a row on an
+  // existing directory because an install wires ONE process-lifetime object per
+  // directory and this one holds no vendor client at all: it is `node:crypto`'s
+  // CSPRNG and the base32 alphabet that the minted TOTP secret and the verifier
+  // that reads it must share. `keyring-envelope` declined it for the reason it
+  // states about the ORM's directory in reverse — the custodian of reversible
+  // envelopes should not also be the generator of the secrets they seal.
+  //
+  // IT IS ONE OF THE TWO SLOTS NO CONFIGURATION GROUP DECLARES — the other is
+  // `node-crypto-digest` directly above. Every other entry needs a URL, a key or
+  // a model name; these two need nothing, so `constructAdapters` builds them
+  // unconditionally and both are present in the NOTHING_DECLARED install as well
+  // as the fully declared one.
+  readonly "tokenmint-totp": TokenmintTotpAdapter;
 }
 
 export type AdapterName = keyof AdapterInstances;
@@ -507,11 +527,21 @@ interface PortSatisfaction {
     KeyringEnvelopeAdapter["mfaSecrets"],
     MfaSecretCipher
   >;
-  // WIN-267 A1. The fourteenth directory's ONE binding, proven through the
+  // WIN-267 A1. The `node-crypto-digest` directory's ONE binding, proven through the
   // adapter itself: `hash`, `equals` and `deriveCodeChallenge` collide with
   // nothing else it publishes, so `NodeCryptoDigestAdapter extends SecretHasher`
   // resolves directly.
   readonly "node-crypto-digest:SecretHasher": Satisfies<NodeCryptoDigestAdapter, SecretHasher>;
+  // WIN-267 A2. `identity-access`' TWO randomness ports, both proven against the
+  // ADAPTER rather than through a property: `mint`, `mintTotpSecret`,
+  // `mintRecoveryCodes`, `verify` and `generate` are five names with no
+  // collision, so one interface extends both.
+  //
+  // TWO OBLIGATIONS AND NOT ONE, for the reason `keyring-envelope`'s three are
+  // three: a missing obligation is not a wrong one, so collapsing them would
+  // leave the compiler silent the day `verify` changed shape.
+  readonly "tokenmint-totp:TokenMinter": Satisfies<TokenmintTotpAdapter, TokenMinter>;
+  readonly "tokenmint-totp:TotpCodeVerifier": Satisfies<TokenmintTotpAdapter, TotpCodeVerifier>;
 }
 
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
@@ -566,6 +596,8 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "keyring-envelope:Hasher": true,
   "keyring-envelope:MfaSecretCipher": true,
   "node-crypto-digest:SecretHasher": true,
+  "tokenmint-totp:TokenMinter": true,
+  "tokenmint-totp:TotpCodeVerifier": true,
 });
 
 /**
@@ -965,10 +997,18 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // one to reach them — so the alternative was not a fourteenth slot but a
   // SECOND key hierarchy.
   Object.freeze({ adapter: "keyring-envelope", port: "MfaSecretCipher", owner: "identity-access" }),
-  // WIN-267 A1. The FIFTY-FIRST binding and the fourteenth directory's only one.
+  // WIN-267 A1. The FIFTY-FIRST binding and `node-crypto-digest`'s only one.
   // It sits at the END for the reason the three above it do: every ordinal
   // already written stays true.
   Object.freeze({ adapter: "node-crypto-digest", port: "SecretHasher", owner: "identity-access" }),
+  // WIN-267 A2. The two bindings of the `tokenmint-totp` directory, appended at
+  // the END for the reason every row above them was: every ordinal already
+  // written stays true. They are the FIFTY-SECOND and FIFTY-THIRD. With the two
+  // A1 rows above them, four of the five ports
+  // `composition/context-ports.ts` recorded as having no implementation are now
+  // filled, and its `IDENTITY_ACCESS_UNASSEMBLED` sentence names one.
+  Object.freeze({ adapter: "tokenmint-totp", port: "TokenMinter", owner: "identity-access" }),
+  Object.freeze({ adapter: "tokenmint-totp", port: "TotpCodeVerifier", owner: "identity-access" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1208,8 +1248,9 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     else faults.push(`keyring-envelope could not be constructed: ${ring.error.code}`);
   }
 
-  // WIN-267 A1. THE ONLY DIRECTORY BUILT UNCONDITIONALLY, and the reason is the
-  // whole of its design rather than an exemption. Every other constructor above
+  // WIN-267 A1. ONE OF THE TWO DIRECTORIES BUILT UNCONDITIONALLY (the other is
+  // `tokenmint-totp` below), and the reason is the whole of its design rather
+  // than an exemption. Every other constructor above
   // is behind an `if`: a group is declared or it is not, and a directory with no
   // configuration to read cannot be built from configuration that was not set.
   // This one reads nothing. There is no key, no endpoint, no credential and no
@@ -1220,8 +1261,23 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
   // It therefore appears in NEITHER report: not in `unwired`, because it is
   // always wired, and not in `faults`, because nothing it does can fault. The
   // group table in `installation.test.ts` says the same thing from the other
-  // side — it is the second directory no configuration group produces.
+  // side — it is one of the two directories no configuration group produces.
   adapters["node-crypto-digest"] = createNodeCryptoDigestAdapter();
+  // WIN-267 A2. UNCONDITIONAL, the second of the two unconditional constructions
+  // here; `node-crypto-digest` directly above is the first.
+  //
+  // Every CONFIGURED adapter above is guarded by a configuration group because
+  // it holds something an operator has to supply — a database URL, a Redis URL,
+  // root key material, a default model. This one holds the process's CSPRNG. There is no group to declare, nothing to parse, and no failure mode
+  // that a `Result` could report: `createTokenmintTotpAdapter` closes over two
+  // pure functions and `node:crypto`.
+  //
+  // So it is built before the guarded ones can decline, it never appears in
+  // `unwired`, and an install with NOTHING configured still has it. That is the
+  // observable difference between these two slots and the thirteen configured
+  // ones, and `installation.test.ts` asserts it on the nothing-declared install
+  // rather than only on the fully declared one.
+  adapters["tokenmint-totp"] = createTokenmintTotpAdapter();
 
   if (input.providers.modelRouter === null) {
     decline(

@@ -102,13 +102,16 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // than computed.
   // M2 INTEGRATION: 33 projects (only WIN-259 adds one; WIN-260 adopts one that
   // already existed) and 111 + 2 + 3 = 116 edges. Still READ BACK, not computed.
-  // WIN-267 A1: 34 projects and 116 + 3 = 119 edges. The three are
+  // WIN-267 A1 + A2: 35 projects and 116 + 3 + 2 = 121 edges. A1's three are
   // `keyring-envelope` -> `identity-access` (the fourth binding's owner edge),
-  // `node-crypto-digest` -> `identity-access` (the fourteenth directory's owner
-  // edge) and `apps/core-api` -> `node-crypto-digest` (the composition-root edge
-  // every adapter gets). Still READ BACK from the generator's own line rather
-  // than computed here, which is what caught the one-short pin at WIN-259.
-  assert.match(output, /34 V1 projects and 119 project edges/u);
+  // `node-crypto-digest` -> `identity-access` (its owner edge) and
+  // `apps/core-api` -> `node-crypto-digest` (the composition-root edge every
+  // adapter gets). A2's two are `tokenmint-totp` -> `identity-access` and
+  // `apps/core-api` -> `tokenmint-totp` — TWO for TWO bindings, because a
+  // project reference is per PACKAGE. Still READ BACK from the generator's own
+  // line rather than computed here, which is what caught the one-short pin at
+  // WIN-259.
+  assert.match(output, /35 V1 projects and 121 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -172,12 +175,12 @@ test("the scaffolding tier is exactly 103 files and is only ever manifests, tsco
   // 104 + 2 = 106. The literal is asserted BESIDE the two constants above so a
   // pin moved without the tree moving, or the reverse, cannot pass here.
   //
-  // WIN-267 A1 206 -> 211, and by the same arithmetic for the same reason: the
-  // FOURTEENTH adapter directory brings three scaffolding files and two source
-  // placeholders, so 100 + 3 = 103 and 106 + 2 = 108. `keyring-envelope`'s
-  // fourth BINDING adds nothing here — a binding is a row in a table, not a file
-  // on disk — which is exactly the distinction this total is worth asserting for.
-  assert.equal(total, 211, "an unadopted skeleton is the M1 tree plus the thirteenth and fourteenth adapters");
+  // WIN-267 A1 + A2 206 -> 216, by the same arithmetic twice: each new adapter
+  // directory brings three scaffolding files and two source placeholders, so
+  // 100 + 3 + 3 = 106 and 106 + 2 + 2 = 110. `keyring-envelope`'s fourth BINDING
+  // adds nothing here — a binding is a row in a table, not a file on disk —
+  // which is exactly the distinction this total is worth asserting for.
+  assert.equal(total, 216, "an unadopted skeleton is the M1 tree plus the thirteenth, fourteenth and fifteenth adapters");
 
   const scaffoldingPaths = [...files.keys()].filter((path) => isScaffoldingPath(path));
   assert.equal(scaffoldingPaths.length, EXPECTED_SCAFFOLDING_FILE_COUNT);
@@ -627,8 +630,14 @@ const LIVE_ADAPTERS = [
       { port: "MfaSecretCipher", owner: "identity-access" },
     ], note: "n" },
   // WIN-267 A1. The FOURTEENTH directory, in the fixture copy for the same
-  // reason.
+  // reason: this copy is the non-vacuity anchor every refusal below stands on,
+  // so a copy behind the tree makes the refusal COUNTS wrong rather than the
+  // refusals.
   { dir: "node-crypto-digest", port: "SecretHasher", owner: "identity-access", note: "n" },
+  // WIN-267 A2. The FIFTEENTH, with its two bindings.
+  { dir: "tokenmint-totp", port: "TokenMinter", owner: "identity-access", additional: [
+      { port: "TotpCodeVerifier", owner: "identity-access" },
+    ], note: "n" },
 ];
 
 test("the live adapter table passes its own check, and the fixture copy of it does too", () => {
@@ -645,11 +654,15 @@ test("the live adapter table passes its own check, and the fixture copy of it do
 // holds no rows and no database client — `keyring-envelope`, which holds the
 // AES-256 root keys the ORM's own adapter refused to hold. The refusal it
 // proves is unchanged: a directory beyond the declared count still fails.
-// WIN-267 A1 RENAMES IT AGAIN, THIRTEENTH -> FOURTEENTH -> FIFTEENTH. The pin
-// moved a second time and for a second directory that holds no rows and no
-// client: `node-crypto-digest`, a keyless SHA-256. §15's consolidation rule is
-// about sharing a CLIENT, and this shares none. The refusal it proves is
-// unchanged: a directory beyond the declared count still fails.
+// WIN-267 RENAMES IT TWICE MORE, FOURTEENTH -> FIFTEENTH -> SIXTEENTH, and the
+// two renames record two exceptions. `keyring-envelope` was a directory that
+// holds no rows and no database client but DOES hold a vendor-shaped thing, the
+// AES-256 root keys. `node-crypto-digest` and `tokenmint-totp` are the cases §15
+// does not reach at all — a keyless SHA-256, and `node:crypto` plus the one
+// base32 alphabet two ports must agree on. Neither shares a CLIENT with
+// anything, which is what §15's consolidation rule is about. The refusal this
+// case proves is unchanged in any rename: a directory beyond the declared count
+// still fails.
 test("§15 refusal: a FIFTEENTH adapter directory fails, even though bindings may exceed fourteen", () => {
   const errors = checkAdapterTable([
     ...LIVE_ADAPTERS,
@@ -676,10 +689,15 @@ test("§15 refusal: a FIFTY-SECOND binding fails, even though a directory may ho
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
+  // WIN-267 A2 moved it to fifty-one, and again NOT in `postgres-tenancy`: the
+  // fiftieth and fifty-first are `tokenmint-totp:TokenMinter` and
+  // `tokenmint-totp:TotpCodeVerifier`, the first two bindings in the layout on a
+  // directory that holds no vendor client at all.
   const errors = checkAdapterTable(widened);
-  // WIN-267 A1 moved it to fifty-one, by two rows in two different directories:
-  // `keyring-envelope:MfaSecretCipher` on an existing one and
-  // `node-crypto-digest:SecretHasher` on a new one.
+  // WIN-267 moved it to fifty-three, by four rows across three directories:
+  // `keyring-envelope:MfaSecretCipher` on an existing one,
+  // `node-crypto-digest:SecretHasher` on a new one, and `tokenmint-totp`'s two
+  // on another new one.
   assert.ok(errors.some((error) => error.includes("declares 51 adapter bindings; ADAPTERS flattens to 52")));
 });
 

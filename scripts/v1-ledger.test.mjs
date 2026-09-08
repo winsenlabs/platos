@@ -1163,28 +1163,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
     // M2 INTEGRATION, ALL FOUR: 1397 + 10 + 28 + 12 + 7 = 1454.
     //
-    // WIN-267 (M4.1, A1) 1454 -> 1465, ELEVEN files and every one nameable.
-    //   +9 packages/adapters/node-crypto-digest — the FOURTEENTH adapter
-    //      directory, adopted in the same run that creates it. Three scaffolding
-    //      files (package.json, tsconfig.json, README.md) on the existing
-    //      packages.adapters config/doc rules, and six source files on the
-    //      existing source and test rules: adapter.ts, index.ts,
-    //      secret-hasher.ts, oracle-vectors.ts and the two suites. Its
-    //      generated `src/adapter.ts` and `src/index.ts` placeholders are
-    //      RELEASED by the adoption rather than added, exactly as
-    //      `redis-cache`'s were — the census records the same fact from the
-    //      other side, 90 placeholders released rather than 92.
-    //   +3 packages/adapters/keyring-envelope — mfa-secret-cipher.ts, its suite,
-    //      and `mutations-mfa-secret-cipher.json`, this dimension's guard
-    //      ledger. adapter.ts, index.ts, package.json and tsconfig.json were
-    //      widened IN PLACE and a widened file is not a new one.
-    //   +1 the second guard ledger,
-    //      `packages/adapters/node-crypto-digest/mutations-node-crypto-digest.json`.
-    // 9 + 3 + 1 = 13, so 1454 + 13 = 1467. No ledger rule is new:
+    // WIN-267 (M4.1, A1 + A2) 1454 -> 1483, TWENTY-NINE files and every one
+    // nameable. SUMMED across the two branches rather than side-picked — taking
+    // either side whole would drop files and leave the identities still holding,
+    // which is the failure mode this file's own comments record three times.
+    //   +9  packages/adapters/node-crypto-digest (A1) — three scaffolding files
+    //       (package.json, tsconfig.json, README.md) on the existing
+    //       packages.adapters config/doc rules, and six source files on the
+    //       existing source and test rules: adapter.ts, index.ts,
+    //       secret-hasher.ts, oracle-vectors.ts and the two suites. Its
+    //       generated `src/adapter.ts` and `src/index.ts` placeholders are
+    //       RELEASED by the adoption rather than added.
+    //   +3  packages/adapters/keyring-envelope (A1) — mfa-secret-cipher.ts, its
+    //       suite, and `mutations-mfa-secret-cipher.json`. adapter.ts, index.ts,
+    //       package.json and tsconfig.json were widened IN PLACE and a widened
+    //       file is not a new one.
+    //   +1  packages/adapters/node-crypto-digest/mutations-node-crypto-digest.json
+    //   +16 packages/adapters/tokenmint-totp (A2) — three scaffolding files,
+    //       five source modules, seven suites and its guard ledger.
+    // 9 + 3 + 1 + 16 = 29, so 1454 + 29 = 1483. No ledger rule is new:
     // `packages.adapters.source`, `.test`, `.config` and `.doc` already match
-    // every path above, and the two JSON ledgers land on `.config` exactly as
+    // every path above, and the three JSON ledgers land on `.config` exactly as
     // `postgres-tenancy`'s twenty-one do.
-    packages: 1467,
+    packages: 1483,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1431,6 +1432,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
+    //
+    // WIN-267 A2: 1454 -> 1470, ALL SIXTEEN under
+    // `packages/adapters/tokenmint-totp`, the fourteenth adapter directory and
+    // the FIRST V1 project added since `keyring-envelope`. Three of the sixteen
+    // are the generator-owned scaffolding every project brings (package.json,
+    // tsconfig.json, README.md); five are source (base32, the minter, the
+    // verifier, the adapter and its index); seven are suites; and the
+    // sixteenth is `mutations-tokenmint-totp.json`, this tranche's guard ledger,
+    // on the same existing `packages.adapters.config` rule every guard ledger
+    // above it took. NO LEDGER RULE CHANGED and no other area moves: the
+    // composition root, the two arch gates, the census and the ports index are
+    // all edited IN PLACE, and an edited file is not a new one. The `identity-access`
+    // ports index gains three re-exported names and no file.
     // 13 -> 15. WIN-260's errors dimension adds TWO top-level docs/*.json, each
     // on a NEW rule, because no existing docs rule matches a top-level
     // docs/*.json and the audits rule would have called both `regenerate`, which
@@ -1510,8 +1524,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  // WIN-267 (M4.1, A1) 1598 -> 1611: the thirteen files above, all in `packages`.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1611);
+  // WIN-267 (M4.1, A1 + A2) 1598 -> 1627: the twenty-nine files above, all in
+  // `packages`.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1627);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1618,16 +1633,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
     //
-    // and WIN-267 (M4.1, A1) +13, ALL of them `packages` and ALL of them
-    // `packages/adapters` — TEN in the newly adopted fourteenth directory
-    // `node-crypto-digest` (three generator-owned scaffolding files, six source
-    // files and its guard ledger) and THREE in `keyring-envelope` (the MFA
-    // envelope, its suite and that dimension's guard ledger). It ADOPTS ONE
-    // PROJECT and CHANGES NO LEDGER RULE, so this delta too is purely additive:
-    // 1598 + 13 = 1611, re-derived here by summing the per-area counts
-    // independently of the assertion above, so the two can DISAGREE and be
-    // caught.
-    rulesDocument.baseline.totalFiles + 1611
+    // and WIN-267 (M4.1, A1 + A2) +29, ALL of them `packages` and ALL of them
+    // `packages/adapters` — TEN in `node-crypto-digest` (three generator-owned
+    // scaffolding files, six source files and its guard ledger), THREE in
+    // `keyring-envelope` (the MFA envelope, its suite and that dimension's guard
+    // ledger) and SIXTEEN in `tokenmint-totp` (three scaffolding, five source,
+    // seven suites and its guard ledger). It ADOPTS TWO PROJECTS and CHANGES NO
+    // LEDGER RULE, so this delta too is purely additive: 1598 + 29 = 1627,
+    // re-derived here by summing the per-area counts independently of the
+    // assertion above, so the two can DISAGREE and be caught.
+    rulesDocument.baseline.totalFiles + 1627
   );
 });
 

@@ -13,7 +13,11 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // WIN-267 A1 33 -> 34. `packages/adapters/node-crypto-digest`, the fourteenth
 // adapter directory: the identity-access `SecretHasher`, which holds no key and
 // no client and so could not be a row on an existing directory.
-export const EXPECTED_V1_PROJECT_COUNT = 34;
+// WIN-267 A2 33 -> 34. `packages/adapters/tokenmint-totp`, the fourteenth
+// adapter directory. The list below is ORDERED and the root tsconfig's
+// references must match it exactly, so the entry goes where the generator emits
+// it: after `keyring-envelope` and before the two apps.
+export const EXPECTED_V1_PROJECT_COUNT = 35;
 export const EXPECTED_V1_PROJECTS = [
   "packages/kernel",
   "packages/contexts/identity-access", "packages/contexts/tenancy", "packages/contexts/secrets",
@@ -30,6 +34,8 @@ export const EXPECTED_V1_PROJECTS = [
   "packages/adapters/keyring-envelope",
   // WIN-267 A1: the fourteenth adapter directory.
   "packages/adapters/node-crypto-digest",
+  // WIN-267 A2: the fifteenth adapter directory.
+  "packages/adapters/tokenmint-totp",
   "apps/core-api", "apps/mcp-stdio",
 ];
 
@@ -77,7 +83,7 @@ export function v1DistDirectories(root = repositoryRoot) {
     typeof reference?.path === "string" ? normalizedReferencePath(reference.path) : null
   );
   if (JSON.stringify(actualProjectPaths) !== JSON.stringify(EXPECTED_V1_PROJECTS)) {
-    throw new Error("root tsconfig references must be the exact ordered 34-project V1 target set");
+    throw new Error(`root tsconfig references must be the exact ordered ${EXPECTED_V1_PROJECT_COUNT}-project V1 target set`);
   }
 
   const projects = [];

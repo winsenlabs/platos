@@ -322,9 +322,12 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(51);
-    expect(body.detail.satisfiedBindings).toHaveLength(43);
-    expect(body.reason).toBe("43 of 51 adapter bindings are satisfied; 8 are not");
+    expect(body.detail.declaredBindings).toBe(53);
+    expect(body.detail.satisfiedBindings).toHaveLength(45);
+    // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
+    // configuration, so all four of their bindings are satisfied in every
+    // install and the EIGHT that remain are the same eight generated interfaces.
+    expect(body.reason).toBe("45 of 53 adapter bindings are satisfied; 8 are not");
     // The context composed over a REAL PostgreSQL adapter rather than over a
     // bundle an install had to hand in — the first one in this programme.
     expect(body.detail.composedContexts).toEqual(["tenancy"]);
@@ -334,7 +337,7 @@ describe("the built binary starts, serves and stops", () => {
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("43/51 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("45/53 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

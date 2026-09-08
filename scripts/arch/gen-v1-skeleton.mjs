@@ -423,6 +423,36 @@ export const ADAPTERS = [
     port: "SecretHasher",
     owner: "identity-access",
     note: "the stored-verifier digest, the constant-time comparison and the PKCE challenge",
+  // WIN-267 A2. THE FOURTEENTH DIRECTORY, and the second one added since the §15
+  // amendment — for a reason §15 does not cover at all.
+  //
+  // §15 is a rule about a VENDOR CLIENT: one client is one directory, however
+  // many ports sit behind it. There is no vendor client here. Both ports are
+  // `node:crypto`, which every project in this tree may already call, so nothing
+  // about a shared client argues for or against putting them together. The
+  // argument that does apply is `keyring-envelope`'s: two ports belong in one
+  // directory when SPLITTING them would break something that has to hold.
+  //
+  // WHAT HAS TO HOLD. `TokenMinter.mintTotpSecret` ENCODES the shared secret as
+  // base32 and `TotpCodeVerifier.generate` DECODES it. Two directories are two
+  // packages with two copies of an alphabet that can be versioned apart, and the
+  // day they disagree by one character every enrolment fails on a real phone and
+  // nothing in this repository notices. One directory means `base32.ts` is one
+  // module both import.
+  //
+  // WHY IT IS NOT A ROW ON `postgres-tenancy` OR `keyring-envelope`. The ORM's
+  // directory refused `secrets`' cryptography ports because holding key material
+  // beside the database connection puts both halves of a credential in one
+  // process; the same sentence applies to the generator that MINTS the secrets
+  // those rows store. And `keyring-envelope` is the custodian of REVERSIBLE
+  // envelopes — nothing in this directory can decrypt or verify anything, which
+  // is a property worth keeping true by construction.
+  {
+    dir: "tokenmint-totp",
+    port: "TokenMinter",
+    owner: "identity-access",
+    additional: [{ port: "TotpCodeVerifier", owner: "identity-access" }],
+    note: "the credential randomness and the RFC 6238 keyed hash over one base32 alphabet",
   },
 ];
 
@@ -686,8 +716,12 @@ export function adapterOwnerPackages(adapter) {
 // directory from borrowing them; `node-crypto-digest:SecretHasher` is a NEW
 // directory, because a keyless SHA-256 shares no client with anything and §15's
 // consolidation rule is about sharing a client.
-export const EXPECTED_ADAPTER_COUNT = 14;
-export const EXPECTED_BINDING_COUNT = 51;
+// WIN-267 A2: 13 -> 14 directories, 49 -> 51 bindings. The FOURTEENTH directory
+// takes TWO bindings with it (`identity-access:TokenMinter` and
+// `identity-access:TotpCodeVerifier`), so both pins move and they move by
+// different amounts — which is again what the separate pins exist to show.
+export const EXPECTED_ADAPTER_COUNT = 15;
+export const EXPECTED_BINDING_COUNT = 53;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -720,7 +754,13 @@ export const ROOT_SOLUTION_PATH = "tsconfig.json";
 // driven port, and this is the only port of the four `context-ports.ts` names as
 // missing whose implementation needs no key, no client and no configuration —
 // so it is the one that could not be a row on an existing directory either.
-export const EXPECTED_PROJECT_COUNT = 34;
+// 33 -> 34 (WIN-267 A2). `packages/adapters/tokenmint-totp`, the fourteenth
+// adapter directory. A PROJECT for the same reason the thirteenth was one: ADR
+// M0.3 §2 lets only an adapter package implement a driven port, so without its
+// own tsconfig and its own package the composition root could not reference it
+// and `identity-access`'s `TokenMinter` and `TotpCodeVerifier` would have stayed
+// where `context-ports.ts` found them — "satisfied by no adapter directory".
+export const EXPECTED_PROJECT_COUNT = 35;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -920,7 +960,7 @@ export const EXPECTED_PROJECT_COUNT = 34;
 // `node-crypto-digest` (the composition-root edge every adapter gets). READ BACK
 // from `gen-v1-skeleton --check` rather than trusted from this arithmetic, and
 // carried independently in `scripts/arch/v1-project-graph.mjs`.
-export const EXPECTED_EDGE_COUNT = 119;
+export const EXPECTED_EDGE_COUNT = 121;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -938,7 +978,9 @@ export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.m
 //
 // 100 -> 103 (WIN-267 A1): 34 projects x 3 files + 1. The fourteenth directory
 // brings the same three, for the same reason.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 103;
+// 100 -> 103 (WIN-267 A2). The fourteenth directory brings the three files every
+// project brings: 34 projects x 3 files + 1 = 103.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 106;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
 // kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
@@ -967,7 +1009,15 @@ export const EXPECTED_SCAFFOLDING_FILE_COUNT = 103;
 // does not move at all. Raising the CEILING rather than the floor is what keeps
 // un-adoption failing closed — remove the adoption entry while the real source
 // is on disk and the two files reappear as MISSING.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 108;
+// WIN-267 A2: 106 -> 108. The FOURTEENTH adapter's `src/index.ts` and
+// `src/adapter.ts`, emitted for an unadopted project and immediately released by
+// this tranche's adoption — which is why the RELEASED count moves by two in the
+// same run while the number below, a property of a fully UNADOPTED skeleton,
+// moves by two as well. Raising the CEILING keeps un-adoption failing closed:
+// the check refuses a placeholder count above this number, so removing the
+// adoption entry while the real source is on disk makes both files reappear as
+// MISSING.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 110;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -1009,6 +1059,7 @@ export const ADOPTED_PROJECTS = [
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
   "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
   "packages/adapters/node-crypto-digest", // WIN-267 A1 — the identity-access SecretHasher: SHA-256 hex over the extraction source's own digests, a constant-time comparison, and RFC 7636's S256 challenge
+  "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
 ];
 
 // ---------------------------------------------------------------------------

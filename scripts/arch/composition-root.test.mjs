@@ -143,13 +143,15 @@ test("the live repository satisfies both the boundary rules and the composition-
   // THIRTEEN directories. The two pins move by different amounts, which is the
   // whole reason they are pinned separately.
   //
-  // WIN-267 A1: 49 + 2 = 51 across FOURTEEN directories, and by different
-  // amounts a further time. `keyring-envelope:MfaSecretCipher` is a row on an
-  // EXISTING directory, because `root-key-ring.ts` is the tree's only holder of
-  // AES-256 root key bytes and rule (j2) forbids a second package from reaching
-  // them; `node-crypto-digest:SecretHasher` is the fourteenth DIRECTORY, because
+  // WIN-267 A1 + A2: 49 + 2 + 2 = 53 across FIFTEEN directories, and by
+  // different amounts a further time. `keyring-envelope:MfaSecretCipher` is a
+  // row on an EXISTING directory, because `root-key-ring.ts` is the tree's only
+  // holder of AES-256 root key bytes and rule (j2) forbids a second package from
+  // reaching them; `node-crypto-digest:SecretHasher` is a new DIRECTORY, because
   // a keyless SHA-256 shares no vendor client with anything and §15's
-  // consolidation rule is about sharing one.
+  // consolidation rule is about sharing one; `tokenmint-totp` is a new directory
+  // carrying TWO bindings, because the port that MINTS a TOTP secret and the
+  // port that READS it must share one base32 alphabet.
   assert.equal(audit.bindingCount, 51);
   //
   // AND `memory` adds `MemoryRepository` and
@@ -175,13 +177,15 @@ test("the live repository satisfies both the boundary rules and the composition-
   // AES-256 root keys, which ADR M0.3 §15's "one vendor client, one directory"
   // does not reach.
   //
-  // WIN-267 A1 MOVES IT AGAIN, 13 -> 14. `node-crypto-digest` holds no rows, no
-  // client and no key: it is a SHA-256 and a constant-time comparison. §15's
-  // consolidation rule collapses directories that would otherwise open a second
-  // connection to one server, and this opens none — so there is nothing to
-  // collapse it into, and `keyring-envelope`'s own reason for holding `secrets`'
-  // `Hasher` (the cost parameter that belongs with the keys) does not carry: this
-  // port is synchronous and can never have one.
+  // WIN-267 MOVES IT TWICE, 13 -> 15, and further outside §15 than the
+  // thirteenth went. `node-crypto-digest` holds no rows, no client and no key:
+  // it is a SHA-256 and a constant-time comparison. §15's consolidation rule
+  // collapses directories that would otherwise open a second connection to one
+  // server, and this opens none — so there is nothing to collapse it into, and
+  // `keyring-envelope`'s own reason for holding `secrets`' `Hasher` (the cost
+  // parameter that belongs with the keys) does not carry: this port is
+  // synchronous and can never have one. `tokenmint-totp` holds no rows, no
+  // database client and no key material either.
   assert.equal(ADAPTERS.length, 14);
 });
 
@@ -435,6 +439,10 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   const listed = parseUnimplementedAdapters(source);
   assert.equal(listed.length, 8, "eight of the fourteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
+  // WIN-267 A2 adds the SIXTH constructible directory. The unimplemented count
+  // is UNCHANGED at eight, which is this tranche's claim from the other side: it
+  // built a new directory rather than filling in a generated one, so the two
+  // numbers move independently and the identity below still holds.
   assert.deepEqual(constructible, [
     "keyring-envelope",
     "model-router-providers",
@@ -444,6 +452,7 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
     "outbox",
     "postgres-tenancy",
     "redis-cache",
+    "tokenmint-totp",
   ]);
   assert.equal(listed.length + constructible.length, ADAPTERS.length);
 });
@@ -524,10 +533,11 @@ test("the binding-table parser reads all FIFTY-ONE bindings, across fourteen dir
   // WIN-267 A1 3 -> 4: `identity-access`'s `MfaSecretCipher`, the first port on
   // this directory owned by a context other than `secrets`.
   assert.equal(entries.filter((entry) => entry.adapter === "keyring-envelope").length, 4);
-  // And the fourteenth directory appears ONCE in both halves, which is the same
-  // both-ways check: a single-binding directory must not be double-counted in
+  // And each new directory appears the right number of times in BOTH halves,
+  // which is the same both-ways check: a directory must not be double-counted in
   // the flattening, and must not vanish from the directory set.
   assert.equal(entries.filter((entry) => entry.adapter === "node-crypto-digest").length, 1);
+  assert.equal(entries.filter((entry) => entry.adapter === "tokenmint-totp").length, 2);
   assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 14);
 });
 

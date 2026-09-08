@@ -41,26 +41,47 @@
 // whole of what it needs.
 //
 // `identity-access` is the near miss, and naming why is the point of this note.
-// Its bundle has eight slots. `repository` is on the same adapter — WIN-258
-// tranche 2 put it there — and `logger`, `clock` and `ids` are kernel ports this
-// process already holds.
+// Its bundle has TEN slots, six of them driven ports. `repository` is on the
+// same adapter — WIN-258 tranche 2 put it there — and `logger`, `clock` and
+// `ids` are kernel ports this process already holds.
 //
-// WIN-267 A1 CLOSED TWO OF THE REMAINING FOUR, and the count in
-// `IDENTITY_ACCESS_UNASSEMBLED` moves from four to two because of it. `hasher`
-// is now `packages/adapters/node-crypto-digest` — the fourteenth directory, and
-// the only one built unconditionally, because a keyless SHA-256 has nothing an
-// install could configure. `cipher` is now `keyring-envelope.mfaSecrets`, a
-// FOURTH port on the thirteenth directory rather than a fifteenth directory,
-// because AES-256 root key bytes have exactly one custodian in this tree and
-// rule (j2) forbids a second package from reaching them.
+// WIN-267 A1 AND A2 CLOSED FOUR OF THE FIVE, and the count in
+// `IDENTITY_ACCESS_UNASSEMBLED` moves from four to one because of them.
+// `hasher` is now `packages/adapters/node-crypto-digest`; `cipher` is now
+// `keyring-envelope.mfaSecrets`, a FOURTH port on the thirteenth directory
+// rather than a fifteenth directory, because AES-256 root key bytes have
+// exactly one custodian in this tree and rule (j2) forbids a second package
+// from reaching them; `minter` and `totp` are both
+// `packages/adapters/tokenmint-totp`, the fifteenth directory. All three of
+// those directories are built UNCONDITIONALLY: none reads configuration, so
+// there is nothing an install could get wrong.
 //
-// TWO REMAIN AND THIS FILE STILL RETURNS NONE FOR THE CONTEXT. `rateLimiter` is
-// `packages/adapters/redis-ratelimit`, whose `src/adapter.ts` is still a
-// generated interface; `minter` and `totp` are named on the context's own ports
-// and satisfied by no adapter directory at all. Assembling six slots of eight
-// and leaving two to crash at first sign-in is the thing this file exists not to
-// do, so `identity-access` is still composed from a SUPPLIED bundle — and the
-// day those two land, the assembly below gains its second context.
+// ONE DRIVEN PORT REMAINS, AND SO DOES ONE KERNEL PORT, AND THIS FILE STILL
+// RETURNS NONE FOR THE CONTEXT.
+//
+//   * `rateLimiter` is `packages/adapters/redis-ratelimit`, whose
+//     `src/adapter.ts` is STILL a generated interface. The tranche that makes it
+//     real was written and is not landed here, because its own author marked it
+//     incomplete: the suite that would prove the last token unshareable across
+//     concurrent consumers has never been run.
+//   * `safety` is the kernel `SafetyEventSink`. `packages/contexts/governance`
+//     implements it (`createGovernanceSafetyEventSink`), but `app.module.ts`
+//     imports `GovernanceContract` as a TYPE only and composes no governance
+//     contract, so no object in this process can fill that slot. A rate limiter
+//     alone would therefore NOT be enough: `consume-rate-limit.ts` writes
+//     `identity.rate_limit.degraded` into this sink, so a bundle without it
+//     would crash on the first refusal rather than on the first sign-in.
+//
+// A CORRECTION TO THE ARITHMETIC THIS NOTE INHERITED. The bundle does not have
+// eight slots and identity-access does not have eight driven ports.
+// `IdentityAccessPorts` has TEN slots, of which SIX are driven ports named on
+// this context's own `application/ports/index.ts` (`repository`, `rateLimiter`,
+// `hasher`, `minter`, `totp`, `cipher`) and FOUR are kernel ports (`clock`,
+// `ids`, `logger`, `safety`). The original sentence said "four of its eight
+// driven ports" and then named five, and it counted `safety` among the kernel
+// ports "this process already holds", which it does not hold. Both errors are
+// fixed here and both are now read back by `installation.test.ts` against the
+// bundle's own type rather than against this prose.
 //
 // THAT IS WHY `APPLICATION_ENTRY_PROJECTS` GAINS NO ENTRY IN THIS TRANCHE. The
 // generator's own rule for that list is "the contexts `apps/core-api` ACTUALLY
@@ -97,20 +118,27 @@ export interface ContextPortAssembly {
  * The reason `identity-access` is not assembled here, stated once.
  *
  * A constant rather than an inline string because it is READ BACK by
- * `installation.test.ts`: the claim "two of its eight slots have no
+ * `installation.test.ts`: the claim "one of its six driven ports has no
  * implementation" is checked against the adapter directories rather than
  * asserted, so this sentence and the check cannot drift apart silently.
  *
- * WIN-267 A1 moved it from four to two, and the readback moved with it in BOTH
- * directions: the two ports still missing must appear on no row of
- * `ADAPTER_BINDINGS`, and the two that landed must appear on a NAMED directory.
- * A sentence edited without the adapters, or adapters landed without the
+ * WIN-267 A1 and A2 moved it from four to one, and the readback moved with it
+ * in BOTH directions: the port still missing must appear on no row of
+ * `ADAPTER_BINDINGS` and must be named here, and the four that landed must each
+ * appear on a NAMED directory and be present in `construction.adapters`. A
+ * sentence edited without the adapters, or adapters landed without the
  * sentence, fails there.
+ *
+ * The sentence also names `safety`, which is not an adapter question at all:
+ * it is a kernel port whose only implementation is in a context this root does
+ * not compose. `installation.test.ts` checks that clause too, by asserting no
+ * binding row satisfies `SafetyEventSink`.
  */
 export const IDENTITY_ACCESS_UNASSEMBLED =
-  "two of its eight driven ports have no implementation: RateLimiter is" +
-  " packages/adapters/redis-ratelimit, a generated interface, and TokenMinter and" +
-  " TotpCodeVerifier are satisfied by no adapter directory";
+  "one of its six driven ports has no implementation: RateLimiter is" +
+  " packages/adapters/redis-ratelimit, a generated interface; and its kernel" +
+  " SafetyEventSink slot is implemented only by the governance context, which" +
+  " this root does not compose";
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.

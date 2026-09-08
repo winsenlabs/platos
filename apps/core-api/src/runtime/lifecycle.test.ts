@@ -106,6 +106,12 @@ function fullySupplied(): SuppliedAdapters {
     // WIN-267 A1. The fourteenth, listed by name for the same reason: readiness
     // going green must require a slot somebody deliberately filled.
     "node-crypto-digest",
+    // WIN-267 A2. The fifteenth, listed by name for the same reason and with an
+    // extra one it shares with the fourteenth: these are the only two
+    // directories an install gets WITHOUT configuring anything, so deriving the
+    // list from `ADAPTER_NAMES` would have hidden the one case where readiness
+    // could go green on a slot nobody filled.
+    "tokenmint-totp",
   ];
   return Object.fromEntries(names.map((name) => [name, adapterDouble(name)])) as SuppliedAdapters;
 }
@@ -135,7 +141,7 @@ describe("the process starts and serves", () => {
     expect(messages).toContain("process.starting");
     expect(messages).toContain("process.started");
     const started = harness.lines().find((line) => line["message"] === "process.started");
-    expect(started).toMatchObject({ bindings: "0/51 adapter bindings satisfied", unsatisfied: 51 });
+    expect(started).toMatchObject({ bindings: "0/53 adapter bindings satisfied", unsatisfied: 53 });
   });
 });
 

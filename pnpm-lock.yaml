@@ -319,6 +319,9 @@ importers:
       '@platos/adapter-redis-streams':
         specifier: workspace:*
         version: link:../../packages/adapters/redis-streams
+      '@platos/adapter-tokenmint-totp':
+        specifier: workspace:*
+        version: link:../../packages/adapters/tokenmint-totp
       '@platos/context-agents':
         specifier: workspace:*
         version: link:../../packages/contexts/agents
@@ -1185,6 +1188,12 @@ importers:
       '@platos/kernel':
         specifier: workspace:*
         version: link:../../kernel
+
+  packages/adapters/tokenmint-totp:
+    dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../contexts/identity-access
 
   packages/contexts/agents:
     dependencies:

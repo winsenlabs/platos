@@ -87,7 +87,10 @@ const BUILT_FROM_ANOTHER_ADAPTER: Readonly<Record<string, AdapterName>> = Object
  * suite checks in both directions — it must be absent from `unwired` in EVERY
  * configuration, including the one where nothing at all is declared.
  */
-const BUILT_UNCONDITIONALLY: readonly AdapterName[] = Object.freeze(["node-crypto-digest"]);
+const BUILT_UNCONDITIONALLY: readonly AdapterName[] = Object.freeze([
+  "node-crypto-digest",
+  "tokenmint-totp",
+]);
 
 const opened: AdapterConstruction[] = [];
 
@@ -168,11 +171,13 @@ describe("constructing the adapters an install declared", () => {
     // group of its own. An install with no database gets neither, and the reason
     // says so instead of naming a variable that would not have helped.
     const withoutDatabase = construct({ ...NOTHING_DECLARED, PLATOS_STORE_REDIS_URL: "redis://127.0.0.1:1" });
-    // `node-crypto-digest` is here beside `redis-cache` and is not a Redis
-    // directory: it is the one built unconditionally, so it appears under every
-    // configuration including this one.
+    // `node-crypto-digest` and `tokenmint-totp` are here beside `redis-cache`
+    // and neither is a Redis directory: they are the two built unconditionally,
+    // so they appear under every configuration including this one. `redis-cache`
+    // is here because its group was declared, and the outbox is absent because
+    // its dependency was not. The three states are what the case is about.
     expect([...Object.keys(withoutDatabase.adapters)].sort()).toEqual(
-      ["node-crypto-digest", "redis-cache"].sort(),
+      ["node-crypto-digest", "redis-cache", "tokenmint-totp"].sort(),
     );
     const declined = withoutDatabase.unwired.find((row) => row.adapter === "outbox");
     expect(declined?.cause).toBe("configuration");
@@ -190,10 +195,10 @@ describe("constructing the adapters an install declared", () => {
     // Nothing is configured, so THIRTEEN OF THE FOURTEEN are unwired — and the
     // thirteen split by a reason that is not this file's opinion:
     // `UNIMPLEMENTED_ADAPTERS` is joined to the adapter packages' own source by
-    // composition-root.mjs (C7). The fourteenth is `node-crypto-digest`, which
-    // reads no configuration and is therefore wired even here; asserting its
-    // ABSENCE from `unwired` is what makes "built unconditionally" falsifiable
-    // rather than a comment.
+    // composition-root.mjs (C7). The fourteenth and fifteenth are
+    // `node-crypto-digest` and `tokenmint-totp`, which read no configuration and
+    // are therefore wired even here; asserting their ABSENCE from `unwired` is
+    // what makes "built unconditionally" falsifiable rather than a comment.
     expect(construction.unwired).toHaveLength(13);
     for (const adapter of BUILT_UNCONDITIONALLY) {
       expect(byCause.get(adapter)).toBeUndefined();
@@ -319,7 +324,11 @@ describe("readiness over what was actually constructed", () => {
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
     expect(unimplementable).toHaveLength(8);
-    expect(verdict.detail.satisfiedBindings).toHaveLength(43);
+    // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
+    // between them and both directories are constructible, so all four are
+    // satisfied; the eight that remain are the same eight, which is what the
+    // identity on the next line says and the literal here cannot.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(45);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(8);
     // STILL RED, AND HONESTLY SO. Eight ports have no implementation in this
@@ -329,16 +338,25 @@ describe("readiness over what was actually constructed", () => {
     expect(verdict.ready).toBe(false);
   });
 
-  it("is 1 of 51 with nothing wired, and says which kind of nothing the other 50 are", () => {
-    // IT USED TO BE 0, AND THE CHANGE IS THE POINT RATHER THAN AN ADJUSTMENT.
-    // WIN-267 A1 added the one directory an install cannot fail to provide, so
-    // an unconfigured process is no longer red BY CONSTRUCTION on every single
-    // binding — it is red on the fifty that need something an operator has not
-    // set or that nobody has written yet.
+  it("is 3 of 53 with nothing wired, and says which kind of nothing the other 50 are", () => {
+    // IT USED TO BE 0 OF 49, AND THE CHANGE IS THE DELIVERABLE RATHER THAN A
+    // RELAXATION. Before WIN-267 there was no port in this tree an install could
+    // satisfy without configuring something, so "nothing configured" and
+    // "nothing satisfied" were the same sentence. `node-crypto-digest` (A1) and
+    // `tokenmint-totp` (A2) need no configuration, so they are what separates
+    // them — and the three bindings they satisfy are NAMED here rather than
+    // counted, so a FOURTH arriving unconfigured would fail this case instead of
+    // widening a number.
     const { verdict } = readiness(NOTHING_DECLARED);
-    expect(verdict.detail.satisfiedBindings).toEqual(["node-crypto-digest:SecretHasher"]);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - 1);
-    expect(verdict.reason).toContain(`1 of ${ADAPTER_BINDINGS.length}`);
+    expect([...verdict.detail.satisfiedBindings].sort()).toEqual(
+      [
+        "node-crypto-digest:SecretHasher",
+        "tokenmint-totp:TokenMinter",
+        "tokenmint-totp:TotpCodeVerifier",
+      ].sort(),
+    );
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - 3);
+    expect(verdict.reason).toContain(`3 of ${ADAPTER_BINDINGS.length}`);
     // The half that was missing before: an unsatisfied binding list alone cannot
     // tell an unset variable from a package that was never written.
     const causes = new Set(verdict.detail.unwiredAdapters.map((row) => row.cause));
@@ -390,29 +408,39 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(declined?.reason).toBe(IDENTITY_ACCESS_UNASSEMBLED);
 
     // THE REASON IS CHECKED, NOT TAKEN ON TRUST. `RateLimiter` is a declared
-    // binding on a directory with no implementation, and the two ports beside it
-    // appear on no row of the table at all — so no adapter in this tree could
-    // satisfy them however an install were configured.
+    // binding on a directory with no implementation, so no adapter in this tree
+    // could satisfy it however an install were configured. `SafetyEventSink` is
+    // the other clause and it is not an adapter question at all: it appears on
+    // no row of this table, because its only implementation is in the
+    // `governance` context, which `app.module.ts` imports as a TYPE and never
+    // composes.
     const rateLimiter = ADAPTER_BINDINGS.filter((binding) => binding.port === "RateLimiter");
     expect(rateLimiter.map((binding) => binding.adapter)).toEqual(["redis-ratelimit"]);
     expect(UNIMPLEMENTED_ADAPTERS).toContain("redis-ratelimit");
     const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
-    for (const port of ["TokenMinter", "TotpCodeVerifier"]) {
-      expect(ports, `${port} must be bound to no adapter`).not.toContain(port);
-      expect(declined?.reason).toContain(port);
-    }
+    expect(declined?.reason).toContain("RateLimiter");
+    // The kernel half. `SafetyEventSink` is on NO row of the binding table, and
+    // that is the clause an adapter tranche cannot close: it is a CONTEXT that
+    // is missing, not a directory.
+    expect(ports, "SafetyEventSink must be bound to no adapter").not.toContain("SafetyEventSink");
+    expect(declined?.reason).toContain("SafetyEventSink");
 
-    // AND THE OTHER DIRECTION, WHICH IS THE HALF WIN-267 A1 ADDED. Two ports
-    // LEFT this sentence, and a sentence that merely stopped naming them would
-    // be an unchecked claim. Each is joined to the directory that satisfies it
-    // and to the constructed adapter that carries it, so the reason cannot shed
-    // a port the tree has not actually gained.
+    // AND THE OTHER DIRECTION, WHICH IS THE HALF WIN-267 ADDED AND WITHOUT WHICH
+    // THE ASSERTIONS ABOVE WOULD PASS BY SHRINKING. Four ports LEFT this
+    // sentence, and a sentence that merely stopped naming them is
+    // indistinguishable from one that forgot them. Each is joined to the
+    // directory that satisfies it AND to the constructed adapter that carries
+    // it, so the reason cannot shed a port the tree has not actually gained.
+    // Removing any one of the four adapters turns this red on that port.
     const landed: Readonly<Record<string, AdapterName>> = {
       SecretHasher: "node-crypto-digest",
       MfaSecretCipher: "keyring-envelope",
+      TokenMinter: "tokenmint-totp",
+      TotpCodeVerifier: "tokenmint-totp",
     };
     const { construction } = readiness(FULLY_DECLARED);
     for (const [port, adapter] of Object.entries(landed)) {
+      expect(ports, `${port} must now be bound`).toContain(port);
       expect(ADAPTER_BINDINGS.filter((binding) => binding.port === port).map((b) => b.adapter)).toEqual([
         adapter,
       ]);
@@ -420,5 +448,42 @@ describe("the context bundles those adapters can satisfy", () => {
       expect(construction.adapters[adapter as AdapterName]).toBeDefined();
       expect(declined?.reason, `${port} is satisfied and must not be named`).not.toContain(port);
     }
+  });
+
+  it("constructs both configuration-free adapters with nothing configured at all", () => {
+    // THE TWO ADAPTERS NO CONFIGURATION GROUP DECLARES. Every other constructed
+    // directory needs a URL, key material or a model name, so every other one is
+    // absent from the nothing-declared install. This case is what makes
+    // "unconditional" a checked property rather than a comment in
+    // `adapter-bindings.ts`, and it is asserted on the install that declares
+    // NOTHING precisely because that is where a guard would show up.
+    const { construction, app } = readiness(NOTHING_DECLARED);
+    const minter = construction.adapters["tokenmint-totp"];
+    expect(minter?.adapterName).toBe("tokenmint-totp");
+    expect(construction.unwired.map((row) => row.adapter)).not.toContain("tokenmint-totp");
+    const digest = construction.adapters["node-crypto-digest"];
+    expect(digest?.adapterName).toBe("node-crypto-digest");
+    expect(construction.unwired.map((row) => row.adapter)).not.toContain("node-crypto-digest");
+
+    // AND THEY ARE REAL ONES. A token carrying the domain's registered prefix, a
+    // 32-character base32 secret, and a code the same object verifies back to the
+    // counter it was generated for; and the digest the extraction source writes.
+    // `installation.test.ts` is not where the adapters' own suites live, so this
+    // is deliberately the shallowest possible end-to-end statement: the objects
+    // the composition root wired are the objects that work.
+    expect(minter?.mint("operatorSession")).toMatch(/^plt_os_[A-Za-z0-9_-]{43}$/u);
+    const secret = minter?.mintTotpSecret() ?? "";
+    expect(secret).toMatch(/^[A-Z2-7]{32}$/u);
+    const code = minter?.generate(secret, 42n) ?? "";
+    expect(minter?.verify({ secret, code, candidateCounters: [41n, 42n, 43n] })).toBe(42n);
+    // FIPS 180-4's own SHA-256("abc") — external ground truth this repository
+    // cannot edit into agreement.
+    expect(String(digest?.hash("abc"))).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    );
+
+    // No context becomes composable: `identity-access` still needs a real
+    // `RateLimiter` and a `SafetyEventSink`, and neither exists in this process.
+    expect(app.contexts.identityAccess).toBeUndefined();
   });
 });

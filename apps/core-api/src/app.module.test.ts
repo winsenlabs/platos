@@ -185,17 +185,30 @@ describe("the declared binding table", () => {
     // WIN-259 adds a directory and three rows on it; WIN-260 adds two rows on a
     // directory that already existed.
     //
-    // WIN-267 A1: bindings 49 + 2 = 51, directories 13 + 1 = 14, and once again
-    // by DIFFERENT amounts for a reason worth stating.
-    // `keyring-envelope:MfaSecretCipher` is a row on an existing directory
-    // because `root-key-ring.ts` is the tree's only holder of AES-256 root key
-    // bytes and rule (j2) forbids a second package from reaching them;
-    // `node-crypto-digest:SecretHasher` is a new directory because a keyless
-    // SHA-256 shares no client with anything, and §15's consolidation rule
-    // exists to stop a SECOND CLIENT rather than a second module.
-    expect(ADAPTER_BINDINGS).toHaveLength(51);
-    expect(DECLARED_BINDING_COUNT).toBe(51);
-    expect(ADAPTER_NAMES).toHaveLength(14);
+    // WIN-267 INTEGRATION: bindings 49 + 2 + 2 = 53, directories 13 + 2 = 15,
+    // and the two counts move by DIFFERENT amounts again for reasons that are
+    // different from each other. A1 adds ONE directory and TWO rows, because
+    // `keyring-envelope:MfaSecretCipher` is a row on an EXISTING directory —
+    // `root-key-ring.ts` is the tree's only holder of AES-256 root key bytes and
+    // rule (j2) forbids a second package from reaching them — while
+    // `node-crypto-digest:SecretHasher` is a new directory, a keyless SHA-256
+    // sharing no client with anything and §15's consolidation rule existing to
+    // stop a SECOND CLIENT rather than a second module. A2 adds ONE directory
+    // and TWO rows on that one directory, because the port that WRITES a TOTP
+    // secret and the port that READS it must share a base32 alphabet.
+    expect(ADAPTER_BINDINGS).toHaveLength(53);
+    expect(DECLARED_BINDING_COUNT).toBe(53);
+    expect(ADAPTER_NAMES).toHaveLength(15);
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
+        (binding) => binding.port,
+      ),
+    ).toEqual(["TokenMinter", "TotpCodeVerifier"]);
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === "node-crypto-digest").map(
+        (binding) => binding.port,
+      ),
+    ).toEqual(["SecretHasher"]);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "keyring-envelope").map(
         (binding) => binding.port,
@@ -204,7 +217,7 @@ describe("the declared binding table", () => {
     // AND THE CLAIM THAT CHANGED SIGN. `keyring-envelope` was the layout's one
     // multi-PORT, single-OWNER directory; its fourth port belongs to
     // `identity-access`, so it is now multi-owner too and
-    // `EXPECTED_MULTI_OWNER_ADAPTERS` gains its third entry. Asserting the owner
+    // `EXPECTED_MULTI_OWNER_ADAPTERS` gains its THIRD entry. Asserting the owner
     // set here rather than only the port list is what keeps the two files from
     // disagreeing silently.
     expect(
@@ -214,18 +227,32 @@ describe("the declared binding table", () => {
         ),
       ),
     ).toEqual(new Set(["secrets", "identity-access"]));
-    // THREE directories hold more than one binding, where one did before M2 and
+    // AND THE ONE THAT DID NOT. `tokenmint-totp` is multi-PORT and single-OWNER:
+    // two ports, both `identity-access`. So the multi-PORT list below goes to
+    // FOUR while the graph gate's multi-OWNER allow-list goes to three, and the
+    // two lists diverging is the point of keeping them apart.
+    expect(
+      new Set(
+        ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
+          (binding) => binding.owner,
+        ),
+      ),
+    ).toEqual(new Set(["identity-access"]));
+    // FOUR directories hold more than one binding, where one did before M2 and
     // two did on the errors-and-idempotency branch alone. `keyring-envelope`
     // joined the list merged with three ports and exactly ONE owner — multi-PORT
-    // without being multi-OWNER — and WIN-267 A1 ends that: its fourth port is
-    // `identity-access`'s, so `EXPECTED_MULTI_OWNER_ADAPTERS` in the graph gate
-    // now has THREE entries, matching this list rather than trailing it. The
-    // sentence is corrected rather than deleted: it was true for exactly as long
-    // as no context but `secrets` needed AES-256 key material.
+    // without being multi-OWNER — and WIN-267 A1 ended that: its fourth port is
+    // `identity-access`'s. WIN-267 A2 adds `tokenmint-totp` in the shape
+    // `keyring-envelope` used to have.
     const multiPort = [...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter))].filter(
       (adapter) => ADAPTER_BINDINGS.filter((binding) => binding.adapter === adapter).length > 1,
     );
-    expect(multiPort.sort()).toEqual(["keyring-envelope", "postgres-tenancy", "redis-cache"]);
+    expect(multiPort.sort()).toEqual([
+      "keyring-envelope",
+      "postgres-tenancy",
+      "redis-cache",
+      "tokenmint-totp",
+    ]);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
     );
@@ -341,9 +368,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(51);
+    expect(report.unsatisfied).toHaveLength(53);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/51 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/53 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -393,14 +420,14 @@ describe("adapter supply validation", () => {
 
   it("rejects an adapter name that is not one of the declared bindings", () => {
     const report = reportAdapterSupply({ "redis-queue": adapterDouble("redis-queue") } as SuppliedAdapters);
-    expect(report.faults[0]).toContain("is not one of the 14 declared adapters");
+    expect(report.faults[0]).toContain("is not one of the 15 declared adapters");
   });
 });
 
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(51);
+    expect(app.bindings.unsatisfied).toHaveLength(53);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);

@@ -16,7 +16,12 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // WIN-267 A1 33 -> 34. `packages/adapters/node-crypto-digest`, the fourteenth
 // adapter directory: the identity-access `SecretHasher`, which holds no key and
 // no client and therefore could not be a row on an existing directory.
-export const EXPECTED_PROJECT_COUNT = 34;
+// WIN-267 A2 33 -> 34. `packages/adapters/tokenmint-totp`, the fourteenth
+// adapter directory. Derived independently of `scripts/arch/gen-v1-skeleton.mjs`
+// for the reason above, and it is not a formality: the two models disagreed on
+// the EDGE count on the first run of this tranche, which is exactly what
+// maintaining them separately is for.
+export const EXPECTED_PROJECT_COUNT = 35;
 // 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
 // `packages/kernel`.
 //
@@ -225,7 +230,7 @@ export const EXPECTED_PROJECT_COUNT = 34;
 // NO CYCLE. `identity-access` is ADR M0.3 §1's strictest allow-list — the kernel
 // and nothing else — so it names no adapter and cannot name either of these, and
 // `apps/core-api` is the sink of the whole graph.
-export const EXPECTED_EDGE_COUNT = 119;
+export const EXPECTED_EDGE_COUNT = 121;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -407,6 +412,15 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "keyring-envelope": ["secrets", "identity-access"],
   // WIN-267 A1. The fourteenth directory: one owner, one edge, one port.
   "node-crypto-digest": ["identity-access"],
+  // WIN-267 A2. ONE owner and TWO bindings, for the same reason
+  // `keyring-envelope` above has one owner and three: this map is keyed by
+  // OWNER, and `identity-access` publishing `TokenMinter` and
+  // `TotpCodeVerifier` separately is still one project reference.
+  //
+  // No row in `EXPECTED_MULTI_OWNER_ADAPTERS`, and the omission is again the
+  // claim: `postgres-tenancy` at seventeen and `redis-cache` at three remain the
+  // only directories entitled to more than one owner.
+  "tokenmint-totp": ["identity-access"],
 };
 
 /**

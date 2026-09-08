@@ -340,6 +340,14 @@ export const VIOLATION_CODES = Object.freeze({
  * from the composed `AppModule`. That is the property this gate exists to keep
  * true as `apps/core-api` grows a transport: the six sections still arrive
  * through `readProcessEnvironment()` and nothing added a second door.
+ *
+ * WIN-267 A2: 1580 + 12 = 1592. The fourteenth adapter directory's twelve `.ts`
+ * files -- five source and seven suites -- and NOT ONE of them reads the
+ * environment, so the DECLARED table is unmoved again. That is not a discipline
+ * this directory had to keep: `createTokenmintTotpAdapter()` takes no argument
+ * at all and holds no configuration, so it is the first adapter in the layout
+ * that could not have grown an environment read even by mistake -- there is
+ * nothing for one to configure.
  */
 /*
  * WIN-267 A1: 1580 + 8 = 1588, and every one of the eight is nameable.
@@ -356,7 +364,8 @@ export const VIOLATION_CODES = Object.freeze({
  * ports beside it do. A fourteenth directory arrived and nothing added a second
  * door.
  */
-export const EXPECTED_FILE_COUNT = 1588;
+
+export const EXPECTED_FILE_COUNT = 1600;
 
 function listSourceFiles(root) {
   const found = [];

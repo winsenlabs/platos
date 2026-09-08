@@ -475,12 +475,14 @@ test("the live owner map passes its own check", () => {
   // DIRECTORY count takes WIN-259's move and nothing from WIN-260, whose two
   // bindings are rows on a directory that already existed. 12 + 1 = 13.
   //
-  // WIN-267 A1 MOVES BOTH, AND STILL BY DIFFERENT AMOUNTS. The multi-owner map
-  // gains `keyring-envelope` at 2: its FOURTH port is `identity-access`'s
-  // `MfaSecretCipher`, so the sentence above — three ports, one owner — stops
-  // being true and the entry it justified leaving out is now earned. The
-  // DIRECTORY count takes `node-crypto-digest` and nothing from that fourth
-  // binding: 13 + 1 = 14.
+  // WIN-267 MOVES BOTH, AND STILL BY DIFFERENT AMOUNTS. The multi-owner map
+  // gains `keyring-envelope` at 2 and nothing else: its FOURTH port is
+  // `identity-access`'s `MfaSecretCipher`, so the sentence above — three ports,
+  // one owner — stops being true and the entry it justified leaving out is now
+  // earned. `tokenmint-totp` does NOT earn one: two ports, ONE owner, so it is
+  // multi-PORT without being multi-OWNER and gets no row. The DIRECTORY count
+  // takes both new directories: 13 + 2 = 15. Two adjacent lines that move by
+  // different amounts is exactly what asserting them separately is for.
   assert.deepEqual(EXPECTED_MULTI_OWNER_ADAPTERS, {
     "postgres-tenancy": 17,
     "redis-cache": 3,

@@ -113,6 +113,9 @@
     },
     {
       "path": "../../packages/adapters/node-crypto-digest"
+    },
+    {
+      "path": "../../packages/adapters/tokenmint-totp"
     }
   ]
 }
