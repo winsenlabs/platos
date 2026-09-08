@@ -119,7 +119,7 @@ describe("the census agrees with the migrations that pin the roots", () => {
     expect([...checks.keys()].sort()).toEqual([...censusKeys].sort());
   });
 
-  // ONE CASE OVER FORTY-NINE COLUMNS, not forty-nine cases. `test.each` over a
+  // ONE CASE OVER FIFTY COLUMNS, not fifty cases. `test.each` over a
   // computed table has no statically visible row count, and
   // `scripts/arch/test-case-census.mjs` refuses one for exactly that reason: a
   // census that cannot count a suite's cases cannot notice one going missing.
@@ -243,14 +243,17 @@ describe("the column maps are the SCHEMA's column list, not their own", () => {
 });
 
 describe("the counts the census is quoted by", () => {
-  test("forty-nine columns, and the disposition split that WIN-258 reports", () => {
-    expect(JSON_COLUMNS.length).toBe(49);
+  test("fifty columns, and the disposition split that WIN-258 reports", () => {
+    // WIN-267 G1: 49 -> 50, and the split moves ONLY on `refuse`, 26 -> 27.
+    // `EvalRun.pairs` is read by `governance-eval-runs.readPairs`, which aborts
+    // the read rather than shortening a plan it cannot parse.
+    expect(JSON_COLUMNS.length).toBe(50);
     const split: Record<string, number> = {};
     for (const contract of JSON_COLUMNS) {
       split[contract.disposition] = (split[contract.disposition] ?? 0) + 1;
     }
     expect(split).toEqual({
-      refuse: 26,
+      refuse: 27,
       carry: 13,
       delegate: 6,
       unprojected: 2,

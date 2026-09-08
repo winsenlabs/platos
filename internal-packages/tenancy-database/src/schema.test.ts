@@ -61,9 +61,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(93);
-    expect(domainModelNames).toHaveLength(76);
-    expect(new Set(domainModelNames).size).toBe(76);
+    expect(models).toHaveLength(94);
+    expect(domainModelNames).toHaveLength(77);
+    expect(new Set(domainModelNames).size).toBe(77);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema.match(/@@map\("[^"]+"\)/g) ?? []).toEqual(['@@map("AlertDeliveryAttempt")']);

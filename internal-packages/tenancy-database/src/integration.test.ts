@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import {
   ApprovalStatus,
@@ -64,7 +64,7 @@ describe("domain schema integration", () => {
 
   test("round-trips every generated model and capability", async () => {
     const modelNames = Prisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(modelNames).toHaveLength(93);
+    expect(modelNames).toHaveLength(94);
     expect([...seeded.registry.keys()].sort()).toEqual([...modelNames].sort());
 
     for (const modelName of modelNames) {
@@ -1803,6 +1803,21 @@ async function seedEveryModel(control: PrismaClient) {
       threadIds: [thread.id],
       criterionIds: [criterion.id],
       createdBy: user.id,
+    },
+  }));
+  const goldenSet = await control.goldenSet.findFirstOrThrow({ where: { name: "Golden" } });
+  track("EvalRun", await control.evalRun.create({
+    data: {
+      environmentId: environment.id,
+      goldenSetId: goldenSet.id,
+      agentId: agent.id,
+      requestedBy: user.id,
+      idempotencyKey: `eval-run/${goldenSet.id}/no-baseline/${thread.id}:${criterion.id}`,
+      idempotencyDigest: createHash("sha256")
+        .update(`eval-run/${goldenSet.id}/no-baseline/${thread.id}:${criterion.id}`)
+        .digest("hex"),
+      pairCount: 1,
+      pairs: [{ threadId: thread.id, criterionId: criterion.id }],
     },
   }));
   track("Job", await control.job.create({

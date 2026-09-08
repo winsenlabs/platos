@@ -94,17 +94,34 @@
 //
 // WHY THAT ONE CANNOT BE CLOSED HERE, MEASURED RATHER THAN ASSERTED. Its only
 // implementation is `createGovernanceSafetyEventSink`, which takes a
-// `GovernanceDependencies` -- SEVENTEEN slots. FIVE of its ten driven ports have
-// no row in `ADAPTER_BINDINGS` and no adapter directory anywhere:
-// `RatingTargetReader`, `TranscriptReader` and `ActivityReader` are ADR M0.3 §2
-// read seams whose own header says "the composition root implements it by asking
-// whichever context owns the rows" -- `conversations`, `tools` and `jobs`, none
-// of which publishes a contract assembler; `EvalRunQueue` needs the kernel
-// `DurableRuntime`, whose directory is one of the seven still on
-// `UNIMPLEMENTED_ADAPTERS`; and `Judge` has no directory at all. Its bundle also
-// names `AgentsContract`, and `agents` publishes its use cases one by one.
-// `@platos/context-governance` does not even publish `./application/index.js`,
-// so the factory is not importable from here.
+// `GovernanceDependencies` -- SEVENTEEN slots. FIVE of its ten driven ports had
+// no row in `ADAPTER_BINDINGS` and no adapter directory anywhere. WIN-267 G1
+// closes TWO of the five and the remaining count is THREE:
+//
+//   `RatingTargetReader`, `TranscriptReader` and `ActivityReader` are ADR M0.3
+//   §2 read seams whose own header says "the composition root implements it by
+//   asking whichever context owns the rows" -- `conversations`, `tools` and
+//   `jobs`, none of which publishes a contract assembler. These three are what
+//   is left.
+//
+//   `EvalRunQueue` IS CLOSED, and not the way this note predicted. It said the
+//   port "needs the kernel `DurableRuntime`, whose directory is one of the seven
+//   still on `UNIMPLEMENTED_ADAPTERS`". What the port needs is a DURABLE
+//   ACCEPTANCE, and §15 says where a row in the one PostgreSQL database is
+//   written: `postgres-tenancy`. Implementing `DurableRuntime` over that same
+//   database would have been a different act -- deciding a supplier question
+//   whose own configuration group (`PLATOS_DURABLE_RUNTIME_API_URL` plus a
+//   secret key) already answers it with an external service.
+//
+//   `Judge` IS CLOSED TOO, in this file's own deployable rather than in a
+//   directory: `composition/governance-judge.ts`. The old sentence "has no
+//   directory at all" was true and would have stayed true forever; three rules
+//   measured in that file make an adapter for it impossible.
+//
+// Its bundle also names `AgentsContract`, and `agents` publishes its use cases
+// one by one. `@platos/context-governance` does not even publish
+// `./application/index.js`, so the factory is not importable from here. THOSE
+// two, and the three read seams, are the whole of what is left.
 //
 // A rate limiter alone would therefore NOT have been enough:
 // `consume-rate-limit.ts` writes `identity.rate_limit.degraded` into this sink,
@@ -170,27 +187,62 @@ export const IDENTITY_ACCESS_UNASSEMBLED =
   " RateLimiter is redis-ratelimit, SecretHasher is node-crypto-digest," +
   " MfaSecretCipher is keyring-envelope, TokenMinter is tokenmint-totp and" +
   " TotpCodeVerifier is tokenmint-totp; SafetyEventSink is implemented only by" +
-  " the governance context, whose own bundle names five driven ports no adapter" +
-  " directory satisfies (RatingTargetReader, TranscriptReader, ActivityReader," +
-  " Judge, EvalRunQueue) and an AgentsContract no factory assembles, so this" +
-  " root cannot compose it";
+  " the governance context, whose own bundle names three driven ports no adapter" +
+  " directory satisfies (RatingTargetReader, TranscriptReader, ActivityReader)" +
+  " and an AgentsContract no factory assembles, so this root cannot compose it";
 
 /**
- * The five governance ports that keep the sink out of reach, named once.
+ * The governance ports that keep the sink out of reach, named once.
  *
  * READ BACK BY `installation.test.ts` against `ADAPTER_BINDINGS`: every one of
  * them must appear on NO row of the binding table. That is what turns "governance
  * cannot be composed" from an author's belief into a checked property -- the day
  * an adapter directory implements one of these, the count of what is left drops
  * and this list has to move with it.
+ *
+ * WIN-267 G1 IS THAT DAY, TWICE, AND THE TWO DEPARTURES ARE DIFFERENT IN KIND.
+ *
+ *   `EvalRunQueue` LEFT BY GAINING A BINDING. It is
+ *   `postgres-tenancy:EvalRunQueue`, the sixteenth row on that directory and the
+ *   sixth `governance` owns, because ADR M0.3 §1 row 14's "eval runs enqueue as
+ *   durable jobs" is a ROW in the one PostgreSQL database and §15 says a row in
+ *   that database is written from the one directory holding its client. This
+ *   list moved with it, in the direction the paragraph above demands, and
+ *   `composition-root.mjs` checks the binding itself.
+ *
+ *   `Judge` LEFT WITHOUT ONE, and that is why it is named in
+ *   `GOVERNANCE_ROOT_SATISFIED_PORTS` below rather than dropped. It has an
+ *   implementation -- `composition/governance-judge.ts` -- and it will never have
+ *   an adapter directory, which that file measures three ways: `provider-sdk-only`
+ *   pins every provider client to `model-router-providers`; `ModelRouter`'s every
+ *   method takes a `ProviderCredential` the caller must already hold, while
+ *   `Judge.ask` is handed a scope and a model spec and none; and the port
+ *   requires a PRICE, which only `ProvidersContract.priceModelUsage` produces. A
+ *   list that said "no adapter directory satisfies Judge" would therefore have
+ *   stayed true forever while being read as "still missing".
  */
 export const GOVERNANCE_UNBOUND_PORTS: readonly string[] = Object.freeze([
   "RatingTargetReader",
   "TranscriptReader",
   "ActivityReader",
-  "Judge",
-  "EvalRunQueue",
 ]);
+
+/**
+ * Governance ports satisfied by THIS DEPLOYABLE rather than by an adapter.
+ *
+ * READ BACK BY `installation.test.ts` IN BOTH DIRECTIONS, which is the only
+ * thing that makes the split above honest: each name here must appear on NO row
+ * of `ADAPTER_BINDINGS` -- so a port that later gains a directory cannot sit
+ * here unnoticed -- and `composeApplication` must publish a non-null port for it
+ * once the context it is built over is composed. A name moved into this list
+ * without an implementation fails the second half; an implementation landed in
+ * an adapter without the name moving out fails the first.
+ *
+ * `read-seams.ts` says the composition root implements its three "by asking
+ * whichever context owns the rows". This is the same shape for the same reason,
+ * against the context that owns the keys, the routes and the rate cards.
+ */
+export const GOVERNANCE_ROOT_SATISFIED_PORTS: readonly string[] = Object.freeze(["Judge"]);
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.

@@ -1205,7 +1205,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // never handed, and the price the port requires is on `ProvidersContract`.
     // `app.module.ts` and the governance port entry point are EDITS.
     // 1610 + 2 = 1612.
-    assert.equal(result.fileCount, 1612, "the generated V1 source census must stay exact");
+    //
+    // WIN-267 G1's second half adds TWO more, both under `packages/adapters/`:
+    // `postgres-tenancy/src/governance-eval-runs.ts`, the `EvalRunQueue` store,
+    // and `governance-eval-runs.integration.test.ts` beside it. This census does
+    // NOT exclude integration suites — every other file the tranche touches in
+    // these roots is an EDIT. 1612 + 2 = 1614.
+    assert.equal(result.fileCount, 1614, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1224,8 +1230,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // has ever taken under `packages/adapters/` for a directory that was a
       // generated placeholder, and the last two adapter terms in it.
       7 + 3 +
-      // WIN-267 G1: apps/core-api/src/composition/governance-judge.{ts,test.ts}.
-      2);
+      // WIN-267 G1: apps/core-api/src/composition/governance-judge.{ts,test.ts},
+      // and postgres-tenancy/src/governance-eval-runs{.ts,.integration.test.ts}.
+      2 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

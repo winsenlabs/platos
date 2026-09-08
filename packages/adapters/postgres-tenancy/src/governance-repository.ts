@@ -41,12 +41,30 @@
 //   call, priced and timed. It is a transport to a provider, bound where
 //   `ModelRouter` is bound, and it writes no row at all.
 //
-//   `eval-run-queue.ts` is the durable seam a golden-set run is handed to. ADR
-//   M0.3 §7 decision 10 puts durable work behind `packages/adapters/durable-runtime`,
-//   and its own error constructor — `queueUnavailable`, deliberately distinct
-//   from `ledgerUnavailable` — exists so "the dispatcher refused the work" and
-//   "a table is down" stay separable. Satisfying it from the canonical store
-//   would merge exactly those two incidents.
+//   `eval-run-queue.ts` USED TO BE LISTED HERE, and the reason given was wrong.
+//   It said: "its own error constructor — `queueUnavailable`, deliberately
+//   distinct from `ledgerUnavailable` — exists so 'the dispatcher refused the
+//   work' and 'a table is down' stay separable. Satisfying it from the canonical
+//   store would merge exactly those two incidents."
+//
+//   WHAT MINTS `ledgerUnavailable` IS NOT THIS DIRECTORY. It is
+//   `governance-refusal.ts`'s `refuse`, one helper the five stores above share.
+//   `governance-eval-runs.ts` does not call it: it has its own `refuseQueue`,
+//   catching the same three kinds of throw and minting `queueUnavailable`, so
+//   ONE induced outage answers `GOVERNANCE_QUEUE_UNAVAILABLE` on that port and
+//   `GOVERNANCE_LEDGER_UNAVAILABLE` on `evals.append`, in the same process
+//   against the same database. `governance-eval-runs.integration.test.ts` pins
+//   exactly that, which is what turns "separable" from a belief into a property.
+//
+//   The half that WAS true is kept and stated where it belongs, in that file's
+//   header: one unreachable database fails both ports at once, because ADR M0.3
+//   §15 puts them behind one client — which is already true of every other pair
+//   of ports in this directory and is not what the two codes are for.
+//
+//   WIN-267 G1 therefore adds a SIXTH store beside these five. It is not
+//   assembled by `createGovernanceStores` — that function's name and its five
+//   slots are `GovernanceDependencies`' canonical-store half — but by
+//   `createEvalRunStore`, called from `adapter.ts` beside it.
 
 import type {
   CriteriaRepository,

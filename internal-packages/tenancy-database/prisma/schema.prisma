@@ -427,6 +427,7 @@ model Environment {
   evalCriteria            EvalCriterion[]
   agentEvals              AgentEval[]
   goldenSets              GoldenSet[]
+  evalRuns                EvalRun[]
   jobs                    Job[]
   environmentSkills       EnvironmentSkill[]
   memories                Memory[]
@@ -560,6 +561,7 @@ model Agent {
   evalCriteria         EvalCriterion[]
   agentEvals           AgentEval[]
   goldenSets           GoldenSet[]
+  evalRuns             EvalRun[]
   memories             Memory[]
   memoryEntities       MemoryEntity[]
   memoryRelationships  MemoryRelationship[]
@@ -1978,8 +1980,57 @@ model GoldenSet {
 
   environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
   agent       Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  evalRuns    EvalRun[]
 
   @@unique([environmentId, agentId, name])
+}
+
+/// One planned golden-set run, accepted durably and not yet finished.
+///
+/// WIN-267 G1. `governance`'s `EvalRunQueue` port is the enqueue half of ADR
+/// M0.3 §1 row 14 ("eval runs enqueue as durable jobs"): the request plans the
+/// fan-out, caps it, and hands over a handle rather than holding an HTTP
+/// response open for five hundred sequential model calls. This is the row that
+/// hand-over lands in, and it is in THIS database because §15 gives the one
+/// PostgreSQL client one adapter directory — the same sentence that put the
+/// five governance stores beside it.
+///
+/// `idempotencyDigest` CARRIES THE UNIQUENESS AND `idempotencyKey` CARRIES THE
+/// EVIDENCE. The port computes the key over the set id, every pair in plan order
+/// and the baseline, so at this context's own five-hundred-pair ceiling it is
+/// tens of kilobytes — far past what a btree index row can hold. The digest is
+/// what the unique index sees; the key itself is kept, unindexed, so a merged
+/// run can be explained rather than assumed.
+model EvalRun {
+  id                String    @id @default(uuid()) @db.Uuid
+  environmentId     String    @db.Uuid
+  goldenSetId       String    @db.Uuid
+  agentId           String    @db.Uuid
+  baselineVersionId String?   @db.Uuid
+  requestedBy       String
+  /// The port's own key, verbatim and unindexed. See idempotencyDigest.
+  idempotencyKey    String
+  /// SHA-256 hex of idempotencyKey. The unique index is over THIS.
+  idempotencyDigest String
+  pairCount         Int
+  /// Array root of {threadId, criterionId} in plan order; validated by jsonShapeRegistry.
+  pairs             Json
+  status            String    @default("QUEUED")
+  attempts          Int       @default(0)
+  /// Which consumer holds the run, and until when. Both or neither.
+  leaseOwner        String?
+  leaseExpiresAt    DateTime?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  environment Environment @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+  goldenSet   GoldenSet   @relation(fields: [goldenSetId], references: [id], onDelete: Cascade)
+  agent       Agent       @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([environmentId, idempotencyDigest])
+  @@index([status, leaseExpiresAt])
+  @@index([environmentId, createdAt])
 }
 
 model Job {

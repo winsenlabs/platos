@@ -113,6 +113,18 @@ export const ADAPTERS = [
       { port: "CriteriaRepository", owner: "governance" },
       { port: "EvalsRepository", owner: "governance" },
       { port: "GoldenSetsRepository", owner: "governance" },
+      // WIN-267 G1 adds a SIXTH `governance` binding, and it is the first on
+      // this directory that is not a canonical-store CRUD port. ADR M0.3 §1 row
+      // 14 says eval runs enqueue as durable jobs; `EvalRunQueue` is that
+      // hand-over, and the row it lands in is in the SAME PostgreSQL database as
+      // the five above, so by §15 it is written from the same directory behind
+      // the same client. It is not a new directory for the reason §15 gives and
+      // not `packages/adapters/durable-runtime` for a different one: that
+      // directory's configuration section anchors an EXTERNAL service, so
+      // implementing the kernel `DurableRuntime` over this database would decide
+      // a supplier question §7 decision 10 has already answered. Recording a ROW
+      // is not that decision.
+      { port: "EvalRunQueue", owner: "governance" },
       // WIN-258 T5 adds the SEVENTH and EIGHTH. `secrets` owns four canonical
       // rows in that same database and publishes TWO canonical-store ports over
       // them, because `environment-variable-repository.ts` keeps the vault and
@@ -745,8 +757,16 @@ export function adapterOwnerPackages(adapter) {
 //
 // THE MERGED FIGURES ARE STATED BY NO SINGLE BRANCH. Over the same 13/49 base
 // A1+A2 pinned 15/53 and A3 pinned 13/50; the tree now holds 15 and 54.
+//
+// WIN-267 G1: 54 -> 55 bindings and the DIRECTORY pin does not move.
+// `postgres-tenancy:EvalRunQueue` is a row on an existing directory, which is
+// what §15's amendment is about: the run it records lives in the ONE PostgreSQL
+// database, so it is written from the one directory that holds that client. The
+// alternative -- a real `packages/adapters/durable-runtime` -- would have moved
+// the directory pin AND decided a supplier question that section's own
+// configuration group has already answered with an external API URL.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 54;
+export const EXPECTED_BINDING_COUNT = 55;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.

@@ -27,6 +27,7 @@ import {
   type AdapterName,
 } from "./adapter-bindings.js";
 import {
+  GOVERNANCE_ROOT_SATISFIED_PORTS,
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
   assembleContextPorts,
@@ -344,17 +345,23 @@ describe("readiness over what was actually constructed", () => {
     //   amendment is about, and the reason both numbers are asserted.
     //
     // 41/8 of 49 -> 43/7 of 50. Any one of the three moving alone is drift.
+    //
+    // WIN-267 G1: 54 -> 55 and 47 -> 48 satisfied, with the unimplemented count
+    // UNMOVED at 7. `postgres-tenancy:EvalRunQueue` is a row on a directory that
+    // is already constructed, so it lands straight in the satisfied set and no
+    // directory changed state — the same shape as A3's probe cache, and the
+    // reason all three numbers are asserted rather than one.
     const { verdict } = readiness(FULLY_DECLARED);
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
-    expect(ADAPTER_BINDINGS).toHaveLength(54);
+    expect(ADAPTER_BINDINGS).toHaveLength(55);
     expect(unimplementable).toHaveLength(7);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
     // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(47);
+    expect(verdict.detail.satisfiedBindings).toHaveLength(48);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
     // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
@@ -503,15 +510,43 @@ describe("the context bundles those adapters can satisfy", () => {
 
     // AND WHY THAT ONE CANNOT BE CLOSED BY AN ADAPTER EITHER, CHECKED RATHER
     // THAN ASSERTED. The only implementation of the kernel sink takes a whole
-    // `GovernanceDependencies`, and five of THAT bundle's driven ports appear on
+    // `GovernanceDependencies`, and THREE of THAT bundle's driven ports appear on
     // no row of this table. The day one of them gains an adapter directory, this
     // case fails and the sentence has to be re-derived -- which is the point of
     // naming them rather than writing "governance needs more work".
-    expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(5);
+    //
+    // WIN-267 G1 TOOK IT FROM FIVE TO THREE, and the two that left did so in
+    // different ways, so the case checks them separately below rather than
+    // lowering a number.
+    expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(3);
     for (const port of GOVERNANCE_UNBOUND_PORTS) {
       expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
       expect(declined?.reason).toContain(port);
     }
+
+    // `EvalRunQueue` LEFT BY GAINING A BINDING, so the assertion is the exact
+    // opposite of the loop above: it must now appear on this table, and on the
+    // directory §15 sends a row in the one PostgreSQL database to. Dropping it
+    // from the list without landing the binding fails here.
+    expect(GOVERNANCE_UNBOUND_PORTS).not.toContain("EvalRunQueue");
+    expect(ports, "EvalRunQueue must now be bound").toContain("EvalRunQueue");
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.port === "EvalRunQueue"),
+      "EvalRunQueue belongs to governance, on the ORM's one directory",
+    ).toEqual([
+      { adapter: "postgres-tenancy", port: "EvalRunQueue", owner: "governance" },
+    ]);
+    expect(declined?.reason).not.toContain("EvalRunQueue");
+
+    // `Judge` LEFT WITHOUT ONE. It must stay off this table -- an adapter
+    // directory for it is forbidden by `provider-sdk-only`, which is why the
+    // list it moved to is a separate constant rather than a deletion.
+    for (const port of GOVERNANCE_ROOT_SATISFIED_PORTS) {
+      expect(ports, `${port} must be bound to no adapter`).not.toContain(port);
+      expect(GOVERNANCE_UNBOUND_PORTS).not.toContain(port);
+    }
+    expect(GOVERNANCE_ROOT_SATISFIED_PORTS).toContain("Judge");
+    expect(declined?.reason).not.toContain("Judge");
   });
 
   it("constructs both configuration-free adapters with nothing configured at all", () => {

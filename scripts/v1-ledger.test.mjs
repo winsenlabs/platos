@@ -1205,8 +1205,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // both over the same 1454 base; taking either side whole would drop files
     // and leave the identities still holding, which is the failure mode this
     // file's own comments record three times.
-    packages: 1493,
-    "internal-packages": 9,
+    //
+    // WIN-267 G1 +2: `packages/adapters/postgres-tenancy/src/governance-eval-runs.ts`,
+    // the `EvalRunQueue` store, and `governance-eval-runs.integration.test.ts`
+    // beside it. TWO and not more because `adapter.ts`, `governance-repository.ts`,
+    // `json-columns.ts`, `governance-harness.ts` and the suites that re-pin
+    // counts are all WIDENED rather than added — see the note on
+    // `internal-packages` below for what the tranche adds outside `packages`.
+    // 1493 + 2 = 1495.
+    packages: 1495,
+    // WIN-267 G1 +1: `internal-packages/tenancy-database/prisma/migrations/
+    // 20260909120000_win267_eval_run_queue/migration.sql`, the row the store
+    // above writes. `schema.prisma`, `src/json.ts`, `src/source-model-manifest.ts`
+    // and the three suites that pin the model count are edits.
+    "internal-packages": 10,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1586,7 +1598,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // because the port CANNOT be an adapter -- `governance-judge.ts` measures the
   // three rules that forbid one -- so this is the first WIN-267 slice whose
   // whole delta is inside a deployable. 1640 + 2 = 1642.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1642);
+  //
+  // WIN-267 G1's SECOND HALF 1642 -> 1645, and it lands in TWO areas that its
+  // first half did not touch: `packages` +2
+  // (`postgres-tenancy/src/governance-eval-runs.ts`, the `EvalRunQueue` store,
+  // and `governance-eval-runs.integration.test.ts`, the eight cases that hold it
+  // to a real PostgreSQL) and `internal-packages` +1 (the
+  // `20260909120000_win267_eval_run_queue` migration that creates the row it
+  // writes). `apps-core-api` does NOT move again: the binding row, the two
+  // composition constants and the readiness pins are all edits.
+  // 1642 + 3 = 1645.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1645);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1708,6 +1730,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // WIN-267 G1 +2, both `apps-core-api`: see the note on the totalFiles
     // assertion above. 1640 + 2 = 1642, re-derived here by summing the per-area
     // counts independently, so the two can DISAGREE and be caught.
+    // WIN-267 G1's second half +3, `packages` +2 and `internal-packages` +1;
+    // same arithmetic, re-derived from the per-area counts. 1642 + 3 = 1645.
     //
     // This is the SECOND, INDEPENDENT derivation -- it sums the per-area counts
     // rather than reading the total -- which is exactly why it is moved
@@ -1715,7 +1739,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // green, and STILL landed red on both of these assertions: the sixth and
     // seventh time this second reconciliation has caught what the first one
     // signed off.
-    rulesDocument.baseline.totalFiles + 1642
+    rulesDocument.baseline.totalFiles + 1645
   );
 });
 
