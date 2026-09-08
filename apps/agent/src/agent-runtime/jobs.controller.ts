@@ -5,7 +5,6 @@ import {
   Get,
   HttpException,
   HttpStatus,
-  Inject,
   Param,
   Patch,
   Post,
@@ -13,27 +12,17 @@ import {
   Req,
 } from "@nestjs/common";
 import { API_VERSION } from "../http/api-surface";
-import type { Job, Prisma } from "@platos/tenancy-database";
 import { type Request } from "express";
 import { AuthService } from "../auth/auth.service";
 import { requireOperator, type RequestScope } from "../auth/scope.guard";
-import {
-  type ControlDatabaseClient,
-  environmentScopeWhere,
-  PRISMA_TOKEN,
-} from "../shared/database.provider";
 import { configureExternalTriggerSdk } from "../shared/external-trigger-config";
 import { pageMetadata, parseEnumFilter, parsePageRequest } from "../shared/pagination";
-import {
-  jobInvocationProperty,
-  jobInvocationType,
-  setJobInvocationType,
-} from "./job-persistence";
+import { type JobPatch, type JobRecord, JobStore } from "./job-store";
 
 @Controller({ path: "agent/jobs", version: API_VERSION })
 export class JobsController {
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+    private readonly jobs: JobStore,
     private readonly authService: AuthService,
   ) {}
 
@@ -90,28 +79,12 @@ export class JobsController {
       "FAILED",
       "CANCELLED",
     ] as const);
-    const where: Prisma.JobWhereInput = {
-      ...environmentScopeWhere(scope),
-      ...(status ? { status } : {}),
-      ...(request.search
-        ? {
-            OR: [
-              { displayName: { contains: request.search, mode: "insensitive" } },
-              { externalId: { contains: request.search, mode: "insensitive" } },
-              { description: { contains: request.search, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    };
-    const [jobs, total] = await Promise.all([
-      this.prisma.job.findMany({
-        where,
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: request.pageSize,
-        skip: request.offset,
-      }),
-      this.prisma.job.count({ where }),
-    ]);
+    const { jobs, total } = await this.jobs.page(scope, {
+      pageSize: request.pageSize,
+      offset: request.offset,
+      search: request.search,
+      status,
+    });
     const items = jobs.map((job) => this.toJob(job));
     const pagination = pageMetadata(total, request);
     return {
@@ -131,9 +104,7 @@ export class JobsController {
     const requestedScope = this.getScope(req);
     requireOperator(requestedScope);
     const scope = await this.canonicalOperatorScope(requestedScope, "metadata");
-    const job = await this.prisma.job.findFirst({
-      where: { id, ...environmentScopeWhere(scope) },
-    });
+    const job = await this.jobs.findInScope(scope, id);
     if (!job) throw new HttpException("Job not found", HttpStatus.NOT_FOUND);
     return { job: this.toJob(job) };
   }
@@ -179,39 +150,29 @@ export class JobsController {
     }
 
     const syntaxError = this.checkSyntax(body.handler);
-    const existing = await this.prisma.job.findFirst({
-      where: {
-        externalId: body.jobId,
-        ...environmentScopeWhere(scope),
-      },
-      select: { id: true },
-    });
-    if (existing) {
+    if (await this.jobs.externalIdTaken(scope, body.jobId)) {
       throw new HttpException(
         "A job with this jobId already exists in this scope",
         HttpStatus.CONFLICT,
       );
     }
 
-    const job = await this.prisma.job.create({
-      data: {
-        environmentId: scope.environmentId,
-        externalId: body.jobId,
-        displayName: body.displayName.trim(),
-        description: body.description?.trim() ?? null,
-        ...jobInvocationProperty(body.invocationType ?? "manual"),
-        scheduleCron: body.scheduleCron ?? null,
-        scheduleTimezone: body.scheduleTimezone ?? null,
-        allowedAgentIds: body.allowedAgentIds ?? [],
-        payloadSchema: body.payloadSchema as
-          | Prisma.InputJsonObject
-          | undefined,
-        handler: body.handler,
-        status: syntaxError === null ? "ACTIVE" : "FAILED",
-        timeoutSeconds: body.timeout ?? 300,
-        maxRetries: body.maxRetries ?? 3,
-        createdBy: scope.userId,
-      } as Prisma.JobUncheckedCreateInput,
+    const job = await this.jobs.create(scope, {
+      externalId: body.jobId,
+      displayName: body.displayName.trim(),
+      description: body.description?.trim() ?? null,
+      invocationType: body.invocationType ?? "manual",
+      scheduleCron: body.scheduleCron ?? null,
+      scheduleTimezone: body.scheduleTimezone ?? null,
+      allowedAgentIds: body.allowedAgentIds ?? [],
+      payloadSchema: body.payloadSchema,
+      handler: body.handler,
+      // A handler that does not parse still LANDS, inactive. The row must
+      // exist for the author to fix it; refusing the write would lose the
+      // source they just typed.
+      status: syntaxError === null ? "ACTIVE" : "FAILED",
+      timeoutSeconds: body.timeout ?? 300,
+      maxRetries: body.maxRetries ?? 3,
     });
     return { job: this.toJob(job), syntaxError };
   }
@@ -238,22 +199,21 @@ export class JobsController {
     const requestedScope = this.getScope(req);
     requireOperator(requestedScope);
     const scope = await this.canonicalOperatorScope(requestedScope, "secret:mutate");
-    const existing = await this.prisma.job.findFirst({
-      where: { id, ...environmentScopeWhere(scope) },
-      select: { id: true, handler: true },
-    });
+    const existing = await this.jobs.findHandlerSource(scope, id);
     if (!existing) {
       throw new HttpException("Job not found", HttpStatus.NOT_FOUND);
     }
 
-    const data: Prisma.JobUpdateInput = {};
+    const data: {
+      -readonly [Key in keyof JobPatch]: JobPatch[Key];
+    } = {};
     if (body.displayName !== undefined) {
       data.displayName = body.displayName.trim();
     }
     if (body.description !== undefined) {
       data.description = body.description.trim() || null;
     }
-    if (body.invocationType !== undefined) setJobInvocationType(data, body.invocationType);
+    if (body.invocationType !== undefined) data.invocationType = body.invocationType;
     if (body.scheduleCron !== undefined) data.scheduleCron = body.scheduleCron;
     if (body.scheduleTimezone !== undefined) {
       data.scheduleTimezone = body.scheduleTimezone;
@@ -262,7 +222,7 @@ export class JobsController {
       data.allowedAgentIds = body.allowedAgentIds;
     }
     if (body.payloadSchema !== undefined) {
-      data.payloadSchema = body.payloadSchema as Prisma.InputJsonObject;
+      data.payloadSchema = body.payloadSchema;
     }
     if (body.timeout !== undefined) data.timeoutSeconds = body.timeout;
     if (body.maxRetries !== undefined) data.maxRetries = body.maxRetries;
@@ -277,7 +237,7 @@ export class JobsController {
       data.status = syntaxError === null ? "ACTIVE" : "FAILED";
     }
 
-    const updated = await this.prisma.job.update({ where: { id }, data });
+    const updated = await this.jobs.update(existing.id, data);
     return { job: this.toJob(updated), syntaxError };
   }
 
@@ -286,10 +246,7 @@ export class JobsController {
     const requestedScope = this.getScope(req);
     requireOperator(requestedScope);
     const scope = await this.canonicalOperatorScope(requestedScope, "secret:mutate");
-    const result = await this.prisma.job.deleteMany({
-      where: { id, ...environmentScopeWhere(scope) },
-    });
-    if (result.count === 0) {
+    if (!(await this.jobs.deleteInScope(scope, id))) {
       throw new HttpException("Job not found", HttpStatus.NOT_FOUND);
     }
     return { deleted: true };
@@ -304,14 +261,7 @@ export class JobsController {
     const requestedScope = this.getScope(req);
     requireOperator(requestedScope);
     const scope = await this.canonicalOperatorScope(requestedScope, "secret:mutate");
-    const job = await this.prisma.job.findFirst({
-      where: {
-        id,
-        status: "ACTIVE",
-        ...environmentScopeWhere(scope),
-      },
-      select: { id: true, externalId: true, displayName: true },
-    });
+    const job = await this.jobs.findDispatchable(scope, id);
     if (!job) {
       throw new HttpException(
         "Job not found or inactive",
@@ -366,13 +316,18 @@ export class JobsController {
     }
   }
 
-  private toJob(job: Job) {
+  /**
+   * The wire shape. Takes a `JobRecord`, never a database row — this is the
+   * only layer entitled to decide what a client sees, and it can no longer be
+   * handed a row carrying columns nobody chose to publish.
+   */
+  private toJob(job: JobRecord) {
     return {
       id: job.id,
       jobId: job.externalId ?? job.id,
       displayName: job.displayName,
       description: job.description,
-      invocationType: jobInvocationType(job),
+      invocationType: job.invocationType,
       scheduleCron: job.scheduleCron,
       scheduleTimezone: job.scheduleTimezone,
       allowedAgentIds: job.allowedAgentIds,

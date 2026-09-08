@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { jobInvocationProperty } from "./job-persistence";
+import { JobStore } from "./job-store";
 import { JobsController } from "./jobs.controller";
 
 const REQUESTED_SCOPE = {
@@ -68,7 +69,10 @@ function makeHarness(options: { rejectAuthorization?: boolean } = {}) {
       return CANONICAL_AUTHORIZATION;
     }),
   };
-  const controller = new JobsController(prisma as any, authService as any);
+  // WIN-258 T6: the REAL JobStore over a fake client, so the scope
+  // predicate, the shared filter and the row->record projection are inside the
+  // system under test rather than replaced by the double.
+  const controller = new JobsController(new JobStore(prisma as any), authService as any);
   return { controller, prisma, authService };
 }
 

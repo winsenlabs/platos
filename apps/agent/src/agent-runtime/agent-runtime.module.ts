@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { AgentController } from "./agent.controller";
 import { JobsController } from "./jobs.controller";
+import { JobStore } from "./job-store";
+import { AgentBindingDirectory } from "./agent-binding.directory";
 import { JobExecutionController } from "./job-execution.controller";
 import { JobExecutionService } from "./job-execution.service";
 import { ChannelsController } from "./channels.controller";
@@ -55,7 +57,11 @@ import { PromptCacheService } from "./prompt-cache.service";
   // gateway (ConnectionsModule), the SSE/REST controller (this module), and the
   // Slack channel (ChannelsModule) all route dispatch through the ONE service
   // that reads executionMode.
-  providers: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService, JobExecutionService],
+  providers: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService, JobExecutionService,
+    // WIN-258 T6 — the seams that keep the ORM out of this module's HTTP
+    // transports: every `job` row goes through JobStore, every `agentBinding`
+    // read through AgentBindingDirectory.
+    JobStore, AgentBindingDirectory],
   exports: [AgentService, AgentTaskService, TurnDispatchService, AgentCrudService, AgentClusterService, PromptBuilderService, AttachmentsService, PromptCacheService],
 })
 export class AgentRuntimeModule {}
