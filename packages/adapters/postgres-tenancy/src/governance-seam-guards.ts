@@ -1,13 +1,14 @@
 // The one guard the three `governance` READ SEAMS share, and the three refusals
 // it produces.
 //
-// WHAT IT GUARDS. `Environment.id` is `@db.Uuid` and every one of these reads
-// narrows by it. A scope carrying a string that is not a uuid does NOT return
-// no rows: the driver refuses the whole statement with "Error creating UUID,
-// invalid character", the same failure `agents-guards.ts` found on the agent
-// search and answered the same way. `EnvironmentScope`'s identifiers are BRANDS
-// over `string` — `asIdentifier("")` compiles — so the value reaching here is
-// whatever built the grant, unvalidated.
+// WHAT IT GUARDS. `Organization.id`, `Project.id` and `Environment.id` are all
+// `@db.Uuid` and every one of these reads narrows by all three. A scope carrying
+// a string that is not a uuid does NOT return no rows: the driver refuses the
+// whole statement with "Error creating UUID, invalid character", the same
+// failure `agents-guards.ts` found on the agent search and answered the same
+// way. `EnvironmentScope`'s identifiers are BRANDS over `string` —
+// `asIdentifier("")` compiles — so the values reaching here are whatever built
+// the grant, unvalidated.
 //
 // WHY IT IS A REFUSAL AND NOT AN EMPTY ANSWER. `read-seams.ts` has already
 // spent absence: `null` means "not in this environment", and the use cases turn
@@ -50,16 +51,54 @@ import type { EnvironmentScope } from "@platos/context-governance/application/po
 const UUID_SHAPE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;
 
 /**
- * The environment this read may narrow by, or `null` when there is none.
+ * The WHOLE tenant triple this read may narrow by, or `null` when it is not
+ * usable.
+ *
+ * ALL THREE, NOT THE ENVIRONMENT ALONE, AND THAT IS THE ORACLE'S SHAPE RATHER
+ * THAN A PREFERENCE. `apps/agent/src/evals/rating.service.ts` — byte-identical
+ * to `origin/main` — resolves a rating's turn through `threadScopeWhere`, which
+ * is `{ environmentId, environment: { project: { id: projectId,
+ * organizationId } } }`, and its own comment says why: "a guessed turn id in
+ * another scope returns null and we throw". The monitoring service's four
+ * denominator reads narrow the same way.
+ *
+ * `Environment.id` is a globally unique uuid, so the environment alone
+ * determines the project and the organization and the extra clauses look
+ * redundant. THEY ARE NOT, and the case they catch is the one worth having: a
+ * grant assembled with a REAL environment and SOMEBODY ELSE'S project or
+ * organization. That scope is not a typo — it is a scope that has been
+ * tampered with, or built by a bug in whatever resolved the grant — and with
+ * the environment clause alone this reader would serve it. The oracle refuses
+ * it, so these do.
+ *
+ * THE FIVE CANONICAL STORES BESIDE THESE DO NOT. `governance-rows.ts`'
+ * `scopedWhere` is `{ environmentId }` and nothing more, so `SafetyLedger`,
+ * `RatingsRepository`, `CriteriaRepository`, `EvalsRepository` and
+ * `GoldenSetsRepository` accept a mismatched triple where these three refuse it.
+ * That divergence is REPORTED rather than silently repaired: widening it is a
+ * change to five ports this tranche does not own, and narrowing these three to
+ * match the weaker convention would be choosing the tree's habit over the
+ * oracle's behaviour. The read seams are the ones answering questions about
+ * OTHER contexts' rows, which is where a malformed grant costs most.
  *
  * `null` is the signal to REFUSE with the calling seam's own constructor. It is
  * never a licence to read wider: no caller in this package treats `null` as
  * "match everything", and the three that use it return before any statement.
  */
-export function narrowableEnvironment(scope: EnvironmentScope): string | null {
+export interface NarrowedScope {
+  readonly organizationId: string;
+  readonly projectId: string;
+  readonly environmentId: string;
+}
+
+export function narrowableScope(scope: EnvironmentScope): NarrowedScope | null {
+  const organizationId: unknown = scope.organizationId;
+  const projectId: unknown = scope.projectId;
   const environmentId: unknown = scope.environmentId;
-  if (typeof environmentId !== "string") return null;
-  return UUID_SHAPE.test(environmentId) ? environmentId : null;
+  if (typeof organizationId !== "string" || !UUID_SHAPE.test(organizationId)) return null;
+  if (typeof projectId !== "string" || !UUID_SHAPE.test(projectId)) return null;
+  if (typeof environmentId !== "string" || !UUID_SHAPE.test(environmentId)) return null;
+  return { organizationId, projectId, environmentId };
 }
 
 /**

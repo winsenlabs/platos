@@ -65,11 +65,12 @@ import {
   err,
   ok,
   ratingTargetUnreadable,
+  resolvePath,
   transcriptUnreadable,
 } from "@platos/context-governance/application/ports/index.js";
 
 import { refuse } from "./governance-refusal.js";
-import { narrowableEnvironment, narrowableRowId } from "./governance-seam-guards.js";
+import { narrowableRowId, narrowableScope, type NarrowedScope } from "./governance-seam-guards.js";
 import type { TenancyTransactions } from "./transaction.js";
 
 /**
@@ -97,12 +98,31 @@ const TRANSCRIPT_TURN_COLUMNS = {
   agentVersionId: true,
 } as const;
 
+/**
+ * The tenant clause every read below carries, in ONE place.
+ *
+ * It is `threadScopeWhere` from `apps/agent/src/evals/rating.service.ts`, the
+ * frozen oracle, with the channel-identity half left out -- that half narrows a
+ * thread to an END USER's verified handles, which is a question about who may
+ * rate rather than about which tenant owns the row, and `authorization.ts`
+ * answers it before this reader is reached.
+ *
+ * ONE function and not three copies, because three copies of a tenant filter is
+ * how two of them come to disagree.
+ */
+function threadTenantWhere(scope: NarrowedScope): Record<string, unknown> {
+  return {
+    environmentId: scope.environmentId,
+    environment: { project: { id: scope.projectId, organizationId: scope.organizationId } },
+  };
+}
+
 export function createRatingTargetReader(transactions: TenancyTransactions): RatingTargetReader {
   return {
     async find(scope: EnvironmentScope, turnId: TurnId): Promise<Result<RatingTarget | null>> {
-      const environmentId = narrowableEnvironment(scope);
-      if (environmentId === null) {
-        return err(ratingTargetUnreadable(`no environment to narrow by: ${String(scope.environmentId)}`));
+      const narrowed = narrowableScope(scope);
+      if (narrowed === null) {
+        return err(ratingTargetUnreadable(`no tenant to narrow by: ${resolvePath(scope)}`));
       }
       const rowId = narrowableRowId(turnId);
       // A MISTYPED TURN IS ABSENT, NOT AN ERROR. The port says a turn in another
@@ -116,7 +136,7 @@ export function createRatingTargetReader(transactions: TenancyTransactions): Rat
         // filter could not be expressed at all and the narrowing would have to
         // happen in TypeScript AFTER another tenant's row had been loaded.
         const row = await transactions.reader().turn.findFirst({
-          where: { id: rowId, thread: { environmentId } },
+          where: { id: rowId, thread: threadTenantWhere(narrowed) },
           select: RATING_TARGET_COLUMNS,
         });
         if (row === null) return ok(null);
@@ -147,9 +167,9 @@ export function createTranscriptReader(transactions: TenancyTransactions): Trans
       threadId: ThreadId,
       turnId: TurnId | null,
     ): Promise<Result<Transcript | null>> {
-      const environmentId = narrowableEnvironment(scope);
-      if (environmentId === null) {
-        return err(transcriptUnreadable(`no environment to narrow by: ${String(scope.environmentId)}`));
+      const narrowed = narrowableScope(scope);
+      if (narrowed === null) {
+        return err(transcriptUnreadable(`no tenant to narrow by: ${resolvePath(scope)}`));
       }
       const threadRowId = narrowableRowId(threadId);
       if (threadRowId === null) return ok(null);
@@ -159,7 +179,7 @@ export function createTranscriptReader(transactions: TenancyTransactions): Trans
         // `threadId` alone would answer another tenant's conversation in full,
         // and this is the read a judge is PAID to consume.
         const thread = await transactions.reader().thread.findFirst({
-          where: { id: threadRowId, environmentId },
+          where: { id: threadRowId, ...threadTenantWhere(narrowed) },
           select: { id: true, agentId: true },
         });
         if (thread === null) return ok(null);

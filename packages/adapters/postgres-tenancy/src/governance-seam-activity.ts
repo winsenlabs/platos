@@ -13,9 +13,13 @@
 // THE NARROWING IS DIFFERENT FOR EACH OF THE THREE, AND THAT ASYMMETRY IS THE
 // DEFECT THIS FILE EXISTS TO NOT HAVE.
 //
-//   `ToolCallAudit` and `AgentApproval` each carry `environmentId`. One column.
+//   `ToolCallAudit` and `AgentApproval` reach the tenant in ONE hop: they carry
+//   `environmentId`, and the project and organization are one relation away.
 //   `Turn` DOES NOT. It has no environment column at all; its tenancy is its
-//   thread's, so the turn count has to JOIN.
+//   thread's, so the turn count has to JOIN — twice more, to reach the project.
+//
+// All three narrow by the WHOLE tenant triple, which is the oracle's shape;
+// `governance-seam-guards.ts` carries the citation and the reason.
 //
 // A reader that narrowed all three the same way would either fail to compile on
 // the third or — the shape that actually ships — count turns for the whole
@@ -45,14 +49,19 @@
 // counts by union as well. Every agent that did ANY of the three appears, with
 // zeros for the rest.
 //
-// WHAT IS DELIBERATELY NOT COUNTED. `ToolCallAudit` rows whose `status` is not
-// `FAILED`: the port's field is `toolErrors`, the column is a `WorkStatus`, and
-// `FAILED` is the one value that means the call did not do what it was asked.
-// `error` is NOT used as the predicate — it is nullable on every status, so a
-// cancelled call carrying a message would be counted as a failure. Approvals are
-// counted at EVERY status, because the port's field is `approvalEvents` and the
-// risk it measures is how often an agent had to stop and ask, not how often it
-// was told yes.
+// WHAT COUNTS AS A TOOL ERROR IS THE ORACLE'S ANSWER, NOT THIS FILE'S.
+// `apps/agent/src/monitoring/governance.service.ts` — byte-identical to
+// `origin/main` — counts a `ToolCallAudit` row toward `toolErrors` when
+// `r.status === "FAILED" || r.status === "CANCELLED"`, and this counts the same
+// two. A FIRST DRAFT HERE COUNTED `FAILED` ALONE. It read defensibly, no test
+// objected, and it would have quietly LOWERED every agent's tool-error rate the
+// day this replaced the legacy board — the shape of change a risk score cannot
+// show you, because a smaller number on a risk board looks like good news.
+// `error` is still NOT the predicate: it is nullable on every status, so a
+// SUCCEEDED call carrying a message would be counted as a failure. Approvals are
+// counted at EVERY status, which is the oracle's shape too: the port's field is
+// `approvalEvents` and the risk it measures is how often an agent had to stop
+// and ask, not how often it was told yes.
 // ---------------------------------------------------------------------------
 
 import type {
@@ -67,10 +76,11 @@ import {
   asGovernanceIdentifier,
   err,
   ok,
+  resolvePath,
 } from "@platos/context-governance/application/ports/index.js";
 
 import { refuse } from "./governance-refusal.js";
-import { narrowableEnvironment } from "./governance-seam-guards.js";
+import { narrowableScope } from "./governance-seam-guards.js";
 import type { TenancyTransactions } from "./transaction.js";
 
 /** One row of the joined turn count. `bigint` because `count(*)` is int8. */
@@ -100,10 +110,17 @@ export function createActivityReader(transactions: TenancyTransactions): Activit
       scope: EnvironmentScope,
       since: Date,
     ): Promise<Result<readonly AgentActivityCounts[]>> {
-      const environmentId = narrowableEnvironment(scope);
-      if (environmentId === null) {
-        return err(activityUnreadable(`no environment to narrow by: ${String(scope.environmentId)}`));
+      const narrowed = narrowableScope(scope);
+      if (narrowed === null) {
+        return err(activityUnreadable(`no tenant to narrow by: ${resolvePath(scope)}`));
       }
+      const { organizationId, projectId, environmentId } = narrowed;
+      // The tenant clause the two grouped reads share, spelled once. It is the
+      // oracle's own filter -- see `governance-seam-guards.ts` for the citation.
+      const tenantWhere = {
+        environmentId,
+        environment: { project: { id: projectId, organizationId } },
+      } as const;
       return refuse(async () => {
         const reader = transactions.reader();
 
@@ -114,7 +131,11 @@ export function createActivityReader(transactions: TenancyTransactions): Activit
           SELECT thread."agentId" AS "agentId", count(*) AS "turns"
             FROM "Turn" turn
             JOIN "Thread" thread ON thread."id" = turn."threadId"
+            JOIN "Environment" environment ON environment."id" = thread."environmentId"
+            JOIN "Project" project ON project."id" = environment."projectId"
            WHERE thread."environmentId" = ${environmentId}::uuid
+             AND project."id" = ${projectId}::uuid
+             AND project."organizationId" = ${organizationId}::uuid
              AND turn."createdAt" >= ${since}
            GROUP BY thread."agentId"
         `;
@@ -126,9 +147,17 @@ export function createActivityReader(transactions: TenancyTransactions): Activit
         const toolRows = await reader.toolCallAudit.groupBy({
           by: ["agentId"],
           where: {
-            environmentId,
+            ...tenantWhere,
             createdAt: { gte: since },
-            status: "FAILED",
+            // FAILED **OR** CANCELLED, and that is the ORACLE's definition
+            // rather than this file's. `apps/agent/src/monitoring/governance.service.ts`
+            // -- byte-identical to `origin/main` -- counts a tool call toward
+            // `toolErrors` when `r.status === "FAILED" || r.status === "CANCELLED"`.
+            // A first draft here counted FAILED alone, which would have quietly
+            // lowered every agent's tool-error rate the day this replaced the
+            // legacy board. `error` is still NOT the predicate: it is nullable on
+            // every status, so a SUCCEEDED call carrying a message would count.
+            status: { in: ["FAILED", "CANCELLED"] },
             agentId: { not: null },
           },
           _count: { _all: true },
@@ -137,7 +166,7 @@ export function createActivityReader(transactions: TenancyTransactions): Activit
         // APPROVALS — every status, per the port's `approvalEvents`.
         const approvalRows = await reader.agentApproval.groupBy({
           by: ["agentId"],
-          where: { environmentId, createdAt: { gte: since }, agentId: { not: null } },
+          where: { ...tenantWhere, createdAt: { gte: since }, agentId: { not: null } },
           _count: { _all: true },
         });
 

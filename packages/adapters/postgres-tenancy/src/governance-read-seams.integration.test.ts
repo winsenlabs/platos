@@ -81,6 +81,22 @@ function unnarrowableScope(scope: EnvironmentScope): EnvironmentScope {
   );
 }
 
+/**
+ * A REAL environment under SOMEBODY ELSE'S project and organization.
+ *
+ * Every identifier in it exists; only the RELATION between them is a lie. This
+ * is the scope `apps/agent/src/evals/rating.service.ts`' `threadScopeWhere`
+ * refuses and an environment-only filter serves, and it can only be built with
+ * two tenants on the table at once.
+ */
+function tamperedScope(own: EnvironmentScope, other: EnvironmentScope): EnvironmentScope {
+  return environmentScope(
+    asIdentifier(other.organizationId),
+    asIdentifier(other.projectId),
+    asIdentifier(own.environmentId),
+  );
+}
+
 /** Tool calls and approvals for one chain, so the denominators have something to count. */
 function activitySql(chain: PeerChain): string {
   const suffix = chain.agentId.slice(-12);
@@ -93,6 +109,11 @@ function activitySql(chain: PeerChain): string {
        '${chain.threadId}', 'lookup', '{}'::jsonb, 'FAILED', 12, ${STAMP}),
       ('22222222-2222-4222-8222-${suffix}', '${chain.scope.environmentId}', '${chain.agentId}',
        '${chain.threadId}', 'lookup', '{}'::jsonb, 'FAILED', 15, ${STAMP}),
+      -- CANCELLED, which the ORACLE counts as a tool error alongside FAILED:
+      -- apps/agent/src/monitoring/governance.service.ts, byte-identical to
+      -- origin/main. Seeded so "FAILED alone" is a mutation a case can kill.
+      ('77777777-7777-4777-8777-${suffix}', '${chain.scope.environmentId}', '${chain.agentId}',
+       '${chain.threadId}', 'lookup', '{}'::jsonb, 'CANCELLED', 11, ${STAMP}),
       -- SUCCEEDED, so it must NOT be counted: the port's field is toolErrors.
       ('33333333-3333-4333-8333-${suffix}', '${chain.scope.environmentId}', '${chain.agentId}',
        '${chain.threadId}', 'lookup', '{}'::jsonb, 'SUCCEEDED', 9, ${STAMP}),
@@ -185,6 +206,20 @@ describe("RatingTargetReader", () => {
     expect(found.ok).toBe(false);
     expect(!found.ok && found.error.code).toBe("GOVERNANCE_RATING_TARGET_UNREADABLE");
   });
+
+  test("a REAL environment under a FOREIGN project is null — the whole triple narrows", async () => {
+    // THE ORACLE'S EXTRA CLAUSES, PROVED. `threadScopeWhere` in
+    // `apps/agent/src/evals/rating.service.ts` narrows by organization, project
+    // AND environment; an environment-only filter serves this scope, because
+    // the environment really does contain the turn. Every identifier below
+    // exists — only the relation between them is a lie.
+    const found = await seams.ratingTargets.find(
+      tamperedScope(home.scope, foreign.scope),
+      turnId(home.turnId),
+    );
+    expect(found.ok).toBe(true);
+    expect(found.ok && found.value).toBeNull();
+  });
 });
 
 describe("TranscriptReader", () => {
@@ -263,6 +298,16 @@ describe("TranscriptReader", () => {
     expect(read.ok).toBe(false);
     expect(!read.ok && read.error.code).toBe("GOVERNANCE_TRANSCRIPT_UNREADABLE");
   });
+
+  test("a REAL environment under a FOREIGN project is null — the whole triple narrows", async () => {
+    const read = await seams.transcripts.read(
+      tamperedScope(home.scope, foreign.scope),
+      threadId(home.threadId),
+      null,
+    );
+    expect(read.ok).toBe(true);
+    expect(read.ok && read.value).toBeNull();
+  });
 });
 
 describe("ActivityReader", () => {
@@ -276,9 +321,10 @@ describe("ActivityReader", () => {
     // "how much did this agent do", not "how much did it finish" — `risk.ts`
     // divides safety events by it, and a cancelled turn can carry one.
     expect(row?.turns).toBe(3);
-    // TWO of the four seeded tool calls: the SUCCEEDED one and the one outside
-    // the window are both excluded, and they are excluded for different reasons.
-    expect(row?.toolErrors).toBe(2);
+    // THREE of the five seeded tool calls: two FAILED and one CANCELLED, which
+    // is the ORACLE's definition of a tool error. The SUCCEEDED one and the
+    // FAILED one outside the window are excluded, for two different reasons.
+    expect(row?.toolErrors).toBe(3);
     expect(row?.approvalEvents).toBe(2);
 
     // AND THE FOREIGN AGENT IS NOT ON THIS BOARD AT ALL. Its rows exist and are
@@ -302,7 +348,7 @@ describe("ActivityReader", () => {
     expect(row?.agentId).toBe(foreign.agentId);
     // TWO, not three: the cancelled turn was seeded on the HOME thread only.
     expect(row?.turns).toBe(2);
-    expect(row?.toolErrors).toBe(2);
+    expect(row?.toolErrors).toBe(3);
     expect(row?.approvalEvents).toBe(2);
   });
 
@@ -323,6 +369,19 @@ describe("ActivityReader", () => {
     );
     expect(counted.ok).toBe(false);
     expect(!counted.ok && counted.error.code).toBe("GOVERNANCE_ACTIVITY_UNREADABLE");
+  });
+
+  test("a REAL environment under a FOREIGN project counts NOTHING", async () => {
+    // ALL THREE STATEMENTS, not one: the turn count reaches the project through
+    // two extra JOINs and the other two through one relation, so a triple
+    // enforced on the grouped reads and dropped from the raw one would leave
+    // `turns` populated here and the other two at zero.
+    const counted = await seams.activity.countByAgent(
+      tamperedScope(home.scope, foreign.scope),
+      BEFORE_EVERYTHING,
+    );
+    expect(counted.ok).toBe(true);
+    expect(counted.ok && counted.value).toHaveLength(0);
   });
 });
 

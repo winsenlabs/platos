@@ -95,7 +95,12 @@ export type { EnvironmentScope, JsonValue, NotResult, Result, TenantScope, Trans
 // republished HERE rather than imported from `@platos/kernel` in the adapter,
 // for the reason stated above: that would be the second import edge into the
 // kernel this paragraph exists to refuse.
-export { asIdentifier, contains, environmentScope, err, ok, runResult } from "@platos/kernel";
+// WIN-267 G2 adds `resolvePath`: the three read seams report WHICH scope they
+// could not narrow by, and `resolvePath` is the kernel's one canonical string
+// form of a scope (`org/<id>/proj/<id>/env/<id>`). An adapter spelling that
+// layout again would be a second copy of a format cache namespaces, rate-limit
+// buckets and log fields already agree on.
+export { asIdentifier, contains, environmentScope, err, ok, resolvePath, runResult } from "@platos/kernel";
 
 export type {
   ActorId,
