@@ -531,15 +531,21 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
       order.push(enqueued.value.runId);
     }
 
+    // ONE AT A TIME, and for as many rounds as it takes. The claim statement is
+    // deliberately install-wide — a dispatcher drains every environment — so
+    // earlier cases in this file have left QUEUED runs that are OLDER than these
+    // three and come out first. What is asserted is therefore the SUBSEQUENCE:
+    // among these three, the order is the order they were enqueued in.
     const seen: string[] = [];
-    for (let round = 0; round < 3; round += 1) {
+    for (let round = 0; round < 60 && seen.length < order.length; round += 1) {
       const claim = await harness.base.adapter.evalRuns.claim(`fifo-${String(round)}`, 60_000, 1);
       if (!claim.ok) throw new Error("unreachable");
+      if (claim.value.length === 0) break;
       for (const run of claim.value) {
         if (order.includes(run.runId)) seen.push(run.runId);
       }
     }
-    // The order they were enqueued in, not a set: `toEqual` on an array.
+    // An array, not a set: `toEqual` is what makes this about ORDER.
     expect(seen).toEqual(order);
   }, 180_000);
 
