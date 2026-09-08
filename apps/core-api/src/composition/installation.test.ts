@@ -27,6 +27,7 @@ import {
   type AdapterName,
 } from "./adapter-bindings.js";
 import {
+  GOVERNANCE_BOUND_READ_SEAMS,
   GOVERNANCE_ROOT_SATISFIED_PORTS,
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
@@ -325,7 +326,7 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 47 of 54, and the 7 that remain are exactly the bindings with no implementation", () => {
+  it("reports 50 of 57, and the 7 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
     // future tranche that implements one of the remaining directories sees both
@@ -346,22 +347,31 @@ describe("readiness over what was actually constructed", () => {
     //
     // 41/8 of 49 -> 43/7 of 50. Any one of the three moving alone is drift.
     //
-    // WIN-267 G1: 54 -> 55 and 47 -> 48 satisfied, with the unimplemented count
-    // UNMOVED at 7. `postgres-tenancy:EvalRunQueue` is a row on a directory that
-    // is already constructed, so it lands straight in the satisfied set and no
-    // directory changed state — the same shape as A3's probe cache, and the
-    // reason all three numbers are asserted rather than one.
+    // WIN-267 G1 + G2 TOGETHER: 54 -> 58 declared and 47 -> 51 satisfied, with
+    // the unimplemented count UNMOVED at 7. FOUR rows land in this tranche --
+    // G1's `postgres-tenancy:EvalRunQueue` and G2's three inverted read seams --
+    // and every one of them is a row on a directory a fully declared install
+    // ALREADY constructs, so each lands straight in the satisfied set and no
+    // directory changed state. That is why both numbers move by the same four
+    // and the third does not move at all: a tranche that moved the declared
+    // count without moving the satisfied one would have bound a port to a
+    // directory nothing constructs, and this triple is what makes that visible.
+    //
+    // THE FOUR ARE SUMMED HERE AND PINNED SEPARATELY IN EACH BRANCH. Neither G1
+    // (+1) nor G2 (+3) could state this figure alone, which is exactly the class
+    // of stale pin an integration is for.
     const { verdict } = readiness(FULLY_DECLARED);
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
-    expect(ADAPTER_BINDINGS).toHaveLength(55);
+    expect(ADAPTER_BINDINGS).toHaveLength(58);
     expect(unimplementable).toHaveLength(7);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
     // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(48);
+    // WIN-267 G1: 47 -> 48 of 54 -> 55. WIN-267 G2: 48 -> 51 of 55 -> 58.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(51);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
     expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
     // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
@@ -371,7 +381,7 @@ describe("readiness over what was actually constructed", () => {
     expect(verdict.ready).toBe(false);
   });
 
-  it("is 3 of 54 with nothing wired, and says which kind of nothing the other 51 are", () => {
+  it("is 3 of 57 with nothing wired, and says which kind of nothing the other 54 are", () => {
     // IT USED TO BE 0 OF 49, AND THE CHANGE IS THE DELIVERABLE RATHER THAN A
     // RELAXATION. Before WIN-267 there was no port in this tree an install could
     // satisfy without configuring something, so "nothing configured" and
@@ -515,10 +525,13 @@ describe("the context bundles those adapters can satisfy", () => {
     // case fails and the sentence has to be re-derived -- which is the point of
     // naming them rather than writing "governance needs more work".
     //
-    // WIN-267 G1 TOOK IT FROM FIVE TO THREE, and the two that left did so in
-    // different ways, so the case checks them separately below rather than
-    // lowering a number.
-    expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(3);
+    // WIN-267 G1 TOOK IT FROM FIVE TO THREE AND G2 TOOK IT FROM THREE TO NONE.
+    // An emptied list asserted only by its length is the weakest readback in
+    // this file -- deleting the five names would pass -- so the length is NOT
+    // the check. The check is the PARTITION below: every one of governance's ten
+    // driven ports must be accounted for as bound-here, bound-as-a-read-seam or
+    // satisfied-in-this-deployable, and the three lists must not overlap.
+    expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(0);
     for (const port of GOVERNANCE_UNBOUND_PORTS) {
       expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
       expect(declined?.reason).toContain(port);
@@ -547,6 +560,64 @@ describe("the context bundles those adapters can satisfy", () => {
     }
     expect(GOVERNANCE_ROOT_SATISFIED_PORTS).toContain("Judge");
     expect(declined?.reason).not.toContain("Judge");
+
+    // AND THE THREE THAT LEFT THAT LIST ARE CHECKED IN THE OTHER DIRECTION,
+    // WHICH IS THE HALF THAT MAKES THE SHRINKING FALSIFIABLE. WIN-267 G2 moved
+    // `RatingTargetReader`, `TranscriptReader` and `ActivityReader` off
+    // `GOVERNANCE_UNBOUND_PORTS`; a list that merely stopped naming them would
+    // be indistinguishable from one that forgot them. So each is joined to a
+    // BINDING ROW, to that row's directory NOT being unimplemented, and to the
+    // fully declared install having CONSTRUCTED it. Delete the three properties
+    // from `PostgresTenancyAdapter` and this case goes red on each of them.
+    //
+    // THE SENTENCE MUST ALSO HAVE STOPPED NAMING THEM. It is the operator-facing
+    // half, and a reason that still listed three satisfied ports would send an
+    // install looking for adapters that are already there.
+    const byPort = new Map(ADAPTER_BINDINGS.map((binding) => [binding.port, binding]));
+    expect(GOVERNANCE_BOUND_READ_SEAMS).toHaveLength(3);
+    for (const port of GOVERNANCE_BOUND_READ_SEAMS) {
+      const binding = byPort.get(port);
+      expect(binding, `${port} must be bound to a named directory`).toBeDefined();
+      expect(binding?.owner, `${port} is a port governance declares`).toBe("governance");
+      expect(UNIMPLEMENTED_ADAPTERS).not.toContain(binding?.adapter);
+      expect(
+        construction.adapters[binding?.adapter ?? ("" as AdapterName)],
+        `${port} needs ${binding?.adapter} constructed`,
+      ).toBeDefined();
+      expect(declined?.reason, `${port} is satisfied and must not be named`).not.toContain(port);
+    }
+
+    // THE PARTITION, WHICH IS WHAT REPLACES THE LENGTH CHECK ABOVE.
+    //
+    // `GovernanceDependencies` declares TEN driven ports. NINE of them are rows
+    // this table owns -- the five canonical stores, G1's queue and G2's three
+    // seams -- and the tenth is `Judge`, satisfied in this deployable. The three
+    // lists are joined to `ADAPTER_BINDINGS` here rather than to each other:
+    // drop a row from the table and the nine falls; move a name between lists
+    // and the disjointness fails; add a name to a list without a row and the
+    // membership check above fails first.
+    const governanceRows = ADAPTER_BINDINGS.filter((binding) => binding.owner === "governance");
+    expect(governanceRows.map((binding) => binding.port).sort()).toEqual([
+      "ActivityReader",
+      "CriteriaRepository",
+      "EvalRunQueue",
+      "EvalsRepository",
+      "GoldenSetsRepository",
+      "RatingTargetReader",
+      "RatingsRepository",
+      "SafetyLedger",
+      "TranscriptReader",
+    ]);
+    const accountedFor = new Set([
+      ...governanceRows.map((binding) => binding.port),
+      ...GOVERNANCE_ROOT_SATISFIED_PORTS,
+      ...GOVERNANCE_UNBOUND_PORTS,
+    ]);
+    expect(accountedFor.size, "the three lists must be disjoint and cover ten").toBe(10);
+    expect(
+      GOVERNANCE_ROOT_SATISFIED_PORTS.filter((port) => governanceRows.some((row) => row.port === port)),
+      "a root-satisfied port must not also be a binding row",
+    ).toEqual([]);
   });
 
   it("constructs both configuration-free adapters with nothing configured at all", () => {

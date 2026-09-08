@@ -125,6 +125,27 @@ export const ADAPTERS = [
       // a supplier question §7 decision 10 has already answered. Recording a ROW
       // is not that decision.
       { port: "EvalRunQueue", owner: "governance" },
+      // WIN-267 G2 (ADR M0.3 §2). `governance`'s THREE INVERTED READ SEAMS, on
+      // the same directory and under the same owner tag — because the owner
+      // column names who owns the PORT, and `read-seams.ts` declares all three.
+      //
+      // THE ROWS THEY READ BELONG TO THREE OTHER CONTEXTS: `Thread` and `Turn`
+      // to `conversations`, `ToolCallAudit` to `tools`, `AgentApproval` to
+      // `jobs`. That is not an exception to §15, it is §15: all three of those
+      // owners map to this same directory in `CANONICAL_STORE_ADAPTERS`, so the
+      // package that answers the seam IS the package that owns the rows. What
+      // §5.2 still forbids — a WRITE to any of those four tables under the
+      // `governance` tag — `sole-writer.mjs` still refuses, per write, and these
+      // three write nothing.
+      //
+      // THEY ARE PROPERTIES on the adapter (`ratingTargets`, `transcripts`,
+      // `activity`) rather than spread-in methods, for the reason tenancy's five
+      // are: `GovernanceDependencies` has a named slot for each, and two readers
+      // over the same two tables handed over in the wrong slots would answer
+      // plausible values for ever.
+      { port: "RatingTargetReader", owner: "governance" },
+      { port: "TranscriptReader", owner: "governance" },
+      { port: "ActivityReader", owner: "governance" },
       // WIN-258 T5 adds the SEVENTH and EIGHTH. `secrets` owns four canonical
       // rows in that same database and publishes TWO canonical-store ports over
       // them, because `environment-variable-repository.ts` keeps the vault and
@@ -756,7 +777,16 @@ export function adapterOwnerPackages(adapter) {
 // it was already declared and was simply unsatisfiable.
 //
 // THE MERGED FIGURES ARE STATED BY NO SINGLE BRANCH. Over the same 13/49 base
-// A1+A2 pinned 15/53 and A3 pinned 13/50; the tree now holds 15 and 54.
+// A1+A2 pinned 15/53 and A3 pinned 13/50; the tree then held 15 and 54.
+//
+// WIN-267 G2: 54 -> 57 bindings and the DIRECTORY pin does not move a
+// TWENTY-FIRST time. `governance`'s three inverted read seams are three rows on
+// `postgres-tenancy`, which is the §15 amendment's whole subject; a thirteenth
+// package for them would have needed its own Prisma client, and the ONE-HOME
+// rule `tenancy-prisma-only` states is what forbids that. This branch pins
+// 15/57 over the 15/54 base; two sibling branches move the same pin for the
+// remaining governance ports, so the integrator SUMS the deltas rather than
+// taking any one branch's total.
 //
 // WIN-267 G1: 54 -> 55 bindings and the DIRECTORY pin does not move.
 // `postgres-tenancy:EvalRunQueue` is a row on an existing directory, which is
@@ -765,8 +795,12 @@ export function adapterOwnerPackages(adapter) {
 // alternative -- a real `packages/adapters/durable-runtime` -- would have moved
 // the directory pin AND decided a supplier question that section's own
 // configuration group has already answered with an external API URL.
+//
+// SUMMED FOR THE INTEGRATION: 54 + 3 (G2) + 1 (G1) = 57 + 1 = 58 bindings
+// over the SAME fifteen directories. Neither branch could state this
+// figure: G1 pinned 55 and G2 pinned 57, both over the same 54 base.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 55;
+export const EXPECTED_BINDING_COUNT = 58;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.

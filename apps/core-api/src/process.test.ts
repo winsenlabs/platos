@@ -329,8 +329,8 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(55);
-    expect(body.detail.satisfiedBindings).toHaveLength(48);
+    expect(body.detail.declaredBindings).toBe(58);
+    expect(body.detail.satisfiedBindings).toHaveLength(51);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -344,7 +344,7 @@ describe("the built binary starts, serves and stops", () => {
     // count moves by two while the declared count moves by one, and the
     // UNSATISFIED remainder falls from eight to SEVEN: `redis-ratelimit` is the
     // first directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("48 of 55 adapter bindings are satisfied; 7 are not");
+    expect(body.reason).toBe("51 of 58 adapter bindings are satisfied; 7 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -359,7 +359,7 @@ describe("the built binary starts, serves and stops", () => {
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("48/55 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("51/58 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

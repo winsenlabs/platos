@@ -25,20 +25,32 @@
 // when THREE things are true at once, and the count falls away fast:
 //
 //   1. the context publishes a factory that assembles its whole contract.
-//      THIRTEEN do; FOUR do not -- `agents`, `tools`, `memory` and
-//      `cost-monitoring` publish their use cases one by one and no assembler
-//      over them.
+//      ALL SEVENTEEN DO.
 //
-//      THIS SENTENCE USED TO SAY ELEVEN AND SIX, AND IT NAMED `secrets` AND
-//      `providers` AMONG THE SIX. It was wrong on both, and it was wrong at v1
-//      rather than newly wrong: `secretsContract` has been exported from
-//      `packages/contexts/secrets/contracts/index.ts` and `providersContract`
-//      from `packages/contexts/providers/contracts/index.ts` since before this
-//      note was written, and both are on the `.` entry point every package
-//      already publishes. WIN-267 A3 repeated the claim in
-//      `PROVIDERS_UNASSEMBLED` and made a decision on it. It is corrected here by
-//      MEASUREMENT and, more to the point, by acting on it: both contexts are
-//      composed below.
+//      THIS SENTENCE HAS NOW BEEN WRONG TWICE, THE SAME WAY, AND THE COUNT ONLY
+//      EVER MOVED WHEN SOMEBODY LOOKED. It said ELEVEN and SIX and named
+//      `secrets` and `providers` among the six; both had been exported the whole
+//      time, and WIN-267 A3 repeated the claim in `PROVIDERS_UNASSEMBLED` before
+//      measuring it. It then said THIRTEEN and FOUR and named `agents`, `tools`,
+//      `memory` and `cost-monitoring`. WIN-267 G2 counted the factories, and
+//      every one of those four has one:
+//
+//        agentsContract           packages/contexts/agents/contracts/index.ts:332
+//        toolsContract            packages/contexts/tools/contracts/index.ts:269
+//        memoryContract           packages/contexts/memory/contracts/index.ts:388
+//        costMonitoringContract   packages/contexts/cost-monitoring/contracts/index.ts:280
+//
+//      and the three this file called assembler-less on the governance path have
+//      one apiece as well -- `createConversationsContract`,
+//      `createJobsContract`, `createGovernanceContract` -- reached from
+//      `application/` rather than from `contracts/index.ts` in two of the three
+//      cases, which is how they were missed.
+//
+//      SO CONDITION 1 IS NOT WHAT STOPS ANY CONTEXT BEING COMPOSED. Conditions 2
+//      and 3 are, and they are measured per context below. A context whose
+//      assembler exists and whose bundle cannot be filled is still unassembled;
+//      what is no longer true is that four contexts publish "use cases one by
+//      one".
 //
 //   2. every driven port in its dependency bundle has an implementation SOMEWHERE
 //      in this tree.
@@ -95,33 +107,69 @@
 // WHY THAT ONE CANNOT BE CLOSED HERE, MEASURED RATHER THAN ASSERTED. Its only
 // implementation is `createGovernanceSafetyEventSink`, which takes a
 // `GovernanceDependencies` -- SEVENTEEN slots. FIVE of its ten driven ports had
-// no row in `ADAPTER_BINDINGS` and no adapter directory anywhere. WIN-267 G1
-// closes TWO of the five and the remaining count is THREE:
+// no row in `ADAPTER_BINDINGS` and no adapter directory anywhere. WIN-267 G1 and
+// G2 CLOSE ALL FIVE, and the three ways they closed are different in kind, which
+// is why the count is kept as three lists rather than one:
 //
-//   `RatingTargetReader`, `TranscriptReader` and `ActivityReader` are ADR M0.3
-//   §2 read seams whose own header says "the composition root implements it by
-//   asking whichever context owns the rows" -- `conversations`, `tools` and
-//   `jobs`, none of which publishes a contract assembler. These three are what
-//   is left.
+//   `RatingTargetReader`, `TranscriptReader` and `ActivityReader` GAINED
+//   BINDINGS on `postgres-tenancy` (G2). Their own header says "the composition
+//   root implements it by asking whichever context owns the rows" --
+//   `conversations`, `tools` and `jobs` -- and the sentence that called that
+//   impossible was wrong twice over; see the correction below.
 //
-//   `EvalRunQueue` IS CLOSED, and not the way this note predicted. It said the
-//   port "needs the kernel `DurableRuntime`, whose directory is one of the seven
-//   still on `UNIMPLEMENTED_ADAPTERS`". What the port needs is a DURABLE
-//   ACCEPTANCE, and §15 says where a row in the one PostgreSQL database is
-//   written: `postgres-tenancy`. Implementing `DurableRuntime` over that same
-//   database would have been a different act -- deciding a supplier question
-//   whose own configuration group (`PLATOS_DURABLE_RUNTIME_API_URL` plus a
-//   secret key) already answers it with an external service.
+//   `EvalRunQueue` GAINED A BINDING TOO (G1), and not the way this note
+//   predicted. It said the port "needs the kernel `DurableRuntime`, whose
+//   directory is one of the seven still on `UNIMPLEMENTED_ADAPTERS`". What the
+//   port needs is a DURABLE ACCEPTANCE, and §15 says where a row in the one
+//   PostgreSQL database is written: `postgres-tenancy`. Implementing
+//   `DurableRuntime` over that same database would have been a different act --
+//   deciding a supplier question whose own configuration group
+//   (`PLATOS_DURABLE_RUNTIME_API_URL` plus a secret key) already answers with an
+//   external service.
 //
-//   `Judge` IS CLOSED TOO, in this file's own deployable rather than in a
-//   directory: `composition/governance-judge.ts`. The old sentence "has no
+//   `Judge` IS SATISFIED WITHOUT A BINDING (G1), in this deployable rather than
+//   in a directory: `composition/governance-judge.ts`. The old sentence "has no
 //   directory at all" was true and would have stayed true forever; three rules
 //   measured in that file make an adapter for it impossible.
 //
-// Its bundle also names `AgentsContract`, and `agents` publishes its use cases
-// one by one. `@platos/context-governance` does not even publish
-// `./application/index.js`, so the factory is not importable from here. THOSE
-// two, and the three read seams, are the whole of what is left.
+// SO `GOVERNANCE_UNBOUND_PORTS` IS EMPTY AND GOVERNANCE STILL DOES NOT COMPOSE.
+// What is left is not a driven port at all. Its bundle names `AgentsContract`,
+// and `@platos/context-governance` publishes no `./application/index.js`, so the
+// factory is not importable from here. That is a MANIFEST line and a peer
+// context, not an adapter, and neither G1 nor G2 could close it alone.
+//
+// IT WAS FIVE UNTIL WIN-267 G2, AND THE THREE THAT LEFT WERE LEFT FOR A REASON
+// THAT WAS NEVER TRUE. The sentence said `RatingTargetReader`,
+// `TranscriptReader` and `ActivityReader` were unsatisfiable because their own
+// header says "the composition root implements it by asking whichever context
+// owns the rows" -- `conversations`, `tools` and `jobs` -- "none of which
+// publishes a contract assembler". BOTH HALVES WERE WRONG, and measurably so:
+//
+//   the OWNERS are not somewhere else. `CANONICAL_STORE_ADAPTERS` in
+//   `scripts/arch/table-ownership.mjs` maps all EIGHTEEN owners, those three
+//   included, to `packages/adapters/postgres-tenancy`. Under ADR M0.3 §15 that
+//   directory IS `conversations`' and `tools`' and `jobs`' canonical store and
+//   the sole writer of `Thread`, `Turn`, `ToolCallAudit` and `AgentApproval`.
+//   Asking the owner and asking that directory are the same act, so the seams
+//   are three rows on it and no thirteenth package was needed.
+//
+//   and the ASSEMBLER CLAIM IS FALSE FOR ALL SEVENTEEN CONTEXTS, not only for
+//   these three. Counted rather than believed, with the file and line:
+//   `createConversationsContract` (conversations/application/conversations-contract.ts:134),
+//   `toolsContract` (tools/contracts/index.ts:269), `createJobsContract`
+//   (jobs/application/jobs-contract.ts:224), `agentsContract`
+//   (agents/contracts/index.ts:332), `memoryContract`
+//   (memory/contracts/index.ts:388), `costMonitoringContract`
+//   (cost-monitoring/contracts/index.ts:280). The note near the top of this file
+//   says "FOUR do not -- `agents`, `tools`, `memory` and `cost-monitoring`" and
+//   names an assembler for each of the four in the list above. This is the SECOND
+//   time that paragraph has been wrong in the same way: it named `secrets` and
+//   `providers` before, and both were exported the whole time.
+//
+// THAT CORRECTION IS RECORDED HERE AND ACTED ON ONLY FOR THE THREE SEAMS. Whether
+// `AgentsContract` can be BUILT is a different question from whether an assembler
+// exists -- its own bundle has to be satisfiable too -- and this tranche has not
+// measured that. It is a sibling's, and the clause below still names it.
 //
 // A rate limiter alone would therefore NOT have been enough:
 // `consume-rate-limit.ts` writes `identity.rate_limit.degraded` into this sink,
@@ -187,9 +235,12 @@ export const IDENTITY_ACCESS_UNASSEMBLED =
   " RateLimiter is redis-ratelimit, SecretHasher is node-crypto-digest," +
   " MfaSecretCipher is keyring-envelope, TokenMinter is tokenmint-totp and" +
   " TotpCodeVerifier is tokenmint-totp; SafetyEventSink is implemented only by" +
-  " the governance context, whose own bundle names three driven ports no adapter" +
-  " directory satisfies (RatingTargetReader, TranscriptReader, ActivityReader)" +
-  " and an AgentsContract no factory assembles, so this root cannot compose it";
+  " the governance context, whose own bundle now names NO driven port an adapter" +
+  " directory fails to satisfy -- G2 bound RatingTargetReader, TranscriptReader" +
+  " and ActivityReader, G1 bound EvalRunQueue and satisfied Judge in this" +
+  " deployable -- but which still holds an AgentsContract this root does not" +
+  " assemble and is published from no ./application/index.js, so this root" +
+  " cannot compose it";
 
 /**
  * The governance ports that keep the sink out of reach, named once.
@@ -200,9 +251,21 @@ export const IDENTITY_ACCESS_UNASSEMBLED =
  * an adapter directory implements one of these, the count of what is left drops
  * and this list has to move with it.
  *
- * WIN-267 G1 IS THAT DAY, TWICE, AND THE TWO DEPARTURES ARE DIFFERENT IN KIND.
+ * WIN-267 G1 AND G2 ARE THAT DAY, FIVE TIMES, AND THE LIST IS NOW EMPTY. An
+ * empty list is the weakest possible readback on its own, so it is not the only
+ * one: `GOVERNANCE_BOUND_READ_SEAMS` and `GOVERNANCE_ROOT_SATISFIED_PORTS` below
+ * name where each of the five went, and `installation.test.ts` checks that the
+ * three lists PARTITION governance's ten driven ports -- so a port cannot leave
+ * this list without arriving somewhere, which is what an emptied list would
+ * otherwise hide.
  *
- *   `EvalRunQueue` LEFT BY GAINING A BINDING. It is
+ * THE DEPARTURES ARE DIFFERENT IN KIND.
+ *
+ *   THE THREE READ SEAMS LEFT BY GAINING BINDINGS (G2), all three on
+ *   `postgres-tenancy`, which `table-ownership.mjs` already maps as the
+ *   canonical store of every one of the eighteen owners.
+ *
+ *   `EvalRunQueue` LEFT BY GAINING A BINDING (G1). It is
  *   `postgres-tenancy:EvalRunQueue`, the sixteenth row on that directory and the
  *   sixth `governance` owns, because ADR M0.3 §1 row 14's "eval runs enqueue as
  *   durable jobs" is a ROW in the one PostgreSQL database and §15 says a row in
@@ -210,7 +273,7 @@ export const IDENTITY_ACCESS_UNASSEMBLED =
  *   list moved with it, in the direction the paragraph above demands, and
  *   `composition-root.mjs` checks the binding itself.
  *
- *   `Judge` LEFT WITHOUT ONE, and that is why it is named in
+ *   `Judge` LEFT WITHOUT ONE (G1), and that is why it is named in
  *   `GOVERNANCE_ROOT_SATISFIED_PORTS` below rather than dropped. It has an
  *   implementation -- `composition/governance-judge.ts` -- and it will never have
  *   an adapter directory, which that file measures three ways: `provider-sdk-only`
@@ -221,7 +284,20 @@ export const IDENTITY_ACCESS_UNASSEMBLED =
  *   list that said "no adapter directory satisfies Judge" would therefore have
  *   stayed true forever while being read as "still missing".
  */
-export const GOVERNANCE_UNBOUND_PORTS: readonly string[] = Object.freeze([
+export const GOVERNANCE_UNBOUND_PORTS: readonly string[] = Object.freeze([]);
+
+/**
+ * The governance ports that LEFT that list in WIN-267 G2, named once.
+ *
+ * READ BACK BY `installation.test.ts` IN THE OTHER DIRECTION, which is the half
+ * that makes the shrinking of `GOVERNANCE_UNBOUND_PORTS` above falsifiable:
+ * every one of these must appear on a row of `ADAPTER_BINDINGS`, that row's
+ * directory must not be on `UNIMPLEMENTED_ADAPTERS`, and a fully declared
+ * install must have CONSTRUCTED it. A list that merely stopped naming three
+ * ports would be indistinguishable from one that forgot them -- which is the
+ * mistake WIN-267 A3 caught on the identity-access half of the same sentence.
+ */
+export const GOVERNANCE_BOUND_READ_SEAMS: readonly string[] = Object.freeze([
   "RatingTargetReader",
   "TranscriptReader",
   "ActivityReader",

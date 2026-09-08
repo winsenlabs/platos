@@ -32,10 +32,26 @@
 //   `TranscriptReader`, `ActivityReader` — and not one of them reads a row this
 //   context owns. They answer questions about `Turn`, `Thread`, `ToolCallAudit`
 //   and `AgentApproval`, which ADR M0.3 §1 gives to `conversations`, `tools` and
-//   `jobs`. Implementing them here would make this directory a reader of four
-//   other owners' tables under the name of `governance`'s adapter, which is the
-//   sideways access §5.2 forbids and which the port's own header says the
-//   composition root resolves "by asking whichever context owns the rows".
+//   `jobs`. They are NOT in this object, and WIN-267 G2 implemented them next
+//   door in `governance-read-seams.ts`.
+//
+//   THIS PARAGRAPH USED TO SAY THEY COULD NOT BE IMPLEMENTED IN THIS DIRECTORY
+//   AT ALL — "that would make this directory a reader of four other owners'
+//   tables ... the sideways access §5.2 forbids". THAT WAS FALSE, and false at
+//   v1 rather than newly false. `CANONICAL_STORE_ADAPTERS` in
+//   `scripts/arch/table-ownership.mjs` maps all EIGHTEEN owners, `conversations`
+//   and `tools` and `jobs` included, to `packages/adapters/postgres-tenancy`.
+//   This directory is not a stranger to those four tables: under ADR M0.3 §15 it
+//   is their canonical store and their sole writer, and
+//   `conversations-threads.ts`, `tools-audit-rows.ts` and `jobs-approvals.ts`
+//   are its own files. "Asking whichever context owns the rows" and asking this
+//   directory are the same act — there is no sideways here to access.
+//
+//   WHAT REMAINS TRUE, AND IS WHY THEY ARE A SEPARATE OBJECT. These five are the
+//   rows `governance` may WRITE; those three are questions about rows it may
+//   not. `sole-writer.mjs` would refuse a write to `Turn` from this directory
+//   under the `governance` tag, and should. Splitting the objects keeps the
+//   difference legible rather than only enforced.
 //
 //   `judge.ts` is the entire vendor surface of the eval pipeline — a model
 //   call, priced and timed. It is a transport to a provider, bound where

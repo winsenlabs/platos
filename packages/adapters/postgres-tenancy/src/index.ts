@@ -207,6 +207,23 @@ export {
 // rather than a client so there is no second one to build.
 export type { GovernanceStores } from "./governance-repository.js";
 export { createGovernanceStores, createInstantSource } from "./governance-repository.js";
+
+// WIN-267 G2 — `governance`'s three INVERTED READ SEAMS, published beside the
+// five stores and separately from them.
+//
+// Separately because they are a different kind of thing: the five write rows
+// this directory owns as `governance`'s store, these three read rows it owns as
+// `conversations`', `tools`' and `jobs`'. A root that took one object would be
+// unable to see, from the door alone, that three of governance's ports are
+// answered from other owners' tables — which is the fact ADR M0.3 §2 inverted
+// the seam to make visible.
+//
+// The factory takes `TenancyTransactions` for the reason
+// `createGovernanceStores` does: a reader built over its own client would be a
+// second ambient frame, and `rate-turn.ts` reads the turn back inside the
+// transaction that writes the rating.
+export type { GovernanceReadSeams } from "./governance-read-seams.js";
+export { createGovernanceReadSeams } from "./governance-read-seams.js";
 export {
   CRITERION_SCALE_NOT_REPRESENTABLE,
   EVAL_COST_NOT_REPRESENTABLE,

@@ -145,7 +145,12 @@ export type { EnvironmentScope, JsonValue, NotResult, Result, TenantScope, Trans
 // republished HERE rather than imported from `@platos/kernel` in the adapter,
 // for the reason stated above: that would be the second import edge into the
 // kernel this paragraph exists to refuse.
-export { asIdentifier, contains, environmentScope, err, ok, runResult } from "@platos/kernel";
+// WIN-267 G2 adds `resolvePath`: the three read seams report WHICH scope they
+// could not narrow by, and `resolvePath` is the kernel's one canonical string
+// form of a scope (`org/<id>/proj/<id>/env/<id>`). An adapter spelling that
+// layout again would be a second copy of a format cache namespaces, rate-limit
+// buckets and log fields already agree on.
+export { asIdentifier, contains, environmentScope, err, ok, resolvePath, runResult } from "@platos/kernel";
 
 export type {
   ActorId,
@@ -176,9 +181,23 @@ export type {
   SafetyTally,
   SatisfactionInput,
   ThreadId,
+  // WIN-267 G2. `TranscriptReader.read` answers a `Transcript`, whose `turns`
+  // are these — so an adapter that could not spell the name could not build the
+  // value. Published for the reason the block above is: the port entry point
+  // publishes exactly what the port's own signatures use.
+  TranscriptTurn,
   TurnId,
 } from "../../domain/index.js";
 export {
+  // WIN-267 G2 — the three read seams' own refusals, one per seam.
+  //
+  // Published here and REQUIRED at each port, the way `eval-run-queue.ts`
+  // requires `queueUnavailable`: the distinctness is a property of the CONTRACT
+  // rather than a courtesy of whichever adapter happens to implement it. An
+  // implementation that reached for `ledgerUnavailable` instead would make "a
+  // table is down" and "this reader was handed a scope it cannot narrow by" the
+  // same incident, which is the defect three of these codes exist to prevent.
+  activityUnreadable,
   asGovernanceIdentifier,
   criterionAlreadyExists,
   goldenSetAlreadyExists,
@@ -188,4 +207,6 @@ export {
   isSafetySeverity,
   ledgerUnavailable,
   PII_DETECTORS,
+  ratingTargetUnreadable,
+  transcriptUnreadable,
 } from "../../domain/index.js";

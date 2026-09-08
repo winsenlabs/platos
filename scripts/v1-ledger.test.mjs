@@ -1212,13 +1212,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `json-columns.ts`, `governance-harness.ts` and the suites that re-pin
     // counts are all WIDENED rather than added — see the note on
     // `internal-packages` below for what the tranche adds outside `packages`.
-    // 1493 + 2 = 1495.
-    packages: 1495,
     // WIN-267 G1 +1: `internal-packages/tenancy-database/prisma/migrations/
     // 20260909120000_win267_eval_run_queue/migration.sql`, the row the store
     // above writes. `schema.prisma`, `src/json.ts`, `src/source-model-manifest.ts`
     // and the three suites that pin the model count are edits.
     "internal-packages": 10,
+    //   +6  packages/adapters/postgres-tenancy (WIN-267 G2) -- FOUR source,
+    //       `governance-read-seams.ts`, `governance-seam-guards.ts`,
+    //       `governance-seam-conversations.ts` and `governance-seam-activity.ts`,
+    //       and TWO test, `governance-read-seams.test.ts` and
+    //       `governance-read-seams.integration.test.ts`. `adapter.ts` gained
+    //       three slots, `index.ts` two exports, `governance-repository.ts` a
+    //       corrected header, and `governance`'s `errors.ts` and ports barrel
+    //       gained names: six widened files and no new one.
+    // No ledger rule is new: `packages.adapters.source` and `.test` already
+    // match all six.
+    //
+    // SUMMED FOR THE INTEGRATION: 1493 + 2 (G1) + 6 (G2) = 1501.
+    packages: 1501,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1576,8 +1587,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `apps/agent/src/clean-prisma-delegates.test.ts` are all tracked already,
     // and an edited file is not a new one. In particular `apps-agent` does NOT
     // move: re-pinning a suite's assertions changes bytes, not the census.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 = 58.
-    "root-infra": 58,
+    // WIN-267 G2 adds ONE: `scripts/mutations-win267-g2.json`, this tranche's
+    // guard ledger, on the same `root-infra.tooling.scripts` rule every earlier
+    // tranche's landed on.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 59.
+    "root-infra": 59,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1608,7 +1622,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // writes). `apps-core-api` does NOT move again: the binding row, the two
   // composition constants and the readiness pins are all edits.
   // 1642 + 3 = 1645.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1645);
+  // WIN-267 G2: 1640 + 6 + 1 = 1647 -- SIX in `packages` and ONE in
+  // `root-infra`, this tranche's mutation ledger. Two sibling branches
+  // move this same delta for the remaining governance ports, so the
+  // integrator SUMS rather than taking any one branch's total -- the exact
+  // mistake the paragraph above records for A1+A2 and A3.
+  //
+  // SUMMED FOR THE INTEGRATION: 1640 + 5 (G1: 2 apps-core-api, 2 packages,
+  // 1 internal-packages) + 7 (G2: 6 packages, 1 root-infra) = 1652.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1652);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1739,7 +1761,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // green, and STILL landed red on both of these assertions: the sixth and
     // seventh time this second reconciliation has caught what the first one
     // signed off.
-    rulesDocument.baseline.totalFiles + 1645
+    rulesDocument.baseline.totalFiles + 1652
   );
 });
 

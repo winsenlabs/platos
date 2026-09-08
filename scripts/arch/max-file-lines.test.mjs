@@ -835,7 +835,27 @@ test("the live selectors scan an exact nonzero source census", () => {
   // counted here and that is the selector rather than an omission -- this gate
   // scans `src/http/**` and `src/transports/rest/**` in that deployable, and
   // `src/composition/**` is in neither.
-  assert.equal(result.fileCount, 1574);
+    // WIN-267 G2 adds SIX more to the same selector, all in
+  // `packages/adapters/postgres-tenancy/src/`: `governance`'s three inverted
+  // read seams, the guard they share, and their two suites. 1572 + 6 = 1578.
+  // Measured with THIS MODULE'S OWN `effectiveLineCount`, for the reason stated
+  // above:
+  //
+  //   292  governance-read-seams.integration.test.ts
+  //   117  governance-seam-conversations.ts
+  //   101  governance-seam-activity.ts
+  //    93  governance-read-seams.test.ts
+  //    23  governance-read-seams.ts
+  //    19  governance-seam-guards.ts
+  //
+  // The largest is the integration suite, and it is the largest for the reason
+  // this tranche exists: every case in it is issued twice, once per tenant. All
+  // six are under the 400 warning band -- and the split into four source files
+  // rather than one is what keeps them there, since a single
+  // `governance-read-seams.ts` holding all three seams would have been 260.
+  // SUMMED FOR THE INTEGRATION: 1572 + 2 (G1) + 6 (G2) = 1580, and the
+  // ADAPTERS term is still the only one that moves.
+  assert.equal(result.fileCount, 1580);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -861,7 +881,14 @@ test("the live selectors scan an exact nonzero source census", () => {
       6 + 2 + 12 + 7 + 3 +
       // WIN-267 G1: the eval-run queue store and its integration suite, both
       // under `packages/adapters/postgres-tenancy/src/`.
-      2
+      2 +
+      // WIN-267 G2: SIX under `packages/adapters/postgres-tenancy/src/` --
+      // four source modules for `governance`'s three inverted read seams plus
+      // their shared guard, and two suites. Newly WRITTEN, inside the same
+      // long-standing selector, and adding nothing to any other term: the three
+      // ports were already declared by the context and the composition root's
+      // rows are edits.
+      6
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1001,9 +1028,18 @@ test("the live selectors scan an exact nonzero source census", () => {
   // grown a transport while calling itself an adapter. The context edits it does
   // make -- three re-exports and a paragraph on `governance`'s port barrel --
   // are EDITS to files that already existed and move no count.
-  //   ADAPTERS        443
-  // 27 + 1075 + 443 + 13 + 16 = 1574.
-  assert.equal(result.fileCount, 27 + 1075 + 443 + 13 + 16);
+  //
+  // WIN-267 G2 MOVES ONLY THE ADAPTERS TERM AGAIN, 441 -> 447, and it is the
+  // same mirror claim: three driven ports got an implementation on a directory
+  // that already existed and nothing else changed shape. Kernel, contexts and
+  // both apps terms are byte-for-byte the same scan. The three names added to
+  // `governance`'s ports barrel, the three error constructors in its domain and
+  // the composition root's rows are all EDITS to files that already existed and
+  // move no count.
+  // SUMMED: 441 + 2 (G1) + 6 (G2) = 449.
+  //   ADAPTERS        449
+  // 27 + 1075 + 449 + 13 + 16 = 1580.
+  assert.equal(result.fileCount, 27 + 1075 + 449 + 13 + 16);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

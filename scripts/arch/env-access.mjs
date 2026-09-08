@@ -393,6 +393,16 @@ export const VIOLATION_CODES = Object.freeze({
  * unmoved by all three: a SHA-256, a TOTP alphabet, a rate limiter and a probe
  * cache each take what they need from the composition root, so thirty new files
  * added not one new door.
+ *
+ * WIN-267 G2: 1610 + 6 = 1616, and the DECLARED table is unmoved a fourth time.
+ * The six are `governance`'s three inverted read seams in
+ * `packages/adapters/postgres-tenancy/src/` -- `governance-read-seams.ts`,
+ * `governance-seam-guards.ts`, `governance-seam-conversations.ts`,
+ * `governance-seam-activity.ts` and the two suites beside them. They read rows,
+ * not configuration: every one takes its transactions from the adapter that
+ * already holds the one database URL, so six new files added not one new door.
+ * Two sibling branches move this pin for the remaining governance ports, so the
+ * integrator SUMS the deltas rather than taking any one branch's total.
  */
 
 /*
@@ -418,8 +428,13 @@ export const VIOLATION_CODES = Object.freeze({
  * environment of its own — it counts rows through `governance-harness.ts`'s
  * `readPeerRows`, which is why the DECLARED table gains one READ on an entry it
  * already had and no new path. 1613 + 1 = 1614.
+ *
+ * SUMMED FOR THE INTEGRATION: 1610 + 6 (G2's six read-seam files) + 4 (G1's
+ * four) = 1620, a figure neither branch stated. The DECLARED table is
+ * unmoved by all ten, which is the claim this pin exists to make: ten files
+ * landed and not one new door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1614;
+export const EXPECTED_FILE_COUNT = 1620;
 
 function listSourceFiles(root) {
   const found = [];

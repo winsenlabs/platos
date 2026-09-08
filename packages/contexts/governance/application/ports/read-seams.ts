@@ -26,6 +26,35 @@
 // own branded identifiers. That is what keeps a read seam from becoming a
 // back door onto somebody else's model.
 
+// ---------------------------------------------------------------------------
+// WIN-267 G2 — WHAT AN IMPLEMENTATION OWES, BEYOND ANSWERING THE QUESTION.
+//
+// Every method here takes an `EnvironmentScope` and every one of them is a read
+// across rows that exist for many tenants at once. Two failure shapes matter and
+// only one of them is stated by the return type:
+//
+//   NARROWING. `Turn` has NO `environmentId` column — its tenancy is its
+//   thread's — so a reader that resolves a turn by primary key alone answers
+//   with ANY tenant's turn and the type system is content. Every implementation
+//   MUST narrow through `Thread.environmentId`, and `read-seams.integration`
+//   proves it against a second, foreign tenant rather than against a fake.
+//
+//   REFUSING. Absence is already spoken for: `null` means "not in this
+//   environment", and the use cases turn it into `NOT_FOUND` precisely so a
+//   cross-tenant probe is indistinguishable from a typo. So an implementation
+//   that CANNOT APPLY the narrowing — handed a scope with nothing to narrow by —
+//   has no honest way to say so through the value, and MUST answer `err` with
+//   ITS OWN constructor: `ratingTargetUnreadable`, `transcriptUnreadable`,
+//   `activityUnreadable`. Three, not one, for the reason `eval-run-queue.ts`
+//   insists on `queueUnavailable`: the three seams' callers behave differently —
+//   two refuse and `risk-report.ts` DEGRADES — and an operator holding one
+//   shared code cannot tell which of the three went dark.
+//
+//   A reader that answered `[]` or `null` in that case would be worse than one
+//   that refused: the risk board would render, marked `complete`, over
+//   denominators nothing measured.
+// ---------------------------------------------------------------------------
+
 import type { EnvironmentScope, Result } from "@platos/kernel";
 
 import type {

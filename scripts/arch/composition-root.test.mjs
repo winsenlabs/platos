@@ -161,7 +161,15 @@ test("the live repository satisfies both the boundary rules and the composition-
   // PostgreSQL database, so it is written from the one directory that holds
   // that database's client. The DIRECTORY pin does not move, which is the
   // distinction the two pins exist to state.
-  assert.equal(audit.bindingCount, 55);
+  
+  // WIN-267 G2 takes it to 57, all three rows on `postgres-tenancy` and the
+  // DIRECTORY count unmoved at fifteen: `governance`'s three inverted read seams
+  // read `Thread`, `Turn`, `ToolCallAudit` and `AgentApproval`, four tables that
+  // directory is already the canonical store of. A thirteenth package for them
+  // would have needed a second Prisma client, which `tenancy-prisma-only`
+  // forbids.
+  // SUMMED: 54 + 1 (G1) + 3 (G2) = 58, directories unmoved at fifteen.
+  assert.equal(audit.bindingCount, 58);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -349,7 +357,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 54 binding(s)")));
+    assert.ok(problems.some((problem) => problem.includes("declares 57 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -527,12 +535,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FIFTY-FIVE bindings, across fifteen directories", () => {
+test("the binding-table parser reads all FIFTY-EIGHT bindings, across fifteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 55);
+  assert.equal(bindings.length, 58);
   assert.equal(ADAPTERS.length, 15);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -542,10 +550,10 @@ test("the binding-table parser reads all FIFTY-FIVE bindings, across fifteen dir
     parseSatisfactionKeys(source).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
   );
-  // A directory with thirty-four bindings appears THIRTY-FOUR TIMES in the
+  // A directory with thirty-seven bindings appears THIRTY-SEVEN TIMES in the
   // flattening and once in the directory set. Both halves are asserted so a
   // change that collapsed the table back to one row per directory cannot pass
-  // here. It is thirty-three rather than two because WIN-258 T5 landed all of
+  // here. It is thirty-six rather than two because WIN-258 T5 landed all of
   // tranche 5's canonical stores in this one directory — `tools` publishes one
   // port, `agents` two, `cost-monitoring` one, `channels` one, `governance`
   // FIVE, `secrets` two and `skills` one, all over the same client as tenancy's
@@ -557,7 +565,14 @@ test("the binding-table parser reads all FIFTY-FIVE bindings, across fifteen dir
   // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1 = 33,
   // and WIN-267 G1 then added `governance`'s SIXTH -- `EvalRunQueue`, the first
   // binding on this directory that is not a canonical-store CRUD port. 33 + 1 = 34.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 34);
+  // WIN-267 G2 adds THREE more, and they are the first on this directory that
+  // are not canonical stores at all: `governance`'s inverted READ SEAMS over
+  // `conversations`', `tools`' and `jobs`' rows. They land here because those
+  // three owners are already delegated to this directory, so the reader and the
+  // sole writer are the same package.
+  // SUMMED: 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1
+  // + 1 (G1's queue) + 3 (G2's seams) = 37.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 37);
   // WIN-259 (M2.4) 12 -> 13. `keyring-envelope` appears THREE times in the
   // flattening and once in the directory set, which is the same both-halves
   // check the postgres row above gets: a change that collapsed its three
@@ -615,7 +630,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 55 declared bindings")
+        problem.includes("binding table names outbox -> memory Cache, which is not one of the 58 declared bindings")
     )
   );
 });
@@ -646,7 +661,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 54 binding(s)")));
+    assert.ok(problems.some((problem) => problem.includes("declares 57 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

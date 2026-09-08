@@ -50,6 +50,9 @@ export const GOVERNANCE_ERROR_CODES = [
   "GOVERNANCE_SCOPE_MISMATCH",
   "GOVERNANCE_LEDGER_UNAVAILABLE",
   "GOVERNANCE_QUEUE_UNAVAILABLE",
+  "GOVERNANCE_RATING_TARGET_UNREADABLE",
+  "GOVERNANCE_TRANSCRIPT_UNREADABLE",
+  "GOVERNANCE_ACTIVITY_UNREADABLE",
   "GOVERNANCE_PAGE_REQUEST_INVALID",
   "GOVERNANCE_SAFETY_RULE_MALFORMED",
   "GOVERNANCE_SAFETY_DETECTOR_UNKNOWN",
@@ -116,6 +119,88 @@ export function queueUnavailable(reason: string): DomainError {
     retryAfterSeconds: 10,
     details: { reason },
   });
+}
+
+// --- the three read seams' own refusals ---------------------------------------
+//
+// THREE CODES FOR ONE SENTENCE, AND THE SENTENCE IS "THIS READER COULD NOT
+// NARROW TO ONE ENVIRONMENT". `read-seams.ts` requires every implementation to
+// answer `null` for a row in another environment and an EMPTY list for a turn
+// that is not in the thread — so absence is this context's word for "somebody
+// else's", and a reader that could not apply the narrowing at all has no way
+// left to say so. Returning `null` or `[]` would be indistinguishable from a
+// clean miss, and `risk-report.ts` would mark a board `complete` whose
+// denominators were never measured.
+//
+// They are THREE and not one because the three seams fail differently and are
+// handled differently by their callers, and an operator holding one code could
+// not tell which happened:
+//
+//   `rate-turn.ts` maps a rating-target failure to a refusal — no rating is
+//   written, and the operator must retry;
+//   `run-judge.ts` refuses too, but the money is the point: a transcript that
+//   cannot be read is a judge that must NOT be paid;
+//   `risk-report.ts` DEGRADES on an activity failure. The board still renders,
+//   every denominator substituted, with `complete: false` as the only visible
+//   symptom. That is the one an operator is most likely to miss and least able
+//   to diagnose from a shared code.
+//
+// `internal`, not `unavailable`, and that is the difference from
+// `ledgerUnavailable` beside them. A table that is down is an outage a retry may
+// fix, which is why that one carries `retryAfterSeconds`. A scope with no
+// environment to narrow by is a DEFECT in whatever built the grant: the same
+// call will fail the same way for ever, and telling a caller to retry in five
+// seconds would be a lie the transport repeats.
+
+/**
+ * The rating path's turn reader could not narrow to one environment.
+ *
+ * Distinct from `GOVERNANCE_RATING_TARGET_NOT_FOUND`, which is the DELIBERATE
+ * concealment: a turn that does not exist and a turn belonging to somebody else
+ * answer identically, so a cross-tenant probe cannot be told from a typo. This
+ * one is the opposite case — the reader never got to look — and collapsing the
+ * two would report a defect to an operator as a missing turn for ever.
+ */
+export function ratingTargetUnreadable(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_RATING_TARGET_UNREADABLE",
+    "internal",
+    "rating target reader could not resolve its environment",
+    { details: { reason } },
+  );
+}
+
+/**
+ * The judge's transcript reader could not narrow to one environment.
+ *
+ * Distinct from `GOVERNANCE_TRANSCRIPT_NOT_FOUND` for the reason above, and
+ * distinct from the other two seams because this is the one that gates SPEND:
+ * `run-judge.ts` pays a model to read what this returns.
+ */
+export function transcriptUnreadable(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_TRANSCRIPT_UNREADABLE",
+    "internal",
+    "transcript reader could not resolve its environment",
+    { details: { reason } },
+  );
+}
+
+/**
+ * The risk board's denominator reader could not narrow to one environment.
+ *
+ * The most dangerous of the three to share a code with, because it is the only
+ * one whose caller CARRIES ON: `risk-report.ts` substitutes every denominator
+ * and sets `complete: false`. A board computed against invented denominators
+ * looks exactly like a board computed against measured ones.
+ */
+export function activityUnreadable(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_ACTIVITY_UNREADABLE",
+    "internal",
+    "activity reader could not resolve its environment",
+    { details: { reason } },
+  );
 }
 
 /**

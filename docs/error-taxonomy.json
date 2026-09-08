@@ -1171,6 +1171,13 @@
         "identity-access"
       ]
     },
+    "GOVERNANCE_ACTIVITY_UNREADABLE": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "governance"
+      ]
+    },
     "GOVERNANCE_AGENT_NOT_VISIBLE": {
       "category": "not_found",
       "status": 404,
@@ -1353,6 +1360,13 @@
         "governance"
       ]
     },
+    "GOVERNANCE_RATING_TARGET_UNREADABLE": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "governance"
+      ]
+    },
     "GOVERNANCE_RATING_VALUE_INVALID": {
       "category": "invalid_input",
       "status": 400,
@@ -1398,6 +1412,13 @@
     "GOVERNANCE_TRANSCRIPT_NOT_FOUND": {
       "category": "not_found",
       "status": 404,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_TRANSCRIPT_UNREADABLE": {
+      "category": "internal",
+      "status": 500,
       "contexts": [
         "governance"
       ]
