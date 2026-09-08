@@ -24,6 +24,9 @@
     },
     {
       "path": "../../kernel"
+    },
+    {
+      "path": "../../contexts/providers"
     }
   ]
 }

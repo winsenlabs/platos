@@ -107,11 +107,21 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // `node-crypto-digest` -> `identity-access` (its owner edge) and
   // `apps/core-api` -> `node-crypto-digest` (the composition-root edge every
   // adapter gets). A2's two are `tokenmint-totp` -> `identity-access` and
-  // `apps/core-api` -> `tokenmint-totp` — TWO for TWO bindings, because a
-  // project reference is per PACKAGE. Still READ BACK from the generator's own
-  // line rather than computed here, which is what caught the one-short pin at
-  // WIN-259.
-  assert.match(output, /35 V1 projects and 121 project edges/u);
+  // `apps/core-api` -> `tokenmint-totp` -- TWO for TWO bindings, because a
+  // project reference is per PACKAGE.
+  //
+  // WIN-267 A3: 121 + 1 = 122. `packages/adapters/redis-cache` ->
+  // `packages/contexts/providers`, a FOURTH owner edge on that directory, and NO
+  // new project. Its other half -- `redis-ratelimit` becoming a real adapter --
+  // adds no edge and no project either: the reference into `identity-access` has
+  // existed since the skeleton was generated, and adoption changes what a
+  // project CONTAINS rather than what it points at.
+  //
+  // Still READ BACK from the generator's own line rather than computed here,
+  // which is what caught the one-short pin at WIN-259 and is why the merged
+  // 35/122 -- a pair no branch stated, against A1+A2's 35/121 and A3's 33/117 --
+  // is a reading rather than a sum somebody trusted.
+  assert.match(output, /35 V1 projects and 122 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -606,10 +616,15 @@ const LIVE_ADAPTERS = [
   // `IdempotencyStore` behind the SAME Redis client as `memory`'s `Cache`.
   // The fixture copy has to carry it, or the non-vacuity anchor below is
   // comparing the refusals against a table the tree no longer has.
+  // WIN-267 A3 adds the FOURTH, `providers:ProviderProbeCache`. The fixture copy
+  // has to carry it for the reason the header above states: without it,
+  // `checkAdapterTable(LIVE_ADAPTERS)` is a table the tree no longer has, and
+  // every refusal below would be measured against a stale baseline.
   { dir: "redis-cache", port: "Cache", owner: "memory", note: "n",
     additional: [
       { port: "IdempotencyStore", owner: "jobs" },
       { port: "RequestIdempotency", owner: "kernel" },
+      { port: "ProviderProbeCache", owner: "providers" },
     ] },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
@@ -663,17 +678,17 @@ test("the live adapter table passes its own check, and the fixture copy of it do
 // anything, which is what §15's consolidation rule is about. The refusal this
 // case proves is unchanged in any rename: a directory beyond the declared count
 // still fails.
-test("§15 refusal: a FIFTEENTH adapter directory fails, even though bindings may exceed fourteen", () => {
+test("§15 refusal: a SIXTEENTH adapter directory fails, even though bindings may exceed fifteen", () => {
   const errors = checkAdapterTable([
     ...LIVE_ADAPTERS,
     { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
   ]);
-  assert.ok(errors.some((error) => error.includes("names 14 concrete adapter directories; ADAPTERS has 15")));
+  assert.ok(errors.some((error) => error.includes("names 15 concrete adapter directories; ADAPTERS has 16")));
 });
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FIFTY-SECOND binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTY-FIFTH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -683,7 +698,12 @@ test("§15 refusal: a FIFTY-SECOND binding fails, even though a directory may ho
   // §15 amendment anywhere but `postgres-tenancy`. Its errors-and-idempotency
   // dimension moved it again to forty-six, in the same directory and for the
   // kernel: `redis-cache:RequestIdempotency`, M0.4 §2's Idempotency-Key
-  // envelope.
+  // envelope. WIN-267 A3 moved it to FIFTY, in the same directory again and for
+  // `providers`: `redis-cache:ProviderProbeCache`.
+  //
+  // The MUTATION still adds `memory:Cache` to `postgres-tenancy`, which fires
+  // the count rule and the second-home rule at once; only the count is asserted,
+  // because that is the rule this case is about.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
@@ -694,11 +714,12 @@ test("§15 refusal: a FIFTY-SECOND binding fails, even though a directory may ho
   // `tokenmint-totp:TotpCodeVerifier`, the first two bindings in the layout on a
   // directory that holds no vendor client at all.
   const errors = checkAdapterTable(widened);
-  // WIN-267 moved it to fifty-three, by four rows across three directories:
+  // WIN-267 moved it to fifty-four, by five rows across three directories:
   // `keyring-envelope:MfaSecretCipher` on an existing one,
-  // `node-crypto-digest:SecretHasher` on a new one, and `tokenmint-totp`'s two
-  // on another new one.
-  assert.ok(errors.some((error) => error.includes("declares 51 adapter bindings; ADAPTERS flattens to 52")));
+  // `node-crypto-digest:SecretHasher` on a new one, `tokenmint-totp`'s two on
+  // another new one, and A3's `redis-cache:ProviderProbeCache` on an existing
+  // one again.
+  assert.ok(errors.some((error) => error.includes("declares 54 adapter bindings; ADAPTERS flattens to 55")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

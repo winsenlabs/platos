@@ -42,46 +42,64 @@
 //
 // `identity-access` is the near miss, and naming why is the point of this note.
 // Its bundle has TEN slots, six of them driven ports. `repository` is on the
-// same adapter — WIN-258 tranche 2 put it there — and `logger`, `clock` and
+// same adapter -- WIN-258 tranche 2 put it there -- and `logger`, `clock` and
 // `ids` are kernel ports this process already holds.
 //
-// WIN-267 A1 AND A2 CLOSED FOUR OF THE FIVE, and the count in
-// `IDENTITY_ACCESS_UNASSEMBLED` moves from four to one because of them.
-// `hasher` is now `packages/adapters/node-crypto-digest`; `cipher` is now
-// `keyring-envelope.mfaSecrets`, a FOURTH port on the thirteenth directory
-// rather than a fifteenth directory, because AES-256 root key bytes have
-// exactly one custodian in this tree and rule (j2) forbids a second package
-// from reaching them; `minter` and `totp` are both
-// `packages/adapters/tokenmint-totp`, the fifteenth directory. All three of
-// those directories are built UNCONDITIONALLY: none reads configuration, so
-// there is nothing an install could get wrong.
+// WIN-267 A3 COUNTED THE SLOTS AND THE OLD SENTENCE WAS WRONG THREE TIMES OVER,
+// which is recorded here rather than quietly corrected because a figure repeated
+// without being verified is how this programme has been wrong before. It read
+// "its bundle has eight slots ... the other four have NO implementation" and
+// then named FIVE of them. `application/dependencies.ts` declares TEN:
+// `repository`, `rateLimiter`, `hasher`, `minter`, `totp` and `cipher` -- the SIX
+// driven ports its own `ports/index.ts` header enumerates -- plus FOUR kernel
+// ports, `clock`, `ids`, `safety` and `logger`. The old sentence omitted `safety`
+// from the kernel list, which is the third error and the one that mattered: the
+// kernel `SafetyEventSink` is implemented by `governance`, which this root does
+// not compose, so it is not a port "this process already holds" either.
 //
-// ONE DRIVEN PORT REMAINS, AND SO DOES ONE KERNEL PORT, AND THIS FILE STILL
-// RETURNS NONE FOR THE CONTEXT.
+// ---------------------------------------------------------------------------
+// AND NOW THE SUM, WHICH NO BRANCH OF WIN-267 COULD STATE ON ITS OWN. Each
+// tranche measured this list against v1 and each was right about itself:
 //
-//   * `rateLimiter` is `packages/adapters/redis-ratelimit`, whose
-//     `src/adapter.ts` is STILL a generated interface. The tranche that makes it
-//     real was written and is not landed here, because its own author marked it
-//     incomplete: the suite that would prove the last token unshareable across
-//     concurrent consumers has never been run.
-//   * `safety` is the kernel `SafetyEventSink`. `packages/contexts/governance`
-//     implements it (`createGovernanceSafetyEventSink`), but `app.module.ts`
-//     imports `GovernanceContract` as a TYPE only and composes no governance
-//     contract, so no object in this process can fill that slot. A rate limiter
-//     alone would therefore NOT be enough: `consume-rate-limit.ts` writes
-//     `identity.rate_limit.degraded` into this sink, so a bundle without it
-//     would crash on the first refusal rather than on the first sign-in.
+//   A1 closed `hasher` -- `packages/adapters/node-crypto-digest` -- and `cipher`
+//   -- `keyring-envelope.mfaSecrets`, a FOURTH port on an existing directory
+//   rather than a new one, because AES-256 root key bytes have exactly one
+//   custodian in this tree and rule (j2) forbids a second package from reaching
+//   them.
 //
-// A CORRECTION TO THE ARITHMETIC THIS NOTE INHERITED. The bundle does not have
-// eight slots and identity-access does not have eight driven ports.
-// `IdentityAccessPorts` has TEN slots, of which SIX are driven ports named on
-// this context's own `application/ports/index.ts` (`repository`, `rateLimiter`,
-// `hasher`, `minter`, `totp`, `cipher`) and FOUR are kernel ports (`clock`,
-// `ids`, `logger`, `safety`). The original sentence said "four of its eight
-// driven ports" and then named five, and it counted `safety` among the kernel
-// ports "this process already holds", which it does not hold. Both errors are
-// fixed here and both are now read back by `installation.test.ts` against the
-// bundle's own type rather than against this prose.
+//   A2 closed `minter` and `totp`, both on `packages/adapters/tokenmint-totp`,
+//   because the port that WRITES a TOTP secret and the port that READS it must
+//   share one base32 alphabet.
+//
+//   A3 closed `rateLimiter` -- `packages/adapters/redis-ratelimit`, the FIRST
+//   directory ever to leave `UNIMPLEMENTED_ADAPTERS` -- and proved the one claim
+//   that mattered against a real Redis: 32 concurrent consumers get 32 distinct
+//   counts, and replacing its single Lua script with a client-side GET/SET
+//   collapses that to 2 and admits 16 requests under a limit of 10.
+//
+// SO ALL SIX DRIVEN PORTS ARE SATISFIED AND THE CONTEXT IS STILL NOT ASSEMBLED,
+// AND THAT IS THE WHOLE OF WHAT IS LEFT. `IDENTITY_ACCESS_UNASSEMBLED` goes from
+// naming four ports, then one, to naming NO driven port at all: the only
+// unfilled slot is the kernel `SafetyEventSink`.
+//
+// WHY THAT ONE CANNOT BE CLOSED HERE, MEASURED RATHER THAN ASSERTED. Its only
+// implementation is `createGovernanceSafetyEventSink`, which takes a
+// `GovernanceDependencies` -- SEVENTEEN slots. FIVE of its ten driven ports have
+// no row in `ADAPTER_BINDINGS` and no adapter directory anywhere:
+// `RatingTargetReader`, `TranscriptReader` and `ActivityReader` are ADR M0.3 §2
+// read seams whose own header says "the composition root implements it by asking
+// whichever context owns the rows" -- `conversations`, `tools` and `jobs`, none
+// of which publishes a contract assembler; `EvalRunQueue` needs the kernel
+// `DurableRuntime`, whose directory is one of the seven still on
+// `UNIMPLEMENTED_ADAPTERS`; and `Judge` has no directory at all. Its bundle also
+// names `AgentsContract`, and `agents` publishes its use cases one by one.
+// `@platos/context-governance` does not even publish `./application/index.js`,
+// so the factory is not importable from here.
+//
+// A rate limiter alone would therefore NOT have been enough:
+// `consume-rate-limit.ts` writes `identity.rate_limit.degraded` into this sink,
+// so a bundle without it would crash on the first refusal rather than on the
+// first sign-in.
 //
 // THAT IS WHY `APPLICATION_ENTRY_PROJECTS` GAINS NO ENTRY IN THIS TRANCHE. The
 // generator's own rule for that list is "the contexts `apps/core-api` ACTUALLY
@@ -134,11 +152,59 @@ export interface ContextPortAssembly {
  * not compose. `installation.test.ts` checks that clause too, by asserting no
  * binding row satisfies `SafetyEventSink`.
  */
+/**
+ * The reason `providers` is not assembled here, stated once.
+ *
+ * WIN-267 A3. It is recorded for the first time, and the reason it moved is the
+ * reason it is worth recording: `ProviderProbeCache` was satisfied by no adapter
+ * in this tree, and now it is — `redis-cache`'s fourth port. So the only thing
+ * left between this root and a composed `providers` is condition (1) of the
+ * three above, which is a FACTORY and not an adapter.
+ *
+ * READ BACK BY `installation.test.ts`, like the sentence below it: every claim
+ * in it is checked against the binding table and the constructed adapters rather
+ * than taken on trust, so this sentence and the tree cannot drift apart.
+ *
+ * ALSO SAID PLAINLY: this tranche did NOT make `providers` composable, and an
+ * agent brief that says otherwise is wrong about this tree. `secrets` publishes
+ * no assembler either, and `ProvidersDependencies` names a whole `SecretsPeer`,
+ * so composing `providers` needs two contexts to publish factories first. What
+ * changed is that the ADAPTER gap closed.
+ */
+export const PROVIDERS_UNASSEMBLED =
+  "it publishes its use cases one by one and no factory that assembles its whole" +
+  " contract, so this root has nothing to call; every driven port it names now has" +
+  " an implementation — ProvidersRepository and ModelRouter already did, and WIN-267" +
+  " A3 gave ProviderProbeCache one on redis-cache — and its secrets peer is a context" +
+  " that publishes no assembler either";
+
 export const IDENTITY_ACCESS_UNASSEMBLED =
-  "one of its six driven ports has no implementation: RateLimiter is" +
-  " packages/adapters/redis-ratelimit, a generated interface; and its kernel" +
-  " SafetyEventSink slot is implemented only by the governance context, which" +
-  " this root does not compose";
+  "every one of its six driven ports now has an implementation and its kernel" +
+  " SafetyEventSink slot does not: IdentityAccessRepository is postgres-tenancy," +
+  " RateLimiter is redis-ratelimit, SecretHasher is node-crypto-digest," +
+  " MfaSecretCipher is keyring-envelope, TokenMinter is tokenmint-totp and" +
+  " TotpCodeVerifier is tokenmint-totp; SafetyEventSink is implemented only by" +
+  " the governance context, whose own bundle names five driven ports no adapter" +
+  " directory satisfies (RatingTargetReader, TranscriptReader, ActivityReader," +
+  " Judge, EvalRunQueue) and an AgentsContract no factory assembles, so this" +
+  " root cannot compose it";
+
+/**
+ * The five governance ports that keep the sink out of reach, named once.
+ *
+ * READ BACK BY `installation.test.ts` against `ADAPTER_BINDINGS`: every one of
+ * them must appear on NO row of the binding table. That is what turns "governance
+ * cannot be composed" from an author's belief into a checked property -- the day
+ * an adapter directory implements one of these, the count of what is left drops
+ * and this list has to move with it.
+ */
+export const GOVERNANCE_UNBOUND_PORTS: readonly string[] = Object.freeze([
+  "RatingTargetReader",
+  "TranscriptReader",
+  "ActivityReader",
+  "Judge",
+  "EvalRunQueue",
+]);
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.
@@ -167,6 +233,7 @@ export function assembleContextPorts(
   unassembled.push(
     Object.freeze({ context: "identity-access", reason: IDENTITY_ACCESS_UNASSEMBLED }),
   );
+  unassembled.push(Object.freeze({ context: "providers", reason: PROVIDERS_UNASSEMBLED }));
 
   return Object.freeze({
     ports: Object.freeze(

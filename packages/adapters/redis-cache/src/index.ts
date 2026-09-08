@@ -2,7 +2,7 @@
 //
 // Only `apps/core-api` may import it (`adapters-only-from-core`), and it imports
 // no other adapter (`adapter-is-self-contained`). What it publishes is what the
-// composition root needs to bind THREE ports and to close one connection — and
+// composition root needs to bind FOUR ports and to close one connection — and
 // the connection seam, so a suite can drive the stores against a container
 // without this package deciding how a test reaches one.
 
@@ -15,3 +15,4 @@ export { createRedisIdempotencyStore, reservationKey } from "./idempotency-store
 export { createRedisCache } from "./cache.js";
 export type { RedisRequestIdempotency } from "./request-idempotency.js";
 export { createRedisRequestIdempotency, requestReservationKey } from "./request-idempotency.js";
+export { createRedisProviderProbeCache, evictionPattern } from "./provider-probe-cache.js";

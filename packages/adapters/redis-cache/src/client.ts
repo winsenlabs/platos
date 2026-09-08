@@ -50,6 +50,24 @@ export interface RedisConnection {
   overwrite(key: string, value: string, ttlSeconds: number): Promise<boolean>;
   /** `SET key value EX ttl` — write it whether or not it was there. */
   write(key: string, value: string, ttlSeconds: number): Promise<void>;
+  /**
+   * `SET key value PXAT <unix-ms>` — write it, to die AT an instant.
+   *
+   * WIN-267 A3, AND THE ABSOLUTE FORM IS THE WHOLE REASON IT IS A SEPARATE VERB.
+   * `providers`' `ProviderProbeCache` hands an implementation an `expiresAt`
+   * INSTANT and no clock, because `domain/health.ts` owns freshness and computes
+   * that instant from a report's own `checkedAt`. Turning it into the relative
+   * `EX` the verb above takes would need a "now" — and the only "now" available
+   * inside an adapter is the wall clock, which is exactly the ambient read this
+   * architecture spends a gate refusing. `PXAT` moves the subtraction to the
+   * SERVER, so the store honours the domain's instant with no clock of its own
+   * and a suite can prove expiry by naming an instant rather than by sleeping.
+   *
+   * An instant already past is not an error: Redis treats it as a write followed
+   * by an immediate expiry, so nothing is stored — which is the right answer for
+   * a memo that was stale before it was written.
+   */
+  writeUntil(key: string, value: string, expiresAtMs: number): Promise<void>;
   /** How many of `keys` were removed. */
   remove(keys: readonly string[]): Promise<number>;
   /** One `SCAN` round: the next cursor, and the keys this round matched. */
@@ -134,6 +152,13 @@ export function createRedisConnection(options: RedisConnectionOptions): RedisCon
     async write(key, value, ttlSeconds) {
       await ready;
       await client.set(key, value, "EX", ttlSeconds);
+    },
+    async writeUntil(key, value, expiresAtMs) {
+      await ready;
+      // `PXAT` is Redis 6.2+. The V1 compose file and every integration harness
+      // in this repository run `redis:7-alpine`, which is the version this verb
+      // is measured against.
+      await client.set(key, value, "PXAT", expiresAtMs);
     },
     async remove(keys) {
       if (keys.length === 0) return 0;

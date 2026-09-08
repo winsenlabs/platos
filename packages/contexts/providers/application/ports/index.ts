@@ -181,6 +181,36 @@ export type {
   RateSource,
   TokenRate,
 } from "../../domain/index.js";
+// WIN-267 A3 — the names `ProviderProbeCache`'s OWN SIGNATURES use, and the two
+// values an implementation of `forgetProvider` cannot do its job without. The
+// same omission the block above records five earlier findings of, found the same
+// way: by the first implementation of the port failing to compile.
+//
+// `ProviderHealthReport` is `readHealth`'s return and `writeHealth`'s argument,
+// and it was nameable nowhere outside this package.
+//
+// `healthCacheKey` AND `modelListCacheKey` ARE VALUES, AND THEY ARE THE POINT.
+// `forgetProvider` must "drop every entry for one provider, whatever credential
+// it was keyed by", which a store can only do by knowing where the provider
+// segment sits in a key — and that layout belongs to `domain/health.ts`, which
+// mints every key this port is handed. An implementation that wrote the pattern
+// `provider-health/<id>/*` out for itself would be a SECOND statement of the key
+// layout, in the layer that cannot see the first, and the two would agree until
+// somebody changed one — at which point eviction would silently stop matching
+// and a rotated credential's verdict would survive. Publishing the builders lets
+// an implementation DERIVE its scan pattern from the same function that built
+// the key.
+// `credentialFingerprint` joins them for a THIRD reason, and it is the one a
+// reviewer should check hardest. It is not called by the store — the caller
+// mints the key — but it is what the store's eviction has to be MEASURED
+// against: WIN-259 M2.4's repair is that a rotation changes the fingerprint, and
+// the only way an adapter's suite can state "the pre-rotation entry is gone" is
+// to build the two fingerprints the way the running system builds them. A suite
+// that assembled `pk_1.cred_1.<ms>` by hand would be asserting against its own
+// idea of the layout, which is the failure mode this repository has a rule about.
+export type { ProviderHealthReport } from "../../domain/index.js";
+export { credentialFingerprint, healthCacheKey, modelListCacheKey } from "../../domain/index.js";
+
 export {
   asProvidersIdentifier,
   byListingOrder,

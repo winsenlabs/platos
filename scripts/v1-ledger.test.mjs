@@ -1163,29 +1163,35 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
     // M2 INTEGRATION, ALL FOUR: 1397 + 10 + 28 + 12 + 7 = 1454.
     //
-    // WIN-267 (M4.1, A1 + A2) 1454 -> 1483, TWENTY-NINE files and every one
-    // nameable. SUMMED across the two branches rather than side-picked — taking
-    // either side whole would drop files and leave the identities still holding,
-    // which is the failure mode this file's own comments record three times.
-    //   +9  packages/adapters/node-crypto-digest (A1) — three scaffolding files
-    //       (package.json, tsconfig.json, README.md) on the existing
-    //       packages.adapters config/doc rules, and six source files on the
-    //       existing source and test rules: adapter.ts, index.ts,
-    //       secret-hasher.ts, oracle-vectors.ts and the two suites. Its
-    //       generated `src/adapter.ts` and `src/index.ts` placeholders are
-    //       RELEASED by the adoption rather than added.
-    //   +3  packages/adapters/keyring-envelope (A1) — mfa-secret-cipher.ts, its
-    //       suite, and `mutations-mfa-secret-cipher.json`. adapter.ts, index.ts,
     //       package.json and tsconfig.json were widened IN PLACE and a widened
     //       file is not a new one.
     //   +1  packages/adapters/node-crypto-digest/mutations-node-crypto-digest.json
-    //   +16 packages/adapters/tokenmint-totp (A2) — three scaffolding files,
+    //   +16 packages/adapters/tokenmint-totp (A2) -- three scaffolding files,
     //       five source modules, seven suites and its guard ledger.
-    // 9 + 3 + 1 + 16 = 29, so 1454 + 29 = 1483. No ledger rule is new:
+    //   +7  packages/adapters/redis-ratelimit (A3) -- every one under `src/`,
+    //       where this tranche turns a generated placeholder into a real
+    //       adapter. FOUR source (`client.ts`, the one holder of the second
+    //       Redis client; `rate-limiter.ts`, the port implementation and its
+    //       key; `oracle-source.ts`, the differential's reader of the
+    //       extraction source; `harness.ts`, the three connections its suites
+    //       are driven through) and THREE test (`rate-limiter.test.ts`,
+    //       `oracle-differential.test.ts`, `ratelimit.integration.test.ts`).
+    //       `src/adapter.ts` and `src/index.ts` were placeholders that were
+    //       REWRITTEN, and a rewritten file is not a new one.
+    //   +3  packages/adapters/redis-cache (A3) -- ONE source,
+    //       `provider-probe-cache.ts`, and TWO test. `client.ts` gained a verb,
+    //       `adapter.ts` a slot, `index.ts` two exports and `cache.test.ts` a
+    //       stub in its double: four widened files and no new one.
+    // 9 + 3 + 1 + 16 + 7 + 3 = 39, so 1454 + 39 = 1493. No ledger rule is new:
     // `packages.adapters.source`, `.test`, `.config` and `.doc` already match
     // every path above, and the three JSON ledgers land on `.config` exactly as
     // `postgres-tenancy`'s twenty-one do.
-    packages: 1483,
+    //
+    // NEITHER BRANCH'S FIGURE SURVIVES. A1+A2 pinned 1483 and A3 pinned 1464,
+    // both over the same 1454 base; taking either side whole would drop files
+    // and leave the identities still holding, which is the failure mode this
+    // file's own comments record three times.
+    packages: 1493,
     "internal-packages": 9,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
@@ -1524,41 +1530,43 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // for the same stated reason. It is the FOURTH non-code file under
     // `scripts/`. T0 said the rule would be worth splitting once a second
     // arrived; four is past that, and it is STILL not being split inside a
-    // tranche that would be its own beneficiary — the split wants a change that
+    // tranche that would be its own beneficiary -- the split wants a change that
     // reclassifies all four at once and answers for the `kind: source` verdict
     // on data, which is a different piece of work from this one.
     //
-    // T5 ADDS EXACTLY ONE FILE HERE AND EDITS THE REST IN PLACE. The three other
-    // files this slice touches — `.dependency-cruiser.js`,
-    // `scripts/arch/boundary-rules.mjs` and `scripts/arch/arch-boundaries.test.mjs`
-    // — are all tracked already, and an edited file is not a new one.
-    // WIN-267 (M4.1, A4) 56 -> 57: `scripts/mutations-win267-a4.json`, this
-    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
-    // for the same stated reason. It is the FIFTH non-code file under
-    // `scripts/`. A4 carries T5's two rescued gates, so it inherits T5's file
-    // as well as adding its own; both are counted here, and neither is being
-    // reclassified inside a tranche that would be its own beneficiary.
+    // WIN-267 (M4.1, A4) 56 -> 57: `scripts/mutations-win267-a4.json`. A4
+    // carries T5's two rescued gates, so it inherits T5's file as well as adding
+    // its own.
     //
-    // A4 ADDS EXACTLY ONE FILE AND EDITS THE REST IN PLACE. The other paths this
-    // slice touches — `.github/workflows/ci.yml`, `scripts/ci-policy.test.mjs`,
-    // `apps/agent/src/clean-prisma-delegates.test.ts` and the three T5 files
-    // above — are all tracked already, and an edited file is not a new one. In
-    // particular `apps-agent` does NOT move: re-pinning a suite's assertions
-    // changes bytes, not the census.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 = 57.
-    "root-infra": 57,
+    // WIN-267 (M4.1, A3) 57 -> 58: `scripts/mutations-win267-a3.json`, the
+    // SIXTH. The four gates A3 edits -- `gen-v1-skeleton.mjs`,
+    // `v1-project-graph.mjs`, `env-access.mjs` and `test-case-census.mjs` -- and
+    // their suites move pinned numbers in place and add no file.
+    //
+    // THESE THREE TRANCHES ADD EXACTLY THREE FILES HERE AND EDIT THE REST IN
+    // PLACE. `.dependency-cruiser.js`, `scripts/arch/boundary-rules.mjs`,
+    // `scripts/arch/arch-boundaries.test.mjs`, `.github/workflows/ci.yml`,
+    // `scripts/ci-policy.test.mjs` and
+    // `apps/agent/src/clean-prisma-delegates.test.ts` are all tracked already,
+    // and an edited file is not a new one. In particular `apps-agent` does NOT
+    // move: re-pinning a suite's assertions changes bytes, not the census.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 = 58.
+    "root-infra": 58,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  // WIN-267 (M4.1) 1598 -> 1629, SUMMED across the three branches that landed
-  // rather than side-picked: A1 + A2 contribute twenty-nine files, all in
-  // `packages`; A4 contributes two, both in `root-infra`
+  //
+  // WIN-267 (M4.1) 1598 -> 1640, SUMMED across the four branches that landed
+  // rather than side-picked: A1 + A2 contribute twenty-nine files and A3 ten,
+  // all in `packages`; A4 contributes two and A3 one, all in `root-infra`
   // (`scripts/mutations-win267-t5.json`, which arrives with the rescued T5
-  // gates, and `scripts/mutations-win267-a4.json`). The identity this number
-  // exists to hold is that the total delta and the per-area deltas are the SAME
-  // arithmetic, so a file that arrives in one and not the other cannot pass both
-  // halves of this case.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1629);
+  // gates, `scripts/mutations-win267-a4.json` and
+  // `scripts/mutations-win267-a3.json`). 29 + 10 + 2 + 1 = 42, and
+  // 1598 + 42 = 1640 -- a figure NO branch stated, against A1+A2+A4's 1629 and
+  // A3's 1609. The identity this number exists to hold is that the total delta
+  // and the per-area deltas are the SAME arithmetic, so a file that arrives in
+  // one and not the other cannot pass both halves of this case.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1640);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1665,23 +1673,26 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
     //
-    // and WIN-267 (M4.1) +31, from three branches. TWENTY-NINE are `packages`
-    // and all of them `packages/adapters` — TEN in `node-crypto-digest` (three
+    // and WIN-267 (M4.1) +42, from four branches. THIRTY-NINE are `packages`
+    // and all of them `packages/adapters` -- TEN in `node-crypto-digest` (three
     // generator-owned scaffolding files, six source files and its guard ledger),
     // THREE in `keyring-envelope` (the MFA envelope, its suite and that
-    // dimension's guard ledger) and SIXTEEN in `tokenmint-totp` (three
-    // scaffolding, five source, seven suites and its guard ledger). TWO are
-    // `root-infra`: `scripts/mutations-win267-t5.json` and
-    // `scripts/mutations-win267-a4.json`. It ADOPTS TWO PROJECTS and CHANGES NO
-    // LEDGER RULE, so this delta too is purely additive: 1598 + 31 = 1629.
+    // dimension's guard ledger), SIXTEEN in `tokenmint-totp` (three
+    // scaffolding, five source, seven suites and its guard ledger), SEVEN in
+    // `redis-ratelimit` (four source and three suites) and THREE in
+    // `redis-cache` (one source and two suites). THREE are `root-infra`:
+    // `scripts/mutations-win267-t5.json`, `scripts/mutations-win267-a4.json`
+    // and `scripts/mutations-win267-a3.json`. It ADOPTS THREE PROJECTS and
+    // CHANGES NO LEDGER RULE, so this delta too is purely additive:
+    // 1598 + 42 = 1640.
     //
-    // This is the SECOND, INDEPENDENT derivation — it sums the per-area counts
-    // rather than reading the total — which is exactly why it is moved
+    // This is the SECOND, INDEPENDENT derivation -- it sums the per-area counts
+    // rather than reading the total -- which is exactly why it is moved
     // separately and by hand. A4 ran `--write`, watched `audit:v1-ledger` go
     // green, and STILL landed red on both of these assertions: the sixth and
     // seventh time this second reconciliation has caught what the first one
     // signed off.
-    rulesDocument.baseline.totalFiles + 1629
+    rulesDocument.baseline.totalFiles + 1640
   );
 });
 

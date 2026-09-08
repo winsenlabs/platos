@@ -1,12 +1,13 @@
-// THREE owner-supplied ports over ONE Redis client.
+// FOUR owner-supplied ports over ONE Redis client.
 //
 // ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a
 // directory may satisfy more than one port when the ports sit behind the same
 // client. `postgres-tenancy` is that rule applied seventeen times; this is the
 // second directory it applies to, and the argument is the same one — `Cache`,
-// `IdempotencyStore` and the kernel's `RequestIdempotency` are the same
-// connection, the same server and the same namespace discipline, so a thirteenth
-// directory would have been a second Redis client for one Redis.
+// `IdempotencyStore`, the kernel's `RequestIdempotency` and, since WIN-267 A3,
+// `providers`' `ProviderProbeCache` are the same connection, the same server and
+// the same namespace discipline, so a thirteenth directory would have been a
+// second Redis client for one Redis.
 //
 // THE PAIRING WAS DECIDED BEFORE THIS ISSUE, TWICE. `jobs`' own
 // `jobs-repository.ts` explains why `IdempotencyStore` is not a canonical store
@@ -24,8 +25,10 @@
 // `approvals` as properties.
 
 import type { Cache } from "@platos/context-memory/application/ports/index.js";
+import type { ProviderProbeCache } from "@platos/context-providers/application/ports/index.js";
 
 import { createRedisCache } from "./cache.js";
+import { createRedisProviderProbeCache } from "./provider-probe-cache.js";
 import type { RedisConnection, RedisConnectionOptions } from "./client.js";
 import { createRedisConnection } from "./client.js";
 import type { RedisIdempotencyStore } from "./idempotency-store.js";
@@ -49,6 +52,16 @@ export interface RedisCacheAdapter {
    * are disjoint by prefix, so neither can read the other's records.
    */
   readonly requests: RedisRequestIdempotency;
+  /**
+   * The `providers` `ProviderProbeCache` — the FOURTH on this connection.
+   *
+   * WIN-267 A3, and it is a separate slot rather than a widening of `cache` for
+   * a reason stronger than the one that separates the two idempotency stores:
+   * `providers` may not import `memory` at all (ADR M0.3 §1 row 4), so `Cache`
+   * is not a port it could be handed however similar the two look. It owns its
+   * own cache seam, and `ProvidersDependencies` names the slot `probeCache`.
+   */
+  readonly probes: ProviderProbeCache;
   /** Release the connection. The composition root owns this adapter's lifetime. */
   close(): Promise<void>;
 }
@@ -68,6 +81,7 @@ export function buildRedisCacheAdapter(connection: RedisConnection): RedisCacheA
     cache: createRedisCache(connection),
     idempotency: createRedisIdempotencyStore(connection),
     requests: createRedisRequestIdempotency(connection),
+    probes: createRedisProviderProbeCache(connection),
     close: () => connection.close(),
   };
 }

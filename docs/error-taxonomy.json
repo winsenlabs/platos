@@ -2452,6 +2452,13 @@
         "identity-access"
       ]
     },
+    "RATE_LIMITER_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "identity-access"
+      ]
+    },
     "SECRET_INPUT_NOT_WRITE_ONLY": {
       "category": "invalid_input",
       "status": 400,

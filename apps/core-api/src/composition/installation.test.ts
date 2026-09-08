@@ -24,7 +24,12 @@ import {
   type AdapterConstruction,
   type AdapterName,
 } from "./adapter-bindings.js";
-import { IDENTITY_ACCESS_UNASSEMBLED, assembleContextPorts } from "./context-ports.js";
+import {
+  GOVERNANCE_UNBOUND_PORTS,
+  IDENTITY_ACCESS_UNASSEMBLED,
+  PROVIDERS_UNASSEMBLED,
+  assembleContextPorts,
+} from "./context-ports.js";
 
 /**
  * A platform an install could really set, with every group this tranche can
@@ -171,13 +176,17 @@ describe("constructing the adapters an install declared", () => {
     // group of its own. An install with no database gets neither, and the reason
     // says so instead of naming a variable that would not have helped.
     const withoutDatabase = construct({ ...NOTHING_DECLARED, PLATOS_STORE_REDIS_URL: "redis://127.0.0.1:1" });
-    // `node-crypto-digest` and `tokenmint-totp` are here beside `redis-cache`
-    // and neither is a Redis directory: they are the two built unconditionally,
-    // so they appear under every configuration including this one. `redis-cache`
-    // is here because its group was declared, and the outbox is absent because
-    // its dependency was not. The three states are what the case is about.
+    // FOUR DIRECTORIES AND THREE REASONS. `node-crypto-digest` and
+    // `tokenmint-totp` are neither Redis directories nor configured ones: they
+    // are the two built unconditionally, so they appear under every
+    // configuration including this one. `redis-cache` and `redis-ratelimit` are
+    // both here because ONE variable was declared -- WIN-267 A3 gave the limiter
+    // its own keyspace and its own client off `PLATOS_STORE_REDIS_URL`, so that
+    // is one variable, two objects, two lifetimes. And the outbox is absent
+    // because its dependency was not declared. The three states are what the
+    // case is about.
     expect([...Object.keys(withoutDatabase.adapters)].sort()).toEqual(
-      ["node-crypto-digest", "redis-cache", "tokenmint-totp"].sort(),
+      ["node-crypto-digest", "redis-cache", "redis-ratelimit", "tokenmint-totp"].sort(),
     );
     const declined = withoutDatabase.unwired.find((row) => row.adapter === "outbox");
     expect(declined?.cause).toBe("configuration");
@@ -314,31 +323,47 @@ describe("readiness over what was actually constructed", () => {
     );
   });
 
-  it("reports 43 of 51, and the 8 that remain are exactly the bindings with no implementation", () => {
+  it("reports 47 of 54, and the 7 that remain are exactly the bindings with no implementation", () => {
     // THE ARITHMETIC, PINNED AND DERIVED. The literal catches drift in either
     // direction; the identity beside it says WHY the number is that number, so a
-    // future tranche that implements one of the eight directories sees both
+    // future tranche that implements one of the remaining directories sees both
     // move together and knows which it changed.
+    //
+    // WIN-267 A3 IS THE FIRST TRANCHE TO MOVE IT, and this is the arithmetic,
+    // in TWO independent steps that happen to land in one commit:
+    //
+    //   the LIMITER. Eight unimplemented directories held one binding each;
+    //   `redis-ratelimit` gained an implementation, so 8 - 1 = 7 remain and
+    //   49 - 7 = 42 are satisfied.
+    //
+    //   the PROBE CACHE. `redis-cache:ProviderProbeCache` is a FIFTIETH binding
+    //   on a directory that was already constructed, so it lands directly in the
+    //   satisfied set: 50 - 7 = 43. The unimplemented count does NOT move for
+    //   it, because no directory changed state — which is the distinction §15's
+    //   amendment is about, and the reason both numbers are asserted.
+    //
+    // 41/8 of 49 -> 43/7 of 50. Any one of the three moving alone is drift.
     const { verdict } = readiness(FULLY_DECLARED);
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
-    expect(unimplementable).toHaveLength(8);
+    expect(ADAPTER_BINDINGS).toHaveLength(54);
+    expect(unimplementable).toHaveLength(7);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
-    // satisfied; the eight that remain are the same eight, which is what the
-    // identity on the next line says and the literal here cannot.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(45);
+    // satisfied; the eight that remained were the same eight.
+    // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(47);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(8);
-    // STILL RED, AND HONESTLY SO. Eight ports have no implementation in this
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
+    // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
     // build, so this process cannot serve the routes that need them. Going green
     // on "everything this install could have wired" would be comparing the
     // supply to itself.
     expect(verdict.ready).toBe(false);
   });
 
-  it("is 3 of 53 with nothing wired, and says which kind of nothing the other 50 are", () => {
+  it("is 3 of 54 with nothing wired, and says which kind of nothing the other 51 are", () => {
     // IT USED TO BE 0 OF 49, AND THE CHANGE IS THE DELIVERABLE RATHER THAN A
     // RELAXATION. Before WIN-267 there was no port in this tree an install could
     // satisfy without configuring something, so "nothing configured" and
@@ -369,7 +394,9 @@ describe("readiness over what was actually constructed", () => {
     // and this case stayed green. Both ends are compared now, and to each other
     // rather than to a literal, so a row dropped anywhere between them shows up.
     const { app, verdict, construction } = readiness(FULLY_DECLARED);
-    expect(construction.unwired).toHaveLength(8);
+    // 8 -> 7 (WIN-267 A3): one row per directory NOT built, and
+    // `redis-ratelimit` is now built. The same subtraction as the case above.
+    expect(construction.unwired).toHaveLength(7);
     expect(app.unwired).toEqual(construction.unwired);
     expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });
@@ -402,51 +429,87 @@ describe("the context bundles those adapters can satisfy", () => {
   });
 
   it("does not compose identity-access, and its reason holds against the binding table", () => {
-    const { assembly, app } = readiness(FULLY_DECLARED);
+    const { assembly, app, construction } = readiness(FULLY_DECLARED);
     expect(app.contexts.identityAccess).toBeUndefined();
     const declined = assembly.unassembled.find((row) => row.context === "identity-access");
     expect(declined?.reason).toBe(IDENTITY_ACCESS_UNASSEMBLED);
 
-    // THE REASON IS CHECKED, NOT TAKEN ON TRUST. `RateLimiter` is a declared
-    // binding on a directory with no implementation, so no adapter in this tree
-    // could satisfy it however an install were configured. `SafetyEventSink` is
-    // the other clause and it is not an adapter question at all: it appears on
-    // no row of this table, because its only implementation is in the
+    // THE REASON IS CHECKED, NOT TAKEN ON TRUST, AND WIN-267 INVERTED IT. Until
+    // this issue the sentence named ports that were MISSING and the check joined
+    // each to the absence of a binding row. Every one of those has landed, so
+    // the check is turned around rather than deleted: each of the six driven
+    // ports is now joined to the directory that satisfies it AND to the
+    // constructed adapter that carries it, and REMOVING ANY ONE OF THOSE
+    // ADAPTERS TURNS THIS CASE RED on that port. An assertion that merely
+    // stopped naming the missing ports would be indistinguishable from one that
+    // forgot them.
+    //
+    // WIN-267 A3 FLIPPED THE `RateLimiter` HALF LAST: the binding is still
+    // declared against `redis-ratelimit`, that directory is no longer
+    // unimplemented, and a fully declared install now CONSTRUCTS it.
+    //
+    // WHAT IS LEFT IS NOT AN ADAPTER QUESTION AT ALL. `SafetyEventSink` appears
+    // on NO row of this table, because its only implementation is in the
     // `governance` context, which `app.module.ts` imports as a TYPE and never
-    // composes.
-    const rateLimiter = ADAPTER_BINDINGS.filter((binding) => binding.port === "RateLimiter");
-    expect(rateLimiter.map((binding) => binding.adapter)).toEqual(["redis-ratelimit"]);
-    expect(UNIMPLEMENTED_ADAPTERS).toContain("redis-ratelimit");
+    // composes -- and cannot, because five of governance's own driven ports have
+    // no adapter directory either.
+    // THE SIX, JOINED TO THE BINDING TABLE RATHER THAN TO A LIST THIS FILE
+    // WROTE. `owned` is derived from `ADAPTER_BINDINGS` by OWNER, so a port that
+    // left the table, or one that arrived, changes this set without anybody
+    // editing the case. Its size and its membership are both pinned, because a
+    // set that silently shrank would make the loop below vacuous.
+    const owned = ADAPTER_BINDINGS.filter((binding) => binding.owner === "identity-access");
+    expect(owned.map((binding) => binding.port).sort()).toEqual([
+      "IdentityAccessRepository",
+      "MfaSecretCipher",
+      "RateLimiter",
+      "SecretHasher",
+      "TokenMinter",
+      "TotpCodeVerifier",
+    ]);
+
+    // AND EACH ONE IS CHECKED THREE WAYS. The reason sentence must name the port
+    // WITH the directory that satisfies it -- so a renamed directory makes the
+    // sentence stale and this red; that directory must not be on
+    // `UNIMPLEMENTED_ADAPTERS`, which `composition-root.mjs` rule (C7) joins to
+    // the adapter packages' own source in both directions; and the fully
+    // declared install must have CONSTRUCTED it, which is the half a type could
+    // never state. DELETE ANY ONE OF THE FIVE ADAPTER CONSTRUCTIONS AND THIS
+    // CASE GOES RED ON THAT PORT.
+    for (const binding of owned) {
+      expect(declined?.reason, `${binding.port} is satisfied by ${binding.adapter}`).toContain(
+        `${binding.port} is ${binding.adapter}`,
+      );
+      expect(UNIMPLEMENTED_ADAPTERS).not.toContain(binding.adapter);
+      expect(
+        construction.adapters[binding.adapter],
+        `${binding.adapter} must be constructed for ${binding.port}`,
+      ).toBeDefined();
+    }
+
+    // THE ONE THAT IS LEFT, AND IT IS NOT AN ADAPTER QUESTION. `SafetyEventSink`
+    // is on NO row of the binding table: it is a CONTEXT that is missing, not a
+    // directory. `redis-ratelimit` is asserted separately because it is the
+    // FIRST directory ever to leave `UNIMPLEMENTED_ADAPTERS`, and the case that
+    // used to say "RateLimiter is a generated interface" has to be seen to have
+    // stopped saying it.
     const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
-    expect(declined?.reason).toContain("RateLimiter");
-    // The kernel half. `SafetyEventSink` is on NO row of the binding table, and
-    // that is the clause an adapter tranche cannot close: it is a CONTEXT that
-    // is missing, not a directory.
+    expect(UNIMPLEMENTED_ADAPTERS).not.toContain("redis-ratelimit");
+    expect(declined?.reason).not.toContain("RateLimiter is a generated interface");
+    expect(declined?.reason).not.toContain("has no implementation");
     expect(ports, "SafetyEventSink must be bound to no adapter").not.toContain("SafetyEventSink");
     expect(declined?.reason).toContain("SafetyEventSink");
 
-    // AND THE OTHER DIRECTION, WHICH IS THE HALF WIN-267 ADDED AND WITHOUT WHICH
-    // THE ASSERTIONS ABOVE WOULD PASS BY SHRINKING. Four ports LEFT this
-    // sentence, and a sentence that merely stopped naming them is
-    // indistinguishable from one that forgot them. Each is joined to the
-    // directory that satisfies it AND to the constructed adapter that carries
-    // it, so the reason cannot shed a port the tree has not actually gained.
-    // Removing any one of the four adapters turns this red on that port.
-    const landed: Readonly<Record<string, AdapterName>> = {
-      SecretHasher: "node-crypto-digest",
-      MfaSecretCipher: "keyring-envelope",
-      TokenMinter: "tokenmint-totp",
-      TotpCodeVerifier: "tokenmint-totp",
-    };
-    const { construction } = readiness(FULLY_DECLARED);
-    for (const [port, adapter] of Object.entries(landed)) {
-      expect(ports, `${port} must now be bound`).toContain(port);
-      expect(ADAPTER_BINDINGS.filter((binding) => binding.port === port).map((b) => b.adapter)).toEqual([
-        adapter,
-      ]);
-      expect(UNIMPLEMENTED_ADAPTERS).not.toContain(adapter);
-      expect(construction.adapters[adapter as AdapterName]).toBeDefined();
-      expect(declined?.reason, `${port} is satisfied and must not be named`).not.toContain(port);
+    // AND WHY THAT ONE CANNOT BE CLOSED BY AN ADAPTER EITHER, CHECKED RATHER
+    // THAN ASSERTED. The only implementation of the kernel sink takes a whole
+    // `GovernanceDependencies`, and five of THAT bundle's driven ports appear on
+    // no row of this table. The day one of them gains an adapter directory, this
+    // case fails and the sentence has to be re-derived -- which is the point of
+    // naming them rather than writing "governance needs more work".
+    expect(GOVERNANCE_UNBOUND_PORTS).toHaveLength(5);
+    for (const port of GOVERNANCE_UNBOUND_PORTS) {
+      expect(ports, `${port} must still be bound to no adapter`).not.toContain(port);
+      expect(declined?.reason).toContain(port);
     }
   });
 
@@ -476,14 +539,41 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(secret).toMatch(/^[A-Z2-7]{32}$/u);
     const code = minter?.generate(secret, 42n) ?? "";
     expect(minter?.verify({ secret, code, candidateCounters: [41n, 42n, 43n] })).toBe(42n);
-    // FIPS 180-4's own SHA-256("abc") — external ground truth this repository
+    // FIPS 180-4's own SHA-256("abc") -- external ground truth this repository
     // cannot edit into agreement.
     expect(String(digest?.hash("abc"))).toBe(
       "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     );
 
-    // No context becomes composable: `identity-access` still needs a real
-    // `RateLimiter` and a `SafetyEventSink`, and neither exists in this process.
+    // No context becomes composable: `identity-access` still needs a
+    // `SafetyEventSink`, and nothing in this process can build one.
     expect(app.contexts.identityAccess).toBeUndefined();
+  });
+
+  it("does not compose providers either, and for a reason that is NOT a missing adapter", () => {
+    const { assembly, construction } = readiness(FULLY_DECLARED);
+    const declined = assembly.unassembled.find((row) => row.context === "providers");
+    expect(declined?.reason).toBe(PROVIDERS_UNASSEMBLED);
+
+    // THE REASON IS CHECKED, NOT TAKEN ON TRUST, and this one is checked in the
+    // POSITIVE direction: the sentence claims every driven port `providers`
+    // names now has an implementation, so all three must be bound to a directory
+    // this install actually constructed. A sentence that said "the adapters are
+    // there" while one of them was still a placeholder would be exactly the
+    // overclaim this file exists to catch.
+    const built = new Set(Object.keys(construction.adapters));
+    const providerPorts = ADAPTER_BINDINGS.filter((binding) => binding.owner === "providers");
+    expect(providerPorts.map((binding) => binding.port).sort()).toEqual([
+      "ModelRouter",
+      "ProviderProbeCache",
+      "ProvidersRepository",
+    ]);
+    for (const binding of providerPorts) {
+      expect(built, `${binding.port} is bound to ${binding.adapter}`).toContain(binding.adapter);
+    }
+    // And the probe cache is the SAME object the cache adapter carries, under
+    // its own name -- the identity check the tenancy bundle above makes, for the
+    // one port A3 added.
+    expect(construction.adapters["redis-cache"]?.probes).toBeDefined();
   });
 });
