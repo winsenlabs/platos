@@ -2467,18 +2467,22 @@ export const EXPECTED = Object.freeze({
   // the SECRET REFERENCE has real AES-256-GCM for the first time and five cases
   // in `wire-compatibility.test.ts` say what it does. The FILE count does not
   // move: they were appended to a suite that already existed.
-  // WIN-267 A1: keyring-envelope 6 + 1 = 7 files, 76 + 22 = 98 cases. ONE file,
+  // WIN-267 A1: keyring-envelope 6 + 1 = 7 files, 76 + 27 = 103 cases. ONE file,
   // `mfa-secret-cipher.test.ts`, carrying the identity-access `MfaSecretCipher`
   // this directory gained as a FOURTH port — six sealing cases, nine refusals,
-  // one rotation, four about the legacy columns `auth.ts` wrote and one about
-  // the port's place on the adapter.
+  // one rotation, four about the legacy columns `auth.ts` wrote, four about the
+  // frozen canonical envelopes and one about the port's place on the adapter.
+  // The TENTH refusal was added after a mutant survived: deleting the field-count
+  // half of the shape guard left every case in the file green, because each of
+  // them presents a payload whose first field is wrong and the marker check
+  // caught them all before the count was ever read.
   //
   // ITS THREE LEGACY CASES ARE THREE `it()`s RATHER THAN A LOOP, for the reason
   // `wire-compatibility.test.ts`'s three are: this census REFUSES `it()` inside
   // a `for`, and a construct it cannot count is one that can silently lose a
   // case. The first draft was a loop and was refused here, which is the gate
   // working.
-  "packages/adapters/keyring-envelope": { files: 7, cases: 98 },
+  "packages/adapters/keyring-envelope": { files: 7, cases: 103 },
   // WIN-267 A1: the FOURTEENTH adapter directory's first row, 0 -> 2 files and
   // 0 -> 30 cases. `secret-hasher.test.ts` (23) is the differential — three
   // FIPS 180-4 vectors, seven produced by executing
@@ -3269,13 +3273,13 @@ export const EXPECTED = Object.freeze({
  * carried from the composition of the first three.
  */
 /*
- * WIN-267 A1: 7833 + 52 = 7885 over 530 + 3 = 533 files. TWO rows move —
- * `keyring-envelope` 76 -> 98 over 6 -> 7 files, and `node-crypto-digest`
- * 0 -> 30 over 0 -> 2 as a new row — and 22 + 30 = 52. Every one of the 52 is
+ * WIN-267 A1: 7833 + 57 = 7890 over 530 + 3 = 533 files. TWO rows move —
+ * `keyring-envelope` 76 -> 103 over 6 -> 7 files, and `node-crypto-digest`
+ * 0 -> 30 over 0 -> 2 as a new row — and 27 + 30 = 57. Every one of the 57 is
  * runnable by `pnpm test:v1-packages`: neither adapter needs a container, which
  * is what a keyless digest and an in-memory key ring are for.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7885;
+export const EXPECTED_RUNTIME_TOTAL = 7890;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

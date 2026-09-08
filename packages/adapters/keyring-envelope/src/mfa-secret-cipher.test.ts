@@ -182,7 +182,7 @@ describe("refusing", () => {
     );
   });
 
-  it("refuses a payload with the wrong field count or the wrong marker", () => {
+  it("refuses a payload with the wrong marker", () => {
     const sealed = cipher.seal(SECRET);
     expect(refusalOf(() => cipher.open(sealed.split(".").slice(1).join(".")))).toBe(
       "mfa_envelope_is_not_a_canonical_payload",
@@ -191,6 +191,28 @@ describe("refusing", () => {
       "mfa_envelope_is_not_a_canonical_payload",
     );
     expect(refusalOf(() => cipher.open(""))).toBe("mfa_envelope_is_not_a_canonical_payload");
+  });
+
+  it("refuses a payload with the RIGHT marker and the wrong field count", () => {
+    // THIS CASE EXISTS BECAUSE A MUTANT SURVIVED. Deleting the
+    // `fields.length !== FIELD_COUNT` half of the guard left the marker check
+    // alone, and every case in the file above still passed: each of them
+    // presents a payload whose FIRST field is wrong, so the marker check caught
+    // them all and nothing ever reached the field count.
+    //
+    // Both directions matter and they fail differently. TOO FEW fields
+    // destructures `rawCiphertext` to `undefined`, which throws a `TypeError`
+    // from inside the `try` and is reported as a tag failure — a wrong reason
+    // for a wrong shape. TOO MANY is worse: the extra field is ignored, the
+    // envelope OPENS, and a store-level attacker can append anything they like
+    // to a column without the cipher noticing.
+    const sealed = cipher.seal(SECRET);
+    expect(refusalOf(() => cipher.open(sealed.split(".").slice(0, 5).join(".")))).toBe(
+      "mfa_envelope_is_not_a_canonical_payload",
+    );
+    expect(refusalOf(() => cipher.open(`${sealed}.trailing`))).toBe(
+      "mfa_envelope_is_not_a_canonical_payload",
+    );
   });
 
   it("refuses an envelope sealed under a DIFFERENT ring holding the same version", () => {
@@ -287,6 +309,91 @@ describe("the legacy columns the extraction source wrote", () => {
     for (const vector of legacyVectorsOfFormat(2)) {
       expect(vector.payload.split(".")).toHaveLength(3);
     }
+  });
+});
+
+/**
+ * Envelopes this cipher sealed once, frozen into the file.
+ *
+ * THEY ARE A REGRESSION PIN AND NOT A DIFFERENTIAL, and the difference is
+ * stated rather than blurred. `legacy-wire-vectors.ts`'s bytes came from
+ * `internal-packages/tenancy-database/src/auth.ts` and cannot move with this
+ * code; these came from THIS cipher, because the canonical MFA format is new and
+ * no oracle ever wrote one. What they buy is nonetheless real and is not
+ * available from a round trip: a round trip moves BOTH halves together, so
+ * renaming the HKDF label, reordering the fields, narrowing the salt, dropping
+ * the AAD or moving the version out of the derivation all keep passing. Against
+ * a frozen ciphertext each of those is a tag failure.
+ *
+ * TO RE-DERIVE, after `pnpm --filter @platos/adapter-keyring-envelope build`:
+ *
+ *   node --input-type=module -e '
+ *     const d = "./packages/adapters/keyring-envelope/dist/";
+ *     const { createRootKeyRing } = await import(d + "root-key-ring.js");
+ *     const { createMfaSecretCipher } = await import(d + "mfa-secret-cipher.js");
+ *     const ring = createRootKeyRing({ activeVersion: 1, keys: { "1": KEY_ONE } });
+ *     console.log(createMfaSecretCipher(ring.value).seal(PLAINTEXT));'
+ *
+ * A re-run produces DIFFERENT bytes — the salt and the nonce are fresh on every
+ * seal — and that is correct rather than a problem. What is fixed is that THESE
+ * bytes, under THIS ring, open to THIS plaintext.
+ */
+const FROZEN = Object.freeze([
+  Object.freeze({
+    name: "a base32 TOTP secret under key version 1",
+    activeVersion: 1,
+    keys: { "1": KEY_ONE } as Record<string, string>,
+    payload:
+      "mfa1.1.Dpd5OJgJcl2ghQiCeHRoxTRGKDftFFFsU9T5x2kng0k.66yPUJ0nadKWlr3Y.nc8ofRxIH8gU_CrAh3Lw2A.ZTRAHNx2zXH3VsU1gedk-Q",
+    plaintext: "JBSWY3DPEHPK3PXP",
+  }),
+  Object.freeze({
+    // Multi-byte UTF-8, a newline and a tab, for the reason
+    // `legacy-wire-vectors.ts` carries the same shape: a cipher that encoded
+    // latin1 would open both ASCII vectors and fail this one.
+    name: "a non-ASCII plaintext under key version 1",
+    activeVersion: 1,
+    keys: { "1": KEY_ONE } as Record<string, string>,
+    payload:
+      "mfa1.1.GoR65kuE7rnAaICThoSNFtgrZfMz10e_nYB2_SGtzEk.KjOFviOrv3urmhPT.RAJa0kYZciYr9KKg0FCF_w.5vWqVG7si5O9nr4yBVHlMT8OWpnNTgKiI3Dx8bF9OzdXYlI",
+    plaintext: "éàü unicode + newline\nand a tab\t",
+  }),
+  Object.freeze({
+    // Sealed under a SECOND key version, so the version's place in the HKDF
+    // `info` and in the AAD is pinned by bytes rather than by a round trip.
+    name: "a base32 TOTP secret under key version 2",
+    activeVersion: 2,
+    keys: { "1": KEY_ONE, "2": KEY_TWO } as Record<string, string>,
+    payload:
+      "mfa1.2.ZK_s6K-PMq1mlZQdbSsxF-k47NZ1DKtt4w8KKVsTefg.WqdErvgu6jB0j85z.X4W49G_Sd6Gtyi5NW7TzmA.nEuUdGTVm2Vy_Tl16lCrZA",
+    plaintext: "JBSWY3DPEHPK3PXP",
+  }),
+]);
+
+describe("the frozen canonical envelopes", () => {
+  function expectOpens(name: string): void {
+    const vector = FROZEN.find((candidate) => candidate.name === name);
+    expect(vector, `no frozen vector named ${name}`).toBeDefined();
+    const cipher = createMfaSecretCipher(
+      ringOf(vector?.activeVersion as number, vector?.keys as Record<string, string>),
+    );
+    expect(cipher.open(vector?.payload as string)).toBe(vector?.plaintext);
+  }
+
+  it("opens the version-1 envelope it sealed at this format", () => {
+    expectOpens("a base32 TOTP secret under key version 1");
+  });
+
+  it("opens the version-1 non-ASCII envelope, which fixes the text encoding", () => {
+    expectOpens("a non-ASCII plaintext under key version 1");
+  });
+
+  it("opens the version-2 envelope, which fixes the version's place in the derivation", () => {
+    expectOpens("a base32 TOTP secret under key version 2");
+  });
+
+  it("has a case for every frozen envelope", () => {
+    expect(FROZEN).toHaveLength(3);
   });
 });
 

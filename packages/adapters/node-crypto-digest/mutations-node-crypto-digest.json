@@ -1,0 +1,153 @@
+{
+  "issue": "WIN-267",
+  "milestone": "M4.1",
+  "dimension": "the identity-access SecretHasher: the stored-verifier digest, the constant-time comparison and the PKCE challenge",
+  "branch": "tejas/win-267-a1-crypto",
+  "generatedFrom": "tejas/win-267-a1-crypto, branched from v1 @ 007007f2",
+  "howToReproduce": "Apply the `from` -> `to` replacement in `file`, run `command`, and observe the named case fail. Restore. Every entry runs on a laptop: neither adapter needs a container, a daemon or a database, which is what a keyless digest and an in-memory key ring are for.",
+  "summary": {
+    "entries": 12,
+    "killed": 11,
+    "survived": 0,
+    "declaredUnfalsifiable": 1
+  },
+  "notes": [
+    "NO ENTRY IS KILLED BY AN ASSERTION COMPARING TWO THINGS THIS TRANCHE CONTROLS. Every expected value in `secret-hasher.test.ts` comes from FIPS 180-4, from RFC 7636 Appendix B, or from executing `hashSecret` in `internal-packages/tenancy-database/src/auth.ts` — the function that wrote every `tokenHash`, `keyHash`, `codeHash` and `identifierHash` row in every live database, and a file this issue does not edit.",
+    "THE HARDEST MUTATION TO KILL IS `equals-is-string-identity`, because `===` agrees with a byte comparison on every input a reviewer would think to write. It is killed by two different lone surrogates, which are different JavaScript strings with the SAME UTF-8 encoding — the one observation that separates a byte comparison from a code-unit one, and the same observation that shows this port follows `auth.ts`'s `safeEqual` rather than `oauth.service.ts`'s hex-decoding twin.",
+    "ONE ENTRY IS A NON-VACUITY CONTROL RATHER THAN A DEFECT. `oracle-anchor-reads-nothing` mutates the expected text in `oracle-source-anchor.test.ts`, not production code, and its death is what proves the anchor reads the extraction source off disk on every run rather than asserting a string against itself. Without it, the anchor suite could be entirely vacuous and every other entry here would still pass.",
+    "ONE ENTRY IS DECLARED UNFALSIFIABLE WITH A MEASURED REASON RATHER THAN COUNTED AS A KILL. `timingSafeEqual` and `Buffer.equals` agree on every output; the property that differs is timing, which this suite cannot measure honestly on this hardware. The falsifiable HALF of the constant-time contract — that the length is checked FIRST, so the primitive never throws — is `equals-length-check-removed`, and it is killed."
+  ],
+  "mutations": [
+    {
+      "id": "hash-encoding-base64",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "const VERIFIER_ENCODING = \"hex\";",
+      "to": "const VERIFIER_ENCODING = \"base64\";",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 11,
+      "killedBy": "src/secret-hasher.test.ts > the digest, against published standards > matches FIPS 180-4 for the empty message",
+      "why": "The stored verifier columns are lower-case hex and every unique index over them is a byte comparison. Base64 of the same digest matches no row and collides with no row, so the failure is a silent authentication failure rather than a duplicate-key error anyone would notice. Killed by FIPS 180-4's own examples, which no edit to this package can move."
+    },
+    {
+      "id": "hash-algorithm-sha512",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "const DIGEST = \"sha256\";",
+      "to": "const DIGEST = \"sha512\";",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 14,
+      "killedBy": "src/secret-hasher.test.ts > the digest, against published standards > matches FIPS 180-4 for the empty message",
+      "why": "The algorithm is the whole of the verifier. It is killed by published vectors rather than by a re-computation, so an implementation that changed the digest cannot make the expectation change with it."
+    },
+    {
+      "id": "hash-text-encoding-latin1",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "createHash(DIGEST).update(secret, \"utf8\").digest(VERIFIER_ENCODING),",
+      "to": "createHash(DIGEST).update(secret, \"latin1\").digest(VERIFIER_ENCODING),",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "src/secret-hasher.test.ts > the digest, against the extraction source > matches what auth.ts wrote for a non-ASCII secret, fixing the text encoding",
+      "why": "ONE case kills this and it is the only non-ASCII preimage in the tree: every other vector is ASCII, where utf8 and latin1 agree byte for byte. The digest that kills it came out of the extraction source's own `hashSecret`."
+    },
+    {
+      "id": "hash-upper-case-hex",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "createHash(DIGEST).update(secret, \"utf8\").digest(VERIFIER_ENCODING),",
+      "to": "createHash(DIGEST).update(secret, \"utf8\").digest(VERIFIER_ENCODING).toUpperCase(),",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 11,
+      "killedBy": "src/secret-hasher.test.ts > the digest, against published standards > matches FIPS 180-4 for the empty message",
+      "why": "Node's `hex` is lower-case and the columns hold lower-case. An uppercase digest is the same 32 bytes rendered so that no index finds them."
+    },
+    {
+      "id": "challenge-encoding-base64",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "const CHALLENGE_ENCODING = \"base64url\";",
+      "to": "const CHALLENGE_ENCODING = \"base64\";",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "src/secret-hasher.test.ts > the PKCE challenge > reproduces RFC 7636 Appendix B",
+      "why": "RFC 7636 §4.2 fixes base64url and strips padding. The base64 alphabet emits `+`, `/` and `=`, which is a challenge no compliant client computes — so the failure is not with our own rows but with every client. Killed by RFC 7636 Appendix B's printed pair."
+    },
+    {
+      "id": "challenge-encoding-hex",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "return createHash(DIGEST).update(codeVerifier, \"utf8\").digest(CHALLENGE_ENCODING);",
+      "to": "return createHash(DIGEST).update(codeVerifier, \"utf8\").digest(VERIFIER_ENCODING);",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 3,
+      "killedBy": "src/secret-hasher.test.ts > the PKCE challenge > reproduces RFC 7636 Appendix B",
+      "why": "The port's own note — 'a hex challenge would never match a compliant client's' — made executable. The same digest under the verifier alphabet passes every round trip and fails the RFC."
+    },
+    {
+      "id": "equals-length-check-removed",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);",
+      "to": "return timingSafeEqual(leftBytes, rightBytes);",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "src/secret-hasher.test.ts > constant-time equality > answers false rather than throwing when the lengths differ",
+      "why": "`crypto.timingSafeEqual` THROWS on unequal-length buffers. Without the check a length mismatch becomes an exception unwinding out of the use case, which is both a 500 and a timing signal. The case asserts `false` and gets a throw."
+    },
+    {
+      "id": "equals-is-string-identity",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);",
+      "to": "return left === right;",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "src/secret-hasher.test.ts > constant-time equality > compares UTF-8 BYTES, not JavaScript code units",
+      "why": "The mutation that a normal suite cannot see: `===` agrees with a byte comparison on every ordinary input. It is killed by the one observation that separates them — two different lone surrogates share a UTF-8 encoding, so `equals(\"\\uD800\", \"\\uD801\")` is TRUE for the extraction source's `safeEqual` and FALSE for `===`."
+    },
+    {
+      "id": "equals-decodes-hex",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "      const leftBytes = Buffer.from(left, \"utf8\");\n      const rightBytes = Buffer.from(right, \"utf8\");",
+      "to": "      const leftBytes = Buffer.from(left, \"hex\");\n      const rightBytes = Buffer.from(right, \"hex\");",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 2,
+      "killedBy": "src/secret-hasher.test.ts > constant-time equality > answers false rather than throwing when the lengths differ",
+      "why": "There are TWO constant-time comparisons in the extraction source and they disagree: `oauth.service.ts`'s decodes hex and calls \"AB\" and \"ab\" equal, `auth.ts`'s does not. This port follows the second, and the mutation swaps it for the first."
+    },
+    {
+      "id": "adapter-name-drift",
+      "file": "packages/adapters/node-crypto-digest/src/adapter.ts",
+      "from": "    adapterName: \"node-crypto-digest\",",
+      "to": "    adapterName: \"node-crypto-digests\",",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "src/secret-hasher.test.ts > the adapter surface > names itself by its directory",
+      "why": "The literal is what lets a supplied instance identify its own slot; `reportAdapterSupply` reads nothing else. A directory whose object names a slot that does not exist is refused as an unknown adapter at composition."
+    },
+    {
+      "id": "oracle-anchor-reads-nothing",
+      "file": "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
+      "from": "        '  return createHash(\"sha256\").update(value, \"utf8\").digest(\"hex\");',",
+      "to": "        '  return createHash(\"md5\").update(value, \"utf8\").digest(\"hex\");',",
+      "command": "pnpm --filter @platos/adapter-node-crypto-digest test",
+      "outcome": "KILLED",
+      "failingCases": 1,
+      "killedBy": "src/oracle-source-anchor.test.ts > the stored-verifier digest in internal-packages/tenancy-database/src/auth.ts > is still SHA-256 of the UTF-8 bytes, rendered as hex",
+      "why": "A NON-VACUITY CONTROL rather than a defect. It mutates the ANCHOR's expected text — not production code — and watches the case fail, which is what proves the anchor is reading `internal-packages/tenancy-database/src/auth.ts` off disk rather than passing on a string that happens to be in itself."
+    }
+  ],
+  "declaredUnfalsifiable": [
+    {
+      "id": "equals-uses-buffer-equals-instead-of-timing-safe-equal",
+      "file": "packages/adapters/node-crypto-digest/src/secret-hasher.ts",
+      "from": "timingSafeEqual(leftBytes, rightBytes)",
+      "to": "leftBytes.equals(rightBytes)",
+      "outcome": "DECLARED_UNFALSIFIABLE",
+      "why": "MEASURED, NOT ASSUMED. The two agree on every input: both compare the same bytes and both answer the same boolean, so no case in this suite — or any suite — can distinguish them by OUTPUT. The property that differs is TIMING, and this suite cannot prove it: the difference over 32 bytes is nanoseconds, below the noise floor of `process.hrtime` under a JIT and a test runner on this hardware, and a threshold that passed today would be a flake tomorrow. The claim is therefore made STRUCTURALLY — the constant-time primitive is what the code calls, and the length check that must precede it IS falsifiable and is killed by `equals-length-check-removed`. Stating this rather than writing a timing assertion that would pass for the wrong reason is the honest form."
+    }
+  ]
+}
