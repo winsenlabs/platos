@@ -209,3 +209,55 @@ describe("JobsController operator authorization", () => {
     },
   );
 });
+
+/**
+ * WIN-258 T6 — two guards the suite above could not see, found by mutation.
+ *
+ * Both of these survived the first mutation sweep of this tranche. The suite
+ * above establishes that every handler is operator-gated and that the CANONICAL
+ * scope reaches the query rather than the requested one — but it asserts on the
+ * serialized calls as a blob, so it never noticed WHICH predicate each call
+ * carried. Two edits to `JobStore` therefore left it entirely green:
+ *
+ *   - the paginated count taking a DIFFERENT `where` than the page it counts;
+ *   - `findDispatchable` losing `status: "ACTIVE"`.
+ *
+ * The first is the same wider-total bug the file browser has a guard for, on a
+ * surface that had none. The second is worse than a wrong number: it dispatches
+ * a job the operator cancelled or that failed to parse.
+ *
+ * A surviving mutation is a missing test, not a tolerable one, so these are the
+ * tests rather than a ledger entry excusing them.
+ */
+describe("JobStore predicates the blob assertion could not see", () => {
+  it("counts with the same predicate it pages, filter included", async () => {
+    const { controller, prisma } = makeHarness();
+
+    await controller.list(request(), undefined, "25", "10", "summary", "ACTIVE");
+
+    const page = prisma.job.findMany.mock.calls[0]![0] as { where: unknown };
+    const count = prisma.job.count.mock.calls[0]![0] as { where: unknown };
+    // A JOIN between the two calls, holding no expected predicate of its own —
+    // so it cannot drift as the filter grows, and it goes red the moment the
+    // page and the total stop being built from one expression.
+    expect(count.where).toEqual(page.where);
+    // Non-vacuous: the shared predicate really did carry both filters.
+    expect(JSON.stringify(page.where)).toContain("summary");
+    expect(JSON.stringify(page.where)).toContain("ACTIVE");
+  });
+
+  it("refuses to dispatch a job that is not ACTIVE", async () => {
+    const { controller, prisma } = makeHarness();
+    prisma.job.findFirst.mockImplementation(async ({ where }: any) =>
+      where.status === "ACTIVE" ? null : { id: JOB.id, externalId: JOB.externalId, displayName: JOB.displayName },
+    );
+
+    // The fake answers only when the ACTIVE filter is ABSENT. A store that
+    // dropped it would find the row and dispatch; the store that keeps it finds
+    // nothing and the transport 404s.
+    await expect(controller.dispatch(request(), JOB.id, {})).rejects.toMatchObject({ status: 404 });
+    expect(prisma.job.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: "ACTIVE" }) }),
+    );
+  });
+});

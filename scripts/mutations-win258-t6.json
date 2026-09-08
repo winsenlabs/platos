@@ -1,0 +1,309 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-258",
+  "tranche": "T6 — de-Prisma the agent transports",
+  "branch": "tejas/win-267-t6-deprisma",
+  "base": "007007f2 (v1)",
+  "purpose": [
+    "The guard ledger for T6: four stores and directories that take the ORM off",
+    "four agent HTTP transports, and the arch rule that stops those four reaching",
+    "for it again. One entry per invariant, each carrying the file it lives in,",
+    "the EXACT edit that defeats it, the command run, and the NAMED case that was",
+    "SEEN to go red.",
+    "",
+    "TWO OF THESE ENTRIES ARE HERE BECAUSE THEY FIRST SURVIVED. M10 and M11 —",
+    "the paginated count taking a different predicate than its page, and",
+    "`findDispatchable` losing `status: ACTIVE` — passed the whole jobs suite",
+    "unchanged on the first sweep. That suite asserts on the serialized Prisma",
+    "calls as a BLOB ('does the canonical org appear anywhere in these calls'),",
+    "which establishes scope canonicalisation and nothing about WHICH predicate",
+    "each call carried. A surviving mutation is a missing test, not a tolerable",
+    "one, so both became named cases rather than ledger excuses. The second is",
+    "worse than a wrong number: it dispatches a job an operator cancelled.",
+    "",
+    "WHAT THIS LEDGER DELIBERATELY DOES NOT CLAIM. T6 converted four of the seven",
+    "transports in its tranche and four of the twenty-three confirmed entry",
+    "points. It claims no guard over the three it did not convert, and the arch",
+    "rule's `from` list names only the four, so the ratchet cannot be read as",
+    "covering more than it does. See `declared`.",
+    "",
+    "NOTHING HERE NEEDS A DATABASE, A CONTAINER OR A DOCKER DAEMON. Every case is",
+    "a file edit plus one test process."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST, AND GREEN AGAIN AFTER. Every entry was run against the",
+    "unmutated tree (exit 0), then mutated (exit 1 with the named case), then",
+    "reverted and re-run (exit 0). `restoredExit: 0` on every entry below is that",
+    "third run, recorded rather than assumed — a ledger that never re-ran the",
+    "revert cannot tell a real kill from a tree it left broken.",
+    "",
+    "For one entry: apply `to` to `file`, run `command`, confirm the NAMED case in",
+    "`kills` appears and the process exits non-zero. Then revert and confirm 0.",
+    "",
+    "`file` is REPOSITORY-relative. The runner used was ephemeral; the entries",
+    "below carry everything needed to reproduce a mutation by hand."
+  ],
+  "mutations": [
+    {
+      "name": "M01 entity-bearer admission stops checking the organization",
+      "guards": "apps/agent/src/auth/entity-bearer.directory.ts — the organization-mismatch clause",
+      "file": "apps/agent/src/auth/entity-bearer.directory.ts",
+      "from": "if (bearer.entity.project.organizationId !== claim.organizationId) {",
+      "to": "if (false && bearer.entity.project.organizationId !== claim.organizationId) {",
+      "command": "pnpm --filter platos-agent exec vitest run src/auth/session-token.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "EntityBearerDirectory names every rejection the 401 hides > names a organization-mismatch rather than folding it into its neighbours",
+        "SessionTokenController clean bearer mint > rejects forged request organization ancestry"
+      ],
+      "note": "Before T6 this clause was one of ten inside a single `if` that threw one string, so only the second case above existed and it could not distinguish which clause fired. The first case is the fifth lesson applied."
+    },
+    {
+      "name": "M02 an expired bearer is admitted exactly AT its expiry",
+      "guards": "apps/agent/src/auth/entity-bearer.directory.ts — the `<=` in the expiry comparison",
+      "file": "apps/agent/src/auth/entity-bearer.directory.ts",
+      "from": "if (bearer.expiresAt && bearer.expiresAt.getTime() <= now.getTime()) {",
+      "to": "if (bearer.expiresAt && bearer.expiresAt.getTime() < now.getTime()) {",
+      "command": "pnpm --filter platos-agent exec vitest run src/auth/session-token.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "EntityBearerDirectory names every rejection the 401 hides > distinguishes an expired bearer from a live one at the boundary"
+      ],
+      "note": "An off-by-one on an expiry boundary. The case asserts BOTH sides — dead at the expiry, alive one millisecond before — which is what tells `<` from `<=`; a single-sided assertion would survive this."
+    },
+    {
+      "name": "M03 a valid bearer may name any environment it likes",
+      "guards": "apps/agent/src/auth/entity-bearer.directory.ts — the environment-foreign cross-check",
+      "file": "apps/agent/src/auth/entity-bearer.directory.ts",
+      "from": "environment.project.id !== bearer.entity.project.id ||\n      environment.project.organizationId !== bearer.entity.project.organizationId",
+      "to": "false && (environment.project.id !== bearer.entity.project.id ||\n      environment.project.organizationId !== bearer.entity.project.organizationId)",
+      "command": "pnpm --filter platos-agent exec vitest run src/auth/session-token.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "EntityBearerDirectory names every rejection the 401 hides > refuses an environment owned by another project even when the ids line up"
+      ],
+      "note": "This is the cross-tenant one: without it a caller holding a valid token for one environment names another environment's id in the body and the minted token carries it."
+    },
+    {
+      "name": "M04 the liveness compare-and-set stops being checked",
+      "guards": "apps/agent/src/auth/entity-bearer.directory.ts — `active.count !== 1`",
+      "file": "apps/agent/src/auth/entity-bearer.directory.ts",
+      "from": "if (active.count !== 1) return reject(\"revoked-concurrently\");",
+      "to": "if (false) return reject(\"revoked-concurrently\");",
+      "command": "pnpm --filter platos-agent exec vitest run src/auth/session-token.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "EntityBearerDirectory names every rejection the 401 hides > treats a lost compare-and-set as its own rejection, not a stale read",
+        "SessionTokenController clean bearer mint > rejects a revocation race entity bearer"
+      ],
+      "note": "The update IS the re-check: its `where` carries the liveness predicate, so a count of zero means the token died between the read and the mint. A read-then-write would be the same race with more steps."
+    },
+    {
+      "name": "M05 an INACTIVE agent still mints guest tokens",
+      "guards": "apps/agent/src/agent-runtime/agent-binding.directory.ts — the `isActive` conjunct",
+      "file": "apps/agent/src/agent-runtime/agent-binding.directory.ts",
+      "from": "binding.agent.isActive && isPublicGuestVisible(binding.activeAgentVersion),",
+      "to": "isPublicGuestVisible(binding.activeAgentVersion),",
+      "command": "pnpm --filter platos-agent exec vitest run src/auth/public-guest-token.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "PublicGuestTokenController Environment binding > refuses an inactive agent even when the binding is public-guest"
+      ],
+      "note": "Under the pre-T6 harness this case could not exist: the suite assigned `controller.prisma` and the filtering happened in the double, so the controller's own rule was never executed."
+    },
+    {
+      "name": "M06 only one of the two spellings of the visibility rule is honoured",
+      "guards": "apps/agent/src/agent-runtime/agent-binding.directory.ts — the `??` fallback in isPublicGuestVisible",
+      "file": "apps/agent/src/agent-runtime/agent-binding.directory.ts",
+      "from": "return (runtimeVisibility ?? toolsVisibility) === \"public-guest\";",
+      "to": "return runtimeVisibility === \"public-guest\";",
+      "command": "pnpm --filter platos-agent exec vitest run src/auth/public-guest-token.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "PublicGuestTokenController Environment binding > accepts the toolsBlockConfig spelling of the visibility rule"
+      ],
+      "note": "The stored configuration spells this two ways and the first wins. Dropping the fallback makes every agent configured the second way silently private — a availability failure rather than a security one, which is why it needs its own case."
+    },
+    {
+      "name": "M07 a PRIVATE agent is exposed to the open internet",
+      "guards": "apps/agent/src/agent-runtime/agent-binding.directory.ts — the visibility conjunct",
+      "file": "apps/agent/src/agent-runtime/agent-binding.directory.ts",
+      "from": "binding.agent.isActive && isPublicGuestVisible(binding.activeAgentVersion),",
+      "to": "binding.agent.isActive,",
+      "command": "pnpm --filter platos-agent exec vitest run src/auth/public-guest-token.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "PublicGuestTokenController Environment binding > refuses a private binding rather than distinguishing it from a missing one"
+      ],
+      "note": "M05 and M07 mutate the SAME expression in different halves, and they are different failures: M05 admits a deactivated agent, M07 admits a private one. One case per half, because a single case over the conjunction would be killed by either and prove neither."
+    },
+    {
+      "name": "M08 the agent level's total is counted from a wider predicate than its page",
+      "guards": "apps/agent/src/files/file-browser.store.ts — the shared `where` fragment at the agents level",
+      "file": "apps/agent/src/files/file-browser.store.ts",
+      "from": "the count query interpolating ${where}",
+      "to": "the count query re-typing the WHERE by hand, without the ${search} fragment",
+      "command": "pnpm --filter platos-agent exec vitest run src/files/files.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "FileBrowserStore counts the same rows it pages > binds one predicate for both statements at the 'agents' level",
+        "FileBrowserStore counts the same rows it pages > carries the search term into the count, not only into the page"
+      ],
+      "note": "This is the exact shape the pre-T6 controller had: page and count written out separately, six independent copies of the tenancy clause across three levels. The mutation reproduces it faithfully — a hand-typed WHERE that is CORRECT about scope and merely forgets the filter — and both cases fire."
+    },
+    {
+      "name": "M09 the user level makes the same mistake independently",
+      "guards": "apps/agent/src/files/file-browser.store.ts — the shared `where` fragment at the users level",
+      "file": "apps/agent/src/files/file-browser.store.ts",
+      "from": "the count query interpolating ${where}",
+      "to": "the count query re-typing agentId + threadScopePredicate, without the ${search} fragment",
+      "command": "pnpm --filter platos-agent exec vitest run src/files/files.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "FileBrowserStore counts the same rows it pages > binds one predicate for both statements at the 'users' level"
+      ],
+      "note": "Run separately from M08 on purpose. The guard is parameterised over three levels, and a `it.each` that only ever fired on its first row would be a guard over one level wearing the name of three."
+    },
+    {
+      "name": "M10 the job list counts rows it did not page — SURVIVED THE FIRST SWEEP",
+      "guards": "apps/agent/src/agent-runtime/job-store.ts — the single `where` shared by findMany and count",
+      "file": "apps/agent/src/agent-runtime/job-store.ts",
+      "from": "this.prisma.job.count({ where }),",
+      "to": "this.prisma.job.count({ where: environmentScopeWhere(scope) }),",
+      "command": "pnpm --filter platos-agent exec vitest run src/agent-runtime/jobs.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "JobStore predicates the blob assertion could not see > counts with the same predicate it pages, filter included"
+      ],
+      "note": "SURVIVED until this tranche added its killer. The 30-case jobs suite asserts on the serialized Prisma calls as a blob — 'does the canonical org appear somewhere in these calls' — which is a real guard about scope canonicalisation and says nothing about which predicate each call carried. The new case is a JOIN between the two calls, holding no expected predicate of its own."
+    },
+    {
+      "name": "M11 a CANCELLED job can be dispatched — SURVIVED THE FIRST SWEEP",
+      "guards": "apps/agent/src/agent-runtime/job-store.ts — `status: \"ACTIVE\"` in findDispatchable",
+      "file": "apps/agent/src/agent-runtime/job-store.ts",
+      "from": "where: { id, status: \"ACTIVE\", ...environmentScopeWhere(scope) },",
+      "to": "where: { id, ...environmentScopeWhere(scope) },",
+      "command": "pnpm --filter platos-agent exec vitest run src/agent-runtime/jobs.controller.test.ts",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "JobStore predicates the blob assertion could not see > refuses to dispatch a job that is not ACTIVE"
+      ],
+      "note": "SURVIVED until this tranche added its killer, and it is the worse of the two: a job an operator CANCELLED, or one whose handler failed to parse, becomes dispatchable. The new case inverts the fake so it answers only when the ACTIVE filter is absent, which means the guard cannot be satisfied by a lucky row."
+    },
+    {
+      "name": "M12 a converted transport reaches for the ORM again — THE ACCEPTANCE CRITERION",
+      "guards": "scripts/arch/boundary-rules.mjs — rule (k2) agent-converted-transport-no-prisma",
+      "file": "apps/agent/src/agent-runtime/jobs.controller.ts",
+      "from": "(no ORM import)",
+      "to": "import { PRISMA_TOKEN } from \"../shared/database.provider\";",
+      "command": "node --test scripts/arch/arch-boundaries.test.mjs",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "(k2) the converted-transport list is joined to the real tree, not to itself",
+        "FAIL [agent-converted-transport-no-prisma] apps/agent/src/agent-runtime/jobs.controller.ts -> ../shared/database.provider"
+      ],
+      "note": "This is the tranche's acceptance criterion, run live. Note the door: the LOCAL provider, not the vendor package. A rule naming only `@platos/tenancy-database` would have let this through, and it is the door every one of these controllers actually used."
+    },
+    {
+      "name": "M13 a converted transport is renamed and silently loses its gate",
+      "guards": "scripts/arch/arch-boundaries.test.mjs — the existence join over DEPRISMA_AGENT_TRANSPORTS",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "from": "\"apps/agent/src/files/files.controller.ts\",",
+      "to": "\"apps/agent/src/files/files-renamed.controller.ts\",",
+      "command": "node --test scripts/arch/arch-boundaries.test.mjs",
+      "exit": 1,
+      "restoredExit": 0,
+      "kills": [
+        "(k2) the converted-transport list is joined to the real tree, not to itself",
+        "(k2) agent-converted-transport-no-prisma: a converted agent transport may not reach the ORM again"
+      ],
+      "note": "THE NON-VACUITY CONTROL. Without it, rule (k2) would pass forever over a `from` list naming files that no longer exist — the first lesson's assertion-that-cannot-fail, one level up. The list is checked against the FILESYSTEM, never against another constant in the test."
+    }
+  ],
+  "suiteKills": [
+    {
+      "suite": "apps/agent/src/auth/session-token.controller.test.ts",
+      "before": 8,
+      "after": 18,
+      "cases": [
+        "admits a live bearer whose claimed scope matches on every axis",
+        "distinguishes an unknown token from a revoked one",
+        "distinguishes an expired bearer from a live one at the boundary",
+        "names a entity-mismatch rather than folding it into its neighbours",
+        "names a project-mismatch rather than folding it into its neighbours",
+        "names a organization-mismatch rather than folding it into its neighbours",
+        "separates an environment the bearer does not carry from one that does not exist",
+        "refuses an environment owned by another project even when the ids line up",
+        "treats a lost compare-and-set as its own rejection, not a stale read"
+      ]
+    },
+    {
+      "suite": "apps/agent/src/auth/public-guest-token.controller.test.ts",
+      "before": 2,
+      "after": 5,
+      "cases": [
+        "refuses an inactive agent even when the binding is public-guest",
+        "refuses a private binding rather than distinguishing it from a missing one",
+        "accepts the toolsBlockConfig spelling of the visibility rule"
+      ]
+    },
+    {
+      "suite": "apps/agent/src/files/files.controller.test.ts",
+      "before": 5,
+      "after": 9,
+      "cases": [
+        "binds one predicate for both statements at the 'agents' level",
+        "binds one predicate for both statements at the 'users' level",
+        "binds one predicate for both statements at the 'conversations' level",
+        "carries the search term into the count, not only into the page"
+      ]
+    },
+    {
+      "suite": "apps/agent/src/agent-runtime/jobs.controller.test.ts",
+      "before": 30,
+      "after": 32,
+      "cases": [
+        "counts with the same predicate it pages, filter included",
+        "refuses to dispatch a job that is not ACTIVE"
+      ]
+    },
+    {
+      "suite": "scripts/arch/arch-boundaries.test.mjs",
+      "before": 17,
+      "after": 19,
+      "cases": [
+        "(k2) agent-converted-transport-no-prisma: a converted agent transport may not reach the ORM again",
+        "(k2) the converted-transport list is joined to the real tree, not to itself"
+      ]
+    }
+  ],
+  "declared": [
+    {
+      "what": "No mutation here proves anything about the three transports T6 did NOT convert — channels (2 call sites), channel-apps (1) and memory (3).",
+      "why": "They are not in rule (k2)'s `from` list and they still hold the client, so a mutation over them would be mutating unguarded code and observing nothing. Widening the rule to cover them would make it fail on the tree as committed. This is a scope statement, not a gap being papered over: the ratchet covers four transports and says so.",
+      "status": "declared, not claimed"
+    },
+    {
+      "what": "No mutation proves the converted transports route to their owning context's CONTRACT, because none of them does.",
+      "why": "That is the tranche's central finding rather than an omission. `agents`, `tools` and `memory` publish no contract factory at all; `jobs` and `files` do, and are blocked on adapters named in UNIMPLEMENTED_ADAPTERS (durable-runtime for jobs, objectstore-minio for files); and `apps/agent` depends on no @platos/context-* package and has no seam through which a composed contract could reach its Nest container. Each store and directory records its own blocker in its header. The seams are shaped like the contract calls that will replace them, which is the most that can be true today.",
+      "status": "declared, not claimed"
+    },
+    {
+      "what": "clean-prisma-delegates.test.ts is not mutated here, and its three pins are not a T6 guard.",
+      "why": "They were STALE ON THE BASE — v1 @ 007007f2 measures 832 / 329 / 0c4fd159 against committed pins of 751 / 304 / 0b36ea83 — so the gate was red before this tranche. T6 re-pins it and states the split (its own contribution is the call count, 832 -> 817), but a pin whose value is read off the tree it measures is a canary, not a falsifiable guard, and this ledger does not dress it as one.",
+      "status": "declared, not claimed"
+    }
+  ]
+}

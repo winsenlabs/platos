@@ -1498,15 +1498,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
     // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
     // and add no file.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
-    "root-infra": 55,
+    // WIN-258 (M4.1, T6) 55 -> 56: `scripts/mutations-win258-t6.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same stated reason. It is the FOURTH non-code file under
+    // `scripts/`. T0 said the rule would be worth splitting if a second
+    // arrived; three have, and T6 is still not doing it inside a tranche that
+    // would be its own beneficiary — the argument for splitting is now strong
+    // enough that it deserves its own change rather than a rider on this one.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 = 56.
+    "root-infra": 56,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
   //
-  // WIN-258 (M4.1, T6) 1598 -> 1602: the four stores and directories named in
-  // the apps-agent delta above, and nothing else. 3469 + 1602 = 5071.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1602);
+  // WIN-258 (M4.1, T6) 1598 -> 1603: the four stores and directories named in
+  // the apps-agent delta above, plus this tranche's guard ledger in root-infra.
+  // 3469 + 1603 = 5072.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1603);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1613,11 +1621,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
     //
-    // WIN-258 (M4.1, T6) 1598 -> 1602, the same four files. This identity is
+    // WIN-258 (M4.1, T6) 1598 -> 1603, the same five files. This identity is
     // the one that would catch T6 having moved a per-area counter without
     // moving the total, or the reverse — which is exactly why it re-derives the
     // sum rather than reading the figure the assertion above already checked.
-    rulesDocument.baseline.totalFiles + 1602
+    rulesDocument.baseline.totalFiles + 1603
   );
 });
 
