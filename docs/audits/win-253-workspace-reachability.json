@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6e55298e1141b2630eed089ba06f9387ae45d2375b48132616586537a76f14f4",
+  "evidenceSha256": "0fd6ce5d0fced48eb2905b33634d2847682356c649ac1db419b0c18533c83ac2",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "6d50b283ad0aeadda4fc6e674697b2770d45ca35eb8d18245aa9eb8310b1e151",
+    "aggregateSha256": "fe160c6e0e379bdbb634cc290e0dd6895d86dfd4684b418728afbc8f72c0299b",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -10815,7 +10815,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/prisma/migrations/20260909120000_win267_eval_run_queue/migration.sql",
-        "sha256": "322d731b67e78bc5604a8868b521a3d4bbd55e900fc16cc651e542ba8149efe6"
+        "sha256": "b83bc1d3f4f1baf9908358baafc0c87e6dcee411bccf19ac9c9798a23178c1eb"
       },
       {
         "path": "internal-packages/tenancy-database/prisma/migrations/migration_lock.toml",
@@ -10823,7 +10823,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/prisma/schema.prisma",
-        "sha256": "67ba482dee3e45ad5eb16ba81dd2e6da9872c26d68c8d983089c05d75fe8b447"
+        "sha256": "49396e86dbb924818aa5d1998e34e2a9f3765b666b87dcb2a67e9706149db0a6"
       },
       {
         "path": "internal-packages/tenancy-database/prisma/upgrade-baselines/oracle-head/schema.prisma",
@@ -10871,7 +10871,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/integration.test.ts",
-        "sha256": "017542482c453bc2050f650d307d18a218bcb67dbfa960d78443a7ec452f552a"
+        "sha256": "39b8dbe0e0a4a4e1cf6b33dfdf15920d23b5b0c82e787dad7d0985db7763771b"
       },
       {
         "path": "internal-packages/tenancy-database/src/json.test.ts",
@@ -10879,7 +10879,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/json.ts",
-        "sha256": "5b90be54105fd78b3769c33a05eaeee77de3d6ee32167987f6b81719be1845c5"
+        "sha256": "4e4c87586f009f30da44e86be70b3023acbfef2e623419f41995f75619e4767c"
       },
       {
         "path": "internal-packages/tenancy-database/src/memory-contract.test.ts",
@@ -10907,7 +10907,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/schema.test.ts",
-        "sha256": "5dcf20a0735abc66f9e5ed717d778ac778661b18cba2f06d06d922db7792c98d"
+        "sha256": "99e95d8faada829a1ac66e6e00ae68a7445332a7b6ce90dfd28955843643016d"
       },
       {
         "path": "internal-packages/tenancy-database/src/secrets.integration.test.ts",
@@ -12091,11 +12091,11 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
-        "sha256": "18b7cdc8a05869e0fc6272229681187be99d2c21833774d06ab5de6ef4d14c12"
+        "sha256": "888df6d10178dc606fb9db281b4ef01dcd556aac410a372f81b737209998026c"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-eval-runs.ts",
-        "sha256": "4315650b52da80468613040c686c85e7de530961085b1705754b1997c8ff35d8"
+        "sha256": "04895e1e932fd704b6f41ae6f55218aa46a2280c7b1e7d9945f121a0ce73fbbd"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-evals.ts",
@@ -12327,15 +12327,15 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts",
-        "sha256": "792ddedd96d98213bb3a5a2187f62dcab467094e1cc7dcbe802c83f72b506bc4"
+        "sha256": "8fd6dc05733af8042220ee3d7d73437baf2ffcabacf2e13b0b86538a192cb426"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/json-columns.test.ts",
-        "sha256": "10a04768b5e32cc0ee862a1b862a55af4cbfc667a7e000919665c4016d537403"
+        "sha256": "48405b644413b902639d333dbb2e8af788085c3199eb3b766f25b0cfffabed72"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/json-columns.ts",
-        "sha256": "326ddf614b199cb1d62fc9cdd689a0923b2cee87bf1dbf3f172848748748c7a6"
+        "sha256": "aefdf39975d850d71946df79ff2fc30a2390dd5717d6be664d037fe5b79dbe6b"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/locks.integration.test.ts",
@@ -60070,13 +60070,13 @@
             {
               "file": "packages/adapters/postgres-tenancy/src/governance-eval-runs.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 90,
+              "line": 100,
               "specifier": "@platos/context-governance/application/ports/index.js"
             },
             {
               "file": "packages/adapters/postgres-tenancy/src/governance-eval-runs.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 99,
+              "line": 109,
               "specifier": "@platos/context-governance/application/ports/index.js"
             },
             {
@@ -60768,7 +60768,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "13faf2e0703645aaa469f9d6cd0da6e695a932b3dffd6b32d9e16701d70b3918",
+      "evidenceSha256": "33616f1bd359ee8ef72aa0a90c8ff3d78bb9e9de1249eab2085d144c31fe87b5",
       "manifestSha256": "c6c9eb63ca632d454591f95884a0e51f26305204031c2cdd7167c50f646b895e",
       "name": "@platos/context-governance",
       "ociImageClosure": {

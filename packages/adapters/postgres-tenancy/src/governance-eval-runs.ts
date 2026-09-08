@@ -40,6 +40,16 @@
 // changes", and this is the adapter it means.
 //
 // ---------------------------------------------------------------------------
+// THE PLAN IS TWO PARALLEL TEXT ARRAYS, NOT JSON, AND THAT IS FORCED. The
+// `00000000000000_initial` migration is hash-pinned and `schema.test.ts` demands
+// a `<Model>_<column>_json_root` CHECK in THAT file for every `Json` field, so a
+// post-initial table cannot carry one. `GoldenSet` already stores its two lists
+// as TEXT arrays, and a plan is those two paired BY INDEX in plan order; the
+// migration's `EvalRun_pairs_check` refuses a row where the arrays differ in
+// length or disagree with `pairCount`, which is a stronger statement than a root
+// check would have been.
+//
+// ---------------------------------------------------------------------------
 // THE DIGEST, WHICH IS THE ONE THING THIS FILE COULD NOT HAVE GOT AWAY WITHOUT
 //
 // `enqueue-eval-run.ts` builds the key over the set id, EVERY PAIR IN PLAN ORDER
@@ -116,7 +126,7 @@ export const EVAL_RUN_DIGEST_COLLISION = "governance.write.eval_run_digest_colli
 /** A claim asked for a lease that cannot bound anything. */
 export const EVAL_RUN_LEASE_INVALID = "governance.write.eval_run_lease_invalid";
 
-/** A stored `pairs` column this binary cannot read back as a plan. */
+/** Stored plan arrays this binary cannot read back as a plan. */
 export const UNREADABLE_EVAL_RUN_PAIRS = "governance.row.unreadable_eval_run_pairs";
 
 const EVAL_RUN_COLUMNS = {
@@ -129,7 +139,8 @@ const EVAL_RUN_COLUMNS = {
   idempotencyKey: true,
   idempotencyDigest: true,
   pairCount: true,
-  pairs: true,
+  pairThreadIds: true,
+  pairCriterionIds: true,
   status: true,
   deliveries: true,
   leaseOwner: true,
@@ -187,7 +198,8 @@ interface ClaimedRow {
   readonly goldenSetId: string;
   readonly agentId: string;
   readonly baselineVersionId: string | null;
-  readonly pairs: unknown;
+  readonly pairThreadIds: readonly string[];
+  readonly pairCriterionIds: readonly string[];
   readonly pairCount: number;
   readonly deliveries: number;
   readonly leaseExpiresAt: Date;
@@ -225,24 +237,34 @@ async function refuseQueue<Value>(
   }
 }
 
-function readPairs(value: unknown): readonly EvalPair[] {
-  if (!Array.isArray(value)) {
+/**
+ * Two stored arrays as one plan, or a refusal.
+ *
+ * `EvalRun_pairs_check` already refuses a row whose two arrays differ in length
+ * or disagree with `pairCount`, so this can only fire against a database whose
+ * constraint was dropped or a binary reading a row an older schema wrote. It
+ * fires rather than TRUNCATING to the shorter array, because a plan silently
+ * shortened is a set of criteria nothing will ever score.
+ */
+function readPairs(
+  threadIds: readonly string[],
+  criterionIds: readonly string[],
+  pairCount: number,
+): readonly EvalPair[] {
+  if (threadIds.length !== criterionIds.length || threadIds.length !== pairCount) {
     throw new UnreadableRowError(
       UNREADABLE_EVAL_RUN_PAIRS,
-      "EvalRun.pairs",
-      typeof value === "object" ? JSON.stringify(value) : String(value),
+      "EvalRun.pairThreadIds/pairCriterionIds",
+      `${String(threadIds.length)}/${String(criterionIds.length)} against pairCount ${String(pairCount)}`,
     );
   }
-  return value.map((entry) => {
-    const pair = entry as { readonly threadId?: unknown; readonly criterionId?: unknown };
-    if (typeof pair.threadId !== "string" || typeof pair.criterionId !== "string") {
-      throw new UnreadableRowError(UNREADABLE_EVAL_RUN_PAIRS, "EvalRun.pairs", JSON.stringify(entry));
-    }
-    return {
-      threadId: asGovernanceIdentifier(pair.threadId),
-      criterionId: asGovernanceIdentifier(pair.criterionId),
-    } as EvalPair;
-  });
+  return threadIds.map(
+    (threadId, index) =>
+      ({
+        threadId: asGovernanceIdentifier(threadId),
+        criterionId: asGovernanceIdentifier(criterionIds[index] as string),
+      }) as EvalPair,
+  );
 }
 
 export function createEvalRunStore(transactions: TenancyTransactions, now: () => Date): EvalRunStore {
@@ -283,10 +305,8 @@ export function createEvalRunStore(transactions: TenancyTransactions, now: () =>
                 idempotencyKey: request.idempotencyKey,
                 idempotencyDigest: digest,
                 pairCount: request.pairs.length,
-                pairs: request.pairs.map((pair) => ({
-                  threadId: pair.threadId,
-                  criterionId: pair.criterionId,
-                })),
+                pairThreadIds: request.pairs.map((pair) => String(pair.threadId)),
+                pairCriterionIds: request.pairs.map((pair) => String(pair.criterionId)),
                 createdAt: at,
                 updatedAt: at,
               },
@@ -366,7 +386,8 @@ export function createEvalRunStore(transactions: TenancyTransactions, now: () =>
                     run."goldenSetId",
                     run."agentId",
                     run."baselineVersionId",
-                    run."pairs",
+                    run."pairThreadIds",
+                    run."pairCriterionIds",
                     run."pairCount",
                     run."deliveries",
                     run."leaseExpiresAt"
@@ -378,7 +399,7 @@ export function createEvalRunStore(transactions: TenancyTransactions, now: () =>
             goldenSetId: row.goldenSetId,
             agentId: row.agentId,
             baselineVersionId: row.baselineVersionId,
-            pairs: readPairs(row.pairs),
+            pairs: readPairs(row.pairThreadIds, row.pairCriterionIds, row.pairCount),
             pairCount: row.pairCount,
             deliveries: row.deliveries,
             leaseExpiresAt: row.leaseExpiresAt,

@@ -1,4 +1,4 @@
-// The FIFTY JSONB columns behind this package, and what stands at each
+// The forty-nine JSONB columns behind this package, and what stands at each
 // one's decode boundary.
 //
 // WIN-258 names "typed JSON columns; selectors/projections" and this module is
@@ -10,7 +10,6 @@
 //
 // *** THE ROOT OF EVERY ONE OF THEM IS PINNED BY A MIGRATION, NOT BY A GUARD.
 // `00000000000000_initial` carries forty-nine `<Model>_<column>_json_root`
-// CHECKs and `20260909120000_win267_eval_run_queue` carries the fiftieth,
 // CHECKs, one per column, each of the form
 // `("c" IS NULL OR) jsonb_typeof("c") = 'object' | 'array'`. That is a stronger
 // fact than any decoder in this package: a scalar, or an array in an object
@@ -207,14 +206,6 @@ export const JSON_COLUMNS: readonly JsonColumnContract[] = [
     model: "ErasureOperation", column: "resumePlan", root: "object", nullable: true,
     owner: "privacy", decoder: "", disposition: "unprojected",
     note: "OPERATION_COLUMNS does not select it either; the resume plan is M4's surface rather than this port's.",
-  },
-  {
-    // WIN-267 G1. The FIFTIETH column, and the only one whose decoder is in a
-    // module that is not a `*-rows.ts`: the plan is read where the queue is,
-    // because nothing else in this package has any business with it.
-    model: "EvalRun", column: "pairs", root: "array", nullable: false,
-    owner: "governance", decoder: "governance-eval-runs.readPairs", disposition: "refuse",
-    note: "A pair the dispatcher cannot read is a criterion nothing will score; the read aborts rather than shortening the plan.",
   },
   {
     model: "Event", column: "payload", root: "object", nullable: false,

@@ -247,11 +247,12 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     const forged = harness.base.freshId("00e2");
     harness.applyPeerRows(
       `INSERT INTO "EvalRun" ("id", "environmentId", "goldenSetId", "agentId", "requestedBy",
-                              "idempotencyKey", "idempotencyDigest", "pairCount", "pairs",
+                              "idempotencyKey", "idempotencyDigest", "pairCount",
+                              "pairThreadIds", "pairCriterionIds",
                               "status", "deliveries", "createdAt", "updatedAt")
        VALUES ('${forged}', '${scope.environmentId}', '${goldenSetId}', '${chain.agentId}', 'fixture',
                'a completely different run', '${evalRunDigest(command.idempotencyKey)}', 1,
-               '[{"threadId":"${chain.threadId}","criterionId":"${chain.threadId}"}]'::jsonb,
+               ARRAY['${chain.threadId}']::text[], ARRAY['${chain.threadId}']::text[],
                'QUEUED', 0, '2026-05-01T09:00:00Z', '2026-05-01T09:00:00Z');`,
     );
 

@@ -167,7 +167,7 @@ describe("the census, reconciled against the live catalog", () => {
     }
   });
 
-  test("the CHECKs are NOT `NOT VALID`: PostgreSQL is enforcing all fifty", async () => {
+  test("the CHECKs are NOT `NOT VALID`: PostgreSQL is enforcing all forty-nine", async () => {
     // A constraint added `NOT VALID` sits in the catalog and binds new rows only.
     // The census claims the root is a fact about EVERY row, so the distinction is
     // the difference between that claim and a weaker one.

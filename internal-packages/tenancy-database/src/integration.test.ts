@@ -1817,7 +1817,8 @@ async function seedEveryModel(control: PrismaClient) {
         .update(`eval-run/${goldenSet.id}/no-baseline/${thread.id}:${criterion.id}`)
         .digest("hex"),
       pairCount: 1,
-      pairs: [{ threadId: thread.id, criterionId: criterion.id }],
+      pairThreadIds: [thread.id],
+      pairCriterionIds: [criterion.id],
     },
   }));
   track("Job", await control.job.create({

@@ -63,7 +63,6 @@ export const jsonShapeRegistry = {
   "Budget.alertThresholds": array("Integer percentage thresholds."),
   "SafetyEvent.metadata": object("Redacted detector attributes."),
   "AgentEval.criterionSnapshot": object("Immutable criterion snapshot."),
-  "EvalRun.pairs": array("EvalPair objects in plan order."),
   "Job.payloadSchema": object("JSON Schema for job input."),
   "Skill.manifest": object("Typed skill manifest."),
   "Skill.providesTools": array("Tool descriptors supplied by the skill."),

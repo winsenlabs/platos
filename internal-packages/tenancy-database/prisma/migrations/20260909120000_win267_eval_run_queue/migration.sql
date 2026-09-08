@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS "public"."EvalRun" (
     "idempotencyKey" TEXT NOT NULL,
     "idempotencyDigest" TEXT NOT NULL,
     "pairCount" INTEGER NOT NULL,
-    "pairs" JSONB NOT NULL,
+    "pairThreadIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    "pairCriterionIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
     "status" TEXT NOT NULL DEFAULT 'QUEUED',
     "deliveries" INTEGER NOT NULL DEFAULT 0,
     "leaseOwner" TEXT,
@@ -70,28 +71,29 @@ CREATE TABLE IF NOT EXISTS "public"."EvalRun" (
     CONSTRAINT "EvalRun_pkey" PRIMARY KEY ("id")
 );
 
--- The port's `pairs` is a LIST in plan order, so the root is an array and not an
--- object: `jsonShapeRegistry` records it as `array` and this is the constraint
--- that makes that record true of the DATABASE rather than only of the client.
+-- THE PLAN IS TWO PARALLEL TEXT ARRAYS AND NOT A JSON COLUMN, and that is a
+-- constraint rather than a preference. `00000000000000_initial` is hash-pinned
+-- by `upgrade-contract.test.ts`, and `schema.test.ts` requires a
+-- `<Model>_<column>_json_root` CHECK in THAT file for every `Json` field in the
+-- schema — which a post-initial table cannot supply without moving a pin whose
+-- whole purpose is "preserves every pre-existing migration byte". The shape is
+-- `GoldenSet`'s own: that table already stores `threadIds` and `criterionIds` as
+-- TEXT arrays, and a plan is those two lists paired BY INDEX in plan order.
 --
--- THE NAME IS THE CONVENTION AND NOT A CHOICE. `00000000000000_initial` carries
--- one `<Model>_<column>_json_root` CHECK per JSONB column, and
--- `json-columns.integration.test.ts` reads them back out of `pg_constraint` and
--- fails on a census entry with no constraint AND on a constraint no census entry
--- names. A differently-named CHECK here would be invisible to both halves.
-ALTER TABLE "public"."EvalRun"
-  DROP CONSTRAINT IF EXISTS "EvalRun_pairs_json_root";
-ALTER TABLE "public"."EvalRun"
-  ADD CONSTRAINT "EvalRun_pairs_json_root" CHECK (jsonb_typeof("pairs") = 'array');
-
--- `pairCount` is what the port answers to a caller, and `pairs` is what a
--- dispatcher reads. A row where they disagree would report a plan that is not
--- the plan, so the database refuses it rather than trusting the writer.
+-- `pairCount` is what the port answers to a caller, and the two arrays are what
+-- a dispatcher reads. A row where the three disagree would report a plan that is
+-- not the plan — or, worse, pair a thread with another pair's criterion — so the
+-- database refuses it rather than trusting the writer. THIS is what stands in
+-- for the JSON root check the initial migration cannot carry, and it is a
+-- stronger statement than that check would have been: an array root says the
+-- column is a list, and this says the two lists ARE the plan.
 ALTER TABLE "public"."EvalRun"
   DROP CONSTRAINT IF EXISTS "EvalRun_pairCount_check";
 ALTER TABLE "public"."EvalRun"
   ADD CONSTRAINT "EvalRun_pairCount_check"
-  CHECK ("pairCount" = jsonb_array_length("pairs") AND "pairCount" > 0);
+  CHECK ("pairCount" = cardinality("pairThreadIds")
+     AND "pairCount" = cardinality("pairCriterionIds")
+     AND "pairCount" > 0);
 
 -- A lease is a PAIR. An owner with no expiry is a run nothing will ever reclaim;
 -- an expiry with no owner is a lease nobody holds. Both are refused here rather
