@@ -53,7 +53,7 @@
       ],
       "killCount": 1,
       "control": "`pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts` still passes 2/2 when run by hand. That is the entire failure this tranche repairs: a green suite nobody runs is indistinguishable from a green build.",
-      "note": "A first attempt at this row substituted a DIFFERENT agent suite for the census rather than deleting the step, and killed three cases instead of one - the two extra were pre-existing relocated-command-uniqueness checks reacting to the duplicate command, not to the missing gate. The row was rewritten to delete the step outright so the kill isolates the property under test."
+      "note": "A first draft of this row substituted a DIFFERENT agent suite for the census rather than deleting the step, and killed three cases instead of one - the two extra were pre-existing relocated-command-uniqueness checks reacting to the duplicate command, not to the missing gate. The row was rewritten to delete the step outright so the kill isolates the property under test."
     },
     {
       "name": "A02 the census step is hoisted above the build it depends on",
@@ -140,21 +140,21 @@
   "declared": [
     {
       "name": "the pin's dependence on build state, in the LOUD direction",
-      "attempted": "Delete `internal-packages/tenancy-database/dist` entirely, then run the census suite.",
+      "tried": "Delete `internal-packages/tenancy-database/dist` entirely, then run the census suite.",
       "result": "NOT A SILENT UNDERCOUNT, so not the failure the ordering assertion is written for. Vitest reports `Failed to resolve entry for package \"@platos/tenancy-database\"` and collects no tests at all.",
       "why-unfalsifiable": "There is nothing here to falsify: the suite cannot run, so no assertion of its can be made to fail. Recorded because the first draft of the ci-policy comment CLAIMED this state produced a quiet undercount, and that claim was wrong. It was measured and the comment rewritten rather than the measurement dropped.",
       "measured": "exit 1, `Tests: no tests`, zero cases collected."
     },
     {
       "name": "the pin's dependence on build state, in the QUIET direction",
-      "attempted": "Restore `dist` but delete its fifteen `.d.ts` files, so the runtime import succeeds and only the TYPES are missing.",
+      "tried": "Restore `dist` but delete its fifteen `.d.ts` files, so the runtime import succeeds and only the TYPES are missing.",
       "result": "REPRODUCED, and this is the state the ordering assertion exists for - but it is not counted as a kill because it is a property of the ENVIRONMENT, not a mutation of any file this branch owns. The census reads 812 where it should read 815: three call sites disappear with no error and no warning, because a client the checker cannot type is a client the analyzer cannot follow.",
       "why-unfalsifiable": "The environment cannot be mutated by a committed diff, so no row in `mutations` can carry it. A02 is the falsifiable shadow of the same property: it makes the WORKFLOW produce that environment, and that IS killable.",
       "measured": "815 with declarations present, 812 with them deleted, `dist` runtime files identical in both runs."
     },
     {
       "name": "whether the re-pinned figure reproduces on the hosted Linux runner",
-      "attempted": "Nothing. The measurement was taken on darwin/arm64 under Node v24.3.0; CI runs ubuntu-latest under the .nvmrc pin, Node 22.14.0.",
+      "tried": "Nothing. The measurement was taken on darwin/arm64 under Node v24.3.0; CI runs ubuntu-latest under the .nvmrc pin, Node 22.14.0.",
       "result": "NOT VERIFIED. All three assertions are order-independent by construction - a total, a de-duplicated set's cardinality, and a digest over that set AFTER sorting - so directory-iteration order cannot move them, and TypeScript resolution does not vary by platform for a workspace built the same way. That is an argument, not a measurement.",
       "why-unfalsifiable": "It is falsifiable, and it was simply not run: the only second machine available here is a Mac mini, which is the same OS family and would not test the thing in question. Docker may not run on the laptop. The honest statement is that this is the one claim in the tranche whose first real test is the first CI run.",
       "measured": "815 / 329 / 0c4fd159 on darwin/arm64 Node 24.3.0, in two build states (with and without `pnpm build:v1`)."

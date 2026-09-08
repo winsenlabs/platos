@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "6fb441c177818aafbddb8fc256a952b991d91ea8ddc4014edbd399551f0613f8"
+      "sha256": "af96381f2d374f34c06cec09e6cf806d78a606d243fcef5a956838dbffb918cb"
     },
     {
       "path": "LICENSE",
@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "48a924a0a7eb137846d428d87bb4501153f1699e954ce443b3ca35c0a57054b6"
+      "sha256": "660c4772f6f1d944fd38ca48acb7f79752e10a18a137909e08260c4892ee3c67"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3923,7 +3923,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "e9d3b73c29f685acb4ad3f8f37a94b56a18e3dfba7d27238120707bed19e71f9"
+      "sha256": "e1b6b3c04fe717e0bdd35a3982547f36b6b8c5c3ba6529fb13b12c9e9b37d56b"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
