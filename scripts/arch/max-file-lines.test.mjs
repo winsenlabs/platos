@@ -1178,9 +1178,11 @@ test("the live selectors scan an exact nonzero source census", () => {
       // a second `startGovernanceHarness` and a second PostgreSQL container in
       // the CI job for a file that is 403 against a 500 error -- which is the
       // difference this list's own note draws between "a warning that is a
-      // shape" and "one that is a queue for the hard error".
+      // shape" and "one that is a queue for the hard error". It is 404 rather
+      // than 403 because the forged-collision insert gained a column when the
+      // plan stopped being JSON.
       path: "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
-      effectiveLines: 403,
+      effectiveLines: 404,
       severity: "warning",
     },
     {
