@@ -2511,7 +2511,7 @@ export const EXPECTED = Object.freeze({
   //     work leaving NO row behind while the same shape committed does.
   //   8 on the CONSUMER half -- thirty-two concurrent claims never taking one
   //     run twice and losing none; a consumer that dies between claiming and
-  //     acknowledging getting its run back with `attempts` incremented; an
+  //     acknowledging getting its run back with its `deliveries` count raised; an
   //     abandoned run returning with its reason; a consumer PAST its lease
   //     unable to abandon the run another now holds; sixteen concurrent
   //     enqueues of one key costing ONE run; the queue answering FIFO; the three

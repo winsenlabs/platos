@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ba9a28371d9cf1345f33d2223b1856f883a083441d475a4eec840b186be62b68",
+  "evidenceSha256": "f909cbf1d4f5630dcfd9398efd348573765bedf7b87b64d0bcf93d8b42a75f46",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "138133012b18086f1faa020b9d5e3083a3957ff2cb597fa5d7a1e8196e88c4b0",
+    "aggregateSha256": "b1eac6d2af0f02ce09330130d346363ccdac0f9d57414db306aca9bc908d03c6",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -10815,7 +10815,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/prisma/migrations/20260909120000_win267_eval_run_queue/migration.sql",
-        "sha256": "6f59c58ac008c15f9d40c5a94facb2fc02965f1c17bef8704e57e70d6ed82269"
+        "sha256": "322d731b67e78bc5604a8868b521a3d4bbd55e900fc16cc651e542ba8149efe6"
       },
       {
         "path": "internal-packages/tenancy-database/prisma/migrations/migration_lock.toml",
@@ -10823,7 +10823,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/prisma/schema.prisma",
-        "sha256": "f5686b2d53049bcf53137d2e9cf20a7bf9fe6f3016721d1e471588364f0465f9"
+        "sha256": "67ba482dee3e45ad5eb16ba81dd2e6da9872c26d68c8d983089c05d75fe8b447"
       },
       {
         "path": "internal-packages/tenancy-database/prisma/upgrade-baselines/oracle-head/schema.prisma",
@@ -12091,11 +12091,11 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
-        "sha256": "b6e7bcfe12e7811deb8bcc89e9985fd7930e5e49380c5995987fcc673a5262a2"
+        "sha256": "18b7cdc8a05869e0fc6272229681187be99d2c21833774d06ab5de6ef4d14c12"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-eval-runs.ts",
-        "sha256": "3ccb761f444fa45f305d4eedbbe804d4a452ae63d717495f25f536701e793438"
+        "sha256": "4315650b52da80468613040c686c85e7de530961085b1705754b1997c8ff35d8"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/governance-evals.ts",
@@ -19875,7 +19875,7 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "601ff202f9ce3fc8991fb075c2cdb5c9d809f408f3530754ccd9d5ae255d6285"
+        "sha256": "400b7c27ba9ffac24df63d41e0b260a9a668e53ae890a7e68ca72c4ef9522ae4"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",

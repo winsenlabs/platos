@@ -131,7 +131,7 @@ const EVAL_RUN_COLUMNS = {
   pairCount: true,
   pairs: true,
   status: true,
-  attempts: true,
+  deliveries: true,
   leaseOwner: true,
   leaseExpiresAt: true,
 } as const;
@@ -146,7 +146,7 @@ export interface ClaimedEvalRun {
   readonly pairs: readonly EvalPair[];
   readonly pairCount: number;
   /** How many times this run has been handed out, including this one. */
-  readonly attempts: number;
+  readonly deliveries: number;
   readonly leaseExpiresAt: Date;
 }
 
@@ -169,7 +169,7 @@ export interface EvalRunDispatch {
   claim(owner: string, leaseMs: number, limit: number): Promise<Result<readonly ClaimedEvalRun[]>>;
   /** Finish a run this owner holds. False when the lease moved on. */
   acknowledge(runId: EvalRunId, owner: string): Promise<Result<boolean>>;
-  /** Give a run back for another attempt. False when the lease moved on. */
+  /** Give a run back for another delivery. False when the lease moved on. */
   abandon(runId: EvalRunId, owner: string, reason: string): Promise<Result<boolean>>;
 }
 
@@ -189,7 +189,7 @@ interface ClaimedRow {
   readonly baselineVersionId: string | null;
   readonly pairs: unknown;
   readonly pairCount: number;
-  readonly attempts: number;
+  readonly deliveries: number;
   readonly leaseExpiresAt: Date;
 }
 
@@ -350,7 +350,7 @@ export function createEvalRunStore(transactions: TenancyTransactions, now: () =>
           SET "status" = 'RUNNING',
               "leaseOwner" = ${owner},
               "leaseExpiresAt" = ${until},
-              "attempts" = run."attempts" + 1,
+              "deliveries" = run."deliveries" + 1,
               "updatedAt" = ${at}
           WHERE run."id" IN (
             SELECT candidate."id"
@@ -368,7 +368,7 @@ export function createEvalRunStore(transactions: TenancyTransactions, now: () =>
                     run."baselineVersionId",
                     run."pairs",
                     run."pairCount",
-                    run."attempts",
+                    run."deliveries",
                     run."leaseExpiresAt"
         `;
         return ok(
@@ -380,7 +380,7 @@ export function createEvalRunStore(transactions: TenancyTransactions, now: () =>
             baselineVersionId: row.baselineVersionId,
             pairs: readPairs(row.pairs),
             pairCount: row.pairCount,
-            attempts: row.attempts,
+            deliveries: row.deliveries,
             leaseExpiresAt: row.leaseExpiresAt,
           })),
         );
@@ -393,7 +393,7 @@ export function createEvalRunStore(transactions: TenancyTransactions, now: () =>
         // `leaseOwner` IS IN THE PREDICATE, and that is what makes an
         // acknowledgement safe after a lease expired. A consumer that stalled
         // past its lease, had the run reclaimed by another, and then came back to
-        // acknowledge would otherwise mark somebody else's in-flight attempt
+        // acknowledge would otherwise mark somebody else's in-flight delivery
         // finished. Here it updates nothing and is told so.
         const outcome = await transactions.pool().evalRun.updateMany({
           where: { id: runId, leaseOwner: owner, status: "RUNNING" },

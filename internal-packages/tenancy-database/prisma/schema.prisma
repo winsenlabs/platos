@@ -2016,7 +2016,7 @@ model EvalRun {
   /// Array root of {threadId, criterionId} in plan order; validated by jsonShapeRegistry.
   pairs             Json
   status            String    @default("QUEUED")
-  attempts          Int       @default(0)
+  deliveries        Int       @default(0)
   /// Which consumer holds the run, and until when. Both or neither.
   leaseOwner        String?
   leaseExpiresAt    DateTime?

@@ -12,7 +12,7 @@
 //      `FOR UPDATE SKIP LOCKED`, plus the arithmetic that the claimed sets are
 //      disjoint AND exhaustive.
 //   2. A CRASH BETWEEN CLAIM AND ACK LOSES NOTHING. The consumer never
-//      acknowledges; the lease expires; the run comes back with `attempts`
+//      acknowledges; the lease expires; the run comes back with `deliveries`
 //      INCREMENTED, which is what tells at-least-once from at-most-once.
 //   3. AN ERROR RESULT INSIDE THE UNIT OF WORK ROLLS BACK. This is the defect
 //      the tree has already paid for once — a threshold event committed with no
@@ -248,7 +248,7 @@ describe("the enqueue half: idempotent, and bounded by what a btree can index", 
     harness.applyPeerRows(
       `INSERT INTO "EvalRun" ("id", "environmentId", "goldenSetId", "agentId", "requestedBy",
                               "idempotencyKey", "idempotencyDigest", "pairCount", "pairs",
-                              "status", "attempts", "createdAt", "updatedAt")
+                              "status", "deliveries", "createdAt", "updatedAt")
        VALUES ('${forged}', '${scope.environmentId}', '${goldenSetId}', '${chain.agentId}', 'fixture',
                'a completely different run', '${evalRunDigest(command.idempotencyKey)}', 1,
                '[{"threadId":"${chain.threadId}","criterionId":"${chain.threadId}"}]'::jsonb,
@@ -364,7 +364,7 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
 
     for (const claim of claims) {
       if (!claim.ok) throw new Error("unreachable");
-      for (const run of claim.value) expect(run.attempts).toBeGreaterThanOrEqual(1);
+      for (const run of claim.value) expect(run.deliveries).toBeGreaterThanOrEqual(1);
     }
   }, 180_000);
 
@@ -380,22 +380,22 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
     if (!first.ok) throw new Error("unreachable");
     const mine = first.value.find((run) => run.runId === enqueued.value.runId);
     expect(mine, "the run must have been handed out once").toBeDefined();
-    expect(mine?.attempts).toBe(1);
+    expect(mine?.deliveries).toBe(1);
 
     await new Promise((resolve_) => setTimeout(resolve_, 50));
 
     const second = await harness.base.adapter.evalRuns.claim("live-consumer", 60_000, 50);
     if (!second.ok) throw new Error("unreachable");
     const again = second.value.find((run) => run.runId === enqueued.value.runId);
-    // AT-LEAST-ONCE: the run came back. `attempts` is 2, which is what
+    // AT-LEAST-ONCE: the run came back. `deliveries` is 2, which is what
     // distinguishes a redelivery from a run that was never taken at all.
     expect(again, "the crashed consumer's run must be claimable again").toBeDefined();
-    expect(again?.attempts).toBe(2);
+    expect(again?.deliveries).toBe(2);
 
     // AND THE DEAD CONSUMER CANNOT FINISH IT. Its acknowledgement names a lease
     // that has moved on, so it updates nothing and is told so — otherwise a
     // consumer waking after its lease expired would mark somebody else's
-    // in-flight attempt done.
+    // in-flight delivery done.
     const late = await harness.base.adapter.evalRuns.acknowledge(enqueued.value.runId, "doomed-consumer");
     if (!late.ok) throw new Error("unreachable");
     expect(late.value).toBe(false);
@@ -432,7 +432,7 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
     const retaken = await harness.base.adapter.evalRuns.claim("steady", 60_000, 50);
     if (!retaken.ok) throw new Error("unreachable");
     const back = retaken.value.find((run) => run.runId === enqueued.value.runId);
-    expect(back?.attempts).toBe(2);
+    expect(back?.deliveries).toBe(2);
     expect((await readRun(enqueued.value.runId))?.lastError).toBe("judge unreachable");
   }, 180_000);
 
@@ -441,7 +441,7 @@ describe("the consumer half: exclusive, and it loses nothing when a consumer die
     // `abandon`'s predicate left every case in this file green, and the
     // acknowledge half was already pinned — so the two halves of the same rule
     // had one proof between them. The failure mode is worse on this side:
-    // acknowledging somebody else's attempt marks it DONE, abandoning it puts a
+    // acknowledging somebody else's delivery marks it DONE, abandoning it puts a
     // run another consumer is actively scoring back on the queue, so the fan-out
     // is paid for twice.
     const enqueued = await harness.base.adapter.evalRuns.enqueue(
@@ -603,7 +603,7 @@ describe("the two refusal codes the old objection said could not stay apart", ()
   test("ONE outage, TWO ports, TWO codes, in one process against one database", async () => {
     // The objection in `governance-repository.ts` was that satisfying this port
     // from the canonical store would merge "the dispatcher refused the work"
-    // with "a table is down". Here is the merge, attempted: the same table is
+    // with "a table is down". Here is the merge, tried: the same table is
     // taken away from BOTH ports at once.
     harness.applyPeerRows(`ALTER TABLE "EvalRun" RENAME TO "EvalRunHidden";
            ALTER TABLE "AgentEval" RENAME TO "AgentEvalHidden";`);

@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS "public"."EvalRun" (
     "pairCount" INTEGER NOT NULL,
     "pairs" JSONB NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'QUEUED',
-    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "deliveries" INTEGER NOT NULL DEFAULT 0,
     "leaseOwner" TEXT,
     "leaseExpiresAt" TIMESTAMP(3),
     "lastError" TEXT,
