@@ -1,0 +1,332 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-267",
+  "tranche": "T2 — the REST chassis (closes WIN-260 (c))",
+  "branch": "tejas/win-267-t2-chassis",
+  "base": "92b4c2ae (tejas/win-267-t1-versioning)",
+  "purpose": [
+    "T2 builds the chassis every one of the 300 REST operations will sit on: a",
+    "global exception filter, a validation pipe that mints `fields[]`, the ITEM",
+    "and COLLECTION envelopes, and one correlation identifier on the wire and at",
+    "the kernel port. No business route lands.",
+    "",
+    "THE CLAIM UNDER TEST IS A COUNT, AND BOTH SIDES OF IT ARE MEASURED. Before",
+    "this branch `writeFailure` had exactly ONE production caller",
+    "(idempotency-middleware.ts) and there was no `useGlobalFilters`,",
+    "`ExceptionFilter` or `@Catch` anywhere in the tree, so 7 of the canonical",
+    "codes could reach a REST caller. The suite raises EVERY code in",
+    "docs/error-taxonomy.json against a real socket and counts what came back;",
+    "the universe is `Object.keys(taxonomy.codes).length` read from that file and",
+    "the reached set is what the wire carried. Neither number is written in the",
+    "suite, which is what M12 and M13 exist to demonstrate.",
+    "",
+    "M01 IS THE ENTRY THIS LEDGER EXISTS FOR. One provider key changed in",
+    "http.module.ts unregisters the filter, and the sweep drops from 419 to 0",
+    "while every arch gate in the repository stays at exit 0. Without that entry,",
+    "'the codes are reachable' would be an argument about a table.",
+    "",
+    "NOTHING HERE NEEDS A DATABASE, A CONTAINER OR A DOCKER DAEMON. Every case is",
+    "a file edit plus one vitest or node process; the whole ledger sweeps in about",
+    "a minute. The container half of the correlation claim — that whatever a",
+    "`CorrelationSource` reports arrives in PostgreSQL — is M2.5's and lives in",
+    "packages/adapters/postgres-tenancy/src/correlation.integration.test.ts."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST. The unmutated tree was run green before and after every",
+    "entry below: 341 cases in `pnpm --filter @platos/core-api test`, and",
+    "`node scripts/error-taxonomy.mjs --check` at 419 codes across 944 source",
+    "files. An entry whose suite was already red proves nothing, and a 'kill' with",
+    "no named failing line is VACUOUS.",
+    "",
+    "For one entry: apply `to` to `file`, run `command`, confirm the NAMED case in",
+    "`kills` appears and the process exits non-zero. Then revert and confirm exit",
+    "0. Every `kills` line below was SEEN, on this branch, at the commit that",
+    "introduces this file.",
+    "",
+    "`file` is REPOSITORY-relative. `control` records a command that stayed GREEN",
+    "under the same mutation, which is what makes the killing gate load-bearing",
+    "rather than one of several redundant copies."
+  ],
+  "commands": {
+    "chassis": "pnpm --filter @platos/core-api exec vitest run src/http/rest-chassis.test.ts",
+    "unit": "pnpm --filter @platos/core-api exec vitest run src/transports/rest/envelope.test.ts",
+    "lifecycle": "pnpm --filter @platos/core-api exec vitest run src/runtime/lifecycle.test.ts",
+    "taxonomy": "node scripts/error-taxonomy.mjs --check"
+  },
+  "mutations": [
+    {
+      "name": "M01 the global exception filter is not registered",
+      "guards": "apps/core-api/src/http/http.module.ts — the APP_FILTER provider that makes the taxonomy reachable",
+      "file": "apps/core-api/src/http/http.module.ts",
+      "from": "          provide: APP_FILTER,",
+      "to": "          provide: Symbol(\"not-the-filter\"),",
+      "command": "chassis",
+      "exit": 1,
+      "kills": [
+        "× WIN-260 (c) — every canonical code is reachable over REST > answers all 419 taxonomy codes in the M0.4 §2 envelope, at the status the taxonomy records",
+        "→ expected [ …(5) ] to deeply equal []",
+        "× ... > answers a defect as TRANSPORT_UNHANDLED_FAULT and keeps its text off the wire",
+        "→ expected undefined to be 'TRANSPORT_UNHANDLED_FAULT'",
+        "× ... > answers an unrouted path in the envelope, without echoing the path",
+        "→ expected 500 to be 404"
+      ],
+      "killCount": 12,
+      "control": "Every arch gate stays at exit 0 — audit:error-taxonomy still reports 419 codes and 'every code maps to a status the runtime module actually resolves', audit:composition-root, audit:arch-boundaries and audit:max-file-lines are unmoved. This is the hole T2 exists to close: the table was provably correct and served by nothing, and no gate in the repository could see the difference.",
+      "note": "THE most important entry. The reachability claim is one provider key wide, and this is what it looks like when it is gone: 419 codes answer Nest's own `{statusCode:500,message:\"Internal server error\"}` and the reached set is empty."
+    },
+    {
+      "name": "M02 the filter stops recognising a bare DomainError value",
+      "guards": "apps/core-api/src/transports/rest/fault.ts — structural recognition, not `instanceof`",
+      "file": "apps/core-api/src/transports/rest/fault.ts",
+      "from": "  if (isDomainError(thrown)) return thrown;",
+      "to": "(the line deleted)",
+      "command": "chassis",
+      "exit": 1,
+      "kills": [
+        "× WIN-260 (c) — every canonical code is reachable over REST > routes a bare DomainError value, not only a DomainFault",
+        "→ expected 500 to be 404"
+      ],
+      "killCount": 1,
+      "control": "The 419-code sweep stays GREEN, because the probe raises through `raise()` and therefore always throws a `DomainFault`. The kernel blesses the VALUE shape — 'an error here is a VALUE, not a thrown class' — so a transport that threw one directly would have been a silent 500, and only this case sees it.",
+      "note": "The `DomainFault` arm and the value arm are separately reachable, and the sweep only exercises the first."
+    },
+    {
+      "name": "M03 the envelope writer spreads the DomainError, putting `details` on the wire",
+      "guards": "apps/core-api/src/http/failure.ts — `toWireError` names every field it copies",
+      "file": "apps/core-api/src/http/failure.ts",
+      "from": "  response.end(JSON.stringify({ error: envelope }));",
+      "to": "  response.end(JSON.stringify({ error: { ...envelope, details: error.details } }));",
+      "command": "chassis",
+      "exit": 1,
+      "kills": [
+        "× WIN-260 (c) — every canonical code is reachable over REST > puts the category in `title` and never puts `details` on the wire",
+        "→ expected '{\"error\":{\"code\":\"AGENTS_AGENT_NOT_FO…' not to contain 'SECRET-PROBE-MUST-NOT-REACH-A-CALLER'",
+        "× ... > answers all 419 taxonomy codes in the M0.4 §2 envelope, at the status the taxonomy records",
+        "→ expected [ …(5) ] to deeply equal []"
+      ],
+      "killCount": 2,
+      "control": "audit:error-taxonomy stays at exit 0: the taxonomy joins codes to statuses and says nothing about which FIELDS reach a caller. The kernel's 'never returned to a client' promise about `details` is enforced by the suite and by `toWireError` naming its fields, and by nothing else.",
+      "note": "The sweep plants the same string in `details` on all 419 raises, so the leak check is a statement about every code rather than the handful somebody thought to list."
+    },
+    {
+      "name": "M04 the terminal 404 route is dropped from the module",
+      "guards": "apps/core-api/src/http/not-found.controller.ts, registered by http.module.ts",
+      "file": "apps/core-api/src/http/http.module.ts",
+      "from": "      controllers: [HealthController, NotFoundController],",
+      "to": "      controllers: [HealthController],",
+      "command": "chassis",
+      "exit": 1,
+      "kills": [
+        "× WIN-260 (c) — every canonical code is reachable over REST > answers an unrouted path in the envelope, without echoing the path",
+        "→ expected undefined to be 'TRANSPORT_ROUTE_NOT_FOUND'",
+        "× WIN-267 T2 — through the process main.ts starts > answers an unrouted path in the envelope, with the stamp and a trace reference",
+        "→ expected undefined to be 'TRANSPORT_ROUTE_NOT_FOUND'"
+      ],
+      "killCount": 2,
+      "control": "The 419-code sweep stays GREEN — every probe path exists — which is exactly why the 404 needed its own route and its own case: it is the one REST answer no handler produces.",
+      "note": "Both halves die: the probe application and the real `startCoreApi` process. The second is the one that says the production module, not the harness, carries the route."
+    },
+    {
+      "name": "M05 the terminal 404 route is registered FIRST",
+      "guards": "apps/core-api/src/http/http.module.ts — order in `controllers` is part of the contract",
+      "file": "apps/core-api/src/http/http.module.ts",
+      "from": "      controllers: [HealthController, NotFoundController],",
+      "to": "      controllers: [NotFoundController, HealthController],",
+      "command": "chassis + lifecycle",
+      "exit": 1,
+      "kills": [
+        "× WIN-260 (c) — every canonical code is reachable over REST > still lets a real route win against the terminal handler",
+        "→ expected 404 to be 200",
+        "× the process starts and serves > answers liveness unconditionally, even with nothing wired",
+        "→ expected 404 to be 200",
+        "× readiness tells the truth about what is wired > is 503 while adapter bindings are unsatisfied",
+        "→ expected 404 to be 503"
+      ],
+      "killCount": 12,
+      "control": "audit:max-file-lines, audit:composition-root and audit:arch-boundaries all stay at exit 0: an array reordered is not a boundary crossed. Nothing static can see this.",
+      "note": "This is why the 404 is a ROUTE rather than a branch inside the filter — 'nothing else matched' is expressed in the mechanism that decides matching. It is also the entry that shows the cost of getting it wrong: a `{*path}` handler promoted above the health controller answers 404 to every liveness probe in the fleet."
+    },
+    {
+      "name": "M06 the validation pipe stops raising a DomainFault",
+      "guards": "apps/core-api/src/http/validation.pipe.ts — a refusal is the envelope, not Nest's 400",
+      "file": "apps/core-api/src/http/validation.pipe.ts",
+      "from": "    throw new DomainFault(outcome.error);",
+      "to": "    throw new Error(\"invalid request\");",
+      "command": "chassis",
+      "exit": 1,
+      "kills": [
+        "× WIN-267 T2 — the success envelopes and the validation pipe, over HTTP > refuses bad pagination with fields[] in the envelope, not a Nest 400",
+        "→ expected 500 to be 400"
+      ],
+      "killCount": 1,
+      "control": "The unit suite `src/transports/rest/envelope.test.ts` stays GREEN in full: `parsePageQuery` still returns the same `err` with the same `fields[]`. The RULE is intact and the caller sees a 500 — which is the precise reason the rule and the pipe are separate files with separate evidence.",
+      "note": "The mutation is what a handler that threw `BadRequestException` would produce: a status with no `error.code`, no `errorId`, no `traceRef` and no `fields[]`."
+    },
+    {
+      "name": "M07 pagination coerces silently instead of refusing",
+      "guards": "apps/core-api/src/transports/rest/page.ts — WIN-236's 'no longer silently coerced'",
+      "file": "apps/core-api/src/transports/rest/page.ts",
+      "from": "  if (!INTEGER.test(raw)) {",
+      "to": "  if (false) {",
+      "command": "unit",
+      "exit": 1,
+      "kills": [
+        "× WIN-267 T2 — pagination refuses instead of coercing (WIN-236) > refuses every shape Number() would have silently swallowed",
+        "→ expected 'below_minimum' to be 'not_an_integer'"
+      ],
+      "killCount": 1,
+      "control": "The chassis suite stays GREEN: its one bad-pagination case sends `limit=0`, which `Number()` reads as 0 and the range check still refuses. Only the four coercion shapes — `''`, `' 25 '`, `'2e1'`, `'20; DROP'` — separate a parser from a coercion, and they are asserted in the unit suite where every branch is reachable without a socket.",
+      "note": "The kill is a CHANGED violation code rather than an absent one, which is the honest signal: `Number('')` is 0, so the caller would have been told the wrong thing about the wrong rule."
+    },
+    {
+      "name": "M08 the correlation frame is never entered",
+      "guards": "apps/core-api/src/runtime/correlation.ts — the async-local frame the kernel port reads",
+      "file": "apps/core-api/src/runtime/correlation.ts",
+      "from": "  return storage.run(context, work);",
+      "to": "  return work();",
+      "command": "chassis + src/runtime/correlation.test.ts",
+      "exit": 1,
+      "kills": [
+        "× WIN-267 T2 — one correlation identifier, on the wire and at the port > adopts the caller's id into traceRef, the response header and the kernel port",
+        "→ expected null to be 'req-t2-0001'",
+        "× the kernel CorrelationSource seam (WIN-260) > reports the SAME identifier the ambient context carries",
+        "× ambient propagation > survives an await, which is the only reason async-local storage is here"
+      ],
+      "killCount": 6,
+      "control": "The 419-code sweep stays GREEN and every `traceRef` is still correct, because `DomainExceptionFilter.traceRef` falls back to the response header the edge stamped. That fallback is deliberate and it is also why this entry is here: without a case that asks the PORT, the fallback would have hidden a dead ambient frame and every adapter would have written `null` into PostgreSQL while the wire looked perfect.",
+      "note": "M2.5 built both ends of this seam and joined neither to the other; T2's `/probe/correlation` case asks the port the adapter is handed, from inside a request."
+    },
+    {
+      "name": "M09 the build stamp drifts from the manifest",
+      "guards": "apps/core-api/src/transports/rest/envelope.ts CONTRACT_BUILD_ID, joined to apps/agent/src/control-plane/operation-manifest.generated.json",
+      "file": "apps/core-api/src/transports/rest/envelope.ts",
+      "from": "export const CONTRACT_BUILD_ID = \"M0.1\";",
+      "to": "export const CONTRACT_BUILD_ID = \"M0.4\";",
+      "command": "unit",
+      "exit": 1,
+      "kills": [
+        "× WIN-267 T2 — the build stamp is one fact, not two > carries the manifestVersion the ONE manifest records",
+        "→ expected 'M0.4' to be 'M0.1'"
+      ],
+      "killCount": 1,
+      "control": "The chassis suite stays GREEN in full: every case there compares the served header and `meta.contractVersion` against the CONSTANT, so the two agree with each other whatever the constant says. Only the case that reads the manifest off disk can tell whether the constant is right. audit:contract-map also stays at exit 0 — it measures the `api/v1` prefix, not the build id.",
+      "note": "`M0.4` is the value the ADR's prose implies and the manifest does not carry, which is exactly the drift ADR M0.4 §1.1 forbids: 'a hand-edit that disagrees with the manifest fails CI'."
+    },
+    {
+      "name": "M10 the build stamp stops being set at the edge",
+      "guards": "apps/core-api/src/runtime/edge-middleware.ts — one stamp for every response, including the failures",
+      "file": "apps/core-api/src/runtime/edge-middleware.ts",
+      "from": "    response.setHeader(CONTRACT_VERSION_HEADER, CONTRACT_BUILD_ID);",
+      "to": "(the line deleted)",
+      "command": "chassis",
+      "exit": 1,
+      "kills": [
+        "× WIN-267 T2 — the success envelopes and the validation pipe, over HTTP > serves the ITEM envelope and the build stamp on every response",
+        "→ expected null to be 'M0.1'",
+        "× WIN-267 T2 — through the process main.ts starts > answers an unrouted path in the envelope, with the stamp and a trace reference",
+        "→ expected null to be 'M0.1'"
+      ],
+      "killCount": 2,
+      "control": "The 419-code sweep stays GREEN — it reads the envelope BODY, and `meta.contractVersion` is unaffected. A per-route header would have passed every body assertion in the file.",
+      "note": "The case that dies asks for the header on an UNROUTED path, which is the half a per-route `@Header()` decorator can never carry."
+    },
+    {
+      "name": "M11 the shutdown refusal reverts to its pre-M4.1 private shape",
+      "guards": "apps/core-api/src/runtime/edge-middleware.ts — the admission refusal is the M0.4 §2 envelope",
+      "file": "apps/core-api/src/runtime/edge-middleware.ts",
+      "from": "        writeFailure(response, shuttingDown(), {\n          errorId: mintErrorId(),\n          requestId: correlation.requestId,\n        });",
+      "to": "        response.end(JSON.stringify({ error: { code: \"core-api.shutdown.work_refused\" } }));",
+      "command": "lifecycle",
+      "exit": 1,
+      "kills": [
+        "× shutdown REFUSES late work instead of dropping it > answers 503 with the refusal code once admission is closed",
+        "→ expected 200 to be 503",
+        "× shutdown REFUSES late work instead of dropping it > tells the caller to come back, rather than merely closing on them",
+        "→ expected null to be '1'"
+      ],
+      "killCount": 2,
+      "control": "The chassis suite stays GREEN: admission is open in every one of its cases, so the refusal path is unreachable there. This is M2.5's guard, still live, now asserting the canonical envelope instead of a bare code.",
+      "note": "The `to` here is LITERALLY the code this branch replaced. The second kill is the sharper one — the mutation loses the status line and the `Retry-After` as well as the shape, because writing the envelope is what set them."
+    },
+    {
+      "name": "M12 a code is removed from the taxonomy",
+      "guards": "docs/error-taxonomy.json joined to 944 source files by scripts/error-taxonomy.mjs E1",
+      "file": "docs/error-taxonomy.json",
+      "from": "the AGENTS_AGENT_ALREADY_EXISTS entry",
+      "to": "(the entry deleted)",
+      "command": "taxonomy",
+      "exit": 1,
+      "kills": [
+        "E1 AGENTS_AGENT_ALREADY_EXISTS is minted at 1 site(s) in agents and has no entry in docs/error-taxonomy.json; run --write and choose its status"
+      ],
+      "killCount": 1,
+      "control": "THE CHASSIS SUITE STAYS GREEN, AT 418 OF 418, AND THAT IS THE POINT OF THIS ENTRY. The reachability case reads its universe out of the taxonomy file, so it follows the file rather than a number written in the suite — which is what 'the count of reachable codes must be derived from the taxonomy file, not from a list in the test' means when it is true. What stops the file being edited freely is the OTHER side of the join: E1 reads the mint sites in seventeen contexts, and lowering the count would mean deleting the code from the context that raises it.",
+      "note": "Paired with M13. Together they say: the suite cannot lie about the count, and the file cannot lie about the codes."
+    },
+    {
+      "name": "M13 a code nobody mints is added to the taxonomy",
+      "guards": "docs/error-taxonomy.json joined to 944 source files by scripts/error-taxonomy.mjs E2",
+      "file": "docs/error-taxonomy.json",
+      "from": "(no TRANSPORT_INVENTED_CODE entry)",
+      "to": "\"TRANSPORT_INVENTED_CODE\": { \"category\": \"not_found\", \"status\": 404, \"contexts\": [\"core-api\"] }",
+      "command": "taxonomy",
+      "exit": 1,
+      "kills": [
+        "E2 docs/error-taxonomy.json carries TRANSPORT_INVENTED_CODE, which no context mints any more"
+      ],
+      "killCount": 1,
+      "control": "The chassis suite stays GREEN at 420 of 420: the probe raises whatever the taxonomy names, so an invented code is reachable exactly like a real one. Inflating the headline number is therefore possible in the FILE and impossible in the REPOSITORY, and E2 is the reason.",
+      "note": "The other direction of M12. A reachability number is only worth something if the universe it is measured against cannot be padded."
+    },
+    {
+      "name": "M14 the filter's headers-sent guard is removed",
+      "guards": "apps/core-api/src/http/domain-exception.filter.ts — a filter cannot un-send bytes",
+      "file": "apps/core-api/src/http/domain-exception.filter.ts",
+      "from": "    if (response.headersSent) {",
+      "to": "    if (false) {",
+      "command": "chassis",
+      "exit": 1,
+      "kills": [
+        "× WIN-260 (c) — every canonical code is reachable over REST > logs a fault that arrived after the response, instead of writing a second one",
+        "→ expected [ 'http.request_failed', …(423) ] to include 'http.fault_after_response'"
+      ],
+      "killCount": 1,
+      "control": "The client-visible response is UNCHANGED under this mutation — the bytes had already gone — so every wire assertion in the file stays green. The observable is the log line, which is the only thing the filter has left once the response is sent, and asserting on it is what makes the arm falsifiable at all.",
+      "note": "Recorded honestly: this guard cannot be killed from the wire, and the entry says so rather than claiming a stronger kill."
+    },
+    {
+      "name": "M15 the filter stops passing a handler's own HttpException through",
+      "guards": "apps/core-api/src/http/domain-exception.filter.ts arm 3 — the readiness body is a load-balancer contract",
+      "file": "apps/core-api/src/http/domain-exception.filter.ts",
+      "from": "    if (domain === null && exception instanceof HttpException) {",
+      "to": "    if (false) {",
+      "command": "chassis + lifecycle",
+      "exit": 1,
+      "kills": [
+        "× WIN-260 (c) — every canonical code is reachable over REST > leaves a handler's own HttpException exactly as the handler chose it",
+        "→ expected 500 to be 409",
+        "× readiness tells the truth about what is wired > is 503 while adapter bindings are unsatisfied",
+        "→ expected 500 to be 503",
+        "× graceful shutdown > serves a 503 draining readiness over HTTP during the grace period",
+        "→ expected 500 to be 503"
+      ],
+      "killCount": 4,
+      "control": "The 419-code sweep stays GREEN: a `DomainError` never reaches arm 3. The gates that would notice a health surface answering 500 to every probe are, again, none — this is a live-traffic property and only the suites see it.",
+      "note": "The entry that justifies the arm. Forcing every `HttpException` into the envelope would turn `/readyz` into a 500 during a rolling deploy, and the load balancer would stop draining and start restarting."
+    }
+  ],
+  "declared": [
+    {
+      "claim": "`X-Platos-Contract-Min` — M0.4 §1's floor assertion, and the `400 CONTRACT_TOO_OLD` it answers with — is NOT implemented and is not mutated here.",
+      "reason": "The taxonomy mints no such code, and minting one is a contract-negotiation decision that belongs with the version expression rather than with the failure chassis. Stated rather than quietly skipped: the build stamp is SERVED by T2 and is not yet NEGOTIABLE."
+    },
+    {
+      "claim": "A future REST handler that throws a Nest `HttpException` instead of raising a `DomainFault` escapes the envelope, and no gate refuses it.",
+      "reason": "Arm 3 exists for the health surface (M15 shows what removing it costs) and it is the same door a business handler could walk through. The rule is stated in the filter's banner and the chassis makes obeying it the easy path, but 'stated' is weaker than 'enforced' and this ledger will not pretend otherwise. An arch script that refuses `HttpException` under a business transport is the honest fix and belongs with the first tranche that lands one."
+    },
+    {
+      "claim": "The 419-code sweep proves that each code CAN reach a caller through the filter. It does not prove that the context which owns a code will actually raise it on the route that will one day serve it.",
+      "reason": "That is a per-route property and there are no routes yet. What WIN-260 (c) asks — 'REST/MCP/stream/workflow errors map consistently' — is a property of the MAPPING, and the mapping is what is measured. MCP, stream and workflow are M4.2/M4.6 and are named as out of scope rather than counted."
+    }
+  ]
+}

@@ -13,7 +13,7 @@
 
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -24,6 +24,8 @@ const scriptDir = dirname(fileURLToPath(import.meta.url));
 const agentDir = resolve(scriptDir, "..");
 const repoDir = resolve(agentDir, "../..");
 const srcDir = join(agentDir, "src");
+const coreApiSrcDir = join(repoDir, "apps", "core-api", "src");
+const coreApiTransportsDir = join(coreApiSrcDir, "transports");
 const toolsDir = join(srcDir, "mcp-platform", "tools");
 const manifestPath = join(srcDir, "control-plane", "operation-manifest.generated.json");
 const reportPath = join(repoDir, "docs", "control-plane-parity.generated.md");
@@ -61,6 +63,57 @@ const PRODUCTION_MOUNTED_CONTROLLERS = {
   SkillsController: "skills/skills.module.ts",
   InternalExecuteToolController: "trigger-bridge/trigger-bridge.module.ts",
 };
+
+/**
+ * The V1 core-api transport controllers, mounted the same way and held to a
+ * STRICTER rule than the agent's.
+ *
+ * WIN-267 (M4.1). Until this generator had a second scan root it walked
+ * `apps/agent/src` and nothing else, so a route added under `apps/core-api`
+ * never reached the manifest — and every gate downstream of the manifest
+ * (capability matrix, differential coverage, route parity) was therefore
+ * enumerating a surface that had stopped being the whole surface.
+ *
+ * WHY IT IS EMPTY AND WHY THAT IS NOT A SILENCE. `apps/core-api/src/transports`
+ * holds six 20-line seams whose comments say "M4 OWNS THE SURFACE"; there is no
+ * controller there yet. An empty allowlist paired with `assertNoUnregisteredCoreApiControllers`
+ * below is the opposite of a placeholder: the agent root SKIPS a controller that
+ * is not on its allowlist (there are non-mounted controllers in that tree by
+ * design), whereas the core-api root REFUSES generation for one. So the first
+ * transport controller to land cannot be silently omitted from the manifest —
+ * it either gets registered here or the generator fails by name.
+ *
+ * Keys are class names; values are the module file, relative to
+ * `apps/core-api/src`, whose `controllers: [...]` array must list the class.
+ *
+ * `src/http/health.controller.ts` is NOT here and must not be: `/livez`,
+ * `/healthz` and `/readyz` are the PROCESS edge, deliberately unversioned per
+ * ADR M0.4 §2, and the manifest is the business-surface contract. That exclusion
+ * carries its own tripwire in `scripts/rest-census-independent.mjs`.
+ */
+const CORE_API_MOUNTED_CONTROLLERS = {};
+
+/**
+ * The controller scan roots. `scanDir` is walked for `*.controller.ts`;
+ * `moduleDir` resolves the allowlist's module paths; `strict` decides whether a
+ * controller found outside the allowlist is skipped or is a hard failure.
+ */
+const CONTROLLER_SCAN_ROOTS = [
+  {
+    id: "agent",
+    scanDir: srcDir,
+    moduleDir: srcDir,
+    mounted: PRODUCTION_MOUNTED_CONTROLLERS,
+    strict: false,
+  },
+  {
+    id: "core-api-transports",
+    scanDir: coreApiTransportsDir,
+    moduleDir: coreApiSrcDir,
+    mounted: CORE_API_MOUNTED_CONTROLLERS,
+    strict: true,
+  },
+];
 
 /**
  * Explicit REST→MCP equivalence declarations. Everything not listed here is
@@ -399,7 +452,22 @@ function decoratorCall(node, sf, name) {
 
 function decoratorPaths(call, sf) {
   if (!call || call.arguments.length === 0) return [""];
-  const arg = call.arguments[0];
+  let arg = call.arguments[0];
+  // WIN-267 T1 — `@Controller({ path, version })`. The class-level version has
+  // to travel in the options object because Nest 11's standalone `@Version` is
+  // method-only: it dereferences `descriptor.value` unconditionally
+  // (`@nestjs/common/decorators/core/version.decorator.js`), so applying it to
+  // a class throws at import. `@Controller({ version })` writes the same
+  // `VERSION_METADATA` key, so this is the same mechanism spelt for a class.
+  if (ts.isObjectLiteralExpression(arg)) {
+    const pathProperty = arg.properties.find(
+      (property) => ts.isPropertyAssignment(property) && propertyName(property) === "path"
+    );
+    // `@Controller({ version })` with no `path` is Nest's own default: the
+    // controller contributes nothing and every route path comes off the method.
+    if (!pathProperty) return [""];
+    arg = pathProperty.initializer;
+  }
   if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return [arg.text];
   if (ts.isArrayLiteralExpression(arg)) {
     return arg.elements.map((entry) => {
@@ -414,6 +482,151 @@ function decoratorPaths(call, sf) {
 
 function joinRoute(base, child) {
   return `/${[base, child].filter(Boolean).join("/")}`.replaceAll(/\/{2,}/g, "/");
+}
+
+// ── THE VERSION EXPRESSION, READ FROM THE FILE THE RUNTIME USES ─────────────
+//
+// WIN-267 (M4.1) T1. Until this milestone every controller spelled `api/v1` in
+// its own decorator, so composing a route here was `@Controller` path +
+// `@Get` path and nothing else. The version now lives in ONE place —
+// `apps/agent/src/http/api-surface.ts` — and Nest assembles the wire path out
+// of three parts at boot: `setGlobalPrefix("api")`, the URI-versioning segment
+// `/v1`, and the controller's own path.
+//
+// This generator has to model that composition, and there is exactly one way to
+// do it that is not a second private opinion about the version: READ THE SAME
+// FILE. `apiSurface()` AST-parses `api-surface.ts` for its four exported
+// constants. If someone renames the prefix, moves the major, or adds an
+// unversioned root, this generator changes with the runtime and the manifest
+// diff shows it — it cannot quietly keep emitting the old paths.
+//
+// The manifest is then checked against a THIRD mechanism that shares nothing
+// with either: `apps/agent/src/http/api-surface.test.ts` boots a real Nest
+// application over these same controllers, calls the same `applyApiSurface`,
+// and reads the route table back out of Express. The generator's arithmetic and
+// Nest's router have to agree, and both have to agree with the frozen
+// `origin/main` manifest.
+const VERSION_NEUTRAL_SENTINEL = Symbol("VERSION_NEUTRAL");
+
+let apiSurfaceCache = null;
+
+function apiSurface() {
+  if (apiSurfaceCache) return apiSurfaceCache;
+  const path = join(srcDir, "http", "api-surface.ts");
+  if (!existsSync(path)) {
+    throw new Error(
+      `the version expression is declared in ${relative(repoDir, path)} and that file is missing; ` +
+        "this generator refuses to guess a URL prefix"
+    );
+  }
+  const sf = sourceFile(path);
+  const values = new Map();
+  for (const statement of sf.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) continue;
+      values.set(declaration.name.text, declaration.initializer);
+    }
+  }
+  const stringConstant = (name) => {
+    const node = values.get(name);
+    if (!node || !(ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node))) {
+      throw new Error(`${name} must be an exported string literal in api-surface.ts`);
+    }
+    return node.text;
+  };
+  // `UNVERSIONED_ROOT_SEGMENTS` is written as `Object.freeze([...] as const)`;
+  // unwrap to the array literal and require every element to be a plain string.
+  const segmentsNode = values.get("UNVERSIONED_ROOT_SEGMENTS");
+  let arrayNode = segmentsNode;
+  while (
+    arrayNode &&
+    (ts.isAsExpression(arrayNode) ||
+      ts.isParenthesizedExpression(arrayNode) ||
+      (ts.isCallExpression(arrayNode) && arrayNode.arguments.length === 1))
+  ) {
+    arrayNode = ts.isCallExpression(arrayNode) ? arrayNode.arguments[0] : arrayNode.expression;
+  }
+  if (!arrayNode || !ts.isArrayLiteralExpression(arrayNode)) {
+    throw new Error("UNVERSIONED_ROOT_SEGMENTS must be an array literal in api-surface.ts");
+  }
+  const unversionedRoots = arrayNode.elements.map((element) => {
+    if (!ts.isStringLiteral(element) && !ts.isNoSubstitutionTemplateLiteral(element)) {
+      throw new Error("UNVERSIONED_ROOT_SEGMENTS entries must be string literals");
+    }
+    return element.text;
+  });
+  apiSurfaceCache = {
+    globalPrefix: stringConstant("API_GLOBAL_PREFIX"),
+    versionPrefix: stringConstant("API_VERSION_PREFIX"),
+    version: stringConstant("API_VERSION"),
+    unversionedRoots: new Set(unversionedRoots),
+  };
+  return apiSurfaceCache;
+}
+
+/**
+ * Resolve a version expression to a string version or the neutral sentinel.
+ *
+ * Only three forms are accepted, and an unrecognised one THROWS rather than
+ * defaulting: a version this generator cannot read is a route it would silently
+ * mount on the wrong path, which is precisely the failure T1 exists to prevent.
+ */
+function resolveVersionExpression(arg, sf) {
+  if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return arg.text;
+  if (ts.isIdentifier(arg) && arg.text === "VERSION_NEUTRAL") return VERSION_NEUTRAL_SENTINEL;
+  if (ts.isIdentifier(arg) && arg.text === "API_VERSION") return apiSurface().version;
+  throw new Error(
+    `version expression ${arg.getText(sf)} in ${relative(repoDir, sf.fileName)} is not a form this generator ` +
+      "can resolve; use a string literal, API_VERSION, or VERSION_NEUTRAL"
+  );
+}
+
+/**
+ * The version a CLASS declares through `@Controller({ version })`, or `null`
+ * when it declares none and therefore inherits `defaultVersion`.
+ */
+function controllerDeclaredVersion(call, sf) {
+  if (!call || call.arguments.length === 0) return null;
+  const arg = call.arguments[0];
+  if (!ts.isObjectLiteralExpression(arg)) return null;
+  const versionProperty = arg.properties.find(
+    (property) => ts.isPropertyAssignment(property) && propertyName(property) === "version"
+  );
+  if (!versionProperty) return null;
+  return resolveVersionExpression(versionProperty.initializer, sf);
+}
+
+/**
+ * The version a METHOD declares through `@Version(...)`, or `null`.
+ */
+function methodDeclaredVersion(node, sf) {
+  const call = decoratorCall(node, sf, "Version");
+  if (!call) return null;
+  const arg = call.arguments[0];
+  if (!arg) throw new Error(`@Version() needs an argument in ${relative(repoDir, sf.fileName)}`);
+  return resolveVersionExpression(arg, sf);
+}
+
+/**
+ * Compose the wire path exactly as `RoutePathFactory.create` does: the URI
+ * version segment first, then the controller and method paths, then the global
+ * prefix unless the route is excluded from it.
+ *
+ * The exclusion here is by ROOT SEGMENT, where Nest's is by a path-to-regexp
+ * pattern; `api-surface.ts` derives its `exclude` patterns from the same
+ * segment list so the two are two readings of one declaration, and the
+ * route-identity test is what proves the readings agree on every real route.
+ */
+function applyVersionExpression(routePath, version) {
+  const surface = apiSurface();
+  const versioned =
+    version === VERSION_NEUTRAL_SENTINEL
+      ? routePath
+      : joinRoute(`${surface.versionPrefix}${version}`, routePath);
+  const firstSegment = routePath.split("/").filter(Boolean)[0];
+  if (firstSegment !== undefined && surface.unversionedRoots.has(firstSegment)) return versioned;
+  return joinRoute(surface.globalPrefix, versioned);
 }
 
 function moduleControllers(modulePath) {
@@ -437,18 +650,58 @@ function moduleControllers(modulePath) {
 
 function assertMountedControllerPolicy() {
   const byModule = new Map();
-  for (const [controller, relativeModulePath] of Object.entries(
-    PRODUCTION_MOUNTED_CONTROLLERS
-  )) {
-    const modulePath = join(srcDir, relativeModulePath);
-    const controllers = byModule.get(modulePath) ?? moduleControllers(modulePath);
-    byModule.set(modulePath, controllers);
-    if (!controllers.includes(controller)) {
-      throw new Error(`${controller} is not registered by ${relativeModulePath}`);
+  const seen = new Map();
+  for (const root of CONTROLLER_SCAN_ROOTS) {
+    if (!existsSync(root.scanDir)) {
+      throw new Error(
+        `controller scan root ${root.id} points at ${relative(repoDir, root.scanDir)}, which does not exist; a declared root that is not on disk enumerates nothing`
+      );
+    }
+    for (const [controller, relativeModulePath] of Object.entries(root.mounted)) {
+      const previous = seen.get(controller);
+      if (previous !== undefined) {
+        throw new Error(
+          `controller class ${controller} is registered by two scan roots (${previous} and ${root.id}); the manifest keys route implementations by class name and cannot tell them apart`
+        );
+      }
+      seen.set(controller, root.id);
+      const modulePath = join(root.moduleDir, relativeModulePath);
+      const controllers = byModule.get(modulePath) ?? moduleControllers(modulePath);
+      byModule.set(modulePath, controllers);
+      if (!controllers.includes(controller)) {
+        throw new Error(`${controller} is not registered by ${relativeModulePath}`);
+      }
     }
   }
   if (Object.hasOwn(PRODUCTION_MOUNTED_CONTROLLERS, "TestController")) {
     throw new Error("TestController must not be present in the production mounted-controller policy");
+  }
+}
+
+/**
+ * A strict scan root may not hold a controller its allowlist omits.
+ *
+ * The agent root deliberately skips unlisted controllers — that tree carries
+ * controllers that are not mounted in production, and the allowlist is what
+ * separates them. `apps/core-api/src/transports` carries no such class and never
+ * should: everything under it is the V1 business surface. Skipping there would
+ * reintroduce exactly the invisibility this second scan root was added to remove,
+ * so the omission is a generation failure rather than a silent `continue`.
+ */
+function assertStrictRootsHaveNoUnregisteredControllers() {
+  for (const root of CONTROLLER_SCAN_ROOTS) {
+    if (!root.strict) continue;
+    for (const path of walk(root.scanDir).filter((file) => file.endsWith(".controller.ts"))) {
+      const sf = sourceFile(path);
+      for (const statement of sf.statements) {
+        if (!ts.isClassDeclaration(statement) || !statement.name) continue;
+        if (!decoratorCall(statement, sf, "Controller")) continue;
+        if (Object.hasOwn(root.mounted, statement.name.text)) continue;
+        throw new Error(
+          `${statement.name.text} in ${relative(repoDir, path).split("\\").join("/")} carries @Controller but is not registered in the ${root.id} mounted-controller policy; register it (and its module) so its routes reach the manifest`
+        );
+      }
+    }
   }
 }
 
@@ -522,6 +775,7 @@ function enforcesOperatorScope(memberText, operatorHelpers) {
 
 function extractRestOperations() {
   assertMountedControllerPolicy();
+  assertStrictRootsHaveNoUnregisteredControllers();
   const implementations = [];
   const verbs = new Map([
     ["Get", "GET"],
@@ -532,14 +786,21 @@ function extractRestOperations() {
     ["Options", "OPTIONS"],
     ["Head", "HEAD"],
   ]);
-  for (const path of walk(srcDir).filter((file) => file.endsWith(".controller.ts"))) {
+  const controllerFiles = CONTROLLER_SCAN_ROOTS.flatMap((root) =>
+    walk(root.scanDir)
+      .filter((file) => file.endsWith(".controller.ts"))
+      .map((file) => ({ file, root }))
+  );
+  for (const { file: path, root } of controllerFiles) {
     const sf = sourceFile(path);
     for (const statement of sf.statements) {
       if (!ts.isClassDeclaration(statement) || !statement.name) continue;
       const controller = decoratorCall(statement, sf, "Controller");
       if (!controller) continue;
-      if (!Object.hasOwn(PRODUCTION_MOUNTED_CONTROLLERS, statement.name.text)) continue;
+      if (!Object.hasOwn(root.mounted, statement.name.text)) continue;
       const bases = decoratorPaths(controller, sf);
+      // `defaultVersion` is the floor: a controller that declares nothing is v1.
+      const controllerVersion = controllerDeclaredVersion(controller, sf) ?? apiSurface().version;
       // Collect same-class helper methods that themselves enforce operator scope
       // so a route delegating to one (e.g. `this.operatorScope(req)`) is not read
       // as unguarded. See enforcesOperatorScope.
@@ -560,11 +821,15 @@ function extractRestOperations() {
           const route = decoratorCall(member, sf, decorator);
           if (!route) continue;
           const children = decoratorPaths(route, sf);
+          // A method-level `@Version` wins over the controller's, which is how
+          // `OpenApiController` serves the versioned machine document and the
+          // unversioned human alias from one class.
+          const version = methodDeclaredVersion(member, sf) ?? controllerVersion;
           for (const base of bases) {
             for (const child of children) {
               implementations.push({
                 method,
-                path: joinRoute(base, child),
+                path: applyVersionExpression(joinRoute(base, child), version),
                 controller: statement.name.text,
                 handler: member.name.getText(sf),
                 source: relative(repoDir, path).replaceAll("\\", "/"),
@@ -676,6 +941,39 @@ function buildManifest() {
         (operation) => operation.implementations.length > 1
       ).length,
       restClassifications: countBy(restOperations, "classification"),
+      // WIN-267 — WHICH TREE EACH OPERATION CAME FROM.
+      //
+      // Recorded because the generator now walks more than one, and a total that
+      // does not say what it is a total OF is how a second application ends up
+      // ungoverned without anybody editing a number. Counts are derived from the
+      // route implementations' own source paths, so a root cannot claim an
+      // operation it did not produce. `scripts/rest-census-independent.mjs`
+      // re-derives the same split by globbing and fails if the two disagree.
+      restScanRoots: CONTROLLER_SCAN_ROOTS.map((root) => {
+        const dir = relative(repoDir, root.scanDir).split("\\").join("/");
+        const operations = restOperations.filter((operation) =>
+          (operation.implementations ?? []).some(
+            (implementation) =>
+              implementation.source === dir || implementation.source.startsWith(`${dir}/`)
+          )
+        );
+        return {
+          id: root.id,
+          dir,
+          strict: root.strict,
+          registeredControllers: Object.keys(root.mounted).length,
+          operations: operations.length,
+          routeBindings: operations.reduce(
+            (sum, operation) =>
+              sum +
+              (operation.implementations ?? []).filter(
+                (implementation) =>
+                  implementation.source === dir || implementation.source.startsWith(`${dir}/`)
+              ).length,
+            0
+          ),
+        };
+      }),
     },
   };
 }

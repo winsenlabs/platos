@@ -21,11 +21,14 @@ import {
   type MiddlewareConsumer,
   type NestModule,
 } from "@nestjs/common";
+import { APP_FILTER } from "@nestjs/core";
 
 import type { AppModule } from "../app.module.js";
 import type { LifecycleState } from "../health/readiness.js";
+import { DomainExceptionFilter } from "./domain-exception.filter.js";
 import { HEALTH_DEPENDENCIES, HealthController, type HealthDependencies } from "./health.controller.js";
 import { createIdempotencyGate } from "./idempotency-middleware.js";
+import { NotFoundController } from "./not-found.controller.js";
 
 @Module({})
 export class CoreApiHttpModule implements NestModule {
@@ -41,12 +44,48 @@ export class CoreApiHttpModule implements NestModule {
    */
   constructor(@Inject(HEALTH_DEPENDENCIES) private readonly dependencies: HealthDependencies) {}
 
+  /**
+   * ORDER IN `controllers` IS PART OF THE CONTRACT, NOT A LIST.
+   *
+   * `NotFoundController` answers `{*path}` for every method, and Express matches
+   * in registration order, so it is last and must stay last: promoted above
+   * `HealthController` it would swallow `/livez` and take a fleet down. That is
+   * exactly why it is a route rather than a guess inside the exception filter —
+   * "nothing else matched" is expressed in the mechanism that decides matching —
+   * and why `rest-chassis.test.ts` pins a real route still winning against it.
+   */
   static forApplication(app: AppModule, state: LifecycleState): DynamicModule {
     const dependencies: HealthDependencies = { app, state };
     return {
       module: CoreApiHttpModule,
-      controllers: [HealthController],
-      providers: [{ provide: HEALTH_DEPENDENCIES, useValue: dependencies }],
+      controllers: [HealthController, NotFoundController],
+      providers: [
+        { provide: HEALTH_DEPENDENCIES, useValue: dependencies },
+        {
+          /**
+           * WIN-267 (M4.1) / WIN-260 (c). The global exception filter.
+           *
+           * `APP_FILTER` AND NOT `app.useGlobalFilters(...)`, for the reason the
+           * constructor above gives: `useGlobalFilters` installs onto the
+           * application instance from outside, so the composition root would
+           * have to remember to call it for every application it starts —
+           * including the ones a test file starts — and a transport whose error
+           * contract depends on a caller remembering is a transport with no
+           * error contract. Declared here, it arrives with the module, so ANY
+           * application built from `forApplication` has it.
+           *
+           * `useValue` and not `useClass`: the filter takes this application's
+           * logger and this application's configured request-id header, and a
+           * class the container instantiates would need both discovered by
+           * reflection — the wiring this module refuses.
+           */
+          provide: APP_FILTER,
+          useValue: new DomainExceptionFilter({
+            logger: app.logger,
+            requestIdHeader: app.configuration.requestIdHeader,
+          }),
+        },
+      ],
     };
   }
 

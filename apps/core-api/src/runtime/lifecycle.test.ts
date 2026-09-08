@@ -7,6 +7,7 @@
 // exit codes and the packaged `dist/` artifact.
 
 import { connect } from "node:net";
+import { readFileSync } from "node:fs";
 
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -15,7 +16,6 @@ import { loadCoreApiConfiguration } from "../config/load.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
 import { createProcessLogger } from "./process-ports.js";
 import { startCoreApi, type RunningCoreApi } from "./lifecycle.js";
-import { WORK_REFUSED_SHUTTING_DOWN } from "./in-flight.js";
 import {
   SHUTDOWN_DRAIN_BUDGET_SPENT,
   type Drainable,
@@ -23,6 +23,24 @@ import {
 } from "./shutdown-drain.js";
 
 const ADMIN_TOKEN = "readiness-admin-token-0001";
+
+/**
+ * The status the COMMITTED taxonomy records, never a literal written here.
+ *
+ * Same join `http/idempotency.integration.test.ts` makes and for the same
+ * reason: a suite that wrote `503` beside a code would be asserting its own
+ * opinion, and `docs/error-taxonomy.json` is joined by `audit:error-taxonomy`
+ * to the mint sites and to `transports/error-status.ts`.
+ */
+const TAXONOMY = JSON.parse(
+  readFileSync(new URL("../../../../docs/error-taxonomy.json", import.meta.url), "utf8"),
+) as { readonly codes: Readonly<Record<string, { readonly status: number }>> };
+
+function committedStatus(code: string): number {
+  const entry = TAXONOMY.codes[code];
+  if (entry === undefined) throw new Error(`${code} is not in the committed taxonomy`);
+  return entry.status;
+}
 
 let running: RunningCoreApi | null = null;
 
@@ -421,9 +439,23 @@ describe("shutdown REFUSES late work instead of dropping it", () => {
     register.closeAdmission();
 
     const response = await fetch(harness.url("/livez"));
+    const body = (await response.json()) as { readonly error: Record<string, unknown> };
 
-    expect(response.status).toBe(503);
-    expect(await response.json()).toEqual({ error: { code: WORK_REFUSED_SHUTTING_DOWN } });
+    // WIN-267 (M4.1) CHANGED THIS SHAPE, AND THE OLD SHAPE WAS THE REASON.
+    // It used to be `{ error: { code: WORK_REFUSED_SHUTTING_DOWN } }` — a dotted
+    // lower-case string where M0.4 §2 fixes a SCREAMING_SNAKE code, and no
+    // `errorId`, `traceRef` or `version` at all. WIN-260 (c) is "REST errors map
+    // consistently", and a shutdown answering in a private shape was one of the
+    // two places that was false. `WORK_REFUSED_SHUTTING_DOWN` is still the
+    // register's internal reason — counted and logged — and is no longer the
+    // wire contract.
+    expect(response.status).toBe(committedStatus("TRANSPORT_SHUTTING_DOWN"));
+    expect(body.error["code"]).toBe("TRANSPORT_SHUTTING_DOWN");
+    expect(body.error["title"]).toBe("unavailable");
+    expect(body.error["version"]).toBe("1");
+    expect(typeof body.error["errorId"]).toBe("string");
+    expect(typeof body.error["traceRef"]).toBe("string");
+    expect(body.error["retryAfterSec"]).toBe(1);
   });
 
   it("tells the caller to come back, rather than merely closing on them", async () => {

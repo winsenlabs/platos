@@ -12,6 +12,7 @@ import {
   Query,
   Req,
   Res,
+  VERSION_NEUTRAL,
 } from "@nestjs/common";
 import type { Request, Response } from "express";
 import * as crypto from "node:crypto";
@@ -50,7 +51,7 @@ import { validatePublicUrl, describeUrlValidationError } from "../shared/url-val
  *   POST /oauth/introspect                        — RFC 7662
  *   POST /oauth/revoke                            — RFC 7009
  */
-@Controller()
+@Controller({ version: VERSION_NEUTRAL })
 export class OAuthController {
   constructor(
     private readonly oauth: OAuthService,

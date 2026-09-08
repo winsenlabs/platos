@@ -100,6 +100,24 @@ export function createRedisConnection(options: RedisConnectionOptions): RedisCon
           client.once("error", (error: Error) => reject(error));
         });
 
+  // WIN-267 T3 — THE SECOND UNHANDLED PATH, and the same argument as the `error`
+  // listener twelve lines up. That listener exists because "an `error` event with
+  // no listener is rethrown by the emitter, so a Redis that went away would take
+  // down a process whose whole design is to report that as a value". The promise
+  // above is the other half of that hazard and was missed: nothing awaits `ready`
+  // until a command is issued, so a server that is unreachable AT CONSTRUCTION
+  // rejects it with no handler attached and Node kills the process on the
+  // unhandled rejection — before any caller could turn it into
+  // `MEMORY_CACHE_UNAVAILABLE`.
+  //
+  // It was unreachable until the composition root began CONSTRUCTING this
+  // adapter (WIN-267 T3): with nobody building it, nobody ever had an
+  // unreachable connection at startup. Marking the rejection handled does not
+  // swallow it for anyone — an `await ready` inside the verbs below still
+  // rejects, because attaching a handler settles nothing — it only stops Node
+  // treating a rejection the design deliberately defers as a fatal defect.
+  void ready.catch(() => undefined);
+
   return {
     async read(key) {
       await ready;
@@ -128,7 +146,26 @@ export function createRedisConnection(options: RedisConnectionOptions): RedisCon
       return [next, keys];
     },
     async close() {
-      await client.quit();
+      try {
+        // GRACEFUL FIRST. `QUIT` lets the server finish sending the replies it
+        // already owes and close the socket itself, which is the difference
+        // between a clean release and a reset the server logs as an error.
+        await client.quit();
+      } catch {
+        // AND IT IS A COMMAND, so it needs a writable stream — and there is none
+        // when the handshake never completed. A caller asked for the connection
+        // to be released; a server that was never reached is not a reason to
+        // refuse, and before WIN-267 T3 nothing had ever called this on a
+        // connection that failed to open.
+      } finally {
+        // UNCONDITIONAL, AND THIS IS THE HALF THAT ACTUALLY RELEASES. A `quit()`
+        // that could not be sent leaves the client in its reconnect loop with a
+        // live retry timer, so a process that has decided to stop keeps the event
+        // loop turning until the orchestrator forces it down. `disconnect()` ends
+        // the loop as well as the socket, and on a connection `quit()` already
+        // closed it is a no-op.
+        client.disconnect();
+      }
     },
   };
 }

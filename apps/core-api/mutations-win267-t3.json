@@ -1,0 +1,285 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-267 T3 (M4.1) — constructing the adapters at the",
+    "composition root, and making readiness report what was actually built. One",
+    "entry per refusal, carrying the file it lives in (repository-relative), the",
+    "EXACT text that implements it (`from`), the edit that removes it (`to`), the",
+    "suites run, and the NAMED cases that were SEEN to go red (`kills`).",
+    "",
+    "A SEPARATE FILE FROM mutations.json, which is WIN-260's shutdown ledger and",
+    "says so in its own purpose. Appending here would have made one file whose",
+    "entries only make sense read against two different dimensions.",
+    "",
+    "`file` is REPOSITORY-relative, for the reason mutations-config.json gives:",
+    "this dimension's guards live in THREE homes — apps/core-api/src/,",
+    "packages/adapters/redis-cache/src/ and scripts/arch/ — and a",
+    "package-relative path would resolve in one of them and not the others.",
+    "",
+    "WHY AN ADAPTER PACKAGE IS IN A CORE-API LEDGER. Two of the entries below",
+    "mutate `packages/adapters/redis-cache/src/client.ts`. Both defects were",
+    "UNREACHABLE until this dimension: with nothing constructing that adapter,",
+    "nobody had ever held a connection to a server that was down at boot. They",
+    "are this dimension's findings, so they are in this dimension's ledger, and",
+    "the cases that kill them are in apps/core-api because that is where the",
+    "construction is."
+  ],
+  "procedure": [
+    "PROVE THE SUITES GREEN FIRST. Replace an entry's `from` with its `to` in the",
+    "named file, run the suites it names, and confirm a NAMED case goes red — not",
+    "a module-load failure, which is VACUOUS and not a kill. Then revert and",
+    "confirm green.",
+    "",
+    "  vitest   pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts",
+    "  process  pnpm --filter @platos/core-api exec vitest run src/process.test.ts",
+    "  node     node --test scripts/arch/composition-root.test.mjs",
+    "  gate     node scripts/arch/composition-root.mjs",
+    "",
+    "THE `process` SUITE NEEDS `pnpm build:v1` FIRST. It spawns `node dist/main.js`",
+    "— the shipped artifact — so a mutation to a `src/` file is only in the binary",
+    "after a rebuild. A sweep that forgets this reports every process entry as",
+    "surviving, which is the vacuity this project has already paid for once.",
+    "",
+    "NONE of these entries needs a database, a container or a network. Every store",
+    "in every case points at a host that does not resolve or a port nothing is",
+    "listening on, which is deliberate: readiness reports what was CONSTRUCTED,",
+    "and a process whose stores are down at boot must still start and say so."
+  ],
+  "sweep": {
+    "head": "the tree of the commit that carries this file, on tejas/win-267-t3-adapters (base v1 @ 21ca7a8b)",
+    "entries": 11,
+    "killed": 11,
+    "equivalent": 0,
+    "vacuous": 0,
+    "rejected": 1
+  },
+  "mutations": [
+    {
+      "name": "T01 the composition root stops building the ORM adapter, so nothing is served",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "      adapters[\"postgres-tenancy\"] = adapter;",
+      "to": "      void adapter;",
+      "suites": [
+        "vitest",
+        "process"
+      ],
+      "note": "The headline mutation the acceptance asks for: dropping ONE adapter must make a NAMED case go red. It makes SIX go red, because the readiness figure, the context bundle and the outbox that is built over it are all downstream of this one line — and none of them is an assertion about the construction function, they are joined to ADAPTER_BINDINGS and to the adapter's own properties.",
+      "kills": [
+        "constructing the adapters an install declared > builds the directory every declared configuration group configures",
+        "constructing the adapters an install declared > leaves the outbox unbuilt when there is no database, because the ORM has one home",
+        "readiness over what was actually constructed > reports 41 of 49, and the 8 that remain are exactly the bindings with no implementation",
+        "readiness over what was actually constructed > carries every unwired reason from the construction through to the detail body",
+        "the context bundles those adapters can satisfy > composes tenancy from the adapter, with every port under its own name",
+        "the built binary starts, serves and stops > reports a REAL binding count on /readyz once the stores are declared"
+      ]
+    },
+    {
+      "name": "T02 a declared store group is ignored, so the process reports 0/49 again",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  const postgres = input.stores.postgres;",
+      "to": "  const postgres = null as typeof input.stores.postgres;",
+      "suites": [
+        "vitest",
+        "process"
+      ],
+      "note": "The regression to the state this tranche found: configuration validated and thrown away. It is a DIFFERENT edit from T01 with the same outcome, which is the point — the guard has to catch the failure at either end of the wire.",
+      "kills": [
+        "constructing the adapters an install declared > builds the directory every declared configuration group configures",
+        "constructing the adapters an install declared > leaves the outbox unbuilt when there is no database, because the ORM has one home",
+        "readiness over what was actually constructed > reports 41 of 49, and the 8 that remain are exactly the bindings with no implementation",
+        "readiness over what was actually constructed > carries every unwired reason from the construction through to the detail body",
+        "the context bundles those adapters can satisfy > composes tenancy from the adapter, with every port under its own name",
+        "the built binary starts, serves and stops > reports a REAL binding count on /readyz once the stores are declared"
+      ]
+    },
+    {
+      "name": "T03 the outbox is built without its store, so an event has nowhere to be appended",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  const outboxStore: OutboxEventStore | undefined = adapters[\"postgres-tenancy\"];",
+      "to": "  const outboxStore: OutboxEventStore | undefined = adapters[\"postgres-tenancy\"] ?? ({} as OutboxEventStore);",
+      "suites": [
+        "vitest"
+      ],
+      "note": "ADR M0.3 §15's one-ORM-home rule made runnable: an install with no database must get no outbox either. Without the guard the outbox is built over a store that answers nothing, and every append fails at the first event rather than at startup — a failure that surfaces hours later, in a drain, with no configuration diagnostic anywhere near it.",
+      "kills": [
+        "constructing the adapters an install declared > leaves the outbox unbuilt when there is no database, because the ORM has one home",
+        "constructing the adapters an install declared > separates a directory an operator can wire from one nobody can",
+        "readiness over what was actually constructed > is still 0 of 49 with nothing wired, and now says which kind of nothing"
+      ]
+    },
+    {
+      "name": "T04 an unbuildable directory is reported as an operator's fault",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "    decline(\n      adapter,\n      \"implementation\",",
+      "to": "    decline(\n      adapter,\n      \"configuration\",",
+      "suites": [
+        "vitest",
+        "process"
+      ],
+      "note": "The distinction the whole `unwired` report exists for. Under this edit /readyz tells an operator that `channel-slack` needs a variable set, and there is no variable — the package is a generated interface.",
+      "kills": [
+        "constructing the adapters an install declared > separates a directory an operator can wire from one nobody can",
+        "readiness over what was actually constructed > is still 0 of 49 with nothing wired, and now says which kind of nothing",
+        "the built binary starts, serves and stops > reports a REAL binding count on /readyz once the stores are declared"
+      ]
+    },
+    {
+      "name": "T05 a key ring that will not parse is swallowed and the process serves anyway",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "    else faults.push(`keyring-envelope could not be constructed: ${ring.error.code}`);",
+      "to": "    else void ring;",
+      "suites": [
+        "vitest"
+      ],
+      "note": "The key material was supplied and is unusable, so every credential in the vault is unreadable. Under this edit the directory is silently absent and readiness reports it as unsatisfied with no reason at all.",
+      "kills": [
+        "constructing the adapters an install declared > refuses a root key ring that will not parse rather than degrading readiness"
+      ]
+    },
+    {
+      "name": "T06 tenancy's bundle is assembled with two ports transposed",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "              sessionRevoker: postgres.sessionRevoker,",
+      "to": "              sessionRevoker: postgres.operators as unknown as typeof postgres.sessionRevoker,",
+      "suites": [
+        "vitest"
+      ],
+      "note": "The failure the type system cannot see, and the reason the bundle is assembled by NAME. `sessionRevoker` and `operators` are both edges into identity-access off the same adapter; a bundle built from key order would type-check and fail only at the first owner demotion. The case compares references, so it catches this.",
+      "kills": [
+        "the context bundles those adapters can satisfy > composes tenancy from the adapter, with every port under its own name"
+      ]
+    },
+    {
+      "name": "T07 readiness counts the declared bindings instead of the satisfied ones",
+      "file": "apps/core-api/src/health/readiness.ts",
+      "from": "        `${app.bindings.satisfied.length} of ${DECLARED_BINDING_COUNT} adapter bindings are satisfied;` +",
+      "to": "        `${DECLARED_BINDING_COUNT} of ${DECLARED_BINDING_COUNT} adapter bindings are satisfied;` +",
+      "suites": [
+        "vitest",
+        "process"
+      ],
+      "note": "A readiness line that reports the table's size rather than what was wired is the constant this tranche removed, wearing the other face: it would read 49/49 in every configuration including the empty one.",
+      "kills": [
+        "readiness over what was actually constructed > counts the satisfied bindings off the declared table, so the figure moves with what is wired",
+        "readiness over what was actually constructed > is still 0 of 49 with nothing wired, and now says which kind of nothing",
+        "the built binary starts, serves and stops > reports a REAL binding count on /readyz once the stores are declared"
+      ]
+    },
+    {
+      "name": "T08 the unwired reasons never reach readiness",
+      "file": "apps/core-api/src/health/readiness.ts",
+      "from": "    unwiredAdapters: app.unwired,",
+      "to": "    unwiredAdapters: [],",
+      "suites": [
+        "vitest",
+        "process"
+      ],
+      "kills": [
+        "readiness over what was actually constructed > is still 0 of 49 with nothing wired, and now says which kind of nothing",
+        "readiness over what was actually constructed > carries every unwired reason from the construction through to the detail body",
+        "the built binary starts, serves and stops > reports a REAL binding count on /readyz once the stores are declared"
+      ]
+    },
+    {
+      "name": "T09 redis-cache: the unawaited readiness rejection is unhandled again, and the process dies",
+      "file": "packages/adapters/redis-cache/src/client.ts",
+      "from": "  void ready.catch(() => undefined);",
+      "to": "  void ready;",
+      "suites": [
+        "vitest"
+      ],
+      "note": "The first of the two defects wiring this adapter exposed. Nothing awaits `ready` until a command is issued, so a server unreachable AT CONSTRUCTION rejects it with no handler and Node kills the process — before any caller could turn the outage into MEMORY_CACHE_UNAVAILABLE, which is the whole design.",
+      "kills": [
+        "constructing the adapters an install declared > survives a store that is unreachable at construction, and releases it"
+      ]
+    },
+    {
+      "name": "T10 redis-cache: close() stops disconnecting, so a refused connection keeps its retry timer",
+      "file": "packages/adapters/redis-cache/src/client.ts",
+      "from": "        client.disconnect();\n      }\n    },",
+      "to": "        void client;\n      }\n    },",
+      "suites": [
+        "process"
+      ],
+      "note": "A `quit()` that could not be sent leaves the client in its reconnect loop with a live timer, so a process that has decided to stop keeps the event loop turning until the orchestrator forces it down. THE SWEEP FOUND THIS GUARD MISSING: the in-process case survived it, because `release()` still resolved and no rejection went unhandled — the difference is only visible to a process that is not allowed to call `process.exit`. The kill below is a spawned child with no explicit exit that must DRAIN.",
+      "kills": [
+        "the built binary starts, serves and stops > releases a store connection that never opened, so the loop drains on its own"
+      ]
+    },
+    {
+      "name": "T11 gate: the unimplemented list stops being joined to the adapter packages",
+      "file": "scripts/arch/composition-root.mjs",
+      "from": "      const constructible = exportsAConstructor(root, adapter.dir);",
+      "to": "      const constructible = listed.has(adapter.dir) ? false : true;",
+      "suites": [
+        "node",
+        "gate"
+      ],
+      "note": "The self-assertion this project's first lesson is about, written out: the list would be compared to itself and could not fail in either direction. Killed by the GATE's own controls, which mutate one side and watch the other refuse.",
+      "kills": [
+        "C7: a directory left on the unimplemented list after it gains a constructor fails",
+        "C7: a directory dropped from the list while still a generated interface fails",
+        "C7: an adapter that gains a real constructor must leave the list — the join reads the package"
+      ]
+    }
+  ],
+  "rejectedMutations": [
+    {
+      "name": "R01 redis-cache: close()'s try/catch/finally replaced with `if (true)`",
+      "file": "packages/adapters/redis-cache/src/client.ts",
+      "from": "      try {",
+      "to": "      if (true) {",
+      "rejected": "syntactically invalid — the catch and finally clauses become a parse error, so the module fails to LOAD and the failure would be VACUOUS rather than a kill. Replaced by T10, which removes the disconnect and leaves the file compiling. Recorded because a sweep that counted this one would have reported a kill for a guard it never exercised, which is the exact accounting WIN-258 tranche 1's twenty-two vacuous kills came from."
+    }
+  ],
+  "declaredUnfalsifiable": [
+    {
+      "name": "E01 the fault channel is unreachable from any valid platform configuration",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "classification": "unreachable-through-the-configuration-contract",
+      "measurement": [
+        "`constructAdapters` has three error arms — a thrown",
+        "`AdapterConfigurationError` from the ORM client, a refused root key ring,",
+        "and a refused retry policy — and NOT ONE of them can be reached by any",
+        "environment `loadPlatformConfiguration` accepts. That is a property of the",
+        "configuration contract, not a gap in this dimension's testing, and it is",
+        "recorded here rather than claimed as three more kills.",
+        "",
+        "MEASURED, ONE ARM AT A TIME.",
+        "",
+        "  keyring-envelope: `createRootKeyRing` refuses on a non-integer version,",
+        "  a key that is not 64 hex characters, a version declared twice, an empty",
+        "  ring, and an active version absent from the material.",
+        "  `config/security.ts` pins PLATOS_SECURITY_ENCRYPTION_KEY to",
+        "  `[0-9a-fA-F]{64}` and its required version to the integer range",
+        "  1..1000000; `constructAdapters` keys the ring BY the active version, so",
+        "  the ring is never empty, never doubled and always holds its active key.",
+        "  Every refusal is unreachable.",
+        "",
+        "  model-router-providers: `createModelRouterProvidersAdapter` refuses only",
+        "  an empty rule set, and the call passes `{}`, so it takes",
+        "  DEFAULT_RETRY_POLICY. There is no configuration variable for a policy.",
+        "",
+        "  postgres-tenancy: `createTenancyDatabaseClient` throws on a URL the",
+        "  client cannot parse and on a pool setting that is not a positive whole",
+        "  number. The section anchor already refuses anything that is not an",
+        "  absolute `postgres:`/`postgresql:` URL, and PLATOS_STORE_POSTGRES_POOL_MAX",
+        "  and _STATEMENT_TIMEOUT_MS carry integer minima of 1.",
+        "",
+        "SO THE ARMS ARE EXERCISED WHERE THEY CAN BE. `constructAdapters` takes the",
+        "ASSEMBLED sections rather than an environment, so",
+        "`installation.test.ts`'s \"refuses a root key ring that will not parse\"",
+        "hands it a `SecurityConfiguration` the loader would never produce, and T05",
+        "above is killed by that case. The keyring arm is therefore a real guard",
+        "with a real kill; what is unfalsifiable is the claim that an OPERATOR could",
+        "reach it, and that claim is not made.",
+        "",
+        "THE ARMS ARE KEPT ANYWAY. Two of the three constructors return a `Result`",
+        "and one throws; handling an error arm by pushing a fault that stops the",
+        "process is strictly better than ignoring it, and the day a section's",
+        "validation is relaxed — or an adapter gains a refusal its section does not",
+        "anticipate — the arm is already there and already routed to EX_CONFIG."
+      ]
+    }
+  ]
+}

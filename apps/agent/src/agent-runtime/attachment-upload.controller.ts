@@ -8,6 +8,7 @@ import {
   Body,
   Req,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type { Request } from "express";
 import type { RequestScope } from "../auth/scope.guard";
 import { ConversationService } from "../memory/conversation.service";
@@ -17,7 +18,7 @@ import {
   type AttachmentKind,
 } from "./attachments.service";
 
-@Controller("api/v1/agent/attachments")
+@Controller({ path: "agent/attachments", version: API_VERSION })
 export class AttachmentUploadController {
   constructor(
     private readonly conversations: ConversationService,

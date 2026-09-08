@@ -8,6 +8,7 @@ import {
   type OnModuleInit,
   type OnModuleDestroy,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import type { Request as ExpressRequest, Response as ExpressResponse } from "express";
 import * as crypto from "node:crypto";
 import {
@@ -51,7 +52,7 @@ type RawBodyExpressRequest = ExpressRequest & { rawBody?: Buffer };
  *
  * Logging: appId + event kind ONLY. Never message text, tokens, or secrets.
  */
-@Controller()
+@Controller({ version: API_VERSION })
 export class ChannelAppEventsController implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(ChannelAppEventsController.name);
 
@@ -83,7 +84,7 @@ export class ChannelAppEventsController implements OnModuleInit, OnModuleDestroy
     this.activeAborts.clear();
   }
 
-  @Post("api/v1/channels/apps/:appId/events")
+  @Post("channels/apps/:appId/events")
   async events(
     @Req() req: RawBodyExpressRequest,
     @Res() res: ExpressResponse,

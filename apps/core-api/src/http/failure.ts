@@ -9,6 +9,15 @@
 // module is the execution, and `http/idempotency.ts` is its first caller — over
 // a real socket, in the process `runtime/lifecycle.ts` starts.
 //
+// IT WAS THE ONLY CALLER FOR A WHOLE MILESTONE, AND THAT WAS WIN-260 (c). One
+// production call site means the seven codes that middleware mints, and only
+// those seven, could ever reach a REST caller — the other 412 resolved a status
+// no transport asked for. WIN-267 (M4.1) T2 adds the two callers that make the
+// table a contract rather than an intention: `http/domain-exception.filter.ts`,
+// which routes every `DomainError` any of the seventeen contexts can express,
+// and `runtime/edge-middleware.ts`, which stopped answering a shutdown in a
+// private shape. Three callers, one envelope.
+//
 // WHAT GOES ON THE WIRE IS M0.4 §2's ENVELOPE AND NOTHING ELSE:
 // `{ error: { code, title, body, errorId, traceRef, version, fields?,
 // retryAfterSec? } }`. `toWireError` names every field it copies rather than

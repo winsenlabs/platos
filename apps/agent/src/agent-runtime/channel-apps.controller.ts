@@ -12,6 +12,7 @@ import {
   HttpStatus,
   Inject,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { type Request } from "express";
 import { ModuleRef } from "@nestjs/core";
 import { PRISMA_TOKEN } from "../shared/database.provider";
@@ -85,7 +86,7 @@ const DISTRIBUTIONS = new Set(["private", "public"]);
 const LINKING = new Set(["none", "optional", "required"]);
 const OAUTH_BASE = "/api/v1/channels/oauth";
 
-@Controller("api/v1/agent/channel-apps")
+@Controller({ path: "agent/channel-apps", version: API_VERSION })
 export class ChannelAppsController {
   private readonly persistence: ChannelPersistenceService;
 

@@ -1,0 +1,264 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-267",
+  "tranche": "T0 — enumerator and generator reach",
+  "branch": "tejas/win-267-t0-enumerator",
+  "base": "21ca7a8b (v1)",
+  "purpose": [
+    "The guard ledger for T0: the second scan root taught to the REST enumerators",
+    "and the generator, the widened max-file-lines selector, and the contract-map",
+    "self-assertion. One entry per invariant, each carrying the file it lives in,",
+    "the EXACT edit that removes or defeats it, the command run, and the NAMED",
+    "case or NAMED failure line that was SEEN to go red.",
+    "",
+    "T0 EXISTS BECAUSE OF A GUARD THAT COULD NOT FAIL. contract-map.mjs wrote",
+    "`literalMigration.count: 18` at line 38 and asserted `count !== 18` at line",
+    "404 against the model that constant produced. No change to the repository",
+    "tree could make that error fire — not adding a literal, not removing every",
+    "literal. M08 is the control that proves it: the SAME tree mutation that turns",
+    "the new gate red leaves the base gate at exit 0, reporting the missing note",
+    "as recorded.",
+    "",
+    "THE CENSUS TOOLING HAD THE SAME SHAPE ONE LEVEL UP. It walked apps/agent and",
+    "nothing else while apps/core-api was being built to serve the same surface,",
+    "so 'zero unexplained delta' was a statement about one application. M01-M05",
+    "are the controls for the second root, in both directions: a route landing in",
+    "it must move the census, and a root that stops being scanned must fail.",
+    "",
+    "NOTHING HERE NEEDS A DATABASE, A CONTAINER OR A DOCKER DAEMON. Every case is",
+    "a file edit plus one node process; the whole ledger sweeps in under a minute."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST. Each entry was run against the unmutated tree before the",
+    "mutation, and reverted and re-run green after it. An entry whose suite was",
+    "already red proves nothing, and a 'kill' with no named failing line is",
+    "VACUOUS — see the `declared` section for the two places this ledger refuses",
+    "to claim a kill it did not see.",
+    "",
+    "For one entry: apply `to` to `file`, run `command`, confirm the NAMED line or",
+    "case in `kills` appears and the process exits non-zero. Then revert and",
+    "confirm exit 0.",
+    "",
+    "`file` is REPOSITORY-relative. Entries whose `file` is created by the",
+    "mutation rather than edited carry `create: true`; reverting them is a delete."
+  ],
+  "mutations": [
+    {
+      "name": "M01 a controller lands under apps/core-api/src/transports and the independent census does not see it",
+      "guards": "scripts/rest-census-independent.mjs SCAN_ROOTS — the second scan root",
+      "file": "apps/core-api/src/transports/rest/probe.controller.ts",
+      "create": true,
+      "from": "(absent)",
+      "to": "@Controller(\"api/v1/probe\") with @Get(\"items\") and @Post(\"items\")",
+      "command": "node scripts/rest-census-independent.mjs --check",
+      "exit": 1,
+      "kills": [
+        "OMISSION: production controller ProbeController (apps/core-api/src/transports/rest/probe.controller.ts) has routes but is ABSENT from the generated manifest",
+        "ROUTE DRIFT: ProbeController — independent decorators 2 x mount-multiplier 1 = 2, manifest ops 0",
+        "SCAN ROOT DRIFT: core-api-transports (apps/core-api/src/transports) — 1 globbed controller(s) carry 2 decorator(s) expanding to 2 operation(s), but the manifest attributes 0 operation(s) to that root"
+      ],
+      "note": "This is the acceptance criterion, run live. Before T0 the same file produced exit 0 and no output at all, because the enumerator's SRC was the string 'apps/agent/src'."
+    },
+    {
+      "name": "M02 the same controller reaches the GENERATOR, whose core-api root is strict",
+      "guards": "apps/agent/scripts/generate-control-plane.mjs assertStrictRootsHaveNoUnregisteredControllers",
+      "file": "apps/core-api/src/transports/rest/probe.controller.ts",
+      "create": true,
+      "from": "(absent)",
+      "to": "the same probe controller, not listed in CORE_API_MOUNTED_CONTROLLERS",
+      "command": "node apps/agent/scripts/generate-control-plane.mjs",
+      "exit": 1,
+      "kills": [
+        "ProbeController in apps/core-api/src/transports/rest/probe.controller.ts carries @Controller but is not registered in the core-api-transports mounted-controller policy; register it (and its module) so its routes reach the manifest"
+      ],
+      "note": "The agent root SKIPS an unregistered controller by design — that tree carries controllers that are not mounted in production. The core-api root REFUSES, because everything under src/transports is the V1 business surface and a skip there is the invisibility this tranche removed."
+    },
+    {
+      "name": "M03 the census artifact regenerated with the probe present cannot corroborate the differential denominator",
+      "guards": "scripts/differential-coverage.mjs reconcileRestCensus + reconcileScanRoots",
+      "file": "docs/audits/M0.9-rest-census-independent.json",
+      "from": "(regenerated with the M01 probe in the tree)",
+      "to": "ok:false with three failures",
+      "command": "node scripts/rest-census-independent.mjs && node scripts/differential-coverage.mjs --check",
+      "exit": 1,
+      "kills": [
+        "FAIL: docs/audits/M0.9-rest-census-independent.json reports ok=false; a failed census cannot corroborate a denominator",
+        "FAIL: docs/audits/M0.9-rest-census-independent.json has 1 controller(s) whose own route/operator reconciliation did not hold: ProbeController",
+        "FAIL: scan root core-api-transports (apps/core-api/src/transports) failed its own source-to-manifest reconciliation in the independent census; a root that cannot reconcile itself cannot corroborate a denominator"
+      ]
+    },
+    {
+      "name": "M04 the declared core-api scan root is renamed away, so one mechanism stops looking at a tree the other still counts",
+      "guards": "scripts/capability-matrix.mjs scanRootAccounting",
+      "file": "scripts/rest-census-independent.mjs",
+      "from": "    id: \"core-api-transports\",",
+      "to": "    id: \"core-api-transports-REMOVED-BY-MUTATION\",",
+      "command": "node scripts/capability-matrix.mjs --check",
+      "exit": 1,
+      "kills": [
+        "scan-root-absent: the manifest's restScanRoots does not name core-api-transports-REMOVED-BY-MUTATION (apps/core-api/src/transports)",
+        "scan-root-undeclared: the manifest's restScanRoots names core-api-transports (apps/core-api/src/transports), which SCAN_ROOTS in scripts/rest-census-independent.mjs does not declare"
+      ],
+      "note": "Both directions fire from one edit, which is the point: the declaration and the generated manifest are two parties, and either one moving alone is a finding."
+    },
+    {
+      "name": "M05 business surface is parked in the excluded process edge",
+      "guards": "scripts/rest-census-independent.mjs PROCESS_EDGE_EXCLUSIONS tripwire",
+      "file": "apps/core-api/src/http/health.controller.ts",
+      "from": "  @Get(\"healthz\")",
+      "to": "  @Get(\"api/v1/agent/threads\")\\n  threads(): unknown[] { return []; }\\n\\n  @Get(\"healthz\")",
+      "command": "node scripts/rest-census-independent.mjs --check",
+      "exit": 1,
+      "kills": [
+        "PROCESS-EDGE EXCLUSION DRIFT: apps/core-api/src/http/health.controller.ts now carries 4 route decorator(s); the exclusion is written for exactly 3 process probes. Business surface must not be parked in the process edge."
+      ],
+      "note": "The health controller is skipped ON PRINCIPLE — it is the process edge, unversioned per ADR M0.4 section 2. A skip that cannot be falsified is a hole, so the skip is measured. The same edit ALSO turns contract-map red at literals 24 -> 25, because the literal scan covers apps/core-api too."
+    },
+    {
+      "name": "M06 a 501-effective-line file lands under apps/core-api/src/transports",
+      "guards": "scripts/arch/max-file-lines.mjs SELECTORS[3]",
+      "file": "apps/core-api/src/transports/rest/monolith.ts",
+      "create": true,
+      "from": "(absent)",
+      "to": "501 effective lines",
+      "command": "node scripts/arch/max-file-lines.mjs",
+      "exit": 1,
+      "kills": ["ERROR apps/core-api/src/transports/rest/monolith.ts: 501 effective lines"],
+      "note": "This selector was ALREADY present at 21ca7a8b and already bit. The entry is here because T0's brief asked for it to be genuinely covered and the honest answer was to measure rather than to assume: it is covered, and M07 is the hole that was actually open."
+    },
+    {
+      "name": "M07 a 501-effective-line controller lands under apps/core-api/src/http, where core-api's controllers are REGISTERED",
+      "guards": "scripts/arch/max-file-lines.mjs SELECTORS[4] — added by T0",
+      "file": "apps/core-api/src/http/monolith.controller.ts",
+      "create": true,
+      "from": "(absent)",
+      "to": "501 effective lines",
+      "command": "node scripts/arch/max-file-lines.mjs",
+      "exit": 1,
+      "kills": ["ERROR apps/core-api/src/http/monolith.controller.ts: 501 effective lines"],
+      "note": "At 21ca7a8b this same file produced exit 0 and no finding. src/http/ holds http.module.ts (the controller array) and health.controller.ts (the only route-bearing file the application has), and it was outside every selector while src/transports — which holds no controller yet — was inside one."
+    },
+    {
+      "name": "M08 a real api/v1 route literal is added to the tree — the mutation the OLD contract-map gate could not see",
+      "guards": "scripts/arch/contract-map.mjs measureApiV1Literals + literalMigrationErrors",
+      "file": "apps/agent/src/skills/skills.controller.ts",
+      "from": "@Controller(\"api/v1/agent/skills\")",
+      "to": "@Controller([\"api/v1/agent/skills\", \"api/v1/platos/skills\"])",
+      "command": "node scripts/arch/contract-map.mjs",
+      "exit": 1,
+      "kills": [
+        "FAIL: literalMigration.literals: the committed artifact records 24 but the tree carries 25 — run --write, or the pre-gate is describing a tree that no longer exists"
+      ],
+      "control": "The SAME mutation, against the base script extracted from 21ca7a8b (git archive of scripts/arch/contract-map.mjs plus its design and audit inputs, run from a scratch root): exit 0, 'ok: 47 design pages accounted for ...; /api/v1 prefix + 18-literal migration + D0-D7 recorded; artifacts in sync.' The base gate cannot see this mutation, and no tree change can make its 18-check fire, because both of its sides are one constant in one file.",
+      "note": "Deliberately chosen to add a literal WITHOUT adding a source line — 24 -> 25 literals, 23 -> 23 lines — so only the field that counts literals catches it. A line-only check would have passed."
+    },
+    {
+      "name": "M09 a comment that mentions a route decorator must NOT move the count",
+      "guards": "scripts/arch/contract-map.mjs tokenize — the negative control for M08",
+      "file": "apps/agent/src/skills/skills.controller.ts",
+      "from": "@Controller(\"api/v1/agent/skills\")",
+      "to": "@Controller(\"api/v1/agent/skills\")\\n// WIN-267 mutation probe\\n",
+      "command": "node scripts/arch/contract-map.mjs",
+      "exit": 0,
+      "kills": [],
+      "expectsGreen": true,
+      "note": "A discriminating control, not a kill. The FIRST version of the scanner failed this: it matched the decorator regex against raw text and only became comment-aware inside the argument list, so a commented-out @Get counted as a route. Its own fixture caught it; the case is pinned as 'prose, comments, tests and non-decorator strings are not routes' in scripts/arch/contract-map.test.mjs."
+    },
+    {
+      "name": "M10 the corrected contract total is hand-edited back to the figure it replaced",
+      "guards": "scripts/arch/contract-map.mjs contractRowErrors",
+      "file": "docs/audits/M0.4-design-contract-map.json",
+      "from": "\"newContracts\": 104",
+      "to": "\"newContracts\": 98",
+      "command": "node scripts/arch/contract-map.mjs",
+      "exit": 1,
+      "kills": [
+        "FAIL: totals.newContracts: committed 98, rows marked N 104 — the net-new figure must be the histogram, not a hand-kept sum"
+      ]
+    }
+  ],
+  "suiteKills": [
+    {
+      "suite": "scripts/rest-census-independent.test.mjs",
+      "added": 10,
+      "cases": [
+        "the declared scan roots name apps/agent AND the core-api transport seam",
+        "MUTATION: a declared scan root that is not on disk fails as SCAN ROOT MISSING",
+        "MUTATION: a manifest source under no declared root fails as UNDECLARED SCAN ROOT",
+        "MUTATION: a root whose globbed decorators and manifest ops disagree fails as SCAN ROOT DRIFT",
+        "ACCEPTANCE: a route landing under the core-api transport root moves the per-root census",
+        "MUTATION: a fourth route in the excluded process edge fails as PROCESS-EDGE EXCLUSION DRIFT",
+        "MUTATION: the process edge gaining a base path fails, because it leaves the unversioned surface",
+        "MUTATION: an excluded file that has vanished fails rather than excluding nothing",
+        "BASELINE: the live tree's scan roots reconcile, and the core-api root is present and empty",
+        "BASELINE: the process-edge exclusion still describes the file it excludes"
+      ]
+    },
+    {
+      "suite": "scripts/capability-matrix.test.mjs",
+      "added": 6,
+      "cases": [
+        "committed matrix: the REST total is split across the declared scan roots and sums back",
+        "refuses a REST implementation whose source belongs to no declared scan root",
+        "refuses a generator split that disagrees with the re-derived one",
+        "refuses a manifest that publishes no split at all, rather than skipping the check",
+        "refuses a generator root SCAN_ROOTS does not declare, and a declared root the generator drops",
+        "ACCEPTANCE: an operation under the core-api transport root lands in that root's column"
+      ]
+    },
+    {
+      "suite": "scripts/differential-coverage.test.mjs",
+      "added": 6,
+      "cases": [
+        "MUTATION: a scan root only one mechanism declares is refused",
+        "MUTATION: the same total split differently between roots is refused",
+        "MUTATION: a root that failed its own source reconciliation cannot corroborate the denominator",
+        "MUTATION: per-root counts that do not sum to the published total are refused",
+        "MUTATION: a census that publishes no split is refused, not skipped",
+        "BASELINE: the committed matrix agrees root by root, and the empty root is an assertion"
+      ]
+    },
+    {
+      "suite": "scripts/arch/contract-map.test.mjs",
+      "added": 13,
+      "new": true,
+      "cases": [
+        "the scan is over the declared roots and the Nest routing decorators",
+        "a controller literal is counted once, on its file and its line",
+        "TWO LITERALS ON ONE LINE: literals and sourceLines part company",
+        "a method decorator carrying the prefix is counted; @Controller-only counting misses it",
+        "prose, comments, tests and non-decorator strings are not routes",
+        "a literal inside a decorator argument that also contains parentheses is still found",
+        "MUTATION: the number this gate used to assert against itself now fails",
+        "MUTATION: a completed migration that still reports pending fails",
+        "MUTATION: a missing literalMigration record fails rather than passing quietly",
+        "BASELINE: the recorded measurement matches the tree, and both mechanisms agree",
+        "MUTATION: a hand-kept newCount that disagrees with its own rows fails",
+        "MUTATION: an unknown contract status is refused, so the histogram cannot silently gain a bucket",
+        "the histogram counts every row exactly once"
+      ]
+    }
+  ],
+  "declared": [
+    {
+      "what": "differential-coverage.mjs does not go red for M01, M02, M04 or M07 as a LIVE process mutation.",
+      "why": "It reads the committed censuses; it does not re-enumerate the tree, and it says so in its own header. Its freshness owner is `node scripts/rest-census-independent.mjs --check`, which runs in the same CI step and DID go red (M01). M03 is the live path that does turn it red — regenerate the census first and the failed census refuses to corroborate the denominator. Its scan-root reconciliation is killed by its six named unit cases above rather than by a process mutation, and this ledger says so rather than claiming a kill it did not watch.",
+      "status": "declared, not claimed"
+    },
+    {
+      "what": "No mutation proves the base contract-map gate red on ANY tree.",
+      "why": "That is the finding, not a gap. `count: 18` was written at line 38 and asserted at line 404 of one file, so the only edit that fires it is an edit to that constant — which is not a tree change and is caught by the drift check for a different reason. M08's `control` field records the base gate running green against the same mutation that turns the new gate red; a mutation that makes the base gate red does not exist to record.",
+      "status": "unfalsifiable by construction — the defect this tranche removed"
+    },
+    {
+      "what": "The max-file-lines selector `apps/core-api/src/transports/**` was NOT widened; it was already present at 21ca7a8b and already bit (M06).",
+      "why": "The brief asked for it to be widened so that directory was genuinely covered. Measured, it was covered: eight files scanned, and a 501-effective-line file under it fails the gate. Reporting a widening that was not needed would have been the fourth wrong stated number this month. What was genuinely uncovered is `apps/core-api/src/http/**` — where core-api's controllers are registered — and that is the selector T0 added (M07).",
+      "status": "corrected, with the measurement"
+    },
+    {
+      "what": "The selector stops at `apps/core-api/src/http/**` rather than `apps/core-api/src/**`.",
+      "why": "`apps/core-api/src/app.module.test.ts` stands at 509 effective lines, over the hard threshold. Widening to the whole of src/ would either fail the gate on a composition-root suite this issue has no mandate to split, or arrive with the budget's first waiver. Both are worse than a selector that says where it stops and why. `src/runtime/**` (one 457-line warning-band suite) and `src/config/**` are out for the same reason.",
+      "status": "skipped, with the reason and the number"
+    }
+  ]
+}

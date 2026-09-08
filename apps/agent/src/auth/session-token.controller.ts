@@ -8,6 +8,7 @@ import {
   Param,
   Post,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { createHash } from "node:crypto";
 import { AuthService } from "./auth.service";
 import {
@@ -84,7 +85,7 @@ function sanitizeUserIdentities(
   return out.length > 0 ? out : undefined;
 }
 
-@Controller("api/v1/entities")
+@Controller({ path: "entities", version: API_VERSION })
 export class SessionTokenController {
   constructor(
     private readonly authService: AuthService,

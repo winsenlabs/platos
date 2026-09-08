@@ -23,6 +23,7 @@
 
 import type { Logger, RecordedResponse, RequestFingerprint, RequestIdempotency } from "@platos/kernel";
 
+import { currentCorrelation } from "../runtime/correlation.js";
 import { mintErrorId, writeFailure, type FailureResponse } from "./failure.js";
 import { IDEMPOTENCY_KEY_HEADER, IDEMPOTENCY_REPLAYED_HEADER } from "./idempotency-errors.js";
 import {
@@ -153,7 +154,15 @@ export function createIdempotencyGate(dependencies: GateDependencies) {
           const errorId = mintErrorId();
           const status = writeFailure(response, decision.error, {
             errorId,
-            requestId: String(response.getHeader("x-request-id") ?? ""),
+            // THE AMBIENT FRAME FIRST, THE HEADER AS A FALLBACK. WIN-267 (M4.1):
+            // the header name here was the literal `x-request-id`, which is the
+            // DEFAULT of `configuration.requestIdHeader` and not the value — an
+            // install that configured another name got an empty `traceRef` on
+            // every refusal this gate writes. `currentCorrelation()` is the id
+            // itself rather than a spelling of where to look for it, and it is
+            // the same source `DomainExceptionFilter` reads, so one request has
+            // one trace reference however it fails.
+            requestId: currentCorrelation()?.requestId ?? String(response.getHeader("x-request-id") ?? ""),
           });
           dependencies.logger.log("warn", "http.idempotency_refused", {
             code: decision.error.code,

@@ -1,0 +1,243 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-267",
+  "tranche": "T1 — URI version expression",
+  "branch": "tejas/win-267-t1-versioning",
+  "base": "df01709b (tejas/win-267-t0-enumerator)",
+  "purpose": [
+    "T1 replaces 24 hand-written `api/v1` route literals — 23 source lines across",
+    "20 controller files, identical on the frozen origin/main oracle and on v1 —",
+    "with ONE expression of the version: setGlobalPrefix(\"api\") +",
+    "enableVersioning({ type: URI, defaultVersion: \"1\" }), declared in",
+    "apps/agent/src/http/api-surface.ts and installed by main.ts.",
+    "",
+    "THE ONE CLAIM THAT MATTERS IS NEGATIVE: not one of the 300 REST operations",
+    "moved. A route that silently moves is a broken client, and 'silently' is the",
+    "operative word — every entry below is a way the surface could move while a",
+    "gate stayed green, run live to see which gate actually goes red.",
+    "",
+    "THREE MECHANISMS COMPOSE THE PATHS, AND THEY SHARE NOTHING:",
+    "  (1) apps/agent/scripts/generate-control-plane.mjs — STATIC, from the",
+    "      TypeScript AST, reading the prefix/version/exclusion constants out of",
+    "      api-surface.ts and emitting operation-manifest.generated.json.",
+    "  (2) apps/agent/src/http/api-surface.test.ts — RUNTIME: the real controllers",
+    "      in a real Nest application, the same applyApiSurface main.ts calls, and",
+    "      the route table read back out of Express.",
+    "  (3) scripts/rest-census-independent.mjs — globs the controller files and",
+    "      reconciles decorator counts against the manifest without the",
+    "      generator's allowlist.",
+    "",
+    "M06 IS THE ENTRY THIS LEDGER EXISTS FOR. It moves 51 real routes and leaves",
+    "BOTH static enumerators at exit 0. Only the runtime probe sees it. Without",
+    "that entry, 'the generated manifest did not change' would be an argument",
+    "about an AST rather than about a server.",
+    "",
+    "NOTHING HERE NEEDS A DATABASE, A CONTAINER OR A DOCKER DAEMON. Every case is",
+    "a file edit plus one node or vitest process."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST. The unmutated tree was run green before and after every",
+    "entry below. An entry whose suite was already red proves nothing, and a",
+    "'kill' with no named failing line is VACUOUS — see `declared` for the two",
+    "places this ledger refuses to claim a kill it did not watch.",
+    "",
+    "For one entry: apply `to` to `file`, run `command`, confirm the NAMED line",
+    "or case in `kills` appears and the process exits non-zero. Then revert and",
+    "confirm exit 0.",
+    "",
+    "`file` is REPOSITORY-relative. `control` records a command that stayed GREEN",
+    "under the same mutation, which is what makes the killing gate load-bearing",
+    "rather than one of several redundant copies."
+  ],
+  "mutations": [
+    {
+      "name": "M01 the process stops installing the version expression",
+      "guards": "apps/agent/src/http/api-surface.test.ts — 'the composition root installs the expression, and nothing else expresses a version'",
+      "file": "apps/agent/src/main.ts",
+      "from": "  applyApiSurface(app);",
+      "to": "(the line deleted)",
+      "command": "pnpm --filter platos-agent exec vitest run src/http/api-surface.test.ts",
+      "exit": 1,
+      "kills": [
+        "× WIN-267 T1 — the version is one expression > the composition root installs the expression, and nothing else expresses a version",
+        "→ expected 'import { NestFactory } from \"@nestjs/…' to match /^\\s*applyApiSurface\\(app\\);$/mu"
+      ],
+      "control": "node apps/agent/scripts/generate-control-plane.mjs --check stays at exit 0, and so does node scripts/rest-census-independent.mjs --check — neither reads main.ts. This is the hole the composition-root case closes: without it, deleting one line from the process entry would serve the entire REST surface unprefixed while every artifact gate reported success.",
+      "note": "THE most important entry after M06. The other cases prove applyApiSurface puts the routes where the manifest says; only this one proves the running process calls it."
+    },
+    {
+      "name": "M02 a root drops out of UNVERSIONED_ROOT_SEGMENTS",
+      "guards": "apps/agent/src/http/api-surface.ts UNVERSIONED_ROOT_SEGMENTS — the seven surfaces whose URLs are fixed outside this repository",
+      "file": "apps/agent/src/http/api-surface.ts",
+      "from": "  \"metrics\",",
+      "to": "(the entry deleted)",
+      "command": "node apps/agent/scripts/generate-control-plane.mjs --check",
+      "exit": 1,
+      "kills": [
+        "[control-plane] generated artifact drift: apps/agent/src/control-plane/operation-manifest.generated.json"
+      ],
+      "alsoKills": {
+        "command": "pnpm --filter platos-agent exec vitest run src/http/api-surface.test.ts",
+        "exit": 1,
+        "lines": [
+          "× the Nest router reproduces the generated manifest, route for route → expected [ 'GET /metrics' ] to deeply equal []",
+          "× splits the surface the way the ADR does → GET /api/metrics escaped the version with no declared reason"
+        ]
+      },
+      "note": "The Prometheus scrape path is configured in the scraper, not here. Moving it to /api/metrics is a silent fleet-monitoring outage, and both mechanisms name it."
+    },
+    {
+      "name": "M03 the major changes",
+      "guards": "apps/agent/src/http/api-surface.ts API_VERSION — the one place the digit is written",
+      "file": "apps/agent/src/http/api-surface.ts",
+      "from": "export const API_VERSION = \"1\";",
+      "to": "export const API_VERSION = \"2\";",
+      "command": "node apps/agent/scripts/generate-control-plane.mjs --check",
+      "exit": 1,
+      "kills": [
+        "Error: REST mapping references missing operation: POST /api/v1/agent/threads"
+      ],
+      "alsoKills": {
+        "command": "pnpm --filter platos-agent exec vitest run src/http/api-surface.test.ts",
+        "exit": 1,
+        "lines": [
+          "× declares the prefix, the major and the unversioned roots exactly once each → expected '2' to be '1'",
+          "× the Nest router reproduces the generated manifest, route for route → expected [ …(244) ] to deeply equal []"
+        ]
+      },
+      "note": "The generator fails at its REST→MCP mapping table rather than at the artifact diff, because 82 mapped operations stop existing at once. Either way the whole versioned surface moving is not a silent event — which is the point of one declaration site."
+    },
+    {
+      "name": "M04 a controller spells the version by hand again",
+      "guards": "scripts/arch/contract-map.mjs assertNoBareApiV1Prefix — ADR M0.4 §2's 'no-bare-prefix lint (fail on any literal api/v1)'",
+      "file": "apps/agent/src/agent-runtime/attachment-upload.controller.ts",
+      "from": "@Controller({ path: \"agent/attachments\", version: API_VERSION })",
+      "to": "@Controller({ path: \"api/v1/agent/attachments\", version: API_VERSION })",
+      "command": "node scripts/arch/contract-map.mjs --check",
+      "exit": 1,
+      "kills": [
+        "Error: no-bare-prefix lint: the WIN-267 T1 migration has landed, so a routing decorator may not spell the version by hand, but 1 literal(s) on 1 line(s) across 1 file(s) do:",
+        "  apps/agent/src/agent-runtime/attachment-upload.controller.ts:21 @Controller(\"api/v1/agent/attachments\")"
+      ],
+      "alsoKills": {
+        "command": "node scripts/arch/contract-map.mjs --write",
+        "exit": 1,
+        "lines": [
+          "Error: no-bare-prefix lint: … 1 literal(s) on 1 line(s) across 1 file(s) do:"
+        ],
+        "why": "The lint runs inside buildModel, so --write refuses too. A regenerated artifact cannot launder the count back up to a recorded 'pending'."
+      },
+      "control": "node apps/agent/scripts/generate-control-plane.mjs --check ALSO fails, with generated artifact drift — the route really would answer at /api/v1/api/v1/agent/attachments. Two independent gates, one for the literal and one for the resulting path.",
+      "note": "This is the mutation the T0 gate could not have caught in any tree: before T0 the assertion compared 18 to a constant this file wrote."
+    },
+    {
+      "name": "M05 an unversioned controller loses VERSION_NEUTRAL",
+      "guards": "the @Controller({ version: VERSION_NEUTRAL }) opt-out, and the defaultVersion floor behind it",
+      "file": "apps/agent/src/monitoring/metrics.controller.ts",
+      "from": "@Controller({ version: VERSION_NEUTRAL })",
+      "to": "@Controller()",
+      "command": "node apps/agent/scripts/generate-control-plane.mjs --check",
+      "exit": 1,
+      "kills": [
+        "[control-plane] generated artifact drift: apps/agent/src/control-plane/operation-manifest.generated.json"
+      ],
+      "alsoKills": {
+        "command": "pnpm --filter platos-agent exec vitest run src/http/api-surface.test.ts",
+        "exit": 1,
+        "lines": [
+          "× the Nest router reproduces the generated manifest, route for route → expected [ 'GET /metrics' ] to deeply equal []",
+          "× splits the surface the way the ADR does → GET /v1/metrics escaped the version with no declared reason"
+        ]
+      },
+      "note": "Opting OUT of the version is the only direction that needs a decorator, and losing it is caught. Opting IN is the floor and is silent — declared below rather than claimed as a kill."
+    },
+    {
+      "name": "M06 the exclusion patterns lose their wildcard tail",
+      "guards": "apps/agent/src/http/api-surface.ts GLOBAL_PREFIX_EXCLUDE — `/mcp{/*rest}` matches /mcp AND /mcp/entity/:id/tokens; `/mcp` matches only the first",
+      "file": "apps/agent/src/http/api-surface.ts",
+      "from": "UNVERSIONED_ROOT_SEGMENTS.map((segment) => `/${segment}{/*rest}`)",
+      "to": "UNVERSIONED_ROOT_SEGMENTS.map((segment) => `/${segment}`)",
+      "command": "pnpm --filter platos-agent exec vitest run src/http/api-surface.test.ts",
+      "exit": 1,
+      "kills": [
+        "× declares the prefix, the major and the unversioned roots exactly once each → expected [ '/.well-known', '/internal', …(5) ] to deeply equal [ '/.well-known{/*rest}', …(6) ]",
+        "× the Nest router reproduces the generated manifest, route for route → expected [ …(51) ] to deeply equal []",
+        "× splits the surface the way the ADR does → POST /api/mcp/docs escaped the version with no declared reason"
+      ],
+      "control": "BOTH static enumerators stay GREEN under this exact mutation: `node apps/agent/scripts/generate-control-plane.mjs --check` exits 0 reporting '202 MCP tools, 300 REST operations', and `node scripts/rest-census-independent.mjs --check` exits 0 reporting '27 controllers … 300 manifest ops'. Neither compiles a path-to-regexp pattern; both reason about root segments.",
+      "note": "THE ENTRY THIS LEDGER EXISTS FOR. 51 routes — every /mcp/* and /oauth/* path below the first segment, plus /internal/* and the .well-known entity document — move to /api/… while every artifact gate reports success. It is the exact shape of failure the tranche was asked to rule out, and it is caught only by booting Nest."
+    },
+    {
+      "name": "M07 the generator stops reading @Controller({ path })",
+      "guards": "apps/agent/scripts/generate-control-plane.mjs decoratorPaths — the object-form base path",
+      "file": "apps/agent/scripts/generate-control-plane.mjs",
+      "from": "if (ts.isObjectLiteralExpression(arg)) { … read the `path` property … }",
+      "to": "if (ts.isObjectLiteralExpression(arg)) { return [\"\"]; … }",
+      "command": "node apps/agent/scripts/generate-control-plane.mjs --check",
+      "exit": 1,
+      "kills": [
+        "Error: REST mapping references missing operation: POST /api/v1/agent/threads"
+      ],
+      "note": "The generator's new reading of the class-level version had to be load-bearing rather than additive: blind it and 244 versioned operations collapse onto the controller-less root."
+    },
+    {
+      "name": "M08 the unversioned /openapi alias loses its method-level opt-out",
+      "guards": "the method-level @Version(VERSION_NEUTRAL) on OpenApiController.getSwaggerUi, and the generator's methodDeclaredVersion that reads it",
+      "file": "apps/agent/src/openapi/openapi.controller.ts",
+      "from": "  @Get(\"openapi\")\n  @Version(VERSION_NEUTRAL)",
+      "to": "  @Get(\"openapi\")",
+      "command": "node apps/agent/scripts/generate-control-plane.mjs --check",
+      "exit": 1,
+      "kills": [
+        "[control-plane] generated artifact drift: apps/agent/src/control-plane/operation-manifest.generated.json"
+      ],
+      "alsoKills": {
+        "command": "pnpm --filter platos-agent exec vitest run src/http/api-surface.test.ts",
+        "exit": 1,
+        "lines": [
+          "× the Nest router reproduces the generated manifest, route for route → expected [ 'GET /openapi' ] to deeply equal []",
+          "× splits the surface the way the ADR does → GET /v1/openapi escaped the version with no declared reason"
+        ]
+      },
+      "note": "One class serves both the versioned machine document (/api/v1/agent/openapi.json) and the unversioned human alias (/openapi). Nest 11's @Version is method-only, which is precisely what makes this per-method opt-out expressible — and precisely why the CLASS-level version had to move into @Controller({ version })."
+    },
+    {
+      "name": "M09 the independent census stops reading @Controller({ path })",
+      "guards": "scripts/rest-census-independent.mjs parseController — the source-derived multi-mount multiplier",
+      "file": "scripts/rest-census-independent.mjs",
+      "from": "const pathArgument = /\\bpath\\s*:\\s*(…)/.exec(argument)?.[1] ?? null;",
+      "to": "const pathArgument = null;",
+      "command": "node scripts/rest-census-independent.mjs --check",
+      "exit": 1,
+      "kills": [
+        "rest-census-independent: RECONCILIATION FAILED",
+        "  - MULTI-MOUNT DRIFT: DocsMcpController — source @Controller declares 1 base paths but KNOWN_MULTI_MOUNT records 2.",
+        "  - ROUTE DRIFT: DocsMcpController — independent decorators 4 × mount-multiplier 1 = 4, manifest ops 8. Either a route was added/removed, or the dual-mount table is stale.",
+        "  - MULTI-MOUNT DRIFT: MemoryController — source @Controller declares 1 base paths but KNOWN_MULTI_MOUNT records 2.",
+        "  - ROUTE DRIFT: MemoryController — independent decorators 15 × mount-multiplier 1 = 15, manifest ops 30. Either a route was added/removed, or the dual-mount table is stale."
+      ],
+      "note": "The two array-form controllers are the 19 dual-mount operations in `281 unique + 19 dual-mount = 300`. The census had to learn the object spelling to keep deriving the multiplier from source rather than from KNOWN_MULTI_MOUNT, and this proves it did not merely fall back to the hardcoded table."
+    }
+  ],
+  "suiteKills": [
+    "scripts/arch/contract-map.test.mjs — 'MUTATION: the no-bare-prefix lint refuses a tree that puts a literal back' feeds the lint two fixture trees, one with the literal on @Controller and one on a method decorator, and watches both throw; its companion case 'the no-bare-prefix lint is silent on the clean tree it guards' is the negative control for the control.",
+    "apps/agent/src/http/api-surface.test.ts — 'MUTATION: without the version expression, all 244 versioned routes move' and 'MUTATION: without the exclusion list, the unversioned roots are swallowed by /api' are M01 and M02 run as in-suite controls against a live Nest application rather than as file edits."
+  ],
+  "declared": [
+    {
+      "what": "No mutation makes DROPPING `version: API_VERSION` from a v1 controller fail.",
+      "why": "Verified live, not assumed: rewriting `@Controller({ path: \"agent/skills\", version: API_VERSION })` to `@Controller(\"agent/skills\")` leaves `generate-control-plane --check` at exit 0 and all 8 route-identity cases green. That is the DESIGN, not a gap — `defaultVersion: \"1\"` is the floor, so a controller that says nothing about the version is v1, and the only way to leave the versioned surface is an explicit VERSION_NEUTRAL, which M05 does catch. A gate that fired here would be asserting a redundant decorator rather than a URL.",
+      "status": "declared, not claimed"
+    },
+    {
+      "what": "No mutation exercises apps/webapp, which still calls `/api/v1/agent/...` as literal strings in 84 BFF route files.",
+      "why": "Those are HTTP CLIENT paths over the wire to a separate process, not Nest route declarations, and the same is true of the ~30 pathname comparisons in `apps/agent/src/auth/scope.guard.ts` and the UNAUTH_BODY_CAPS table in main.ts. They are deliberately left literal: the claim of this tranche is that the wire paths do not move, and a guard that kept matching the literal it always matched is an independent witness to that. Deriving them from API_VERSION would make the guard agree with the router BY CONSTRUCTION. WIN-267's REST-literal measurement is decorator-scoped (contract-map.mjs measureApiV1Literals) and reports 0 across apps/, packages/ and internal-packages/.",
+      "status": "declared, not claimed"
+    },
+    {
+      "what": "The route-identity probe does not run the controllers' constructor injection.",
+      "why": "Vitest transforms with esbuild, which does not implement emitDecoratorMetadata, so `design:paramtypes` is absent and Nest cannot resolve a constructor argument in this repository with or without T1. The probe erases the injection metadata and runs Nest in preview mode, which never calls a constructor or a lifecycle hook. The metadata under test — PATH_METADATA, VERSION_METADATA and the HTTP-method decorators — is untouched, and erasing any of it turns every case in the suite red. This is stated rather than glossed because it is the one respect in which the probe is not the production process.",
+      "status": "declared, not claimed"
+    }
+  ]
+}

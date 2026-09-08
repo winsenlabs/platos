@@ -514,7 +514,17 @@ test("every tracked file produces exactly one row and no file is left over", () 
 test("area counts reconcile against the baseline plus exact WIN-254 and legal-provenance additions", () => {
   const summary = summarize(live.rows);
   const expectedDeltas = {
-    "apps-agent": 0,
+    // WIN-267 (M4.1, T1) 0 -> 2, and BOTH are the version expression:
+    // `apps/agent/src/http/api-surface.ts`, the one place the global prefix, the
+    // major and the seven unversioned roots are written, and
+    // `api-surface.test.ts`, the probe that boots a real Nest application over
+    // the 27 production controllers and reads the route table back out of
+    // Express. They land on `apps-agent.source.runtime` and
+    // `apps-agent.test.suites`, rules that already existed; NO LEDGER RULE
+    // CHANGED. The 28 controllers T1 rewrites and `main.ts` are edited IN PLACE
+    // and add no file — which is the whole shape of this tranche: 24 literals
+    // deleted, one declaration added.
+    "apps-agent": 2,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -568,7 +578,47 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and its wiring changed in-flight.ts, lifecycle.ts and their two suites IN
     // PLACE and add no file. 29 + 3 = 32.
     // M2 INTEGRATION, ALL FOUR: 29 + 1 + 11 + 3 = 44.
-    "apps-core-api": 44,
+    //
+    // WIN-267 (M4.1) INTEGRATION SUMS T3 AND T2. Both branched from 21ca7a8b,
+    // both wrote a figure over the same 44, and the two sets of files are
+    // DISJOINT, so 47 and 54 are each a side and NEITHER is the integrated
+    // count. Side-picking here would have dropped three or ten tracked files
+    // and left every identity below still holding, which is exactly the failure
+    // this comment block has recorded twice before.
+    //
+    // T3 +3: the composition root stops being a declaration and starts
+    // CONSTRUCTING, so three files land and every one falls on a rule WIN-297
+    // already wrote -- `apps-core-api.source.process` for
+    // src/composition/context-ports.ts, `apps-core-api.test.suites` for
+    // src/composition/installation.test.ts, and `apps-core-api.config.package`
+    // for mutations-win267-t3.json, exactly as WIN-260's mutations.json landed
+    // on that same rule. The construction itself adds NO file: it is inside
+    // src/composition/adapter-bindings.ts, because
+    // `scripts/arch/composition-root.mjs` rule (C1) allows exactly ONE importer
+    // of an adapter package and a second file naming one would fail the gate.
+    // `context-ports.ts` is separate precisely because it names no adapter
+    // PACKAGE -- it reads the `SuppliedAdapters` type. The redis-cache defects
+    // T3 exposed are EDITS to packages/adapters/redis-cache/src/client.ts, so
+    // `packages` does not move.
+    //
+    // T2 +10, the REST chassis, also all on rules that already existed:
+    //   `apps-core-api.source.transports` -- `transports/rest/`'s `envelope.ts`,
+    //     `page.ts`, `fault.ts` and `transport-errors.ts`;
+    //   `apps-core-api.source.process`   -- `http/domain-exception.filter.ts`,
+    //     `http/validation.pipe.ts`, `http/not-found.controller.ts` and
+    //     `runtime/edge-middleware.ts`;
+    //   `apps-core-api.test.suites`      -- `transports/rest/envelope.test.ts`
+    //     and `http/rest-chassis.test.ts`.
+    // `edge-middleware.ts` is the correlation-and-admission middleware LIFTED
+    // OUT of `runtime/lifecycle.ts` rather than a new decision, and it is
+    // counted anyway: the census counts FILES, and a file that only moved is
+    // still a file the tree did not have. Everything else T2 touches --
+    // `app.module.ts`, `http.module.ts`, `idempotency-middleware.ts`,
+    // `in-flight.ts`, `lifecycle.ts`, `lifecycle.test.ts`, `mutations.json` and
+    // `transports/rest/index.ts` -- is edited in place and adds nothing.
+    //
+    // NO LEDGER RULE CHANGED BY EITHER. 44 + 3 + 10 = 57.
+    "apps-core-api": 57,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1402,12 +1452,43 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // gates with their suites. Taking any side whole drops files and leaves
     // every identity below still holding, which is why the rule here is to SUM.
     // docs-content 13 + 1 + 2 + 1 = 17; root-infra 43 + 2 + 2 + 4 = 51.
+    //
+    // WIN-267 (M4.1, T0) 51 -> 53, and BOTH land in root-infra, on rules that
+    // already existed. `scripts/arch/contract-map.test.mjs` is the mutation suite
+    // for the gate whose 18-literal assertion could not fail, and
+    // `scripts/mutations-win267-t0.json` is this tranche's guard ledger. Both
+    // match `root-infra.tooling.scripts` (`scripts/**`), so both classify as
+    // kind `source` — and the ledger is DATA rather than code. That is the
+    // blanket rule's verdict applied without an exception, which is the honest
+    // reading: carving a bespoke `scripts/**/*.json` rule for this tranche's own
+    // artifact would be a local exemption written by the file it exempts, and
+    // this is the FIRST non-code file under `scripts/` in the tree. If a second
+    // arrives, the rule is worth splitting on its own merits rather than on
+    // mine. No other area moves: T0 edits enumerators and censuses in place, and
+    // an edited file is not a new one.
+    // root-infra 43 + 2 + 2 + 4 + 2 = 53.
     "docs-content": 17,
-    "root-infra": 51,
+    // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same reason T0's ledger took it — the blanket rule's verdict
+    // applied without an exception. It is now the SECOND non-code file under
+    // `scripts/`; T0 said that if a second arrived the rule would be worth
+    // splitting on its own merits, and this notes the arrival without splitting
+    // it inside the tranche that would be its own beneficiary. The census
+    // scripts and the contract-map gate T1 edits are edited in place.
+    // WIN-267 (M4.1, T2) 54 -> 55: `scripts/mutations-win267-t2.json`, this
+    // tranche's guard ledger, on the same rule and for the same stated reason.
+    // It is the THIRD non-code file under `scripts/`; the split T0 imagined is
+    // now clearly worth doing and is still not being done INSIDE a tranche that
+    // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
+    // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
+    // and add no file.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
+    "root-infra": 55,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
-  // is what the ledger fingerprint carries.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1579);
+  // is what the ledger fingerprint carried before M4.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1513,7 +1594,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1579
+    rulesDocument.baseline.totalFiles + 1598
   );
 });
 

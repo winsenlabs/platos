@@ -57,13 +57,13 @@ import { NestFactory } from "@nestjs/core";
 
 import type { Clock, IdGenerator, Logger } from "@platos/kernel";
 
-import { composeApplication, type AppModule } from "../app.module.js";
-import type { SuppliedAdapters } from "../composition/adapter-bindings.js";
+import { composeApplication, type AppModule, type SuppliedContextPorts } from "../app.module.js";
+import type { SuppliedAdapters, UnwiredAdapter } from "../composition/adapter-bindings.js";
 import { describeAdapterSupply } from "../composition/registry.js";
 import type { CoreApiConfiguration } from "../config/schema.js";
 import type { LifecycleState } from "../health/readiness.js";
 import { CoreApiHttpModule } from "../http/http.module.js";
-import { resolveCorrelation, withCorrelation } from "./correlation.js";
+import { createEdgeMiddleware } from "./edge-middleware.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
 import { createProcessLogger, systemClock, ulidGenerator } from "./process-ports.js";
 import { drainAll, type Drainable, type ShutdownDrainReport } from "./shutdown-drain.js";
@@ -71,6 +71,18 @@ import { drainAll, type Drainable, type ShutdownDrainReport } from "./shutdown-d
 export interface StartOptions {
   readonly configuration: CoreApiConfiguration;
   readonly adapters?: SuppliedAdapters;
+  /**
+   * WIN-267 T3. The context bundles assembled from those adapters.
+   *
+   * SEPARATE FROM `adapters` because they are separate decisions: an adapter
+   * fills one declared binding and is judged against the forty-nine-slot table,
+   * whereas a context takes a whole bundle whose slots are its own names.
+   * `composition/context-ports.ts` builds this from the adapters and says which
+   * contexts it could not.
+   */
+  readonly ports?: SuppliedContextPorts;
+  /** Why each unbuilt adapter directory is unbuilt. Reaches `/readyz`. */
+  readonly unwired?: readonly UnwiredAdapter[];
   readonly clock?: Clock;
   readonly ids?: IdGenerator;
   readonly logger?: Logger;
@@ -118,20 +130,6 @@ interface ClosableServer {
   closeAllConnections?: () => void;
 }
 
-/** Only the parts of an inbound request/response pair the edge middleware touches. */
-interface EdgeRequest {
-  readonly headers: Record<string, string | string[] | undefined>;
-  readonly method?: string;
-  readonly url?: string;
-}
-interface EdgeResponse {
-  setHeader(name: string, value: string): unknown;
-  on(event: string, listener: () => void): unknown;
-  /** Written only on the refusal path; see the admission gate in the middleware. */
-  statusCode?: number;
-  end(body?: string): unknown;
-}
-
 export function createProcessDefaults(configuration: CoreApiConfiguration): {
   clock: Clock;
   ids: IdGenerator;
@@ -165,6 +163,8 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     ids,
     logger,
     adapters: options.adapters,
+    ports: options.ports,
+    unwired: options.unwired,
     inFlight,
   });
 
@@ -188,34 +188,16 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
 
   // Correlation is installed BEFORE the in-flight register so that the register's
   // own log lines, and everything a request does, already carry the identifier.
-  nest.use((request: EdgeRequest, response: EdgeResponse, next: () => void) => {
-    const correlation = resolveCorrelation(request.headers[configuration.requestIdHeader]);
-    response.setHeader(configuration.requestIdHeader, correlation.requestId);
-    withCorrelation(correlation, () => {
-      const registration = inFlight.begin(`${request.method ?? "?"} ${request.url ?? "?"}`);
-      if (!registration.admitted) {
-        // REFUSED, NOT DROPPED. Admission closed while this connection was still
-        // open — a keep-alive socket an upstream proxy holds for minutes can
-        // deliver a request after the drain has counted zero, and a few lines
-        // later shutdown destroys every remaining socket. Without this the
-        // client sees a reset in the middle of a write it cannot safely repeat.
-        // 503 with `Connection: close` and a `Retry-After` is the same event
-        // told truthfully, and it is retriable.
-        response.statusCode = 503;
-        response.setHeader("connection", "close");
-        response.setHeader("retry-after", "1");
-        response.setHeader("content-type", "application/json");
-        response.end(JSON.stringify({ error: { code: registration.refusal } }));
-        return;
-      }
-      // Both events fire in practice — `finish` on a normal response, `close` on
-      // an aborted one, and sometimes both. `settle` is idempotent for exactly
-      // this reason; see in-flight.ts.
-      response.on("finish", registration.settle);
-      response.on("close", registration.settle);
-      next();
-    });
-  });
+  //
+  // `nest.use` AND NOT MODULE MIDDLEWARE, which is the mirror of the choice
+  // `http.module.ts` makes for the idempotency gate. This must run before
+  // EVERYTHING, and Express runs middleware in registration order: registered
+  // here, before `listen()` calls `init()`, it precedes every middleware the
+  // module registers. The gate needs the opposite — it needs the body parser to
+  // have run — and says so where it is registered.
+  nest.use(
+    createEdgeMiddleware({ requestIdHeader: configuration.requestIdHeader, inFlight }),
+  );
 
   await nest.listen(configuration.port, configuration.host);
   const server = nest.getHttpServer() as ClosableServer;

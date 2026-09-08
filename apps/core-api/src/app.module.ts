@@ -67,15 +67,35 @@
 // siblings — because asking whether the whole adapter extends `TenancyLocks`
 // would resolve to `never` and fail a binding that holds.
 //
-// WHAT REMAINS TRUE, and is now the whole of what is open: this root CONSTRUCTS
-// no adapter. Nothing here calls `createPostgresTenancyAdapter`, so the wiring is
-// proven by TYPE — `PORT_SATISFACTION` and `OUTBOX_STORE_SATISFACTION` resolve
-// at compile time — and by nothing at runtime. An install supplies each bundle
-// itself, and readiness is now honest about every binding that is unsatisfied,
-// the five included.
+// AND THAT LAST CLAUSE IS NOW FALSE TOO (WIN-267 T3), so it is corrected rather
+// than carried. It used to read: "this root CONSTRUCTS no adapter. Nothing here
+// calls `createPostgresTenancyAdapter`, so the wiring is proven by TYPE and by
+// nothing at runtime." `constructAdapters` in `composition/adapter-bindings.ts`
+// now opens the pool, builds the outbox over it, opens the Redis connection,
+// parses the root key ring and builds the model router — from the validated
+// configuration `main.ts` already had and was throwing away. Five of the
+// thirteen directories are built; the other eight are still WIN-251's generated
+// interfaces and cannot be, and every one of them reaches readiness with a cause
+// saying which of those two it is.
+//
+// WHAT REMAINS OPEN, restated to the one sentence that is still true: TWO
+// contexts are composed and only ONE of them can be composed from an adapter.
+// `tenancy`'s six driven ports and its unit of work are all properties of one
+// `PostgresTenancyAdapter`, so a database URL is the whole of what it needs;
+// `identity-access` still takes a supplied bundle because four of its eight
+// slots — a rate limiter, a secret hasher, a token minter, a TOTP verifier and a
+// MFA cipher — are satisfied by no adapter directory in this tree.
+// `composition/context-ports.ts` states that per context and is the file that
+// assembles what CAN be assembled.
 // ---------------------------------------------------------------------------
 
-import type { Clock, IdGenerator, Logger, RequestIdempotency } from "@platos/kernel";
+import type {
+  Clock,
+  CorrelationSource,
+  IdGenerator,
+  Logger,
+  RequestIdempotency,
+} from "@platos/kernel";
 
 import type { IdentityAccessContract } from "@platos/context-identity-access";
 import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
@@ -99,9 +119,14 @@ import type { ConversationsContract } from "@platos/context-conversations";
 import type { EventingContract } from "@platos/context-eventing";
 import type { PrivacyContract } from "@platos/context-privacy";
 
-import { ADAPTER_BINDINGS, type SuppliedAdapters } from "./composition/adapter-bindings.js";
+import {
+  ADAPTER_BINDINGS,
+  type SuppliedAdapters,
+  type UnwiredAdapter,
+} from "./composition/adapter-bindings.js";
 import { reportAdapterSupply, type AdapterSupplyReport } from "./composition/registry.js";
 import type { CoreApiConfiguration } from "./config/schema.js";
+import { correlationSource } from "./runtime/correlation.js";
 import { createInFlightRegister, type InFlightRegister } from "./runtime/in-flight.js";
 
 /** The seventeen published context surfaces, exactly as ADR M0.3 §4 names them. */
@@ -139,6 +164,18 @@ export interface AppModule {
   readonly logger: Logger;
   readonly adapters: SuppliedAdapters;
   readonly bindings: AdapterSupplyReport;
+  /**
+   * WIN-267 T3. Why each directory that holds no object holds none.
+   *
+   * `bindings.unsatisfied` says WHICH ports are unserved; this says WHY, and the
+   * two answers are for different readers. An operator seeing
+   * `postgres-tenancy:TenancyRepository` unsatisfied cannot tell a missing
+   * `PLATOS_STORE_POSTGRES_URL` from an adapter that was never written, and those
+   * have completely different responses. Empty when a caller composed without
+   * constructing — which is every unit test in this package, and is why it is a
+   * list rather than a claim that all thirteen were considered.
+   */
+  readonly unwired: readonly UnwiredAdapter[];
   readonly contexts: ComposedContexts;
   readonly inFlight: InFlightRegister;
   /**
@@ -155,6 +192,29 @@ export interface AppModule {
    * it is the only one the EDGE consumes rather than a context.
    */
   readonly requestIdempotency: RequestIdempotency | null;
+  /**
+   * The kernel `CorrelationSource` the process edge decided, published where an
+   * install can hand it to an adapter.
+   *
+   * WIN-260 (M2.5) BUILT BOTH ENDS OF THIS SEAM AND JOINED NEITHER TO THE OTHER.
+   * `runtime/correlation.ts` implements the port over `AsyncLocalStorage`;
+   * `packages/adapters/postgres-tenancy` takes a `CorrelationSource | null` and
+   * writes whatever it reports into PostgreSQL's session state for the
+   * transaction, where a second connection reads it back off the committed row.
+   * In between, every construction site in this repository passed that
+   * parameter's DEFAULT — `null` — so the identifier the edge decided reached the
+   * envelope, the log line, and nothing else. The port is a property of the
+   * composed application for the same reason `requestIdempotency` is: a transport
+   * or an install that reached into `src/runtime/` for it would be naming a
+   * MODULE where it should name a PORT, and handing out ports is the composition
+   * root's one job.
+   *
+   * It is not optional and has no null case. Correlation is ambient and the edge
+   * always has an answer — `current()` returning null OUTSIDE a request is the
+   * port's own way of saying "this work belongs to no request", which is why the
+   * absence needs no second spelling here.
+   */
+  readonly correlation: CorrelationSource;
 }
 
 /**
@@ -187,7 +247,15 @@ export interface CompositionInput {
   readonly logger: Logger;
   readonly adapters?: SuppliedAdapters;
   readonly ports?: SuppliedContextPorts;
+  /** Carried through from `constructAdapters`; see `AppModule.unwired`. */
+  readonly unwired?: readonly UnwiredAdapter[];
   readonly inFlight?: InFlightRegister;
+  /**
+   * Overridable so a suite can move the ambient identifier without an HTTP
+   * request. Defaulted to the process edge's own, which is what every install
+   * gets and what production must never have to remember to pass.
+   */
+  readonly correlation?: CorrelationSource;
 }
 
 /**
@@ -231,12 +299,14 @@ export function composeApplication(input: CompositionInput): AppModule {
     logger: input.logger,
     adapters: Object.freeze({ ...adapters }),
     bindings,
+    unwired: Object.freeze([...(input.unwired ?? [])]),
     contexts,
     inFlight: input.inFlight ?? createInFlightRegister(),
     // `?? null` rather than leaving it undefined: the gate has to be able to see
     // that the port is ABSENT and fail closed, and an undefined property reads
     // the same as one nobody wired.
     requestIdempotency: adapters["redis-cache"]?.requests ?? null,
+    correlation: input.correlation ?? correlationSource,
   });
 }
 

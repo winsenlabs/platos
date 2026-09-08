@@ -641,7 +641,18 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         product this rule exists to keep out, and it is bound to a removal
   //         EVENT (the suite stops planting a project-crossed binding) rather
   //         than to a date --> 19410.
-  assert.equal(manifest.exceptions.length, 19410);
+  //   +1    ONE reviewed WIN-267 (M4.1) T1 occurrence, in
+  //         `apps/agent/src/http/api-surface.test.ts`: the route-identity probe
+  //         must mount every one of the 27 controllers Nest mounts in
+  //         production, and one of them lives in a directory whose name is the
+  //         external durable-runtime vendor's. The occurrence is a MODULE
+  //         SPECIFIER, not repository vocabulary — the same distinction
+  //         `scripts/arch/route-ownership.mjs` makes when it cites basenames
+  //         rather than paths. The alternative was to leave that controller out
+  //         of a comparison whose entire value is that it is exhaustive, which
+  //         would have bought silence about four operations to avoid one
+  //         manifest line --> 19411.
+  assert.equal(manifest.exceptions.length, 19411);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

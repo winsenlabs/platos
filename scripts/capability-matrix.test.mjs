@@ -25,6 +25,8 @@ import {
   validateOwners,
 } from "./arch/route-ownership.mjs";
 import { OWNER } from "./arch/table-ownership.mjs";
+import { scanRootAccounting } from "./capability-matrix.mjs";
+import { SCAN_ROOTS } from "./rest-census-independent.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const MATRIX = JSON.parse(
@@ -393,4 +395,103 @@ test("every rule has its own message, so two defects are never confused", () => 
     "transport-row-reassigned",
   ]);
   assert.equal(new Set(ids).size, ids.length);
+});
+
+// ── WIN-267 (M4.1): the REST total, split by the tree it came from ──────────
+// `scanRootAccounting` RE-DERIVES the split from each implementation's own
+// source path and checks it against the split the generator wrote while
+// walking. These cases mutate one side at a time, so an "agreement" that only
+// ever compared a number with itself cannot pass here.
+
+const manifestStub = (operations, generated) => ({
+  inventories: { restOperations: operations },
+  summary: generated === undefined ? {} : { restScanRoots: generated },
+});
+const agentOp = (id) => ({ id, implementations: [{ source: "apps/agent/src/x.controller.ts" }] });
+const coreOp = (id) => ({ id, implementations: [{ source: "apps/core-api/src/transports/rest/v1.controller.ts" }] });
+
+test("committed matrix: the REST total is split across the declared scan roots and sums back", () => {
+  const roots = MATRIX.scanRoots.roots;
+  assert.deepEqual(
+    roots.map((r) => r.dir),
+    SCAN_ROOTS.map((r) => r.dir),
+  );
+  assert.equal(
+    roots.reduce((n, r) => n + r.operations, 0),
+    MATRIX.totals.restOperations,
+  );
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 0 });
+  assert.deepEqual(MATRIX.scanRoots.unattributed, []);
+});
+
+test("refuses a REST implementation whose source belongs to no declared scan root", () => {
+  const manifest = manifestStub(
+    [{ id: "GET /x", implementations: [{ source: "apps/somewhere-else/src/x.controller.ts" }] }],
+    [
+      { id: "agent", dir: "apps/agent/src", operations: 0 },
+      { id: "core-api-transports", dir: "apps/core-api/src/transports", operations: 0 },
+    ],
+  );
+  const { errors } = scanRootAccounting(manifest);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /^scan-root-unattributed:/u);
+  assert.ok(errors[0].includes("apps/somewhere-else/src/x.controller.ts"));
+});
+
+test("refuses a generator split that disagrees with the re-derived one", () => {
+  const manifest = manifestStub(
+    [agentOp("GET /a"), coreOp("GET /b")],
+    [
+      { id: "agent", dir: "apps/agent/src", operations: 2 },
+      { id: "core-api-transports", dir: "apps/core-api/src/transports", operations: 0 },
+    ],
+  );
+  const { errors } = scanRootAccounting(manifest);
+  assert.equal(errors.length, 2);
+  assert.ok(errors.every((e) => e.startsWith("scan-root-count:")), errors.join("\n"));
+});
+
+test("refuses a manifest that publishes no split at all, rather than skipping the check", () => {
+  const { errors } = scanRootAccounting(manifestStub([agentOp("GET /a")], undefined));
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /^scan-root-missing-from-manifest:/u);
+});
+
+test("refuses a generator root SCAN_ROOTS does not declare, and a declared root the generator drops", () => {
+  const undeclared = scanRootAccounting(
+    manifestStub(
+      [agentOp("GET /a")],
+      [
+        { id: "agent", dir: "apps/agent/src", operations: 1 },
+        { id: "core-api-transports", dir: "apps/core-api/src/transports", operations: 0 },
+        { id: "webapp", dir: "apps/webapp/app", operations: 7 },
+      ],
+    ),
+  ).errors;
+  assert.ok(
+    undeclared.some((e) => e.startsWith("scan-root-undeclared:") && e.includes("webapp")),
+    undeclared.join("\n"),
+  );
+
+  const dropped = scanRootAccounting(
+    manifestStub([agentOp("GET /a")], [{ id: "agent", dir: "apps/agent/src", operations: 1 }]),
+  ).errors;
+  assert.ok(
+    dropped.some((e) => e.startsWith("scan-root-absent:") && e.includes("core-api-transports")),
+    dropped.join("\n"),
+  );
+});
+
+test("ACCEPTANCE: an operation under the core-api transport root lands in that root's column", () => {
+  const manifest = manifestStub(
+    [agentOp("GET /a"), coreOp("GET /b"), coreOp("POST /b")],
+    [
+      { id: "agent", dir: "apps/agent/src", operations: 1 },
+      { id: "core-api-transports", dir: "apps/core-api/src/transports", operations: 2 },
+    ],
+  );
+  const { roots, errors } = scanRootAccounting(manifest);
+  assert.deepEqual(errors, []);
+  assert.equal(roots.find((r) => r.id === "core-api-transports").operations, 2);
+  assert.equal(roots.find((r) => r.id === "agent").operations, 1);
 });

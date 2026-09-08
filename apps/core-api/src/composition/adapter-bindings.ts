@@ -23,7 +23,14 @@
 // readiness rather than pretending to be ready. WIN-258/259 and their siblings
 // fill the registry in; none of them needs to change this file's shape to do it.
 
-import type { DurableRuntime, EventBus, OutboxWriter, RequestIdempotency } from "@platos/kernel";
+import type {
+  Clock,
+  CorrelationSource,
+  DurableRuntime,
+  EventBus,
+  OutboxWriter,
+  RequestIdempotency,
+} from "@platos/kernel";
 
 import type {
   IdentityAccessRepository,
@@ -97,19 +104,42 @@ import type {
 } from "@platos/context-jobs/application/ports/index.js";
 
 import type { PostgresTenancyAdapter } from "@platos/adapter-postgres-tenancy";
+// WIN-267 T3 — the FIRST value imports this file has ever carried. Every import
+// above is a type and erases; these five are the constructors, and they are what
+// turn "the one place a port meets its implementation" from a claim about where
+// an interface is NAMED into a claim about where an object is BUILT.
+//
+// `buildPostgresTenancyAdapter` over `createTenancyDatabaseClient`, rather than
+// the one-call `createPostgresTenancyAdapter`, for ONE reason: the three-argument
+// form is the only one that takes a `CorrelationSource`, and
+// `runtime/correlation.ts` says outright that the composition root is what hands
+// that object over — "the adapter names the kernel port, the composition root
+// hands it this object, and packages/adapters/postgres-tenancy puts the value
+// into PostgreSQL's own session state for the transaction". Calling the one-arg
+// factory would have left `platos.request_id` unset on every transaction in
+// production and made WIN-260's correlation work unreachable from the process
+// that ships.
+import { buildPostgresTenancyAdapter, createTenancyDatabaseClient } from "@platos/adapter-postgres-tenancy";
 import type { OutboxAdapter, OutboxEventStore, OutboxFlush } from "@platos/adapter-outbox";
+import { buildOutboxAdapter } from "@platos/adapter-outbox";
 import type { DurableRuntimeAdapter } from "@platos/adapter-durable-runtime";
 import type { ClickhouseObservabilityAdapter } from "@platos/adapter-clickhouse-observability";
 import type { ObjectstoreMinioAdapter } from "@platos/adapter-objectstore-minio";
 import type { RedisRatelimitAdapter } from "@platos/adapter-redis-ratelimit";
 import type { RedisCacheAdapter } from "@platos/adapter-redis-cache";
+import { createRedisCacheAdapter } from "@platos/adapter-redis-cache";
 import type { RedisStreamsAdapter } from "@platos/adapter-redis-streams";
 import type { ModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
+import { createModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
+import { buildKeyringEnvelope } from "@platos/adapter-keyring-envelope";
 
+import type { ProvidersConfiguration } from "../config/providers.js";
+import type { SecurityConfiguration } from "../config/security.js";
+import type { StoresConfiguration } from "../config/stores.js";
 import type { Drainable } from "../runtime/shutdown-drain.js";
 
 /**
@@ -907,3 +937,278 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
 export const ADAPTER_NAMES: readonly AdapterName[] = Object.freeze([
   ...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter)),
 ]);
+
+// ---------------------------------------------------------------------------
+// WIN-267 T3 — CONSTRUCTION. The half this file did not have.
+//
+// Everything above DECLARES. `PORT_SATISFACTION` proves at COMPILE TIME that
+// each of the forty-nine bindings is satisfiable, and until this section existed
+// that proof was the whole of the wiring: `startCoreApi({configuration})` was
+// handed no adapters, `reportAdapterSupply({})` therefore answered `0/49`, and
+// `/readyz` was 503 in EVERY configuration BY CONSTRUCTION rather than because
+// anything about an install was wrong. A readiness endpoint that cannot report
+// anything but red is not a readiness endpoint.
+//
+// WHAT DECIDES WHETHER A DIRECTORY IS CONSTRUCTED. Two different questions, and
+// keeping them apart is the whole value of the report below:
+//
+//   CONFIGURATION — the install did not declare the group this directory needs.
+//   `stores.postgres` absent means no database URL, so there is no pool to open.
+//   That is an operator's answer and it is fixed by setting a variable.
+//
+//   IMPLEMENTATION — the directory has no constructor to call. EIGHT of the
+//   thirteen are still WIN-251's generated skeleton: `src/adapter.ts` holds an
+//   interface extending the port and nothing else. No amount of configuration
+//   reaches them, and `UNIMPLEMENTED_ADAPTERS` below names them so readiness can
+//   say which of the two an operator is looking at.
+//
+// A READINESS LINE THAT SAID ONLY "unsatisfied" WOULD CONFLATE THOSE, and the
+// operator response differs completely: one is a variable, the other is work
+// that has not happened. So every directory this function declines to build
+// carries a CAUSE and a REASON, and both reach `/readyz`.
+// ---------------------------------------------------------------------------
+
+/**
+ * The directories `packages/adapters/` publishes as a TYPE and nothing else.
+ *
+ * These are not omissions of this file's: each one's `src/adapter.ts` is the
+ * generated placeholder `scripts/arch/gen-v1-skeleton.mjs` emits — an interface
+ * extending the port, carrying the adapter's own name, exporting no factory. A
+ * composition root cannot construct an interface, so naming them here is the
+ * honest statement of why eight directories, and the bindings on them, can never
+ * be satisfied in this build.
+ *
+ * IT IS NOT A LIST THIS FILE IS TRUSTED WITH. `scripts/arch/composition-root.mjs`
+ * rule (C7) reads it back and JOINS IT TO THE FILESYSTEM: every directory named
+ * here must export no `create*Adapter`/`build*Adapter`, and every directory NOT
+ * named here must export one. BOTH DIRECTIONS, so the list cannot go stale in
+ * either — an adapter that gains an implementation and is left on this list
+ * fails, and one dropped from the list without gaining an implementation fails
+ * too. That is the join this programme's first lesson is about: the assertion is
+ * against the adapter packages' own source, never against another number this
+ * file wrote.
+ */
+export const UNIMPLEMENTED_ADAPTERS: readonly AdapterName[] = Object.freeze([
+  "durable-runtime",
+  "clickhouse-observability",
+  "objectstore-minio",
+  "redis-ratelimit",
+  "redis-streams",
+  "channel-slack",
+  "notifier-email",
+  "notifier-webhook",
+]);
+
+/** Why one adapter directory holds no object. One row per directory NOT built. */
+export interface UnwiredAdapter {
+  readonly adapter: AdapterName;
+  /**
+   * `configuration` is fixed by setting a variable; `implementation` is not
+   * fixed by anything an operator can do. See the two-questions note above.
+   */
+  readonly cause: "configuration" | "implementation";
+  /** Operator-facing, and it names the VARIABLE or the FILE, never a value. */
+  readonly reason: string;
+}
+
+/**
+ * What an install hands the constructor, narrowed to what it actually reads.
+ *
+ * THREE of the six validated sections and two kernel ports — not the whole
+ * `PlatformConfiguration`. The `core` section is the process's own (port, host,
+ * log level, timeouts) and no adapter reads it; `channels` and `durable` belong
+ * to two of the eight directories that have no constructor to hand them to.
+ * Taking the whole object would have made this signature claim it consumed
+ * things it does not.
+ */
+export interface AdapterConstructionInput {
+  readonly stores: StoresConfiguration;
+  readonly security: SecurityConfiguration;
+  readonly providers: ProvidersConfiguration;
+  /** Injected, never ambient: the outbox stamps every event's time from it. */
+  readonly clock: Clock;
+  /**
+   * The request-id seam WIN-260 built and nothing wired.
+   *
+   * `null` is legitimate — a suite constructing adapters outside a request has
+   * no correlation to stamp — and it is not an oversight: both adapters that
+   * take one treat null as "whatever the producer named stands".
+   */
+  readonly correlation: CorrelationSource | null;
+}
+
+export interface AdapterConstruction {
+  readonly adapters: SuppliedAdapters;
+  /** One row per directory NOT built, with its cause. Reaches `/readyz`. */
+  readonly unwired: readonly UnwiredAdapter[];
+  /**
+   * Configuration that parsed as a string and is not usable as a key ring, a
+   * connection or a retry policy.
+   *
+   * SEPARATE FROM `unwired`, because they are opposite failures. An ABSENT group
+   * is an install part-way through wiring and the process must serve and say so;
+   * a PRESENT group that cannot be turned into an adapter is a misconfiguration
+   * no restart fixes, and `main.ts` answers it with EX_CONFIG.
+   */
+  readonly faults: readonly string[];
+  /**
+   * Release every pool and connection this call opened, in reverse order.
+   *
+   * The composition root owns each adapter's lifetime — both `close()` doc
+   * comments in the two directories that hold a vendor client say exactly that —
+   * and this is the handle that makes the sentence true. Without it a process
+   * that shut its listener cleanly would still hold a PostgreSQL pool and a
+   * Redis socket until the orchestrator killed it.
+   */
+  release(): Promise<void>;
+}
+
+/**
+ * Build every adapter this configuration declares, and say why for the rest.
+ *
+ * PURE OVER ITS INPUT in the sense that matters: it reads no environment, takes
+ * its clock and its correlation seam as arguments, and returns the same report
+ * for the same configuration. It is not pure in the sense of opening no sockets
+ * — that is the one thing it exists to do.
+ *
+ * ORDER IS LOAD-BEARING IN EXACTLY ONE PLACE. `outbox` is built OVER
+ * `postgres-tenancy`, because ADR M0.3 §15 gives the ORM one home and the
+ * canonical `Event` row is written from it: the outbox package owns every
+ * decision that makes an event an event and hands a prepared row across the
+ * `OutboxEventStore` seam. So an install with no database gets no outbox either,
+ * and the reason it gets back says THAT rather than naming a variable which
+ * would not have helped.
+ */
+export function constructAdapters(input: AdapterConstructionInput): AdapterConstruction {
+  const adapters: { -readonly [Name in AdapterName]?: AdapterInstances[Name] } = {};
+  const unwired: UnwiredAdapter[] = [];
+  const faults: string[] = [];
+  const closers: (() => Promise<void>)[] = [];
+
+  const decline = (adapter: AdapterName, cause: UnwiredAdapter["cause"], reason: string): void => {
+    unwired.push(Object.freeze({ adapter, cause, reason }));
+  };
+
+  const postgres = input.stores.postgres;
+  if (postgres === null) {
+    decline(
+      "postgres-tenancy",
+      "configuration",
+      "PLATOS_STORE_POSTGRES_URL is not set, so the stores.postgres group is undeclared",
+    );
+  } else {
+    try {
+      const client = createTenancyDatabaseClient({
+        databaseUrl: postgres.url,
+        connectionLimit: postgres.poolMax,
+        statementTimeoutMs: postgres.statementTimeoutMs,
+      });
+      const adapter = buildPostgresTenancyAdapter(client, {}, input.correlation);
+      adapters["postgres-tenancy"] = adapter;
+      closers.push(() => adapter.close());
+    } catch (error) {
+      // The NAME and the CODE, never the URL. `config/load.ts` promises a
+      // startup diagnostic never echoes a connection string, and the failure
+      // path would be a poor place to break that promise:
+      // `AdapterConfigurationError` carries a code and a sentence about a pool
+      // setting, and both are safe to print.
+      faults.push(`postgres-tenancy could not be constructed: ${describeConstructionFault(error)}`);
+    }
+  }
+
+  const outboxStore: OutboxEventStore | undefined = adapters["postgres-tenancy"];
+  if (outboxStore === undefined) {
+    decline(
+      "outbox",
+      "configuration",
+      "the OutboxEventStore it appends through is postgres-tenancy (ADR M0.3 §15: one ORM home), which is not constructed",
+    );
+  } else {
+    adapters.outbox = buildOutboxAdapter({
+      store: outboxStore,
+      clock: input.clock,
+      ...(input.correlation === null ? {} : { correlation: input.correlation }),
+    });
+  }
+
+  const redis = input.stores.redis;
+  if (redis === null) {
+    decline(
+      "redis-cache",
+      "configuration",
+      "PLATOS_STORE_REDIS_URL is not set, so the stores.redis group is undeclared",
+    );
+  } else {
+    const adapter = createRedisCacheAdapter({ url: redis.url });
+    adapters["redis-cache"] = adapter;
+    closers.push(() => adapter.close());
+  }
+
+  const encryption = input.security.encryption;
+  if (encryption === null) {
+    decline(
+      "keyring-envelope",
+      "configuration",
+      "PLATOS_SECURITY_ENCRYPTION_KEY is not set, so the security.encryption group is undeclared",
+    );
+  } else {
+    // A ring that will not parse is EX_CONFIG and NOT a degraded readiness: the
+    // key material was supplied and is unusable, so every credential in the
+    // vault is unreadable and no amount of waiting changes that.
+    const ring = buildKeyringEnvelope({
+      activeVersion: encryption.rootKeyVersion,
+      keys: { [String(encryption.rootKeyVersion)]: encryption.rootKey },
+    });
+    if (ring.ok) adapters["keyring-envelope"] = ring.value;
+    else faults.push(`keyring-envelope could not be constructed: ${ring.error.code}`);
+  }
+
+  if (input.providers.modelRouter === null) {
+    decline(
+      "model-router-providers",
+      "configuration",
+      "PLATOS_PROVIDERS_DEFAULT_MODEL is not set, so the providers.modelRouter group is undeclared",
+    );
+  } else {
+    const router = createModelRouterProvidersAdapter({});
+    if (router.ok) adapters["model-router-providers"] = router.value;
+    else faults.push(`model-router-providers could not be constructed: ${router.error.code}`);
+  }
+
+  for (const adapter of UNIMPLEMENTED_ADAPTERS) {
+    decline(
+      adapter,
+      "implementation",
+      `packages/adapters/${adapter}/src/adapter.ts is a generated interface and exports no constructor`,
+    );
+  }
+
+  return Object.freeze({
+    adapters: Object.freeze({ ...adapters }),
+    unwired: Object.freeze([...unwired]),
+    faults: Object.freeze([...faults]),
+    async release(): Promise<void> {
+      // REVERSE ORDER, AND EVERY ONE IS CALLED. A close that throws must not
+      // strand the sockets behind it: a leaked PostgreSQL pool outlives the
+      // process's usefulness, and the orchestrator's SIGKILL is a worse way to
+      // discover it. The rejection is swallowed here and nowhere else, because
+      // by this point there is no caller left to hand it to.
+      for (const close of [...closers].reverse()) {
+        try {
+          await close();
+        } catch {
+          // Intentionally ignored; see above.
+        }
+      }
+    },
+  });
+}
+
+/** A thrown value rendered for a log line, carrying no configuration value. */
+function describeConstructionFault(error: unknown): string {
+  if (error instanceof Error) {
+    const code = (error as { readonly code?: unknown }).code;
+    return typeof code === "string" ? `${error.name} ${code}` : error.name;
+  }
+  return "unknown";
+}

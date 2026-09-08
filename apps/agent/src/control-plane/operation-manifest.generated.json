@@ -12070,6 +12070,24 @@
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
       "REST_ONLY": 144
-    }
+    },
+    "restScanRoots": [
+      {
+        "id": "agent",
+        "dir": "apps/agent/src",
+        "strict": false,
+        "registeredControllers": 27,
+        "operations": 300,
+        "routeBindings": 300
+      },
+      {
+        "id": "core-api-transports",
+        "dir": "apps/core-api/src/transports",
+        "strict": true,
+        "registeredControllers": 0,
+        "operations": 0,
+        "routeBindings": 0
+      }
+    ]
   }
 }

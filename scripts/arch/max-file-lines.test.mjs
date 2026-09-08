@@ -39,6 +39,12 @@ test("selectors and thresholds are the exact accepted WIN-251 max-file-lines sli
     "packages/contexts/**",
     "packages/adapters/**",
     "apps/core-api/src/transports/**",
+    // WIN-267 (M4.1). The fifth selector closes the shorter path to a controller
+    // monolith: `src/http/` is where core-api's Nest controllers are registered
+    // (`http.module.ts`) and where its only route-bearing file lives, and it was
+    // outside every selector while `src/transports/**` — which holds no
+    // controller yet — was inside one.
+    "apps/core-api/src/http/**",
   ]);
   assert.equal(WARNING_THRESHOLD, 400);
   assert.equal(ERROR_THRESHOLD, 500);
@@ -746,7 +752,49 @@ test("the live selectors scan an exact nonzero source census", () => {
   // 1468 + 6 = 1474, read back from the scan.
   //
   // M2 INTEGRATION, ALL FOUR: 1468 + 9 + 24 + 14 + 6 = 1521.
-  assert.equal(result.fileCount, 1521);
+  //
+  // WIN-267 (M4.1) 1521 -> 1533, AND IT MOVES THE SELECTOR RATHER THAN THE TREE.
+  // This is only the second delta on this list that changes what the gate JUDGES
+  // — the model-router pass above was the first — and it adds no file to the
+  // repository at all. The FIFTH selector is `apps/core-api/src/http/**`: twelve
+  // files that were sitting outside every selector while `src/transports/**`,
+  // which holds no controller yet, was inside one. The reason is not symmetry.
+  // `src/http/` is where core-api's Nest controllers are REGISTERED —
+  // `http.module.ts` carries the controller array and `health.controller.ts` is
+  // the one route-bearing file the application has — so "a controller monolith
+  // is structurally forbidden" was true of the directory the routes are coming
+  // TO and false of the directory they would be registered IN, and the shorter
+  // path was the uncovered one.
+  //
+  // WIDENING THE SELECTOR ADDED NO FINDING. The twelve newly covered files
+  // produce zero errors and zero warnings; the finding list below is unchanged.
+  // That is a measured result over this tree, not an inherited claim.
+  //
+  // IT STOPS AT `src/http/**` ON PURPOSE. `apps/core-api/src/**` would pull in
+  // `app.module.test.ts` at 509 effective lines — over the hard threshold — and
+  // the honest options there are to split a suite this issue has no mandate to
+  // touch or to grant the budget its first waiver. Neither is M4.1's to take, so
+  // the selector covers the HTTP edge and says why it stops.
+  //
+  // WIN-267 (M4.1, T2) 1533 -> 1542, AND THIS ONE MOVES THE TREE RATHER THAN THE
+  // SELECTOR. The REST chassis lands NINE files inside the two apps selectors
+  // T0 and the earlier tranches drew: five under `src/transports/rest/`
+  // (`envelope.ts`, `page.ts`, `fault.ts`, `transport-errors.ts` and the
+  // directory's suite) and four under `src/http/` (`domain-exception.filter.ts`,
+  // `validation.pipe.ts`, `not-found.controller.ts` and `rest-chassis.test.ts`).
+  // `runtime/edge-middleware.ts` is the tenth file the tranche adds and is NOT
+  // counted here, because `src/runtime/**` is deliberately outside the selector —
+  // which is the difference between this census and the arch-boundaries one, and
+  // worth stating so a reader does not try to reconcile 1542 with 1578.
+  //
+  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured, not assumed:
+  // the largest of the nine is `rest-chassis.test.ts` at 352 effective lines,
+  // then `envelope.test.ts` at 169; the seven production modules run 13 to 79,
+  // the biggest of them being `page.ts`. Nothing crosses 400 and the warning
+  // list below is unchanged. A controller monolith remains structurally
+  // forbidden in the directory the routes are coming TO and in the directory
+  // they are registered IN.
+  assert.equal(result.fileCount, 1542);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -757,7 +805,13 @@ test("the live selectors scan an exact nonzero source census", () => {
       2 + 2 + 1 + 4 +
       14 + 2 + 2 + 6 +
       2 + 12 +
-      3 + 1 + 2
+      3 + 1 + 2 +
+      // WIN-267: the fifth selector, `apps/core-api/src/http/**`. Twelve files
+      // already in the tree, newly JUDGED rather than newly written.
+      12 +
+      // WIN-267 T2, the REST chassis: 5 under `src/transports/rest/` and 4 under
+      // `src/http/`, newly WRITTEN and inside selectors that already existed.
+      5 + 4
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -849,7 +903,30 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   ADAPTERS 382 + 1 + 16 + 10 + 2 = 411
   //   APPS     6 + 2 (error-status and its suite) = 8
   // 27 + 1075 + 411 + 8 = 1521.
-  assert.equal(result.fileCount, 27 + 1075 + 411 + 8);
+  //
+  // WIN-267 (M4.1) SPLITS THE APPS TERM IN TWO, because the apps row is no longer
+  // one selector. APPS-TRANSPORTS stays 8 and does not move — nothing was added
+  // under `src/transports/` — and APPS-HTTP arrives at 12, the whole of
+  // `apps/core-api/src/http/**` becoming visible to the budget at once. The
+  // kernel, contexts and adapters terms are untouched, which is the claim worth
+  // making about a delta that adds no file: this issue widened the JUDGE, not the
+  // tree.
+  //   KERNEL           27
+  //   CONTEXTS       1075
+  //   ADAPTERS        411
+  //   APPS-TRANSPORTS   8
+  //   APPS-HTTP        12   NEWLY COVERED
+  // 27 + 1075 + 411 + 8 + 12 = 1533.
+  //
+  // WIN-267 (M4.1, T2) MOVES ONLY THE TWO APPS TERMS, and that is the claim: the
+  // REST chassis is the process edge and nothing else. APPS-TRANSPORTS 8 -> 13
+  // and APPS-HTTP 12 -> 16; kernel, contexts and adapters are byte-for-byte the
+  // same scan. A tranche that touched a context while calling itself a transport
+  // would show up here as a moved contexts term.
+  //   APPS-TRANSPORTS  13
+  //   APPS-HTTP        16
+  // 27 + 1075 + 411 + 13 + 16 = 1542.
+  assert.equal(result.fileCount, 27 + 1075 + 411 + 13 + 16);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

@@ -20,11 +20,28 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // directories under it are legacy packages this programme does not own and has
 // not budgeted, and pointing the rule at them would make it a wall of findings
 // nobody can act on, which is how a gate stops being read.
+// WIN-267 (M4.1) adds the FIFTH selector, `apps/core-api/src/http/**`, and the
+// reason is a hole rather than a tidy-up. `apps/core-api/src/transports/**` was
+// already here and already bites — a 501-effective-line file under it fails the
+// gate today. What it does not cover is the directory where core-api's Nest
+// controllers are actually REGISTERED: `http.module.ts` names the controller
+// array, and `health.controller.ts` — the one route-bearing file core-api has —
+// sits beside it, outside every selector. So "a controller monolith is
+// structurally forbidden" held for one of the two places a controller can live
+// in this application, and the escape hatch was the shorter path.
+//
+// It is NOT widened to `apps/core-api/src/**`. `app.module.test.ts` stands at
+// 509 effective lines, and pulling it in would either fail the gate on a file
+// this issue has no mandate to split or force a waiver — and a budget that
+// arrives with its first exemption is a budget nobody reads. The composition
+// root's suite is M2's; the HTTP edge is M4's, and M4 is what this selector is
+// for. `src/runtime/**` and `src/config/**` stay out for the same reason.
 export const SELECTORS = [
   "packages/kernel/**",
   "packages/contexts/**",
   "packages/adapters/**",
   "apps/core-api/src/transports/**",
+  "apps/core-api/src/http/**",
 ];
 export const WARNING_THRESHOLD = 400;
 export const ERROR_THRESHOLD = 500;

@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "69e9d9c7ed357d6d9d6ba5435063f42abc73f22a1c6f78229ec0c7a395038a9b"
+      "sha256": "6fb441c177818aafbddb8fc256a952b991d91ea8ddc4014edbd399551f0613f8"
     },
     {
       "path": "LICENSE",
@@ -773,7 +773,7 @@
     {
       "path": "docs/adr/M0.4-contract-versioning.md",
       "mode": "100644",
-      "sha256": "63eb464192fd0509588ca762eabe135f7a2524df5c1895240fcbeac7e7cf3b98"
+      "sha256": "41913a881420f87ed66cb5d3eae38a527f7f0c84e016685d234451cbf424aeac"
     },
     {
       "path": "docs/agent-worktrees.md",
@@ -808,22 +808,22 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "2d80ee01e7898d8727ddc75abb00025188cef5bdb32238abdb93ba6fd2904239"
+      "sha256": "10969e032a279f954c0bcb3c0bc3e13374cc426b21ff18f81f0ad075bbd5c575"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "3db6e5cf5c0ef68bf9f962b10d7c7e754970489bb11c93396ffcf7fa45a73516"
+      "sha256": "bc1233318a3461d2967aab6d0e90693e7d62c79975caea0316527bb20997fac2"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
       "mode": "100644",
-      "sha256": "931fb1b66d75a69b03688270e23fc63a76fbc8c8e22479fd74e2d8e50dfa283e"
+      "sha256": "5ad186fcb9921a830a135813f494ef7c83526b6ea0cc5c427fd642fb3eeb943e"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.md",
       "mode": "100644",
-      "sha256": "f949bfb03154f613a59e93edd2c442f626c34708d95bf2d15991860aafc50301"
+      "sha256": "1651774abad7ee485e12dfc7a14962b9584355e0a4ed4c7b099ac86b383eaf2a"
     },
     {
       "path": "docs/audits/M0.5-dependency-sbom.md",
@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "5c9c5613fdbd2fdde0a7ff7f583f99b1dd08bbb9030f0c35a87c0bd62aefa41b"
+      "sha256": "b9c216b596fc4ae52738fce5bc07aef60e870b2850d4c802f51afc0d0c26235b"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -958,7 +958,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "5a00a2f08201563eb8b6e34c5a0a2824224a7b52ddaf9ecd0e5365c645d09a06"
+      "sha256": "63f267300d0f54864670c4ef3f315e3ae7ca8d1180489a7f83eff4ac133ecc52"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "d3b2ce1ef1e4d86d2bf10313aeb08179f90cfcaec6c80032bc25b81f86c587d4"
+      "sha256": "df40f720b203a17e52eef8e7868cec689a6e950bdc791176353469935cce59f0"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "b5abac9be942d97bc20b052b9870f58942d9359a88356df72780e2127b49db1c"
+      "sha256": "0eb6a81b19bdbb25ac92fc6c541762e1daa577d47595f5dc16b0367739dcd0ab"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1053,17 +1053,17 @@
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "015e5aa711ab8c880e75f92306e42910d6ad777a70bb3dfacf49d19cd20c05d9"
+      "sha256": "3891e53241565413feae65a9fc62cbc1f8acbc7094615f10f75220db80126850"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "e4683f597b424ac4becd91e31fbf571c21e9227bb0b022045ba150bf5ed0fe95"
+      "sha256": "bb19beb5f76c4a6baedb53d718029dd69032489d12447c96179f92ac18aee0d4"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "152b2bbc79f7dfb023893ffdbd836fc9a6c83909dbdb5081c6e43c14f2e87464"
+      "sha256": "f0a56b12e279778c18c7978bc3cb0898775c67e275061e43d63d4f2e3f5e3bce"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1073,7 +1073,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "88f30a03501450d459e060d66f0a4da01030e942883d0666bae8528581fecb97"
+      "sha256": "fa446c83c39b8119b3542bff912977e38e544d6723a8d5906bd38c17e5dfad0e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1413,7 +1413,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "68cfee6166b877ae7f39d20357311256d2e3bbb90663c7e2a9f2d35c3ffbab5a"
+      "sha256": "871811fd57eec7bc350301dc347611bd2b0b6768fd6d6afebf7ded5d2c5ab6f6"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "830230c1164aad66212f3de3123ceb3461a604ff5592b647fbff0a2356ffa12c"
+      "sha256": "7b10acefe863d4af27b4f3d63a25939010cd63b611add00ef8f6ab968d1d9f6f"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3508,7 +3508,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "61540a03b79f440842e122578283a5d698840a3373bcdd5206ae78bc420a9e2f"
+      "sha256": "07cce10202c99a474609b3d53964e91cacdcc33a024d2e9a571240f295df57ed"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3658,7 +3658,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "3abfc2d7a60d71d6ef70d46a348c1cae56bf74345483dbf15de7f93c67a12b5f"
+      "sha256": "4f9b99c09707db927491542bad25ebcf4a3dfb22694fb8e2844da6af49532d87"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3923,7 +3923,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "d84cbae0166b9ae9d6c234123d3a1bbcbda9729315487c8afb097e236451003a"
+      "sha256": "9ad7a90f70834b0bd6407b6938cb6b693aaaa4bc1c017e69da7c7314d0e3bd14"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3958,7 +3958,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "f0b406aecc5296410f56cb299648998ec5ab371cb81d33d1acbb02b6483d5493"
+      "sha256": "496e86621736359840f80fc3521d0fdc779308eb5d590c21a892b1fa0b0a9901"
     },
     {
       "path": "scripts/workspace-reachability.mjs",

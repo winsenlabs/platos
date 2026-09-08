@@ -13,6 +13,7 @@ import {
   Inject,
   Logger,
 } from "@nestjs/common";
+import { API_VERSION } from "../http/api-surface";
 import { type Request } from "express";
 import { ModuleRef } from "@nestjs/core";
 import * as crypto from "node:crypto";
@@ -123,7 +124,7 @@ function buildSlackAppManifest(appName: string, requestUrl: string) {
   };
 }
 
-@Controller("api/v1/agent/channels")
+@Controller({ path: "agent/channels", version: API_VERSION })
 export class ChannelsController {
   private readonly logger = new Logger(ChannelsController.name);
   private readonly persistence: ChannelPersistenceService;
