@@ -276,17 +276,14 @@ export const IDENTITY_ACCESS_UNASSEMBLED =
   " RateLimiter is redis-ratelimit, SecretHasher is node-crypto-digest," +
   " MfaSecretCipher is keyring-envelope, TokenMinter is tokenmint-totp and" +
   " TotpCodeVerifier is tokenmint-totp; SafetyEventSink is implemented only by" +
-  " the governance context. G1 and G2 CLOSED ALL FIVE of the driven ports this" +
-  " sentence used to name -- RatingTargetReader, TranscriptReader and" +
-  " ActivityReader are postgres-tenancy, EvalRunQueue is postgres-tenancy, and" +
-  " Judge is satisfied in this deployable -- so GOVERNANCE_UNBOUND_PORTS is now" +
-  " EMPTY. What is left is not a driven port: createGovernanceContract cannot be" +
-  " imported here because @platos/context-governance publishes no" +
-  " ./application/index.js, and its AgentsContract slot needs a COMPOSED agents" +
-  " -- agentsContract does assemble that contract, from the package own . entry" +
-  " point, but agents names two driven ports no adapter directory satisfies" +
-  " (AgentVersionLock, MacroRecorder) and a skills peer this root does not" +
-  " compose; so this root cannot compose it";
+  " the governance context, whose OWN ten driven ports are now every one of" +
+  " them satisfied and which this root still cannot build. What is left is not" +
+  " a driven port: createGovernanceContract cannot be imported here because" +
+  " @platos/context-governance publishes no ./application/index.js, and its" +
+  " AgentsContract slot needs a COMPOSED agents -- agentsContract does assemble" +
+  " that contract, from the package own . entry point, but agents names" +
+  " AgentVersionLock and MacroRecorder on no binding row and a skills peer this" +
+  " root does not compose; so this root cannot compose it";
 
 /**
  * The governance ports that keep the sink out of reach, named once.
