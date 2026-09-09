@@ -101,6 +101,13 @@ const MEMBERSHIP = "cccccccc-0006-4000-8000-000000000006";
  */
 const MEMBER = "cccccccc-000a-4000-8000-00000000000a";
 const MEMBER_MEMBERSHIP = "cccccccc-000b-4000-8000-00000000000b";
+/**
+ * And the PROJECT membership gate 3 requires of anyone who is not an
+ * organization admin. Its role is EDITOR, which gate 4 refuses exactly as it
+ * refuses a VIEWER — `roles.ts` records that the two are byte-identical today
+ * and that separating them is a product decision with a migration.
+ */
+const MEMBER_PROJECT_MEMBERSHIP = "cccccccc-000c-4000-8000-00000000000c";
 
 const ADMIN_TOKEN = "win268-p1-admin-session-token";
 const OUTSIDER_TOKEN = "win268-p1-outsider-session-token";
@@ -297,6 +304,10 @@ beforeAll(async () => {
     // gate 4 refuses. See the constant's own note.
     await store.saveOrganizationMembership(
       { id: asIdentifier(MEMBER_MEMBERSHIP), organizationId: asIdentifier(ORGANIZATION), userId: asIdentifier(MEMBER), role: "MEMBER", deactivatedAt: null, createdAt: AT, updatedAt: AT } as never,
+      transaction,
+    );
+    await store.saveProjectMembership(
+      { id: asIdentifier(MEMBER_PROJECT_MEMBERSHIP), projectId: asIdentifier(PROJECT), organizationMembershipId: asIdentifier(MEMBER_MEMBERSHIP), organizationId: asIdentifier(ORGANIZATION), role: "EDITOR", createdAt: AT, updatedAt: AT } as never,
       transaction,
     );
   });
