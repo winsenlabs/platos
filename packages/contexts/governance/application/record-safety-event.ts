@@ -45,9 +45,19 @@ export async function recordSafetyEvent(
  * layer that publishes through it is not acting for an operator. The scope it
  * passes is the one the kernel observation carried, which the sink narrows to an
  * environment before calling.
+ *
+ * IT TAKES A SLICE AND NOT THE BUNDLE, for the reason `safety-event-sink.ts`
+ * states at length: this is the only path into the ledger that a caller holding
+ * no operator grant can use, and the whole seventeen-slot bundle would make the
+ * kernel sink unbuildable until a peer context nothing on this path calls could
+ * be composed. `recordSafetyEvent` above hands its whole bundle in and is
+ * unchanged -- a `GovernanceDependencies` satisfies this type structurally.
  */
+export type AppendSafetyEventDependencies = Pick<GovernanceDependencies, "safety" | "policy">;
+
+/** See above. */
 export async function appendSafetyEvent(
-  dependencies: GovernanceDependencies,
+  dependencies: AppendSafetyEventDependencies,
   scope: EnvironmentScope,
   draft: SafetyEventDraft,
   transaction: TransactionScope | null,

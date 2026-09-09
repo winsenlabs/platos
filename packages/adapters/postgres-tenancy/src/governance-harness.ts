@@ -82,6 +82,18 @@ export interface GovernanceHarness {
   seedAgent(scope: EnvironmentScope): Promise<string>;
   /** Rows this package may not write, applied by the ORM's own CLI. */
   applyPeerRows(sql: string): void;
+  /**
+   * The same CLI, with its OUTPUT handed back.
+   *
+   * WIN-267 G1. `governance-eval-runs.integration.test.ts` has to read a row
+   * back on a connection none of this package's stores holds — that is the
+   * whole of what makes "the transaction rolled back" a fact rather than the
+   * store's own opinion of itself. It lives HERE rather than in that suite
+   * because `env-access.mjs` declares this file as one of the harnesses
+   * entitled to read the ambient environment, and a second reader in a suite
+   * would be an undeclared door.
+   */
+  readPeerRows(sql: string): string;
   stop(): Promise<void>;
 }
 
@@ -119,10 +131,20 @@ export async function startGovernanceHarness(): Promise<GovernanceHarness> {
                     'fixture', ${STAMP});`;
   }
 
+  function readPeerRows(sql: string): string {
+    return execFileSync(prismaBinary, ["db", "execute", "--url", base.databaseUrl, "--stdin"], {
+      cwd: databasePackage,
+      env: { ...process.env, DATABASE_URL: base.databaseUrl },
+      input: sql,
+      stdio: ["pipe", "pipe", "pipe"],
+    }).toString();
+  }
+
   const harness: GovernanceHarness = {
     base,
     stores,
     applyPeerRows,
+    readPeerRows,
 
     async freshScope(): Promise<EnvironmentScope> {
       // The WHOLE fresh identifier, not a slice: `Organization.slug` is UNIQUE

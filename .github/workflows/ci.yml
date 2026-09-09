@@ -177,6 +177,8 @@ jobs:
           pnpm test:sbom
           pnpm test:differential-coverage
           pnpm audit:differential-coverage
+          pnpm audit:openapi-compat
+          pnpm test:openapi-compat
 
       - name: WIN-284 differential harness and its negative controls
         # The suites prove the comparators, the register and the engine's

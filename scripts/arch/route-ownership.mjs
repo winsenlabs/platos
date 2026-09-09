@@ -458,7 +458,13 @@ export const ORACLE_DERIVED_ROW_COUNT = 42;
  */
 export const PATH_CONTEXT_RULES = Object.freeze([
   [/\/access-key|\/oauth|\/session|\/guest|\/auth/, "identity-access"],
-  [/\/orgs|\/projects|\/environments|\/entities|\/entity/, "tenancy"],
+  // `organizations` is the V1 spelling of `orgs` (WIN-267 R1). The V0 surface
+  // abbreviates it in every route; `apps/core-api`'s does not, and `/orgs` is not
+  // a substring of `/organizations`, so the unabbreviated form has to be named.
+  // It is the same family and the same owner: `tenancy` is sole writer of
+  // `Organization`, and `POST /api/v1/organizations` reaches
+  // `TenancyContract.createOrganization`.
+  [/\/orgs|\/organizations|\/projects|\/environments|\/entities|\/entity/, "tenancy"],
   [/\/providers|\/models|\/keys/, "providers"],
   [/\/agents|\/agent-versions|\/clusters|\/canary/, "agents"],
   [/\/skills/, "skills"],

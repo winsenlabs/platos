@@ -1193,9 +1193,64 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     //
     // 1580 + 20 + 10 = 1610, a figure NO branch stated: A1+A2 pinned 1600 and A3
     // pinned 1590, both over the same 1580 base.
+    //
+    // WIN-267 G2: 1610 + 6 = 1616. All six are under
+    // `packages/adapters/postgres-tenancy/src/` -- `governance`'s three inverted
+    // read seams, the guard they share, and their two suites. No context and no
+    // app term moves: the three ports were declared by `governance` already, and
+    // the three names on its ports barrel, the three error constructors in its
+    // domain and the composition root's three rows are all EDITS.
     // `scripts/arch/env-access.mjs` pins the same census independently and moves
     // with it.
-    assert.equal(result.fileCount, 1610, "the generated V1 source census must stay exact");
+    //
+    // WIN-267 G1 adds TWO, both under `apps/core-api/src/composition/` --
+    // `governance-judge.ts` and `governance-judge.test.ts`, the `Judge` port and
+    // its suite. It is the first WIN-267 slice that adds a PORT IMPLEMENTATION
+    // outside `packages/adapters/`, and that is measured rather than chosen:
+    // `provider-sdk-only` pins every provider client to
+    // `model-router-providers`, `ModelRouter` takes a credential `Judge.ask` is
+    // never handed, and the price the port requires is on `ProvidersContract`.
+    // `app.module.ts` and the governance port entry point are EDITS.
+    // 1610 + 2 = 1612.
+    //
+    // WIN-267 G1's second half adds TWO more, both under `packages/adapters/`:
+    // `postgres-tenancy/src/governance-eval-runs.ts`, the `EvalRunQueue` store,
+    // and `governance-eval-runs.integration.test.ts` beside it. This census does
+    // NOT exclude integration suites — every other file the tranche touches in
+    // these roots is an EDIT. 1612 + 2 = 1614.
+    //
+    // SUMMED FOR THE INTEGRATION: 1610 + 6 (G2) + 4 (G1) = 1620. Neither
+    // branch could state this figure -- G1 pinned 1614 and G2 pinned 1616,
+    // both over the same 1610 base -- which is the same shape as the
+    // A1+A2/A3 pair recorded above.
+    //
+    // AND THE INTEGRATION ITSELF ADDS ONE: `apps/core-api/src/composition/
+    // operator-authentication.integration.test.ts`, the suite that authenticates
+    // an operator through the composed context against a real PostgreSQL. It is
+    // the first file this programme has added under `apps/core-api/src/` that is
+    // an integration suite, and it lands in this census for the reason G1's did:
+    // the scan does not exclude them. 1620 + 1 = 1621.
+    //
+    // WIN-267 R1 1621 -> 1635. FOURTEEN files, ALL of them under
+    // `apps/core-api/src` and none under `packages/` — the first WIN-267 tranche
+    // whose whole delta is inside the deployable, because a REST surface built
+    // out of published contracts adds no adapter and edits no context. Nine
+    // under `src/transports/`, two under `src/http/`, two more suites (one
+    // `transports/`, one `http/`) and the integration suite under
+    // `src/composition/`. 1621 + 14 = 1635.
+    //
+    // WIN-303 1621 + 2 = 1623: `governance-scope.ts` and
+    // `governance-isolation.integration.test.ts`, the same two files
+    // `env-access.mjs`'s EXPECTED_FILE_COUNT and `max-file-lines.test.mjs`'s
+    // adapters term move by — one scan, three pins, so a file that arrived in
+    // one and not the others could not pass all three.
+    //
+    // SUMMED FOR THE INTEGRATION: 1621 + 14 + 2 = 1637. The two tranches share
+    // no file, so the sum IS the census rather than a guess about overlap, and
+    // `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1637 off a
+    // second, independent scan. A branch whose files were double-counted here
+    // would disagree with that one.
+    assert.equal(result.fileCount, 1637, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1213,7 +1268,26 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // WIN-267 A3: redis-ratelimit 7, redis-cache 3. The FIRST terms this sum
       // has ever taken under `packages/adapters/` for a directory that was a
       // generated placeholder, and the last two adapter terms in it.
-      7 + 3);
+      7 + 3 +
+      // WIN-267 G1: apps/core-api/src/composition/governance-judge.{ts,test.ts},
+      // and postgres-tenancy/src/governance-eval-runs{.ts,.integration.test.ts}.
+      2 + 2 +
+      // WIN-267 G2: postgres-tenancy 6 -- four source modules for `governance`'s
+      // three inverted read seams plus the guard they share, and two suites.
+      6 +
+      // WIN-267 integration: the operator-authentication suite in
+      // `apps/core-api/src/composition/`.
+      1 +
+      // WIN-267 R1: the V1 identity and tenancy REST surface. transports 11
+      // (five controllers, four shared modules, two suites), http 2
+      // (`api-surface.ts` and its suite), composition 1 (the HTTP integration
+      // suite). 11 + 2 + 1 = 14, and NOTHING under `packages/`.
+      11 + 2 + 1 +
+      // WIN-303: postgres-tenancy 2 -- `governance-scope.ts`, the tenant-triple
+      // resolver, and `governance-isolation.integration.test.ts` beside it.
+      // Both terms are kept and ADDED: this is the re-derivation, so a merge
+      // that had dropped either half would disagree with the flat pin above.
+      2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

@@ -40,9 +40,20 @@ test("the denominator matches the M0 censuses exactly", () => {
   );
   // Each number is the census's own published total, not a number this test
   // invented. If a census moves, this fails and someone has to look.
-  assert.equal(summary.bySurface.rest.total, 300, "WIN-247 counted 300 REST operations");
+  // WIN-267 R1: 300 -> 308. The REST census is the operation manifest's own
+  // total, and the manifest now walks TWO scan roots — R1 landed the first eight
+  // routes under `apps/core-api/src/transports`. Every one of the eight is
+  // UNCOVERED by the differential harness and says so with an owning issue,
+  // which is the honest state: the harness twin-runs stores, and a REST surface
+  // that has just been born has no second implementation to be run against.
+  assert.equal(summary.bySurface.rest.total, 308, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8");
   assert.equal(summary.bySurface.mcp.total, 202, "WIN-247 counted 202 MCP tools");
-  assert.equal(summary.bySurface.store.total, 93, "WIN-247 counted 93 tenancy models");
+  // WIN-267 G1: 93 -> 94. `EvalRun` is the canonical row `governance`'s
+  // `EvalRunQueue` port enqueues into — ADR M0.3 §1 row 14's "eval runs enqueue
+  // as durable jobs", which the legacy tree had no table for at all. The store
+  // census is the model count in `internal-packages/tenancy-database`, so it
+  // moves with the schema and this assertion is what makes that visible.
+  assert.equal(summary.bySurface.store.total, 94, "WIN-247 counted 93 tenancy models; WIN-267 G1 adds EvalRun");
   assert.equal(summary.bySurface.bff.total, 117, "WIN-294 counted 117 BFF entrypoints");
   assert.equal(summary.cells, Object.values(summary.bySurface).reduce((total, entry) => total + entry.total, 0));
 });
@@ -366,13 +377,18 @@ test("MUTATION: a census that publishes no split is refused, not skipped", () =>
   assert.ok(failures.some((f) => f.includes("independent census publishes no totals.scanRoots")), failures.join("\n"));
 });
 
-test("BASELINE: the committed matrix agrees root by root, and the empty root is an assertion", async () => {
+test("BASELINE: the committed matrix agrees root by root, and BOTH roots now carry routes", async () => {
   const { document } = await buildDocument();
   const rows = document.restScanRoots.rows;
   assert.deepEqual(rows.map((r) => r.id), ["agent", "core-api-transports"]);
   for (const row of rows) assert.equal(row.agrees, true, `${row.id} does not agree`);
   const core = rows.find((r) => r.id === "core-api-transports");
-  assert.equal(core.enumeratedOperations, 0);
-  assert.equal(core.independentOperations, 0);
+  // 0 -> 8 (WIN-267 R1). The root was declared while empty so the first route to
+  // land would be counted rather than discovered later; this is that landing, and
+  // BOTH enumerators moved to the same number on their own — the generator's AST
+  // walk and the independent census's glob. Their agreement is `row.agrees`
+  // above, and it is the whole reason two mechanisms exist.
+  assert.equal(core.enumeratedOperations, 8);
+  assert.equal(core.independentOperations, 8);
   assert.equal(document.restScanRoots.total, document.reconciledAgainst.enumeratedRestCells);
 });

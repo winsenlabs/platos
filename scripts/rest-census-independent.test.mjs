@@ -8,7 +8,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   KNOWN_MULTI_MOUNT,
+  PROCESS_EDGE_EXCLUSIONS,
   SCAN_ROOTS,
+  applicationRootOf,
   independentCensus,
   manifestCensus,
   parseController,
@@ -16,6 +18,7 @@ import {
   reconcile,
   reconcileScanRoots,
   scanRootReport,
+  unscannedControllerReport,
 } from "./rest-census-independent.mjs";
 
 const manOf = (controllers) => {
@@ -231,7 +234,21 @@ test("MUTATION: an excluded file that has vanished fails rather than excluding n
   assert.ok(r.failures.some((f) => f.includes("is not on disk")), r.failures.join("\n"));
 });
 
-test("BASELINE: the live tree's scan roots reconcile, and the core-api root is present and empty", () => {
+test("BASELINE: the live tree's scan roots reconcile, and the core-api root now CARRIES the V1 surface", () => {
+  // THE ROOT IS NO LONGER EMPTY, AND THAT IS WHY IT WAS DECLARED EARLY.
+  //
+  // This case used to assert `core.sourceControllers === 0` and
+  // `core.manifestOperations === 0`, with the comment on SCAN_ROOTS explaining
+  // that the root was declared while empty "so the FIRST route to land is counted
+  // by this census rather than discovered by a reader months later". WIN-267 R1
+  // is that first landing, and the count moved by itself: nothing in this file or
+  // in `rest-census-independent.mjs` was told about it.
+  //
+  // THE ARITHMETIC. Five controllers under `apps/core-api/src/transports` carry
+  // EIGHT route decorators, none of them multi-mounted, so 8 decorators x 1 base
+  // path = 8 expanded operations, and the committed manifest attributes 8 to that
+  // root. The agent root is untouched at 300. 300 + 8 = 308, which is the
+  // manifest's own `summary.restOperations`.
   const roots = scanRootReport();
   const r = reconcileScanRoots(roots, processEdgeReport(), manifestCensus(), independentCensus(roots));
   assert.equal(r.ok, true, r.failures.join("\n"));
@@ -240,9 +257,11 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root is p
   assert.equal(agent.manifestOperations, 300);
   assert.equal(agent.expandedOperations, 300);
   assert.equal(core.present, true, "the declared core-api transport root must exist on disk");
-  assert.equal(core.sourceControllers, 0);
-  assert.equal(core.manifestOperations, 0);
-  assert.equal(agent.manifestOperations + core.manifestOperations, 300);
+  assert.equal(core.sourceControllers, 5);
+  assert.equal(core.sourceDecorators, 8);
+  assert.equal(core.expandedOperations, 8);
+  assert.equal(core.manifestOperations, 8);
+  assert.equal(agent.manifestOperations + core.manifestOperations, 308);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {
@@ -251,4 +270,157 @@ test("BASELINE: the process-edge exclusion still describes the file it excludes"
   assert.equal(edge.observed.className, "HealthController");
   assert.equal(edge.observed.routes, 3, "livez, healthz, readyz — and nothing else");
   assert.equal(edge.observed.emptyBasePath, true);
+});
+
+// ── WIN-267 W3: THE TERMINAL 404, AND THE HALF OF THE JOIN THAT WAS MISSING ──
+//
+// `apps/core-api/src/http/not-found.controller.ts` is a route-bearing controller
+// that neither declared scan root reached and no exclusion named. Every case
+// above passed with it invisible, which is the point: the exclusion list was
+// checked in ONE direction — each named file must exist and keep its shape — and
+// nothing checked the other, so a controller accounted for by nothing at all was
+// indistinguishable from a tree with no such controller in it.
+//
+// `unscannedControllerReport` is that other direction, and the cases below feed
+// it a SYNTHETIC tree rather than mutating the real one, so they measure the
+// rule instead of the current file list.
+
+const sweepStub = (over = {}) => ({ applicationRoots: ["apps/core-api/src"], unscanned: [], ...over });
+
+test("applicationRootOf derives the application from the scan root, and does not need a second list", () => {
+  assert.equal(applicationRootOf("apps/agent/src"), "apps/agent/src");
+  assert.equal(applicationRootOf("apps/core-api/src/transports"), "apps/core-api/src");
+  assert.equal(applicationRootOf("apps/core-api/src/transports/rest"), "apps/core-api/src");
+  // A root with no `src` segment is its own application root rather than being
+  // silently widened to the repository.
+  assert.equal(applicationRootOf("apps/agent"), "apps/agent");
+});
+
+test("MUTATION: a controller under no scan root and in no exclusion fails as UNSCANNED", () => {
+  const r = reconcileScanRoots(
+    [rootStub()],
+    edgeOk,
+    manStub({}, {}),
+    {},
+    sweepStub({ unscanned: ["apps/core-api/src/http/not-found.controller.ts"] }),
+  );
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.failures.some((f) => f.startsWith("UNSCANNED ROUTE-BEARING CONTROLLER")),
+    r.failures.join("\n"),
+  );
+  // BY NAME. A count would tell a reader that something is ungoverned without
+  // telling them which file to look at, and the file is the whole finding.
+  assert.ok(r.failures.some((f) => f.includes("not-found.controller.ts")), r.failures.join("\n"));
+});
+
+test("the sweep is what makes the exclusion list falsifiable: drop the entry and the file reappears", () => {
+  // THE PRE-W3 STATE, RECONSTRUCTED. With `not-found.controller.ts` removed from
+  // the exclusion list — which is precisely the tree as it stood — the sweep over
+  // the REAL directories reports it. That is the assertion that could not have
+  // been written before, because nothing enumerated the complement.
+  const without = PROCESS_EDGE_EXCLUSIONS.filter(
+    (e) => e.file !== "apps/core-api/src/http/not-found.controller.ts",
+  );
+  const before = unscannedControllerReport(undefined, SCAN_ROOTS, without);
+  assert.deepEqual(before.unscanned, ["apps/core-api/src/http/not-found.controller.ts"]);
+  // And with the entry restored, the live tree has nothing ungoverned at all.
+  const after = unscannedControllerReport();
+  assert.deepEqual(after.unscanned, [], `ungoverned controllers: ${after.unscanned.join(", ")}`);
+  assert.deepEqual(after.applicationRoots, ["apps/agent/src", "apps/core-api/src"]);
+});
+
+test("parseController tells a WILDCARD @All from a named one, which routes counts as neither", () => {
+  // `routes` counts only @Get/@Post/@Put/@Patch/@Delete, so a file whose entire
+  // surface is @All reads zero there no matter what path it names. That is why
+  // the catch-all is measured separately rather than folded in.
+  const terminal = parseController(`export class NotFoundController {\n  @All("{*path}")\n  x(){}\n}`);
+  assert.equal(terminal.routes, 0);
+  assert.equal(terminal.allRoutes, 1);
+  assert.equal(terminal.nonWildcardAllRoutes, 0);
+  // Express 4's spelling, and a leading slash, are the same statement.
+  assert.equal(parseController(`@All("*")\nexport class C {}`).nonWildcardAllRoutes, 0);
+  assert.equal(parseController(`  @All("/{*rest}")\nexport class C {}`).nonWildcardAllRoutes, 0);
+  // A NAMED path is business surface answering every HTTP method.
+  const named = parseController(`export class NotFoundController {\n  @All("organizations")\n  x(){}\n}`);
+  assert.equal(named.routes, 0, "a named @All still adds nothing to the method-decorator count");
+  assert.equal(named.nonWildcardAllRoutes, 1);
+  // And a bare @All() binds the base path exactly — one route, not every one.
+  assert.equal(parseController(`  @All()\nexport class C {}`).nonWildcardAllRoutes, 1);
+});
+
+test("MUTATION: the terminal handler's @All taking a NAMED path fails, though routes stays 0", () => {
+  const edge = [
+    {
+      file: "x/not-found.controller.ts",
+      controller: "NotFoundController",
+      routes: 0,
+      allRoutes: 1,
+      terminalCatchAll: true,
+      emptyBasePath: true,
+      why: "test",
+      present: true,
+      observed: {
+        className: "NotFoundController",
+        routes: 0,
+        allRoutes: 1,
+        nonWildcardAllRoutes: 1,
+        emptyBasePath: true,
+        basePaths: 1,
+        requireOperator: 0,
+      },
+    },
+  ];
+  const r = reconcileScanRoots([rootStub()], edge, manStub({}, {}), {}, sweepStub());
+  assert.equal(r.ok, false);
+  assert.ok(
+    r.failures.some((f) => f.includes("not a bare wildcard")),
+    r.failures.join("\n"),
+  );
+});
+
+test("MUTATION: a SECOND @All in the terminal handler fails as exclusion drift", () => {
+  const edge = [
+    {
+      file: "x/not-found.controller.ts",
+      controller: "NotFoundController",
+      routes: 0,
+      allRoutes: 1,
+      terminalCatchAll: true,
+      emptyBasePath: true,
+      why: "test",
+      present: true,
+      observed: {
+        className: "NotFoundController",
+        routes: 0,
+        allRoutes: 2,
+        nonWildcardAllRoutes: 0,
+        emptyBasePath: true,
+        basePaths: 1,
+        requireOperator: 0,
+      },
+    },
+  ];
+  const r = reconcileScanRoots([rootStub()], edge, manStub({}, {}), {}, sweepStub());
+  assert.equal(r.ok, false);
+  assert.ok(r.failures.some((f) => f.includes("@All decorator(s); the exclusion")), r.failures.join("\n"));
+});
+
+test("BASELINE: the terminal 404 is excluded, measured, and the ONLY @All in the surface", () => {
+  const declared = PROCESS_EDGE_EXCLUSIONS.find(
+    (e) => e.file === "apps/core-api/src/http/not-found.controller.ts",
+  );
+  assert.ok(declared, "the terminal 404 must be named in the exclusion list");
+  const observed = processEdgeReport().find((e) => e.file === declared.file);
+  assert.equal(observed.present, true);
+  assert.equal(observed.observed.className, "NotFoundController");
+  assert.equal(observed.observed.routes, 0, "no method decorator: it is a refusal, not a resource");
+  assert.equal(observed.observed.allRoutes, 1);
+  assert.equal(observed.observed.nonWildcardAllRoutes, 0);
+  assert.equal(observed.observed.emptyBasePath, true, "VERSION_NEUTRAL, so /does-not-exist reaches it");
+  // AND NO SCANNED CONTROLLER CARRIES ONE. A catch-all inside a scan root would
+  // shadow real routes registered after it, and this is where that would show up.
+  const roots = scanRootReport();
+  const withAll = roots.flatMap((root) => root.parsed.filter((c) => c.allRoutes > 0));
+  assert.deepEqual(withAll.map((c) => c.file), []);
 });

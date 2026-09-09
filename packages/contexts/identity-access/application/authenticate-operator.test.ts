@@ -124,6 +124,37 @@ describe("revoking a session", () => {
     await revokeOperatorSession(ports, { presentedToken: RAW });
     const second = await revokeOperatorSession(ports, { presentedToken: RAW });
     expect(second.ok).toBe(false);
+    if (second.ok) return;
+    // THE CODE, NOT JUST THE FAILURE (WIN-267 W3). `.ok === false` was true both
+    // before and after this use case started calling `domain/session.ts::revoked`,
+    // which is why it did not notice that the already-ended branch answered
+    // `UNAUTHENTICATED` — the SAME code as a token no row matches — while the
+    // domain rule it duplicated answered `SESSION_REVOKED`.
+    expect(second.error.code).toBe("SESSION_REVOKED");
+  });
+
+  it("does not re-stamp a session it did not end", async () => {
+    // The revocation instant is evidence: an incident asks WHEN a session was
+    // ended, and a second logout that moved `revokedAt` forward would answer with
+    // the time of the retry.
+    const ports = arrange();
+    await revokeOperatorSession(ports, { presentedToken: RAW });
+    ports.clock.set(at(MINUTE_MS));
+    await revokeOperatorSession(ports, { presentedToken: RAW });
+    expect(ports.repository.state.sessions.get(sessionId())?.revokedAt).toEqual(T0);
+  });
+
+  it("keeps an unknown token and an absent token under ONE code, on purpose", async () => {
+    // The opposite decision from the case above, and it is not an inconsistency:
+    // separating these two would let a caller confirm whether a guessed token
+    // exists, which `unauthenticated`'s banner refuses. An already-ended session
+    // tells the presenter nothing they did not already know.
+    const ports = arrange();
+    const unknown = await revokeOperatorSession(ports, { presentedToken: "plt_os_nope" });
+    const absent = await revokeOperatorSession(ports, { presentedToken: null });
+    expect(unknown.ok || absent.ok).toBe(false);
+    if (unknown.ok || absent.ok) return;
+    expect([unknown.error.code, absent.error.code]).toEqual(["UNAUTHENTICATED", "UNAUTHENTICATED"]);
   });
 
   it("no longer authenticates once revoked", async () => {

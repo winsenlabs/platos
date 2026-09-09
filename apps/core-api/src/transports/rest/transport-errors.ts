@@ -110,3 +110,40 @@ export function shuttingDown(): DomainError {
     { retryAfterSeconds: 1 },
   );
 }
+
+/**
+ * The route exists; the context that serves it was not composed in this install.
+ *
+ * WIN-267 R1. THIS IS THE FAILURE THREE TRANCHES DIED OF AND NOBODY COULD NAME.
+ * `identity-access` could not be composed, so every route that would have needed
+ * it could only answer 503 — and it answered it as an anonymous unavailability
+ * with no code a caller or an operator could branch on. `/readyz` knew which
+ * binding was missing and the request path did not.
+ *
+ * IT BELONGS TO THE EDGE AND TO NO CONTEXT, for the reason
+ * `idempotency-errors.ts` gives about headers: the failure is that a CONTRACT IS
+ * ABSENT, and an absent contract cannot mint the error that says so. Reaching for
+ * `IDENTITY_STORE_UNAVAILABLE` would be worse than anonymous — that code means
+ * identity-access's store is unreachable, which is a live context reporting a
+ * downstream fault, and an operator who chased it would go and look at a database
+ * that is fine.
+ *
+ * `unavailable` -> 503 through `CATEGORY_STATUS`, and NO `retryAfterSeconds`.
+ * The kernel populates that field "only for `rate_limited` and `unavailable`" —
+ * permission, not obligation — and a hint here would be a lie: an install whose
+ * composition root did not build a context does not start building it because a
+ * client waited. It is fixed by configuration, and `/readyz` says which.
+ *
+ * THE CONTEXT NAME IS OURS AND IS ON THE WIRE DELIBERATELY. The banner above
+ * refuses to echo attacker-controlled text; this is a closed set of seventeen
+ * names decided in `app.module.ts`, and a 503 that does not say WHICH capability
+ * is missing sends its reader to the wrong system.
+ */
+export function contextUnavailable(context: string): DomainError {
+  return domainError(
+    "TRANSPORT_CONTEXT_UNAVAILABLE",
+    "unavailable",
+    `This deployable did not compose the ${context} context that serves this route.`,
+    { details: { context } },
+  );
+}

@@ -187,3 +187,18 @@ export function decodeCursor(raw: string): JsonValue | null {
     return null;
   }
 }
+
+/**
+ * The whole set as one page.
+ *
+ * `limit` IS THE ROW COUNT, WHICH IS THE ONLY HONEST NUMBER AVAILABLE. The field
+ * means "how large a page this is", and for an unpaged collection the page is the
+ * answer. Reporting `MAX_PAGE_SIZE` would claim a window that was never applied,
+ * and reporting a constant would make two collections of different sizes look
+ * alike. `total` is populated because it was genuinely counted — every row is in
+ * `rows` — which is exactly the promise `PageBlock.total` makes and the reason it
+ * is optional elsewhere.
+ */
+export function wholeCollection<Row>(rows: readonly Row[]): PageResult<Row> {
+  return { rows, cursor: null, limit: rows.length, nextCursor: null, total: rows.length };
+}

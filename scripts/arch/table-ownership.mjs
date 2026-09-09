@@ -137,6 +137,13 @@ export const OWNER = Object.freeze({
   // ADR §1 row 14. Implements the kernel SafetyEventSink.
   AgentEval: "governance",
   EvalCriterion: "governance",
+  // WIN-267 G1. The SIXTH row this context owns, and the only one that is not a
+  // measurement: it is the durable hand-over `EvalRunQueue` accepts, the row ADR
+  // §1 row 14's "eval runs enqueue as durable jobs" needs and the legacy tree
+  // never had. It is `governance`'s and not `jobs`' for the reason the port
+  // exists: §1 row 14 allows `governance` exactly `tenancy`, `agents` and the
+  // kernel, so a `Job` row would have been an edge it may not have.
+  EvalRun: "governance",
   GoldenSet: "governance",
   MessageRating: "governance",
   SafetyEvent: "governance",

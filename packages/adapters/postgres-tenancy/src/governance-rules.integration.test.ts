@@ -509,10 +509,25 @@ describe("every read and every write is narrowed to ONE environment", () => {
         transaction,
       ),
     );
-    // The scoped update matches nothing, so the create path runs and the
-    // installation-wide unique index refuses it. Either way the other tenant's
-    // row is untouched.
+    // The scoped update matches nothing, so the create path runs — and it is the
+    // DATABASE that ends it: `MessageRating_ancestry` resolves the turn's thread
+    // against this environment and refuses a row that crosses it. Either way the
+    // other tenant's row is untouched.
     expect(flip.ok).toBe(false);
+    // WHICH refusal, and this line is here because the case was VACUOUS without
+    // it — on this branch and, checked against a second worktree, on the base as
+    // well. `mutations-governance.json`'s M-G19 removes `scopedWhere` from the
+    // flip's `updateMany`; the statement then reaches the other tenant's row and
+    // rewrites it, fails to read it back IN SCOPE, and returns "rating vanished
+    // between update and read" — which `runResult` ROLLS BACK, restoring the
+    // row. So `flip.ok` is false and the observer sees the original either way,
+    // and the reason is the only thing that differs.
+    //
+    // JOINED TO THE MIGRATION AND NOT TO THIS FILE. The sentence below is the
+    // one `RAISE EXCEPTION '% crosses its canonical owner ancestry'` builds in
+    // `00000000000000_initial/migration.sql`, so the assertion is against the
+    // deployed rule rather than against a string this adapter chose.
+    expect(reasonOf(flip)).toContain("MessageRating crosses its canonical owner ancestry");
     const untouched = await observer.messageRating.findFirst({
       where: { turnId: foreign.turnId, endUserId: foreign.endUserId },
       select: { comment: true, revision: true },

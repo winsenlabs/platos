@@ -62,6 +62,7 @@ import type { SuppliedAdapters, UnwiredAdapter } from "../composition/adapter-bi
 import { describeAdapterSupply } from "../composition/registry.js";
 import type { CoreApiConfiguration } from "../config/schema.js";
 import type { LifecycleState } from "../health/readiness.js";
+import { applyApiSurface } from "../http/api-surface.js";
 import { CoreApiHttpModule } from "../http/http.module.js";
 import { createEdgeMiddleware } from "./edge-middleware.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
@@ -185,6 +186,15 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
     // gate would then own for every request in the process.
     rawBody: true,
   });
+
+  // WIN-267 R1. `/api/v1` — the ONE place this process decides its REST major.
+  //
+  // BEFORE `listen()`, because `enableVersioning` is read when the router is
+  // built and a call after that would change nothing while looking like it had.
+  // The constants and the reason this deployable folds the API root into the
+  // version prefix rather than calling `setGlobalPrefix` are in
+  // `http/api-surface.ts`, with a case that measures the alternative failing.
+  applyApiSurface(nest);
 
   // Correlation is installed BEFORE the in-flight register so that the register's
   // own log lines, and everything a request does, already carry the identifier.

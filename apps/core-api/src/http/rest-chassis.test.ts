@@ -1,7 +1,7 @@
 // WIN-260 (c), PROVED RATHER THAN ASSERTED — over a real socket.
 //
 // The claim is "REST errors map consistently", and the state it has been in
-// since M2.5 is: 419 canonical codes in `docs/error-taxonomy.json`, a status
+// since M2.5 is: 424 canonical codes in `docs/error-taxonomy.json`, a status
 // resolved for every one of them by `transports/error-status.ts`, an envelope
 // writer in `http/failure.ts` — and SEVEN codes a REST caller could actually be
 // shown, because `writeFailure` had exactly one production caller and no
@@ -17,7 +17,7 @@
 //     handler behind the real middleware chain and counted only if the response
 //     body carried that exact `error.code`.
 // Neither number is written in this file. `expect(reached.size).toBe(universe)`
-// is the whole assertion, and if the filter is removed it reads 0 of 419.
+// is the whole assertion, and if the filter is removed it reads 0 of 424.
 //
 // THE PROBE CONTROLLER IS THE TEST'S, AND THE CHASSIS IS PRODUCTION'S. Every
 // piece between the socket and the probe is the shipped one: `createEdgeMiddleware`
@@ -76,7 +76,7 @@ const CODES = Object.keys(TAXONOMY.codes);
  * Planted in `details` on every raised code.
  *
  * The kernel calls `details` "structured, already-redacted context for logs.
- * Never returned to a client". One case asserts that promise across all 419
+ * Never returned to a client". One case asserts that promise across all 424
  * responses at once, which is a stronger statement than asserting it for the
  * handful of codes somebody thought to list.
  */
@@ -250,7 +250,15 @@ afterAll(async () => {
 });
 
 describe("WIN-260 (c) — every canonical code is reachable over REST", () => {
-  it("answers all 419 taxonomy codes in the M0.4 §2 envelope, at the status the taxonomy records", async () => {
+  it("answers all 424 taxonomy codes in the M0.4 §2 envelope, at the status the taxonomy records", async () => {
+    // 419 -> 424, AND THE FIGURE HAD ALREADY GONE STALE BEFORE THIS TRANCHE.
+    // The prose in this file said 419 while `docs/error-taxonomy.json` held 423
+    // on the branch R1 started from: four codes landed after the sentence was
+    // written and nobody moved it, because nothing joins the SENTENCE to the
+    // file — only the assertion below does, and it reads both sides. WIN-267 R1
+    // adds the 424th (`TRANSPORT_CONTEXT_UNAVAILABLE`, 503, for a route whose
+    // context this install did not compose) and corrects the four sentences
+    // rather than repeating a number it did not check.
     const reached = new Set<string>();
     const wrongStatus: string[] = [];
     const malformed: string[] = [];

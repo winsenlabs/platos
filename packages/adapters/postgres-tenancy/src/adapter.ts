@@ -281,12 +281,16 @@ import type {
 import type { BudgetRepository } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type { FilesRepository } from "@platos/context-files/application/ports/index.js";
 import type {
+  ActivityReader,
   CriteriaRepository,
   EvalsRepository,
   GoldenSetsRepository,
+  RatingTargetReader,
   RatingsRepository,
   SafetyLedger,
+  TranscriptReader,
 } from "@platos/context-governance/application/ports/index.js";
+import type { EvalRunStore } from "./governance-eval-runs.js";
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   ApprovalsRepository,
@@ -321,7 +325,9 @@ import { createConversationsStores } from "./conversations-repository.js";
 import { createNotificationRuleRepository } from "./eventing-repository.js";
 import { createCostMonitoringRepository } from "./cost-repository.js";
 import { createFilesRepository } from "./files-repository.js";
-import { createGovernanceStores } from "./governance-repository.js";
+import { createEvalRunStore } from "./governance-eval-runs.js";
+import { createGovernanceReadSeams } from "./governance-read-seams.js";
+import { createGovernanceStores, createInstantSource } from "./governance-repository.js";
 import { createIdentityAccessRepository } from "./identity-repository.js";
 import { createInvitationRepository } from "./invitation.js";
 import { createInvitationTokenIssuer } from "./invitation-token.js";
@@ -392,6 +398,39 @@ export interface PostgresTenancyAdapter
   readonly criteria: CriteriaRepository;
   readonly evals: EvalsRepository;
   readonly goldenSets: GoldenSetsRepository;
+  /**
+   * WIN-267 G1 — `governance`'s SIXTH port here, and the first that is not a
+   * canonical-store read/write pair: `EvalRunQueue`, the durable hand-over of a
+   * planned golden-set run.
+   *
+   * A PROPERTY for the same forced reason as the five above — its `enqueue`
+   * would not collide, but `claim`, `acknowledge` and `abandon` are a
+   * consumer's surface that no context declares and that must not be reachable
+   * by spreading. It is `evalRuns` because that is
+   * `GovernanceDependencies`' own slot name.
+   *
+   * `governance-eval-runs.ts` answers the objection this directory's own
+   * `governance-repository.ts` used to raise against satisfying this port here.
+   */
+  readonly evalRuns: EvalRunStore;
+  /**
+   * WIN-267 G2 — `governance`'s THREE inverted READ SEAMS.
+   *
+   * Properties, and named as `GovernanceDependencies` names them, for the same
+   * reason the five above are. They are listed apart from the five because they
+   * are a different KIND of binding: those five are rows this directory writes
+   * as `governance`'s canonical store, these three are reads of `Thread`,
+   * `Turn`, `ToolCallAudit` and `AgentApproval` — rows the same directory owns
+   * as `conversations`', `tools`' and `jobs`' store, and which `sole-writer.mjs`
+   * would refuse a write to under the `governance` tag.
+   *
+   * `governance-read-seams.ts` records why implementing them here is asking the
+   * owner rather than reaching sideways, and corrects the sentence in
+   * `governance-repository.ts` that used to say otherwise.
+   */
+  readonly ratingTargets: RatingTargetReader;
+  readonly transcripts: TranscriptReader;
+  readonly activity: ActivityReader;
 
   /**
    * WIN-258 T5 — `secrets`' two canonical-store ports.
@@ -544,6 +583,18 @@ export function buildPostgresTenancyAdapter(
     // target that counts a subject's safety events and ratings and then
     // anonymises the first and destroys the second is ONE transaction.
     ...createGovernanceStores(transactions),
+    // WIN-267 G1. `governance`'s SIXTH port, built beside the five and from the
+    // SAME `transactions`, which is what lets `enqueue` join a unit of work the
+    // caller already opened rather than committing on its own. It is a separate
+    // factory because `createGovernanceStores` returns the canonical-store half
+    // of that context's bundle and this is not one of those.
+    evalRuns: createEvalRunStore(transactions, createInstantSource()),
+    // WIN-267 G2. The three read seams, built from the SAME `transactions` for
+    // the reason the five above are: `rate-turn.ts` reads the turn back inside
+    // the unit of work that writes the rating, so a reader on its own pool would
+    // not see the caller's frame and would hold a second connection open inside
+    // somebody else's transaction.
+    ...createGovernanceReadSeams(transactions),
     // WIN-258 T5. Built from the SAME `transactions` as everything else here,
     // so a `setEnvironmentVariable` that seals a credential, writes an envelope,
     // points the credential at it, writes the variable row and appends two audit

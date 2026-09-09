@@ -1,13 +1,14 @@
 // THE FILTER THAT MAKES THE TAXONOMY REACHABLE. WIN-260 (c).
 //
 // M2.5 built the whole failure machine and wired none of it to a socket.
-// `docs/error-taxonomy.json` holds 419 canonical codes; `transports/error-status.ts`
+// `docs/error-taxonomy.json` holds 424 canonical codes; `transports/error-status.ts`
 // resolves a status for every one of them; `http/failure.ts` writes M0.4 §2's
 // envelope. And until this file existed there was NO `useGlobalFilters`, no
 // `ExceptionFilter` and no `@Catch` anywhere in the tree, so `writeFailure` had
 // exactly one production caller — `idempotency-middleware.ts:154` — and the only
 // codes a REST caller could ever be shown were the seven that middleware mints.
-// SEVEN OF 419. The other 412 were a table joined to a source tree, proven by a
+// SEVEN OF 424 (419 when this was written; the figure is corrected in WIN-267 R1
+// rather than repeated). The other 417 were a table joined to a source tree, proven by a
 // unit suite, and unreachable over HTTP by construction.
 //
 // That is why WIN-260 (c) — "REST/MCP/stream/workflow errors map consistently" —

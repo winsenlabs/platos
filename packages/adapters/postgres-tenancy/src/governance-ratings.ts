@@ -50,6 +50,7 @@ import {
   err,
   ledgerUnavailable,
   ok,
+  ratingsScopeUnresolved,
   type AgentId,
   type AgentVersionId,
 } from "@platos/context-governance/application/ports/index.js";
@@ -59,7 +60,7 @@ import {
   requireStorableRevision,
   requireUuid,
 } from "./governance-guards.js";
-import { refuse } from "./governance-refusal.js";
+import { inGovernanceScope } from "./governance-scope.js";
 import { readMessageRating, scopedWhere, tenantWhere, type MessageRatingRow } from "./governance-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
@@ -103,13 +104,19 @@ export function createRatingsRepository(
       turnId: TurnId,
       endUserId: EndUserId,
     ): Promise<Result<MessageRating | null>> {
-      return refuse(async () => {
-        const row = await transactions.reader().messageRating.findFirst({
-          where: { turnId, endUserId, ...scopedWhere(scope) },
-          select: RATING_COLUMNS,
-        });
-        return ok(row === null ? null : readMessageRating(row as MessageRatingRow));
-      }, "ratings findForTurn");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        ratingsScopeUnresolved,
+        "ratings findForTurn",
+        async () => {
+          const row = await transactions.reader().messageRating.findFirst({
+            where: { turnId, endUserId, ...scopedWhere(scope) },
+            select: RATING_COLUMNS,
+          });
+          return ok(row === null ? null : readMessageRating(row as MessageRatingRow));
+        },
+      );
     },
 
     async upsert(
@@ -117,68 +124,74 @@ export function createRatingsRepository(
       write: RatingWrite,
       transaction: TransactionScope,
     ): Promise<Result<MessageRating>> {
-      return refuse(async () => {
-        requireUuid("MessageRating.turnId", write.turnId);
-        requireUuid("MessageRating.agentId", write.agentId);
-        requireUuid("MessageRating.agentVersionId", write.agentVersionId);
-        requireUuid("MessageRating.endUserId", write.endUserId);
-        requireStorableRating(write.rating);
-        requireStorableRevision(write.revision);
+      return inGovernanceScope(
+        transactions,
+        scope,
+        ratingsScopeUnresolved,
+        "ratings upsert",
+        async () => {
+          requireUuid("MessageRating.turnId", write.turnId);
+          requireUuid("MessageRating.agentId", write.agentId);
+          requireUuid("MessageRating.agentVersionId", write.agentVersionId);
+          requireUuid("MessageRating.endUserId", write.endUserId);
+          requireStorableRating(write.rating);
+          requireStorableRevision(write.revision);
 
-        const client = transactions.writer(transaction);
-        const at = now();
-        // TWO statements on BOTH paths, which is what makes the count a pin
-        // rather than a coincidence of which path a fixture happened to take.
-        // The scoped update runs first because the flip is the common case and
-        // because an unscoped upsert would reach another environment's row.
-        const flipped = await client.messageRating.updateMany({
-          where: { turnId: write.turnId, endUserId: write.endUserId, ...scopedWhere(scope) },
-          data: {
-            rating: write.rating,
-            comment: write.comment,
-            revision: write.revision,
-            agentVersionId: write.agentVersionId,
-            updatedAt: at,
-          },
-        });
-        if (flipped.count > 0) {
-          const row = await client.messageRating.findFirst({
+          const client = transactions.writer(transaction);
+          const at = now();
+          // TWO statements on BOTH paths, which is what makes the count a pin
+          // rather than a coincidence of which path a fixture happened to take.
+          // The scoped update runs first because the flip is the common case and
+          // because an unscoped upsert would reach another environment's row.
+          const flipped = await client.messageRating.updateMany({
             where: { turnId: write.turnId, endUserId: write.endUserId, ...scopedWhere(scope) },
-            select: RATING_COLUMNS,
-          });
-          if (row === null) return err(ledgerUnavailable("rating vanished between update and read"));
-          return ok(readMessageRating(row as MessageRatingRow));
-        }
-        // `skipDuplicates` rather than a plain insert, because the unique key is
-        // installation-wide: a row for this `[turn, endUser]` in ANOTHER
-        // environment refuses this one, and a raised constraint would abort the
-        // caller's transaction instead of answering. A count of zero is that
-        // case, and it is reported as a refusal rather than as a flip that did
-        // not happen.
-        const created = await client.messageRating.createManyAndReturn({
-          data: [
-            {
-              environmentId: scope.environmentId,
-              turnId: write.turnId,
-              agentId: write.agentId,
-              agentVersionId: write.agentVersionId,
-              endUserId: write.endUserId,
+            data: {
               rating: write.rating,
-              revision: write.revision,
               comment: write.comment,
-              createdAt: at,
+              revision: write.revision,
+              agentVersionId: write.agentVersionId,
               updatedAt: at,
             },
-          ],
-          skipDuplicates: true,
-          select: RATING_COLUMNS,
-        });
-        const row = created[0];
-        if (row === undefined) {
-          return err(ledgerUnavailable("rating for this turn and end user exists in another environment"));
-        }
-        return ok(readMessageRating(row as MessageRatingRow));
-      }, "ratings upsert");
+          });
+          if (flipped.count > 0) {
+            const row = await client.messageRating.findFirst({
+              where: { turnId: write.turnId, endUserId: write.endUserId, ...scopedWhere(scope) },
+              select: RATING_COLUMNS,
+            });
+            if (row === null) return err(ledgerUnavailable("rating vanished between update and read"));
+            return ok(readMessageRating(row as MessageRatingRow));
+          }
+          // `skipDuplicates` rather than a plain insert, because the unique key is
+          // installation-wide: a row for this `[turn, endUser]` in ANOTHER
+          // environment refuses this one, and a raised constraint would abort the
+          // caller's transaction instead of answering. A count of zero is that
+          // case, and it is reported as a refusal rather than as a flip that did
+          // not happen.
+          const created = await client.messageRating.createManyAndReturn({
+            data: [
+              {
+                environmentId: scope.environmentId,
+                turnId: write.turnId,
+                agentId: write.agentId,
+                agentVersionId: write.agentVersionId,
+                endUserId: write.endUserId,
+                rating: write.rating,
+                revision: write.revision,
+                comment: write.comment,
+                createdAt: at,
+                updatedAt: at,
+              },
+            ],
+            skipDuplicates: true,
+            select: RATING_COLUMNS,
+          });
+          const row = created[0];
+          if (row === undefined) {
+            return err(ledgerUnavailable("rating for this turn and end user exists in another environment"));
+          }
+          return ok(readMessageRating(row as MessageRatingRow));
+        },
+      );
     },
 
     async remove(
@@ -187,75 +200,111 @@ export function createRatingsRepository(
       endUserId: EndUserId,
       transaction: TransactionScope,
     ): Promise<Result<boolean>> {
-      return refuse(async () => {
-        const client = transactions.writer(transaction);
-        const outcome = await client.messageRating.deleteMany({
-          where: { turnId, endUserId, ...scopedWhere(scope) },
-        });
-        return ok(outcome.count > 0);
-      }, "ratings remove");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        ratingsScopeUnresolved,
+        "ratings remove",
+        async () => {
+          const client = transactions.writer(transaction);
+          const outcome = await client.messageRating.deleteMany({
+            where: { turnId, endUserId, ...scopedWhere(scope) },
+          });
+          return ok(outcome.count > 0);
+        },
+      );
     },
 
     async tallyTurn(
       scope: EnvironmentScope,
       turnId: TurnId,
     ): Promise<Result<readonly SatisfactionInput[]>> {
-      return refuse(async () => {
-        const rows = await transactions.reader().messageRating.findMany({
-          where: { turnId, ...scopedWhere(scope) },
-          select: SAMPLE_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
-        return ok(rows.map(toSample));
-      }, "ratings tallyTurn");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        ratingsScopeUnresolved,
+        "ratings tallyTurn",
+        async () => {
+          const rows = await transactions.reader().messageRating.findMany({
+            where: { turnId, ...scopedWhere(scope) },
+            select: SAMPLE_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          return ok(rows.map(toSample));
+        },
+      );
     },
 
     async sample(
       scope: EnvironmentScope,
       query: RatingSampleQuery,
     ): Promise<Result<readonly SatisfactionInput[]>> {
-      return refuse(async () => {
-        const rows = await transactions.reader().messageRating.findMany({
-          where: {
-            ...scopedWhere(scope),
-            createdAt: { gte: query.since },
-            ...(query.agentId === null ? {} : { agentId: query.agentId }),
-          },
-          select: SAMPLE_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
-        return ok(rows.map(toSample));
-      }, "ratings sample");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        ratingsScopeUnresolved,
+        "ratings sample",
+        async () => {
+          const rows = await transactions.reader().messageRating.findMany({
+            where: {
+              ...scopedWhere(scope),
+              createdAt: { gte: query.since },
+              ...(query.agentId === null ? {} : { agentId: query.agentId }),
+            },
+            select: SAMPLE_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          return ok(rows.map(toSample));
+        },
+      );
     },
 
     async countSubject(selector: RatingSubjectSelector): Promise<Result<number>> {
-      return refuse(async () => {
-        // A null subject matches NOTHING, and it is answered without a statement
-        // so the rule holds even if the filter below were wrong.
-        if (selector.endUserId === null) return ok(0);
-        const total = await transactions.reader().messageRating.count({
-          where: { endUserId: selector.endUserId, ...tenantWhere(selector.scope) },
-        });
-        return ok(total);
-      }, "ratings countSubject");
+      // A null subject matches NOTHING, and it is answered without a statement so
+      // the rule holds even if the filter below were wrong. WIN-303 kept it above
+      // the scope resolve for the reason `SafetyLedger.countSubject` gives: the
+      // answer is zero for a forged scope as well as a coherent one, so resolving
+      // first would spend a statement to reach the same value.
+      // Bound to a const rather than re-read inside the closure, for the reason
+      // `SafetyLedger.countSubject` states: narrowing does not cross a callback.
+      const endUserId = selector.endUserId;
+      if (endUserId === null) return ok(0);
+      return inGovernanceScope(
+        transactions,
+        selector.scope,
+        ratingsScopeUnresolved,
+        "ratings countSubject",
+        async () => {
+          const total = await transactions.reader().messageRating.count({
+            where: { endUserId, ...tenantWhere(selector.scope) },
+          });
+          return ok(total);
+        },
+      );
     },
 
     async eraseSubject(
       selector: RatingSubjectSelector,
       transaction: TransactionScope,
     ): Promise<Result<number>> {
-      return refuse(async () => {
-        const client = transactions.writer(transaction);
-        if (selector.endUserId === null) return ok(0);
-        // DESTROYED, not anonymised, unlike a safety event. A rating IS the
-        // subject's opinion — there is no compliance record left once the
-        // subject is removed from it — which is why the port names the two
-        // methods differently and why this one is a DELETE.
-        const outcome = await client.messageRating.deleteMany({
-          where: { endUserId: selector.endUserId, ...tenantWhere(selector.scope) },
-        });
-        return ok(outcome.count);
-      }, "ratings eraseSubject");
+      return inGovernanceScope(
+        transactions,
+        selector.scope,
+        ratingsScopeUnresolved,
+        "ratings eraseSubject",
+        async () => {
+          const client = transactions.writer(transaction);
+          if (selector.endUserId === null) return ok(0);
+          // DESTROYED, not anonymised, unlike a safety event. A rating IS the
+          // subject's opinion — there is no compliance record left once the
+          // subject is removed from it — which is why the port names the two
+          // methods differently and why this one is a DELETE.
+          const outcome = await client.messageRating.deleteMany({
+            where: { endUserId: selector.endUserId, ...tenantWhere(selector.scope) },
+          });
+          return ok(outcome.count);
+        },
+      );
     },
   };
 }

@@ -51,7 +51,22 @@ describe("the policy table against the frozen operation manifest", () => {
     // The join is worthless if the file moved or the shape changed and every
     // lookup quietly returned nothing. Reading the count back first is what
     // stops an empty inventory from making the two cases below vacuous.
-    expect(OPERATIONS.length).toBe(300);
+    //
+    // 300 -> 308 (WIN-267 R1). The manifest is no longer the agent's alone: the
+    // generator walks `apps/core-api/src/transports` as a second scan root, and
+    // R1 landed the first EIGHT routes there — `GET /api/v1/identity/session`,
+    // `GET`+`POST /api/v1/organizations`, `GET`+`POST /api/v1/projects`,
+    // `GET /api/v1/environments/:environmentId/end-users`, and `POST`+`DELETE
+    // /api/v1/bff/session`. 300 agent operations + 8 core-api operations = 308,
+    // and `summary.restScanRoots` in the manifest carries the same split.
+    //
+    // NONE OF THE EIGHT NEEDS A POLICY ROW. `OPERATION_POLICIES` classifies the
+    // one-time-secret mints as `required` and names the exemptions; the R1 routes
+    // mint no secret, so they take the unlisted default (`accepted`: a key is
+    // honoured if sent and not demanded). The credential-path case below is what
+    // proves that is a classification rather than an oversight — it would fail if
+    // any of the eight looked like a credential route.
+    expect(OPERATIONS.length).toBe(308);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {

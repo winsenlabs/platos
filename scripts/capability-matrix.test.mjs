@@ -87,16 +87,27 @@ test("committed matrix: every row names one of the 19 permitted owners", () => {
 });
 
 test("committed matrix: row counts are pinned exactly", () => {
-  // 300 = 42 resolved from the handler at the oracle + 258 from the URL prefix.
-  assert.equal(REST.length, 300);
+  // 308 = 42 resolved from the handler at the oracle + 266 from the URL prefix.
+  //
+  // 300 -> 308 and 258 -> 266 (WIN-267 R1): the eight V1 routes under
+  // `apps/core-api/src/transports`. All EIGHT resolve by URL prefix and none is
+  // oracle-derived, which is the honest split — `ROUTE_OWNERSHIP`'s rows were
+  // each read off a handler in the FROZEN oracle, and these handlers do not exist
+  // there. `/identity/session` and `/bff/session` reach `identity-access` through
+  // `/session`; `/organizations`, `/projects` and `/environments/...` reach
+  // `tenancy`, the last two through prefixes that were already in the table and
+  // the first through `/organizations`, which R1 added because `/orgs` is not a
+  // substring of it. The oracle-derived count is therefore UNCHANGED at 42, which
+  // is what `ORACLE_DERIVED_ROW_COUNT` pins.
+  assert.equal(REST.length, 308);
   assert.equal(REST.filter((r) => r.ownerSource === "oracle-derived").length, 42);
-  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 258);
-  assert.equal(42 + 258, REST.length);
+  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 266);
+  assert.equal(42 + 266, REST.length);
   assert.equal(MCP.length, 202);
-  assert.equal(MATRIX.totals.restOperations, 300);
-  assert.equal(MATRIX.ownership.restRows, 300);
+  assert.equal(MATRIX.totals.restOperations, 308);
+  assert.equal(MATRIX.ownership.restRows, 308);
   assert.equal(MATRIX.ownership.oracleDerivedRestRows, 42);
-  assert.equal(MATRIX.ownership.pathPrefixRestRows, 258);
+  assert.equal(MATRIX.ownership.pathPrefixRestRows, 266);
 });
 
 test("committed matrix: exactly 5 rows carry the non-context value, and they are the pinned 5", () => {
@@ -420,7 +431,11 @@ test("committed matrix: the REST total is split across the declared scan roots a
     roots.reduce((n, r) => n + r.operations, 0),
     MATRIX.totals.restOperations,
   );
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 0 });
+  // 0 -> 8 (WIN-267 R1). The core-api root held no controller when this scan
+  // root was declared; R1 landed the V1 identity and tenancy surface — five
+  // controllers, eight routes — and the split moved on its own. 300 + 8 = 308,
+  // which is the `restOperations` total the line above sums back to.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 8 });
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });
 

@@ -17,6 +17,9 @@ import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { deriveRestContract } from "./rest-schema-derivation.mjs";
+import { validateOpenApiDocument } from "./openapi-meta-schema.mjs";
+
 const require = createRequire(import.meta.url);
 const ts = require("typescript");
 
@@ -30,6 +33,7 @@ const toolsDir = join(srcDir, "mcp-platform", "tools");
 const manifestPath = join(srcDir, "control-plane", "operation-manifest.generated.json");
 const reportPath = join(repoDir, "docs", "control-plane-parity.generated.md");
 const openApiOutputPath = join(srcDir, "openapi", "openapi.generated.json");
+const errorTaxonomyPath = join(repoDir, "docs", "error-taxonomy.json");
 const checkOnly = process.argv.includes("--check");
 
 const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
@@ -74,14 +78,21 @@ const PRODUCTION_MOUNTED_CONTROLLERS = {
  * (capability matrix, differential coverage, route parity) was therefore
  * enumerating a surface that had stopped being the whole surface.
  *
- * WHY IT IS EMPTY AND WHY THAT IS NOT A SILENCE. `apps/core-api/src/transports`
- * holds six 20-line seams whose comments say "M4 OWNS THE SURFACE"; there is no
- * controller there yet. An empty allowlist paired with `assertNoUnregisteredCoreApiControllers`
- * below is the opposite of a placeholder: the agent root SKIPS a controller that
- * is not on its allowlist (there are non-mounted controllers in that tree by
- * design), whereas the core-api root REFUSES generation for one. So the first
- * transport controller to land cannot be silently omitted from the manifest —
- * it either gets registered here or the generator fails by name.
+ * WHAT IS IN IT (WIN-267 R1). The allowlist was EMPTY, paired with
+ * `assertNoUnregisteredCoreApiControllers` below, so that the first transport
+ * controller to land could not be silently omitted: the agent root SKIPS a
+ * controller that is not on its allowlist (there are non-mounted controllers in
+ * that tree by design), whereas the core-api root REFUSES generation for one.
+ * R1 is that first landing — the identity and tenancy REST surface — and every
+ * class it added is registered here.
+ *
+ * ALL FIVE RESOLVE TO ONE MODULE FILE, and that is a routing fact rather than a
+ * filing convenience. Nest reads `[...static decorator metadata, ...dynamic
+ * module metadata]` for a module's controllers and Express matches in
+ * registration order, so a business controller has to be in the DECORATOR's
+ * array on the root module to be registered ahead of `NotFoundController`'s
+ * `@All("{*path}")`. `http/http.module.ts` says the same thing from the other
+ * side.
  *
  * Keys are class names; values are the module file, relative to
  * `apps/core-api/src`, whose `controllers: [...]` array must list the class.
@@ -91,7 +102,13 @@ const PRODUCTION_MOUNTED_CONTROLLERS = {
  * ADR M0.4 §2, and the manifest is the business-surface contract. That exclusion
  * carries its own tripwire in `scripts/rest-census-independent.mjs`.
  */
-const CORE_API_MOUNTED_CONTROLLERS = {};
+const CORE_API_MOUNTED_CONTROLLERS = {
+  IdentitySessionController: "http/http.module.ts",
+  OrganizationsController: "http/http.module.ts",
+  ProjectsController: "http/http.module.ts",
+  EnvironmentEndUsersController: "http/http.module.ts",
+  BffSessionController: "http/http.module.ts",
+};
 
 /**
  * The controller scan roots. `scanDir` is walked for `*.controller.ts`;
@@ -753,18 +770,37 @@ function classifyRest(method, path) {
 }
 
 /**
- * A route enforces operator scope when its body calls requireOperator/
- * getOperatorScope directly, OR when it delegates to a same-class helper method
- * whose own body makes one of those calls (e.g. `this.operatorScope(req)` in
- * providers.controller.ts). `operatorHelpers` is the set of such helper method
- * names collected from the enclosing controller class. The trailing `(` guards
- * against a helper name being a prefix of an unrelated method call.
+ * The call shapes that ARE an operator check, across both scan roots.
+ *
+ * WIN-267 R1 ADDED THE THIRD, AND WITHOUT IT THE MANIFEST WOULD HAVE LIED. The
+ * V1 surface does not call `requireOperator`: `apps/core-api/src/transports/rest/
+ * operator.ts` is its one authentication seam and it is named
+ * `authenticateOperator`, so seven routes that verify an operator session against
+ * a composed `identity-access` would have been recorded `requiresOperator: false`
+ * — and `docs/audits/M0.8-operator-operations.md`, which is generated from that
+ * field and exists to make operator protection "auditable at a glance", would
+ * have under-reported them.
+ *
+ * IT IS NOT A BLANKET. `DELETE /api/v1/bff/session` deliberately authenticates
+ * nobody — a browser holding a dead cookie is the browser that most needs it
+ * cleared — and stays `false`, which is what makes this recognition a
+ * measurement rather than a decoration.
+ *
+ * The name is unambiguous across the agent tree: it appears in NO controller
+ * under `apps/agent/src`, so adding it changes not one V0 row.
+ */
+const OPERATOR_SCOPE_CALLS = ["requireOperator(", "getOperatorScope(", "authenticateOperator("];
+
+/**
+ * A route enforces operator scope when its body makes one of those calls
+ * directly, OR when it delegates to a same-class helper method whose own body
+ * makes one (e.g. `this.operatorScope(req)` in providers.controller.ts).
+ * `operatorHelpers` is the set of such helper method names collected from the
+ * enclosing controller class. The trailing `(` guards against a helper name being
+ * a prefix of an unrelated method call.
  */
 function enforcesOperatorScope(memberText, operatorHelpers) {
-  if (
-    memberText.includes("requireOperator(") ||
-    memberText.includes("getOperatorScope(")
-  ) {
+  if (OPERATOR_SCOPE_CALLS.some((call) => memberText.includes(call))) {
     return true;
   }
   for (const helper of operatorHelpers) {
@@ -808,10 +844,7 @@ function extractRestOperations() {
       for (const candidate of statement.members) {
         if (!ts.isMethodDeclaration(candidate) || !candidate.name) continue;
         const text = candidate.getText(sf);
-        if (
-          text.includes("requireOperator(") ||
-          text.includes("getOperatorScope(")
-        ) {
+        if (OPERATOR_SCOPE_CALLS.some((call) => text.includes(call))) {
           operatorHelpers.add(candidate.name.getText(sf));
         }
       }
@@ -989,7 +1022,7 @@ function buildReport(manifest) {
     "",
     "> Deterministic WIN-129 artifact. Do not edit by hand; run `pnpm --filter platos-agent generate:control-plane`.",
     "",
-    "The **explicit operation manifest** is canonical. Platform MCP metadata is seeded from the 206 runtime-shaped handler declarations; REST metadata is derived from Nest controller decorators. Compact policy rules classify every operation. MCP schemas are authoritative for MCP calls; generated OpenAPI intentionally does not invent REST request/response schemas.",
+    "The **explicit operation manifest** is canonical. Platform MCP metadata is seeded from the 206 runtime-shaped handler declarations; REST metadata is derived from Nest controller decorators. Compact policy rules classify every operation. MCP schemas are authoritative for MCP calls. WIN-267 W2: the generated OpenAPI now carries request and response schemas for the V1 core-api operations, derived from the TypeScript types of their handlers and validated against the published OpenAPI 3.1 meta-schema; agent operations declare no wire DTO and carry no invented schema.",
     "",
     "## Summary",
     "",
@@ -1134,8 +1167,91 @@ function operationAuth(operation) {
   };
 }
 
-function buildOpenApi(manifest) {
+/**
+ * The canonical failure codes, read off `docs/error-taxonomy.json`.
+ *
+ * A JOIN, NOT A LIST. `scripts/error-taxonomy.mjs` already reconciles that file
+ * against the seventeen contexts' mint sites, `transports/error-status.ts` and
+ * the kernel's `ErrorCategory` union, so enumerating it here binds the published
+ * document to a set nothing in this generator decides. A code minted anywhere
+ * without a taxonomy row fails that gate; a code added to the taxonomy shows up
+ * here as generated drift on the next run.
+ */
+function canonicalErrorCodes() {
+  const taxonomy = JSON.parse(readFileSync(errorTaxonomyPath, "utf8"));
+  const codes = Object.keys(taxonomy.codes ?? {}).sort();
+  if (codes.length === 0) throw new Error("docs/error-taxonomy.json declares no codes");
+  return codes;
+}
+
+/**
+ * Why an operation carries no derived schema.
+ *
+ * The agent tree's controllers answer Prisma rows, framework objects and
+ * hand-built literals; none of them declares a wire DTO, and inventing one from
+ * a handler body would be exactly the invention the previous generator declined
+ * to make. WIN-267 W2 derives the V1 core-api surface, which does declare them,
+ * and says plainly that it derived nothing else. `{}` would have been the
+ * dishonest alternative: a schema that admits everything, in a document that
+ * looks finished.
+ */
+const UNDECLARED_SCHEMA_REASON =
+  "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)";
+
+/** The failure envelope every V1 operation can answer with. */
+function errorResponse(errorComponent) {
+  return {
+    description:
+      "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. " +
+      "Which codes a given route can mint is not derivable from the transport and is not claimed " +
+      "here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+    content: { "application/json": { schema: { $ref: `#/components/schemas/${errorComponent}` } } },
+  };
+}
+
+function v1OperationEntry(entry, derived, contract) {
+  const responses = {};
+  if (derived.responseSchema === null) {
+    responses[derived.successStatus] = { description: "No content." };
+  } else {
+    responses[derived.successStatus] = {
+      description: "Success.",
+      content: { "application/json": { schema: derived.responseSchema } },
+    };
+  }
+  responses.default = errorResponse(contract.errorComponent);
+  const parameters = derived.pathParameters.map((parameter) => ({
+    name: parameter.name,
+    in: "path",
+    required: true,
+    schema: parameter.schema,
+  }));
+  const patched = {
+    ...entry,
+    ...(parameters.length > 0 ? { parameters } : {}),
+    ...(derived.requestBody === null
+      ? {}
+      : {
+          requestBody: {
+            required: true,
+            content: { "application/json": { schema: derived.requestBody } },
+          },
+        }),
+    responses,
+    "x-platos-schema-source": "typescript-dto",
+    "x-platos-query-parameters": derived.queryParameters.source,
+  };
+  if (derived.queryParameters.source === "not-derived") {
+    patched["x-platos-query-not-derived-reason"] = derived.queryParameters.reason;
+    patched["x-platos-query-not-derived-detail"] = derived.queryParameters.detail;
+  }
+  return patched;
+}
+
+function buildOpenApi(manifest, contract) {
   const paths = {};
+  const coverage = { derived: 0, undeclared: 0, queryNotDerived: [] };
+  const usedHandlerKeys = new Set();
   for (const operation of manifest.inventories.restOperations) {
     const path = openApiPath(operation.path);
     const parameters = [...operation.path.matchAll(/:([A-Za-z0-9_]+)/g)].map((match) => ({
@@ -1164,19 +1280,72 @@ function buildOpenApi(manifest) {
       "x-platos-policy-rule": operation.policyRule,
       "x-platos-mcp-tools": operation.mcpTools,
     };
+    // THE JOIN KEY IS THE MANIFEST'S OWN `controller`.`handler`, not a route
+    // path recomputed here. Two computations of one path are two answers that
+    // can disagree, and the manifest already made this one.
+    const handlerKey = `${primary.controller}.${primary.handler}`;
+    const derived = primary.source.startsWith("apps/core-api/")
+      ? contract.handlers.get(handlerKey)
+      : undefined;
+    let finalEntry;
+    if (derived === undefined) {
+      finalEntry = {
+        ...entry,
+        "x-platos-schema-source": "undeclared",
+        "x-platos-schema-undeclared-reason": primary.source.startsWith("apps/core-api/")
+          ? `core-api handler ${handlerKey} was not reached by the derivation`
+          : UNDECLARED_SCHEMA_REASON,
+      };
+      coverage.undeclared += 1;
+    } else {
+      usedHandlerKeys.add(handlerKey);
+      finalEntry = v1OperationEntry(entry, derived, contract);
+      coverage.derived += 1;
+      if (derived.queryParameters.source === "not-derived") {
+        coverage.queryNotDerived.push({
+          operation: operation.id,
+          handler: handlerKey,
+          reason: derived.queryParameters.reason,
+        });
+      }
+      if (derived.verb !== operation.method.toLowerCase()) {
+        throw new Error(
+          `derived verb ${derived.verb} disagrees with manifest method ${operation.method} for ${handlerKey}`,
+        );
+      }
+    }
     paths[path] ??= {};
-    paths[path][operation.method.toLowerCase()] = entry;
+    paths[path][operation.method.toLowerCase()] = finalEntry;
   }
+  // A DERIVED HANDLER THAT REACHED NO OPERATION IS A ROUTE THE MANIFEST LOST.
+  // The derivation walks the controllers and the manifest walks the decorators;
+  // when they disagree the surface has a hole, and a generator that shrugged
+  // would publish the smaller of the two.
+  const orphaned = [...contract.handlers.keys()].filter((key) => !usedHandlerKeys.has(key));
+  if (orphaned.length > 0) {
+    throw new Error(`derived core-api handlers absent from the manifest: ${orphaned.join(", ")}`);
+  }
+  const schemas = { ...contract.components };
+  const wireError = schemas.WireError;
+  if (wireError === undefined) throw new Error("the derivation produced no WireError component");
+  schemas.WireError = {
+    ...wireError,
+    properties: {
+      ...wireError.properties,
+      code: { ...wireError.properties.code, enum: canonicalErrorCodes() },
+    },
+  };
   return {
     openapi: "3.1.0",
     info: {
       title: "Platos Agent operation inventory",
       version: manifest.manifestVersion,
       description:
-        "Generated from the canonical WIN-129 operation manifest. This document accurately inventories Nest REST method/path bindings and their parity classification. It intentionally does not invent request or response schemas; mapped MCP JSON Schemas remain authoritative for MCP tools/list and tools/call.",
+        "Generated from the canonical WIN-129 operation manifest. This document inventories Nest REST method/path bindings and their parity classification. WIN-267 W2: the V1 core-api operations additionally carry request and response schemas DERIVED FROM THE TYPESCRIPT TYPES of their handlers by scripts/rest-schema-derivation.mjs -- never from a hand-written table -- and every failure answers the ADR M0.4 section 2 envelope described by the ErrorEnvelope schema. Operations marked `x-platos-schema-source: undeclared` declare no wire DTO and carry no invented schema; see `x-platos-schema-coverage`. Mapped MCP JSON Schemas remain authoritative for MCP tools/list and tools/call.",
       license: { name: "Apache-2.0", url: "https://www.apache.org/licenses/LICENSE-2.0" },
     },
     components: {
+      schemas,
       securitySchemes: {
         sessionToken: {
           type: "apiKey",
@@ -1242,6 +1411,15 @@ function buildOpenApi(manifest) {
     "x-platos-manifest-version": manifest.manifestVersion,
     "x-platos-rest-operation-count": manifest.summary.restOperations,
     "x-platos-mcp-tool-count": manifest.summary.mcpTools,
+    "x-platos-schema-coverage": {
+      derivedOperations: coverage.derived,
+      undeclaredOperations: coverage.undeclared,
+      undeclaredReason: UNDECLARED_SCHEMA_REASON,
+      derivedFrom: "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
+      componentSchemas: Object.keys(schemas).length,
+      canonicalErrorCodes: schemas.WireError.properties.code.enum.length,
+      queryParametersNotDerived: coverage.queryNotDerived,
+    },
   };
 }
 
@@ -1265,7 +1443,19 @@ function writeOrCheck(path, content) {
 const manifest = buildManifest();
 const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
 const report = `${buildReport(manifest).trimEnd()}\n`;
-const openApi = `${JSON.stringify(buildOpenApi(manifest), null, 2)}\n`;
+const restContract = deriveRestContract({ repoDir });
+const openApiDocument = buildOpenApi(manifest, restContract);
+// THE DOCUMENT IS CHECKED BY AN AUTHORITY THIS REPOSITORY DID NOT WRITE before
+// it is written. See `openapi-meta-schema.mjs`: a generator that also decided
+// whether its own output was well-formed would be the assertion LESSON 1 names.
+const validation = validateOpenApiDocument(openApiDocument);
+if (!validation.valid) {
+  process.stderr.write(
+    `[control-plane] generated OpenAPI does not validate against the OpenAPI 3.1 meta-schema:\n${JSON.stringify(validation.errors, null, 2)}\n`,
+  );
+  process.exit(1);
+}
+const openApi = `${JSON.stringify(openApiDocument, null, 2)}\n`;
 const ok =
   writeOrCheck(manifestPath, manifestJson) &&
   writeOrCheck(reportPath, report) &&

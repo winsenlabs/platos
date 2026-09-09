@@ -116,6 +116,7 @@ import type { FilesContract } from "@platos/context-files";
 import type { ObservabilityContract } from "@platos/context-observability";
 import type { CostMonitoringContract } from "@platos/context-cost-monitoring";
 import type { GovernanceContract } from "@platos/context-governance";
+import type { Judge } from "@platos/context-governance/application/ports/index.js";
 import type { JobsContract } from "@platos/context-jobs";
 import type { ConversationsContract } from "@platos/context-conversations";
 import type { EventingContract } from "@platos/context-eventing";
@@ -126,6 +127,7 @@ import {
   type SuppliedAdapters,
   type UnwiredAdapter,
 } from "./composition/adapter-bindings.js";
+import { createProvidersJudge } from "./composition/governance-judge.js";
 import { reportAdapterSupply, type AdapterSupplyReport } from "./composition/registry.js";
 import type { CoreApiConfiguration } from "./config/schema.js";
 import { correlationSource } from "./runtime/correlation.js";
@@ -217,6 +219,27 @@ export interface AppModule {
    * absence needs no second spelling here.
    */
   readonly correlation: CorrelationSource;
+  /**
+   * WIN-267 G1. `governance`'s `Judge` port, satisfied over the composed
+   * `providers` contract — null until `providers` itself is composed.
+   *
+   * IT IS A PORT HERE FOR THE REASON `requestIdempotency` IS, AND FOR ONE MORE.
+   * The shared reason is rule (j): whoever consumes it must name a PORT and not
+   * a module. The extra one is that it CANNOT be an adapter, and
+   * `composition/governance-judge.ts` measures why three separate ways — the
+   * short version is that `ModelRouter` takes a credential its caller must
+   * already hold and `Judge.ask` is handed none, so the only implementation
+   * possible is one that asks the context that owns the keys.
+   *
+   * IT IS A SINGLE PORT AND NOT A BUNDLE, DELIBERATELY. `GovernanceDependencies`
+   * names seventeen slots and this root can fill only some of them today;
+   * `context-ports.ts`'s `GOVERNANCE_UNBOUND_PORTS` is the list of what is still
+   * missing, and publishing a half-filled `governance` bundle would be the
+   * façade-over-undefined-stores that `composeApplication` refuses everywhere
+   * else. One satisfied port, published under its own name, is the honest shape
+   * until the rest of that list is closed.
+   */
+  readonly governanceJudge: Judge | null;
 }
 
 /**
@@ -365,6 +388,16 @@ export function composeApplication(input: CompositionInput): AppModule {
     // the same as one nobody wired.
     requestIdempotency: adapters["redis-cache"]?.requests ?? null,
     correlation: input.correlation ?? correlationSource,
+    // WIN-267 G1. Built from the contract rather than from a bundle, and
+    // therefore built HERE: `context-ports.ts` holds no context by design, and
+    // this port's only possible implementation is one that asks `providers`.
+    // Null when `providers` is absent, for the reason every context above is
+    // absent when its ports are — a judge over an undefined contract would fail
+    // at the first score instead of at readiness.
+    governanceJudge:
+      providers === undefined
+        ? null
+        : createProvidersJudge({ providers, logger: input.logger }),
   });
 }
 

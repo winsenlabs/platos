@@ -54,6 +54,60 @@ export type { Judge, JudgeAnswer, JudgeRequest, JudgeUsage } from "./judge.js";
 
 export type { EnqueuedEvalRun, EvalRunQueue, EvalRunRequest } from "./eval-run-queue.js";
 
+// WIN-267 G1 — THE FIFTH INSTANCE OF THE OMISSION THE BLOCK BELOW DOCUMENTS
+// FOUR OF, and the one that made `governance` uncomposable.
+//
+// The paragraph under it repairs the FIVE CANONICAL-STORE ports. It does not
+// reach the other three modules, and every one of those three names a domain
+// value this entry point does not publish:
+//
+//   `judge.ts`          `JudgeRequest.model` is a `JudgeModel`
+//   `eval-run-queue.ts` `EvalRunRequest.pairs` is `EvalPair[]`, and
+//                       `EnqueuedEvalRun.runId` is an `EvalRunId`
+//   `read-seams.ts`     `Transcript.turns` is `TranscriptTurn[]`
+//
+// So all three were UNIMPLEMENTABLE OUTSIDE THIS PACKAGE for exactly the reason
+// `SafetyLedger.append` was: the signature is declared in a vocabulary the port
+// entry point does not hand out. `apps/core-api/src/composition/context-ports.ts`
+// records `Judge`, `EvalRunQueue` and the three read seams as "no adapter
+// directory satisfies"; that is true, and this is one of the reasons it was
+// true — nothing outside this package could spell their arguments.
+//
+// AND THE TWO REFUSAL FACTORIES WITH THEM, WHICH IS THE STRONGER HALF.
+// `eval-run-queue.ts` says a refusal "MUST be `GOVERNANCE_QUEUE_UNAVAILABLE`,
+// not the ledger code", and `judge.ts` says a judge failure "is an answer, not
+// an exception" carried on a `Result`. `ledgerUnavailable` is published below
+// and those two were not, so the only refusal an outside implementation could
+// mint was the WRONG ONE — the precise defect lesson 5 is about, arrived at by
+// omission rather than by choice. An adapter forced to answer
+// `GOVERNANCE_LEDGER_UNAVAILABLE` when a dispatcher declines work would make
+// "the queue would not take it" and "a table is down" indistinguishable at every
+// transport downstream, which is the thing the port's own header forbids.
+// `TranscriptTurn` IS NOT IN THIS LINE and the omission is deliberate: WIN-267
+// G2 published it in the alphabetical block below, and the two branches naming
+// the same type in two places auto-merged without a textual conflict into a
+// DUPLICATE EXPORT that only `tsc` caught. One name, one export site.
+export type { EvalPair, EvalRunId, JudgeModel } from "../../domain/index.js";
+export { judgeUnavailable, queueUnavailable } from "../../domain/index.js";
+// AND `parseJudgeModel`, WHICH IS THE ONLY WAY TO GET A LEGITIMATE `JudgeModel`.
+//
+// The type alone is not enough and the reason is the field that makes it useful.
+// `JudgeModel.spec` is the CANONICAL `<provider>:<model>` spelling — the string
+// an implementation hands to whatever actually calls the model — and
+// `judge-model.ts` is the one place that derives it, refuses a leading colon and
+// closes the provider set. A type published without its constructor can only be
+// forged as a literal, and a forged one whose `spec` disagrees with its
+// `provider` and `model` is precisely the defect that file was written to fix:
+// the source resolved `":gpt-4o"` to the wrong vendor and compared prefixed and
+// unprefixed spellings as strings.
+//
+// It is published so the AGREEMENT can be tested. The spec crosses a boundary
+// and is parsed AGAIN on the other side — `providers` resolves it with
+// `modelLookupKeys` and `resolveModelRoute` — and a suite that wrote the string
+// by hand would be testing its own literal rather than whether this context's
+// canonical form is one the consumer can route and price.
+export { parseJudgeModel } from "../../domain/index.js";
+
 // WIN-258 T5 — the domain values the five canonical-store ports' SIGNATURES
 // already name.
 //
@@ -86,7 +140,13 @@ export type { EnqueuedEvalRun, EvalRunQueue, EvalRunRequest } from "./eval-run-q
 // in every method above, and an adapter reaching for `@platos/kernel` directly
 // would be a second import edge into the kernel from a package whose only
 // declared dependency is the context whose ports it satisfies.
-export type { EnvironmentScope, JsonValue, NotResult, Result, TenantScope, TransactionScope } from "@platos/kernel";
+// WIN-303 adds `DomainError`. The five stores' scope resolver is handed the
+// refusal constructor it must use, one per store, so the five codes are chosen
+// at the five call sites rather than switched on inside a shared helper — and a
+// function type over those constructors has to be able to name what they
+// return. It is the type every constructor in `domain/errors.ts` already
+// answers with, so publishing it adds no surface the port did not have.
+export type { DomainError, EnvironmentScope, JsonValue, NotResult, Result, TenantScope, TransactionScope } from "@platos/kernel";
 // WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
 // `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
 // callback RESOLVES, and a resolved callback COMMITS, which is the defect
@@ -95,7 +155,12 @@ export type { EnvironmentScope, JsonValue, NotResult, Result, TenantScope, Trans
 // republished HERE rather than imported from `@platos/kernel` in the adapter,
 // for the reason stated above: that would be the second import edge into the
 // kernel this paragraph exists to refuse.
-export { asIdentifier, contains, environmentScope, err, ok, runResult } from "@platos/kernel";
+// WIN-267 G2 adds `resolvePath`: the three read seams report WHICH scope they
+// could not narrow by, and `resolvePath` is the kernel's one canonical string
+// form of a scope (`org/<id>/proj/<id>/env/<id>`). An adapter spelling that
+// layout again would be a second copy of a format cache namespaces, rate-limit
+// buckets and log fields already agree on.
+export { asIdentifier, contains, environmentScope, err, ok, resolvePath, runResult } from "@platos/kernel";
 
 export type {
   ActorId,
@@ -126,9 +191,23 @@ export type {
   SafetyTally,
   SatisfactionInput,
   ThreadId,
+  // WIN-267 G2. `TranscriptReader.read` answers a `Transcript`, whose `turns`
+  // are these — so an adapter that could not spell the name could not build the
+  // value. Published for the reason the block above is: the port entry point
+  // publishes exactly what the port's own signatures use.
+  TranscriptTurn,
   TurnId,
 } from "../../domain/index.js";
 export {
+  // WIN-267 G2 — the three read seams' own refusals, one per seam.
+  //
+  // Published here and REQUIRED at each port, the way `eval-run-queue.ts`
+  // requires `queueUnavailable`: the distinctness is a property of the CONTRACT
+  // rather than a courtesy of whichever adapter happens to implement it. An
+  // implementation that reached for `ledgerUnavailable` instead would make "a
+  // table is down" and "this reader was handed a scope it cannot narrow by" the
+  // same incident, which is the defect three of these codes exist to prevent.
+  activityUnreadable,
   asGovernanceIdentifier,
   criterionAlreadyExists,
   goldenSetAlreadyExists,
@@ -138,4 +217,20 @@ export {
   isSafetySeverity,
   ledgerUnavailable,
   PII_DETECTORS,
+  ratingTargetUnreadable,
+  transcriptUnreadable,
+  // WIN-303 — one scope refusal per canonical store, published for the same
+  // reason the three above are: an adapter narrowing by the environment alone
+  // serves a tampered triple, and the code it must refuse under is a property of
+  // the CONTRACT rather than of whichever adapter happens to notice. Five and
+  // not one so a resolver dropped from a single store cannot hide behind the
+  // other four. `governance-scope.ts` is the only implementation today, and the
+  // in-memory doubles deliberately raise none of them: a double holds no tenant
+  // tree, so a forged ancestry and a real one are the same value to it — the
+  // argument `tools-scope.ts` makes about its own two refusals.
+  criteriaScopeUnresolved,
+  evalsScopeUnresolved,
+  goldenSetsScopeUnresolved,
+  ratingsScopeUnresolved,
+  safetyScopeUnresolved,
 } from "../../domain/index.js";

@@ -72,14 +72,56 @@ const SRC = join(ROOT, SCAN_ROOTS[0].dir);
 // carry exactly the three probes named here. A fourth route, or a base path,
 // means business surface has been parked in the process edge, and this census
 // says so by name instead of shrugging.
+//
+// AND A SECOND ONE, WHICH WAS INVISIBLE UNTIL WIN-267 W3 (below).
 export const PROCESS_EDGE_EXCLUSIONS = Object.freeze([
   Object.freeze({
     file: "apps/core-api/src/http/health.controller.ts",
     controller: "HealthController",
     routes: 3,
+    allRoutes: 0,
+    terminalCatchAll: false,
     emptyBasePath: true,
     why:
       "process-edge liveness/readiness probes (ADR M0.4 §2 keeps them off the versioned surface); no tenant, no scope, no use case.",
+  }),
+  // WIN-267 W3 — THE TERMINAL 404, WHICH NEITHER SCAN ROOT REACHED AND NO
+  // EXCLUSION NAMED.
+  //
+  // `apps/core-api/src/http/not-found.controller.ts` is a route-bearing
+  // controller. It sits in `apps/core-api/src/http`, and the declared roots are
+  // `apps/agent/src` and `apps/core-api/src/transports` — so it fell between
+  // them. Its sibling in the same directory had a measured tripwire; the handler
+  // that answers EVERY unmatched path in the process had nothing, which is the
+  // wrong way round: it is the one route whose reach is unbounded.
+  //
+  // IT IS EXCLUDED RATHER THAN SCANNED, for the same reason `HealthController`
+  // is and for one more. It takes no tenant, resolves no scope and calls no use
+  // case; it is `VERSION_NEUTRAL` on purpose, because under `defaultVersion` the
+  // terminal handler would have moved to `/api/v1/{*path}` and `/does-not-exist`
+  // would have got Express's HTML page instead of an M0.4 §2 envelope. And it is
+  // not an OPERATION: scanning it would demand a manifest row, a capability and a
+  // parity entry for "no route matched", which is a refusal, not a thing a client
+  // can call.
+  //
+  // WHAT THE TRIPWIRE HAS TO CATCH IS THEREFORE DIFFERENT FROM ITS SIBLING'S.
+  // `routes: 0` alone would not: this controller carries no
+  // `@Get/@Post/@Put/@Patch/@Delete` today, and the way business surface would
+  // arrive here is not a sixth method decorator but a NAMED path on the `@All` it
+  // already has — `@All("organizations")` reads almost identically and would
+  // serve every method of a real resource from a file nothing enumerates. So the
+  // exclusion pins BOTH: zero method decorators, and exactly one `@All` whose
+  // path is a bare wildcard. A named `@All`, a second `@All`, or any method
+  // decorator fails `--check` by name.
+  Object.freeze({
+    file: "apps/core-api/src/http/not-found.controller.ts",
+    controller: "NotFoundController",
+    routes: 0,
+    allRoutes: 1,
+    terminalCatchAll: true,
+    emptyBasePath: true,
+    why:
+      "the terminal 404: the LAST-registered handler, answering every unmatched path in the process with the M0.4 §2 envelope. No tenant, no scope, no use case, and no operation a client can call — a refusal, not surface.",
   }),
 ]);
 
@@ -145,12 +187,32 @@ export function parseController(src) {
   // Line-anchored HTTP method decorators. This matches the manifest's per-route
   // counting and ignores decorator names appearing inside comments or strings.
   const routes = (src.match(/^\s*@(Get|Post|Put|Patch|Delete)\s*\(/gm) || []).length;
+  // `@All` IS COUNTED SEPARATELY, AND ONLY WIN-267 W3 NEEDED IT TO BE. It is not
+  // folded into `routes` above because that count is joined to the MANIFEST's
+  // per-route operations, and no manifest row exists for a catch-all; adding it
+  // there would have made every scan-root identity fail rather than making the
+  // terminal handler visible. It is measured here so the process-edge tripwire
+  // can pin the SHAPE of the catch-all — see PROCESS_EDGE_EXCLUSIONS.
+  //
+  // The path is captured so a NAMED `@All` can be told from a wildcard one. A
+  // wildcard is `@All("*")` or `@All("{*name}")`, with or without a leading slash
+  // — Express 4 spelt it the first way and Express 5 / path-to-regexp 8 spell it
+  // the second, and both are read so a framework bump does not silently turn this
+  // tripwire into a rubber stamp. `@All()` with NO argument is NOT a wildcard: it
+  // binds the controller's base path exactly, which on an empty base path is `/`
+  // — one specific route, not every unmatched one.
+  const allPaths = [...src.matchAll(/^\s*@All\s*\(\s*(?:["'`]([^"'`]*)["'`])?\s*\)/gm)].map(
+    (match) => match[1] ?? "",
+  );
+  const allRoutes = allPaths.length;
+  const nonWildcardAllRoutes = allPaths.filter((path) => !/^\/?(?:\*|\{\*[A-Za-z0-9_]+\})$/u.test(path))
+    .length;
   // Operator LOWER BOUND: direct requireOperator(...) invocations. Controllers
   // that guard many handlers through one shared wrapper (e.g. getOperatorScope)
   // legitimately show a lower floor than the manifest's semantic count — that is
   // an inequality the reconciliation permits, never an equality it forces.
   const requireOperator = (src.match(/requireOperator\s*\(/g) || []).length;
-  return { className, basePaths, emptyBasePath, routes, requireOperator };
+  return { className, basePaths, emptyBasePath, routes, allRoutes, nonWildcardAllRoutes, requireOperator };
 }
 
 /** Every declared scan root, measured: presence, controllers, decorators. */
@@ -173,6 +235,59 @@ export function scanRootReport(root = ROOT) {
       parsed,
     };
   });
+}
+
+/**
+ * The application `src` directory a declared scan root sits inside.
+ *
+ * DERIVED, NEVER DECLARED. A second hand-maintained list of directories would be
+ * a second thing to forget, and forgetting is the whole defect this function
+ * exists to close. `apps/agent/src` is its own application root;
+ * `apps/core-api/src/transports` belongs to `apps/core-api/src`.
+ */
+export function applicationRootOf(dir) {
+  const parts = dir.split("/");
+  const index = parts.indexOf("src");
+  return index < 0 ? dir : parts.slice(0, index + 1).join("/");
+}
+
+/**
+ * EVERY route-bearing controller in every scanned application, and whether
+ * anything accounts for it (WIN-267 W3).
+ *
+ * THIS IS THE JOIN THE CENSUS WAS MISSING, and `not-found.controller.ts` is the
+ * proof it was missing. Until now the exclusion list was checked ONE WAY: each
+ * named file must exist and keep its shape. Nothing checked the other direction
+ * — that every controller file in a scanned application is either under a
+ * declared root or named in the list — so a controller could sit in
+ * `apps/core-api/src/http` and be accounted for by NOTHING, which is exactly what
+ * the terminal 404 did for two tranches. An exclusion list that only validates
+ * its own entries is a list that can never notice an omission, which is lesson 1
+ * in this repository's own words: an assertion comparing two things you control
+ * cannot fail.
+ *
+ * It sweeps the APPLICATION root rather than the scan root, so the complement is
+ * a real set of files on disk rather than a restatement of the roots.
+ */
+export function unscannedControllerReport(
+  root = ROOT,
+  roots = SCAN_ROOTS,
+  exclusions = PROCESS_EDGE_EXCLUSIONS,
+) {
+  const applicationRoots = [...new Set(roots.map((declared) => applicationRootOf(declared.dir)))].sort();
+  const excused = new Set(exclusions.map((declared) => declared.file));
+  const unscanned = [];
+  for (const application of applicationRoots) {
+    for (const file of walkControllers(join(root, application))) {
+      const path = relative(root, file).split("\\").join("/");
+      const scanned = roots.some(
+        (declared) => path === declared.dir || path.startsWith(`${declared.dir}/`),
+      );
+      if (scanned || excused.has(path)) continue;
+      unscanned.push(path);
+    }
+  }
+  return { applicationRoots, unscanned: unscanned.sort() };
 }
 
 /** The process-edge exclusions, measured against the tree they claim to describe. */
@@ -234,6 +349,7 @@ export function reconcileScanRoots(
   edge = processEdgeReport(),
   man = manifestCensus(),
   indep = independentCensus(roots),
+  sweep = unscannedControllerReport(),
 ) {
   const failures = [];
 
@@ -296,6 +412,15 @@ export function reconcileScanRoots(
     };
   });
 
+  // THE COMPLEMENT. Anything route-bearing inside a scanned application that no
+  // root reaches and no exclusion names is ungoverned by NAME, which is a stronger
+  // statement than "the roots reconcile" — the roots reconciled perfectly while
+  // the terminal 404 sat outside all of them.
+  for (const path of sweep.unscanned)
+    failures.push(
+      `UNSCANNED ROUTE-BEARING CONTROLLER: ${path} lives inside a scanned application (${sweep.applicationRoots.join(", ")}) but under no declared scan root (${roots.map((r) => r.dir).join(", ")}) and named in no process-edge exclusion. Move it under a root, or name it in PROCESS_EDGE_EXCLUSIONS with a tripwire.`,
+    );
+
   for (const declared of edge) {
     if (!declared.present) {
       failures.push(
@@ -316,9 +441,24 @@ export function reconcileScanRoots(
       failures.push(
         `PROCESS-EDGE EXCLUSION DRIFT: ${declared.file} no longer declares an EMPTY @Controller() argument list, so it is no longer pinned off the versioned surface; it must be scanned as a transport instead of excluded.`,
       );
+    // THE CATCH-ALL SHAPE (WIN-267 W3). `routes` above counts only
+    // `@Get/@Post/@Put/@Patch/@Delete`, so a file whose whole surface is `@All`
+    // passes it at zero no matter what path the `@All` names. Both halves are
+    // pinned here: how many `@All` decorators the file may carry, and — for the
+    // terminal handler — that each one is a bare wildcard. `@All("organizations")`
+    // is business surface answering every HTTP method from a file nothing
+    // enumerates, and it is the mutation this pair exists to kill.
+    if (o.allRoutes !== declared.allRoutes)
+      failures.push(
+        `PROCESS-EDGE EXCLUSION DRIFT: ${declared.file} now carries ${o.allRoutes} @All decorator(s); the exclusion is written for exactly ${declared.allRoutes}.`,
+      );
+    if (declared.terminalCatchAll && o.nonWildcardAllRoutes > 0)
+      failures.push(
+        `PROCESS-EDGE EXCLUSION DRIFT: ${declared.file} declares ${o.nonWildcardAllRoutes} @All decorator(s) whose path is not a bare wildcard. It is excluded as the terminal catch-all — the handler that answers every unmatched path — and any other path makes it a business route answering every HTTP method from a file no enumerator can see.`,
+      );
   }
 
-  return { ok: failures.length === 0, failures, table };
+  return { ok: failures.length === 0, failures, table, unscanned: sweep };
 }
 
 /**
@@ -423,14 +563,22 @@ function build() {
       scanRoots:
         "every manifest route-implementation source falls under a DECLARED scan root, and each root's globbed decorators (expanded by mount multiplier) equal the manifest operations attributed to it. A surface built in a directory this census does not scan fails as UNDECLARED SCAN ROOT.",
       processEdge:
-        "the named process-edge exclusions are measured, not assumed: the excluded file must exist, keep an EMPTY @Controller() argument list, and carry exactly the declared number of probes.",
+        "the named process-edge exclusions are measured, not assumed: the excluded file must exist, keep an EMPTY @Controller() argument list, carry exactly the declared number of probes, and carry exactly the declared number of @All decorators — each a bare wildcard where the exclusion is the terminal catch-all.",
+      unscannedControllers:
+        "the exclusion list is joined to the tree in BOTH directions. Every *.controller.ts inside a scanned application's src/ must be under a declared scan root or named in PROCESS_EDGE_EXCLUSIONS; anything else fails as UNSCANNED ROUTE-BEARING CONTROLLER. Without this half a controller can be accounted for by nothing at all, which is what apps/core-api/src/http/not-found.controller.ts was until WIN-267 W3.",
     },
     totals: { ...r.totals, scanRoots: s.table },
+    applicationRoots: s.unscanned.applicationRoots,
+    unscannedControllers: s.unscanned.unscanned,
     processEdgeExclusions: edge.map((e) => ({
       file: e.file,
       controller: e.controller,
       declaredRoutes: e.routes,
       observedRoutes: e.observed?.routes ?? null,
+      declaredAllRoutes: e.allRoutes,
+      observedAllRoutes: e.observed?.allRoutes ?? null,
+      observedNonWildcardAllRoutes: e.observed?.nonWildcardAllRoutes ?? null,
+      terminalCatchAll: e.terminalCatchAll,
       emptyBasePath: e.observed?.emptyBasePath ?? null,
       why: e.why,
     })),

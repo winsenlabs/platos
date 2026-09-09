@@ -113,6 +113,39 @@ export const ADAPTERS = [
       { port: "CriteriaRepository", owner: "governance" },
       { port: "EvalsRepository", owner: "governance" },
       { port: "GoldenSetsRepository", owner: "governance" },
+      // WIN-267 G1 adds a SIXTH `governance` binding, and it is the first on
+      // this directory that is not a canonical-store CRUD port. ADR M0.3 §1 row
+      // 14 says eval runs enqueue as durable jobs; `EvalRunQueue` is that
+      // hand-over, and the row it lands in is in the SAME PostgreSQL database as
+      // the five above, so by §15 it is written from the same directory behind
+      // the same client. It is not a new directory for the reason §15 gives and
+      // not `packages/adapters/durable-runtime` for a different one: that
+      // directory's configuration section anchors an EXTERNAL service, so
+      // implementing the kernel `DurableRuntime` over this database would decide
+      // a supplier question §7 decision 10 has already answered. Recording a ROW
+      // is not that decision.
+      { port: "EvalRunQueue", owner: "governance" },
+      // WIN-267 G2 (ADR M0.3 §2). `governance`'s THREE INVERTED READ SEAMS, on
+      // the same directory and under the same owner tag — because the owner
+      // column names who owns the PORT, and `read-seams.ts` declares all three.
+      //
+      // THE ROWS THEY READ BELONG TO THREE OTHER CONTEXTS: `Thread` and `Turn`
+      // to `conversations`, `ToolCallAudit` to `tools`, `AgentApproval` to
+      // `jobs`. That is not an exception to §15, it is §15: all three of those
+      // owners map to this same directory in `CANONICAL_STORE_ADAPTERS`, so the
+      // package that answers the seam IS the package that owns the rows. What
+      // §5.2 still forbids — a WRITE to any of those four tables under the
+      // `governance` tag — `sole-writer.mjs` still refuses, per write, and these
+      // three write nothing.
+      //
+      // THEY ARE PROPERTIES on the adapter (`ratingTargets`, `transcripts`,
+      // `activity`) rather than spread-in methods, for the reason tenancy's five
+      // are: `GovernanceDependencies` has a named slot for each, and two readers
+      // over the same two tables handed over in the wrong slots would answer
+      // plausible values for ever.
+      { port: "RatingTargetReader", owner: "governance" },
+      { port: "TranscriptReader", owner: "governance" },
+      { port: "ActivityReader", owner: "governance" },
       // WIN-258 T5 adds the SEVENTH and EIGHTH. `secrets` owns four canonical
       // rows in that same database and publishes TWO canonical-store ports over
       // them, because `environment-variable-repository.ts` keeps the vault and
@@ -744,9 +777,30 @@ export function adapterOwnerPackages(adapter) {
 // it was already declared and was simply unsatisfiable.
 //
 // THE MERGED FIGURES ARE STATED BY NO SINGLE BRANCH. Over the same 13/49 base
-// A1+A2 pinned 15/53 and A3 pinned 13/50; the tree now holds 15 and 54.
+// A1+A2 pinned 15/53 and A3 pinned 13/50; the tree then held 15 and 54.
+//
+// WIN-267 G2: 54 -> 57 bindings and the DIRECTORY pin does not move a
+// TWENTY-FIRST time. `governance`'s three inverted read seams are three rows on
+// `postgres-tenancy`, which is the §15 amendment's whole subject; a thirteenth
+// package for them would have needed its own Prisma client, and the ONE-HOME
+// rule `tenancy-prisma-only` states is what forbids that. This branch pins
+// 15/57 over the 15/54 base; two sibling branches move the same pin for the
+// remaining governance ports, so the integrator SUMS the deltas rather than
+// taking any one branch's total.
+//
+// WIN-267 G1: 54 -> 55 bindings and the DIRECTORY pin does not move.
+// `postgres-tenancy:EvalRunQueue` is a row on an existing directory, which is
+// what §15's amendment is about: the run it records lives in the ONE PostgreSQL
+// database, so it is written from the one directory that holds that client. The
+// alternative -- a real `packages/adapters/durable-runtime` -- would have moved
+// the directory pin AND decided a supplier question that section's own
+// configuration group has already answered with an external API URL.
+//
+// SUMMED FOR THE INTEGRATION: 54 + 3 (G2) + 1 (G1) = 57 + 1 = 58 bindings
+// over the SAME fifteen directories. Neither branch could state this
+// figure: G1 pinned 55 and G2 pinned 57, both over the same 54 base.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 54;
+export const EXPECTED_BINDING_COUNT = 58;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -1155,6 +1209,25 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // alternative — a second double living in the adapter — would measure the
   // adapter against a copy of itself.
   "packages/contexts/skills",
+  // WIN-267 — imported by `apps/core-api/src/composition/context-ports.ts`,
+  // which is the ORIGINAL reason this list exists rather than the widening the
+  // three entries above are: the composition root names a factory from it.
+  //
+  // WHAT IT IMPORTS AND WHY THE ENTRY IS NOT PREMATURE. The list's rule is "the
+  // contexts whose `application/index.js` a V1 project actually imports", and
+  // the note below records that WIN-267 T3 added nothing here because an entry
+  // without a matching import is dead surface. This entry HAS its import:
+  // `createGovernanceSafetyEventSink`, the only implementation of the kernel
+  // `SafetyEventSink` in this tree, without which `identity-access` cannot be
+  // composed at all -- `consume-rate-limit.ts` writes
+  // `identity.rate_limit.degraded` into that sink on every refusal.
+  //
+  // THE CONTEXT ITSELF IS STILL NOT COMPOSED, and the entry does not claim it
+  // is. `GOVERNANCE_UNCOMPOSABLE_CHAIN` in `composition/context-ports.ts` names
+  // the six unbound ports across four contexts that stop it. What this line
+  // publishes is a factory for a KERNEL PORT, which is why the import is real
+  // today rather than a placeholder for a composition that has not happened.
+  "packages/contexts/governance",
 ];
 
 // ---------------------------------------------------------------------------
@@ -1169,37 +1242,58 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // THE COUNT, AND WHERE IT FALLS AWAY. A context is composable only when three
 // things hold at once:
 //
-//   1. it publishes a factory over its whole contract. ELEVEN do —
-//      `createTenancyService`, `createIdentityAccessService`, and the nine
-//      `create*Contract` functions in `channels`, `conversations`, `eventing`,
-//      `files`, `governance`, `jobs`, `observability`, `privacy` and `skills`.
-//      SIX do not: `agents`, `tools`, `secrets`, `memory`, `cost-monitoring` and
-//      `providers` publish their use cases one at a time and no assembler.
+//   1. it publishes a factory over its whole contract, AND `apps/core-api` can
+//      IMPORT that factory. SEVENTEEN publish one; NINE are importable.
 //
 //   2. every driven port in its bundle has an implementation in this tree;
 //
 //   3. that implementation is reachable from a constructed adapter.
+//
+// CONDITION 1 USED TO BE ONE CLAUSE HERE AND IT WAS FALSE (WIN-267 G3). It read
+// "ELEVEN do ... SIX do not: `agents`, `tools`, `secrets`, `memory`,
+// `cost-monitoring` and `providers` publish their use cases one at a time and no
+// assembler". Every one of those six publishes an assembler, and publishes it
+// from `.`: `agentsContract`, `toolsContract`, `secretsContract`,
+// `memoryContract`, `costMonitoringContract` and `providersContract` are all in
+// their own packages' `contracts/index.ts`. `secrets` and `providers` were
+// corrected in `context-ports.ts` when they were composed; this copy of the
+// claim was not, and kept the other four wrong for a further tranche. There is
+// no context in this tree without an assembler, and there never was.
+//
+// WHAT IS REAL IS THE OTHER HALF, and it is this list's own subject. NINE
+// factories can be named from the composition root — six from `.`, and
+// `identity-access`, `tenancy` and `skills` from the `./application/index.js`
+// entries below. The remaining EIGHT — `channels`, `conversations`, `eventing`,
+// `files`, `governance`, `jobs`, `observability` and `privacy` — keep a
+// `create*Contract` in `application/` behind a manifest publishing only `.`,
+// `./application/ports/index.js` and `./application/testing/index.js`. That is
+// WIN-297's finding, still open for eight contexts, and the fix is one line here
+// each — held back by this list's own rule until the context is actually
+// composed.
 //
 // ONE context clears all three: `tenancy`, whose six driven ports and unit of
 // work are all properties of a single `PostgresTenancyAdapter` (WIN-258 tranches
 // 1 and 3). It is already on the list, and what changed is that it is now
 // composed over REAL PostgreSQL rather than over a bundle an install handed in.
 //
-// `identity-access` is the near miss and the one worth naming, because it looks
-// composable and is not: its `repository` IS on that adapter (tranche 2) and
-// `clock`, `ids` and `logger` are kernel ports the process holds, but
-// `rateLimiter` is `packages/adapters/redis-ratelimit` — still this generator's
-// own placeholder — and `hasher`, `minter`, `totp` and `cipher` are satisfied by
-// no adapter directory at all. `keyring-envelope`'s `Hasher` is `secrets`' port,
-// a different type in a different package, and nothing implements
-// `SecretHasher`, `TokenMinter`, `TotpCodeVerifier` or `MfaSecretCipher`.
+// `identity-access` WAS the near miss and its ports have since landed, so the
+// paragraph that stood here is withdrawn rather than carried: it said
+// `rateLimiter` is "still this generator's own placeholder" and that `hasher`,
+// `minter`, `totp` and `cipher` are "satisfied by no adapter directory at all".
+// WIN-267 A1, A2 and A3 closed all five — `redis-ratelimit`,
+// `node-crypto-digest`, `keyring-envelope` and `tokenmint-totp` — and all six of
+// its driven ports are now satisfied. What holds it is the kernel
+// `SafetyEventSink`, implemented only by `governance`.
 //
-// Of the other nine assemblers, every one needs at least one port whose adapter
-// is a placeholder — `ObjectStore`, `DurableRuntime`, `ObservabilitySink`,
-// `EventBus`, `ChannelAdapter` — or a peer contract from one of the six that
-// publish no assembler. `apps/core-api/src/composition/context-ports.ts` states
-// this per context and its suite checks the identity-access half against
-// `ADAPTER_BINDINGS` rather than asserting it.
+// AND `governance` IS IN THE UNIMPORTABLE EIGHT, which is the fact a tranche
+// planning that work needs first: landing adapters for its five unbound ports
+// still would not make it composable, because `createGovernanceContract` cannot
+// be named from the composition root until an entry appears above. Its
+// `AgentsContract` slot needs a composed `agents` too, and `agents` is short
+// `AgentVersionLock` and `MacroRecorder` plus a `skills` peer.
+// `apps/core-api/src/composition/context-ports.ts` states this per context, and
+// its suite checks the identity-access, agents and importability halves against
+// `ADAPTER_BINDINGS` and against the resolver rather than asserting them.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -1705,7 +1799,16 @@ const CORE_API_RUNTIME_DEPENDENCIES = {
 // a container. The specifier is byte-identical to the two already in the
 // lockfile, so pnpm resolves it to @testcontainers/redis@10.28.0 rather than
 // opening a new resolution.
+//
+// WIN-267 ADDS `@testcontainers/postgresql`, and it is the SAME argument one
+// step further: the composition root now COMPOSES `identity-access`, and the
+// only honest proof that an operator can authenticate through it is a real
+// PostgreSQL holding a real `OperatorSession` -- `InMemoryIdentityAccessRepository`
+// hashes nothing and would pass against a `SecretHasher` that returned a
+// constant. Byte-identical to the specifier `postgres-tenancy` already uses, so
+// it resolves to the entry already in the lockfile.
 const CORE_API_DEV_DEPENDENCIES = {
+  "@testcontainers/postgresql": "^10.28.0",
   "@testcontainers/redis": "^10.28.0",
 };
 

@@ -329,8 +329,8 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(54);
-    expect(body.detail.satisfiedBindings).toHaveLength(47);
+    expect(body.detail.declaredBindings).toBe(58);
+    expect(body.detail.satisfiedBindings).toHaveLength(51);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -344,7 +344,7 @@ describe("the built binary starts, serves and stops", () => {
     // count moves by two while the declared count moves by one, and the
     // UNSATISFIED remainder falls from eight to SEVEN: `redis-ratelimit` is the
     // first directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("47 of 54 adapter bindings are satisfied; 7 are not");
+    expect(body.reason).toBe("51 of 58 adapter bindings are satisfied; 7 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -352,14 +352,32 @@ describe("the built binary starts, serves and stops", () => {
     // load-bearing rather than incidental — `providers` names `tenancy` and
     // `secrets` as PEERS, so it can only exist after both do, and it is the
     // first context in this tree built from another context at all.
-    expect(body.detail.composedContexts).toEqual(["tenancy", "secrets", "providers"]);
+    // WIN-267 ADDS `identityAccess`, AND IT IS FIRST IN THE LIST BECAUSE THE
+    // ORDER IS `ContextContracts`' OWN. This is the figure this whole line of
+    // work existed for: read off a REAL socket on a REAL process, core-api now
+    // holds a composed `identity-access` -- the context that authenticates an
+    // operator -- rather than a type it imports and never builds.
+    //
+    // ITS TENTH SLOT IS THE KERNEL `SafetyEventSink`, and no adapter supplies
+    // it: `composition/context-ports.ts` mints it from `governance`'s own
+    // `createGovernanceSafetyEventSink` over `postgres-tenancy`'s `SafetyLedger`.
+    // `governance` ITSELF IS STILL ABSENT and must stay absent here -- its
+    // `AgentsContract` slot is four contexts and six unbound ports away -- which
+    // is why this list is asserted with `toEqual` rather than by membership.
+    expect(body.detail.composedContexts).toEqual([
+      "identityAccess",
+      "tenancy",
+      "secrets",
+      "providers",
+    ]);
+    expect(body.detail.composedContexts).not.toContain("governance");
     // And every remaining directory says which kind of gap it is.
     expect(body.detail.unwiredAdapters).toHaveLength(7);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("47/54 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("51/58 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;
