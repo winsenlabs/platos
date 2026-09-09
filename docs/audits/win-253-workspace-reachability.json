@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "94c4cd7c5c5867f04d489255e80c938d26c06fd2e28d7734f8eaaaf9f15a1855",
+  "evidenceSha256": "f8f8fcc0fd2af445ff5d39def2e7861961a58cd61747dbf11028f5ada90cc2d0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 25,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5aed973afb20366761c56b62e4e4903f92d79792feffd6417b6a74317bfe9f29",
+    "aggregateSha256": "0b867d65f44d73da6e2e413e08cac8f4310ba67acb29b9237aa414bb55509b34",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4411,7 +4411,7 @@
       },
       {
         "path": "docs/audits/win-268-mcp-store-ownership.md",
-        "sha256": "e601ff5c8fdd6452497ca87aefc2ca24e35a709d821331d2d7ee85c80e7bd588"
+        "sha256": "8dabf4cee680f3350d7f6b4e67c2c0bf8da15fc51e2dcb246ab68a2c05a0104b"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
@@ -20015,7 +20015,7 @@
       },
       {
         "path": "scripts/arch/mcp-store-ownership.mjs",
-        "sha256": "dec77b9d2a26f535cb1ae76ae927ff168879b285b8db31974cc69068190c5a72"
+        "sha256": "2f298e916e6af78e3ad7da8a6fa58c1f5d796ae73e8a5ebd7a2cc7c327c809d4"
       },
       {
         "path": "scripts/arch/mcp-store-ownership.test.mjs",
@@ -21941,7 +21941,7 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "reference",
-              "line": 38
+              "line": 48
             },
             {
               "from": "docs/audits/win-284-differential-coverage.json",
@@ -25538,7 +25538,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "8fe7094708494b3ce98ed90f9c66af74517d234083af453da31f1180e1eb8f5f",
+      "evidenceSha256": "0d714f84ce6e6fd1b144ec28ca981f1af68e048245c446be3ab6156d51a95928",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -64723,7 +64723,7 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "reference",
-              "line": 51
+              "line": 61
             },
             {
               "from": "docs/win-260-mutation-ledger.json",
@@ -65588,7 +65588,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "e79588c5ed4745d739cff2ace0921a5acd0019544874c2e4150e388e4b18be9c",
+      "evidenceSha256": "d02a09359e8c0ce81b81cd434839d90b5c808befe80454b646155d54ca2b647a",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -76623,7 +76623,7 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "reference",
-              "line": 43
+              "line": 53
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -77572,7 +77572,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "fded0802936b5c176deaff05e1a0e2e2d4b14282ca27907ebfd2fc9883a633bd",
+      "evidenceSha256": "c645f69d2731598a79ee5d5f657cc24c207fc1d1b4636d8533d70ebec448c4d7",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
