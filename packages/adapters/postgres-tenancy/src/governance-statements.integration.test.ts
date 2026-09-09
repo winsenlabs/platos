@@ -16,6 +16,17 @@
 // N+1 in the tenant tree rather than in the rows, and it is measured here at an
 // ORGANIZATION scope precisely so the widening cannot hide.
 //
+// EVERY SCOPED PIN CARRIES ONE RESOLVE, AND WIN-303 IS WHY. `governance-scope.ts`
+// resolves the whole tenant triple against `Environment` and `Project` before a
+// store sends anything, so a forged ancestry is REFUSED rather than answered
+// with an empty set. That is one statement, once, on the front of every method
+// that takes an environment scope — so every count below rose by exactly one and
+// none of them grew with the fixture, which is the property this file measures.
+// Two pins did NOT move and both say something: an ORGANIZATION scope asserts no
+// relation, so nothing is resolved and nothing is spent; and a NULL subject is
+// still answered without any statement at all, because the answer is zero for a
+// forged scope and a coherent one alike.
+//
 // THE PROBE PATTERN IS ANCHORED, and this is tranche 3's trap rather than a
 // precaution. Its advisory lock projected `SELECT 1`, which is exactly the shape
 // the statement suites strip to discard the driver's connection probe, so the
@@ -178,8 +189,8 @@ async function pin(
 }
 
 describe("reads are a fixed number of statements, whatever the row count", () => {
-  test("`SafetyLedger.page` is two: the page and its total", async () => {
-    await pin("safety.page", 2, (fixture) =>
+  test("`SafetyLedger.page` is three: the scope resolve, the page and its total", async () => {
+    await pin("safety.page", 3, (fixture) =>
       harness.stores.safety.page(fixture.scope, {
         since: SINCE,
         limit: 10,
@@ -193,23 +204,23 @@ describe("reads are a fixed number of statements, whatever the row count", () =>
     );
   });
 
-  test("`SafetyLedger.tally` is one, folding every row in the window", async () => {
-    await pin("safety.tally", 1, (fixture) => harness.stores.safety.tally(fixture.scope, SINCE));
+  test("`SafetyLedger.tally` is two, folding every row in the window", async () => {
+    await pin("safety.tally", 2, (fixture) => harness.stores.safety.tally(fixture.scope, SINCE));
   });
 
-  test("`SafetyLedger.countByAgent` is one GROUP BY, not one read per agent", async () => {
-    await pin("safety.countByAgent", 1, (fixture) =>
+  test("`SafetyLedger.countByAgent` is ONE GROUP BY beside the resolve, not one read per agent", async () => {
+    await pin("safety.countByAgent", 2, (fixture) =>
       harness.stores.safety.countByAgent(fixture.scope, SINCE),
     );
   });
 
-  test("`SafetyLedger.countSubject` is one at an ENVIRONMENT scope", async () => {
-    await pin("safety.countSubject.environment", 1, (fixture) =>
+  test("`SafetyLedger.countSubject` is the resolve and one count at an ENVIRONMENT scope", async () => {
+    await pin("safety.countSubject.environment", 2, (fixture) =>
       harness.stores.safety.countSubject({ scope: fixture.scope, principalId: "subject-a" }),
     );
   });
 
-  test("and one at an ORGANIZATION scope, where the tree is joined not walked", async () => {
+  test("and still ONE at an ORGANIZATION scope, which asserts no ancestry to resolve", async () => {
     await pin("safety.countSubject.organization", 1, (fixture) =>
       harness.stores.safety.countSubject({
         scope: { level: "organization", organizationId: fixture.scope.organizationId },
@@ -224,8 +235,8 @@ describe("reads are a fixed number of statements, whatever the row count", () =>
     );
   });
 
-  test("`EvalsRepository.page` is two", async () => {
-    await pin("evals.page", 2, (fixture) =>
+  test("`EvalsRepository.page` is three", async () => {
+    await pin("evals.page", 3, (fixture) =>
       harness.stores.evals.page(fixture.scope, {
         since: SINCE,
         limit: 10,
@@ -239,10 +250,10 @@ describe("reads are a fixed number of statements, whatever the row count", () =>
     );
   });
 
-  test("`EvalsRepository.sampleByIds` is one for the whole run", async () => {
+  test("`EvalsRepository.sampleByIds` is one read for the whole run, beside the resolve", async () => {
     // The run grouping is not a column; a run is the SET of ids it wrote. The
     // large fixture asks for forty of them in one statement.
-    await pin("evals.sampleByIds", 1, (fixture) =>
+    await pin("evals.sampleByIds", 2, (fixture) =>
       harness.stores.evals.sampleByIds(
         fixture.scope,
         fixture.evalIds.map((value) => asGovernanceIdentifier(value)),
@@ -250,8 +261,8 @@ describe("reads are a fixed number of statements, whatever the row count", () =>
     );
   });
 
-  test("`EvalsRepository.sample` is one", async () => {
-    await pin("evals.sample", 1, (fixture) =>
+  test("`EvalsRepository.sample` is one read beside the resolve", async () => {
+    await pin("evals.sample", 2, (fixture) =>
       harness.stores.evals.sample(fixture.scope, {
         agentId: asGovernanceIdentifier<AgentId>(fixture.ids.agentId),
         since: SINCE,
@@ -260,14 +271,14 @@ describe("reads are a fixed number of statements, whatever the row count", () =>
     );
   });
 
-  test("`CriteriaRepository.findMany` is one for the whole label set", async () => {
-    await pin("criteria.findMany", 1, (fixture) =>
+  test("`CriteriaRepository.findMany` is one read for the whole label set", async () => {
+    await pin("criteria.findMany", 2, (fixture) =>
       harness.stores.criteria.findMany(fixture.scope, [fixture.criterionId]),
     );
   });
 
-  test("`CriteriaRepository.page` is two", async () => {
-    await pin("criteria.page", 2, (fixture) =>
+  test("`CriteriaRepository.page` is three", async () => {
+    await pin("criteria.page", 3, (fixture) =>
       harness.stores.criteria.page(fixture.scope, {
         limit: 10,
         offset: 0,
@@ -277,16 +288,17 @@ describe("reads are a fixed number of statements, whatever the row count", () =>
     );
   });
 
-  test("`RatingsRepository.sample` is one", async () => {
-    await pin("ratings.sample", 1, (fixture) =>
+  test("`RatingsRepository.sample` is one read beside the resolve", async () => {
+    await pin("ratings.sample", 2, (fixture) =>
       harness.stores.ratings.sample(fixture.scope, { since: SINCE, agentId: null }),
     );
   });
 });
 
 describe("the writes are a fixed number too", () => {
-  test("`upsert` is TWO on both paths, so the count is a pin and not a path", async () => {
-    // The CREATE path: a scoped update that matches nothing, then the insert.
+  test("`upsert` is THREE on both paths, so the count is a pin and not a path", async () => {
+    // The CREATE path: the ancestry resolve, a scoped update that matches
+    // nothing, then the insert.
     const created = await measure(() =>
       runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.ratings.upsert(
@@ -304,7 +316,8 @@ describe("the writes are a fixed number too", () => {
         ),
       ),
     );
-    // The FLIP path: the same scoped update, matching, then the read back.
+    // The FLIP path: the same resolve, the same scoped update, matching, then
+    // the read back.
     const flipped = await measure(() =>
       runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.ratings.upsert(
@@ -322,11 +335,12 @@ describe("the writes are a fixed number too", () => {
         ),
       ),
     );
-    expect({ created: created.counted, flipped: flipped.counted }).toEqual({ created: 2, flipped: 2 });
+    expect({ created: created.counted, flipped: flipped.counted }).toEqual({ created: 3, flipped: 3 });
   });
 
-  test("`anonymizeSubject` is ONE update, however many rows it rewrites", async () => {
-    // Two rows in the small fixture, forty in the large, one statement in both.
+  test("`anonymizeSubject` is ONE update beside the resolve, however many rows it rewrites", async () => {
+    // Two rows in the small fixture, forty in the large, one UPDATE in both —
+    // beside the one resolve every environment-scoped method carries.
     const smallResult = await measure(() =>
       runResult(harness.base.adapter.unitOfWork, (transaction) =>
         harness.stores.safety.anonymizeSubject(
@@ -343,10 +357,10 @@ describe("the writes are a fixed number too", () => {
         ),
       ),
     );
-    expect({ small: smallResult.counted, large: largeResult.counted }).toEqual({ small: 1, large: 1 });
+    expect({ small: smallResult.counted, large: largeResult.counted }).toEqual({ small: 2, large: 2 });
   });
 
-  test("`criteria.update` is THREE, and the order is scope, name, write", async () => {
+  test("`criteria.update` is FOUR: the ancestry, the scope, the name, the write", async () => {
     const found = await harness.stores.criteria.findById(small.scope, small.criterionId);
     expect(found.ok && found.value).not.toBeNull();
     if (!found.ok || found.value === null) return;
@@ -359,6 +373,6 @@ describe("the writes are a fixed number too", () => {
         ),
       ),
     );
-    expect(measured.counted).toBe(3);
+    expect(measured.counted).toBe(4);
   });
 });

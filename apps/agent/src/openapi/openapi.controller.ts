@@ -5,9 +5,14 @@
  *   GET /openapi                     → Swagger UI HTML (CDN-loaded)
  *
  * `openapi.generated.json` derives from the canonical control-plane
- * operation manifest. It inventories every Nest route without inventing
- * request/response schemas that the controllers do not declare. Swagger UI
- * is pulled from the official unpkg CDN so the agent image stays lean.
+ * operation manifest. It inventories every Nest route, and since WIN-267 W2 the
+ * V1 core-api operations additionally carry request and response schemas READ
+ * OFF THE TYPESCRIPT TYPES of their handlers, with the ADR M0.4 section 2
+ * failure envelope on every one of them. Operations that declare no wire DTO
+ * carry `x-platos-schema-source: undeclared` and a reason rather than an
+ * invented schema, so the document never claims a shape the controllers do not
+ * declare. Swagger UI is pulled from the official unpkg CDN so the agent image
+ * stays lean.
  */
 
 import { Controller, Get, Header, Version, VERSION_NEUTRAL } from "@nestjs/common";

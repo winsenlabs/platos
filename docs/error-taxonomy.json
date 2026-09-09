@@ -1185,6 +1185,13 @@
         "governance"
       ]
     },
+    "GOVERNANCE_CRITERIA_SCOPE_UNRESOLVED": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "governance"
+      ]
+    },
     "GOVERNANCE_CRITERION_ALREADY_EXISTS": {
       "category": "conflict",
       "status": 409,
@@ -1248,6 +1255,13 @@
         "governance"
       ]
     },
+    "GOVERNANCE_EVALS_SCOPE_UNRESOLVED": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "governance"
+      ]
+    },
     "GOVERNANCE_EVAL_NOT_FOUND": {
       "category": "not_found",
       "status": 404,
@@ -1258,6 +1272,13 @@
     "GOVERNANCE_EVAL_SELF_JUDGED": {
       "category": "conflict",
       "status": 409,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_GOLDEN_SETS_SCOPE_UNRESOLVED": {
+      "category": "internal",
+      "status": 500,
       "contexts": [
         "governance"
       ]
@@ -1339,6 +1360,13 @@
         "governance"
       ]
     },
+    "GOVERNANCE_RATINGS_SCOPE_UNRESOLVED": {
+      "category": "internal",
+      "status": 500,
+      "contexts": [
+        "governance"
+      ]
+    },
     "GOVERNANCE_RATING_ACTOR_FORBIDDEN": {
       "category": "forbidden",
       "status": 403,
@@ -1391,6 +1419,13 @@
     "GOVERNANCE_SAFETY_RULE_MALFORMED": {
       "category": "invalid_input",
       "status": 400,
+      "contexts": [
+        "governance"
+      ]
+    },
+    "GOVERNANCE_SAFETY_SCOPE_UNRESOLVED": {
+      "category": "internal",
+      "status": 500,
       "contexts": [
         "governance"
       ]
@@ -2933,6 +2968,13 @@
       "status": 404,
       "contexts": [
         "tools"
+      ]
+    },
+    "TRANSPORT_CONTEXT_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "core-api"
       ]
     },
     "TRANSPORT_REQUEST_INVALID": {

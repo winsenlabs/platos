@@ -212,6 +212,22 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL integration suite for the composition root. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
   }),
   Object.freeze({
+    // WIN-267 R1 — the identity REST suite. It is the operator-authentication
+    // entry above with an HTTP server on the end, and it reads the environment
+    // in exactly the same ONE place and for the same reason: `prisma migrate
+    // deploy` is a spawned process and needs PATH.
+    //
+    // THE SEVEN CONFIGURATION VARIABLES IT SETS ARE NOT READS. They are a plain
+    // object handed to `loadPlatformConfiguration`, so the process under test
+    // takes nothing from the machine it happens to run on — and a suite that had
+    // reached for `process.env` for them would have shown up as a SECOND read
+    // here, which is what makes this pin worth having.
+    path: "apps/core-api/src/composition/identity-rest.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL integration suite for the V1 REST surface. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+  }),
+  Object.freeze({
     path: "packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts",
     role: "test-support",
     reads: 1,
@@ -458,8 +474,39 @@ export const VIOLATION_CODES = Object.freeze({
  * so no variable is READ from `process.env` and no new door is opened. A suite
  * that had reached for the ambient environment instead would move this table and
  * fail the gate. 1620 + 1 = 1621.
+ *
+ * WIN-267 R1 1621 -> 1635. FOURTEEN files, all under `apps/core-api/src`: nine
+ * transport modules, `http/api-surface.ts`, three suites and the HTTP
+ * integration suite. THE DECLARED TABLE GAINS EXACTLY ONE ENTRY and it is that
+ * integration suite, for the identical reason the operator-authentication suite
+ * above has one: it spawns the ORM's CLI to apply the repository's own
+ * migrations, and the CLI needs the inherited environment to run at all. The
+ * OTHER THIRTEEN open no door — the routes take their configuration from the
+ * composed `AppModule` they are handed, which is the whole point of a
+ * composition root. 1621 + 14 = 1635.
+ *
+ * WIN-303 ADDS TWO, AND THE DECLARED TABLE IS UNMOVED BY BOTH.
+ * `packages/adapters/postgres-tenancy/src/governance-scope.ts` resolves the
+ * tenant triple against `Environment` and `Project` before the five canonical
+ * stores send anything; it reads a DATABASE, not an environment, and its client
+ * arrives through `TenancyTransactions` from the composition root exactly as
+ * every other file in that directory's does. 1621 + 1 = 1622.
+ *
+ * And `governance-isolation.integration.test.ts`, the two-tenant proof beside
+ * it, which reaches the container only through `governance-harness.ts` — the
+ * file `env-access.mjs` already declares as one of the harnesses entitled to
+ * read the ambient environment. A second reader in a suite would be an
+ * undeclared door and would move this table. 1622 + 1 = 1623.
+ *
+ * SUMMED FOR THE INTEGRATION, never side-picked: 1621 + 14 (R1) + 2 (R303)
+ * = 1637. The two tranches share no file — R1's fourteen are all under
+ * `apps/core-api/src` and R303's two are both under
+ * `packages/adapters/postgres-tenancy/src` — so the sum is the census and
+ * not an overlap. THE DECLARED TABLE GAINS EXACTLY ONE ENTRY ACROSS BOTH,
+ * R1's HTTP integration suite, because it spawns the ORM's CLI; R303's two
+ * open no door at all. Fifteen files landed and one door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1621;
+export const EXPECTED_FILE_COUNT = 1637;
 
 function listSourceFiles(root) {
   const found = [];

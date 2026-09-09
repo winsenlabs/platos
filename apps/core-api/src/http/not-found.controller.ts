@@ -21,7 +21,7 @@
 // log-forging primitive. The method is a closed set the framework parsed; the
 // path is not, and does not appear.
 
-import { All, Controller, Req } from "@nestjs/common";
+import { All, Controller, Req, VERSION_NEUTRAL } from "@nestjs/common";
 
 import { raise } from "../transports/rest/fault.js";
 import { routeNotFound } from "../transports/rest/transport-errors.js";
@@ -36,7 +36,14 @@ interface InboundRequest {
  * including none". `"*"` was the Express 4 spelling and is a hard error under
  * the version `@nestjs/platform-express@11` actually resolves.
  */
-@Controller()
+/**
+ * `VERSION_NEUTRAL` (WIN-267 R1). The terminal handler answers EVERY unrouted
+ * request in the process, including one addressed at no version at all, so it
+ * cannot sit under a version segment. Under `applyApiSurface`'s `defaultVersion`
+ * it would have moved to `/api/v1/{*path}` and `/does-not-exist` would have got
+ * Express's HTML page instead of the M0.4 §2 envelope.
+ */
+@Controller({ version: VERSION_NEUTRAL })
 export class NotFoundController {
   @All("{*path}")
   unmatched(@Req() request: InboundRequest): never {

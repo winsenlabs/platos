@@ -827,3 +827,48 @@ test("C8 NON-VACUITY: the live tree reaches no adapter from a transport, and the
   const bff = readFileSync(join(repositoryRoot, "apps/core-api/src/transports/bff/index.ts"), "utf8");
   assert.match(bff, /readonly app: AppModule;/u, "a transport must still hold the composed application");
 });
+
+test("C8: the SHIPPED bff controller is governed, and the reach it would make is legal without C8", () => {
+  // WIN-267 R1. Until R1 the whole of `transports/` was six 20-line seams, and
+  // C8's own banner says so: "A containment rule is cheapest to write while the
+  // thing it contains is empty." The thing is no longer empty. `bff/
+  // session.controller.ts` serves two routes, holds the composed application,
+  // and is exactly the transport a reviewer would expect to reach past the
+  // contracts — a browser on the other end asking for a page's worth of joined
+  // data is the whole reason a BFF exists.
+  //
+  // So the rule is asserted against THAT file rather than against the seam:
+  // first that the reach is legal under every other gate (the finding), then
+  // that C8 fires on it by name.
+  const root = realTreeCopy();
+  const controller = "apps/core-api/src/transports/bff/session.controller.ts";
+  edit(root, controller, (source) =>
+    `${source}\nexport const sneak = (app: AppModule) => app.adapters["postgres-tenancy"].findOrganizationBySlug;\n`,
+  );
+
+  assert.deepEqual(
+    check(root).violations,
+    [],
+    "a BFF reading the canonical store breaks no other ADR rule — that is what C8 is for",
+  );
+
+  const problems = auditCompositionRoot(root).problems;
+  assert.ok(
+    problems.some((problem) => problem.includes("session.controller.ts") && problem.includes("may not reach an adapter")),
+    `C8 did not fire on the shipped BFF controller: ${problems.join("\n")}`,
+  );
+});
+
+test("C8 NON-VACUITY: the shipped bff controller exists, serves routes, and reaches only contracts", () => {
+  // The case above proves C8 fires when the file reaches an adapter. This proves
+  // the file is worth guarding: a rule tested only against a mutation is a rule
+  // that would pass just as well if the directory were empty again.
+  const controller = join(repositoryRoot, "apps/core-api/src/transports/bff/session.controller.ts");
+  const source = readFileSync(controller, "utf8");
+  assert.match(source, /@Controller\(/u, "the BFF must still carry a mounted controller");
+  assert.match(source, /@Post\(\)/u, "the BFF must still serve the session exchange");
+  assert.ok(
+    !/\badapters\b\s*[.[]/u.test(source.replace(/\/\/[^\n]*/gu, "")),
+    "the shipped BFF controller must reach the system through `contexts`",
+  );
+});

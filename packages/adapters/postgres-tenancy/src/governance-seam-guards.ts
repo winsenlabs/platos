@@ -51,6 +51,21 @@ import type { EnvironmentScope } from "@platos/context-governance/application/po
 const UUID_SHAPE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;
 
 /**
+ * That shape, as a predicate — the ONE definition the three seams and the five
+ * canonical stores share.
+ *
+ * WIN-303. `governance-scope.ts` has to check the members of an ORGANIZATION and
+ * a PROJECT scope, which `narrowableScope` below cannot express because it takes
+ * the whole environment triple. It imports this rather than carrying a third
+ * copy of the expression: unlike `agents-guards.ts`, that file guards the SAME
+ * three columns for the SAME owner as this one, so neither reason the paragraph
+ * above gives for a second copy applies between them.
+ */
+export function isNarrowableIdentifier(value: string): boolean {
+  return UUID_SHAPE.test(value);
+}
+
+/**
  * The WHOLE tenant triple this read may narrow by, or `null` when it is not
  * usable.
  *
@@ -71,15 +86,22 @@ const UUID_SHAPE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}
  * the environment clause alone this reader would serve it. The oracle refuses
  * it, so these do.
  *
- * THE FIVE CANONICAL STORES BESIDE THESE DO NOT. `governance-rows.ts`'
- * `scopedWhere` is `{ environmentId }` and nothing more, so `SafetyLedger`,
+ * THE FIVE CANONICAL STORES BESIDE THESE NOW DO TOO, AND THIS PARAGRAPH USED TO
+ * SAY THEY DID NOT. WIN-267 G2 reported the divergence rather than repairing it
+ * — `scopedWhere` was `{ environmentId }` and nothing more, so `SafetyLedger`,
  * `RatingsRepository`, `CriteriaRepository`, `EvalsRepository` and
- * `GoldenSetsRepository` accept a mismatched triple where these three refuse it.
- * That divergence is REPORTED rather than silently repaired: widening it is a
- * change to five ports this tranche does not own, and narrowing these three to
- * match the weaker convention would be choosing the tree's habit over the
- * oracle's behaviour. The read seams are the ones answering questions about
- * OTHER contexts' rows, which is where a malformed grant costs most.
+ * `GoldenSetsRepository` accepted a mismatched triple where these three refused
+ * it. WIN-303 closed it. The five resolve their whole scope through
+ * `governance-scope.ts` before any statement, and refuse a forged ancestry under
+ * a code of each store's own.
+ *
+ * THE TWO ANSWERS STILL DIFFER, AND THE DIFFERENCE IS DELIBERATE. These three
+ * fold the triple into the `where` and answer ABSENCE for a mismatched one,
+ * because absence is already what they answer for another tenant's row and
+ * `read-seams.ts` requires a probe and a typo to be indistinguishable. The five
+ * stores REFUSE instead, in a statement of their own, because absence there
+ * would make a broken grant indistinguishable from a criterion that does not
+ * exist — see `governance-scope.ts`, which carries the argument in full.
  *
  * `null` is the signal to REFUSE with the calling seam's own constructor. It is
  * never a licence to read wider: no caller in this package treats `null` as

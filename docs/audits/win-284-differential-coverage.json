@@ -16,14 +16,14 @@
   ],
   "reconciledAgainst": {
     "source": "docs/audits/M0.9-rest-census-independent.json",
-    "enumeratedRestCells": 300,
-    "enumeratedOperatorCells": 120,
-    "independentUniqueRoutes": 281,
+    "enumeratedRestCells": 308,
+    "enumeratedOperatorCells": 127,
+    "independentUniqueRoutes": 289,
     "dualMountAliasOps": 19,
-    "independentManifestOps": 300,
+    "independentManifestOps": 308,
     "independentOperatorFloor": 103,
-    "independentManifestOperator": 120,
-    "controllers": 27,
+    "independentManifestOperator": 127,
+    "controllers": 32,
     "agrees": true
   },
   "restScanRoots": {
@@ -40,21 +40,21 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "enumeratedOperations": 0,
-        "independentOperations": 0,
-        "independentSourceControllers": 0,
-        "independentSourceDecorators": 0,
+        "enumeratedOperations": 8,
+        "independentOperations": 8,
+        "independentSourceControllers": 5,
+        "independentSourceDecorators": 8,
         "agrees": true
       }
     ],
-    "total": 300
+    "total": 308
   },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {
-    "cells": 774,
+    "cells": 782,
     "covered": 2,
-    "uncovered": 772,
+    "uncovered": 780,
     "bySurface": {
       "bff": {
         "total": 117,
@@ -67,9 +67,9 @@
         "uncovered": 202
       },
       "rest": {
-        "total": 300,
+        "total": 308,
         "covered": 0,
-        "uncovered": 300
+        "uncovered": 308
       },
       "screen": {
         "total": 47,
@@ -93,7 +93,7 @@
       }
     }
   },
-  "digest": "a806296165aa0f4c179582706ae31d2e4cf3d8ae87a4c64e2618dcbaef63f879",
+  "digest": "78b97708e33f43b0a55d3d2a14f862fdd26ed568dfcfb6d9c20581cc86e38880",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -297,6 +297,17 @@
       "id": "DELETE /api/v1/agent/threads/:threadId",
       "surface": "rest",
       "owner": "conversations",
+      "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "DELETE /api/v1/bff/session",
+      "surface": "rest",
+      "owner": "identity-access",
       "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
@@ -1471,6 +1482,28 @@
       "reason": "no V1 REST transport exists at this baseline"
     },
     {
+      "id": "GET /api/v1/environments/:environmentId/end-users",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "GET /api/v1/identity/session",
+      "surface": "rest",
+      "owner": "identity-access",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
       "id": "GET /api/v1/memory",
       "surface": "rest",
       "owner": "memory",
@@ -1537,6 +1570,17 @@
       "reason": "no V1 REST transport exists at this baseline"
     },
     {
+      "id": "GET /api/v1/organizations",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
       "id": "GET /api/v1/platos/memory",
       "surface": "rest",
       "owner": "memory",
@@ -1596,6 +1640,17 @@
       "surface": "rest",
       "owner": "memory",
       "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "GET /api/v1/projects",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",
@@ -2890,6 +2945,17 @@
       "reason": "no V1 REST transport exists at this baseline"
     },
     {
+      "id": "POST /api/v1/bff/session",
+      "surface": "rest",
+      "owner": "identity-access",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
       "id": "POST /api/v1/channels/apps/:appId/events",
       "surface": "rest",
       "owner": "channels",
@@ -3011,6 +3077,17 @@
       "reason": "no V1 REST transport exists at this baseline"
     },
     {
+      "id": "POST /api/v1/organizations",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
       "id": "POST /api/v1/platos/memory",
       "surface": "rest",
       "owner": "memory",
@@ -3092,6 +3169,17 @@
       "surface": "rest",
       "owner": "memory",
       "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "POST /api/v1/projects",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",

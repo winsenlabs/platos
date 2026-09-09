@@ -853,9 +853,28 @@ test("the live selectors scan an exact nonzero source census", () => {
   // six are under the 400 warning band -- and the split into four source files
   // rather than one is what keeps them there, since a single
   // `governance-read-seams.ts` holding all three seams would have been 260.
+  // WIN-303 1580 -> 1582: two files in `packages/adapters`, itemised below.
   // SUMMED FOR THE INTEGRATION: 1572 + 2 (G1) + 6 (G2) = 1580, and the
   // ADAPTERS term is still the only one that moves.
-  assert.equal(result.fileCount, 1580);
+  //
+  // WIN-267 R1 1580 -> 1593, AND IT IS THE FIRST TRANCHE SINCE T2 IN WHICH THE
+  // ADAPTERS TERM DOES NOT MOVE AT ALL. Both app selectors move instead, which
+  // is the shape of a transport tranche: +11 under
+  // `apps/core-api/src/transports/**` (five controllers, four shared transport
+  // modules, and two suites) and +2 under `apps/core-api/src/http/**`
+  // (`api-surface.ts` and its suite). The integration suite it also adds is in
+  // `src/composition/`, which NO selector scans, so it is deliberately absent
+  // from both terms. 1580 + 11 + 2 = 1593.
+  //
+  // WIN-303 1580 -> 1582: the adapters term alone, +2.
+  //
+  // SUMMED: 1580 + 13 + 2 = 1595, and the two tranches move DIFFERENT terms —
+  // R1 both app selectors and R303 the adapters selector — so no file is
+  // counted twice. Note that R1 is +13 HERE and +14 in the two census pins:
+  // its HTTP integration suite lives in `src/composition/`, which those scans
+  // reach and no selector in this file does. A merge that had copied 14 into
+  // this pin would be red, which is the point of keeping both figures.
+  assert.equal(result.fileCount, 1595);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -888,7 +907,24 @@ test("the live selectors scan an exact nonzero source census", () => {
       // long-standing selector, and adding nothing to any other term: the three
       // ports were already declared by the context and the composition root's
       // rows are edits.
-      6
+      6 +
+      // WIN-267 R1: THIRTEEN, and none of them an adapter. ELEVEN under
+      // `apps/core-api/src/transports/**` — `identity-session`,
+      // `organizations`, `projects`, `environment-end-users` and `bff/session`
+      // controllers, the `operator`, `dependencies`, `body` and `resources`
+      // modules they share, and the `route-manifest` and `identity-rest`
+      // suites — plus TWO under `apps/core-api/src/http/**`, `api-surface.ts`
+      // and `api-surface.test.ts`. The V1 REST surface has no adapter half at
+      // all: every route reaches a published contract, which is why the term
+      // that has moved in every WIN-267 tranche since T2 is flat here.
+      11 + 2 +
+      // WIN-303: TWO under `packages/adapters/postgres-tenancy/src/` --
+      // `governance-scope.ts`, the tenant-triple resolver the five canonical
+      // stores now sit behind, and `governance-isolation.integration.test.ts`,
+      // its two-tenant proof. Newly WRITTEN, inside the same long-standing
+      // selector, and adding nothing to any other term: the five stores,
+      // `governance-rows.ts` and `governance-seam-guards.ts` are edits.
+      2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1039,7 +1075,31 @@ test("the live selectors scan an exact nonzero source census", () => {
   // SUMMED: 441 + 2 (G1) + 6 (G2) = 449.
   //   ADAPTERS        449
   // 27 + 1075 + 449 + 13 + 16 = 1580.
-  assert.equal(result.fileCount, 27 + 1075 + 449 + 13 + 16);
+  //
+  // WIN-267 R1 MOVES THE TWO APP TERMS AND NOTHING ELSE, which is the mirror
+  // claim of every adapter tranche above: APPS-HTTP 13 -> 15 and
+  // APPS-TRANSPORTS 16 -> 27. Kernel, contexts and adapters are byte-for-byte
+  // the same scan — the surface is built entirely out of published contracts, so
+  // no adapter directory changed shape, and the two contexts it serves were
+  // edited nowhere. 27 + 1075 + 449 + 15 + 27 = 1593.
+  //
+  // WIN-303 MOVES THE ADAPTERS TERM AND NOTHING ELSE: 449 -> 451,
+  // `governance-scope.ts` and `governance-isolation.integration.test.ts`. The
+  // five stores, `governance-rows.ts`, `governance-seam-guards.ts` and the
+  // statements suite are edits and move no count — though the stores do grow,
+  // which is why the warning band is re-read rather than assumed.
+  //
+  // THE INTEGRATION IS THE DISJOINT UNION OF THE TWO, TERM BY TERM, and that is
+  // what makes summing safe rather than hopeful: R1 moves only APPS-HTTP and
+  // APPS-TRANSPORTS, R303 moves only ADAPTERS, and neither touches KERNEL or
+  // CONTEXTS. No term takes a contribution from both branches.
+  //   KERNEL            27
+  //   CONTEXTS        1075
+  //   ADAPTERS         451
+  //   APPS-HTTP         15
+  //   APPS-TRANSPORTS   27
+  // 27 + 1075 + 451 + 15 + 27 = 1595.
+  assert.equal(result.fileCount, 27 + 1075 + 451 + 15 + 27);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -1154,7 +1214,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   cost-constraints.integration.test.ts          453 -> 454  (+1)
   //   files-scope.integration.test.ts               467 -> 468  (+1)
   //   governance-conformance.ts                     418 -> 420  (+2)
-  //   governance-rules.integration.test.ts          424 -> 425  (+1)
+  //   governance-rules.integration.test.ts          424 -> 425  (+1); WIN-303 -> 426
   //   memory-constraints.integration.test.ts        406 -> 409  (+3)
   //   providers-conformance.ts                      421 -> 423  (+2)
   //   secrets-rules.integration.test.ts             439 -> 441  (+2)
@@ -1223,7 +1283,13 @@ test("the live selectors scan an exact nonzero source census", () => {
     },
     {
       path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
-      effectiveLines: 425,
+      // WIN-303 425 -> 426: ONE assertion added to an existing case, naming
+      // WHICH refusal the cross-tenant flip produces. `mutations-governance.json`
+      // M-G19 was vacuous without it -- the mutated statement rewrites the other
+      // tenant's row and the unit of work then ROLLS IT BACK, so every other
+      // assertion in that case stayed green. No new case, so the test-case
+      // census does not move for it.
+      effectiveLines: 426,
       severity: "warning",
     },
     {
