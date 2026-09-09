@@ -254,7 +254,7 @@
     {
       "name": "the cutover itself — routing the 15 operations through core-api and deleting `database.server.ts`",
       "tried": "Enumerating every one of the 15 operations against the endpoints available to receive it, on this base and in the frozen `origin/main` oracle.",
-      "result": "NOT ATTEMPTED, and named rather than partially done. All 15 need an endpoint. `apps/core-api/src/transports` holds no route that reads or writes tenancy state, and the oracle's 300-row REST surface contains no organization, project, environment, environment-variable or end-user route, so there is nothing to join to. R1's branch does not exist in `git branch -a` or in `origin` after a fetch.",
+      "result": "NOT BUILT, and named rather than partially done. All 15 need an endpoint. `apps/core-api/src/transports` holds no route that reads or writes tenancy state, and the oracle's 300-row REST surface contains no organization, project, environment, environment-variable or end-user route, so there is nothing to join to. R1's branch does not exist in `git branch -a` or in `origin` after a fetch.",
       "why-unfalsifiable": "A mutation entry needs a guard to break. There is no guard here because there is no code here, and writing the client half against endpoint paths R2 invented would have produced exactly the 'second surface' the brief forbids — and a set of paths R1 would then be obliged to match or break.",
       "measured": "15 operations, 11 files, reproduced by `webapp-prisma-surface.mjs --report` and listed there call site by call site with file and line."
     },
