@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "63af33bd51c295c3688fcf07b27c0f39c12ecc3c95a3b84e07a9ddc236092a01",
+  "evidenceSha256": "654a2b9a31e4a7c26a8f20de8bac91cc9bdc29249d2eaaaf9e5ea04a6ab20e1c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "8b7ac504d3fcc736613b7e1d89d33f3d3e667291c91dab25d3ce902d707168a2",
+    "aggregateSha256": "fa8541390491bd0d12059e433e2a2392b8cf269d28378c1fcd920bd44f204c8e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2695,7 +2695,7 @@
       },
       {
         "path": "apps/core-api/src/transports/bff/session.controller.ts",
-        "sha256": "1c08ef04379a398edb0735df4af770abf1356d1379869c8b585774a864a34ff5"
+        "sha256": "425c20c3122871f310c0dc4da7906fb1ef67fbb0cb549631204901cb1853e705"
       },
       {
         "path": "apps/core-api/src/transports/channels-ingress/index.ts",

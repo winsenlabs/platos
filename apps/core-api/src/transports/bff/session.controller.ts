@@ -201,6 +201,14 @@ export class BffSessionController {
    * IT STILL REVEALS NOTHING. A live token, an unknown token and no token at all
    * get the same 204 and the same bytes, so the route cannot be used to ask
    * whether a token is real.
+   *
+   * AND IT GAINS NO ROW IN `http/idempotency-policy.ts`, WHICH IS A DECISION NOW
+   * THAT IT WRITES. The revocations already in that table are `exempt`, and the
+   * reasoning transfers exactly — "naturally idempotent, and it returns no
+   * secret". What does not transfer is the cost of being wrong: `exempt` DROPS an
+   * `Idempotency-Key` a caller sent in good faith, and the default `accepted`
+   * honours it. For a route whose whole job is to make sure something happened
+   * once, honouring the key is the safer of the two, so the default stands.
    */
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
