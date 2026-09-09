@@ -140,6 +140,16 @@ const v1ReleaseGateCommands = [
   "pnpm test:error-taxonomy",
   "pnpm audit:secret-response-census",
   "pnpm test:secret-response-census",
+  // WIN-268 (M4.2), +2. The MCP surface's ORM register. Same shape as the
+  // secret-response census above it and admitted for the same reason: it is a
+  // pinned artifact re-derived from the Prisma schema, the ownership map, the
+  // composition root and every context's published contract, and its staleness
+  // is visible to nothing but its own gate. Without these two lines a store call
+  // site could be added to, or removed from, the MCP surface — or a context
+  // could become composed — with a green CI and a register describing a tree
+  // that is gone.
+  "pnpm audit:mcp-store-ownership",
+  "pnpm test:mcp-store-ownership",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -352,6 +362,16 @@ const expectedV1EvidenceCommands = [
   "pnpm test:error-taxonomy",
   "pnpm audit:secret-response-census",
   "pnpm test:secret-response-census",
+  // WIN-268 (M4.2), +2. The MCP surface's ORM register. Same shape as the
+  // secret-response census above it and admitted for the same reason: it is a
+  // pinned artifact re-derived from the Prisma schema, the ownership map, the
+  // composition root and every context's published contract, and its staleness
+  // is visible to nothing but its own gate. Without these two lines a store call
+  // site could be added to, or removed from, the MCP surface — or a context
+  // could become composed — with a green CI and a register describing a tree
+  // that is gone.
+  "pnpm audit:mcp-store-ownership",
+  "pnpm test:mcp-store-ownership",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -2349,11 +2369,16 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      secret-response-census (audit + test). Both gates existed and neither
   //      ran here, and the composition proved the taxonomy one goes stale across
   //      a branch boundary in a way nothing else in this repository can see.
-  // 26 + 2 + 4 = 32.
+  //   +2 WIN-268 (M4.2): mcp-store-ownership (audit + test). The MCP surface's
+  //      ORM register — every store call site, its owning context, whether that
+  //      context is composed, and the per-file disposition naming what each is
+  //      waiting on. It is the artifact the rest of M4.2 is measured against, and
+  //      like the census above it nothing but its own gate can see it go stale.
+  // 26 + 2 + 4 + 2 = 34.
   assert.equal(
     v1ReleaseGateCommands.length,
-    32,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate and the secret-response census"
+    34,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census and the MCP store-ownership register"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4553,12 +4578,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   gains one: a release gate that could be neutralised by appending `|| true`
   //   is a gate that runs and cannot fail.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 = 367. The count is pinned rather than
-  // derived so that a control silently disappearing is a failure rather than a
-  // smaller number nobody reads.
+  //   WIN-268 (M4.2), +2. audit/test:mcp-store-ownership join the same V1
+  //   release gate list, so each gains the same `|| true` control -- the same
+  //   shape as the M2 INTEGRATION +4 immediately above, and for the same reason.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 = 369. The count is pinned rather
+  // than derived so that a control silently disappearing is a failure rather
+  // than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    367,
+    369,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

@@ -1648,7 +1648,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // breaking-change ratchet compares against. Both are `retain`, and both are
     // under `docs/**` and therefore PROTECTED, which is why protectedCount moves
     // +2 while move-refactor moves +5.
-    "docs-content": 19,
+    // WIN-268 (M4.2) 19 -> 21. TWO files, the MCP surface's ORM register, and
+    // they land on two DIFFERENT existing rules rather than one:
+    // `docs/audits/win-268-mcp-store-ownership.json` on
+    // `docs-content.evidence.audit-receipts` (19 -> 20) and its rendered
+    // `.md` on `docs-content.evidence.audit-notes` (12 -> 13). Both are
+    // `retain`, both are under `docs/**` and therefore PROTECTED, which is why
+    // protectedCount moves +2 with them. NO LEDGER RULE CHANGED.
+    "docs-content": 21,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1739,7 +1746,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // tranche's mutation ledger: twenty mutations, twenty killed, zero
     // survivors, each applied to ONE file and run individually — eleven on the
     // laptop and nine on the mini against a real PostgreSQL and Redis.
-    "root-infra": 67,
+    // WIN-268 (M4.2) 67 -> 69. TWO files, both `root-infra.tooling.scripts`
+    // (98 -> 100): `scripts/arch/mcp-store-ownership.mjs`, the register that
+    // derives every MCP-surface store call site from the Prisma schema, the
+    // ownership map, the composition root and each context's published
+    // contract, and `scripts/arch/mcp-store-ownership.test.mjs`, which proves
+    // the derivation joins to all four rather than to itself. The boundary rule
+    // this tranche adds is an edit to `scripts/arch/boundary-rules.mjs` and adds
+    // no file. NO LEDGER RULE CHANGED.
+    "root-infra": 69,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1837,7 +1852,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   //
   // AND P1's mutation ledger 1690 -> 1691. ONE file, `root-infra`, itemised on
   // that area's delta above: 6 + 0 + 80 + 4 + 10 + 1505 + 19 + 67 = 1691.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1691);
+  //
+  // WIN-268 (M4.2) THE REGISTER 1691 -> 1695. FOUR files across TWO areas, each
+  // itemised on its own delta above: `root-infra` +2 (the register and its
+  // suite) and `docs-content` +2 (the register's JSON receipt and its rendered
+  // note). The eight-key re-derivation from the merged `expectedDeltas` is
+  // 6 + 0 + 80 + 4 + 10 + 1505 + 21 + 69 = 1695.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1695);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2011,7 +2032,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // AND P1's mutation ledger 1690 -> 1691, the same one file, reached here by
     // summing the per-area counts instead of reading the total.
-    rulesDocument.baseline.totalFiles + 1691
+    //
+    // WIN-268 (M4.2) THE REGISTER 1691 -> 1695 -- the FOURTEENTH hand move of
+    // this second reconciliation. The same four files as the `totalFiles`
+    // assertion above (the register and its suite in `root-infra`, its JSON
+    // receipt and rendered note in `docs-content`), reached here by summing the
+    // per-area counts instead of reading the total, so the two arithmetics can
+    // disagree and be caught. 1691 + 4 = 1695.
+    rulesDocument.baseline.totalFiles + 1695
   );
 });
 
