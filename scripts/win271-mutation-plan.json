@@ -1,0 +1,173 @@
+[
+  {
+    "name": "M01 the replay window becomes one-sided",
+    "guards": "a capture held and replayed with a FUTURE timestamp is refused too",
+    "why": "Bounding only (now - t) leaves the other direction open: capture a signed request, present it with a timestamp far ahead, and 'too old' never fires. The window is |now - t| and this mutation makes it one-sided.",
+    "file": "packages/adapters/channel-slack/src/verify.ts",
+    "from": "if (Math.abs(receivedSeconds - claimedSeconds) > maxAgeSeconds) {",
+    "to": "if (receivedSeconds - claimedSeconds > maxAgeSeconds) {",
+    "command": "slackSig"
+  },
+  {
+    "name": "M02 an unparseable timestamp is reported as INVALID rather than STALE",
+    "guards": "the three inbound refusals stay three, because they are three operator actions",
+    "why": "STALE says look at a clock and INVALID says look at a secret. Collapsing the unparseable case into INVALID sends an operator to rotate a secret that was never wrong.",
+    "file": "packages/adapters/channel-slack/src/verify.ts",
+    "from": "if (!/^\\d{1,15}$/u.test(timestamp)) return err(signatureStale(SLACK_PROVIDER));",
+    "to": "if (!/^\\d{1,15}$/u.test(timestamp)) return err(signatureInvalid(SLACK_PROVIDER));",
+    "command": "slackSig"
+  },
+  {
+    "name": "M03 the structural staleness check is deleted and the vendor's is relied on",
+    "guards": "STALE is decided HERE, so it cannot collapse into the SDK's single error class",
+    "why": "The SDK signals absent, stale and invalid by throwing ONE class and separates them only by an English message. Deleting our own check makes a replayed request arrive as INVALID, which is the taxonomy hostage this adapter exists to avoid.",
+    "file": "packages/adapters/channel-slack/src/verify.ts",
+    "from": "  if (!/^\\d{1,15}$/u.test(timestamp)) return err(signatureStale(SLACK_PROVIDER));\n  const claimedSeconds = Number(timestamp);\n  const receivedSeconds = Math.floor(delivery.receivedAt.getTime() / 1000);\n  if (Math.abs(receivedSeconds - claimedSeconds) > maxAgeSeconds) {\n    return err(signatureStale(SLACK_PROVIDER));\n  }\n",
+    "to": "  void maxAgeSeconds;\n",
+    "command": "slackSig"
+  },
+  {
+    "name": "M04 a present-but-empty signature header counts as signed",
+    "guards": "half-signed is not signed",
+    "why": "An empty header is not a signature. Accepting one would hand the request to the SDK with nothing to verify against, and what comes back is a vendor error rather than this adapter's own ABSENT.",
+    "file": "packages/adapters/channel-slack/src/verify.ts",
+    "from": "  return typeof value === \"string\" && value.trim() !== \"\" ? value : null;",
+    "to": "  return typeof value === \"string\" ? value : null;",
+    "command": "slackSig"
+  },
+  {
+    "name": "M05 the bot's own message is admitted like any other",
+    "guards": "an app must not run a turn on the message it just posted",
+    "why": "Slack delivers the app's own post back to the app. Treating it as inbound starts a turn, whose reply is posted, which is delivered, which starts a turn: an unbounded loop costing a model call each time round and visible to the customer as the assistant talking to itself.",
+    "file": "packages/adapters/channel-slack/src/normalize.ts",
+    "from": "  if (\"botId\" in event && event.botId !== undefined) return ok(ignorable(verifiedBody));",
+    "to": "  if (false) return ok(ignorable(verifiedBody));",
+    "command": "slack"
+  },
+  {
+    "name": "M06 a missing event id is synthesized from the message timestamp",
+    "guards": "the admission key is the PROVIDER's own id and is never invented",
+    "why": "The inbox is idempotent on [appId, eventId]. A synthesized key makes a redelivery unrecognisable, so one provider event can run two turns — and hashing the body instead would make a user who genuinely says the same thing twice get one answer.",
+    "file": "packages/adapters/channel-slack/src/normalize.ts",
+    "from": "  const eventId = event.eventId;\n  if (eventId === undefined || eventId === \"\") {",
+    "to": "  const eventId = event.eventId ?? event.ts;\n  if (false) {",
+    "command": "slack"
+  },
+  {
+    "name": "M07 the thread key puts the channel in the wrong segment",
+    "guards": "the DOMAIN's own reader recovers the channel this adapter wrote",
+    "why": "`domain/inbound.ts::extractPlatformChannelId` takes the SECOND colon-separated segment and every `channel` routing rule matches on it. A key in any other shape makes those rules silently stop matching — no error anywhere, the rule simply never fires.",
+    "file": "packages/adapters/channel-slack/src/provider.ts",
+    "from": "  return `${SLACK_PROVIDER}:${channelId}:${threadTs}`;",
+    "to": "  return `${SLACK_PROVIDER}:${threadTs}:${channelId}`;",
+    "command": "slack"
+  },
+  {
+    "name": "M08 a mid-flight timeout is classified UNAVAILABLE",
+    "guards": "'did not land' and 'do not know' are different facts with different remedies",
+    "why": "UNAVAILABLE means retry me, nothing happened. A request that was WRITTEN and whose response was lost may well have posted the message, so retrying posts it twice into a customer's channel. This is the single most expensive misclassification the adapter can make.",
+    "file": "packages/adapters/channel-slack/src/failure.ts",
+    "from": "  if (timedOut || isDeadlineAbort(error)) {\n    return deliveryIndeterminate(SLACK_PROVIDER, \"deadline elapsed with no response\");\n  }",
+    "to": "  if (timedOut || isDeadlineAbort(error)) {\n    return adapterUnavailable(SLACK_PROVIDER, \"deadline elapsed with no response\");\n  }",
+    "command": "slackTx"
+  },
+  {
+    "name": "M09 an unrecognised throw defaults to UNAVAILABLE",
+    "guards": "the classifier fails CLOSED on anything it does not understand",
+    "why": "The commonest real instance is a proxy's non-JSON 502, where the request definitely left and the answer says nothing about whether the message was posted. Defaulting the unknown to RETRY is how the duplicate-message mistake gets made by a code path nobody reviewed.",
+    "file": "packages/adapters/channel-slack/src/failure.ts",
+    "from": "  return deliveryIndeterminate(SLACK_PROVIDER, code ?? \"unclassified transport failure\");",
+    "to": "  return adapterUnavailable(SLACK_PROVIDER, code ?? \"unclassified transport failure\");",
+    "command": "slackTx"
+  },
+  {
+    "name": "M10 the disposition table defaults OPEN",
+    "guards": "a code the table has not been taught is RECONCILE, never RETRY",
+    "why": "Defaulting to retry makes every future code silently repeatable, in the one direction that duplicates a customer-visible message. A repository failure surfacing through a delivery path would become a resend.",
+    "file": "packages/contexts/channels/domain/delivery.ts",
+    "from": "  return DISPOSITION_BY_CODE[error.code] ?? \"reconcile\";",
+    "to": "  return DISPOSITION_BY_CODE[error.code] ?? \"retry\";",
+    "command": "channelsBuilt"
+  },
+  {
+    "name": "M11 the API base URL loses its trailing slash",
+    "guards": "the vendor resolves a method as a RELATIVE REFERENCE against this constant",
+    "why": "THE REAL DEFECT THIS TRANCHE SHIPPED AND CAUGHT. `new URL('chat.postMessage', 'https://slack.com/api')` is `https://slack.com/chat.postMessage` — the `/api` segment is dropped and every outbound call 404s against a path that has never existed. Asserting the constant would not see it; asserting the vendor's own resolution does.",
+    "file": "packages/adapters/channel-slack/src/send.ts",
+    "from": "export const SLACK_API_URL = \"https://slack.com/api/\";",
+    "to": "export const SLACK_API_URL = \"https://slack.com/api\";",
+    "command": "slackTx"
+  },
+  {
+    "name": "M12 the deadline timer is never cleared",
+    "guards": "no per-call timer outlives its call",
+    "why": "A timer left armed keeps the event loop alive, and a process that will not exit on SIGTERM because of one is a genuinely miserable thing to diagnose. The `finally` is what prevents it and nothing else does.",
+    "file": "packages/adapters/channel-slack/src/send.ts",
+    "from": "  } finally {\n    clearTimeout(timer);\n  }\n}\n\n/**\n * A `fetch` that carries the deadline's signal.",
+    "to": "  } finally {\n    void timer;\n  }\n}\n\n/**\n * A `fetch` that carries the deadline's signal.",
+    "command": "slackTx"
+  },
+  {
+    "name": "M13 a streaming edit becomes a second post",
+    "guards": "streaming a turn back into a channel is an EDIT loop, not a message flood",
+    "why": "`replacesProviderMessageId` is what makes a redelivered outbound event harmless — editing one message to the same text twice is indistinguishable from doing it once. Posting instead turns an at-least-once bus into a visible flood.",
+    "file": "packages/adapters/channel-slack/src/send.ts",
+    "from": "    return message.replacesProviderMessageId === null\n      ? postSlackMessage({ ...common, threadTs: address.threadTs })\n      : updateSlackMessage({ ...common, ts: message.replacesProviderMessageId });",
+    "to": "    return postSlackMessage({ ...common, threadTs: address.threadTs });",
+    "command": "slackTx"
+  },
+  {
+    "name": "M14 an ignorable delivery is admitted to the inbox",
+    "guards": "a verified event with no behaviour is acknowledged, never queued",
+    "why": "Admitting reactions, joins and edits fills the inbox with rows no turn will ever run, makes the retry cap meaningless, and spends a lease on each.",
+    "file": "packages/contexts/channels/application/admit-signed-delivery.ts",
+    "from": "  if (delivery.kind === \"ignorable\") {\n    return ok({ kind: \"ignored\", reason: \"verified delivery has no behaviour in this build\" });\n  }",
+    "to": "  if (false) {\n    return ok({ kind: \"ignored\", reason: \"verified delivery has no behaviour in this build\" });\n  }",
+    "command": "slackAdmitBuilt"
+  },
+  {
+    "name": "M15 a redelivery is reported as a first delivery",
+    "guards": "the transport can tell a redelivery from a first delivery",
+    "why": "`duplicate` is what lets a transport answer 2xx to a redelivery while knowing no new turn was queued. Reporting every admission as new makes a redelivered event look like a second message.",
+    "file": "packages/contexts/channels/application/admit-signed-delivery.ts",
+    "from": "    duplicate: !admitted.value.admitted,",
+    "to": "    duplicate: false,",
+    "command": "slackAdmitBuilt"
+  },
+  {
+    "name": "M16 one character of the PUBLISHED vector is mistyped",
+    "guards": "the external anchor is the vendor's own published vector and not a local invention",
+    "why": "If a character of the transcribed body were wrong, every signature case would still pass — they would simply be testing a different, self-consistent vector this repository made up. Only the independent `node:crypto` re-derivation against the published digest notices.",
+    "file": "packages/adapters/channel-slack/src/published-vector.ts",
+    "from": "  \"&channel_id=G8PSS9T3V&channel_name=foobar&user_id=U2CERLKJA&user_name=roadrunner\" +",
+    "to": "  \"&channel_id=G8PSS9T3V&channel_name=foobar&user_id=U2CERLKJA&user_name=roadrunneR\" +",
+    "command": "slackSig"
+  },
+  {
+    "name": "M17 the upgrade differential compares the shipped line with itself",
+    "guards": "the two lines under comparison are two independently published artifacts",
+    "why": "If the audited alias ever resolved to the same install as the primary dependency, every case in the differential would compare a function with itself and pass forever — a green suite proving nothing about the 4.34 -> 4.40 move.",
+    "file": "packages/adapters/channel-slack/src/sdk-upgrade.test.ts",
+    "from": "} from \"@chat-adapter/slack-audited/webhook\";",
+    "to": "} from \"@chat-adapter/slack/webhook\";",
+    "command": "slackUpgrade"
+  },
+  {
+    "name": "M18 the far side records a request only when it answers one",
+    "guards": "what the far side RECEIVED is independent of whether it replied",
+    "why": "The whole instrument. If `received` were appended only on the answering path, the timeout cases could no longer ask 'the adapter reported a failure — did the message actually land?', and every one of them would go quietly green against a server that had the message in hand.",
+    "file": "packages/adapters/channel-slack/src/far-side.ts",
+    "from": "      this.received.push({\n        method: request.method ?? \"\",",
+    "to": "      if (this.script[0]?.kind !== \"silent\") this.received.push({\n        method: request.method ?? \"\",",
+    "command": "slackTx"
+  },
+  {
+    "name": "M19 the directory stays on UNIMPLEMENTED_ADAPTERS after gaining a constructor",
+    "guards": "rule (C7) joins the unimplemented list to the adapter packages' own source",
+    "why": "A readiness endpoint that says 'this directory is a generated interface' about a directory that has a working constructor is lying to an operator about why their channel is not serving. C7 reads the list back and joins it to the filesystem in BOTH directions.",
+    "file": "apps/core-api/src/composition/adapter-bindings.ts",
+    "from": "  \"redis-streams\",\n  // WIN-271 (M4.5) — `channel-slack` LEFT THIS LIST",
+    "to": "  \"redis-streams\",\n  \"channel-slack\",\n  // WIN-271 (M4.5) — `channel-slack` LEFT THIS LIST",
+    "command": "comp"
+  }
+]

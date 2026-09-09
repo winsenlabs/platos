@@ -1,0 +1,235 @@
+{
+  "$schema-note": "WIN-271 (M4.5) mutation ledger. Every row was APPLIED to the named file in the working tree, the named command was run from the repository root, the file was restored, and the recorded exit code is what that run returned. `killedCase` is the FIRST case the run reported failing, read back out of the command's own output rather than predicted. Nothing here is a prediction.",
+  "issue": "WIN-271",
+  "tranche": "M4.5 — channels behind a canonical ChannelRuntime port",
+  "branch": "tejas/m4",
+  "base": "1fff019c069640c7196045e66b86eec1e2398f43",
+  "purpose": "A green suite proves the code passes its own cases. It does not prove the cases would notice if the property left. Each mutation removes exactly one property this tranche claims and records which named case turned red.",
+  "procedure": "Read the file, replace one exact anchor (refused if it matches zero or more than one place), run the command with both streams redirected to a file, write the original back, read the log, record the exit code and the first failing case. For the two rows that mutate `packages/contexts/channels`, the command REBUILDS that package first and the driver rebuilds it again after restoring — the adapter consumes the context through its `dist/`, so a source mutation is otherwise invisible. The driver is `scripts/run-win271-mutations.mjs` and the rows it applies are `scripts/win271-mutation-plan.json`, both committed, so this sweep is re-runnable rather than described.",
+  "commands": {
+    "slack": "pnpm --filter @platos/adapter-channel-slack exec vitest run",
+    "slackSig": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-signature.test.ts",
+    "slackNorm": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/normalize.test.ts",
+    "slackTx": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-transport.test.ts",
+    "slackAdmitBuilt": "pnpm --filter @platos/context-channels build && pnpm --filter @platos/adapter-channel-slack exec vitest run src/signed-admission.test.ts",
+    "slackUpgrade": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/sdk-upgrade.test.ts",
+    "channelsBuilt": "pnpm --filter @platos/context-channels build && pnpm --filter @platos/context-channels exec vitest run",
+    "comp": "node scripts/arch/composition-root.mjs"
+  },
+  "baseline": {
+    "packages/adapters/channel-slack": "61/61 across 5 files",
+    "packages/contexts/channels": "274/274 across 16 files",
+    "apps/core-api": "420/420 unit (integration excluded: no Docker on this machine)",
+    "scripts/arch/composition-root.mjs": "ok: 59 bindings"
+  },
+  "mutations": [
+    {
+      "name": "M01 the replay window becomes one-sided",
+      "guards": "a capture held and replayed with a FUTURE timestamp is refused too",
+      "why": "Bounding only (now - t) leaves the other direction open: capture a signed request, present it with a timestamp far ahead, and 'too old' never fires. The window is |now - t| and this mutation makes it one-sided.",
+      "file": "packages/adapters/channel-slack/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-signature.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a signature that does not verify is refused, with a code that says why > refuses STALE for a timestamp in the FUTURE, which is the same replay"
+    },
+    {
+      "name": "M02 an unparseable timestamp is reported as INVALID rather than STALE",
+      "guards": "the three inbound refusals stay three, because they are three operator actions",
+      "why": "STALE says look at a clock and INVALID says look at a secret. Collapsing the unparseable case into INVALID sends an operator to rotate a secret that was never wrong.",
+      "file": "packages/adapters/channel-slack/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-signature.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a signature that does not verify is refused, with a code that says why > refuses STALE for a timestamp that is not a number at all"
+    },
+    {
+      "name": "M03 the structural staleness check is deleted and the vendor's is relied on",
+      "guards": "STALE is decided HERE, so it cannot collapse into the SDK's single error class",
+      "why": "The SDK signals absent, stale and invalid by throwing ONE class and separates them only by an English message. Deleting our own check makes a replayed request arrive as INVALID, which is the taxonomy hostage this adapter exists to avoid.",
+      "file": "packages/adapters/channel-slack/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-signature.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a signature that does not verify is refused, with a code that says why > refuses STALE for a valid signature outside the replay window"
+    },
+    {
+      "name": "M04 a present-but-empty signature header counts as signed",
+      "guards": "half-signed is not signed",
+      "why": "An empty header is not a signature. Accepting one would hand the request to the SDK with nothing to verify against, and what comes back is a vendor error rather than this adapter's own ABSENT.",
+      "file": "packages/adapters/channel-slack/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-signature.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a signature that does not verify is refused, with a code that says why > refuses ABSENT for a header that is present and empty"
+    },
+    {
+      "name": "M05 the bot's own message is admitted like any other",
+      "guards": "an app must not run a turn on the message it just posted",
+      "why": "Slack delivers the app's own post back to the app. Treating it as inbound starts a turn, whose reply is posted, which is delivered, which starts a turn: an unbounded loop costing a model call each time round and visible to the customer as the assistant talking to itself.",
+      "file": "packages/adapters/channel-slack/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "the delivery that would loop forever > ignores the app's OWN message coming back"
+    },
+    {
+      "name": "M06 a missing event id is synthesized from the message timestamp",
+      "guards": "the admission key is the PROVIDER's own id and is never invented",
+      "why": "The inbox is idempotent on [appId, eventId]. A synthesized key makes a redelivery unrecognisable, so one provider event can run two turns — and hashing the body instead would make a user who genuinely says the same thing twice get one answer.",
+      "file": "packages/adapters/channel-slack/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a message with nothing to deduplicate on is REFUSED, not ignored > refuses rather than admitting a row a redelivery could not collide with"
+    },
+    {
+      "name": "M07 the thread key puts the channel in the wrong segment",
+      "guards": "the DOMAIN's own reader recovers the channel this adapter wrote",
+      "why": "`domain/inbound.ts::extractPlatformChannelId` takes the SECOND colon-separated segment and every `channel` routing rule matches on it. A key in any other shape makes those rules silently stop matching — no error anywhere, the rule simply never fires.",
+      "file": "packages/adapters/channel-slack/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a message becomes an InboundMessage > renders a thread key the DOMAIN can read the channel back out of"
+    },
+    {
+      "name": "M08 a mid-flight timeout is classified UNAVAILABLE",
+      "guards": "'did not land' and 'do not know' are different facts with different remedies",
+      "why": "UNAVAILABLE means retry me, nothing happened. A request that was WRITTEN and whose response was lost may well have posted the message, so retrying posts it twice into a customer's channel. This is the single most expensive misclassification the adapter can make.",
+      "file": "packages/adapters/channel-slack/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a delivery that times out mid-flight > is INDETERMINATE, and the far side really did receive the message"
+    },
+    {
+      "name": "M09 an unrecognised throw defaults to UNAVAILABLE",
+      "guards": "the classifier fails CLOSED on anything it does not understand",
+      "why": "The commonest real instance is a proxy's non-JSON 502, where the request definitely left and the answer says nothing about whether the message was posted. Defaulting the unknown to RETRY is how the duplicate-message mistake gets made by a code path nobody reviewed.",
+      "file": "packages/adapters/channel-slack/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "the provider's own refusals, in this context's vocabulary > maps a gateway's non-JSON error page to INDETERMINATE, not UNAVAILABLE"
+    },
+    {
+      "name": "M10 the disposition table defaults OPEN",
+      "guards": "a code the table has not been taught is RECONCILE, never RETRY",
+      "why": "Defaulting to retry makes every future code silently repeatable, in the one direction that duplicates a customer-visible message. A repository failure surfacing through a delivery path would become a resend.",
+      "file": "packages/contexts/channels/domain/delivery.ts",
+      "command": "pnpm --filter @platos/context-channels build && pnpm --filter @platos/context-channels exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "the default is CLOSED, and that direction is the whole point > sends an unrecognised code to reconcile rather than to retry"
+    },
+    {
+      "name": "M11 the API base URL loses its trailing slash",
+      "guards": "the vendor resolves a method as a RELATIVE REFERENCE against this constant",
+      "why": "THE REAL DEFECT THIS TRANCHE SHIPPED AND CAUGHT. `new URL('chat.postMessage', 'https://slack.com/api')` is `https://slack.com/chat.postMessage` — the `/api` segment is dropped and every outbound call 404s against a path that has never existed. Asserting the constant would not see it; asserting the vendor's own resolution does.",
+      "file": "packages/adapters/channel-slack/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "the ordinary path, so the failures below are not vacuous > resolves the API method against the base URL without eating a path segment"
+    },
+    {
+      "name": "M12 the deadline timer is never cleared",
+      "guards": "no per-call timer outlives its call",
+      "why": "A timer left armed keeps the event loop alive, and a process that will not exit on SIGTERM because of one is a genuinely miserable thing to diagnose. The `finally` is what prevents it and nothing else does.",
+      "file": "packages/adapters/channel-slack/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a delivery that times out mid-flight > leaves no timer holding the event loop open"
+    },
+    {
+      "name": "M13 a streaming edit becomes a second post",
+      "guards": "streaming a turn back into a channel is an EDIT loop, not a message flood",
+      "why": "`replacesProviderMessageId` is what makes a redelivered outbound event harmless — editing one message to the same text twice is indistinguishable from doing it once. Posting instead turns an at-least-once bus into a visible flood.",
+      "file": "packages/adapters/channel-slack/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "streaming a turn back is an EDIT, not a flood > uses chat.update once a message id exists, so a redelivery is harmless"
+    },
+    {
+      "name": "M14 an ignorable delivery is admitted to the inbox",
+      "guards": "a verified event with no behaviour is acknowledged, never queued",
+      "why": "Admitting reactions, joins and edits fills the inbox with rows no turn will ever run, makes the retry cap meaningless, and spends a lease on each.",
+      "file": "packages/contexts/channels/application/admit-signed-delivery.ts",
+      "command": "pnpm --filter @platos/context-channels build && pnpm --filter @platos/adapter-channel-slack exec vitest run src/signed-admission.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a handshake and an ignorable delivery are acknowledged, not admitted > drops the app's own message rather than filling the inbox with a loop"
+    },
+    {
+      "name": "M15 a redelivery is reported as a first delivery",
+      "guards": "the transport can tell a redelivery from a first delivery",
+      "why": "`duplicate` is what lets a transport answer 2xx to a redelivery while knowing no new turn was queued. Reporting every admission as new makes a redelivered event look like a second message.",
+      "file": "packages/contexts/channels/application/admit-signed-delivery.ts",
+      "command": "pnpm --filter @platos/context-channels build && pnpm --filter @platos/adapter-channel-slack exec vitest run src/signed-admission.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a webhook that arrives twice > is admitted ONCE and acknowledged BOTH times"
+    },
+    {
+      "name": "M16 one character of the PUBLISHED vector is mistyped",
+      "guards": "the external anchor is the vendor's own published vector and not a local invention",
+      "why": "If a character of the transcribed body were wrong, every signature case would still pass — they would simply be testing a different, self-consistent vector this repository made up. Only the independent `node:crypto` re-derivation against the published digest notices.",
+      "file": "packages/adapters/channel-slack/src/published-vector.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-signature.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "Slack's own published request-verification vector > reproduces byte-for-byte under node:crypto, so the vector is the vector"
+    },
+    {
+      "name": "M17 the upgrade differential compares the shipped line with itself",
+      "guards": "the two lines under comparison are two independently published artifacts",
+      "why": "If the audited alias ever resolved to the same install as the primary dependency, every case in the differential would compare a function with itself and pass forever — a green suite proving nothing about the 4.34 -> 4.40 move.",
+      "file": "packages/adapters/channel-slack/src/sdk-upgrade.test.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/sdk-upgrade.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "the differential is not vacuous > is running two DIFFERENT artifacts"
+    },
+    {
+      "name": "M18 the far side records a request only when it answers one",
+      "guards": "what the far side RECEIVED is independent of whether it replied",
+      "why": "The whole instrument. If `received` were appended only on the answering path, the timeout cases could no longer ask 'the adapter reported a failure — did the message actually land?', and every one of them would go quietly green against a server that had the message in hand.",
+      "file": "packages/adapters/channel-slack/src/far-side.ts",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run src/slack-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "a delivery that times out mid-flight > is INDETERMINATE, and the far side really did receive the message"
+    },
+    {
+      "name": "M19 the directory stays on UNIMPLEMENTED_ADAPTERS after gaining a constructor",
+      "guards": "rule (C7) joins the unimplemented list to the adapter packages' own source",
+      "why": "A readiness endpoint that says 'this directory is a generated interface' about a directory that has a working constructor is lying to an operator about why their channel is not serving. C7 reads the list back and joins it to the filesystem in BOTH directions.",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "node scripts/arch/composition-root.mjs",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCase": "UNIMPLEMENTED_ADAPTERS says channel-slack cannot be constructed, but packages/adapters/channel-slack/src/index.ts exports a constructor; drop it from the list"
+    }
+  ],
+  "survivors": [],
+  "declared": [],
+  "controls": [
+    {
+      "name": "C1 the unmutated tree, before and after the sweep",
+      "what": "No mutation. The adapter suite is run unchanged, and `git status --porcelain` is checked clean afterwards, so no row's restore was partial and no kill above was inherited from the row before it.",
+      "command": "pnpm --filter @platos/adapter-channel-slack exec vitest run && git status --porcelain",
+      "exit": 0,
+      "outcome": "green and clean, as a control must be"
+    },
+    {
+      "name": "C2 THE DRIVER ITSELF WAS WRONG THREE TIMES, and each wrong version was believed for one run",
+      "what": "Not a mutation of the tree — a record of how this ledger was nearly a fiction, because the same three mistakes are available to the next person who writes one. (1) The first driver ran `cmd | tail -40` through `execSync`, which reports TAIL's exit status: it recorded 0/19 KILLED, every row a survivor, and the number was so obviously wrong that it was caught. (2) The second recorded 17/19 with M14 and M15 as survivors — both mutate `packages/contexts/channels`, which the adapter consumes through its `dist/`, so they were mutating a file nothing under test was reading. That is the failure mode a plausible-looking survivor count hides. (3) The third recorded 19/19 but with NO case name on any row, because the failing-case pattern was written against ANSI-coloured bytes and pnpm does not hand a child's output back on `execSync`'s error object. A ledger that says a mutation killed without saying WHAT noticed is the weakest possible form of this evidence.",
+      "command": "node scripts/run-win271-mutations.mjs",
+      "exit": 0,
+      "outcome": "recorded, because a driver that is wrong in the SURVIVING direction is indistinguishable from good news"
+    }
+  ]
+}
