@@ -166,6 +166,23 @@ const TENANCY_DATABASE_SOURCE =
  */
 const TENANCY_DATABASE_HOME = `^(packages/adapters/postgres-tenancy|${TENANCY_DATABASE_HOME_PATH.replace(/\/$/u, "")})/`;
 
+/**
+ * Every data-store client `apps/webapp` is banned from importing (rule (k)).
+ *
+ * Composed from `TENANCY_DATABASE_SOURCE` so the M2.2 migration lock can never
+ * again be blunter than the containment rule it is meant to sharpen, plus
+ * `internal-packages/database` — the durable-runtime store's client, which
+ * `tenancy-prisma-only` deliberately leaves alone because ADR M0.3 §7 decision
+ * 10 gives it a different port and a different home, and which the webapp is
+ * nonetheless equally banned from.
+ *
+ * Anchored: both enforcers report repository-root-relative paths, so an
+ * unanchored form would also condemn a `node_modules/` nested inside an
+ * unrelated package.
+ */
+export const WEBAPP_BANNED_DATA_SOURCE =
+  `^(${TENANCY_DATABASE_SOURCE}|internal-packages/database(?:/|$))`;
+
 // Per-vendor single-adapter containment (ADR M0.3 §5.1 rule (h)). Each SDK lives
 // in exactly one place; any file outside that place importing the SDK fails.
 export const SDK_CONTAINMENT = [
@@ -425,13 +442,64 @@ export const RULES = [
   },
 
   // (k) M2.2 — webapp may not touch Prisma (ADR M0.3 §5.1 rule (k)).
+  //
+  // -------------------------------------------------------------------------
+  // WIN-267 (M4.1) R2 — THE MIGRATION LOCK WAS THE RULE THAT SAW NOTHING.
+  //
+  // NAMED BY T5, CLOSED HERE. `scripts/mutations-win267-t5.json` records the
+  // finding in its own words — "`webapp-no-prisma` … reports 0, because it
+  // cannot see the specifier form … Each rule was blind to the half of the
+  // shape the other could see" — and then fixed only the other half, because
+  // T5's remaining clause was the scan root and the scan root belongs to the
+  // cutover. This is not a defect T5 missed. It is the half it left, and R2 is
+  // where it comes due.
+  //
+  // T5 widened `tenancy-prisma-only` so it could see the resolved workspace
+  // path, and that rule now fires on every webapp file holding the import.
+  // This one — whose own comment calls it "the M2.2 migration lock", and which
+  // is the only rule in the set written FOR this cutover — was left spelling
+  // its `to` side as `node_modules/@prisma/`, and it matched none of them.
+  //
+  // WHY. `arch-boundaries.mjs` does not resolve modules. Its
+  // `resolveTargetVirtualPath` maps a bare specifier that is not a workspace
+  // alias to `node_modules/<specifier>` VERBATIM, so the webapp's
+  //
+  //     import { PrismaClient } from "@platos/tenancy-database";
+  //
+  // arrives at the rule as `node_modules/@platos/tenancy-database`. That is
+  // neither `node_modules/@prisma/` nor `internal-packages/…`, so the lock was
+  // silent on the exact edge it exists to catch. The `@prisma/` spelling it did
+  // carry is the one the webapp has never used.
+  //
+  // MEASURED, NOT INFERRED. On 5b236cdb,
+  // `node scripts/arch/arch-boundaries.mjs --scan-root apps/webapp` reports 10
+  // violations: 10 `tenancy-prisma-only`, 0 `webapp-no-prisma`. (T5 recorded 9
+  // and 0 for `--scan-root apps/webapp/app`; the tenth file is
+  // `test/authenticatedOrganizationRouteEvidence.test.ts`, which the wider root
+  // reaches. Both figures are right about their own root.) The general
+  // containment rule was carrying the whole lock alone, and the specific rule
+  // was decorative. `scripts/arch/webapp-prisma-surface.mjs` now asserts the
+  // relation between those two counts on every run, so this cannot recur
+  // quietly: a lock that names a tree must not be blunter inside that tree than
+  // the general rule it is supposed to sharpen.
+  //
+  // COMPOSED, NOT RESPELLED. The `to` side reuses `TENANCY_DATABASE_SOURCE`
+  // rather than restating it, so the two rules cannot drift apart a second
+  // time, and adds `internal-packages/database` — the durable-runtime store's
+  // client, which ADR M0.3 §7 decision 10 puts behind a different port and
+  // which `tenancy-prisma-only` therefore deliberately does NOT own, but which
+  // the webapp is equally banned from reaching. The anchor is kept: both
+  // enforcers report paths from the repository root, so an unanchored
+  // alternative here would also condemn a nested `.../node_modules/prisma`
+  // vendored inside some unrelated package.
+  // -------------------------------------------------------------------------
   {
     id: "webapp-no-prisma",
     severity: "error",
     comment: "apps/webapp must reach data through core-api query ports, never Prisma directly (the M2.2 migration lock).",
     from: { path: "^apps/webapp/" },
     to: {
-      path: "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)",
+      path: WEBAPP_BANNED_DATA_SOURCE,
     },
   },
 

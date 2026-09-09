@@ -37,7 +37,7 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // apps/agent) is intentionally NOT scanned by default: its migration locks
 // (e.g. webapp-no-prisma) are proven in fixtures and bind once those trees move
 // under the V1 layout in M2.2.
-const DEFAULT_SCAN_ROOTS = [
+export const DEFAULT_SCAN_ROOTS = [
   "packages/kernel",
   "packages/contexts",
   "packages/adapters",

@@ -318,7 +318,7 @@ module.exports = {
         "path": "^apps/webapp/"
       },
       "to": {
-        "path": "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)"
+        "path": "^((node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))|internal-packages/tenancy-database(?:/|$))|internal-packages/database(?:/|$))"
       }
     },
     {

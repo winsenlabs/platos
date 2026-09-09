@@ -143,6 +143,8 @@ jobs:
           pnpm test:v1-project-graph
           pnpm audit:arch-boundaries
           pnpm test:arch-boundaries
+          pnpm audit:webapp-prisma-surface
+          pnpm test:webapp-prisma-surface
           pnpm audit:max-file-lines
           pnpm test:max-file-lines
           pnpm audit:kernel-content
