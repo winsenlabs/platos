@@ -1230,7 +1230,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // the first file this programme has added under `apps/core-api/src/` that is
     // an integration suite, and it lands in this census for the reason G1's did:
     // the scan does not exclude them. 1620 + 1 = 1621.
-    assert.equal(result.fileCount, 1621, "the generated V1 source census must stay exact");
+    // WIN-303 1621 + 2 = 1623: `governance-scope.ts` and
+    // `governance-isolation.integration.test.ts`, the same two files
+    // `env-access.mjs`'s EXPECTED_FILE_COUNT and `max-file-lines.test.mjs`'s
+    // adapters term move by — one scan, three pins, so a file that arrived in
+    // one and not the others could not pass all three.
+    assert.equal(result.fileCount, 1623, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1257,7 +1262,10 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       6 +
       // WIN-267 integration: the operator-authentication suite in
       // `apps/core-api/src/composition/`.
-      1);
+      1 +
+      // WIN-303: postgres-tenancy 2 -- `governance-scope.ts`, the tenant-triple
+      // resolver, and `governance-isolation.integration.test.ts` beside it.
+      2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

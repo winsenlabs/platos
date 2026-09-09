@@ -1246,7 +1246,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // match all six.
     //
     // SUMMED FOR THE INTEGRATION: 1493 + 2 (G1) + 6 (G2) = 1501.
-    packages: 1501,
+    //
+    // WIN-303 +2, and BOTH are in `packages/adapters/postgres-tenancy`: ONE
+    // source, `governance-scope.ts`, which resolves the whole tenant triple
+    // against `Environment` and `Project` before any of the five canonical
+    // stores sends a statement, and ONE test,
+    // `governance-isolation.integration.test.ts`, the two-tenant proof that a
+    // forged ancestry is refused. TWO and not more because the five stores,
+    // `governance-rows.ts`, `governance-seam-guards.ts`, `governance`'s
+    // `errors.ts`, its ports barrel, its contracts suite, the statements suite
+    // and `mutations-governance.json` are all WIDENED rather than added — and
+    // `docs/error-taxonomy.json`, which gains the five new codes, is tracked
+    // already. No ledger rule is new: `packages.adapters.source` and `.test`
+    // match both. 1501 + 2 = 1503.
+    packages: 1503,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1654,7 +1667,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // SUMMED FOR THE INTEGRATION: 1640 + 5 (G1) + 7 (G2) + 1 (G3) = 1653, and the
   // integration's own operator-authentication suite makes it 1654. Every one of
   // the fourteen is additive: no ledger rule changed and no project was adopted.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1654);
+  //
+  // WIN-303 1654 -> 1656. TWO files, BOTH in `packages` and both itemised on
+  // that area's delta above, so the two halves of this case are the same
+  // arithmetic: `governance-scope.ts` and
+  // `governance-isolation.integration.test.ts`. Nothing lands in `root-infra`
+  // — this tranche's guard entries go into the EXISTING
+  // `packages/adapters/postgres-tenancy/mutations-governance.json` rather than
+  // into a new manifest, because they are more guards on the same port surface
+  // that file already covers. Sibling branches move this same delta in the same
+  // window, so the integrator SUMS rather than taking any one branch's total.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1656);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1792,7 +1815,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // one file is `apps/core-api/mutations-win267-g3.json`, in `apps-core-api`,
     // matching that area's 57 -> 58; it ADOPTS NO PROJECT and CHANGES NO LEDGER
     // RULE, so this delta too is purely additive: 1640 + 1 = 1641.
-    rulesDocument.baseline.totalFiles + 1654
+    rulesDocument.baseline.totalFiles + 1656
   );
 });
 
