@@ -549,6 +549,35 @@ function renderReport(register) {
     lines.push(`| \`${verdict}\` | ${String(register.byVerdict[verdict] ?? 0)} | ${meaning} |`);
   }
   lines.push("");
+  lines.push("## What unblocks the most, computed rather than asserted");
+  lines.push("");
+  // DERIVED, so the recommendation cannot go stale while the tree moves. The
+  // question a reader has is not "how many sites are stuck" but "which ONE
+  // decision frees the largest number", and that is an arithmetic over the
+  // ownership split rather than an opinion.
+  const uncomposed = Object.entries(register.byOwner)
+    .filter(([owner, row]) => !owner.startsWith("<") && !row.composed)
+    .sort((a, b) => b[1].sites - a[1].sites);
+  const composedBlocked = Object.entries(register.byOwner)
+    .filter(([owner, row]) => !owner.startsWith("<") && row.composed)
+    .sort((a, b) => b[1].sites - a[1].sites);
+  lines.push("| decision | frees | why it is the next one |");
+  lines.push("| --- | ---: | --- |");
+  for (const [owner, row] of uncomposed.slice(0, 3)) {
+    lines.push(
+      `| compose \`${owner}\` in \`composeApplication\` | ${String(row.sites)} | its contract already publishes ${String(
+        (row.contractMethods ?? []).length,
+      )} methods and the composition root composes ${String(register.composedContexts.length)} of 17 |`,
+    );
+  }
+  for (const [owner, row] of composedBlocked.slice(0, 2)) {
+    lines.push(
+      `| publish the missing methods on \`${owner}\` | up to ${String(row.sites)} | the context IS composed; ${String(
+        (row.contractMethods ?? []).length,
+      )} methods are published and none serves these use cases |`,
+    );
+  }
+  lines.push("");
   lines.push("## Ownership split");
   lines.push("");
   lines.push("| owning context | sites | composed | contract methods published | rows touched |");
