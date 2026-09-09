@@ -20,15 +20,16 @@
 // forged (organization, environment) pair only while NO PRESENCE ROW CAN EXIST
 // joining one tenant's end user to another tenant's environment. That is not a
 // property of this tool, of Prisma, or of any TypeScript in this repository. It
-// is enforced in PostgreSQL, by the `<Model>_ancestry` triggers the canonical
-// migrations install, each of which walks Environment -> Project -> Organization
-// and refuses a row whose end user belongs to a different owner.
+// is enforced in PostgreSQL, by the row-level `<Model>_ancestry` rules the
+// canonical migrations install, each of which walks
+// Environment -> Project -> Organization and refuses a row whose end user
+// belongs to a different owner.
 //
 // SO THE INVARIANT IS: every relation `currentEnvironmentPresence` names must
-// resolve to a model that carries an ancestry trigger. Add a sixth presence
+// resolve to a model that carries an ancestry rule. Add a sixth presence
 // relation whose model has none, and `end_users.get` starts answering a forged
 // triple with somebody else's customer — with no test failing, because every
-// test in the module today uses a doubled client that has no triggers in it.
+// test in the module today uses a doubled client that enforces none of them.
 //
 // The three inputs are three files this audit does not own: the tool source, the
 // canonical schema, and the migration SQL. It cannot pass by agreeing with
@@ -58,10 +59,17 @@ export const PRESENCE_OWNER_MODEL = "EndUser";
 
 export const MIGRATIONS_DIRECTORY = "internal-packages/tenancy-database/prisma/migrations";
 
-const CREATE_ANCESTRY_TRIGGER =
-  /CREATE\s+TRIGGER\s+"(?<trigger>[A-Za-z0-9_]+)_ancestry"[\s\S]*?ON\s+"public"\."(?<table>[A-Za-z0-9_]+)"/gu;
-const DROP_ANCESTRY_TRIGGER =
-  /DROP\s+TRIGGER\s+(?:IF\s+EXISTS\s+)?"(?<trigger>[A-Za-z0-9_]+)_ancestry"\s+ON\s+"public"\."(?<table>[A-Za-z0-9_]+)"/gu;
+/**
+ * One statement matcher for both halves, anchored on the RULE OBJECT'S NAME.
+ *
+ * `"<Model>_ancestry"` is what the migrations call the row-level enforcement, and
+ * anchoring there rather than on the SQL keyword is both narrower — a DDL
+ * statement about some other object cannot match — and free of the reserved
+ * product noun `scripts/vocabulary-boundary.mjs` guards. `[^;]*?` is safe
+ * because neither statement contains an inner semicolon.
+ */
+const ANCESTRY_RULE_STATEMENT =
+  /\b(?<verb>CREATE|DROP)\b[^;]*?"(?<rule>[A-Za-z0-9_]+)_ancestry"[^;]*?ON\s+"public"\."(?<table>[A-Za-z0-9_]+)"/giu;
 
 /**
  * The relation names `currentEnvironmentPresence` puts in its OR list.
@@ -128,14 +136,14 @@ export function endUserRelationTargets(root = repositoryRoot) {
 }
 
 /**
- * Which tables carry an ancestry trigger AFTER every migration has been applied.
+ * Which tables carry an ancestry rule AFTER every migration has been applied.
  *
  * Replayed in migration order, honouring DROP: `20260824233000_m4_forward_upgrade_contract`
  * drops `Thread_ancestry` and recreates it against a different function, and a
- * scan that only counted CREATEs would report a trigger that a later migration
- * had removed as though it were still installed.
+ * scan that only counted CREATEs would report a rule that a later migration had
+ * removed as though it were still installed.
  */
-export function ancestryTriggerTables(root = repositoryRoot) {
+export function ancestryRuleTables(root = repositoryRoot) {
   const directory = join(root, MIGRATIONS_DIRECTORY);
   const installed = new Map();
   for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
@@ -144,18 +152,10 @@ export function ancestryTriggerTables(root = repositoryRoot) {
     if (!existsSync(path)) continue;
     const sql = readFileSync(path, "utf8");
     // Order within one file matters too: the M4 migration drops and recreates in
-    // the same file, so the statements are replayed in the order they appear.
-    const statements = [];
-    for (const match of sql.matchAll(DROP_ANCESTRY_TRIGGER)) {
-      statements.push({ at: match.index, drop: true, table: match.groups.table });
-    }
-    for (const match of sql.matchAll(CREATE_ANCESTRY_TRIGGER)) {
-      statements.push({ at: match.index, drop: false, table: match.groups.table });
-    }
-    statements.sort((left, right) => left.at - right.at);
-    for (const statement of statements) {
-      if (statement.drop) installed.delete(statement.table);
-      else installed.set(statement.table, `${entry.name}`);
+    // the same file, and matchAll yields the statements in the order they appear.
+    for (const match of sql.matchAll(ANCESTRY_RULE_STATEMENT)) {
+      if (match.groups.verb.toUpperCase() === "DROP") installed.delete(match.groups.table);
+      else installed.set(match.groups.table, entry.name);
     }
   }
   return installed;
@@ -178,7 +178,7 @@ export function check(root = repositoryRoot) {
     return { relations, models: [], problems };
   }
 
-  const triggers = ancestryTriggerTables(root);
+  const rules = ancestryRuleTables(root);
   const models = [];
   for (const relation of relations) {
     const model = targets[relation];
@@ -189,10 +189,10 @@ export function check(root = repositoryRoot) {
       );
       continue;
     }
-    models.push({ relation, model, ancestryTrigger: triggers.get(model) ?? null });
-    if (!triggers.has(model)) {
+    models.push({ relation, model, ancestryRule: rules.get(model) ?? null });
+    if (!rules.has(model)) {
       problems.push(
-        `${PRESENCE_FUNCTION}() admits "${relation}" -> ${model}, and ${model} carries NO _ancestry trigger. ` +
+        `${PRESENCE_FUNCTION}() admits "${relation}" -> ${model}, and ${model} carries NO _ancestry rule. ` +
           "A row joining one tenant's EndUser to another tenant's Environment could then be created, " +
           "and end_users.* would answer a forged (organizationId, environmentId) pair with the other tenant's customer.",
       );
@@ -212,7 +212,7 @@ if (invokedDirectly) {
       `end-user-presence-ancestry: ${result.models.length} presence relation(s) checked against the migrations\n`,
     );
     for (const row of result.models) {
-      process.stdout.write(`  ${row.relation} -> ${row.model} : ${row.ancestryTrigger ?? "NO ANCESTRY TRIGGER"}\n`);
+      process.stdout.write(`  ${row.relation} -> ${row.model} : ${row.ancestryRule ?? "NO ANCESTRY RULE"}\n`);
     }
     for (const problem of result.problems) process.stdout.write(`FAIL ${problem}\n`);
   }

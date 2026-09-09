@@ -327,7 +327,7 @@
       "owner": "cost-monitoring",
       "composed": false,
       "route": null,
-      "missing": "recordDeliveryAttempt",
+      "missing": "recordDeliveryRetry",
       "callSites": 1
     },
     {
@@ -337,7 +337,7 @@
       "owner": "cost-monitoring",
       "composed": false,
       "route": null,
-      "missing": "recordDeliveryAttempt",
+      "missing": "recordDeliveryRetry",
       "callSites": 1
     },
     {
@@ -1179,73 +1179,55 @@
     {
       "rule": "tenancy-prisma-only",
       "file": "alert_channels.ts",
-      "specifier": "@platos/tenancy-database",
+      "violations": 1,
       "kind": "production"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "index.ts",
-      "specifier": "@platos/tenancy-database",
+      "violations": 1,
       "kind": "production"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "jobs.ts",
-      "specifier": "@platos/tenancy-database",
+      "violations": 1,
       "kind": "production"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "platos-control.ts",
-      "specifier": "@platos/tenancy-database",
+      "violations": 1,
       "kind": "production"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "platos-control.memory.test.ts",
-      "specifier": "@platos/tenancy-database",
+      "violations": 1,
       "kind": "test"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "end-users-tenancy-postgres.integration.test.ts",
-      "specifier": "@platos/tenancy-database",
+      "violations": 1,
       "kind": "test"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "macros-replay-postgres.integration.test.ts",
-      "specifier": "@platos/tenancy-database",
+      "violations": 1,
       "kind": "test"
     },
     {
       "rule": "durable-runtime-sdk-only",
       "file": "jobs.ts",
-      "specifier": "@trigger.dev/sdk",
+      "violations": 1,
       "kind": "production"
     },
     {
       "rule": "inference-sdk-only",
       "file": "reflection.ts",
-      "specifier": "ai",
-      "kind": "production"
-    },
-    {
-      "rule": "inference-sdk-only",
-      "file": "reflection.ts",
-      "specifier": "@ai-sdk/anthropic",
-      "kind": "production"
-    },
-    {
-      "rule": "inference-sdk-only",
-      "file": "reflection.ts",
-      "specifier": "@ai-sdk/openai",
-      "kind": "production"
-    },
-    {
-      "rule": "inference-sdk-only",
-      "file": "reflection.ts",
-      "specifier": "@ai-sdk/google",
+      "violations": 4,
       "kind": "production"
     }
   ],

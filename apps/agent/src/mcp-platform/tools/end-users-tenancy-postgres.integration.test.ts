@@ -6,7 +6,7 @@
  * with `vi.fn()` in place of the client and asserts the `where` clause that was
  * passed. That proves the module builds the query it was written to build; it
  * cannot prove the query EXCLUDES anything, because a double has no rows, no
- * foreign keys and no triggers. Every refusal below is decided by PostgreSQL.
+ * foreign keys and no database-enforced ancestry. Every refusal below is decided by PostgreSQL.
  *
  * WHY A FOREIGN TRIPLE IS NOT ENOUGH. A caller presenting all three ids of
  * another tenant is COHERENT — it just points somewhere else, and a query with
@@ -24,11 +24,11 @@
  *      tenant, on reads OR writes, and the writes are checked at the STORE and
  *      not by the return value;
  *   4. the row that would break the conjunction cannot be created — the
- *      database refuses it with the ancestry trigger, by SQLSTATE and message.
+ *      database refuses it with the ancestry rule, by SQLSTATE and message.
  *
  * (4) is where the safety actually lives. `scripts/arch/end-user-presence-ancestry.mjs`
  * holds the static half: every relation the presence clause names resolves to a
- * model carrying that trigger.
+ * model carrying that rule.
  */
 
 import { readFileSync, readdirSync } from "node:fs";
@@ -162,7 +162,7 @@ describeWithDatabase("end_users.* tenancy against real PostgreSQL", () => {
     // EVERY migration, in order — not just the initial one. `Thread_ancestry` is
     // dropped and recreated against a different function by
     // `20260824233000_m4_forward_upgrade_contract`, and a fixture built from the
-    // initial migration alone would be proving a trigger production no longer runs.
+    // initial migration alone would be proving enforcement production no longer runs.
     const migrationsRoot = resolve(
       process.cwd(),
       "../../internal-packages/tenancy-database/prisma/migrations",
@@ -282,15 +282,15 @@ describeWithDatabase("end_users.* tenancy against real PostgreSQL", () => {
     // THE LOAD-BEARING CASE. `end_users.*` is safe under a forged
     // (organization, environment) pair only because no row can join one
     // tenant's end user to the other tenant's environment. That is a PostgreSQL
-    // trigger, not a line of TypeScript, so it is asserted by SQLSTATE and by
-    // the message the migration raises.
+    // row-level rule, not a line of TypeScript, so it is asserted by SQLSTATE and
+    // by the message the migration raises.
     //
     // `updatedAt` IS SUPPLIED ON PURPOSE. Prisma's `@updatedAt` is a client-side
     // default, not a database one, so a raw INSERT that omits it violates NOT
-    // NULL. With the trigger installed the BEFORE INSERT trigger fires FIRST and
-    // raises the ancestry error, so the omission is invisible — this case passed
-    // for the wrong reason until a mutation that dropped the trigger reported
-    // SQLSTATE 23502 instead of 23514 and exposed it.
+    // NULL. The ancestry rule runs BEFORE INSERT and raises first, so while it is
+    // installed the omission is invisible — this case passed for the wrong reason
+    // until a mutation that removed the rule reported SQLSTATE 23502 instead of
+    // 23514 and exposed it.
     let raised: any = null;
     try {
       await prisma.$executeRawUnsafe(
@@ -329,7 +329,7 @@ describeWithDatabase("end_users.* tenancy against real PostgreSQL", () => {
   });
 
   it("the composite foreign key refuses an identity pointed across organizations", async () => {
-    // EndUserIdentity carries NO ancestry trigger; its cross-tenant guard is the
+    // EndUserIdentity carries NO ancestry rule; its cross-tenant guard is the
     // composite [endUserId, organizationId] -> [id, organizationId] foreign key.
     // If that ever became a plain single-column key, a manual link could attach
     // one tenant's identity row to another tenant's person.

@@ -73,8 +73,8 @@ that would have to be published before the call site can be converted.
 | cost-monitoring | no | `AlertChannelConfiguration` | `count` | 1 | — | `countCredentialReferences()` |
 | cost-monitoring | no | `AlertDelivery` | `create` | 1 | `deliverCrossing()` | — |
 | cost-monitoring | no | `AlertDelivery` | `findUniqueOrThrow` | 1 | — | `describeDelivery()` |
-| cost-monitoring | no | `AlertDelivery` | `update` | 1 | — | `recordDeliveryAttempt()` |
-| cost-monitoring | no | `AlertDeliveryRetry` | `create` | 1 | — | `recordDeliveryAttempt()` |
+| cost-monitoring | no | `AlertDelivery` | `update` | 1 | — | `recordDeliveryRetry()` |
+| cost-monitoring | no | `AlertDeliveryRetry` | `create` | 1 | — | `recordDeliveryRetry()` |
 | governance | no | `SafetyEvent` | `findMany` | 1 | `pageSafetyEvents()` | — |
 | identity-access | yes | `EndUser` | `findFirst` | 3 | — | `describeEndUser()` |
 | identity-access | yes | `EndUserIdentity` | `create` | 1 | — | `linkEndUserIdentity()` |
@@ -112,18 +112,15 @@ What the real enforcer reports for this directory:
 node scripts/arch/arch-boundaries.mjs --root . --scan-root apps/agent/src/mcp-platform/tools
 ```
 
-| rule | file | specifier | kind |
-| --- | --- | --- | --- |
-| `tenancy-prisma-only` | `alert_channels.ts` | `@platos/tenancy-database` | production |
-| `tenancy-prisma-only` | `index.ts` | `@platos/tenancy-database` | production |
-| `tenancy-prisma-only` | `jobs.ts` | `@platos/tenancy-database` | production |
-| `tenancy-prisma-only` | `platos-control.ts` | `@platos/tenancy-database` | production |
-| `tenancy-prisma-only` | `platos-control.memory.test.ts` | `@platos/tenancy-database` | test |
-| `tenancy-prisma-only` | `end-users-tenancy-postgres.integration.test.ts` | `@platos/tenancy-database` | test |
-| `tenancy-prisma-only` | `macros-replay-postgres.integration.test.ts` | `@platos/tenancy-database` | test |
-| `durable-runtime-sdk-only` | `jobs.ts` | `@trigger.dev/sdk` | production |
-| `inference-sdk-only` | `reflection.ts` | `ai` | production |
-| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/anthropic` | production |
-| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/openai` | production |
-| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/google` | production |
+| rule | file | violations | kind |
+| --- | --- | ---: | --- |
+| `tenancy-prisma-only` | `alert_channels.ts` | 1 | production |
+| `tenancy-prisma-only` | `index.ts` | 1 | production |
+| `tenancy-prisma-only` | `jobs.ts` | 1 | production |
+| `tenancy-prisma-only` | `platos-control.ts` | 1 | production |
+| `tenancy-prisma-only` | `platos-control.memory.test.ts` | 1 | test |
+| `tenancy-prisma-only` | `end-users-tenancy-postgres.integration.test.ts` | 1 | test |
+| `tenancy-prisma-only` | `macros-replay-postgres.integration.test.ts` | 1 | test |
+| `durable-runtime-sdk-only` | `jobs.ts` | 1 | production |
+| `inference-sdk-only` | `reflection.ts` | 4 | production |
 

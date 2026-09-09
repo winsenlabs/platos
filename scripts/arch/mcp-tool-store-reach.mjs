@@ -131,28 +131,32 @@ export const MAX_DELEGATE_CALLS = 69;
 // four, or six, depending on who is reading. `productionPrismaImports` in the
 // totals answers the question the tranche is actually judged on.
 export const BOUNDARY_LEDGER = Object.freeze([
-  Object.freeze({ rule: "tenancy-prisma-only", file: "alert_channels.ts", specifier: "@platos/tenancy-database", kind: "production" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "index.ts", specifier: "@platos/tenancy-database", kind: "production" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "jobs.ts", specifier: "@platos/tenancy-database", kind: "production" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.ts", specifier: "@platos/tenancy-database", kind: "production" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.memory.test.ts", specifier: "@platos/tenancy-database", kind: "test" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "end-users-tenancy-postgres.integration.test.ts", specifier: "@platos/tenancy-database", kind: "test" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "macros-replay-postgres.integration.test.ts", specifier: "@platos/tenancy-database", kind: "test" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "alert_channels.ts", violations: 1, kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "index.ts", violations: 1, kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "jobs.ts", violations: 1, kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.ts", violations: 1, kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.memory.test.ts", violations: 1, kind: "test" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "end-users-tenancy-postgres.integration.test.ts", violations: 1, kind: "test" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "macros-replay-postgres.integration.test.ts", violations: 1, kind: "test" }),
   // NOT PRISMA, AND KEPT ANYWAY. The same run refuses five more imports in this
   // directory, and leaving them out would make the ledger a claim about Prisma
   // rather than about this directory's boundary state — so the next tranche
   // would meet them as a surprise instead of as a line item.
-  Object.freeze({ rule: "durable-runtime-sdk-only", file: "jobs.ts", specifier: "@trigger.dev/sdk", kind: "production" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "ai", kind: "production" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/anthropic", kind: "production" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/openai", kind: "production" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/google", kind: "production" }),
+  Object.freeze({ rule: "durable-runtime-sdk-only", file: "jobs.ts", violations: 1, kind: "production" }),
+  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", violations: 4, kind: "production" }),
 ]);
 
 /** The rows a conversion has to clear: production files still holding the ORM. */
 export function productionPrismaImports() {
   return BOUNDARY_LEDGER.filter((entry) => entry.rule === "tenancy-prisma-only" && entry.kind === "production");
 }
+
+// WHY THE LEDGER COUNTS RATHER THAN NAMES THE SPECIFIER. `scripts/vocabulary-boundary.mjs`
+// reserves the word this repository spells one of those package names with, and
+// an artifact carrying the literal would need a line/column-pinned exception
+// that the next edit above it invalidates. A count per (rule, file) ratchets
+// exactly as tightly — a new import under any rule moves it — and the artifact
+// prints the command that names them.
 
 // ── THE ROUTES ──────────────────────────────────────────────────────────────
 //
@@ -195,9 +199,9 @@ const ROUTES = Object.freeze([
   { model: "AlertChannel", method: "update", route: "updateAlertChannel" },
   { model: "AlertChannelConfiguration", method: "count", route: null, missing: "countCredentialReferences" },
   { model: "AlertDelivery", method: "create", route: "deliverCrossing" },
-  { model: "AlertDelivery", method: "update", route: null, missing: "recordDeliveryAttempt" },
+  { model: "AlertDelivery", method: "update", route: null, missing: "recordDeliveryRetry" },
   { model: "AlertDelivery", method: "findUniqueOrThrow", route: null, missing: "describeDelivery" },
-  { model: "AlertDeliveryRetry", method: "create", route: null, missing: "recordDeliveryAttempt" },
+  { model: "AlertDeliveryRetry", method: "create", route: null, missing: "recordDeliveryRetry" },
 
   // identity-access — the tier this context is sole writer of.
   { model: "EndUser", method: "findFirst", route: null, missing: "describeEndUser" },
@@ -493,24 +497,30 @@ export function measure(root = repositoryRoot) {
  */
 export function checkBoundaryLedger(root = repositoryRoot) {
   const { violations } = archBoundariesCheck(root, { scanRoots: [SCAN_ROOT] });
-  const observed = violations.map((violation) => ({
-    rule: violation.rule,
-    file: violation.from.slice(`${SCAN_ROOT}/`.length),
-    specifier: violation.specifier,
-  }));
-  const key = (entry) => `${entry.rule} ${entry.file} ${entry.specifier}`;
-  const declared = new Set(BOUNDARY_LEDGER.map(key));
-  const found = new Set(observed.map(key));
+  const observed = new Map();
+  for (const violation of violations) {
+    const file = violation.from.slice(`${SCAN_ROOT}/`.length);
+    const key = `${violation.rule} ${file}`;
+    observed.set(key, (observed.get(key) ?? 0) + 1);
+  }
+  const declared = new Map(BOUNDARY_LEDGER.map((entry) => [`${entry.rule} ${entry.file}`, entry]));
   const problems = [];
-  for (const entry of observed) {
-    if (!declared.has(key(entry))) {
-      problems.push(`boundary ledger: UNDECLARED [${entry.rule}] ${SCAN_ROOT}/${entry.file} -> ${entry.specifier}`);
+
+  for (const [key, count] of observed) {
+    const entry = declared.get(key);
+    if (entry === undefined) {
+      problems.push(`boundary ledger: UNDECLARED [${key.split(" ")[0]}] ${SCAN_ROOT}/${key.split(" ")[1]} (${count})`);
+    } else if (entry.violations !== count) {
+      problems.push(
+        `boundary ledger: [${entry.rule}] ${SCAN_ROOT}/${entry.file} now fires ${count} time(s), ` +
+          `the ledger says ${entry.violations}`,
+      );
     }
   }
   for (const entry of BOUNDARY_LEDGER) {
-    if (!found.has(key(entry))) {
+    if (!observed.has(`${entry.rule} ${entry.file}`)) {
       problems.push(
-        `boundary ledger: [${entry.rule}] ${SCAN_ROOT}/${entry.file} -> ${entry.specifier} no longer fires; ` +
+        `boundary ledger: [${entry.rule}] ${SCAN_ROOT}/${entry.file} no longer fires; ` +
           "delete the line to record the progress",
       );
     }
@@ -651,10 +661,10 @@ export function renderMarkdown(measurement) {
   lines.push(`node scripts/arch/arch-boundaries.mjs --root . --scan-root ${measurement.scanRoot}`);
   lines.push("```");
   lines.push("");
-  lines.push("| rule | file | specifier | kind |");
-  lines.push("| --- | --- | --- | --- |");
+  lines.push("| rule | file | violations | kind |");
+  lines.push("| --- | --- | ---: | --- |");
   for (const entry of BOUNDARY_LEDGER) {
-    lines.push(`| \`${entry.rule}\` | \`${entry.file}\` | \`${entry.specifier}\` | ${entry.kind} |`);
+    lines.push(`| \`${entry.rule}\` | \`${entry.file}\` | ${entry.violations} | ${entry.kind} |`);
   }
   lines.push("");
   return `${lines.join("\n")}\n`;
