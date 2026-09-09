@@ -641,7 +641,13 @@ const LIVE_ADAPTERS = [
     ] },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
-  { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n" },
+  // WIN-271 (M4.5). The fixture copy carries `channel-slack`'s SECOND binding
+  // for the reason it carries `redis-cache`'s fourth and `keyring-envelope`'s
+  // fourth: this copy is the non-vacuity anchor every refusal below stands on,
+  // so a copy behind the tree makes the refusal COUNTS wrong rather than the
+  // refusals.
+  { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n",
+    additional: [{ port: "ChannelRuntime", owner: "channels" }] },
   { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "n" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "n" },
   // WIN-259 (M2.4). The fixture copy carries the thirteenth directory and its
@@ -701,7 +707,7 @@ test("§15 refusal: a SIXTEENTH adapter directory fails, even though bindings ma
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FIFTY-NINTH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a SIXTIETH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -742,7 +748,14 @@ test("§15 refusal: a FIFTY-NINTH binding fails, even though a directory may hol
   //
   // SUMMED: 54 + 1 + 3 = 58, so the refusal this case exercises is the
   // fifty-NINTH.
-  assert.ok(errors.some((error) => error.includes("declares 58 adapter bindings; ADAPTERS flattens to 59")));
+  //
+  // WIN-271 (M4.5) moved it to FIFTY-NINE, and outside `postgres-tenancy` for
+  // only the third time: `channel-slack:ChannelRuntime` is a second row on the
+  // channel directory, satisfied by the same object holding the same vendor
+  // client. The DIRECTORY pin above did not move with it — the distinction §15's
+  // amendment is entirely about — so the refusal this case exercises is now the
+  // SIXTIETH.
+  assert.ok(errors.some((error) => error.includes("declares 59 adapter bindings; ADAPTERS flattens to 60")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
