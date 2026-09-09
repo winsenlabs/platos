@@ -23,12 +23,12 @@
     "processEdge": "the named process-edge exclusions are measured, not assumed: the excluded file must exist, keep an EMPTY @Controller() argument list, and carry exactly the declared number of probes."
   },
   "totals": {
-    "controllers": 32,
-    "independentUniqueRoutes": 289,
+    "controllers": 33,
+    "independentUniqueRoutes": 290,
     "dualMountAliasOps": 19,
-    "manifestOps": 308,
+    "manifestOps": 309,
     "independentOperatorFloor": 103,
-    "manifestOperator": 127,
+    "manifestOperator": 128,
     "scanRoots": [
       {
         "id": "agent",
@@ -47,11 +47,11 @@
         "dir": "apps/core-api/src/transports",
         "why": "WIN-267 (M4.1) publishes the canonical V1 REST surface here. It carries no controller yet; the root is declared NOW so the FIRST route to land is counted by this census rather than discovered by a reader months later.",
         "present": true,
-        "sourceControllers": 5,
-        "sourceDecorators": 8,
-        "expandedOperations": 8,
-        "manifestOperations": 8,
-        "manifestControllers": 5,
+        "sourceControllers": 6,
+        "sourceDecorators": 9,
+        "expandedOperations": 9,
+        "manifestOperations": 9,
+        "manifestControllers": 6,
         "ok": true
       }
     ]
@@ -450,9 +450,21 @@
       "manifestOperator": 0,
       "routeOk": true,
       "operatorOk": true
+    },
+    {
+      "controller": "WorkspaceController",
+      "file": "apps/core-api/src/transports/rest/workspace.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 1,
+      "routeOk": true,
+      "operatorOk": true
     }
   ],
   "ok": true,
   "failures": [],
-  "sourceDigest": "3a1ac553991a7c8c8666ea8fd1b527b040e734fece5bcac41d0f6511c9e07787"
+  "sourceDigest": "48b4bcf4e21eaeae054a1d63fa9e6d629135aae82f242823ab7c487200e95db3"
 }

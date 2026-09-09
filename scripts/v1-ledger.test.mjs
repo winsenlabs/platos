@@ -671,7 +671,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // capability matrix, the census artifact, the operator enumeration and the
     // taxonomy are all REGENERATED files that already exist, the generator and
     // three gate suites are edited in place, and no ledger rule is new.
-    "apps-core-api": 75,
+    //
+    // WIN-257 T8 75 -> 76. ONE file, `transports/rest/workspace.controller.ts`,
+    // on the existing `apps-core-api.source.transports` rule (20 -> 21). Its
+    // seven integration cases go into the `identity-rest.integration.test.ts`
+    // that R1 already added, so `apps-core-api.test.suites` does NOT move; the
+    // control-plane manifest, the capability matrix and the OpenAPI document are
+    // regenerations of files that already exist. 75 + 1 = 76.
+    "apps-core-api": 76,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1281,7 +1288,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `docs/error-taxonomy.json`, which gains the five new codes, is tracked
     // already. No ledger rule is new: `packages.adapters.source` and `.test`
     // match both. 1501 + 2 = 1503.
-    packages: 1503,
+    //
+    // WIN-257 T8 1503 -> 1505. TWO files, both in `packages/contexts/tenancy`
+    // and both on rules that already existed:
+    // `application/resolve-workspace.ts` (`packages.contexts.source` 717 -> 718)
+    // and `application/resolve-workspace.test.ts` (`packages.contexts.test`
+    // 358 -> 359). The contract, the service, the domain error union and the
+    // read-model helper it reuses are all EDITS. 1503 + 2 = 1505.
+    packages: 1505,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1721,7 +1735,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // independently-merged keys. R1 moved `apps-core-api` and `root-infra`; R303
   // moved `packages`; no key took a contribution from both, which is why the
   // auto-merge of that object is safe and is checked here rather than assumed.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1671);
+  //
+  // WIN-257 T8 1671 -> 1674. THREE files in TWO areas — `apps-core-api` 75 -> 76
+  // (the workspace controller) and `packages` 1503 -> 1505 (the use case and its
+  // suite) — and the per-area comments above itemise the same three. That is the
+  // identity this pair of assertions exists to hold: the total and the per-area
+  // sums are the SAME arithmetic, so a file that arrived in one and not the other
+  // fails one half. Nothing lands in `root-infra`: T8 adds no mutation manifest of
+  // its own. Re-derived from the eight keys:
+  // 2 + 0 + 76 + 4 + 10 + 1505 + 17 + 60 = 1674.
+  //
+  // TWO SIBLING BRANCHES MOVE THIS PIN IN THE SAME WINDOW. The integrator SUMS
+  // the per-area deltas (+1 `apps-core-api`, +2 `packages` from this branch)
+  // rather than taking this total, exactly as the A1+A2/A3 paragraph records.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1674);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1873,7 +1900,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and the assertion above are two different arithmetics over the same tree
     // and a merge that had side-picked either branch's total would be red here
     // even if the other assertion had been patched to match.
-    rulesDocument.baseline.totalFiles + 1671
+    //
+    // WIN-257 T8 1671 -> 1674, the TWELFTH hand move. It is the same three files
+    // as the `apps-core-api` (+1) and `packages` (+2) deltas and the `totalFiles`
+    // assertion above — summed here from the per-area counts rather than read off
+    // the total, which is the whole reason this line exists separately. Patching
+    // only one of the two would leave the other red, and that is by design.
+    rulesDocument.baseline.totalFiles + 1674
   );
 });
 

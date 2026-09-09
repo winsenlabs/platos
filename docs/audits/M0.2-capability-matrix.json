@@ -5,14 +5,14 @@
   "baseline": "89c12b8 (frozen main oracle); re-enumerated from operation-manifest.generated.json + tenancy Prisma schemas",
   "generatedBy": "scripts/capability-matrix.mjs",
   "totals": {
-    "restOperations": 308,
-    "operatorProtectedRest": 127,
+    "restOperations": 309,
+    "operatorProtectedRest": 128,
     "mcpTools": 202,
     "tenancyModels": 94,
     "endUserRestrictedModels": 14,
     "restOperationsByScanRoot": {
       "agent": 300,
-      "core-api-transports": 8
+      "core-api-transports": 9
     }
   },
   "scanRoots": {
@@ -27,8 +27,8 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "operations": 8,
-        "routeBindings": 8
+        "operations": 9,
+        "routeBindings": 9
       }
     ],
     "unattributed": [],
@@ -3347,6 +3347,28 @@
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
       },
       {
+        "id": "GET /api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "oracle-derived",
+        "canonicalWrites": [],
+        "canonicalReads": [
+          "Organization",
+          "Project",
+          "Environment",
+          "OrganizationMembership",
+          "ProjectMembership"
+        ],
+        "ownerRationale": "Reads only, so §1 decides the owner by the rows it reads and the contract it reaches: TenancyContract.resolveWorkspace walks Organization -> Project -> Environment by slug and returns the four-gate authorization, and tenancy is sole writer of all three. The membership rows are read by the authorization it composes, not by the walk. The oracle is requireEnvironmentScope, whose environment.findFirst is the query every environment-scoped dashboard page has opened with since the product existed.",
+        "ownerEvidence": "auth.server.ts:75",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
         "id": "POST /internal/batch-turn",
         "surface": "rest",
         "method": "POST",
@@ -6011,15 +6033,15 @@
       "tenancy",
       "tools"
     ],
-    "restRows": 308,
+    "restRows": 309,
     "mcpRows": 202,
-    "oracleDerivedRestRows": 42,
+    "oracleDerivedRestRows": 43,
     "pathPrefixRestRows": 266,
     "platformTransportRows": 5,
     "byOwner": {
       "tools": 229,
+      "tenancy": 39,
       "agents": 38,
-      "tenancy": 38,
       "conversations": 31,
       "cost-monitoring": 30,
       "memory": 28,
@@ -6035,7 +6057,7 @@
       "files": 1,
       "secrets": 1
     },
-    "note": "Every row names one of the 19 permitted values. 42 REST rows carry per-row evidence (the handler at the oracle and the canonical rows it writes) and are checked against table-ownership.mjs; the remaining 266 are derived from the URL prefix and are marked ownerSource \"path-prefix\" so the weaker claim is visible."
+    "note": "Every row names one of the 19 permitted values. 43 REST rows carry per-row evidence (the handler at the oracle and the canonical rows it writes) and are checked against table-ownership.mjs; the remaining 266 are derived from the URL prefix and are marked ownerSource \"path-prefix\" so the weaker claim is visible."
   },
   "persistedStateGaps": [
     {
@@ -6054,5 +6076,5 @@
     }
   ],
   "acceptanceCriterion": "Every REST binding in operation-manifest.generated.json and every tenancy Prisma model appears here; counts are read from source, never hardcoded; --check fails on any drift. Every row names an ADR M0.3 §1 context, or the one non-context value `<platform-transport>` under the admission rule in scripts/arch/route-ownership.mjs; the retired unresolved-owner placeholder is neither producible nor accepted, and is refused by its own named rule.",
-  "sourceDigest": "99a9fd484c4b45afc1de8c04c41dfae9a8b411c13cd0a27db8a52ce3e59fee79"
+  "sourceDigest": "bd003c4551660bff3e89e401bdcbd5d921a2a10aa423e2acc82ceb1ebc252c91"
 }

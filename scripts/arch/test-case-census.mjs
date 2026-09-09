@@ -2628,7 +2628,13 @@ export const EXPECTED = Object.freeze({
   // same package, so the counts add.
   "packages/contexts/secrets": { files: 23, cases: 293 },
   "packages/contexts/skills": { files: 20, cases: 306 },
-  "packages/contexts/tenancy": { files: 20, cases: 207 },
+  // WIN-257 T8: 20 -> 21 files, 207 -> 218 cases (+1 file, +11 cases). ONE new
+  // suite, `application/resolve-workspace.test.ts`, and no existing file moved.
+  // The eleven are: one grant, one measured-refusal case that walks five probes,
+  // two cross-tenant forgeries, three archived-ancestor rows from one `it.each`,
+  // one access-level case, two switcher-list cases and one store-disagreement
+  // case. 207 + 11 = 218.
+  "packages/contexts/tenancy": { files: 21, cases: 218 },
   "packages/contexts/tools": { files: 19, cases: 362 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
@@ -3463,8 +3469,23 @@ export const EXPECTED = Object.freeze({
  * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
  * Two sibling branches move these pins in the same window, so the integrator
  * SUMS the deltas rather than taking any one branch's total.
+ *
+ * WIN-257 T8 DELTA, the workspace slug walk. ONE row moves, and 11 = 11:
+ *
+ *   packages/contexts/tenancy 20 -> 21 files, 207 -> 218 cases
+ *
+ * NONE of the eleven needs a container: `resolve-workspace.test.ts` runs the use
+ * case against this context's own in-memory repository. The route's own evidence
+ * — seven cases in `apps/core-api/src/composition/identity-rest.integration.test.ts`
+ * — DOES need one, and does not appear here: `apps/core-api` is outside
+ * PACKAGE_ROOTS, which is why its composition cases have never counted.
+ *
+ * 8124 + 11 = 8135 over 549 + 1 = 550 files, READ BACK from
+ * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
+ * TWO SIBLING BRANCHES MOVE THIS PIN IN THE SAME WINDOW. The integrator sums
+ * the deltas (+11 from this branch) rather than taking this total.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8124;
+export const EXPECTED_RUNTIME_TOTAL = 8135;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

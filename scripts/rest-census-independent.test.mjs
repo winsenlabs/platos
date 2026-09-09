@@ -241,11 +241,21 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // is that first landing, and the count moved by itself: nothing in this file or
   // in `rest-census-independent.mjs` was told about it.
   //
-  // THE ARITHMETIC. Five controllers under `apps/core-api/src/transports` carry
+  // THE ARITHMETIC. Five controllers under `apps/core-api/src/transports` carried
   // EIGHT route decorators, none of them multi-mounted, so 8 decorators x 1 base
-  // path = 8 expanded operations, and the committed manifest attributes 8 to that
-  // root. The agent root is untouched at 300. 300 + 8 = 308, which is the
-  // manifest's own `summary.restOperations`.
+  // path = 8 expanded operations, and the committed manifest attributed 8 to that
+  // root. The agent root is untouched at 300. 300 + 8 = 308.
+  //
+  // WIN-257 T8 ADDS THE SIXTH CONTROLLER AND THE NINTH DECORATOR.
+  // `WorkspaceController` carries ONE `@Get`, still not multi-mounted, so
+  // 9 decorators x 1 base path = 9 expanded operations. 300 + 9 = 309, which is
+  // the manifest's own `summary.restOperations`.
+  //
+  // THIS COUNT MOVED BY ITSELF. Neither this file nor `rest-census-independent.mjs`
+  // was told about the route: the census walks `apps/core-api/src/transports` for
+  // `@Controller` and route decorators with its own parser, which is the whole
+  // point of it being independent of the generator's AST walk. The two agreeing
+  // at 309 is the assertion; the numbers below are where they are pinned.
   const roots = scanRootReport();
   const r = reconcileScanRoots(roots, processEdgeReport(), manifestCensus(), independentCensus(roots));
   assert.equal(r.ok, true, r.failures.join("\n"));
@@ -254,11 +264,11 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   assert.equal(agent.manifestOperations, 300);
   assert.equal(agent.expandedOperations, 300);
   assert.equal(core.present, true, "the declared core-api transport root must exist on disk");
-  assert.equal(core.sourceControllers, 5);
-  assert.equal(core.sourceDecorators, 8);
-  assert.equal(core.expandedOperations, 8);
-  assert.equal(core.manifestOperations, 8);
-  assert.equal(agent.manifestOperations + core.manifestOperations, 308);
+  assert.equal(core.sourceControllers, 6);
+  assert.equal(core.sourceDecorators, 9);
+  assert.equal(core.expandedOperations, 9);
+  assert.equal(core.manifestOperations, 9);
+  assert.equal(agent.manifestOperations + core.manifestOperations, 309);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

@@ -110,6 +110,24 @@ export const PLATFORM_TRANSPORT_ROW_COUNT = 5;
  *   evidence  — `<basename>:<line>` of the handler at ORACLE.
  */
 export const ROUTE_OWNERSHIP = Object.freeze({
+  // ── tenancy — ADR §1 row 2 owns Organization / Project / Environment ──────
+  //
+  // RESOLVED HERE RATHER THAN BY PREFIX, on purpose. The other eight V1 routes
+  // fall out of PATH_CONTEXT_RULES because their paths carry `/organizations`,
+  // `/projects`, `/environments` or `/session`. `/workspaces` names no canonical
+  // row at all — it is the SHAPE a dashboard page needs, not a table — so a
+  // prefix rule for it would be exactly the "guess about a URL" this file's own
+  // comment says a prefix is. There is an oracle handler, so the row is
+  // evidence-derived instead.
+  "GET /api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug": {
+    owner: "tenancy",
+    writes: [],
+    reads: ["Organization", "Project", "Environment", "OrganizationMembership", "ProjectMembership"],
+    rationale:
+      "Reads only, so §1 decides the owner by the rows it reads and the contract it reaches: TenancyContract.resolveWorkspace walks Organization -> Project -> Environment by slug and returns the four-gate authorization, and tenancy is sole writer of all three. The membership rows are read by the authorization it composes, not by the walk. The oracle is requireEnvironmentScope, whose environment.findFirst is the query every environment-scoped dashboard page has opened with since the product existed.",
+    evidence: "auth.server.ts:75",
+  },
+
   // ── platform-transport: liveness, process metrics, self-description ───────
   "GET /api/health": {
     owner: PLATFORM_TRANSPORT,
@@ -444,8 +462,13 @@ export const ROUTE_OWNERSHIP = Object.freeze({
   },
 });
 
-/** Pin. Every row above was read from the oracle; a 43rd needs the same. */
-export const ORACLE_DERIVED_ROW_COUNT = 42;
+/**
+ * Pin. Every row above was read from the oracle; a 44th needs the same.
+ *
+ * 42 -> 43 (WIN-257 T8): the workspace row at the top of this object, whose
+ * oracle is `auth.server.ts:75`.
+ */
+export const ORACLE_DERIVED_ROW_COUNT = 43;
 
 /**
  * URL-prefix derivation for the rows WIN-256 did not individually resolve.
