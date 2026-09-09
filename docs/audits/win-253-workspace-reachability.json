@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "25ce5b044d940d3811433811c00e0c9fc779152b86207199246fc87fc0eef67c",
+  "evidenceSha256": "0696635e8645130d070a2eef7e63e562e7b1abb5c6048ad630a63eaa0e87aa2d",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3c269f112dd1e02a4c086f820b042479d890bdc538e0d980b054267d91a465d7",
+    "aggregateSha256": "0b20e4da5fd616b9cc4b6c09731b3a0a3b9b805a79d4a2f4e5e81b5d9df61308",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -415,7 +415,7 @@
       },
       {
         "path": "apps/agent/scripts/generate-control-plane.mjs",
-        "sha256": "57633d4405cdb49be2ad96c9c72365826d62ec9a59e0e42fd98e06170393cecd"
+        "sha256": "920a1a302b24f3458485995c404ef89c6f47067d3ee0ca2de79c50a4a960b686"
       },
       {
         "path": "apps/agent/scripts/openapi-meta-schema.mjs",
@@ -4575,7 +4575,7 @@
       },
       {
         "path": "docs/control-plane-parity.generated.md",
-        "sha256": "a368b5ab6d718b929b9c8949cf61792165cf9f9a87ba9b3e021592fc0a6d340c"
+        "sha256": "c95670023ecbf9586839614e6f7240e44e5087ca60f0e0ff20e42dadc05be1b8"
       },
       {
         "path": "docs/deploy-environment-variables.mdx",
