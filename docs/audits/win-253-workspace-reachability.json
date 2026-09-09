@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "61eb514726a9064056b8164960f7037cdfd2d8e4f515ab4ecbe321ac76c14cf6",
+  "evidenceSha256": "eb91eff2a3b5c92fd00205d297d18093758c8679be1ab8fcfed1c95310cdbb2f",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "cc9d48aa01ddc8180c5f686046f4d4188faf9221e6d66fb302021dff4f4d1080",
+    "aggregateSha256": "c8efba539caae6fe1f08208dc5d21d006e8e8afe5e5dc6f9d1c85a870a2a953e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2519,7 +2519,7 @@
       },
       {
         "path": "apps/core-api/src/composition/context-ports.ts",
-        "sha256": "c53deec342cb6c4fb2e9f73b29ea00f2fa11b7dfaffbee82456b017d550325f1"
+        "sha256": "7879cb4f22c9f9e59e18f044bc1fa2b95081bc41db0fc5f2e563203b90618380"
       },
       {
         "path": "apps/core-api/src/composition/governance-judge.test.ts",
@@ -2535,7 +2535,7 @@
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
-        "sha256": "547b69736b0524ed40e199ecad616a11429486c3d155dd4337b0c1a974fc305d"
+        "sha256": "eb61eb0a9d23b51d1bc9e4ab52bb353729aee1cf24025d7bff430475f3a4d82b"
       },
       {
         "path": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
@@ -20431,7 +20431,7 @@
       },
       {
         "path": "scripts/mutations-win271-m45.json",
-        "sha256": "466806dcc07a760cbfee334a40b05f61fba9567c0d7243831f7bdc42d8bb06fc"
+        "sha256": "167ac1ebf84fef459299c49f882a8b5baeada4b71cf0a3d3700b781e43b71ccd"
       },
       {
         "path": "scripts/openapi-compat.mjs",
@@ -27455,7 +27455,7 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 982
+              "line": 1027
             },
             {
               "from": "apps/core-api/src/config/sections.test.ts",
@@ -27622,7 +27622,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "eee1d5658b1ee99087ac2451f207ccad26be78c23c6d69a141164d16cae4606e",
+      "evidenceSha256": "076f98868aee535aff89a6f0991e0c4dc584d663e58edb8c1954314b3c34cda4",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -70246,7 +70246,7 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 820
+              "line": 865
             },
             {
               "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
@@ -71136,7 +71136,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "db729ed155e060c71a3516b2f2bccdaec5452fb743c5bf532b8da6defb925a58",
+      "evidenceSha256": "fcd0a034c9f39b6c8caaa6f21ee17bba86d2b438c38f205c62cb84c317fef581",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
