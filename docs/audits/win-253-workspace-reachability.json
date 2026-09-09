@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "55397ad994c977609e6c5eca3d10007b09730b37f0790ab62a2c5472ea9fe84d",
+  "evidenceSha256": "e762e28cc1e692b4ef542fc0d0c8ccee371df10b42a88e122b92315fd065e1a5",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c6c5e7ae903cba65ae526351cd6cacd3210f5571fd620a8884c0cb7ce4d30edc",
+    "aggregateSha256": "9755296c4b3feae70462a7c735c96897f9c3ab345433b0198b0c9e3748bcc196",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20103,7 +20103,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "7ec8e9e76947e71109e21c8785c08116a09a88d84bb9e46538d9058fbc45a253"
+        "sha256": "e57d3bd3a5935f74e80446d556878e38d905beb259d8318e9ef7893e31176b4c"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -37522,7 +37522,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 245
+              "line": 257
             }
           ],
           "reversePaths": [
@@ -37634,7 +37634,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "04ba65bfc81ba9c7b260274b822784526065b13515103adee9eda0293a5a93e6",
+      "evidenceSha256": "00897f8266119ba3462f899ce4885570d00c9a537867e7c43689b4f179390889",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -45259,7 +45259,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2615
+              "line": 2638
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -45426,7 +45426,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "aa3ad6e5d99cc0213084f39bc7cbd4c2592c1d20c4b7a09e9d005a14a0da4b93",
+      "evidenceSha256": "9e3a15c40c9869703107a94b593f688c3551901536d746e8741bccc316d7ae49",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -63316,6 +63316,11 @@
               "line": 354
             },
             {
+              "from": "scripts/ci-policy.test.mjs",
+              "kind": "reference",
+              "line": 248
+            },
+            {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
               "line": 1318
@@ -63515,6 +63520,10 @@
               "scripts/arch/v1-project-graph.test.mjs"
             ],
             [
+              "scripts/ci-policy.test.mjs",
+              "scripts/ci-policy.test.mjs"
+            ],
+            [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
             ]
@@ -63568,6 +63577,7 @@
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/ci-policy.test.mjs",
             "scripts/v1-ledger.test.mjs"
           ]
         }
@@ -64305,7 +64315,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "df773aa2046939de906d91821d5855c277e64882ff9025ffecc2bb5817f98153",
+      "evidenceSha256": "7aacfd3cbc2b9b804de04c1b7724074ae77d25afa6cf26fb7e63f93bf1841baa",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
