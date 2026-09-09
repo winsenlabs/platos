@@ -242,6 +242,14 @@ test("`check` fails on compatible drift and passes on an unchanged tree", () => 
   assert.equal(decision.exitCode, 1);
 });
 
+test("an edit to the document's own header is material to `check`, so the audit and this suite agree", () => {
+  const edited = structuredClone(baseline);
+  edited.info = { ...edited.info, description: "something else entirely" };
+  const decision = decide({ mode: "check", baseline, slice: edited });
+  assert.equal(decision.action, "drift", "a header edit would have left the audit green and this suite red");
+  assert.deepEqual(breakingOf(decision.findings), []);
+});
+
 test("the slice keeps only contract-bearing keys, so a refactor of a class name is not a change", () => {
   const document = JSON.parse(readFileSync(GENERATED, "utf8"));
   const slice = v1Slice(document);

@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `e84564e99ce437fa2e5ed208b35e882c3c80fb546dd3cc4b69fdf9edeb971174`
+Evidence SHA-256: `3a794cf6706e39c8d9c1263f943d392f4b9af01a3fefa842b2f37aa1080e120e`
 
 ## Baseline
 
@@ -43,7 +43,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `apps/core-api` | `@platos/core-api` | no | yes | yes | no | retain-application-deployable | no | no | `f31d6bb122ff21b9…` |
 | `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `32beed94186c0b19…` |
 | `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `6d0671f708e83e8a…` |
-| `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `0d390e62b56e118d…` |
+| `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `15a7c1e239f1ce91…` |
 | `internal-packages/cache` | `@internal/cache` | no | no | no | no | owner-review-repository-referenced | no | yes | `f9f2db1155272a42…` |
 | `internal-packages/compute` | `@internal/compute` | no | no | no | no | owner-review-repository-referenced | no | yes | `744fd4bd20e8d379…` |
 | `internal-packages/cost-rates` | `@internal/cost-rates` | no | no | no | no | owner-review-repository-referenced | no | yes | `6164efe052d457dc…` |

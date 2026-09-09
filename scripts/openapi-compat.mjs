@@ -412,6 +412,16 @@ function compareOperation(base, current, pointer, findings) {
 /** Every difference between a baseline slice and a current slice, classified. */
 export function classifyChanges(baseline, current) {
   const findings = [];
+  // THE DOCUMENT'S OWN METADATA IS COMPARED TOO, so that `check` and the suite's
+  // `assert.deepEqual(baseline, currentSlice())` cannot disagree about what a
+  // difference is. Without this an edit to `info.description` would leave the
+  // audit green and the named test red, and a gate whose two halves answer
+  // differently is a gate nobody trusts. It is COMPATIBLE, not breaking — prose
+  // is not a wire contract — but it is material, so it must be absorbed.
+  for (const key of ["openapi", "info"]) {
+    if (JSON.stringify(baseline[key] ?? null) === JSON.stringify(current[key] ?? null)) continue;
+    findings.push(finding(COMPATIBLE, "document-metadata-changed", key, "the document's own header moved"));
+  }
   const basePaths = baseline.paths ?? {};
   const currentPaths = current.paths ?? {};
   for (const [path, item] of Object.entries(basePaths)) {

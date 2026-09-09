@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e84564e99ce437fa2e5ed208b35e882c3c80fb546dd3cc4b69fdf9edeb971174",
+  "evidenceSha256": "3a794cf6706e39c8d9c1263f943d392f4b9af01a3fefa842b2f37aa1080e120e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "fd7a9a9162bfd7dc176ff07450ff44b65c5718c959d207b4e11d05927c6df955",
+    "aggregateSha256": "785d22bd7d970bcf0470c9d074d4c9cf80e79b86621752909ffcae75e464bea6",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20199,11 +20199,11 @@
       },
       {
         "path": "scripts/openapi-compat.mjs",
-        "sha256": "0d40e580a4b98f191c3cbcdea52d7ff6789d08fa40d8ccb0b31ed5e76b9c73cc"
+        "sha256": "d2cef5740cfa81ae8cb61f7f90f8050d67d645851ae5c05c0fc4ffbe6f337a85"
       },
       {
         "path": "scripts/openapi-compat.test.mjs",
-        "sha256": "c2e07cb1f308025282a52e1ee45216a4193cc90c118598b186cbaf8740e4b0cd"
+        "sha256": "11c7446e527c6f200d5d5b6c2ce6110dc71087a9d93486ba93fbd4ab21a5a0db"
       },
       {
         "path": "scripts/openapi-schema-derivation.test.mjs",
@@ -34978,7 +34978,7 @@
             {
               "from": "scripts/openapi-compat.test.mjs",
               "kind": "reference",
-              "line": 254
+              "line": 262
             },
             {
               "from": "scripts/openapi-schema-derivation.test.mjs",
@@ -35348,7 +35348,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0d390e62b56e118d248a33150cad5ea0d70c58fa31712fd17e592d9898074455",
+      "evidenceSha256": "15a7c1e239f1ce9181aa4193a9f287830ef19a460139e2334aea23f4db1515e4",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
