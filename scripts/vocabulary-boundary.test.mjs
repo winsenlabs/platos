@@ -680,22 +680,28 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         at all, a distinction with no retry anywhere in it. Each row is
   //         bound to a removal EVENT rather than to a date --> 19446.
   //   +1    WIN-271 (M4.5). ONE occurrence, and it is the one kind this gate
-  //         cannot ask anybody to rewrite: `trigger_id=` inside SLACK'S OWN
-  //         PUBLISHED request-verification example, transcribed byte-for-byte
-  //         into `packages/adapters/channel-slack/src/published-vector.ts`.
-  //         That body is HMAC'd — one character changes the digest — so
-  //         "rewrite the word" would turn the only EXTERNAL anchor this
+  //         cannot ask anybody to rewrite: a refused word appears inside SLACK'S
+  //         OWN PUBLISHED request-verification example, transcribed
+  //         byte-for-byte into
+  //         `packages/adapters/channel-slack/src/published-vector.ts`. That body
+  //         is HMAC'd — change one character and the digest changes — so
+  //         "rewrite the word" would turn the only EXTERNAL anchor that
   //         adapter's signature suite has into a vector this repository
-  //         invented, and fifteen cases would go on passing against a fiction.
+  //         invented, with fifteen cases going on passing against a fiction.
   //         Classified `vendor` and bound to a removal EVENT: the day
-  //         `channel-slack` stops verifying Slack signatures, or the day Slack
-  //         publishes a different worked example --> 19447.
+  //         `channel-slack` stops verifying Slack signatures, or the day the
+  //         vendor publishes a different worked example --> 19447.
   //
   //         THE OTHER EIGHT WIN-271 OCCURRENCES WERE REWRITTEN RATHER THAN
-  //         REVIEWED, which is the rule working as intended: seven `attempt`s in
-  //         `send.ts` became `Dispatched`/`dispatched`, and one "hair trigger"
-  //         in a test comment became "fire on a merely busy provider". Only the
-  //         one that could not move is here.
+  //         REVIEWED, which is the rule working as intended: seven in
+  //         `send.ts` became `Dispatched`/`dispatched`, and one in a test
+  //         comment was reworded. Only the one that could not move is here.
+  //
+  //         AND THIS PARAGRAPH ITSELF HAD TO BE REWRITTEN ONCE. Its first draft
+  //         quoted both refused words while explaining them, which the gate
+  //         reported as three new unreviewed occurrences IN THIS FILE — a
+  //         reminder that the rule reads bytes and does not care that the
+  //         sentence around them is about the rule.
   assert.equal(manifest.exceptions.length, 19447);
 });
 
