@@ -1524,14 +1524,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "db60f951ab7745ffbc5e1918be53d39c70a93f55f0659fc34f33d3350d58442a",
+      "sha256": "1bd24674bd206dfd3f81035bc3322b91f5e07f642b0681a0807123e1cc242861",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "ddc69b882826c8eca9d3a8bb854fa5ce8f2109e939359e97f0291cf7937a65e7",
+      "sha256": "c8125ae5842309fdb4ccefd93306515df5f9a39e764b0bb158c3b40899049e4c",
       "binds": "current-repository-truth"
     },
     {
@@ -1545,14 +1545,14 @@
       "path": "docs/audits/win-268-mcp-store-ownership.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "9e3231808e48c6a1f9ead12a6e1e61e002ec9e970d59656d004a5cc351b37adf",
+      "sha256": "e0a3fc6d76c96e6029a73e8a1b033d063f7ab8eb0fd8c9073ea41aaaebb50c04",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "bd49a3c444266cb4fe1ba53722d337250e610b0e2093fff2612309e7401700f4",
+      "sha256": "e601ff5c8fdd6452497ca87aefc2ca24e35a709d821331d2d7ee85c80e7bd588",
       "binds": "current-repository-truth"
     },
     {
@@ -1587,7 +1587,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "dbc34b2e677e6f21f803e608ee507a62dcaf28e1564e141d500453049d4d9c99",
+      "sha256": "9f4bd20b0a9be93e19867349ba89a529a4b72069d2e98a2570ef09970e90fc1b",
       "binds": "current-repository-truth"
     },
     {

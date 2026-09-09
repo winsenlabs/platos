@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "048c1bb690729d8df250639a6252310084a1ea71def8db03234c85cf9d566f02",
+  "evidenceSha256": "19dd03ac74572b5d11f4952a7e378f28d3eb2bd056196e4f411bfa4facf35baa",
   "generatedOwnership": {
     "explicitHeaderFileCount": 25,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "302237964f0dd0424b7ece6367bd787d1c0576dc4af7011aa5f59218c69b3dcd",
+    "aggregateSha256": "77b798c7d96fddd8eac68c438decaba0326e36f64ce06893b229ff0a5f5e30e2",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1138,12 +1138,16 @@
         "sha256": "c5f1cc962d4404c9b4eda619995fb8bea8003683fa264a586313e49852b8d58f"
       },
       {
+        "path": "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+        "sha256": "0525f8823d974c96fd063c4af46552a9d4779e15ba9cec8330afe210ac328f94"
+      },
+      {
         "path": "apps/agent/src/mcp-platform/permission-gateway.service.test.ts",
-        "sha256": "912dceffa7ac98c38a7adb36118371444d8b1174c1406f241d0676acbda1928b"
+        "sha256": "9209c1cea57191d118468c9b2ce0fb6621be6bb969281ab4c053199d0f2e1ef9"
       },
       {
         "path": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-        "sha256": "95b62e4945f90fb0c3e4b822b040c34b0dccd7b6b581f07a97f4d7f9847b7f55"
+        "sha256": "7f1bc12f3134b42779d0f6e42d198eb1a35aa34736e685bbe2257839b40ff7c9"
       },
       {
         "path": "apps/agent/src/mcp-platform/schema-validator.ts",
@@ -1226,8 +1230,12 @@
         "sha256": "2143e2eb7757933ebe9d305dc7f905d58a2e68c663d89168dcc2f3e971d369a8"
       },
       {
+        "path": "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+        "sha256": "d6684e7169aa8609b6827a63b6cbb4e5526f11ba02da725eb18d74dbd9b4bb89"
+      },
+      {
         "path": "apps/agent/src/mcp-platform/tools/macros.ts",
-        "sha256": "0b1b00cf0035243174bb6eb596d493421ef117dd76df7bc0987dd176f6fa73c8"
+        "sha256": "7c2030d5d8e9ecb21b6351ed101d546ada28c1f8d95acdc6366fa77551b88933"
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/mcp.ts",
@@ -4399,11 +4407,11 @@
       },
       {
         "path": "docs/audits/win-268-mcp-store-ownership.json",
-        "sha256": "9e3231808e48c6a1f9ead12a6e1e61e002ec9e970d59656d004a5cc351b37adf"
+        "sha256": "e0a3fc6d76c96e6029a73e8a1b033d063f7ab8eb0fd8c9073ea41aaaebb50c04"
       },
       {
         "path": "docs/audits/win-268-mcp-store-ownership.md",
-        "sha256": "bd49a3c444266cb4fe1ba53722d337250e610b0e2093fff2612309e7401700f4"
+        "sha256": "e601ff5c8fdd6452497ca87aefc2ca24e35a709d821331d2d7ee85c80e7bd588"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
@@ -20007,7 +20015,7 @@
       },
       {
         "path": "scripts/arch/mcp-store-ownership.mjs",
-        "sha256": "5b60b461efc60c0f696c10eab40c114a9af32ab2698736a8d78098b8e86e8e54"
+        "sha256": "dec77b9d2a26f535cb1ae76ae927ff168879b285b8db31974cc69068190c5a72"
       },
       {
         "path": "scripts/arch/mcp-store-ownership.test.mjs",
@@ -23251,6 +23259,11 @@
               "line": 1
             },
             {
+              "from": "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 37
+            },
+            {
               "from": "apps/agent/src/mcp-platform/permission-gateway.service.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -23274,6 +23287,11 @@
               "from": "apps/agent/src/mcp-platform/tools/end-users.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
+            },
+            {
+              "from": "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 39
             },
             {
               "from": "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts",
@@ -24482,6 +24500,10 @@
               "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts"
             ],
             [
+              "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+              "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts"
+            ],
+            [
               "apps/agent/src/mcp-platform/permission-gateway.service.test.ts",
               "apps/agent/src/mcp-platform/permission-gateway.service.test.ts"
             ],
@@ -24500,6 +24522,10 @@
             [
               "apps/agent/src/mcp-platform/tools/end-users.test.ts",
               "apps/agent/src/mcp-platform/tools/end-users.test.ts"
+            ],
+            [
+              "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+              "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts"
             ],
             [
               "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts",
@@ -25277,11 +25303,13 @@
             "apps/agent/src/mcp-platform/mcp-platform-management.test.ts",
             "apps/agent/src/mcp-platform/mcp-router.test.ts",
             "apps/agent/src/mcp-platform/mcp-tool-acl.service.test.ts",
+            "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
             "apps/agent/src/mcp-platform/permission-gateway.service.test.ts",
             "apps/agent/src/mcp-platform/stdio-transport.test.ts",
             "apps/agent/src/mcp-platform/token.service.test.ts",
             "apps/agent/src/mcp-platform/tools/channel-apps-import.test.ts",
             "apps/agent/src/mcp-platform/tools/end-users.test.ts",
+            "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
             "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts",
             "apps/agent/src/mcp-platform/tools/providers.test.ts",
             "apps/agent/src/mcp-platform/tools/reflection-budget.test.ts",
@@ -25506,7 +25534,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "46a208cc1a6c129407bc2e4712c8aa917543edf792e19e8fcf432d78cf9f583d",
+      "evidenceSha256": "8fe7094708494b3ce98ed90f9c66af74517d234083af453da31f1180e1eb8f5f",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -41803,6 +41831,16 @@
               "line": 5
             },
             {
+              "from": "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+              "kind": "reference",
+              "line": 103
+            },
+            {
+              "from": "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+              "kind": "reference",
+              "line": 123
+            },
+            {
               "from": "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts",
               "kind": "reference",
               "line": 2
@@ -42362,6 +42400,14 @@
               "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts"
             ],
             [
+              "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+              "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts"
+            ],
+            [
+              "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+              "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts"
+            ],
+            [
               "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts",
               "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts"
             ],
@@ -42791,6 +42837,8 @@
             "apps/agent/src/clean-prisma-delegates.test.ts",
             "apps/agent/src/evals/eval-runtime-cutover.test.ts",
             "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts",
+            "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+            "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
             "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts",
             "apps/agent/src/memory/conversation-observability-projection.test.ts",
             "apps/agent/src/memory/conversation-persistence.test.ts",
@@ -43052,7 +43100,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "3589e23d94cb0a07f00f123d49c2a5f89782ac4c6d378bb9daa9818888b9e74f",
+      "evidenceSha256": "0bd570aad5d286a790543e6bd6c40500fc5d6cb8d51da0bf771fd408b87755c8",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -64666,7 +64714,7 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.json",
               "kind": "reference",
-              "line": 495
+              "line": 496
             },
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
@@ -65536,7 +65584,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "adc3a6a0ea4bd9da3015fc46967d27f3faeb8f6fb6a31b02fbeaf814f84a2310",
+      "evidenceSha256": "fc50c1dc15ba8dabc054949c905a9f035a4043bb4c555e983fd2aa69f05cefff",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -76566,7 +76614,7 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.json",
               "kind": "reference",
-              "line": 433
+              "line": 434
             },
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
@@ -77520,7 +77568,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "aca19e3ca091b297880bfd38dc533fbf2874fa43caa5899ce1cd6dc1a4ccb4d1",
+      "evidenceSha256": "b9965d38cdbcf9d5b70d0adc5fe8a8938a0503359e024df402a030d2ab722050",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
