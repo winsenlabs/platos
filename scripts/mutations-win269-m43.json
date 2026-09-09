@@ -1,7 +1,7 @@
 {
   "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
   "issue": "WIN-269",
-  "tranche": "M4.3 stage 2 — the tool lifecycle's ORM register, the three-valued discovery outcome, and the stale double that was hiding three assertions",
+  "tranche": "M4.3 stage 2 \u2014 the tool lifecycle's ORM register, the three-valued discovery outcome, the stale double that was hiding three assertions, and the (entity, environment) pair against real PostgreSQL",
   "branch": "tejas/m4",
   "base": "5a2e7bf8 (tejas/m4, after WIN-268 stage 1); mutations run at b5302dc6+",
   "purpose": [
@@ -9,7 +9,7 @@
     "",
     "THE REGISTER fails by MEASURING LESS THAN IT SAYS, or by measuring the same",
     "tree its sibling measures. M08 widens the roots until they overlap WIN-268's",
-    "— the failure that would turn two registers into two numbers to keep in",
+    "\u2014 the failure that would turn two registers into two numbers to keep in",
     "agreement; M09 removes the directory->property translation on the composed-",
     "context join, which makes every hyphenated context read as UNCOMPOSED and",
     "reports `identity-access` blocked on a composition that has already happened;",
@@ -34,9 +34,20 @@
     "would have reported `success` to the model with every suite green.",
     "",
     "THE DOUBLE fails by BEING ONE METHOD SHORT. M07 removes",
-    "`resolveEntitySigningCredential` from the shared credentials double — the",
+    "`resolveEntitySigningCredential` from the shared credentials double \u2014 the",
     "exact state the tree was in, and the reason three cases in this suite were",
-    "red for a reason unrelated to anything they assert."
+    "red for a reason unrelated to anything they assert.",
+    "",
+    "THE TENANCY PAIR fails by BEING PROVED WITH A DOUBLE. M12 and M13 run against",
+    "a REAL PostgreSQL 17.10 because the property is decided by a trigger Prisma",
+    "does not model, and a `vi.fn()` client would have CONFIRMED THE WRONG",
+    "HYPOTHESIS \u2014 which this tranche's first draft of that suite actually did,",
+    "before the database refused the insert it expected to succeed. M14 is recorded",
+    "as a SURVIVOR rather than dressed up: it weakens the suite's own assertion",
+    "rather than the subject, and on a tree where the trigger is enabled a weaker",
+    "assertion still passes. What kills that claim is the out-of-band control in",
+    "`databaseControls` below, which disables the named trigger and shows the",
+    "incoherent row is then ACCEPTED."
   ],
   "procedure": [
     "Each mutation is applied to the committed source, the named command is run,",
@@ -47,18 +58,20 @@
   ],
   "commands": {
     "acceptance": "pnpm --filter platos-agent exec vitest run src/tool-gateway/mcp-transport/mcp-connected-entity --reporter=basic",
-    "register-test": "node --test scripts/arch/tool-lifecycle-reach.test.mjs"
+    "register-test": "node --test scripts/arch/tool-lifecycle-reach.test.mjs",
+    "pair-postgres": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=postgresql://platos@127.0.0.1:55433/<db> TOOL_REGISTRY_TENANCY_REQUIRED=1 pnpm --filter platos-agent exec vitest run src/tool-gateway/registry-incoherent-pair-postgres --reporter=basic"
   },
   "baseline": {
     "acceptance": "18 passed / 0 failed (10 pre-existing cases, 8 added by this tranche). Before this tranche the same file was 7 passed / 3 failed; the three reds were the stale double, not a production defect.",
     "register-test": "13 passed / 0 failed",
-    "toolGatewayWhole": "pnpm --filter platos-agent exec vitest run src/tool-gateway/ — 86 passed / 0 failed across 8 files"
+    "toolGatewayWhole": "pnpm --filter platos-agent exec vitest run src/tool-gateway/ \u2014 86 passed / 0 failed across 8 files",
+    "pair-postgres": "7 passed / 0 failed against a throwaway native PostgreSQL 17.10 (Homebrew postgresql@17, port 55433, trust auth, its own migrated schema, dropped in afterAll). With no database URL: 7 skipped, and with TOOL_REGISTRY_TENANCY_REQUIRED=1 and no URL the suite FAILS rather than skipping \u2014 both verified."
   },
   "mutations": [
     {
       "name": "M01 a hosted-* transport answers with an empty tool list instead of skipping",
       "guards": "a discovery pass that asked nothing never reaches registerTools, so it can never prune",
-      "why": "This is the state that shipped. `fetchToolsList` returned `[]` for every `hosted-*` transport with the comment 'so discovery still succeeds (no tools registered yet)'. That empty list went into `ToolRegistryService.registerTools`, whose `deleteMany` drops its `notIn` clause when nothing is active — so it deleted EVERY `EnvironmentEntityTool` row the entity had in that environment, then stamped the entity connected, on a one-minute cron with a five-minute staleness threshold.",
+      "why": "This is the state that shipped. `fetchToolsList` returned `[]` for every `hosted-*` transport with the comment 'so discovery still succeeds (no tools registered yet)'. That empty list went into `ToolRegistryService.registerTools`, whose `deleteMany` drops its `notIn` clause when nothing is active \u2014 so it deleted EVERY `EnvironmentEntityTool` row the entity had in that environment, then stamped the entity connected, on a one-minute cron with a five-minute staleness threshold.",
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
       "command": "acceptance",
       "exit": 1,
@@ -103,7 +116,7 @@
     {
       "name": "M06 a skipped environment registers an empty declaration anyway",
       "guards": "only the `contacted` branch may reach registerTools",
-      "why": "This is M01's damage reached by a different route — the tag is correct and the prune happens anyway. Without this mutation the three-valued outcome could be right in the type and wrong in the control flow.",
+      "why": "This is M01's damage reached by a different route \u2014 the tag is correct and the prune happens anyway. Without this mutation the three-valued outcome could be right in the type and wrong in the control flow.",
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
       "command": "acceptance",
       "exit": 1,
@@ -130,7 +143,7 @@
     {
       "name": "M09 the composed-context join loses the directory->property translation",
       "guards": "a context the composition root HAS composed is never reported blocked on composition",
-      "why": "`table-ownership.mjs` names a context by its directory (`identity-access`) and `ComposedContexts` by its property (`identityAccess`). Comparing them directly silently never matches for the four hyphenated contexts — the register reported the `McpOidcSession` site as blockedOnContext when `identity-access` is composed. This was a REAL defect in the first draft of this file, caught by this case, which is why it is in the ledger rather than only in the source.",
+      "why": "`table-ownership.mjs` names a context by its directory (`identity-access`) and `ComposedContexts` by its property (`identityAccess`). Comparing them directly silently never matches for the four hyphenated contexts \u2014 the register reported the `McpOidcSession` site as blockedOnContext when `identity-access` is composed. This was a REAL defect in the first draft of this file, caught by this case, which is why it is in the ledger rather than only in the source.",
       "file": "scripts/arch/tool-lifecycle-reach.mjs",
       "command": "register-test",
       "exit": 1,
@@ -153,15 +166,54 @@
       "command": "register-test",
       "exit": 1,
       "outcome": "killed"
+    },
+    {
+      "name": "M12 the registry drops its own (entity, environment) ancestry guard",
+      "guards": "an exposure whose entity and environment are in different projects is served to NO scope",
+      "why": "`if (entity.projectId !== environment.projectId) continue;` in `rebuildIndex` was asserted by NOTHING. It is defence in depth over a database trigger \u2014 established, not assumed, by the suite beside it \u2014 but a reader of the application code alone cannot tell a redundant guard from the only one, and every scope key the registry mints is built from BOTH sides of the pair: organization and project from the ENTITY, environment from the MAPPING. An incoherent row would mint a triple belonging to no tenant, which is exactly the forged triple `scope.guard.ts` accepts from three independent headers.",
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "command": "pair-postgres",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M13 `setToolEnabled` looks its entry up without the scope",
+      "guards": "the cache key is the whole authorization for a write that has no tenancy join of its own",
+      "why": "The write is `environmentEntityTool.update({ where: { environmentId_entityId_toolId: { environmentId: scope.environmentId, entityId: entry.entityPk, toolId } } })` with no organization join, no project join and no ancestry check. The executor's equivalent re-read calls itself 'defense in depth ... a slip that yielded a cross-scope entityPk would otherwise hand back another tenant's HMAC signing key'; there is no such depth here. This mutation is that slip, made deliberately: look the entry up by tool name across every bucket instead of by the scope's key.",
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "command": "pair-postgres",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M14 the trigger readback accepts a DISABLED trigger",
+      "guards": "the ancestry trigger is present AND enabled, so a refusal is not a false positive",
+      "why": "A disabled trigger is present in `pg_trigger` and enforces nothing. This mutation weakens the assertion from `tgenabled === 'O'` to mere presence.",
+      "file": "apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts",
+      "command": "pair-postgres",
+      "exit": 0,
+      "outcome": "survived",
+      "survivorReason": "IT MUTATES THE ASSERTION, NOT THE SUBJECT. On a tree where the trigger IS enabled, a weaker assertion about it still passes, and no arrangement of the test suite can kill that. The claim it makes is established instead by the out-of-band database control below, which is the honest place for it: a test cannot disable a trigger it is running inside without destroying the isolation every other case depends on. Recorded as a survivor rather than declared equivalent, because it is not equivalent \u2014 it is weaker, and a reader should know by how much."
     }
   ],
-  "survivors": [],
+  "survivors": [
+    "M14 \u2014 see `survivorReason` on the mutation. It weakens the suite's own assertion rather than the subject; the property is established by the `databaseControls` entry below."
+  ],
   "declared": {
-    "total": 11,
-    "killed": 11,
-    "survived": 0,
+    "total": 14,
+    "killed": 13,
+    "survived": 1,
     "anchorMissing": 0,
     "equivalent": 0,
-    "note": "Eleven mutations, eleven killed, zero survivors and zero declared equivalent. M03 is the one worth reading twice: it survived the whole repository before this tranche."
+    "note": "Fourteen mutations, thirteen killed, ONE survivor \u2014 M14, which mutates an assertion rather than the subject and is compensated by the database control above. M03 is the one worth reading twice: it deletes the `isError` check and, before this tranche, it SURVIVED the entire repository."
+  },
+  "databaseControls": {
+    "what": "The non-vacuity control for the ancestry claim, run out of band against the same native PostgreSQL 17.10: migrate a scratch schema, seed two tenants, and attempt the incoherent EnvironmentEntityTool insert twice \u2014 once with `EnvironmentEntityTool_ancestry` enabled and once with it disabled.",
+    "why": "Without it the suite could be attributing the refusal to the wrong object. If the insert had ALSO failed with the trigger off, something else would be guarding the pair and every sentence naming that trigger would be wrong.",
+    "result": {
+      "triggerEnabled": "REFUSED code=23514 message=EnvironmentEntityTool crosses its canonical owner ancestry",
+      "triggerDisabled": "ACCEPTED"
+    },
+    "conclusion": "The named trigger is precisely and solely what refuses the incoherent pair. It is installed by 00000000000000_initial/migration.sql over enforce_domain_ancestry() and redefined by 20260824233000_m4_forward_upgrade_contract; NONE of it is visible in schema.prisma, which is why the hypothesis this suite was written to confirm survived reading the schema."
   }
 }

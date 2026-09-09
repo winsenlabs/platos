@@ -560,7 +560,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // WIN-268 (M4.2) 8 -> 9 with the `end_users` FORGED-scope tenancy proof
     // salvaged from the refused P3 branch, on the same existing
     // `apps-agent.test.suites` rule.
-    "apps-agent": 9,
+    // WIN-269 (M4.3) 9 -> 10 with
+    // `tool-gateway/registry-incoherent-pair-postgres.integration.test.ts`, the
+    // (entity, environment) pair proved against a real PostgreSQL, on the same
+    // existing `apps-agent.test.suites` rule. It is the suite that REFUTED its
+    // own hypothesis: the incoherent pair is refused by the
+    // `EnvironmentEntityTool_ancestry` trigger, which `schema.prisma` does not
+    // model and which a doubled client would have accepted. NO LEDGER RULE
+    // CHANGED.
+    "apps-agent": 10,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1924,7 +1932,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // AND WIN-269's MUTATION LEDGER 1705 -> 1706. ONE file, `root-infra`,
   // itemised on that area's delta above: 9 + 0 + 80 + 4 + 10 + 1505 + 23 + 75
   // = 1706.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1706);
+  //
+  // AND WIN-269's REAL-DATABASE PAIR PROOF 1706 -> 1707. ONE file,
+  // `apps-agent`, itemised on that area's delta above:
+  // 10 + 0 + 80 + 4 + 10 + 1505 + 23 + 75 = 1707.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1707);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2128,7 +2140,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND WIN-269's MUTATION LEDGER 1705 -> 1706 -- the NINETEENTH hand move.
     // The same one `root-infra` file, reached here by summing the per-area
     // counts. 1705 + 1 = 1706.
-    rulesDocument.baseline.totalFiles + 1706
+    //
+    // AND WIN-269's REAL-DATABASE PAIR PROOF 1706 -> 1707 -- the TWENTIETH hand
+    // move. The same one `apps-agent` file, reached here by summing the per-area
+    // counts instead of reading the total. 1706 + 1 = 1707.
+    rulesDocument.baseline.totalFiles + 1707
   );
 });
 

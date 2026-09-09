@@ -87,8 +87,16 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // root and every published contract on each run, and `--check` fails when the
   // tree and the file disagree. A dated snapshot is precisely what it must not
   // be. POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
-  assert.equal(manifest.entryCount, 254, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, and the WIN-268 MCP store-ownership register");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 228, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  // WIN-269 (M4.3): 254 -> 256 and ACCEPTED 228 -> 230. BOTH additions are the
+  // TOOL LIFECYCLE's ORM register -- the JSON receipt and its rendered note --
+  // and both are ACCEPTED for the reason its WIN-268 sibling above is, plus one
+  // of their own: as well as re-deriving every site on each run, the artifact
+  // classifies every slot of `ToolsDependencies` against the composition root,
+  // so the claim "composing `tools` takes these things" is re-measured rather
+  // than recorded on a date. POINT-IN-TIME, SUPERSEDED-BY and DRAFT are
+  // unchanged.
+  assert.equal(manifest.entryCount, 256, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, and the WIN-269 tool-lifecycle register");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 230, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);
