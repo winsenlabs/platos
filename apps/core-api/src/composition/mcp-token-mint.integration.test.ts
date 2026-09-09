@@ -88,9 +88,22 @@ const ENTITY = "cccccccc-0009-4000-8000-000000000009";
 const ADMIN = "cccccccc-0004-4000-8000-000000000004";
 const OUTSIDER = "cccccccc-0005-4000-8000-000000000005";
 const MEMBERSHIP = "cccccccc-0006-4000-8000-000000000006";
+/**
+ * A REAL MEMBER OF THE ORGANIZATION WHO IS NOT AN ADMIN.
+ *
+ * The outsider above proves a refusal at gate 2 — no membership at all — and a
+ * route asking for `metadata` would refuse them too, so the outsider alone
+ * cannot tell the two access levels apart. This member passes gates 1, 2 and 3
+ * and is refused ONLY by gate 4, which is the gate that narrows
+ * `secret:mutate`. Without this fixture a mint that asked for `metadata` would
+ * pass every case in this file.
+ */
+const MEMBER = "cccccccc-000a-4000-8000-00000000000a";
+const MEMBER_MEMBERSHIP = "cccccccc-000b-4000-8000-00000000000b";
 
 const ADMIN_TOKEN = "win268-p1-admin-session-token";
 const OUTSIDER_TOKEN = "win268-p1-outsider-session-token";
+const MEMBER_TOKEN = "win268-p1-member-session-token";
 const IMPERSONATION_TOKEN = "win268-p1-impersonation-session-token";
 
 const PLATFORM_MINT = "/mcp/platform/tokens";
@@ -245,12 +258,19 @@ beforeAll(async () => {
   });
   await store.users.upsertByEmail(asIdentifier("p1-admin@example.test"), asIdentifier(ADMIN));
   await store.users.upsertByEmail(asIdentifier("p1-outsider@example.test"), asIdentifier(OUTSIDER));
+  await store.users.upsertByEmail(asIdentifier("p1-member@example.test"), asIdentifier(MEMBER));
   await store.unitOfWork.run(async (transaction) => {
     // OWNER, because gate 4 narrows `secret:mutate` to an organization admin or
     // a project ADMIN. A member who could READ this environment and not mint in
     // it is the distinction the mints ask for and a `metadata` route does not.
     await store.saveOrganizationMembership(
       { id: asIdentifier(MEMBERSHIP), organizationId: asIdentifier(ORGANIZATION), userId: asIdentifier(ADMIN), role: "OWNER", deactivatedAt: null, createdAt: AT, updatedAt: AT } as never,
+      transaction,
+    );
+    // MEMBER, not OWNER, and no project membership at all: gates 1-3 pass and
+    // gate 4 refuses. See the constant's own note.
+    await store.saveOrganizationMembership(
+      { id: asIdentifier(MEMBER_MEMBERSHIP), organizationId: asIdentifier(ORGANIZATION), userId: asIdentifier(MEMBER), role: "MEMBER", deactivatedAt: null, createdAt: AT, updatedAt: AT } as never,
       transaction,
     );
   });
@@ -274,6 +294,9 @@ beforeAll(async () => {
   await store.operatorSessions.save(session("cccccccc-1001-4000-8000-000000000001", ADMIN_TOKEN, {}));
   await store.operatorSessions.save(
     session("cccccccc-1002-4000-8000-000000000002", OUTSIDER_TOKEN, { userId: asIdentifier(OUTSIDER) }),
+  );
+  await store.operatorSessions.save(
+    session("cccccccc-1003-4000-8000-000000000003", MEMBER_TOKEN, { userId: asIdentifier(MEMBER) }),
   );
   await store.operatorSessions.save(
     session("cccccccc-1005-4000-8000-000000000005", IMPERSONATION_TOKEN, {
@@ -484,7 +507,38 @@ describe("WIN-268 P1 — the two mints are served, and served exactly once", () 
     });
     expect(errorCode(answer)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
     expect(answer.status).toBe(committedStatus("TENANCY_ENVIRONMENT_FORBIDDEN"));
+    // A DIFFERENT GATE from the member case above: this one holds no membership
+    // at all, so the refusal happens two gates earlier. One code, two gates, and
+    // the pair is what makes each case falsifiable.
+    const details = (answer.body["error"] as Record<string, unknown>)["details"] as
+      | Record<string, unknown>
+      | undefined;
+    expect(details?.["gate"]).toBe("organization-membership");
     expect(await observe(`SELECT count(*) FROM "McpToken" WHERE "name" = 'outsider key'`)).toEqual(["0"]);
+  });
+
+  it("refuses an ORGANIZATION MEMBER at gate 4, and names a DIFFERENT gate than the outsider", async () => {
+    // THE CASE THAT SEPARATES `secret:mutate` FROM `metadata`. This operator is
+    // a real, active member of the organization that owns the environment: they
+    // pass gate 1 (the environment exists and is unarchived), gate 2 (they hold
+    // an active organization membership) and gate 3 (they hold no conflicting
+    // project membership). A route that asked for `metadata` would let them
+    // through, and they would walk away with a ninety-day credential.
+    const answer = await call(PLATFORM_MINT, {
+      token: MEMBER_TOKEN,
+      key: "win268-p1-member",
+      body: platformBody("member key"),
+    });
+    expect(errorCode(answer)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
+    // AND THE GATE IS THE ONE THAT NARROWS SECRET MUTATION. The outsider case
+    // below reaches the SAME code at a different gate, so a route that had
+    // dropped to `metadata` would move this string and not that one — which is
+    // the whole reason `details.gate` exists.
+    const details = (answer.body["error"] as Record<string, unknown>)["details"] as
+      | Record<string, unknown>
+      | undefined;
+    expect(details?.["gate"]).toBe("secret-mutate-role");
+    expect(await observe(`SELECT count(*) FROM "McpToken" WHERE "name" = 'member key'`)).toEqual(["0"]);
   });
 
   it("refuses a mint from an IMPERSONATED session under its own code", async () => {
