@@ -1581,4 +1581,45 @@ describe("WIN-268 P2 — the mcp-platform strangler ratchet", () => {
     assert.ok(pass.fileCount > 0, "the ratchet pass scanned nothing; the root moved or the selector drifted");
     assert.deepEqual(pass.violations, [], "the ratchet pass reports a violation on the committed tree");
   });
+
+  it("MUTATION: the ratchet pass can REPORT, not merely stay silent", () => {
+    // ADDED BECAUSE THE CASE ABOVE SURVIVED A MUTATION. Replacing
+    // `ratchetPass`'s filter with a literal `violations: []` left every
+    // assertion in this file green: the case above asserts the pass is EMPTY on
+    // a clean tree, and a pass that is empty on every tree satisfies it exactly.
+    // A gate that cannot be shown to fire is a gate that is off, and this
+    // repository has paid for that shape once already.
+    //
+    // So the pass is driven over a FIXTURE that contains a real violation, and
+    // the violation is named. The filter now has to actually pass something
+    // through, and `violations: []` turns this red.
+    const offending = fixture({
+      "apps/agent/src/mcp-platform/permission-gateway.service.ts":
+        `import { PRISMA_TOKEN } from "../shared/database.provider";\nexport const t = PRISMA_TOKEN;\n`,
+    });
+    const pass = ratchetPass(offending);
+    assert.equal(pass.fileCount, 1, "the fixture pass must see exactly the one file it was given");
+    assert.deepEqual(
+      pass.violations.map((violation) => `${violation.rule}:${violation.from}`),
+      ["mcp-platform-service-no-prisma:apps/agent/src/mcp-platform/permission-gateway.service.ts"],
+      "the ratchet pass did not report a violation it was handed",
+    );
+
+    // AND THE FILTER IS A FILTER, not a pass-through. The same fixture carries a
+    // file that violates a DIFFERENT rule — a context importing an adapter —
+    // and the ratchet pass must not report it: this pass makes no claim about
+    // the strangler's other rules, and one that leaked them would fail on
+    // `apps/agent`'s 800-odd remaining ORM call sites the day it ran.
+    const mixed = fixture({
+      "apps/agent/src/mcp-platform/permission-gateway.service.ts":
+        `import { PRISMA_TOKEN } from "../shared/database.provider";\nexport const t = PRISMA_TOKEN;\n`,
+      "packages/contexts/tools/domain/tool.ts":
+        `import { PrismaClient } from "@prisma/client";\nexport const x = new PrismaClient();\n`,
+    });
+    assert.deepEqual(
+      [...new Set(ratchetPass(mixed).violations.map((violation) => violation.rule))],
+      ["mcp-platform-service-no-prisma"],
+      "the ratchet pass leaked a rule it does not own",
+    );
+  });
 });
