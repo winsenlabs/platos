@@ -212,6 +212,22 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL integration suite for the composition root. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
   }),
   Object.freeze({
+    // WIN-267 R1 — the identity REST suite. It is the operator-authentication
+    // entry above with an HTTP server on the end, and it reads the environment
+    // in exactly the same ONE place and for the same reason: `prisma migrate
+    // deploy` is a spawned process and needs PATH.
+    //
+    // THE SEVEN CONFIGURATION VARIABLES IT SETS ARE NOT READS. They are a plain
+    // object handed to `loadPlatformConfiguration`, so the process under test
+    // takes nothing from the machine it happens to run on — and a suite that had
+    // reached for `process.env` for them would have shown up as a SECOND read
+    // here, which is what makes this pin worth having.
+    path: "apps/core-api/src/composition/identity-rest.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL integration suite for the V1 REST surface. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+  }),
+  Object.freeze({
     path: "packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts",
     role: "test-support",
     reads: 1,
@@ -458,8 +474,18 @@ export const VIOLATION_CODES = Object.freeze({
  * so no variable is READ from `process.env` and no new door is opened. A suite
  * that had reached for the ambient environment instead would move this table and
  * fail the gate. 1620 + 1 = 1621.
+ *
+ * WIN-267 R1 1621 -> 1635. FOURTEEN files, all under `apps/core-api/src`: nine
+ * transport modules, `http/api-surface.ts`, three suites and the HTTP
+ * integration suite. THE DECLARED TABLE GAINS EXACTLY ONE ENTRY and it is that
+ * integration suite, for the identical reason the operator-authentication suite
+ * above has one: it spawns the ORM's CLI to apply the repository's own
+ * migrations, and the CLI needs the inherited environment to run at all. The
+ * OTHER THIRTEEN open no door — the routes take their configuration from the
+ * composed `AppModule` they are handed, which is the whole point of a
+ * composition root. 1621 + 14 = 1635.
  */
-export const EXPECTED_FILE_COUNT = 1621;
+export const EXPECTED_FILE_COUNT = 1635;
 
 function listSourceFiles(root) {
   const found = [];

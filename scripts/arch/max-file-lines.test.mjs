@@ -855,7 +855,16 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `governance-read-seams.ts` holding all three seams would have been 260.
   // SUMMED FOR THE INTEGRATION: 1572 + 2 (G1) + 6 (G2) = 1580, and the
   // ADAPTERS term is still the only one that moves.
-  assert.equal(result.fileCount, 1580);
+  //
+  // WIN-267 R1 1580 -> 1593, AND IT IS THE FIRST TRANCHE SINCE T2 IN WHICH THE
+  // ADAPTERS TERM DOES NOT MOVE AT ALL. Both app selectors move instead, which
+  // is the shape of a transport tranche: +11 under
+  // `apps/core-api/src/transports/**` (five controllers, four shared transport
+  // modules, and two suites) and +2 under `apps/core-api/src/http/**`
+  // (`api-surface.ts` and its suite). The integration suite it also adds is in
+  // `src/composition/`, which NO selector scans, so it is deliberately absent
+  // from both terms. 1580 + 11 + 2 = 1593.
+  assert.equal(result.fileCount, 1593);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -888,7 +897,17 @@ test("the live selectors scan an exact nonzero source census", () => {
       // long-standing selector, and adding nothing to any other term: the three
       // ports were already declared by the context and the composition root's
       // rows are edits.
-      6
+      6 +
+      // WIN-267 R1: THIRTEEN, and none of them an adapter. ELEVEN under
+      // `apps/core-api/src/transports/**` — `identity-session`,
+      // `organizations`, `projects`, `environment-end-users` and `bff/session`
+      // controllers, the `operator`, `dependencies`, `body` and `resources`
+      // modules they share, and the `route-manifest` and `identity-rest`
+      // suites — plus TWO under `apps/core-api/src/http/**`, `api-surface.ts`
+      // and `api-surface.test.ts`. The V1 REST surface has no adapter half at
+      // all: every route reaches a published contract, which is why the term
+      // that has moved in every WIN-267 tranche since T2 is flat here.
+      11 + 2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1039,7 +1058,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // SUMMED: 441 + 2 (G1) + 6 (G2) = 449.
   //   ADAPTERS        449
   // 27 + 1075 + 449 + 13 + 16 = 1580.
-  assert.equal(result.fileCount, 27 + 1075 + 449 + 13 + 16);
+  //
+  // WIN-267 R1 MOVES THE TWO APP TERMS AND NOTHING ELSE, which is the mirror
+  // claim of every adapter tranche above: APPS-HTTP 13 -> 15 and
+  // APPS-TRANSPORTS 16 -> 27. Kernel, contexts and adapters are byte-for-byte
+  // the same scan — the surface is built entirely out of published contracts, so
+  // no adapter directory changed shape, and the two contexts it serves were
+  // edited nowhere. 27 + 1075 + 449 + 15 + 27 = 1593.
+  assert.equal(result.fileCount, 27 + 1075 + 449 + 15 + 27);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

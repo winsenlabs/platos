@@ -132,3 +132,40 @@ export function parsePageQuery(query: QueryInput): Result<PageRequest> {
   if (violations.length > 0 || limit === null) return err(requestInvalid(violations));
   return ok({ cursor, limit });
 }
+
+/**
+ * A collection the CONTRACT does not page, refusing a caller who asked for a page
+ * of it.
+ *
+ * WIN-267 R1. `listOperatorOrganizations` and `listVisibleProjects` take an
+ * operator and nothing else: there is no limit, no offset and no cursor anywhere
+ * in `TenancyContract`, because "my organizations" is bounded by how many
+ * organizations one human belongs to. A transport cannot invent a window over
+ * them without either doing the paging itself — holding a rule the contract does
+ * not have — or lying about one.
+ *
+ * SO A `?limit=` HERE IS REFUSED, NOT IGNORED. Ignoring it is the same failure
+ * WIN-236 closed one shape along: a caller who asked for five rows, received
+ * twelve and was told `limit: 12` has been answered a question they did not ask,
+ * and no status code told them so. M0.4 §1's unknown-tolerance rule is about what
+ * a READER must accept in a response; it has never licensed a server to accept an
+ * instruction it cannot carry out.
+ *
+ * `unsupported` and not `malformed`: the value may be perfectly well-formed. What
+ * is wrong is that this operation has no page to apply it to.
+ */
+export function refuseUnpagedQuery(query: QueryInput): Result<null> {
+  const violations: FieldViolation[] = [];
+  for (const field of ["limit", "cursor"] as const) {
+    if (query[field] === undefined) continue;
+    violations.push(
+      violation(
+        `query.${field}`,
+        "unsupported",
+        "This collection is not paged: it answers with every row the operator can see.",
+      ),
+    );
+  }
+  if (violations.length > 0) return err(requestInvalid(violations));
+  return ok(null);
+}

@@ -231,7 +231,21 @@ test("MUTATION: an excluded file that has vanished fails rather than excluding n
   assert.ok(r.failures.some((f) => f.includes("is not on disk")), r.failures.join("\n"));
 });
 
-test("BASELINE: the live tree's scan roots reconcile, and the core-api root is present and empty", () => {
+test("BASELINE: the live tree's scan roots reconcile, and the core-api root now CARRIES the V1 surface", () => {
+  // THE ROOT IS NO LONGER EMPTY, AND THAT IS WHY IT WAS DECLARED EARLY.
+  //
+  // This case used to assert `core.sourceControllers === 0` and
+  // `core.manifestOperations === 0`, with the comment on SCAN_ROOTS explaining
+  // that the root was declared while empty "so the FIRST route to land is counted
+  // by this census rather than discovered by a reader months later". WIN-267 R1
+  // is that first landing, and the count moved by itself: nothing in this file or
+  // in `rest-census-independent.mjs` was told about it.
+  //
+  // THE ARITHMETIC. Five controllers under `apps/core-api/src/transports` carry
+  // EIGHT route decorators, none of them multi-mounted, so 8 decorators x 1 base
+  // path = 8 expanded operations, and the committed manifest attributes 8 to that
+  // root. The agent root is untouched at 300. 300 + 8 = 308, which is the
+  // manifest's own `summary.restOperations`.
   const roots = scanRootReport();
   const r = reconcileScanRoots(roots, processEdgeReport(), manifestCensus(), independentCensus(roots));
   assert.equal(r.ok, true, r.failures.join("\n"));
@@ -240,9 +254,11 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root is p
   assert.equal(agent.manifestOperations, 300);
   assert.equal(agent.expandedOperations, 300);
   assert.equal(core.present, true, "the declared core-api transport root must exist on disk");
-  assert.equal(core.sourceControllers, 0);
-  assert.equal(core.manifestOperations, 0);
-  assert.equal(agent.manifestOperations + core.manifestOperations, 300);
+  assert.equal(core.sourceControllers, 5);
+  assert.equal(core.sourceDecorators, 8);
+  assert.equal(core.expandedOperations, 8);
+  assert.equal(core.manifestOperations, 8);
+  assert.equal(agent.manifestOperations + core.manifestOperations, 308);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {
