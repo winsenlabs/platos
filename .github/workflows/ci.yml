@@ -161,6 +161,8 @@ jobs:
           pnpm test:error-taxonomy
           pnpm audit:secret-response-census
           pnpm test:secret-response-census
+          pnpm audit:mcp-store-ownership
+          pnpm test:mcp-store-ownership
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
           pnpm test:advisory

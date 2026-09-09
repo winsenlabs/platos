@@ -357,6 +357,61 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     );
   });
 
+  it("(k2) transport-reaches-no-store: the transport tree reaches no store, by any route", () => {
+    // 1. THE INDIRECTION, which is why this rule exists. The legacy MCP surface
+    //    reaches Prisma through a Nest provider module and names no ORM package
+    //    at all. A module moved into `transports/` carrying that import holds a
+    //    live client.
+    const viaProvider = fixture({
+      "apps/core-api/src/transports/mcp/tokens.controller.ts":
+        `import { PRISMA_TOKEN } from "../../../../agent/src/shared/database.provider";\nexport const t = PRISMA_TOKEN;\n`,
+    });
+    assert.ok(
+      has(check(viaProvider), "transport-reaches-no-store"),
+      "a transport importing the legacy database provider must fire",
+    );
+    // AND THE PRE-EXISTING RULE DOES NOT SEE IT. This is the falsifiable reason
+    // the new rule is not redundant: delete it and this import goes unnoticed.
+    assert.ok(
+      !has(check(viaProvider), "tenancy-prisma-only"),
+      "the package-name rule cannot see an import that names no package",
+    );
+
+    // 2. THE DIRECT IMPORT, which both rules catch. Kept so the new rule is not
+    //    accidentally narrowed to the indirection alone.
+    const direct = fixture({
+      "apps/core-api/src/transports/rest/projects.controller.ts":
+        `import { PrismaClient } from "@prisma/client";\nexport const c = new PrismaClient();\n`,
+    });
+    assert.ok(has(check(direct), "transport-reaches-no-store"), "a direct ORM import must fire");
+
+    // 3. THE GENERATED WORKSPACE PACKAGE, by workspace path.
+    const workspace = fixture({
+      "apps/core-api/src/transports/mcp/acl.controller.ts":
+        `import type { PolicyEffect } from "@platos/tenancy-database";\nexport type E = PolicyEffect;\n`,
+    });
+    assert.ok(has(check(workspace), "transport-reaches-no-store"), "the workspace client must fire");
+
+    // 4. ANY apps/agent MODULE, provider or not — a transport that reached into
+    //    the deployable this surface is moving OUT of would make apps/agent a
+    //    dependency of apps/core-api.
+    const legacyService = fixture({
+      "apps/core-api/src/transports/mcp/entity.controller.ts":
+        `import { McpToolAclService } from "../../../../agent/src/mcp-platform/mcp-tool-acl.service";\nexport const s = McpToolAclService;\n`,
+    });
+    assert.ok(has(check(legacyService), "transport-reaches-no-store"), "reaching apps/agent must fire");
+
+    // 5. THE COMPLIANT SHAPE: read the system through the composed AppModule.
+    const good = fixture({
+      "apps/core-api/src/transports/mcp/tokens.controller.ts":
+        `import type { AppModule } from "../../app.module.js";\nexport const mint = (a: AppModule) => a.contexts.identityAccess;\n`,
+    });
+    assert.ok(
+      !has(check(good), "transport-reaches-no-store"),
+      "reading through the composed AppModule must pass",
+    );
+  });
+
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
     // M2 INTEGRATION DELTA — 104 -> 948. Twelve adopting slices make disjoint

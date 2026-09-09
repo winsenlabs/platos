@@ -435,6 +435,49 @@ export const RULES = [
     },
   },
 
+  // (k2) WIN-268 (M4.2) — THE MCP TRANSPORT TREE REACHES NO STORE, BY ANY ROUTE.
+  //
+  // WHY A SECOND RULE WHEN `tenancy-prisma-only` ALREADY EXISTS. That rule bans
+  // the Prisma PACKAGES — `@prisma/*`, `prisma`, `@platos/tenancy-database` and
+  // the workspace directory that generates them — from everything outside the two
+  // homes entitled to hold a client, and `apps/core-api` is inside its scan. It
+  // is right and it is not sufficient, because it is a rule about NAMES and the
+  // legacy MCP surface does not reach the store by name:
+  //
+  //     import { PRISMA_TOKEN, type ControlDatabaseClient }
+  //       from "../shared/database.provider";
+  //
+  // Twenty of the twenty-one legacy files carrying an ORM site import it that
+  // way. A module moved into `transports/mcp/` that brought that import along
+  // would name no banned package, satisfy `tenancy-prisma-only`, and hold a live
+  // Prisma client — which is precisely the failure this tranche exists to close
+  // rather than relocate. The indirection is the thing being banned, so the
+  // indirection has to be named.
+  //
+  // IT ALSO BANS `apps/agent` OUTRIGHT, and that clause is not decoration. The
+  // provider above is one module in that tree; a transport reaching for any of
+  // its services would be reaching past the composed `AppModule` into the
+  // deployable the surface is moving OUT of, and `apps/agent` is not a dependency
+  // of `apps/core-api` and must not become one.
+  //
+  // THE `from` SIDE IS THE WHOLE TRANSPORT TREE and not just `transports/mcp/`.
+  // `transports/rest/` sits under the same budget and the same shape rule, and a
+  // rule scoped to one subdirectory would invite the next surface to be moved one
+  // directory sideways.
+  {
+    id: "transport-reaches-no-store",
+    severity: "error",
+    comment:
+      "apps/core-api/src/transports/** reads the system through the composed AppModule: no ORM package, no legacy database provider, no apps/agent module.",
+    from: { path: "^apps/core-api/src/transports/" },
+    to: {
+      path:
+        "^(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))" +
+        "|internal-packages/(database|tenancy-database)(?:/|$)" +
+        "|apps/agent(?:/|$))",
+    },
+  },
+
   // (l) CONTEXT REGISTRY — packages/contexts/<name>/ must be one of the 17
   // contexts named in ADR M0.3 §4. Judged per FILE, not per import edge, so a
   // rogue package with no imports at all still fails. Without it, the DAG rule
