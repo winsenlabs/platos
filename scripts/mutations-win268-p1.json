@@ -3,7 +3,7 @@
   "issue": "WIN-268",
   "tranche": "P1 \u2014 version the MCP surface and serve its two one-time-secret mints",
   "branch": "tejas/win-268-p1-mcp-versioning",
-  "base": "3b3f1ebb (v1, M4.1)",
+  "base": "3b3f1ebb (v1, M4.1); mutations run at 340da1e3",
   "purpose": [
     "P1 has two halves and each has a different way of being wrong.",
     "",
@@ -180,7 +180,7 @@
     {
       "name": "M10 the mint asks for metadata instead of secret:mutate",
       "guards": "tenancy gate 4",
-      "why": "COMPILES, TYPE-CHECKS, AND EVERY UNIT CASE STAYS GREEN. An organization member who may only READ the environment walks away with a ninety-day credential. It survived every case in the suite until the gate-4 fixture was added, which is why that fixture exists.",
+      "why": "COMPILES, TYPE-CHECKS, AND EVERY UNIT CASE STAYS GREEN. An operator who may only READ the environment walks away with a ninety-day credential. It survived every case in the suite until a gate-4 fixture was added, and the FIRST version of that fixture was wrong twice over \u2014 an organization MEMBER with no project membership is refused at gate 3, and `details.gate` is log-only and never reaches the wire. The case that kills it proves the gate with a SECOND ROUTE at a different access level: the member is answered by `GET /api/v1/environments/:id/end-users` (`metadata`) and refused by the mint (`secret:mutate`); the outsider is refused by both.",
       "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
       "command": "mint-integration",
       "exit": 1,
@@ -321,9 +321,12 @@
   "declared": [
     "TWENTY mutations, TWENTY killed, ZERO survivors.",
     "",
-    "ELEVEN ran on the laptop (M01-M09, M13, M14, M19, M20 \u2014 thirteen commands, two",
-    "of which are re-runs of M19 under a different command) and NINE needed",
-    "containers and ran on the mini (M10, M11, M12, M15, M16, M17, M18).",
+    "ELEVEN ran on the laptop (M01-M09, M13, M14, M19, M20) and NINE needed",
+    "containers and ran on the mini (M10, M11, M12, M15, M16, M17, M18) against",
+    "pgvector/pgvector:pg16 and redis:7-alpine.",
+    "",
+    "M10 WAS RE-RUN after the case that kills it was rewritten twice \u2014 see its",
+    "entry \u2014 and is killed at 340da1e3, which is the head this ledger describes.",
     "",
     "WHAT IS NOT MUTATED, AND WHY. The Entity MCP server's tools/list is left",
     "alone: its catalog is DISCOVERED from the entity's own downstream endpoint and",
