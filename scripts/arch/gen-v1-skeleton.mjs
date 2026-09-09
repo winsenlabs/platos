@@ -398,7 +398,26 @@ export const ADAPTERS = [
   },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "one namespaced keyspace, one owner" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "the model-provider clients" },
-  { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "one channel client" },
+  {
+    dir: "channel-slack",
+    port: "ChannelAdapter",
+    owner: "channels",
+    // WIN-271 (M4.5). THE SECOND BINDING ON THIS DIRECTORY, and the one that let
+    // it be constructed at all. `ChannelAdapter` describes the OUTBOUND half of
+    // a provider integration — post, describe an author, check a credential —
+    // and until this tranche the INBOUND half had no port: `admit-channel-event.ts`
+    // took a body "already signature-verified by the transport" and said so, so
+    // the one security decision on a PUBLIC endpoint sat outside the context
+    // that owns channels and was implemented twice in `apps/agent`.
+    //
+    // `ChannelRuntime` EXTENDS `ChannelAdapter`, so this is one object and one
+    // vendor client — the §15 shape, not an exception to it. It is two BINDINGS
+    // because they are two obligations, and `PORT_SATISFACTION` proves each
+    // independently: collapsing them would leave the compiler silent the day
+    // `verifyInbound` changed shape.
+    additional: [{ port: "ChannelRuntime", owner: "channels" }],
+    note: "one channel client, inbound and outbound",
+  },
   { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
   // WIN-259 (M2.4). THE THIRTEENTH DIRECTORY, and the first one added since the
@@ -799,8 +818,17 @@ export function adapterOwnerPackages(adapter) {
 // SUMMED FOR THE INTEGRATION: 54 + 3 (G2) + 1 (G1) = 57 + 1 = 58 bindings
 // over the SAME fifteen directories. Neither branch could state this
 // figure: G1 pinned 55 and G2 pinned 57, both over the same 54 base.
+//
+// WIN-271 (M4.5): 58 -> 59 bindings and the DIRECTORY pin does not move a
+// TWENTY-SECOND time. `channel-slack:ChannelRuntime` is the second row on an
+// EXISTING directory and is the §15 shape rather than an exception to it:
+// `ChannelRuntime` extends `ChannelAdapter`, so both rows are satisfied by one
+// object holding one vendor client. A second directory for the inbound half
+// would have been a second chat SDK install for the same provider, which is
+// exactly the arrangement §15 exists to refuse. This run is SERIAL, so the pin
+// moves once, to the value this tree produces.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 58;
+export const EXPECTED_BINDING_COUNT = 59;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -1149,6 +1177,7 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
   "packages/adapters/node-crypto-digest", // WIN-267 A1 — the identity-access SecretHasher: SHA-256 hex over the extraction source's own digests, a constant-time comparison, and RFC 7636's S256 challenge
   "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
+  "packages/adapters/channel-slack", // WIN-271 (M4.5) — the channels ChannelRuntime: Slack's own published request-verification vector, three distinguishable refusals over the exact received octets, and the outbound deadline that separates "did not land" from "do not know"
   "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
 ];
 
@@ -1606,6 +1635,22 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   "redis-ratelimit": {
     ioredis: "^5.6.1",
   },
+  // WIN-271 (M4.5). The chat SDK's Slack adapter, and the ONE place its version
+  // is written. `chat-sdk-only` in scripts/arch/boundary-rules.mjs names this
+  // directory as its only home in the V1 tree, so this table is what makes that
+  // permission real.
+  //
+  // THE SPECIFIER IS DELIBERATELY *NOT* BYTE-IDENTICAL TO `apps/agent`'s, which
+  // every other entry in this table is. WIN-271 asks for the audited 4.34 line
+  // to move toward current stable, "staged and rollbackable": this adapter takes
+  // ^4.40.0 and the legacy channel monolith in `apps/agent` — which this tranche
+  // does not touch — stays on ^4.34.0. Two lines, one version literal each.
+  // Rolling this half back is editing this one string; no source file under
+  // `packages/adapters/channel-slack/` names a version, because every SDK import
+  // goes through its `vendor.ts`.
+  "channel-slack": {
+    "@chat-adapter/slack": "^4.40.0",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -1646,6 +1691,16 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // read-and-increment atomic" is real concurrent consumers on a real server.
   "redis-ratelimit": {
     "@testcontainers/redis": "^10.28.0",
+  },
+  // WIN-271 (M4.5). The AUDITED line, under an alias, so the same fixtures can
+  // be asked of both builds in one process. A DEV dependency for the reason the
+  // three above are: an SDK the adapter does not run must not reach the
+  // production image or its SBOM. It is what makes the upgrade EVIDENCED rather
+  // than assumed — `sdk-upgrade.test.ts` asks 4.34.0 and 4.40 the same question
+  // about every provider fixture and every refusal and requires identical
+  // answers, with a negative control proving the comparison can fail.
+  "channel-slack": {
+    "@chat-adapter/slack-audited": "npm:@chat-adapter/slack@4.34.0",
   },
 };
 

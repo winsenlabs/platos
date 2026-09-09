@@ -82,6 +82,14 @@ const FULLY_DECLARED = Object.freeze({
   PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
   PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
   PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",
+  // WIN-271 (M4.5). The channels section's anchor, and the reason it is the
+  // SIGNING SECRET rather than a bot token is `config/channels.ts`'s own: an
+  // inbound channel is reachable from the public internet, so anchoring on the
+  // outbound token would let an install declare a channel it cannot verify. It
+  // is 64 characters because the field refuses anything under 32 — the shortest
+  // secret worth the name for an HMAC an attacker can grind offline against a
+  // body they chose.
+  PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
 });
 
 /** Nothing wired at all — the install part-way through setup that must boot. */
@@ -105,6 +113,11 @@ const GROUP_BUILDS: Readonly<Record<string, AdapterName>> = Object.freeze({
   "stores.redis": "redis-cache",
   "security.encryption": "keyring-envelope",
   "providers.modelRouter": "model-router-providers",
+  // WIN-271 (M4.5). The FIFTH group to name a directory, and the section had
+  // been waiting for it since WIN-297: `config/channels.ts` has anchored on the
+  // signing secret from the start, and until this tranche `channel-slack` was a
+  // generated interface with no constructor to hand it to.
+  "channels.slack": "channel-slack",
 });
 
 /**
@@ -156,6 +169,7 @@ function construct(env: Readonly<Record<string, string>>): AdapterConstruction {
     stores: value.stores,
     security: value.security,
     providers: value.providers,
+    channels: value.channels,
     clock: defaults.clock,
     correlation: null,
   });
@@ -278,6 +292,7 @@ describe("constructing the adapters an install declared", () => {
       stores: platform(NOTHING_DECLARED).stores,
       security: { session: null, encryption: { rootKey: "not-hexadecimal", rootKeyVersion: 3 } },
       providers: platform(NOTHING_DECLARED).providers,
+      channels: platform(NOTHING_DECLARED).channels,
       clock: createProcessDefaults(platform(NOTHING_DECLARED).core).clock,
       correlation: null,
     });
@@ -308,6 +323,7 @@ describe("constructing the adapters an install declared", () => {
         stores: platform(FULLY_DECLARED).stores,
         security: platform(NOTHING_DECLARED).security,
         providers: platform(NOTHING_DECLARED).providers,
+      channels: platform(NOTHING_DECLARED).channels,
         clock: createProcessDefaults(platform(NOTHING_DECLARED).core).clock,
         correlation: null,
       });
@@ -396,17 +412,27 @@ describe("readiness over what was actually constructed", () => {
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
-    expect(ADAPTER_BINDINGS).toHaveLength(58);
-    expect(unimplementable).toHaveLength(7);
+    // WIN-271 (M4.5): 58 -> 59 declared and 7 -> 6 unimplementable, and the two
+    // move in OPPOSITE directions for one reason. `channel-slack` gained a
+    // SECOND binding (`ChannelRuntime`, the inbound half no port covered) and
+    // simultaneously left `UNIMPLEMENTED_ADAPTERS`, so the directory's rows go
+    // from 1-unimplementable to 2-satisfiable: 58 + 1 = 59 declared, and
+    // 7 - 1 = 6 unimplementable. Satisfied therefore moves by THREE:
+    // 51 + 1 (the new row) + 2 (the two rows the directory now serves, minus
+    // the one it used to fail) — stated as 59 - 6 = 53 below and derived rather
+    // than written, so the two halves cannot drift.
+    expect(ADAPTER_BINDINGS).toHaveLength(59);
+    expect(unimplementable).toHaveLength(6);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
     // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
     // WIN-267 G1: 47 -> 48 of 54 -> 55. WIN-267 G2: 48 -> 51 of 55 -> 58.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(51);
+    // WIN-271 (M4.5): 51 -> 53 of 58 -> 59. See the subtraction above.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(53);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
-    // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(6);
+    // STILL RED, AND HONESTLY SO. Six ports have no implementation in this
     // build, so this process cannot serve the routes that need them. Going green
     // on "everything this install could have wired" would be comparing the
     // supply to itself.
@@ -446,7 +472,11 @@ describe("readiness over what was actually constructed", () => {
     const { app, verdict, construction } = readiness(FULLY_DECLARED);
     // 8 -> 7 (WIN-267 A3): one row per directory NOT built, and
     // `redis-ratelimit` is now built. The same subtraction as the case above.
-    expect(construction.unwired).toHaveLength(7);
+    // 7 -> 6 (WIN-271, M4.5): `channel-slack` is now built too, from the
+    // `channels.slack` group this fixture declares. It is a row per DIRECTORY,
+    // not per binding, so this number falls by one while the directory's two
+    // bindings move to the satisfied side.
+    expect(construction.unwired).toHaveLength(6);
     expect(app.unwired).toEqual(construction.unwired);
     expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });

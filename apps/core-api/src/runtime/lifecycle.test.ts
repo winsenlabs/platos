@@ -141,7 +141,15 @@ describe("the process starts and serves", () => {
     expect(messages).toContain("process.starting");
     expect(messages).toContain("process.started");
     const started = harness.lines().find((line) => line["message"] === "process.started");
-    expect(started).toMatchObject({ bindings: "0/58 adapter bindings satisfied", unsatisfied: 58 });
+    // WIN-271 (M4.5): 58 -> 59 DECLARED, and the satisfied count stays at ZERO —
+    // which is the case doing its job. This harness declares no configuration
+    // group at all, and `channel-slack` is built from `channels.slack`, so the
+    // directory leaving `UNIMPLEMENTED_ADAPTERS` moves the denominator here and
+    // must not move the numerator. A tranche that made an adapter satisfiable
+    // without configuration would fail here rather than quietly widening a
+    // number, which is exactly what `node-crypto-digest` and `tokenmint-totp`
+    // are NOT counted in above.
+    expect(started).toMatchObject({ bindings: "0/59 adapter bindings satisfied", unsatisfied: 59 });
   });
 });
 
@@ -175,7 +183,7 @@ describe("readiness tells the truth about what is wired", () => {
       headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
     });
     const body = (await response.json()) as { detail: { unsatisfiedBindings: string[]; declaredBindings: number } };
-    expect(body.detail.declaredBindings).toBe(58);
+    expect(body.detail.declaredBindings).toBe(59);
     // Named per BINDING (ADR M0.3 §15), so an operator reading a 503 learns
     // WHICH port is unserved rather than only which package is absent.
     expect(body.detail.unsatisfiedBindings).toContain("postgres-tenancy:TenancyRepository");

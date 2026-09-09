@@ -2450,7 +2450,25 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 353 + 3 + 158 = 514.
  */
 export const EXPECTED = Object.freeze({
-  "packages/adapters/channel-slack": { files: 0, cases: 0 },
+  // WIN-271 (M4.5). 0 -> 5 files, 0 -> 61 cases: the directory stops being a
+  // generated interface and becomes the channels `ChannelRuntime`.
+  //
+  // WHERE THE 61 ARE. slack-transport 16 (a REAL `node:http` far side that keeps
+  // its own record: a silent server whose deadline elapses while it holds the
+  // message, an operating-system connection refusal, a reconnect on the same
+  // port, and the four outcome codes proven distinguishable), slack-signature 15
+  // (SLACK'S OWN PUBLISHED request-verification vector, re-derived under
+  // `node:crypto` so a transcription error cannot hide, then that vector with
+  // ONE thing changed per case), normalize 13, signed-admission 11 (the whole
+  // inbound path with the real runtime behind the port, through the context's
+  // published harness), sdk-upgrade 6 (4.34.0 and 4.40 asked the same questions
+  // about the same fixtures, with a negative control).
+  //
+  // THE COUNT IS DOMINATED BY REFUSALS AND THAT IS DELIBERATE. This directory's
+  // job is to be correct when the far side misbehaves, so an emptied body would
+  // drop a refusal that a real socket or a published digest produced, not a
+  // repetition of a happy path.
+  "packages/adapters/channel-slack": { files: 5, cases: 61 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
   "packages/adapters/model-router-providers": { files: 15, cases: 198 },
@@ -2603,7 +2621,14 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/tokenmint-totp": { files: 7, cases: 136 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
-  "packages/contexts/channels": { files: 15, cases: 269 },
+  // WIN-271 (M4.5). 15 -> 16 files, 269 -> 274 cases: `domain/delivery.test.ts`,
+  // the disposition rule joined to `CHANNELS_ERROR_CODES` and to the mint
+  // functions rather than to a list retyped in the suite. The context gains NO
+  // case for `admit-signed-delivery.ts`: proving it needs a real
+  // `ChannelRuntime`, which lives in an adapter this package may not import, so
+  // its cases are the eleven in `channel-slack`'s `signed-admission` above,
+  // driven through the harness this context publishes from `application/testing/`.
+  "packages/contexts/channels": { files: 16, cases: 274 },
   "packages/contexts/conversations": { files: 29, cases: 350 },
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
   "packages/contexts/eventing": { files: 15, cases: 157 },
@@ -3533,7 +3558,16 @@ export const EXPECTED = Object.freeze({
 // WIN-269 (M4.3): 8145 + 4 = 8149 over 550 files — files UNCHANGED, because all
 // four cases land in a suite that already existed. They are the `DispatchTarget`
 // transport gap, itemised on the `packages/contexts/tools` row above.
-export const EXPECTED_RUNTIME_TOTAL = 8149;
+// WIN-271 (M4.5): 8149 + 66 = 8215 over 556 files (+6). The arithmetic, both
+// halves named: `packages/adapters/channel-slack` 0 -> 61 across 5 NEW files as
+// the directory stops being a generated interface, and
+// `packages/contexts/channels` 269 -> 274 across one new file,
+// `domain/delivery.test.ts`. 61 + 5 = 66; 5 + 1 = 6.
+//
+// THE THREE-WAY IDENTITY MOVES ON THE ADAPTERS TERM AND THE CONTEXTS TERM. Five
+// of the six new files are under `packages/adapters/`, one under
+// `packages/contexts/`, and `packages/kernel` is unmoved.
+export const EXPECTED_RUNTIME_TOTAL = 8215;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

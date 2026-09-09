@@ -386,6 +386,17 @@ module.exports = {
       }
     },
     {
+      "name": "chat-sdk-only",
+      "comment": "node_modules/(chat|@chat-adapter) may be imported only from its single owning adapter.",
+      "severity": "error",
+      "from": {
+        "pathNot": "^packages/adapters/channel-slack/"
+      },
+      "to": {
+        "path": "node_modules/(chat|@chat-adapter)"
+      }
+    },
+    {
       "name": "provider-sdk-only",
       "comment": "node_modules/(openai|@anthropic-ai) may be imported only from its single owning adapter.",
       "severity": "error",

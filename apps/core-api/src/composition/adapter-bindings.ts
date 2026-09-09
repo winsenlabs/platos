@@ -82,6 +82,7 @@ import type {
 } from "@platos/context-providers/application/ports/index.js";
 import type {
   ChannelAdapter,
+  ChannelRuntime,
   ChannelsRepository,
 } from "@platos/context-channels/application/ports/index.js";
 import type { NotificationRuleRepository } from "@platos/context-eventing/application/ports/index.js";
@@ -146,6 +147,7 @@ import type { RedisStreamsAdapter } from "@platos/adapter-redis-streams";
 import type { ModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
 import { createModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
+import { createChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
@@ -155,6 +157,7 @@ import { createNodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-diges
 import type { TokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
 import { createTokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
 
+import type { ChannelsConfiguration } from "../config/channels.js";
 import type { ProvidersConfiguration } from "../config/providers.js";
 import type { SecurityConfiguration } from "../config/security.js";
 import type { StoresConfiguration } from "../config/stores.js";
@@ -549,6 +552,15 @@ interface PortSatisfaction {
   readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
   readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
   readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
+  // WIN-271 (M4.5). The SECOND port on this directory, and the one that made the
+  // directory worth constructing. `ChannelRuntime` extends `ChannelAdapter`, so
+  // one object satisfies both — stated as TWO obligations for the reason
+  // `keyring-envelope`'s three are stated as three: a missing obligation is not
+  // a wrong one, and collapsing them would leave the compiler silent the day
+  // `verifyInbound` changed shape. Proven against the ADAPTER rather than
+  // through a property, because `send`, `describePrincipal`, `verifyCredential`
+  // and `verifyInbound` are four names with no collision.
+  readonly "channel-slack:ChannelRuntime": Satisfies<ChannelSlackAdapter, ChannelRuntime>;
   readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
   readonly "notifier-webhook:Notifier": Satisfies<NotifierWebhookAdapter, Notifier>;
   // WIN-259 M2.4. `secrets`' THREE cryptography ports, every one proven against
@@ -644,6 +656,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "redis-streams:EventBus": true,
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
+  "channel-slack:ChannelRuntime": true,
   "notifier-email:Notifier": true,
   "notifier-webhook:Notifier": true,
   "keyring-envelope:KeyRing": true,
@@ -1122,6 +1135,12 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // filled, and its `IDENTITY_ACCESS_UNASSEMBLED` sentence names one.
   Object.freeze({ adapter: "tokenmint-totp", port: "TokenMinter", owner: "identity-access" }),
   Object.freeze({ adapter: "tokenmint-totp", port: "TotpCodeVerifier", owner: "identity-access" }),
+  // WIN-271 (M4.5). The FIFTY-FOURTH binding, and the SECOND on `channel-slack`
+  // — appended at the END for the reason every row above it was: every ordinal
+  // already written stays true. `ChannelRuntime` extends `ChannelAdapter`, so
+  // the directory's two rows are one object; they are two rows because they are
+  // two obligations, and `PORT_SATISFACTION` proves each independently.
+  Object.freeze({ adapter: "channel-slack", port: "ChannelRuntime", owner: "channels" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1196,7 +1215,11 @@ export const UNIMPLEMENTED_ADAPTERS: readonly AdapterName[] = Object.freeze([
   // directory dropped from here without gaining a `create*Adapter` fails, and
   // one that gained a factory and stayed here fails too.
   "redis-streams",
-  "channel-slack",
+  // WIN-271 (M4.5) — `channel-slack` LEFT THIS LIST, the second directory ever
+  // to do so. Rule (C7) is what makes the removal honest: it reads this list
+  // back and joins it to `packages/adapters/channel-slack/src/index.ts`, so a
+  // directory dropped from here without gaining a `create*Adapter` fails, and
+  // one that gained a factory and stayed here fails too.
   "notifier-email",
   "notifier-webhook",
 ]);
@@ -1216,17 +1239,23 @@ export interface UnwiredAdapter {
 /**
  * What an install hands the constructor, narrowed to what it actually reads.
  *
- * THREE of the six validated sections and two kernel ports — not the whole
+ * FOUR of the six validated sections and two kernel ports — not the whole
  * `PlatformConfiguration`. The `core` section is the process's own (port, host,
- * log level, timeouts) and no adapter reads it; `channels` and `durable` belong
- * to two of the eight directories that have no constructor to hand them to.
- * Taking the whole object would have made this signature claim it consumed
- * things it does not.
+ * log level, timeouts) and no adapter reads it; `durable` belongs to a directory
+ * that still has no constructor to hand it to. Taking the whole object would
+ * have made this signature claim it consumed things it does not.
+ *
+ * WIN-271 (M4.5) ADDED `channels`, and the section was already waiting for it.
+ * `config/channels.ts` has anchored its Slack group on the SIGNING SECRET since
+ * WIN-297 — deliberately, so that "the channel is wired" and "the channel can
+ * tell a real caller from a forged one" are one statement — and until this
+ * tranche there was nothing to hand it to.
  */
 export interface AdapterConstructionInput {
   readonly stores: StoresConfiguration;
   readonly security: SecurityConfiguration;
   readonly providers: ProvidersConfiguration;
+  readonly channels: ChannelsConfiguration;
   /** Injected, never ambient: the outbox stamps every event's time from it. */
   readonly clock: Clock;
   /**
@@ -1426,6 +1455,32 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     const router = createModelRouterProvidersAdapter({});
     if (router.ok) adapters["model-router-providers"] = router.value;
     else faults.push(`model-router-providers could not be constructed: ${router.error.code}`);
+  }
+
+  // WIN-271 (M4.5). THE ANCHOR IS THE SIGNING SECRET AND NOT A BOT TOKEN, which
+  // is `config/channels.ts`'s own decision and the reason this arm can be
+  // written at all. An inbound channel is reachable from the public internet and
+  // the only thing that makes a request on it trustworthy is the signature;
+  // anchoring on the outbound token would let an install declare a channel it
+  // cannot verify, and the process would boot, answer, and accept every forged
+  // request. The per-installation BOT TOKEN is deliberately not here — it is a
+  // row in the `channels` store, one per customer, read per call.
+  if (input.channels.slack === null) {
+    decline(
+      "channel-slack",
+      "configuration",
+      "PLATOS_CHANNELS_SLACK_SIGNING_SECRET is not set, so the channels.slack group is undeclared",
+    );
+  } else {
+    // TOTAL OVER ITS OPTIONS, so no `Result` and no `faults` row: there is
+    // nothing to parse, no pool to open and no credential to validate. The
+    // signing secret is not handed over here — it travels per delivery, on the
+    // command, the same way a bot token travels per send — so this constructor
+    // reads only the replay window, which `config/channels.ts` has already
+    // bounded to 1..3600 seconds.
+    adapters["channel-slack"] = createChannelSlackAdapter({
+      requestMaxAgeSeconds: input.channels.slack.requestMaxAgeSeconds,
+    });
   }
 
   for (const adapter of UNIMPLEMENTED_ADAPTERS) {

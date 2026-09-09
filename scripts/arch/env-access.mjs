@@ -538,8 +538,35 @@ export const VIOLATION_CODES = Object.freeze({
  * takes ONE read for the same reason the two suites beside it in the table do:
  * `prisma migrate deploy` is a spawned process and needs the inherited PATH.
  * Seven files landed and one door was opened.
+ *
+ * WIN-271 (M4.5): 1644 + 19 = 1663, and NOT ONE DOOR IS OPENED.
+ *
+ * FOURTEEN are net-new under `packages/adapters/channel-slack/src` — the
+ * directory held two generated placeholders and now holds sixteen files, so the
+ * NET is fourteen. Nine of the sixteen are production (`adapter`, `vendor`,
+ * `verify`, `normalize`, `provider`, `failure`, `send`, `index`) plus two test
+ * supports (`published-vector`, `fixtures`) and `far-side`, the real `node:http`
+ * server the outbound suites drive; five are suites.
+ *
+ * The other FIVE are under `packages/contexts/channels`: the `ChannelRuntime`
+ * port, the `admitSignedDelivery` use case, the inbound conformance harness, the
+ * delivery-disposition rule and its suite.
+ *
+ * NONE OF THEM READS THE ENVIRONMENT, and that is the property this gate is for
+ * rather than an accident of how they were written. The adapter takes its API
+ * host, its deadline and its replay window as CONSTRUCTION OPTIONS with
+ * defaults, and the composition root fills the last of them from
+ * `PLATOS_CHANNELS_SLACK_REQUEST_MAX_AGE_S` through `config/channels.ts` — which
+ * is the one place in this deployable entitled to read a variable. An
+ * `apiUrl` an operator could set would be an exfiltration primitive for every
+ * outbound channel message, so it is deliberately in-process only and this gate
+ * is what keeps that true. `far-side.ts` binds a real socket on loopback and
+ * still reads nothing: its port is chosen by the operating system and handed
+ * back, not configured.
+ *
+ * Nineteen files landed and no door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1644;
+export const EXPECTED_FILE_COUNT = 1663;
 
 function listSourceFiles(root) {
   const found = [];

@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FIFTY-EIGHT bindings across ADR M0.3 §4's FIFTEEN adapter directories", () => {
+  it("declares FIFTY-NINE bindings across ADR M0.3 §4's FIFTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -213,8 +213,16 @@ describe("the declared binding table", () => {
     // `packages/adapters/durable-runtime` -- would have moved BOTH counts and
     // decided a supplier question that directory's own configuration group
     // already answers with an external API URL.
-    expect(ADAPTER_BINDINGS).toHaveLength(58);
-    expect(DECLARED_BINDING_COUNT).toBe(58);
+    //
+    // WIN-271 (M4.5) ADDS ONE ROW AND NO DIRECTORY, 58 -> 59, and it is the
+    // same property from the other side. `channels:ChannelRuntime` is the SECOND
+    // port on `channel-slack` and it is satisfied by the SAME object holding the
+    // SAME vendor client — `ChannelRuntime` extends `ChannelAdapter`, so the two
+    // rows are one implementation. A second directory for the inbound half would
+    // have been a second chat SDK install for one provider, which is the
+    // arrangement §15 exists to refuse. Directories unmoved at 15.
+    expect(ADAPTER_BINDINGS).toHaveLength(59);
+    expect(DECLARED_BINDING_COUNT).toBe(59);
     expect(ADAPTER_NAMES).toHaveLength(15);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
@@ -271,7 +279,13 @@ describe("the declared binding table", () => {
     const multiPort = [...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter))].filter(
       (adapter) => ADAPTER_BINDINGS.filter((binding) => binding.adapter === adapter).length > 1,
     );
+    // FOUR -> FIVE (WIN-271, M4.5). `channel-slack` joins in the shape
+    // `tokenmint-totp` has: multi-PORT without being multi-OWNER, both rows
+    // owned by `channels`. The list is NAMED rather than counted, so a sixth
+    // directory quietly gaining a second port fails this case instead of
+    // widening a number.
     expect(multiPort.sort()).toEqual([
+      "channel-slack",
       "keyring-envelope",
       "postgres-tenancy",
       "redis-cache",
@@ -409,9 +423,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(58);
+    expect(report.unsatisfied).toHaveLength(59);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/58 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/59 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -438,7 +452,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(57);
+    expect(report.unsatisfied).toHaveLength(58);
 
     expect(report.faults).toEqual([]);
   });
@@ -468,7 +482,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(58);
+    expect(app.bindings.unsatisfied).toHaveLength(59);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -509,7 +523,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(57);
+    expect(app.bindings.unsatisfied).toHaveLength(58);
 
   });
 

@@ -240,6 +240,12 @@ describe("the built binary refuses to start on a bad section", () => {
       PLATOS_SECURITY_SESSION_SECRET: "s".repeat(32),
       PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
       PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",
+      // WIN-271 (M4.5). The channels section's anchor. It is here for the same
+      // reason every variable above it is: this case is the END-TO-END
+      // observation of what a fully declared install actually wires, read off a
+      // real socket on a real spawned binary, and an install that declared
+      // everything BUT the channel would be reporting a different fact.
+      PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
     });
     const port = await awaitListening(spawned);
     expect(port).toBeGreaterThan(0);
@@ -303,14 +309,20 @@ describe("the built binary starts, serves and stops", () => {
       PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
       PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
       PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",
+      // WIN-271 (M4.5). The channels section's anchor. It is here for the same
+      // reason every variable above it is: this case is the END-TO-END
+      // observation of what a fully declared install actually wires, read off a
+      // real socket on a real spawned binary, and an install that declared
+      // everything BUT the channel would be reporting a different fact.
+      PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
     });
     const port = await awaitListening(spawned);
 
     const response = await fetch(`http://127.0.0.1:${port}/readyz`, {
       headers: { authorization: `Bearer ${token}` },
     });
-    // STILL 503, and that is the honest answer: seven directories are generated
-    // interfaces, so seven bindings cannot be satisfied by any configuration and
+    // STILL 503, and that is the honest answer: six directories are generated
+    // interfaces, so six bindings cannot be satisfied by any configuration and
     // this process cannot serve the routes that need them.
     //
     // 41/8 -> 42/7 (WIN-267 A3). `redis-ratelimit` is the first directory ever
@@ -329,8 +341,8 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(58);
-    expect(body.detail.satisfiedBindings).toHaveLength(51);
+    expect(body.detail.declaredBindings).toBe(59);
+    expect(body.detail.satisfiedBindings).toHaveLength(53);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -344,7 +356,15 @@ describe("the built binary starts, serves and stops", () => {
     // count moves by two while the declared count moves by one, and the
     // UNSATISFIED remainder falls from eight to SEVEN: `redis-ratelimit` is the
     // first directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("51 of 58 adapter bindings are satisfied; 7 are not");
+    // WIN-271 (M4.5): 51/58 -> 53/59, and the two figures move by DIFFERENT
+    // amounts again — the same shape WIN-267 A3 had, for the same kind of
+    // reason. `channel-slack` DECLARES one new binding (`ChannelRuntime`, the
+    // inbound half no port covered) and simultaneously IMPLEMENTS the directory,
+    // whose `ChannelAdapter` binding has been unsatisfiable since the skeleton
+    // was generated. So declared moves by one and satisfied by two, and the
+    // unsatisfied remainder falls from seven to SIX: `channel-slack` is the
+    // SECOND directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
+    expect(body.reason).toBe("53 of 59 adapter bindings are satisfied; 6 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -372,12 +392,12 @@ describe("the built binary starts, serves and stops", () => {
     ]);
     expect(body.detail.composedContexts).not.toContain("governance");
     // And every remaining directory says which kind of gap it is.
-    expect(body.detail.unwiredAdapters).toHaveLength(7);
+    expect(body.detail.unwiredAdapters).toHaveLength(6);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("51/58 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("53/59 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;
@@ -454,6 +474,12 @@ describe("the built binary starts, serves and stops", () => {
       `  stores: { postgres: null, redis: { url: "redis://127.0.0.1:1", keyPrefix: "p", tls: false }, clickhouse: null, objectstore: null },`,
       `  security: { session: null, encryption: null },`,
       `  providers: { modelRouter: null },`,
+      // WIN-271 (M4.5). Declared as ABSENT, deliberately. This case is about the
+      // EVENT LOOP: nothing here may hold it open after `release()`. A
+      // constructed `channel-slack` would not — it opens no socket and holds no
+      // timer between calls — but proving that is a different case, and the
+      // instrument stays sharpest with exactly one adapter under observation.
+      `  channels: { slack: null, emailNotifier: null, webhookNotifier: null },`,
       `  clock: { now: () => new Date() },`,
       `  correlation: null,`,
       `});`,

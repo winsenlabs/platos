@@ -219,6 +219,13 @@
         "channels"
       ]
     },
+    "CHANNELS_DELIVERY_INDETERMINATE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "channels"
+      ]
+    },
     "CHANNELS_ERASURE_PLAN_FOREIGN": {
       "category": "precondition_failed",
       "status": 412,
@@ -275,6 +282,13 @@
         "channels"
       ]
     },
+    "CHANNELS_PROVIDER_UNSUPPORTED": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
     "CHANNELS_REFRESH_LOST": {
       "category": "conflict",
       "status": 409,
@@ -320,6 +334,27 @@
     "CHANNELS_ROUTING_UNRESOLVED": {
       "category": "precondition_failed",
       "status": 412,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_SIGNATURE_ABSENT": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_SIGNATURE_INVALID": {
+      "category": "unauthenticated",
+      "status": 401,
+      "contexts": [
+        "channels"
+      ]
+    },
+    "CHANNELS_SIGNATURE_STALE": {
+      "category": "unauthenticated",
+      "status": 401,
       "contexts": [
         "channels"
       ]
@@ -3057,6 +3092,14 @@
   },
   "uniformGuards": [
     {
+      "file": "packages/adapters/channel-slack/src/verify.ts",
+      "function": "verifySlackDelivery",
+      "code": "CHANNELS_SIGNATURE_STALE",
+      "sites": 2,
+      "shapes": 1,
+      "reason": "Two guards, ONE fact for the caller: the instant this delivery claims is not one this process will act on. One refuses a timestamp that is not a decimal integer at all and the other refuses one whose distance from receipt exceeds the replay window, and they MUST be indistinguishable -- an endpoint that told a caller which of the two fired would be handing a forger a probe for the window's width and for the parser's shape, one request at a time. The operator repair after both is the same and is named by the CODE rather than by the message: check the clock, or widen PLATOS_CHANNELS_SLACK_REQUEST_MAX_AGE_S deliberately."
+    },
+    {
       "file": "packages/adapters/keyring-envelope/src/legacy-envelope-reader.ts",
       "function": "decodeDottedTriple",
       "code": "LEGACY_ENVELOPE_UNREADABLE",
@@ -3118,7 +3161,7 @@
       "code": "CHANNELS_REFRESH_NOT_CLAIMABLE",
       "sites": 2,
       "shapes": 1,
-      "reason": "'Not refreshing at all' and 'refreshing but not yet stale' are one instruction to the caller — do not reclaim this lease — and the error already carries refreshState in details, which is the field that separates them for an operator."
+      "reason": "'Not refreshing at all' and 'refreshing but not yet stale' are one instruction to the caller \u2014 do not reclaim this lease \u2014 and the error already carries refreshState in details, which is the field that separates them for an operator."
     },
     {
       "file": "packages/contexts/cost-monitoring/application/configure-budget.ts",
@@ -3142,7 +3185,7 @@
       "code": "COST_THRESHOLD_INVALID",
       "sites": 2,
       "shapes": 1,
-      "reason": "Both raises interpolate the offending value into the message and pass it in details, so the two guards — not an integer, and out of range — are distinguishable in the payload even though the constructor call is identical."
+      "reason": "Both raises interpolate the offending value into the message and pass it in details, so the two guards \u2014 not an integer, and out of range \u2014 are distinguishable in the payload even though the constructor call is identical."
     },
     {
       "file": "packages/contexts/eventing/domain/destination.ts",
@@ -3190,7 +3233,7 @@
       "code": "GOVERNANCE_RATING_VALUE_INVALID",
       "sites": 2,
       "shapes": 1,
-      "reason": "A rating is +1 or -1. 'Not an integer' and 'an integer that is not one of the two' are one fact — this is not a rating — and the offending value travels in the error."
+      "reason": "A rating is +1 or -1. 'Not an integer' and 'an integer that is not one of the two' are one fact \u2014 this is not a rating \u2014 and the offending value travels in the error."
     },
     {
       "file": "packages/contexts/governance/domain/safety-observation.ts",
@@ -3238,7 +3281,7 @@
       "code": "INVALID_MFA_CODE",
       "sites": 3,
       "shapes": 1,
-      "reason": "REQUIRED to be uniform. No enrolled secret, wrong digits, and a counter another request advanced first are one answer by design — the last is a replay, and naming it would confirm that the code presented was otherwise correct."
+      "reason": "REQUIRED to be uniform. No enrolled secret, wrong digits, and a counter another request advanced first are one answer by design \u2014 the last is a replay, and naming it would confirm that the code presented was otherwise correct."
     },
     {
       "file": "packages/contexts/memory/domain/scope.ts",
@@ -3326,7 +3369,7 @@
       "code": "TENANCY_NOT_FOUND",
       "sites": 2,
       "shapes": 1,
-      "reason": "Two closures in one factory — resolveEnvironmentScope and describeTenant — each refuse an unknown environment. They are two readings of one fact, not two guards in one decision; the scan sees one function because the closures share the factory body."
+      "reason": "Two closures in one factory \u2014 resolveEnvironmentScope and describeTenant \u2014 each refuse an unknown environment. They are two readings of one fact, not two guards in one decision; the scan sees one function because the closures share the factory body."
     },
     {
       "file": "packages/contexts/tenancy/domain/authorization.ts",

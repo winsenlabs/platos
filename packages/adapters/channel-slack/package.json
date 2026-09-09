@@ -2,7 +2,7 @@
   "name": "@platos/adapter-channel-slack",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the channels ChannelRuntime port.",
+  "description": "Implements the channels ChannelAdapter port and the channels ChannelRuntime port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",

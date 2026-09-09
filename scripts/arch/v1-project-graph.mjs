@@ -338,6 +338,28 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   "packages/adapters/redis-ratelimit": {
     ioredis: "^5.6.1",
   },
+  // WIN-271 (M4.5). The chat SDK's Slack adapter, declared in the ONE directory
+  // ADR M0.3 §4 gives it — the same second half of the cutting rule every entry
+  // around it states. `chat-sdk-only` in scripts/arch/boundary-rules.mjs says
+  // the SDK may only be IMPORTED here; this line is where it may only be
+  // DECLARED here, so a context cannot put it in its own manifest and pass the
+  // import rule by never importing it.
+  //
+  // THE RANGE IS DELIBERATELY NOT BYTE-IDENTICAL TO `apps/agent`'s, and this is
+  // the only entry in this table of which that is true. Every other one is
+  // pinned to the legacy specifier precisely so extraction cannot become a
+  // supply-chain change; WIN-271 asks for the opposite here, a STAGED move of
+  // the audited 4.34 line toward current stable. So the lockfile really does
+  // gain a resolution: the V1 adapter runs ^4.40.0, the legacy monolith stays on
+  // ^4.34.0, and `sdk-upgrade.test.ts` asks both builds the same questions about
+  // the same fixtures and requires identical answers.
+  //
+  // `@chat-adapter/slack-audited` — the 4.34.0 alias that differential runs
+  // against — is deliberately NOT here, for the reason `@testcontainers/redis`
+  // is not: it is a devDependency and this axis is about what SHIPS.
+  "packages/adapters/channel-slack": {
+    "@chat-adapter/slack": "^4.40.0",
+  },
   "packages/adapters/model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",

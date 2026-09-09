@@ -164,6 +164,7 @@ beforeAll(async () => {
     stores: platform.value.stores,
     security: platform.value.security,
     providers: platform.value.providers,
+    channels: platform.value.channels,
     clock: defaults.clock,
     correlation: null,
   });

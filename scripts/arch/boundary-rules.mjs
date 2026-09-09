@@ -191,6 +191,25 @@ export const SDK_CONTAINMENT = [
     source: "node_modules/(minio|@aws-sdk)",
   },
   {
+    // WIN-271 (M4.5). ADR M0.3 §1 makes `channels` the "sole holder of Slack/etc
+    // SDKs behind `ChannelAdapter`" and §5.1(h) pins each vendor client to one
+    // adapter directory. Until this tranche `packages/adapters/channel-slack`
+    // was a generated interface, so the rule had nothing to protect and the SDK
+    // lived — correctly, for a strangler — in `apps/agent`, which this scan does
+    // not reach. It has something to protect now.
+    //
+    // THE SOURCE MATCHES BOTH THE SCOPE AND THE FRAMEWORK. `@chat-adapter/*` is
+    // the per-provider surface and `chat` is the framework underneath it; a rule
+    // naming only the scope would let a context import the framework's own
+    // types and re-introduce exactly the coupling §1 exists to cut. The `-audited`
+    // ALIAS resolves under the same scope, so the 4.34 build the upgrade
+    // differential runs against is contained by the same rule and needs no
+    // exception.
+    id: "chat-sdk-only",
+    home: "^packages/adapters/channel-slack/",
+    source: "node_modules/(chat|@chat-adapter)",
+  },
+  {
     id: "provider-sdk-only",
     home: MODEL_ROUTER_ADAPTER,
     source: "node_modules/(openai|@anthropic-ai)",
