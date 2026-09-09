@@ -216,7 +216,15 @@ describeWithDatabase("macros.replay parameter round trip through PostgreSQL", ()
     // replayed with `{}` and still reported the step ok, so `ok: true` alone is
     // not evidence — the arguments the tool actually saw are.
     received.length = 0;
-    const replayed = await call("macros.replay", { macroId, params: { release: "v9", stage: "canary" } });
+    // `${var.release}` resolves through `resolvePath(params, "var.release")`, so
+    // the substitution source is keyed by the WHOLE dotted path — nested here,
+    // flat in the case below. A source keyed `{ release }` resolves nothing and
+    // the placeholder survives, which is the documented fail-open and is pinned
+    // in its own case rather than left as a surprise.
+    const replayed = await call("macros.replay", {
+      macroId,
+      params: { var: { release: "v9", stage: "canary" } },
+    });
 
     expect(replayed.result.stepCount).toBe(1);
     expect(replayed.result.results[0].ok).toBe(true);
@@ -229,9 +237,37 @@ describeWithDatabase("macros.replay parameter round trip through PostgreSQL", ()
     });
   });
 
+  it("REPLAY: the flat dotted key form resolves identically", async () => {
+    // `resolvePath` documents both spellings as interchangeable. Only one of
+    // them is exercised anywhere else, so a change to the flat fallback would
+    // otherwise break Postman-style callers silently.
+    received.length = 0;
+    await call("macros.replay", {
+      macroId,
+      params: { "var.release": "v10", "var.stage": "production" },
+    });
+    expect(received).toHaveLength(1);
+    expect(received[0].body).toBe("deploy v10 to production");
+  });
+
+  it("REPLAY: an unresolved placeholder survives rather than becoming empty", async () => {
+    // Documented fail-open. A conversion that "helpfully" substituted an empty
+    // string would send `deploy  to ` and report the step ok — the same shape as
+    // the defect this file exists to pin.
+    received.length = 0;
+    await call("macros.replay", { macroId, params: { unrelated: "x" } });
+    expect(received).toHaveLength(1);
+    expect(received[0].body).toBe("deploy ${var.release} to ${var.stage}");
+  });
+
   it("REPLAY: nested and array values survive the round trip unflattened", async () => {
-    // The `options` object above is the part a Json read that answers a shallow
-    // value would lose while still producing a plausible-looking call.
+    // The `options` object is the part a Json read that answers a shallow value
+    // would lose while still producing a plausible-looking call. Replayed fresh
+    // rather than reading `received` from a previous case, so the order of the
+    // cases in this file cannot make the assertion vacuous.
+    received.length = 0;
+    await call("macros.replay", { macroId, params: { var: { release: "v9", stage: "canary" } } });
+    expect(received).toHaveLength(1);
     expect(received[0].options).toEqual({ retries: 2, tags: ["urgent", "release"], dryRun: false });
     expect(Array.isArray((received[0].options as any).tags)).toBe(true);
   });
