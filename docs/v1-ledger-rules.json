@@ -2108,7 +2108,7 @@
     ]
   },
   "expected": {
-    "totalFiles": 5176,
+    "totalFiles": 5187,
     "areaCounts": {
       "apps-agent": 524,
       "apps-core-api": 91,
@@ -2116,24 +2116,24 @@
       "apps-webapp": 183,
       "docs-content": 743,
       "internal-packages": 1174,
-      "packages": 2142,
-      "root-infra": 311
+      "packages": 2150,
+      "root-infra": 314
     },
     "kindCounts": {
       "asset": 155,
-      "config": 313,
+      "config": 314,
       "doc": 612,
       "fixture": 6,
       "generated": 46,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2086,
-      "test": 1045
+      "source": 2093,
+      "test": 1048
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1656,
+      "move-refactor": 1667,
       "regenerate": 41,
       "retain": 3470,
       "unresolved": 2
@@ -2233,7 +2233,7 @@
       "packages.adapters.fixture": 3,
       "packages.adapters.source": 266,
       "packages.adapters.test": 185,
-      "packages.config.build": 28,
+      "packages.config.build": 29,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
       "packages.contexts.source": 718,
@@ -2246,10 +2246,10 @@
       "packages.kernel.test": 6,
       "packages.legal.attribution": 11,
       "packages.python.metadata": 4,
-      "packages.python.sources": 36,
-      "packages.source.typescript": 297,
+      "packages.python.sources": 39,
+      "packages.source.typescript": 299,
       "packages.style.sheet": 1,
-      "packages.test.suites": 61,
+      "packages.test.suites": 63,
       "packages.tooling.scripts": 1,
       "root-infra.automation.renovate": 1,
       "root-infra.build.workspace": 6,
@@ -2272,12 +2272,12 @@
       "root-infra.pin.public-proxy-example": 1,
       "root-infra.pin.submodule-index": 1,
       "root-infra.release.changesets": 15,
-      "root-infra.test.harness": 69,
+      "root-infra.test.harness": 70,
       "root-infra.test.script-suites": 34,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 106,
+      "root-infra.tooling.scripts": 108,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "8064849126ba9b95f929a80d0825a5e5ae6ba08cdd24fd1930c9e2510427e57f"
+    "classificationSha256": "0798148eedec43cf93ac19789cd832e14d0086ae518934d75197b367c192aadf"
   }
 }
