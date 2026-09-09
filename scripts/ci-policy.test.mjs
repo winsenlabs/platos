@@ -150,6 +150,14 @@ const v1ReleaseGateCommands = [
   // that is gone.
   "pnpm audit:mcp-store-ownership",
   "pnpm test:mcp-store-ownership",
+  // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
+  // the `end_users` tenancy conjunction: every relation the presence clause names
+  // must resolve to a model that carries the organization ancestry rule. The
+  // dynamic half is a real-database suite that cannot run in this job, so without
+  // these two lines a relation could be added to that clause — widening which
+  // rows an MCP caller can reach across tenants — with nothing in CI to see it.
+  "pnpm audit:end-user-presence-ancestry",
+  "pnpm test:end-user-presence-ancestry",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -372,6 +380,14 @@ const expectedV1EvidenceCommands = [
   // that is gone.
   "pnpm audit:mcp-store-ownership",
   "pnpm test:mcp-store-ownership",
+  // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
+  // the `end_users` tenancy conjunction: every relation the presence clause names
+  // must resolve to a model that carries the organization ancestry rule. The
+  // dynamic half is a real-database suite that cannot run in this job, so without
+  // these two lines a relation could be added to that clause — widening which
+  // rows an MCP caller can reach across tenants — with nothing in CI to see it.
+  "pnpm audit:end-user-presence-ancestry",
+  "pnpm test:end-user-presence-ancestry",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:advisory",
@@ -2374,10 +2390,12 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      context is composed, and the per-file disposition naming what each is
   //      waiting on. It is the artifact the rest of M4.2 is measured against, and
   //      like the census above it nothing but its own gate can see it go stale.
-  // 26 + 2 + 4 + 2 = 34.
+  //   +2 WIN-268 (M4.2): end-user-presence-ancestry (audit + test), the static
+  //      half of the `end_users` cross-tenant conjunction.
+  // 26 + 2 + 4 + 2 + 2 = 36.
   assert.equal(
     v1ReleaseGateCommands.length,
-    34,
+    36,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census and the MCP store-ownership register"
   );
   assert.equal(
@@ -4582,12 +4600,15 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   release gate list, so each gains the same `|| true` control -- the same
   //   shape as the M2 INTEGRATION +4 immediately above, and for the same reason.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 = 369. The count is pinned rather
+  //   WIN-268 (M4.2), +2 more. audit/test:end-user-presence-ancestry join the
+  //   same V1 release gate list, so each gains the same `|| true` control.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 = 371. The count is pinned rather
   // than derived so that a control silently disappearing is a failure rather
   // than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    369,
+    371,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

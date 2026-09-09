@@ -120,6 +120,8 @@
     "audit:secret-response-census": "node scripts/arch/secret-response-census.mjs",
     "generate:secret-response-census": "node scripts/arch/secret-response-census.mjs --write",
     "test:secret-response-census": "node --test scripts/arch/secret-response-census.test.mjs",
+    "audit:end-user-presence-ancestry": "node scripts/arch/end-user-presence-ancestry.mjs",
+    "test:end-user-presence-ancestry": "node --test scripts/arch/end-user-presence-ancestry.test.mjs",
     "audit:mcp-store-ownership": "node scripts/arch/mcp-store-ownership.mjs --check",
     "generate:mcp-store-ownership": "node scripts/arch/mcp-store-ownership.mjs --write",
     "test:mcp-store-ownership": "node --test scripts/arch/mcp-store-ownership.test.mjs",
