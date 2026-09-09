@@ -40,10 +40,15 @@ import type { RequestScope } from "../../auth/scope.guard";
 
 vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
+// NO `DATABASE_URL` FALLBACK, DELIBERATELY. `apps/agent/test/setup.ts` stamps
+// `postgresql://test:test@localhost:5432/platos_test` into every worker so unit
+// tests can read `env.*` without a database. A suite that fell back to it would
+// find a truthy URL, decide it had a database, and fail its `beforeAll` with
+// `role "test" does not exist` on every machine that has no PostgreSQL — turning
+// a skip into a red. Only an EXPLICIT integration URL runs this suite.
 const baseDatabaseUrl =
   process.env.END_USER_TENANCY_TEST_DATABASE_URL ??
-  process.env.PLATOS_POSTGRES_INTEGRATION_DATABASE_URL ??
-  process.env.DATABASE_URL;
+  process.env.PLATOS_POSTGRES_INTEGRATION_DATABASE_URL;
 
 // A SKIP HAS TO BE VISIBLE. A suite that quietly reports green with no database
 // is exactly how a tranche reported 218/218 and merged two regressions, so a
@@ -52,7 +57,7 @@ const baseDatabaseUrl =
 if (process.env.END_USER_TENANCY_REQUIRED === "1" && !baseDatabaseUrl) {
   throw new Error(
     "END_USER_TENANCY_REQUIRED=1 but no database URL is set; " +
-      "export END_USER_TENANCY_TEST_DATABASE_URL (or DATABASE_URL) to run this suite",
+      "export END_USER_TENANCY_TEST_DATABASE_URL or PLATOS_POSTGRES_INTEGRATION_DATABASE_URL",
   );
 }
 
