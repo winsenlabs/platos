@@ -15,6 +15,7 @@ import { McpBearerTokenService } from "../mcp-platform/mcp-bearer-token.service"
 import { McpEntityController } from "../mcp-platform/mcp-entity.controller";
 import { McpPlatformController } from "../mcp-platform/mcp-platform.controller";
 import { McpToolAclService } from "../mcp-platform/mcp-tool-acl.service";
+import { EntityToolPolicyStore } from "../mcp-platform/entity-tool-policy.store";
 import { PlatosMCPTokenService } from "../mcp-platform/token.service";
 import { ConversationService } from "../memory/conversation.service";
 
@@ -1058,7 +1059,10 @@ describeWithPostgres("WIN-234 non-browser completion evidence", () => {
     });
 
     it("converges concurrent ACL writes to one canonical policy and recovers by replay", async () => {
-      const acl = new McpToolAclService(prisma);
+      // WIN-268 P2 — the service takes its ORM seam, not the client. The store
+      // is the same object the Nest module provides, so this suite still
+      // exercises the real statements against real PostgreSQL.
+      const acl = new McpToolAclService(new EntityToolPolicyStore(prisma));
       const value = controller<McpEntityController>(McpEntityController.prototype, {
         prisma,
         toolAclService: acl,
