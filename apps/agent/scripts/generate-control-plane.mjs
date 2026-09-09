@@ -1195,6 +1195,24 @@ function escapeCell(value) {
   return String(value).replaceAll("|", "\\|").replaceAll("\n", " ");
 }
 
+// The line break inside a Markdown table cell, written MDX-legally.
+//
+// WHY THIS IS A CONSTANT AND WHY IT IS SELF-CLOSING. `docs/` is validated by
+// `pnpm audit:docs-build` -> `mintlify validate`, which parses these tables as
+// MDX rather than as CommonMark. MDX has no void elements: a bare `<br>` is an
+// unclosed JSX tag, and validation fails with "Expected a closing tag for
+// `<br>` ... before the end of `tableData`".
+//
+// Both call sites join a LIST into one cell, so before an operation had two
+// implementations every join produced a single element and the separator was
+// never emitted. The two MCP token mints are the first operations served by
+// BOTH deployables, which is what first put a separator on the page and turned
+// `audit:docs-build` red. The MCP-tool table below has the same latent shape:
+// it stays single-valued today, so it never printed one either. Naming the
+// separator once means the next multi-valued cell — from either table — cannot
+// reintroduce the bare tag.
+const CELL_BREAK = "<br />";
+
 function buildReport(manifest) {
   const { mcpTools, restOperations } = manifest.inventories;
   const lines = [
@@ -1232,7 +1250,7 @@ function buildReport(manifest) {
           : `\`${operation.policyRule}\``
       } | ${operation.implementations
         .map((implementation) => `\`${implementation.source}#${implementation.handler}\``)
-        .join("<br>")} |`
+        .join(CELL_BREAK)} |`
     );
   }
   lines.push(
@@ -1245,7 +1263,7 @@ function buildReport(manifest) {
   for (const tool of mcpTools) {
     lines.push(
       `| \`${tool.name}\` | ${tool.classification} | ${
-        tool.restMappings.map((route) => `\`${escapeCell(route)}\``).join("<br>") || "—"
+        tool.restMappings.map((route) => `\`${escapeCell(route)}\``).join(CELL_BREAK) || "—"
       } | ${tool.requiresAdminTier ? "admin" : "scope"} | \`${tool.source}\` |`
     );
   }
