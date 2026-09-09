@@ -1,0 +1,1230 @@
+{
+  "scanRoot": "apps/agent/src/mcp-platform/tools",
+  "generatedBy": "scripts/arch/mcp-tool-store-reach.mjs",
+  "composedContexts": [
+    "identity-access",
+    "providers",
+    "secrets",
+    "tenancy"
+  ],
+  "totals": {
+    "files": 14,
+    "writes": 22,
+    "reads": 47,
+    "delegateCalls": 69,
+    "unattributable": 0,
+    "owners": 10,
+    "routableCallSites": 41,
+    "unroutableCallSites": 28,
+    "routableOnAComposedOwner": 4
+  },
+  "blockers": {
+    "hostApp": "apps/agent/package.json",
+    "contextDependenciesDeclared": [],
+    "compositionRootFile": "apps/core-api/src/composition/adapter-bindings.ts",
+    "hostAppIsCompositionRoot": false
+  },
+  "files": [
+    {
+      "file": "admin.ts",
+      "writes": 0,
+      "reads": 3,
+      "unattributable": 0,
+      "owners": [
+        "agents",
+        "tenancy"
+      ]
+    },
+    {
+      "file": "alert_channels.ts",
+      "writes": 6,
+      "reads": 7,
+      "unattributable": 0,
+      "owners": [
+        "cost-monitoring"
+      ]
+    },
+    {
+      "file": "channel-apps.ts",
+      "writes": 0,
+      "reads": 1,
+      "unattributable": 0,
+      "owners": [
+        "agents"
+      ]
+    },
+    {
+      "file": "channels.ts",
+      "writes": 0,
+      "reads": 2,
+      "unattributable": 0,
+      "owners": [
+        "agents"
+      ]
+    },
+    {
+      "file": "end-users.ts",
+      "writes": 3,
+      "reads": 9,
+      "unattributable": 0,
+      "owners": [
+        "conversations",
+        "identity-access"
+      ]
+    },
+    {
+      "file": "entities.ts",
+      "writes": 2,
+      "reads": 3,
+      "unattributable": 0,
+      "owners": [
+        "identity-access",
+        "tools"
+      ]
+    },
+    {
+      "file": "jobs.ts",
+      "writes": 4,
+      "reads": 7,
+      "unattributable": 0,
+      "owners": [
+        "jobs"
+      ]
+    },
+    {
+      "file": "macros.ts",
+      "writes": 4,
+      "reads": 6,
+      "unattributable": 0,
+      "owners": [
+        "agents"
+      ]
+    },
+    {
+      "file": "mcp.ts",
+      "writes": 0,
+      "reads": 2,
+      "unattributable": 0,
+      "owners": [
+        "identity-access"
+      ]
+    },
+    {
+      "file": "orchestration.ts",
+      "writes": 2,
+      "reads": 1,
+      "unattributable": 0,
+      "owners": [
+        "tools"
+      ]
+    },
+    {
+      "file": "platos-control.ts",
+      "writes": 1,
+      "reads": 0,
+      "unattributable": 0,
+      "owners": [
+        "memory"
+      ]
+    },
+    {
+      "file": "providers.ts",
+      "writes": 0,
+      "reads": 1,
+      "unattributable": 0,
+      "owners": [
+        "providers"
+      ]
+    },
+    {
+      "file": "reflection.ts",
+      "writes": 0,
+      "reads": 4,
+      "unattributable": 0,
+      "owners": [
+        "conversations",
+        "governance",
+        "tenancy",
+        "tools"
+      ]
+    },
+    {
+      "file": "settings.ts",
+      "writes": 0,
+      "reads": 1,
+      "unattributable": 0,
+      "owners": [
+        "tenancy"
+      ]
+    }
+  ],
+  "reach": [
+    {
+      "model": "AgentBinding",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "agents",
+      "composed": false,
+      "route": null,
+      "missing": "describeAgentBinding",
+      "callSites": 3
+    },
+    {
+      "model": "AgentBinding",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "agents",
+      "composed": false,
+      "route": null,
+      "missing": "listAgentBindings",
+      "callSites": 1
+    },
+    {
+      "model": "Macro",
+      "method": "create",
+      "kind": "write",
+      "owner": "agents",
+      "composed": false,
+      "route": "stopRecording",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Macro",
+      "method": "delete",
+      "kind": "write",
+      "owner": "agents",
+      "composed": false,
+      "route": "removeMacro",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Macro",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "agents",
+      "composed": false,
+      "route": "describeMacro",
+      "missing": null,
+      "callSites": 5
+    },
+    {
+      "model": "Macro",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "agents",
+      "composed": false,
+      "route": "listMacros",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Macro",
+      "method": "update",
+      "kind": "write",
+      "owner": "agents",
+      "composed": false,
+      "route": "updateMacro",
+      "missing": null,
+      "callSites": 2
+    },
+    {
+      "model": "Thread",
+      "method": "aggregate",
+      "kind": "read",
+      "owner": "conversations",
+      "composed": false,
+      "route": null,
+      "missing": "summariseEndUserThreads",
+      "callSites": 1
+    },
+    {
+      "model": "Turn",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "conversations",
+      "composed": false,
+      "route": "describeTurn",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "AlertChannel",
+      "method": "create",
+      "kind": "write",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": "createAlertChannel",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "AlertChannel",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": "describeAlertChannel",
+      "missing": null,
+      "callSites": 4
+    },
+    {
+      "model": "AlertChannel",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": "listAlertChannels",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "AlertChannel",
+      "method": "update",
+      "kind": "write",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": "updateAlertChannel",
+      "missing": null,
+      "callSites": 2
+    },
+    {
+      "model": "AlertChannelConfiguration",
+      "method": "count",
+      "kind": "read",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": null,
+      "missing": "countCredentialReferences",
+      "callSites": 1
+    },
+    {
+      "model": "AlertDelivery",
+      "method": "create",
+      "kind": "write",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": "deliverCrossing",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "AlertDelivery",
+      "method": "findUniqueOrThrow",
+      "kind": "read",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": null,
+      "missing": "describeDelivery",
+      "callSites": 1
+    },
+    {
+      "model": "AlertDelivery",
+      "method": "update",
+      "kind": "write",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": null,
+      "missing": "recordDeliveryAttempt",
+      "callSites": 1
+    },
+    {
+      "model": "AlertDeliveryRetry",
+      "method": "create",
+      "kind": "write",
+      "owner": "cost-monitoring",
+      "composed": false,
+      "route": null,
+      "missing": "recordDeliveryAttempt",
+      "callSites": 1
+    },
+    {
+      "model": "SafetyEvent",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "governance",
+      "composed": false,
+      "route": "pageSafetyEvents",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "EndUser",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "describeEndUser",
+      "callSites": 3
+    },
+    {
+      "model": "EndUserIdentity",
+      "method": "create",
+      "kind": "write",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "linkEndUserIdentity",
+      "callSites": 1
+    },
+    {
+      "model": "EndUserIdentity",
+      "method": "delete",
+      "kind": "write",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "unlinkEndUserIdentity",
+      "callSites": 1
+    },
+    {
+      "model": "EndUserIdentity",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "findEndUserIdentity",
+      "callSites": 2
+    },
+    {
+      "model": "EndUserIdentity",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "listEndUserIdentities",
+      "callSites": 1
+    },
+    {
+      "model": "EndUserIdentity",
+      "method": "findUnique",
+      "kind": "read",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "findEndUserIdentity",
+      "callSites": 2
+    },
+    {
+      "model": "EndUserIdentity",
+      "method": "update",
+      "kind": "write",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "linkEndUserIdentity",
+      "callSites": 1
+    },
+    {
+      "model": "McpBearerToken",
+      "method": "count",
+      "kind": "read",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "countMcpBearerTokens",
+      "callSites": 1
+    },
+    {
+      "model": "OAuthAccessToken",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "listOAuthAccessTokens",
+      "callSites": 1
+    },
+    {
+      "model": "OAuthClient",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "identity-access",
+      "composed": true,
+      "route": null,
+      "missing": "listOAuthClients",
+      "callSites": 1
+    },
+    {
+      "model": "Job",
+      "method": "create",
+      "kind": "write",
+      "owner": "jobs",
+      "composed": false,
+      "route": "registerJob",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Job",
+      "method": "deleteMany",
+      "kind": "write",
+      "owner": "jobs",
+      "composed": false,
+      "route": null,
+      "missing": "removeJob",
+      "callSites": 1
+    },
+    {
+      "model": "Job",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "jobs",
+      "composed": false,
+      "route": "describeJob",
+      "missing": null,
+      "callSites": 6
+    },
+    {
+      "model": "Job",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "jobs",
+      "composed": false,
+      "route": "listJobs",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Job",
+      "method": "update",
+      "kind": "write",
+      "owner": "jobs",
+      "composed": false,
+      "route": null,
+      "missing": "updateJob",
+      "callSites": 2
+    },
+    {
+      "model": "Memory",
+      "method": "delete",
+      "kind": "write",
+      "owner": "memory",
+      "composed": false,
+      "route": "forget",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "ProviderKey",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "providers",
+      "composed": true,
+      "route": "listProviderKeys",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Entity",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "tenancy",
+      "composed": true,
+      "route": "listProjectEntities",
+      "missing": null,
+      "callSites": 2
+    },
+    {
+      "model": "Environment",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "tenancy",
+      "composed": true,
+      "route": null,
+      "missing": "listProjectEnvironments",
+      "callSites": 1
+    },
+    {
+      "model": "Project",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "tenancy",
+      "composed": true,
+      "route": "listVisibleProjects",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "EntityMcpConfig",
+      "method": "findUnique",
+      "kind": "read",
+      "owner": "tools",
+      "composed": false,
+      "route": "describeMcpSurface",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "EntityMcpConfig",
+      "method": "upsert",
+      "kind": "write",
+      "owner": "tools",
+      "composed": false,
+      "route": "configureMcpSurface",
+      "missing": null,
+      "callSites": 2
+    },
+    {
+      "model": "EnvironmentEntityTool",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "tools",
+      "composed": false,
+      "route": "listEntityToolPolicies",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "EnvironmentEntityTool",
+      "method": "upsert",
+      "kind": "write",
+      "owner": "tools",
+      "composed": false,
+      "route": "setEntityToolPolicy",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Tool",
+      "method": "create",
+      "kind": "write",
+      "owner": "tools",
+      "composed": false,
+      "route": "registerTools",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "Tool",
+      "method": "findFirst",
+      "kind": "read",
+      "owner": "tools",
+      "composed": false,
+      "route": "findTools",
+      "missing": null,
+      "callSites": 1
+    },
+    {
+      "model": "ToolHealth",
+      "method": "findMany",
+      "kind": "read",
+      "owner": "tools",
+      "composed": false,
+      "route": null,
+      "missing": "readToolHealth",
+      "callSites": 1
+    }
+  ],
+  "calls": [
+    {
+      "file": "admin.ts",
+      "line": 61,
+      "kind": "read",
+      "model": "Environment",
+      "method": "findMany",
+      "owner": "tenancy"
+    },
+    {
+      "file": "admin.ts",
+      "line": 301,
+      "kind": "read",
+      "model": "AgentBinding",
+      "method": "findMany",
+      "owner": "agents"
+    },
+    {
+      "file": "admin.ts",
+      "line": 374,
+      "kind": "read",
+      "model": "Entity",
+      "method": "findMany",
+      "owner": "tenancy"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 158,
+      "kind": "read",
+      "model": "AlertChannel",
+      "method": "findMany",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 220,
+      "kind": "write",
+      "model": "AlertChannel",
+      "method": "create",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 273,
+      "kind": "read",
+      "model": "AlertChannel",
+      "method": "findFirst",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 332,
+      "kind": "write",
+      "model": "AlertChannel",
+      "method": "update",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 371,
+      "kind": "read",
+      "model": "AlertChannel",
+      "method": "findFirst",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 382,
+      "kind": "write",
+      "model": "AlertChannel",
+      "method": "update",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 397,
+      "kind": "read",
+      "model": "AlertChannelConfiguration",
+      "method": "count",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 442,
+      "kind": "read",
+      "model": "AlertChannel",
+      "method": "findFirst",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 451,
+      "kind": "write",
+      "model": "AlertDelivery",
+      "method": "create",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 638,
+      "kind": "read",
+      "model": "AlertChannel",
+      "method": "findFirst",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 784,
+      "kind": "read",
+      "model": "AlertDelivery",
+      "method": "findUniqueOrThrow",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 789,
+      "kind": "write",
+      "model": "AlertDeliveryRetry",
+      "method": "create",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "alert_channels.ts",
+      "line": 801,
+      "kind": "write",
+      "model": "AlertDelivery",
+      "method": "update",
+      "owner": "cost-monitoring"
+    },
+    {
+      "file": "channel-apps.ts",
+      "line": 180,
+      "kind": "read",
+      "model": "AgentBinding",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "channels.ts",
+      "line": 239,
+      "kind": "read",
+      "model": "AgentBinding",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "channels.ts",
+      "line": 477,
+      "kind": "read",
+      "model": "AgentBinding",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 134,
+      "kind": "read",
+      "model": "EndUser",
+      "method": "findFirst",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 141,
+      "kind": "read",
+      "model": "EndUser",
+      "method": "findFirst",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 163,
+      "kind": "read",
+      "model": "EndUserIdentity",
+      "method": "findMany",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 167,
+      "kind": "read",
+      "model": "Thread",
+      "method": "aggregate",
+      "owner": "conversations"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 245,
+      "kind": "read",
+      "model": "EndUser",
+      "method": "findFirst",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 254,
+      "kind": "read",
+      "model": "EndUserIdentity",
+      "method": "findUnique",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 278,
+      "kind": "write",
+      "model": "EndUserIdentity",
+      "method": "update",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 286,
+      "kind": "write",
+      "model": "EndUserIdentity",
+      "method": "create",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 336,
+      "kind": "read",
+      "model": "EndUserIdentity",
+      "method": "findFirst",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 358,
+      "kind": "read",
+      "model": "EndUserIdentity",
+      "method": "findUnique",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 412,
+      "kind": "read",
+      "model": "EndUserIdentity",
+      "method": "findFirst",
+      "owner": "identity-access"
+    },
+    {
+      "file": "end-users.ts",
+      "line": 430,
+      "kind": "write",
+      "model": "EndUserIdentity",
+      "method": "delete",
+      "owner": "identity-access"
+    },
+    {
+      "file": "entities.ts",
+      "line": 524,
+      "kind": "read",
+      "model": "ToolHealth",
+      "method": "findMany",
+      "owner": "tools"
+    },
+    {
+      "file": "entities.ts",
+      "line": 831,
+      "kind": "read",
+      "model": "EntityMcpConfig",
+      "method": "findUnique",
+      "owner": "tools"
+    },
+    {
+      "file": "entities.ts",
+      "line": 857,
+      "kind": "read",
+      "model": "McpBearerToken",
+      "method": "count",
+      "owner": "identity-access"
+    },
+    {
+      "file": "entities.ts",
+      "line": 906,
+      "kind": "write",
+      "model": "EntityMcpConfig",
+      "method": "upsert",
+      "owner": "tools"
+    },
+    {
+      "file": "entities.ts",
+      "line": 959,
+      "kind": "write",
+      "model": "EntityMcpConfig",
+      "method": "upsert",
+      "owner": "tools"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 123,
+      "kind": "read",
+      "model": "Job",
+      "method": "findMany",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 150,
+      "kind": "read",
+      "model": "Job",
+      "method": "findFirst",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 203,
+      "kind": "read",
+      "model": "Job",
+      "method": "findFirst",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 211,
+      "kind": "write",
+      "model": "Job",
+      "method": "create",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 270,
+      "kind": "read",
+      "model": "Job",
+      "method": "findFirst",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 334,
+      "kind": "write",
+      "model": "Job",
+      "method": "update",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 364,
+      "kind": "read",
+      "model": "Job",
+      "method": "findFirst",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 369,
+      "kind": "write",
+      "model": "Job",
+      "method": "deleteMany",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 397,
+      "kind": "read",
+      "model": "Job",
+      "method": "findFirst",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 457,
+      "kind": "read",
+      "model": "Job",
+      "method": "findFirst",
+      "owner": "jobs"
+    },
+    {
+      "file": "jobs.ts",
+      "line": 469,
+      "kind": "write",
+      "model": "Job",
+      "method": "update",
+      "owner": "jobs"
+    },
+    {
+      "file": "macros.ts",
+      "line": 241,
+      "kind": "write",
+      "model": "Macro",
+      "method": "create",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 268,
+      "kind": "read",
+      "model": "Macro",
+      "method": "findMany",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 290,
+      "kind": "read",
+      "model": "Macro",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 318,
+      "kind": "read",
+      "model": "Macro",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 335,
+      "kind": "write",
+      "model": "Macro",
+      "method": "update",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 351,
+      "kind": "read",
+      "model": "Macro",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 360,
+      "kind": "write",
+      "model": "Macro",
+      "method": "delete",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 380,
+      "kind": "read",
+      "model": "Macro",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 389,
+      "kind": "write",
+      "model": "Macro",
+      "method": "update",
+      "owner": "agents"
+    },
+    {
+      "file": "macros.ts",
+      "line": 412,
+      "kind": "read",
+      "model": "Macro",
+      "method": "findFirst",
+      "owner": "agents"
+    },
+    {
+      "file": "mcp.ts",
+      "line": 165,
+      "kind": "read",
+      "model": "OAuthClient",
+      "method": "findMany",
+      "owner": "identity-access"
+    },
+    {
+      "file": "mcp.ts",
+      "line": 182,
+      "kind": "read",
+      "model": "OAuthAccessToken",
+      "method": "findMany",
+      "owner": "identity-access"
+    },
+    {
+      "file": "orchestration.ts",
+      "line": 217,
+      "kind": "read",
+      "model": "Tool",
+      "method": "findFirst",
+      "owner": "tools"
+    },
+    {
+      "file": "orchestration.ts",
+      "line": 225,
+      "kind": "write",
+      "model": "Tool",
+      "method": "create",
+      "owner": "tools"
+    },
+    {
+      "file": "orchestration.ts",
+      "line": 235,
+      "kind": "write",
+      "model": "EnvironmentEntityTool",
+      "method": "upsert",
+      "owner": "tools"
+    },
+    {
+      "file": "platos-control.ts",
+      "line": 307,
+      "kind": "write",
+      "model": "Memory",
+      "method": "delete",
+      "owner": "memory"
+    },
+    {
+      "file": "providers.ts",
+      "line": 363,
+      "kind": "read",
+      "model": "ProviderKey",
+      "method": "findMany",
+      "owner": "providers"
+    },
+    {
+      "file": "reflection.ts",
+      "line": 212,
+      "kind": "read",
+      "model": "Turn",
+      "method": "findFirst",
+      "owner": "conversations"
+    },
+    {
+      "file": "reflection.ts",
+      "line": 254,
+      "kind": "read",
+      "model": "EnvironmentEntityTool",
+      "method": "findMany",
+      "owner": "tools"
+    },
+    {
+      "file": "reflection.ts",
+      "line": 283,
+      "kind": "read",
+      "model": "Entity",
+      "method": "findMany",
+      "owner": "tenancy"
+    },
+    {
+      "file": "reflection.ts",
+      "line": 303,
+      "kind": "read",
+      "model": "SafetyEvent",
+      "method": "findMany",
+      "owner": "governance"
+    },
+    {
+      "file": "settings.ts",
+      "line": 306,
+      "kind": "read",
+      "model": "Project",
+      "method": "findMany",
+      "owner": "tenancy"
+    }
+  ],
+  "boundaryLedger": [
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "alert_channels.ts",
+      "specifier": "@platos/tenancy-database"
+    },
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "index.ts",
+      "specifier": "@platos/tenancy-database"
+    },
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "jobs.ts",
+      "specifier": "@platos/tenancy-database"
+    },
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "platos-control.memory.test.ts",
+      "specifier": "@platos/tenancy-database"
+    },
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "platos-control.ts",
+      "specifier": "@platos/tenancy-database"
+    },
+    {
+      "rule": "durable-runtime-sdk-only",
+      "file": "jobs.ts",
+      "specifier": "@trigger.dev/sdk"
+    },
+    {
+      "rule": "inference-sdk-only",
+      "file": "reflection.ts",
+      "specifier": "ai"
+    },
+    {
+      "rule": "inference-sdk-only",
+      "file": "reflection.ts",
+      "specifier": "@ai-sdk/anthropic"
+    },
+    {
+      "rule": "inference-sdk-only",
+      "file": "reflection.ts",
+      "specifier": "@ai-sdk/openai"
+    },
+    {
+      "rule": "inference-sdk-only",
+      "file": "reflection.ts",
+      "specifier": "@ai-sdk/google"
+    }
+  ],
+  "maxDelegateCalls": 69
+}
