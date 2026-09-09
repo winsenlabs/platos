@@ -64,7 +64,7 @@ describe("the published error codes", () => {
     expect(new Set(GOVERNANCE_ERROR_CODES).size).toBe(GOVERNANCE_ERROR_CODES.length);
   });
 
-  it("publishes one code per distinguishable refusal — 36 of them", () => {
+  it("publishes one code per distinguishable refusal — 41 of them", () => {
     // Pinned as a literal so a code merged into another, which is how two guards
     // become indistinguishable, cannot pass unnoticed.
     //
@@ -74,7 +74,13 @@ describe("the published error codes", () => {
     // the activity seam's failure rather than refusing, so a shared code would
     // leave the one failure an operator cannot see indistinguishable from the
     // two they can.
-    expect(GOVERNANCE_ERROR_CODES).toHaveLength(36);
+    //
+    // WIN-303: 36 -> 41. One per CANONICAL STORE, for a scope that does not
+    // join up in the tenant tree. Five and not one for the same reason the three
+    // above are three: the guard is instantiated once per store, over five
+    // different sets of tables, and a resolver dropped from a SINGLE store must
+    // not be able to hide behind the other four still refusing.
+    expect(GOVERNANCE_ERROR_CODES).toHaveLength(41);
   });
 
   it("keeps the four golden-set refusals apart from each other", () => {

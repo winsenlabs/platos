@@ -1238,7 +1238,19 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // under `src/transports/`, two under `src/http/`, two more suites (one
     // `transports/`, one `http/`) and the integration suite under
     // `src/composition/`. 1621 + 14 = 1635.
-    assert.equal(result.fileCount, 1635, "the generated V1 source census must stay exact");
+    //
+    // WIN-303 1621 + 2 = 1623: `governance-scope.ts` and
+    // `governance-isolation.integration.test.ts`, the same two files
+    // `env-access.mjs`'s EXPECTED_FILE_COUNT and `max-file-lines.test.mjs`'s
+    // adapters term move by — one scan, three pins, so a file that arrived in
+    // one and not the others could not pass all three.
+    //
+    // SUMMED FOR THE INTEGRATION: 1621 + 14 + 2 = 1637. The two tranches share
+    // no file, so the sum IS the census rather than a guess about overlap, and
+    // `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1637 off a
+    // second, independent scan. A branch whose files were double-counted here
+    // would disagree with that one.
+    assert.equal(result.fileCount, 1637, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1270,7 +1282,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // (five controllers, four shared modules, two suites), http 2
       // (`api-surface.ts` and its suite), composition 1 (the HTTP integration
       // suite). 11 + 2 + 1 = 14, and NOTHING under `packages/`.
-      11 + 2 + 1);
+      11 + 2 + 1 +
+      // WIN-303: postgres-tenancy 2 -- `governance-scope.ts`, the tenant-triple
+      // resolver, and `governance-isolation.integration.test.ts` beside it.
+      // Both terms are kept and ADDED: this is the re-derivation, so a merge
+      // that had dropped either half would disagree with the flat pin above.
+      2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

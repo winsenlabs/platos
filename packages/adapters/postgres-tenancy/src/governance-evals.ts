@@ -51,13 +51,14 @@ import {
   asGovernanceIdentifier,
   err,
   ledgerUnavailable,
+  evalsScopeUnresolved,
   ok,
   type AgentVersionId,
   type EvalCriterionId,
 } from "@platos/context-governance/application/ports/index.js";
 
 import { guardEvalAppend } from "./governance-guards.js";
-import { refuse } from "./governance-refusal.js";
+import { inGovernanceScope } from "./governance-scope.js";
 import {
   readEval,
   scopedWhere,
@@ -114,158 +115,194 @@ export function createEvalsRepository(
       admitted: AdmittedEval,
       transaction: TransactionScope | null,
     ): Promise<Result<AgentEval>> {
-      return refuse(async () => {
-        guardEvalAppend(admitted);
-        // A null scope resolves through `reader()`, so an append issued inside
-        // an open transaction joins it rather than escaping to the pool — the
-        // same argument `governance-safety.ts` makes for the same nullable
-        // parameter.
-        const client = transaction === null ? transactions.reader() : transactions.writer(transaction);
-        const written = await client.agentEval.createManyAndReturn({
-          data: [
-            {
-              environmentId: scope.environmentId,
-              agentId: admitted.agentId,
-              agentVersionId: admitted.agentVersionId,
-              threadId: admitted.threadId,
-              turnId: admitted.turnId,
-              criterionId: admitted.criterionId,
-              criterionSnapshot: writeCriterionSnapshot(admitted.criterionSnapshot),
-              judgeModel: admitted.judgeModel,
-              judgePromptUsed: admitted.judgePromptUsed,
-              rawResponse: admitted.rawResponse,
-              score: admitted.score,
-              rationale: admitted.rationale,
-              passed: admitted.passed,
-              costCents: admitted.costCents,
-              latencyMs: admitted.latencyMs,
-              createdAt: now(),
-            },
-          ],
-          select: EVAL_COLUMNS,
-        });
-        const row = written[0];
-        if (row === undefined) return err(ledgerUnavailable("eval append wrote no row"));
-        // The ONLY place `rawResponseTruncated` is answered truthfully: the
-        // writer knows what it truncated, and the row it just wrote does not.
-        return ok({ ...readEval(row as AgentEvalRow), rawResponseTruncated: admitted.rawResponseTruncated });
-      }, "evals append");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        evalsScopeUnresolved,
+        "evals append",
+        async () => {
+          guardEvalAppend(admitted);
+          // A null scope resolves through `reader()`, so an append issued inside
+          // an open transaction joins it rather than escaping to the pool — the
+          // same argument `governance-safety.ts` makes for the same nullable
+          // parameter.
+          const client = transaction === null ? transactions.reader() : transactions.writer(transaction);
+          const written = await client.agentEval.createManyAndReturn({
+            data: [
+              {
+                environmentId: scope.environmentId,
+                agentId: admitted.agentId,
+                agentVersionId: admitted.agentVersionId,
+                threadId: admitted.threadId,
+                turnId: admitted.turnId,
+                criterionId: admitted.criterionId,
+                criterionSnapshot: writeCriterionSnapshot(admitted.criterionSnapshot),
+                judgeModel: admitted.judgeModel,
+                judgePromptUsed: admitted.judgePromptUsed,
+                rawResponse: admitted.rawResponse,
+                score: admitted.score,
+                rationale: admitted.rationale,
+                passed: admitted.passed,
+                costCents: admitted.costCents,
+                latencyMs: admitted.latencyMs,
+                createdAt: now(),
+              },
+            ],
+            select: EVAL_COLUMNS,
+          });
+          const row = written[0];
+          if (row === undefined) return err(ledgerUnavailable("eval append wrote no row"));
+          // The ONLY place `rawResponseTruncated` is answered truthfully: the
+          // writer knows what it truncated, and the row it just wrote does not.
+          return ok({ ...readEval(row as AgentEvalRow), rawResponseTruncated: admitted.rawResponseTruncated });
+        },
+      );
     },
 
     async findById(scope: EnvironmentScope, evalId: AgentEvalId): Promise<Result<AgentEval | null>> {
-      return refuse(async () => {
-        const row = await transactions.reader().agentEval.findFirst({
-          where: { id: evalId, ...scopedWhere(scope) },
-          select: EVAL_COLUMNS,
-        });
-        return ok(row === null ? null : readEval(row as AgentEvalRow));
-      }, "evals findById");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        evalsScopeUnresolved,
+        "evals findById",
+        async () => {
+          const row = await transactions.reader().agentEval.findFirst({
+            where: { id: evalId, ...scopedWhere(scope) },
+            select: EVAL_COLUMNS,
+          });
+          return ok(row === null ? null : readEval(row as AgentEvalRow));
+        },
+      );
     },
 
     async page(scope: EnvironmentScope, query: EvalQuery): Promise<Result<EvalPage>> {
-      return refuse(async () => {
-        const where = {
-          ...scopedWhere(scope),
-          createdAt: { gte: query.since },
-          ...(query.agentId === null ? {} : { agentId: query.agentId }),
-          ...(query.agentVersionId === null ? {} : { agentVersionId: query.agentVersionId }),
-          ...(query.criterionId === null ? {} : { criterionId: query.criterionId }),
-          ...(query.threadId === null ? {} : { threadId: query.threadId }),
-          // The port says the substring runs over the rationale AND the judge
-          // model, so it is one OR rather than two filters: a search that
-          // matched only the first would silently stop finding evals by the
-          // model that produced them.
-          ...(query.search === null
-            ? {}
-            : {
-                OR: [
-                  { rationale: { contains: query.search, mode: "insensitive" as const } },
-                  { judgeModel: { contains: query.search, mode: "insensitive" as const } },
-                ],
-              }),
-        };
-        const reader = transactions.reader();
-        const rows = await reader.agentEval.findMany({
-          where,
-          select: EVAL_COLUMNS,
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          skip: query.offset,
-          take: query.limit,
-        });
-        const total = await reader.agentEval.count({ where });
-        return ok({ items: rows.map((row) => readEval(row as AgentEvalRow)), total });
-      }, "evals page");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        evalsScopeUnresolved,
+        "evals page",
+        async () => {
+          const where = {
+            ...scopedWhere(scope),
+            createdAt: { gte: query.since },
+            ...(query.agentId === null ? {} : { agentId: query.agentId }),
+            ...(query.agentVersionId === null ? {} : { agentVersionId: query.agentVersionId }),
+            ...(query.criterionId === null ? {} : { criterionId: query.criterionId }),
+            ...(query.threadId === null ? {} : { threadId: query.threadId }),
+            // The port says the substring runs over the rationale AND the judge
+            // model, so it is one OR rather than two filters: a search that
+            // matched only the first would silently stop finding evals by the
+            // model that produced them.
+            ...(query.search === null
+              ? {}
+              : {
+                  OR: [
+                    { rationale: { contains: query.search, mode: "insensitive" as const } },
+                    { judgeModel: { contains: query.search, mode: "insensitive" as const } },
+                  ],
+                }),
+          };
+          const reader = transactions.reader();
+          const rows = await reader.agentEval.findMany({
+            where,
+            select: EVAL_COLUMNS,
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            skip: query.offset,
+            take: query.limit,
+          });
+          const total = await reader.agentEval.count({ where });
+          return ok({ items: rows.map((row) => readEval(row as AgentEvalRow)), total });
+        },
+      );
     },
 
     async sample(
       scope: EnvironmentScope,
       query: EvalSampleQuery,
     ): Promise<Result<readonly EvalAggregateInput[]>> {
-      return refuse(async () => {
-        const rows = await transactions.reader().agentEval.findMany({
-          where: {
-            ...scopedWhere(scope),
-            agentId: query.agentId,
-            createdAt: { gte: query.since },
-            // EMPTY MEANS EVERY VERSION, which is the port's word and not a
-            // convenience: an empty `IN ()` would match nothing and a scorecard
-            // asked for "all versions" would read as an agent with no evals.
-            ...(query.versionIds.length === 0
-              ? {}
-              : { agentVersionId: { in: [...query.versionIds] } }),
-          },
-          select: AGGREGATE_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
-        return ok(
-          rows.map((row) => ({
-            criterionId: asGovernanceIdentifier<EvalCriterionId>(row.criterionId),
-            agentVersionId:
-              row.agentVersionId === null
-                ? null
-                : asGovernanceIdentifier<AgentVersionId>(row.agentVersionId),
-            score: row.score,
-            passed: row.passed,
-          })),
-        );
-      }, "evals sample");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        evalsScopeUnresolved,
+        "evals sample",
+        async () => {
+          const rows = await transactions.reader().agentEval.findMany({
+            where: {
+              ...scopedWhere(scope),
+              agentId: query.agentId,
+              createdAt: { gte: query.since },
+              // EMPTY MEANS EVERY VERSION, which is the port's word and not a
+              // convenience: an empty `IN ()` would match nothing and a scorecard
+              // asked for "all versions" would read as an agent with no evals.
+              ...(query.versionIds.length === 0
+                ? {}
+                : { agentVersionId: { in: [...query.versionIds] } }),
+            },
+            select: AGGREGATE_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          return ok(
+            rows.map((row) => ({
+              criterionId: asGovernanceIdentifier<EvalCriterionId>(row.criterionId),
+              agentVersionId:
+                row.agentVersionId === null
+                  ? null
+                  : asGovernanceIdentifier<AgentVersionId>(row.agentVersionId),
+              score: row.score,
+              passed: row.passed,
+            })),
+          );
+        },
+      );
     },
 
     async sampleByIds(
       scope: EnvironmentScope,
       evalIds: readonly AgentEvalId[],
     ): Promise<Result<readonly RegressionSample[]>> {
-      return refuse(async () => {
-        // The run grouping is NOT a column: a golden-set run identifies its own
-        // output by the SET of ids it wrote. One statement for the whole set, so
-        // a run of a thousand pairs is one read rather than a thousand.
-        if (evalIds.length === 0) return ok([]);
-        const rows = await transactions.reader().agentEval.findMany({
-          where: { id: { in: [...evalIds] }, ...scopedWhere(scope) },
-          select: REGRESSION_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
-        return ok(rows.map(toRegressionSample));
-      }, "evals sampleByIds");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        evalsScopeUnresolved,
+        "evals sampleByIds",
+        async () => {
+          // The run grouping is NOT a column: a golden-set run identifies its own
+          // output by the SET of ids it wrote. One statement for the whole set, so
+          // a run of a thousand pairs is one read rather than a thousand.
+          if (evalIds.length === 0) return ok([]);
+          const rows = await transactions.reader().agentEval.findMany({
+            where: { id: { in: [...evalIds] }, ...scopedWhere(scope) },
+            select: REGRESSION_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          return ok(rows.map(toRegressionSample));
+        },
+      );
     },
 
     async sampleBaseline(
       scope: EnvironmentScope,
       query: BaselineSampleQuery,
     ): Promise<Result<readonly RegressionSample[]>> {
-      return refuse(async () => {
-        const rows = await transactions.reader().agentEval.findMany({
-          where: {
-            ...scopedWhere(scope),
-            agentId: query.agentId,
-            agentVersionId: query.agentVersionId,
-            createdAt: { gte: query.since },
-          },
-          select: REGRESSION_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
-        return ok(rows.map(toRegressionSample));
-      }, "evals sampleBaseline");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        evalsScopeUnresolved,
+        "evals sampleBaseline",
+        async () => {
+          const rows = await transactions.reader().agentEval.findMany({
+            where: {
+              ...scopedWhere(scope),
+              agentId: query.agentId,
+              agentVersionId: query.agentVersionId,
+              createdAt: { gte: query.since },
+            },
+            select: REGRESSION_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          return ok(rows.map(toRegressionSample));
+        },
+      );
     },
   };
 }

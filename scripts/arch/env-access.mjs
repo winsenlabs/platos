@@ -484,8 +484,29 @@ export const VIOLATION_CODES = Object.freeze({
  * OTHER THIRTEEN open no door — the routes take their configuration from the
  * composed `AppModule` they are handed, which is the whole point of a
  * composition root. 1621 + 14 = 1635.
+ *
+ * WIN-303 ADDS TWO, AND THE DECLARED TABLE IS UNMOVED BY BOTH.
+ * `packages/adapters/postgres-tenancy/src/governance-scope.ts` resolves the
+ * tenant triple against `Environment` and `Project` before the five canonical
+ * stores send anything; it reads a DATABASE, not an environment, and its client
+ * arrives through `TenancyTransactions` from the composition root exactly as
+ * every other file in that directory's does. 1621 + 1 = 1622.
+ *
+ * And `governance-isolation.integration.test.ts`, the two-tenant proof beside
+ * it, which reaches the container only through `governance-harness.ts` — the
+ * file `env-access.mjs` already declares as one of the harnesses entitled to
+ * read the ambient environment. A second reader in a suite would be an
+ * undeclared door and would move this table. 1622 + 1 = 1623.
+ *
+ * SUMMED FOR THE INTEGRATION, never side-picked: 1621 + 14 (R1) + 2 (R303)
+ * = 1637. The two tranches share no file — R1's fourteen are all under
+ * `apps/core-api/src` and R303's two are both under
+ * `packages/adapters/postgres-tenancy/src` — so the sum is the census and
+ * not an overlap. THE DECLARED TABLE GAINS EXACTLY ONE ENTRY ACROSS BOTH,
+ * R1's HTTP integration suite, because it spawns the ORM's CLI; R303's two
+ * open no door at all. Fifteen files landed and one door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1635;
+export const EXPECTED_FILE_COUNT = 1637;
 
 function listSourceFiles(root) {
   const found = [];

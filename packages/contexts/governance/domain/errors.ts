@@ -53,6 +53,11 @@ export const GOVERNANCE_ERROR_CODES = [
   "GOVERNANCE_RATING_TARGET_UNREADABLE",
   "GOVERNANCE_TRANSCRIPT_UNREADABLE",
   "GOVERNANCE_ACTIVITY_UNREADABLE",
+  "GOVERNANCE_SAFETY_SCOPE_UNRESOLVED",
+  "GOVERNANCE_RATINGS_SCOPE_UNRESOLVED",
+  "GOVERNANCE_CRITERIA_SCOPE_UNRESOLVED",
+  "GOVERNANCE_EVALS_SCOPE_UNRESOLVED",
+  "GOVERNANCE_GOLDEN_SETS_SCOPE_UNRESOLVED",
   "GOVERNANCE_PAGE_REQUEST_INVALID",
   "GOVERNANCE_SAFETY_RULE_MALFORMED",
   "GOVERNANCE_SAFETY_DETECTOR_UNKNOWN",
@@ -199,6 +204,103 @@ export function activityUnreadable(reason: string): DomainError {
     "GOVERNANCE_ACTIVITY_UNREADABLE",
     "internal",
     "activity reader could not resolve its environment",
+    { details: { reason } },
+  );
+}
+
+// --- the five canonical stores' own refusals ------------------------------------
+//
+// WIN-303. FIVE CODES FOR ONE SENTENCE, AND THE SENTENCE IS "THIS STORE WAS
+// HANDED A SCOPE THAT DOES NOT JOIN UP IN THE TENANT TREE".
+//
+// THE DEFECT THEY CLOSE. A scope is a TRIPLE — organization, project,
+// environment — and until now the five canonical stores narrowed every read and
+// every write by the environment ALONE. `Environment.id` is a globally unique
+// uuid, so the environment determines the other two and the extra members look
+// redundant; they are not, and the case they catch is the one worth having: a
+// grant assembled with a REAL environment and SOMEBODY ELSE'S project or
+// organization. That scope is not a typo. It is a scope that has been tampered
+// with, or built by a bug in whatever resolved the grant, and a store narrowing
+// by the leaf alone SERVES IT. The three read seams already refuse exactly this
+// (see `activityUnreadable` above and `governance-seam-guards.ts`); these five
+// are the same rejection at the stores this context owns the rows of.
+//
+// WHY FIVE AND NOT ONE. Lesson 5, and the shape this catalogue's own header
+// gives it: two guards sharing a code cannot be told apart in a log, and this
+// guard is instantiated FIVE times — once per store — over five different sets
+// of tables written by five different call paths. An operator holding one code
+// would know a governance scope was refused and not which port refused it, so a
+// resolver silently dropped from ONE store would be invisible beside the other
+// four still refusing. They are also what makes the mutation ledger's five
+// entries separable: deleting the safety resolver must turn a case red that the
+// ratings resolver cannot turn green.
+//
+// WHY NOT `ledgerUnavailable`, WHICH IS WHAT THE STORES REACH FOR OTHERWISE.
+// That code is `unavailable` and carries `retryAfterSeconds: 5`. An incoherent
+// scope will fail the same way for ever, so telling the caller to retry in five
+// seconds is a lie the transport would repeat — the same argument the three
+// seam codes above are built on, and the reason all eight are `internal`.
+//
+// WHY NOT `GOVERNANCE_SCOPE_MISMATCH`, WHICH SOUNDS LIKE IT. That one is the
+// AUTHORIZATION layer's: `authorization.ts` raises it when a grant resolves to a
+// different place in the tree than the caller asked for, and the caller's own
+// request is what disagrees. These five are raised BELOW that, in the adapter,
+// about a scope that has already been authorized and still does not exist as a
+// path in the database. Collapsing them would put "your grant is for another
+// project" and "the grant you were given is incoherent" under one code.
+//
+// EACH CARRIES A `reason` NAMING WHICH OF THREE FACTS IT IS: the scope's
+// identifiers are not uuid-shaped and no statement could be sent at all; the
+// environment resolves to no row; or the environment exists under a project or
+// an organization other than the one claimed. `governance-scope.ts` mints the
+// three strings, once.
+
+/** The `SafetyLedger` was handed a scope that does not resolve in the tree. */
+export function safetyScopeUnresolved(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_SAFETY_SCOPE_UNRESOLVED",
+    "internal",
+    "safety ledger could not resolve its scope in the tenant tree",
+    { details: { reason } },
+  );
+}
+
+/** The `RatingsRepository` was handed a scope that does not resolve in the tree. */
+export function ratingsScopeUnresolved(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_RATINGS_SCOPE_UNRESOLVED",
+    "internal",
+    "ratings repository could not resolve its scope in the tenant tree",
+    { details: { reason } },
+  );
+}
+
+/** The `CriteriaRepository` was handed a scope that does not resolve in the tree. */
+export function criteriaScopeUnresolved(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_CRITERIA_SCOPE_UNRESOLVED",
+    "internal",
+    "criteria repository could not resolve its scope in the tenant tree",
+    { details: { reason } },
+  );
+}
+
+/** The `EvalsRepository` was handed a scope that does not resolve in the tree. */
+export function evalsScopeUnresolved(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_EVALS_SCOPE_UNRESOLVED",
+    "internal",
+    "evals repository could not resolve its scope in the tenant tree",
+    { details: { reason } },
+  );
+}
+
+/** The `GoldenSetsRepository` was handed a scope that does not resolve in the tree. */
+export function goldenSetsScopeUnresolved(reason: string): DomainError {
+  return domainError(
+    "GOVERNANCE_GOLDEN_SETS_SCOPE_UNRESOLVED",
+    "internal",
+    "golden sets repository could not resolve its scope in the tenant tree",
     { details: { reason } },
   );
 }

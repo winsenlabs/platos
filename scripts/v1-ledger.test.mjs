@@ -1268,7 +1268,20 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // match all six.
     //
     // SUMMED FOR THE INTEGRATION: 1493 + 2 (G1) + 6 (G2) = 1501.
-    packages: 1501,
+    //
+    // WIN-303 +2, and BOTH are in `packages/adapters/postgres-tenancy`: ONE
+    // source, `governance-scope.ts`, which resolves the whole tenant triple
+    // against `Environment` and `Project` before any of the five canonical
+    // stores sends a statement, and ONE test,
+    // `governance-isolation.integration.test.ts`, the two-tenant proof that a
+    // forged ancestry is refused. TWO and not more because the five stores,
+    // `governance-rows.ts`, `governance-seam-guards.ts`, `governance`'s
+    // `errors.ts`, its ports barrel, its contracts suite, the statements suite
+    // and `mutations-governance.json` are all WIDENED rather than added — and
+    // `docs/error-taxonomy.json`, which gains the five new codes, is tracked
+    // already. No ledger rule is new: `packages.adapters.source` and `.test`
+    // match both. 1501 + 2 = 1503.
+    packages: 1503,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1689,7 +1702,26 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // exists to hold: the total and the per-area sums are the same arithmetic, so a
   // file that arrived in one and not the other cannot pass both. 1654 + 14 = 1668,
   // and R1's mutation ledger in `root-infra` makes it 1669.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1669);
+  //
+  // WIN-303 1654 -> 1656. TWO files, BOTH in `packages` and both itemised on
+  // that area's delta above, so the two halves of this case are the same
+  // arithmetic: `governance-scope.ts` and
+  // `governance-isolation.integration.test.ts`. Nothing lands in `root-infra`
+  // — this tranche's guard entries go into the EXISTING
+  // `packages/adapters/postgres-tenancy/mutations-governance.json` rather than
+  // into a new manifest, because they are more guards on the same port surface
+  // that file already covers.
+  //
+  // THE INTEGRATION SUMS THEM, WHICH IS WHAT R303 ASKED FOR IN THE LINE ABOVE:
+  // 1654 + 15 (R1: fourteen files plus its guard ledger) + 2 (R303) = 1671, a
+  // figure NEITHER branch states. R2 is deliberately not in this branch, so its
+  // +3 is not here either — see the merge commit for the tree fact. The sum is
+  // not taken on trust: `expectedDeltas` above is the per-area map, and
+  // 2 + 0 + 75 + 4 + 10 + 1503 + 17 + 60 = 1671 re-derives it from eight
+  // independently-merged keys. R1 moved `apps-core-api` and `root-infra`; R303
+  // moved `packages`; no key took a contribution from both, which is why the
+  // auto-merge of that object is safe and is checked here rather than assumed.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1671);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1833,8 +1865,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // as the `apps-core-api` delta and the `totalFiles` assertion above, summed
     // here from the per-area counts instead of read off the total, so the three
     // can disagree and be caught. 1654 + 14 = 1668, plus R1's guard ledger in
-    // `root-infra` = 1669.
-    rulesDocument.baseline.totalFiles + 1669
+    // `root-infra` = 1669. WIN-303 moves it 1654 -> 1656.
+    //
+    // THE INTEGRATION: 1654 + 15 + 2 = 1671, the ELEVENTH hand move of this
+    // second reconciliation. This derivation reaches it by summing
+    // `summary.areaCounts` rather than by reading `summary.totalFiles`, so it
+    // and the assertion above are two different arithmetics over the same tree
+    // and a merge that had side-picked either branch's total would be red here
+    // even if the other assertion had been patched to match.
+    rulesDocument.baseline.totalFiles + 1671
   );
 });
 
