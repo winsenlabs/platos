@@ -86,10 +86,25 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // SCRIPT_PREFIXES: the selection protects the EVIDENCE a gate reads, not the
 // gate, and the ratchet's evidence is the baseline above.
 //
+// WIN-268 (M4.2) adds TWO, no removals and no content substitutions, taking the
+// set from 794 to 796:
+//   docs/audits/win-268-mcp-store-ownership.json  (the MCP surface's ORM
+//                                                  register — every store call
+//                                                  site, its owning context, and
+//                                                  the per-file disposition
+//                                                  naming what it is waiting on)
+//   docs/audits/win-268-mcp-store-ownership.md    (the same, rendered)
+// Both fall inside the existing `docs/**` selection rather than widening it, and
+// the difference was verified SET-WISE against the base at 7e1243fc: the 796
+// paths at this head are exactly the 794-path base plus those two, with nothing
+// removed and nothing substituted. `scripts/arch/mcp-store-ownership.mjs` is NOT
+// added to SCRIPT_PREFIXES, for the reason the openapi ratchet was not: the
+// selection protects the EVIDENCE a gate reads, not the gate.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "f341cd78961e90ed459f1dad75aabbefc299dcf92326c3f3636605ed760bc40d";
+export const EXPECTED_PATH_SET_SHA256 = "54454b79d8af5b6a7a66df06b78d9eadb5b191cfb8a35f7d9362e5448f6794db";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
