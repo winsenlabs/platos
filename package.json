@@ -154,6 +154,7 @@
     "generate:sdk-v1": "node scripts/sdk/v1-contract.mjs --write",
     "audit:sdk-v1": "node scripts/sdk/v1-contract.mjs --check",
     "test:sdk-v1": "node --test scripts/sdk/v1-contract.test.mjs",
+    "test:sdk-clients": "turbo run test --concurrency=1 --filter @platosdev/client --filter @platosdev/embed --filter @platosdev/react-widget --filter @platosdev/token-mint",
     "generate:error-taxonomy": "node scripts/error-taxonomy.mjs --write",
     "audit:error-taxonomy": "node scripts/error-taxonomy.mjs --check",
     "test:error-taxonomy": "node --test scripts/error-taxonomy.test.mjs",

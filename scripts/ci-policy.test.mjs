@@ -501,6 +501,22 @@ const expectedV1EvidenceCommands = [
   // cross-language fixture only one language ever runs is not one.
   "pnpm audit:sdk-v1",
   "pnpm test:sdk-v1",
+  // WIN-270 (M4.4) (+1). THE PUBLISHED SDK SUITES, WHICH RAN NOWHERE.
+  //
+  // No job in this workflow named `packages/platos-client`,
+  // `packages/platos-embed`, `packages/platos-react-widget` or
+  // `packages/platos-token-mint`, so four published packages' vitest suites were
+  // green only on somebody's laptop. `test:v1-packages` above selects
+  // `@platos/kernel`, the contexts, the adapters, `@platos/core-api` and
+  // `@platos/mcp-stdio` -- deliberately, because it is the V1 deployable's
+  // graph -- and the SDKs are not in it. `pnpm test` would have covered them and
+  // is not run by CI either.
+  //
+  // This line closes that, and it is where the WIN-270 refusal cases live: the
+  // widget's coded-refusal cases, the embed's total-refusal cases, and the 46
+  // TypeScript halves of the cross-language fixture. Without it the only part of
+  // the SDK work CI would execute is the generator gate above.
+  "pnpm test:sdk-clients",
 ];
 // WIN-284. The two coverage commands inside the V1 evidence step, listed
 // separately so each gets its own removal and concealment control below. A gate

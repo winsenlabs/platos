@@ -189,6 +189,7 @@ jobs:
           pnpm test:openapi-compat
           pnpm audit:sdk-v1
           pnpm test:sdk-v1
+          pnpm test:sdk-clients
 
       - name: WIN-284 differential harness and its negative controls
         # The suites prove the comparators, the register and the engine's
