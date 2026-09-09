@@ -45,7 +45,10 @@
   "arch-test": "node --test scripts/arch/arch-boundaries.test.mjs",
   "gateway-unit": "pnpm --filter platos-agent exec vitest run src/mcp-platform/permission-gateway.service.test.ts",
   "gateway-forged": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=... MCP_FORGED_SCOPE_REQUIRED=1 pnpm --filter platos-agent exec vitest run src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
-  "macros-postgres": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=... pnpm --filter platos-agent exec vitest run src/mcp-platform/tools/macros-replay-postgres.integration.test.ts"
+  "macros-postgres": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=... pnpm --filter platos-agent exec vitest run src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+  "ancestry": "node scripts/arch/end-user-presence-ancestry.mjs",
+  "ancestry-test": "node --test scripts/arch/end-user-presence-ancestry.test.mjs",
+  "end-users-forged": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=... END_USER_TENANCY_REQUIRED=1 pnpm --filter platos-agent exec vitest run src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts"
  },
  "baseline": "Every command above is green at fe3bb5f0 before any mutation is applied: register-test 11/11, arch-test 24/24 (1 pre-existing skip), gateway-unit 12/12, gateway-forged 10/10, macros-postgres 12/12.",
  "mutations": [
@@ -240,9 +243,51 @@
    "command": "gateway-forged",
    "exit": 1,
    "outcome": "killed"
+  },
+  {
+   "name": "M23 the end_users presence conjunction is dropped, so a forged pairing reaches the other tenant",
+   "guards": "`currentEnvironmentPresence` is what confines an EndUser lookup to the caller's own environment",
+   "why": "The salvaged suite's whole claim. Without this mutation the ten cases could have been passing on the organization filter alone.",
+   "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+   "command": "end-users-forged",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M24 the end_users organization filter is dropped and only presence remains",
+   "guards": "nothing \u2014 see `declared`",
+   "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+   "command": "end-users-forged",
+   "exit": 0,
+   "outcome": "declared-equivalent"
+  },
+  {
+   "name": "M25 a relation is added to the presence clause that carries no organization ancestry",
+   "guards": "the STATIC half: every relation the presence clause names must resolve to a model carrying the ancestry rule",
+   "why": "This is how the conjunction is widened in practice \u2014 by adding a relation, not by deleting a filter \u2014 and no behavioural suite would see it until a row existed to exploit it.",
+   "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+   "command": "ancestry",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M26 the ancestry scanner stops requiring a rule and only records one",
+   "guards": "the scanner REFUSES rather than reports",
+   "file": "scripts/arch/end-user-presence-ancestry.mjs",
+   "command": "ancestry-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M27 the ancestry scanner goes blind when the presence function is renamed away",
+   "guards": "a scanner that can no longer find what it audits must fail, not pass",
+   "file": "scripts/arch/end-user-presence-ancestry.mjs",
+   "command": "ancestry-test",
+   "exit": 1,
+   "outcome": "killed"
   }
  ],
- "survivors": "None. Twenty-two of twenty-four mutations were killed; the two that were not are declared below with the proof that they cannot be killed by anything.",
+ "survivors": "None. TWENTY-SEVEN mutations are listed: 24 killed and 3 declared equivalent with the proof that nothing can kill them. Two further FORMS were applied and are not listed as separate rows because they were superseded rather than survived \u2014 M04 first emptied the script's own guard while the suite still carried the same requirement, and M20 first deleted an assertion while the harness still exercised the code; each entry's note records the weaker form and why the stronger one is the mutation that removes the property. A third form of M26 never applied at all (its anchor did not exist) and was rewritten before it counted.",
  "declared": [
   "M14 AND M21 ARE PROVABLY EQUIVALENT TO THE CODE THEY REPLACE, and that is a",
   "property of the guard rather than a gap in the suite.",
@@ -258,6 +303,20 @@
   "an invariant of the current control flow rather than of the type: the day a",
   "fourth branch is added to `resolveOrganization`, the claimed id stops being safe",
   "and nothing would have said so. M22 is the mutation that DOES break that",
-  "invariant \u2014 it returns `ok` without checking anything \u2014 and it is killed."
+  "invariant \u2014 it returns `ok` without checking anything \u2014 and it is killed.",
+  "",
+  "M24 IS EQUIVALENT WHILE THE DATABASE RULE HOLDS, and the rule is separately",
+  "guarded. Dropping `organizationId` from the `end_users.get` lookup leaves the",
+  "presence clause, and the two forged pairings the suite exercises are already",
+  "excluded by presence alone: the caller's environment holds no row for the",
+  "victim's EndUser, and the victim's environment holds none for the caller's. The",
+  "state that WOULD separate them \u2014 an EndUser in one organization with presence in",
+  "another organization's environment \u2014 is refused by the schema's `_ancestry`",
+  "rule, which the suite pins directly (`the database refuses the presence row that",
+  "would break the conjunction`) and which M25 shows can be widened by adding an",
+  "unruled relation to the presence clause. So the organization filter is defence",
+  "in depth over a rule PostgreSQL enforces, and the thing actually keeping the",
+  "conjunction true is the pair (ancestry rule, ancestry scanner) \u2014 both of which",
+  "have killed mutations of their own."
  ]
 }
