@@ -196,10 +196,21 @@ export function touched(session: OperatorSessionRecord, now: Date): OperatorSess
  * successful one, and the same distinction is what makes concurrent
  * impersonation-stop safe.
  */
-export function revoked(session: OperatorSessionRecord, now: Date): Result<OperatorSessionRecord> {
+export function revoked(session: OperatorSessionRecord, now: Date): Result<RevokedOperatorSession> {
   if (session.revokedAt !== null) return err(sessionRevoked());
   return ok({ ...session, revokedAt: now });
 }
+
+/**
+ * A session this rule has just ENDED, with `revokedAt` narrowed to a `Date`.
+ *
+ * `OperatorSessionRecord.revokedAt` is nullable because most sessions are live,
+ * and a caller projecting the outcome of a revocation would otherwise have to
+ * write `?? somethingElse` for a branch `revoked` above has already made
+ * unreachable. A fallback on an impossible branch is untested code in an
+ * authentication path, and the type removes the need for one.
+ */
+export type RevokedOperatorSession = OperatorSessionRecord & { readonly revokedAt: Date };
 
 export function verifiedSecondFactor(
   session: OperatorSessionRecord,

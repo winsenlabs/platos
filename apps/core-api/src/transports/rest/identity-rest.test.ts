@@ -253,6 +253,12 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
     // the left side is read off a REAL service object, so this fails the day the
     // contract gains or loses a method — which is the day somebody must revisit
     // the finding below rather than inherit it.
+    //
+    // IT WENT RED EXACTLY ONCE, AS DESIGNED. WIN-267 W3 published
+    // `revokeOperatorSession`, this assertion failed, and the finding below was
+    // revisited: the new method performs no rate-limited action either — a
+    // sign-out spends no authentication budget — so the finding stands and the
+    // name was added.
     expect(methods).toEqual([
       "authenticateBearer",
       "authenticateOperator",
@@ -261,6 +267,7 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
       "describeSessionCookie",
       "issueSessionCookie",
       "listEndUsers",
+      "revokeOperatorSession",
       "rotateSessionCookie",
       "verifySessionCookie",
     ]);

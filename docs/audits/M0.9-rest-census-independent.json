@@ -20,7 +20,8 @@
     "operator": "manifestOperator >= independentOperatorFloor per controller (wrapper/inherited operator enforcement legitimately lifts the manifest above the direct-call floor).",
     "omission": "a production controller found by glob but absent from the manifest FAILS --check.",
     "scanRoots": "every manifest route-implementation source falls under a DECLARED scan root, and each root's globbed decorators (expanded by mount multiplier) equal the manifest operations attributed to it. A surface built in a directory this census does not scan fails as UNDECLARED SCAN ROOT.",
-    "processEdge": "the named process-edge exclusions are measured, not assumed: the excluded file must exist, keep an EMPTY @Controller() argument list, and carry exactly the declared number of probes."
+    "processEdge": "the named process-edge exclusions are measured, not assumed: the excluded file must exist, keep an EMPTY @Controller() argument list, carry exactly the declared number of probes, and carry exactly the declared number of @All decorators — each a bare wildcard where the exclusion is the terminal catch-all.",
+    "unscannedControllers": "the exclusion list is joined to the tree in BOTH directions. Every *.controller.ts inside a scanned application's src/ must be under a declared scan root or named in PROCESS_EDGE_EXCLUSIONS; anything else fails as UNSCANNED ROUTE-BEARING CONTROLLER. Without this half a controller can be accounted for by nothing at all, which is what apps/core-api/src/http/not-found.controller.ts was until WIN-267 W3."
   },
   "totals": {
     "controllers": 32,
@@ -56,14 +57,35 @@
       }
     ]
   },
+  "applicationRoots": [
+    "apps/agent/src",
+    "apps/core-api/src"
+  ],
+  "unscannedControllers": [],
   "processEdgeExclusions": [
     {
       "file": "apps/core-api/src/http/health.controller.ts",
       "controller": "HealthController",
       "declaredRoutes": 3,
       "observedRoutes": 3,
+      "declaredAllRoutes": 0,
+      "observedAllRoutes": 0,
+      "observedNamedAllRoutes": 0,
+      "terminalCatchAll": false,
       "emptyBasePath": true,
       "why": "process-edge liveness/readiness probes (ADR M0.4 §2 keeps them off the versioned surface); no tenant, no scope, no use case."
+    },
+    {
+      "file": "apps/core-api/src/http/not-found.controller.ts",
+      "controller": "NotFoundController",
+      "declaredRoutes": 0,
+      "observedRoutes": 0,
+      "declaredAllRoutes": 1,
+      "observedAllRoutes": 1,
+      "observedNamedAllRoutes": 0,
+      "terminalCatchAll": true,
+      "emptyBasePath": true,
+      "why": "the terminal 404: the LAST-registered handler, answering every unmatched path in the process with the M0.4 §2 envelope. No tenant, no scope, no use case, and no operation a client can call — a refusal, not surface."
     }
   ],
   "table": [

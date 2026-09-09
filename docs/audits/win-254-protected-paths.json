@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "8e3897c8532d3c06adffd3bb557bbf8afc4e41ecbb71ecb7016f49a31ae07b0f"
+      "sha256": "9e39f923fb66c54a24179d38b78a4c908b5883301e34e2a622aa645486e1899b"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",

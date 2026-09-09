@@ -127,6 +127,84 @@ describe("authenticateOperator — refusals", () => {
   });
 });
 
+describe("revokeOperatorSession — the other half of clearSessionCookie (WIN-267 W3)", () => {
+  it("ENDS the session, and the same token no longer authenticates", async () => {
+    const ports = withSession();
+    const service = createIdentityAccessService(ports);
+    // LIVE FIRST. Without this line the case below would pass against a store
+    // that never held the session at all, which is the shape a broken fixture
+    // takes and the reason "it is refused afterwards" is not by itself evidence.
+    expect((await service.authenticateOperator({ presentedToken: SESSION_TOKEN })).ok).toBe(true);
+
+    const ended = await service.revokeOperatorSession({ presentedToken: SESSION_TOKEN });
+    expect(ended.ok, JSON.stringify(ended)).toBe(true);
+    if (!ended.ok) return;
+    expect(ended.value.sessionId).toBe(sessionId());
+    expect(ended.value.revokedAt).toEqual(ports.clock.now());
+    // THE STORE, NOT THE RETURN VALUE. A façade that projected a revocation it
+    // never persisted would satisfy every assertion above.
+    expect(ports.repository.state.sessions.get(sessionId())?.revokedAt).toEqual(ports.clock.now());
+
+    expect(await operatorRefusal(ports, SESSION_TOKEN)).toBe("SESSION_REVOKED");
+  });
+
+  it("carries EXACTLY the two published keys, so a sign-out leaks no session internals", async () => {
+    const ended = await createIdentityAccessService(withSession()).revokeOperatorSession({
+      presentedToken: SESSION_TOKEN,
+    });
+    expect(ended.ok).toBe(true);
+    if (!ended.ok) return;
+    // An exact set for the reason the operator projection gives: the record
+    // underneath DOES carry `tokenHash`, `parentSessionId` and the impersonation
+    // chain, so a spread here would leak them and no type error would follow.
+    expect(Object.keys(ended.value).sort()).toEqual(["revokedAt", "sessionId"]);
+  });
+
+  it("tells an ALREADY-ENDED session apart from one that never existed", async () => {
+    // THE DEFECT THIS PINS. The use case used to answer `UNAUTHENTICATED
+    // { reason: "already-revoked" }` for the second call — the same code as a
+    // token no row matches — while `domain/session.ts::revoked`, which has held
+    // that rule the whole time, answers SESSION_REVOKED. Two guards, one
+    // decision, two codes: a caller could not tell "there is no such session"
+    // from "that session was already ended".
+    const ports = withSession();
+    const service = createIdentityAccessService(ports);
+    expect((await service.revokeOperatorSession({ presentedToken: SESSION_TOKEN })).ok).toBe(true);
+
+    const second = await service.revokeOperatorSession({ presentedToken: SESSION_TOKEN });
+    const unknown = await service.revokeOperatorSession({ presentedToken: "plt_os_no-such-token" });
+    const absent = await service.revokeOperatorSession({ presentedToken: null });
+    expect(second.ok).toBe(false);
+    expect(unknown.ok).toBe(false);
+    expect(absent.ok).toBe(false);
+    if (second.ok || unknown.ok || absent.ok) return;
+    expect(second.error.code).toBe("SESSION_REVOKED");
+    // AND THESE TWO STAY THE SAME CODE ON PURPOSE. Separating "no token" from
+    // "no such session" would confirm to an attacker whether a guessed token
+    // exists; `unauthenticated`'s own banner is explicit about it.
+    expect(unknown.error.code).toBe("UNAUTHENTICATED");
+    expect(absent.error.code).toBe("UNAUTHENTICATED");
+    expect(new Set([second.error.code, unknown.error.code]).size).toBe(2);
+  });
+
+  it("ENDS AN EXPIRED SESSION rather than refusing it, so a lapsed browser can still sign out", async () => {
+    // The extraction source's revoke is `updateMany where revokedAt IS NULL` and
+    // says nothing about expiry, so this is parity rather than a new rule — and
+    // it matters: refusing here would leave the one credential a user most wants
+    // destroyed alive until its own clock ran out.
+    const ports = withSession({ expiresAt: at(DAY_MS) });
+    ports.clock.set(at(DAY_MS + MINUTE_MS));
+    expect(await operatorRefusal(ports, SESSION_TOKEN)).toBe("SESSION_EXPIRED");
+    const ended = await createIdentityAccessService(ports).revokeOperatorSession({
+      presentedToken: SESSION_TOKEN,
+    });
+    expect(ended.ok, "an expired session is still ended on request").toBe(true);
+    // AND THE STORY CHANGES with it: the same token now reads REVOKED, not
+    // EXPIRED, which is the distinction a support engineer is looking at.
+    expect(await operatorRefusal(ports, SESSION_TOKEN)).toBe("SESSION_REVOKED");
+  });
+});
+
 describe("authenticateOperator — the projection", () => {
   it("returns the view a consumer is entitled to", async () => {
     const result = await createIdentityAccessService(withSession()).authenticateOperator({
