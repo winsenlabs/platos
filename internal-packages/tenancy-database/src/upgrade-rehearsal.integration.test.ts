@@ -102,6 +102,13 @@ describe.runIf(process.env.CI === "true")("origin/main forward-upgrade rehearsal
       // `Thread_environmentId_updatedAt_id_idx` is what the operator thread
       // listing's `updatedAt DESC` order was said to have and did not.
       { migration_name: "20260906120000_win258_thread_listing_index" },
+      // WIN-267 G1. `EvalRun` — the table behind governance's EvalRunQueue,
+      // claimed under FOR UPDATE SKIP LOCKED with a lease. Recorded here for the
+      // reason the note above gives: this assertion names the WHOLE applied set,
+      // so a migration added by a sibling dimension is a failure of this case
+      // until it is written down. It was added and not written down, and this
+      // case is what said so.
+      { migration_name: "20260909120000_win267_eval_run_queue" },
     ]);
 
     const accessKeyFenceColumn = await prisma.$queryRawUnsafe<
