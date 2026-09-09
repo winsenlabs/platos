@@ -130,7 +130,16 @@ export class BffSessionController {
    * from a request body into a cookie. A replay hands back the same cookie for the
    * same token, which is what the caller asked for both times.
    */
+  // 200, NOT NEST'S DEFAULT 201, AND THE SUITE IS WHAT FOUND IT. Nest answers
+  // every POST 201 unless a handler says otherwise, and this handler CREATES
+  // NOTHING: it moves a credential the caller already holds from a request body
+  // into a cookie, and returns the session that already existed. A 201 would tell
+  // a client a resource had been created and — with no `Location` to go with it —
+  // would be a status nobody could act on. `POST /organizations` and
+  // `POST /projects` keep the 201 they earn, which is what makes this an explicit
+  // decision rather than a blanket.
   @Post()
+  @HttpCode(HttpStatus.OK)
   async exchange(
     @Req() request: InboundOperatorRequest,
     @Res({ passthrough: true }) response: CookieResponse,

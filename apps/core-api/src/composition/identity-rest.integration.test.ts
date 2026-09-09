@@ -501,6 +501,8 @@ describe("WIN-267 R1 — the tenancy read models and writes, over HTTP", () => {
       token: ADMIN_TOKEN,
       body: { name: "Second Org", slug: "r1-second" },
     });
+    // 201 HERE, AND IT IS EARNED: a row that did not exist now does. The pair
+    // with the BFF exchange's 200 is what makes each status a decision.
     expect(answer.status, answer.text).toBe(201);
     const data = answer.body["data"] as Record<string, unknown>;
     expect(data["slug"]).toBe("r1-second");
@@ -589,6 +591,11 @@ describe("WIN-267 R1 — the tenancy read models and writes, over HTTP", () => {
 describe("WIN-267 R1 — the BFF sets bytes and nothing else", () => {
   it("exchanges a token for a cookie the CONTRACT shaped, and the cookie then authenticates", async () => {
     const answer = await call("POST", `${API_VERSION_PREFIX}/bff/session`, { body: { token: ADMIN_TOKEN } });
+    // 200 AND NOT 201, AND THIS ASSERTION FOUND THE DEFECT. The first run of this
+    // suite answered 201: Nest's default for a POST, which the handler had not
+    // overridden. The exchange creates nothing — it moves a credential the caller
+    // already holds into a cookie — so 201 would have told a client a resource
+    // existed that it could not then address.
     expect(answer.status, answer.text).toBe(200);
     const setCookie = answer.headers.get("set-cookie");
     expect(setCookie).not.toBeNull();
