@@ -279,11 +279,18 @@ describeWithDatabase("end_users.* tenancy against real PostgreSQL", () => {
     // tenant's end user to the other tenant's environment. That is a PostgreSQL
     // trigger, not a line of TypeScript, so it is asserted by SQLSTATE and by
     // the message the migration raises.
+    //
+    // `updatedAt` IS SUPPLIED ON PURPOSE. Prisma's `@updatedAt` is a client-side
+    // default, not a database one, so a raw INSERT that omits it violates NOT
+    // NULL. With the trigger installed the BEFORE INSERT trigger fires FIRST and
+    // raises the ancestry error, so the omission is invisible — this case passed
+    // for the wrong reason until a mutation that dropped the trigger reported
+    // SQLSTATE 23502 instead of 23514 and exposed it.
     let raised: any = null;
     try {
       await prisma.$executeRawUnsafe(
-        `INSERT INTO "${schemaName}"."Thread" ("id", "environmentId", "agentId", "endUserId")
-         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, $3::uuid)`,
+        `INSERT INTO "${schemaName}"."Thread" ("id", "environmentId", "agentId", "endUserId", "createdAt", "updatedAt")
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, $3::uuid, now(), now())`,
         alpha.environmentId,
         alpha.agentId,
         beta.endUserId,
@@ -293,6 +300,10 @@ describeWithDatabase("end_users.* tenancy against real PostgreSQL", () => {
     }
     expect(raised, "PostgreSQL accepted a cross-tenant Thread — end_users.* now leaks").not.toBeNull();
     const text = String(raised?.message ?? raised);
+    // Both halves the migration raises, so a refusal for any OTHER reason — a
+    // missing column, a foreign key, a typo in the statement — reads as a
+    // failure rather than as the guard holding.
+    expect(text).toContain("23514");
     expect(text).toContain("Thread crosses its canonical owner ancestry");
 
     // And the leak the row would have caused does not happen.
