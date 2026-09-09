@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "1731ac514b23d2b0c5ed23fe4aa89ac71f3983cdc33663fb3cf4e59fa146a021"
+      "sha256": "826fc5d42902cc0cd315bb439440095e91c3a84d9e84f8be8721045b14dbf2a1"
     },
     {
       "path": "LICENSE",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "0da51fca269fb233f8ed9e5b5d7db1a4662cc58f990e77b99bdea5375a70bafb"
+      "sha256": "5365b1d9114db3a11dd4c5372265b3e04049852a1b26fb34b26dfb74a489f410"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "7ec09819690e900cb09c75965b0c4927822516fcbef99417c3cf80e9d91a96e9"
+      "sha256": "51e4649a7f7c41a226a7580834ad960680f0806a5a1558de3e68c8c139939ef2"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1083,7 +1083,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "e395986950226a1908a10a905df4fc4df20f15438abe12e92dd8dba7fb986c37"
+      "sha256": "01f14de0b5233bb3a3b3beec4ac2954be47d6dc4de7172aab0ddc431a18b0c8d"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3678,7 +3678,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "78d2b0a2f5f950bae63ff4cde793c0fa604a48dbb59fc9586eb437f8bdb3696b"
+      "sha256": "5cb126643d135e3c62106f99f7aa4091480ac3b4ce166a4a65dfb1d183e2c138"
     },
     {
       "path": "pnpm-lock.yaml",
