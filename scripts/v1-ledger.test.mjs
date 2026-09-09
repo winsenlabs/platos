@@ -1718,7 +1718,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // alone recorded; `root-infra.test.script-suites` takes W2's two suites only
     // and moves 32 -> 34 unchanged. W1 is NOT in this branch, so its +1 on this
     // key is not here either -- see the merge commit for the tree fact.
-    "root-infra": 64,
+    //
+    // WIN-268 (M4.2) P2 64 -> 65. ONE file: `scripts/mutations-win268-p2.json`,
+    // this tranche's mutation ledger, beside the seven `mutations-win267-*.json`
+    // that already sit on the `root-infra.doc.audit-artifacts` rule. NO LEDGER
+    // RULE CHANGED, and the file is a record rather than an input: nothing reads
+    // it at run time, which is why it is a doc and not a fixture.
+    "root-infra": 65,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1801,10 +1807,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // WIN-268 (M4.2) P2 1679 -> 1686. SEVEN files, ALL in `apps-agent`, itemised
   // on that area's delta above — so the two halves of this case are the same
   // arithmetic once more, and the eight-key re-derivation from the merged
-  // `expectedDeltas` is 11 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1686. No other
+  // `expectedDeltas` is 11 + 0 + 75 + 4 + 10 + 1503 + 19 + 65 = 1687. No other
   // key takes a contribution from this tranche, which is what makes an
   // auto-merge with a sibling's delta safe to CHECK rather than assume.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1686);
+  //
+  // EIGHT FILES, NOT SEVEN, and the eighth arrived after the first re-pin: the
+  // mutation ledger `scripts/mutations-win268-p2.json` is itself a tracked file,
+  // and writing it moved every tree-hashing audit a second time. That is the
+  // fixpoint this repository's fourth lesson describes, and it is recorded here
+  // because a reader comparing 1686 in an earlier commit message with 1687 on
+  // disk should find the reason rather than a discrepancy.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1687);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1964,10 +1977,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // reading the total, so the two arithmetics can disagree and be caught.
     // 1671 + 7 + 1 = 1679.
     //
-    // WIN-268 (M4.2) P2 1679 -> 1686 -- the THIRTEENTH hand move of this second
-    // reconciliation, and the same seven files as the first: five sources and
-    // two suites under `apps/agent/src`, on rules that already existed.
-    rulesDocument.baseline.totalFiles + 1686
+    // WIN-268 (M4.2) P2 1679 -> 1687 -- the THIRTEENTH hand move of this second
+    // reconciliation, and the same eight files as the first: five sources and
+    // two suites under `apps/agent/src`, plus the tranche's mutation ledger in
+    // `scripts/`, all on rules that already existed.
+    rulesDocument.baseline.totalFiles + 1687
   );
 });
 
