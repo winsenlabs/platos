@@ -76,7 +76,9 @@
       "command": "route-manifest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× mounts exactly the method/path pairs the manifest attributes to this tree"]
+      "kills": [
+        "× mounts exactly the method/path pairs the manifest attributes to this tree"
+      ]
     },
     {
       "name": "M02 a controller path takes the V0 abbreviation",
@@ -88,7 +90,9 @@
       "command": "route-manifest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× mounts exactly the method/path pairs the manifest attributes to this tree"]
+      "kills": [
+        "× mounts exactly the method/path pairs the manifest attributes to this tree"
+      ]
     },
     {
       "name": "M03 a method path is pluralised",
@@ -100,7 +104,9 @@
       "command": "route-manifest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× mounts exactly the method/path pairs the manifest attributes to this tree"]
+      "kills": [
+        "× mounts exactly the method/path pairs the manifest attributes to this tree"
+      ]
     },
     {
       "name": "M04 a controller is dropped from the module",
@@ -128,7 +134,9 @@
       "command": "route-manifest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× answers each declared route from its handler, and a near-miss from the terminal one"]
+      "kills": [
+        "× answers each declared route from its handler, and a near-miss from the terminal one"
+      ]
     },
     {
       "name": "M06 the API root segment changes",
@@ -140,7 +148,9 @@
       "command": "route-manifest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× mounts exactly the method/path pairs the manifest attributes to this tree"]
+      "kills": [
+        "× mounts exactly the method/path pairs the manifest attributes to this tree"
+      ]
     },
     {
       "name": "M07 the process edge loses VERSION_NEUTRAL",
@@ -152,7 +162,9 @@
       "command": "route-manifest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× keeps the process edge off the versioned surface"]
+      "kills": [
+        "× keeps the process edge off the versioned surface"
+      ]
     },
     {
       "name": "M09 an unpaged collection silently accepts a page",
@@ -164,7 +176,9 @@
       "command": "identity-rest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× refuses a page of an unpaged collection, naming both parameters"]
+      "kills": [
+        "× refuses a page of an unpaged collection, naming both parameters"
+      ]
     },
     {
       "name": "M10 the next cursor is computed instead of read",
@@ -176,7 +190,9 @@
       "command": "identity-rest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× derives the next cursor from the CONTRACT's hasMore, never from arithmetic"]
+      "kills": [
+        "× derives the next cursor from the CONTRACT's hasMore, never from arithmetic"
+      ]
     },
     {
       "name": "M11 the guard hardcodes the cookie name",
@@ -188,7 +204,9 @@
       "command": "identity-rest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× asks the CONTRACT for the name on every request, and gets a different one over TLS"]
+      "kills": [
+        "× asks the CONTRACT for the name on every request, and gets a different one over TLS"
+      ]
     },
     {
       "name": "M12 the (C8) transport containment rule is removed",
@@ -217,7 +235,9 @@
       "command": "route-manifest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× records operator protection where the guard is actually called, and only there"],
+      "kills": [
+        "× records operator protection where the guard is actually called, and only there"
+      ],
       "note": "Regeneration is part of the mutation. Without it the committed manifest is untouched and this would be a false survivor."
     },
     {
@@ -230,10 +250,60 @@
       "command": "identity-rest",
       "exit": 1,
       "outcome": "killed",
-      "kills": ["× does not trim, default or otherwise edit what the caller sent"]
+      "kills": [
+        "× does not trim, default or otherwise edit what the caller sent"
+      ]
     }
   ],
-  "container_mutations": [],
+  "container_mutations": [
+    {
+      "name": "M08 an authorization refusal becomes an empty page",
+      "guards": "environment-end-users.controller.ts — the raise from `authorizeEnvironment`",
+      "why": "THE DEFECT THE BRIEF NAMES BY HAND, and the one no unit case can see: the answer is a valid COLLECTION envelope with a valid page block, and only its TRUTH is wrong. An operator is shown an environment that appears EMPTY rather than one they may not see, and nothing on the wire, in a log, or in a screenshot distinguishes the two.",
+      "file": "apps/core-api/src/transports/rest/environment-end-users.controller.ts",
+      "from": "const authorization = await authorizeEnvironment(app, operator, environmentId);",
+      "to": "try { ... } catch { return collectionEnvelope({ rows: [], cursor: null, limit: 0, nextCursor: null, total: 0 }); }",
+      "command": "integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× a route does not widen what the contract permits > REFUSES an unauthorized environment instead of answering an empty page",
+        "× an operator authenticates over HTTP > gives FOUR different answers to four different refusals",
+        "× impersonation > refuses the environment to the impersonated account, on the impersonated account's memberships"
+      ],
+      "killCount": 3
+    },
+    {
+      "name": "M15 the BFF reshapes the directive before writing it",
+      "guards": "bff/session.controller.ts — `onlyTheBytes`, the round trip through `verifySessionCookie`",
+      "why": "A spread copy is the exact edit the contract's `verifySessionCookie` exists to catch: membership of the issuing register, not the shape of the value, is what it tests, so `{ ...directive }` type-checks, carries identical attributes, and is refused. This is what makes 'a BFF may only set the bytes' checkable at the seam rather than asserted in a comment.",
+      "file": "apps/core-api/src/transports/bff/session.controller.ts",
+      "from": "this.onlyTheBytes(directive.value)",
+      "to": "this.onlyTheBytes({ ...directive.value })",
+      "command": "integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× the BFF sets bytes and nothing else > exchanges a token for a cookie the CONTRACT shaped, and the cookie then authenticates"
+      ],
+      "killCount": 1
+    },
+    {
+      "name": "M17 the listing keys on the actor instead of the effective user",
+      "guards": "organizations.controller.ts — which of the two user ids reaches `listOperatorOrganizations`",
+      "why": "Under impersonation the two ids differ, and the wrong one shows a support engineer THEIR OWN tenant while they believe they are seeing the customer's. Every other case in the suite passes: outside impersonation the two ids are equal, which is why the fixture seeds a session that impersonates.",
+      "file": "apps/core-api/src/transports/rest/organizations.controller.ts",
+      "from": "asIdentifier<UserId>(operator.effectiveUserId)",
+      "to": "asIdentifier<UserId>(operator.actorUserId)",
+      "command": "integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× impersonation > lists the IMPERSONATED account's organizations, not the impersonator's"
+      ],
+      "killCount": 1
+    }
+  ],
   "survivors": [
     {
       "name": "M16 the BFF stops handing the directive back to `verifySessionCookie`",
@@ -251,7 +321,8 @@
         "is against a FUTURE edit that reshapes the directive, and M15 is that",
         "edit: a spread copy is refused. Recording the survivor rather than",
         "inventing a case that would pass for the wrong reason."
-      ]
+      ],
+      "measured": "RUN, not predicted. Applied on the mini against the real container suite (44 cases) and on the laptop against both unit suites; every case stayed green."
     }
   ],
   "declared": [
@@ -266,5 +337,27 @@
     "REQUIRES a `TenantScope`, and a LOGIN refusal happens before any tenant is",
     "known. `identity-rest.test.ts` states the first as a checked claim over the",
     "contract's own method names, so it goes red the day one is published."
-  ]
+  ],
+  "runs": {
+    "laptop": {
+      "where": "the laptop, no container runtime (Docker is quit by standing instruction)",
+      "mutations": 13,
+      "killed": 13,
+      "survived": 0,
+      "note": "Twelve source and gate mutations plus M13, which regenerates the manifest as part of the mutation — without the regeneration the committed rows are untouched and it would have been a false survivor."
+    },
+    "mini": {
+      "where": "Mac mini over ssh, FRESH worktree /tmp/pl-rest-7f9ade17, pgvector/pgvector:pg16 + redis:7-alpine through @testcontainers/*",
+      "mutations": 4,
+      "killed": 3,
+      "survived": 1,
+      "baseline": "pnpm test:core-api:integration — 44 cases across 3 files, all green (identity-rest 22, operator-authentication 6, idempotency 16)",
+      "note": "M16 is the survivor and it was RUN rather than predicted: applied, the full container suite stayed green, and the laptop suites stayed green too."
+    },
+    "total": {
+      "mutations": 17,
+      "killed": 16,
+      "survivors_measured": 1
+    }
+  }
 }
