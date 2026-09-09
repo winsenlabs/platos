@@ -6,6 +6,9 @@ import {
   PRISMA_TOKEN,
 } from "../shared/database.provider";
 import { env } from "../shared/env";
+// WIN-268 P1 — the MCP scope sets are a CONTRACT decision and live with the
+// contract; see the re-export below.
+import { ENTITY_MCP_SCOPES, PLATFORM_MCP_SCOPES } from "../http/mcp-surface";
 
 /** Theme K.10 — OAuth 2.1 authorization-server primitives. */
 
@@ -88,8 +91,19 @@ const AUTH_CODE_PREFIX = "plt_ocd_";
 const MCP_IDENTITY_SCOPE_PREFIX = "platos:mcp-identity:";
 const CONSENT_TOKEN_PREFIX = "plt_octx_";
 
-export const PLATFORM_MCP_SCOPES = ["mcp:read", "mcp:write"] as const;
-export const ENTITY_MCP_SCOPES = ["mcp:tools"] as const;
+/**
+ * WIN-268 P1 — RE-EXPORTED, not redefined.
+ *
+ * The two MCP scope sets moved to `http/mcp-surface.ts`, the one file that holds
+ * every MCP contract decision, because ADR M0.4 §2 makes NARROWING one of them a
+ * major-version event and §4 explains why that is the change most likely to go
+ * unnoticed: a client whose token still validates cannot observe that a grant it
+ * had not yet used is gone. The names stay exported from here so
+ * `oauth.controller.ts`'s two `scopes_supported` metadata fields and the token
+ * issuer below keep the imports they had — one value, two names, no second
+ * spelling of the decision.
+ */
+export { ENTITY_MCP_SCOPES, PLATFORM_MCP_SCOPES };
 export const OAUTH_CONSENT_TTL_SEC = 10 * 60;
 
 export const OAUTH_ACCESS_TOKEN_TTL_SEC = 3600;

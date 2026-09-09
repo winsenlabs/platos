@@ -27,6 +27,23 @@ import type { DomainError, PrincipalId, Result, TenantScope } from "@platos/kern
 export type { AuthorizationScopeKind, PrincipalTier, TokenKind } from "../domain/index.js";
 export { TOKEN_PREFIXES, classifyToken, prefixOf } from "../domain/index.js";
 export type { AuthRateLimitAction, RateLimitPolicy } from "../domain/index.js";
+/**
+ * WIN-268 (M4.2) P1 — the mint's vocabulary.
+ *
+ * `MintableBearerKind` and `McpPermissionTier` are re-exported because a caller
+ * has to NAME one to call `mintBearerCredential`, and a transport that spelled
+ * `"mcp-token"` as a string literal would be a second declaration of the
+ * enumeration. `MCP_PERMISSION_TIERS` travels as a value for the same reason a
+ * validator needs it: to refuse anything that is not one of the two without
+ * writing the two down again.
+ */
+export type { McpPermissionTier, MintableBearerKind } from "../domain/index.js";
+export { MCP_PERMISSION_TIERS, MINTABLE_BEARER_KINDS, isMintableBearerKind } from "../domain/index.js";
+import type {
+  MintBearerCredentialCommand,
+  MintedBearerCredentialView,
+} from "../application/mint-bearer-credential.js";
+export type { MintBearerCredentialCommand, MintedBearerCredentialView };
 
 /**
  * A grant's reach, flattened for the wire.
@@ -331,6 +348,34 @@ export interface IdentityAccessContract {
    * what makes "the BFF only sets the bytes" checkable at the seam.
    */
   verifySessionCookie(value: unknown): Result<SessionCookieDirectiveView>;
+
+  /**
+   * Mint one of the two MCP bearer credentials, returning the ONLY copy of the
+   * secret.
+   *
+   * WHY IT IS ON THE CONTRACT AT ALL. `apps/core-api`'s
+   * `idempotency-policy.ts` classes eight operations `required` — no
+   * `Idempotency-Key`, no execution — and two of them mint an MCP token. A V1
+   * route may only reach a contract method, so until this one existed the gate
+   * was binding two operations that could not be served: the winner of an
+   * idempotency race reached the framework's own 404 while holding a
+   * reservation that then replayed the 404 for a day.
+   *
+   * THE SCOPE THAT ARRIVES IS THE ONE THE CALLER WAS AUTHORIZED FOR. It must be
+   * an ENVIRONMENT scope, and it is re-derived by the store from the
+   * environment's own ancestry before the view is built, so a forged
+   * organization/project/environment triple cannot survive the round trip. The
+   * cross-tenant DECISION is `tenancy`'s and is made before this call; what is
+   * enforced here is that nothing the request said about tenancy is echoed back.
+   *
+   * ONLY TWO OF THE FOUR BEARER KINDS ARE MINTABLE. `PersonalAccessToken` and
+   * `EndUserSession` exist in the schema with zero production call sites, so
+   * there is no oracle for what a minted one contains; `MintableBearerKind` is
+   * the enumeration and the reason is recorded in `domain/bearer-token.ts`.
+   */
+  mintBearerCredential(
+    command: MintBearerCredentialCommand,
+  ): Promise<Result<MintedBearerCredentialView>>;
 }
 
 /**

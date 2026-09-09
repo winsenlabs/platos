@@ -53,9 +53,28 @@ const source = (path) => readFileSync(path, "utf8");
 const derive = (overrides = new Map()) => deriveRestContract({ repoDir: repositoryRoot, overrides });
 
 test("every core-api REST operation in the manifest reaches a derived schema", () => {
+  // WIN-268 (M4.2) P1 — THE CORE-API IMPLEMENTATION, NOT THE FIRST ONE.
+  //
+  // Until this tranche every operation had exactly one handler, so
+  // `implementations[0]` was the only one and the two readings agreed by
+  // accident. The two MCP token mints are the first operations served by BOTH
+  // deployables — `apps/agent` since before V1, `apps/core-api` now that the
+  // `Idempotency-Key` gate has handlers behind the templates it binds — and the
+  // agent's implementation is registered first. Filtering on `[0]` would have
+  // silently dropped exactly the two operations whose schemas this ratchet is
+  // newly proving.
+  //
+  // The rule is the generator's own: `buildOpenApi` describes the core-api
+  // implementation when one exists, because the V1 document describes the V1
+  // deployable and only that handler's types can be derived.
+  const coreApiImplementation = (operation) =>
+    operation.implementations.find((implementation) =>
+      implementation.source.startsWith("apps/core-api/"),
+    );
   const manifestHandlers = MANIFEST.inventories.restOperations
-    .filter((operation) => operation.implementations[0].source.startsWith("apps/core-api/"))
-    .map((operation) => `${operation.implementations[0].controller}.${operation.implementations[0].handler}`)
+    .map((operation) => coreApiImplementation(operation))
+    .filter((implementation) => implementation !== undefined)
+    .map((implementation) => `${implementation.controller}.${implementation.handler}`)
     .sort();
   assert.ok(manifestHandlers.length > 0, "the manifest carries no core-api operations");
   assert.deepEqual([...derive().handlers.keys()].sort(), manifestHandlers);

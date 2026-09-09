@@ -345,6 +345,41 @@ export function inMemoryIdentityAccessRepository(
         }
         state.bearerCredentials.set(key, credential);
       },
+      /**
+       * WIN-268 P1 — the INSERT half.
+       *
+       * IT REFUSES A DUPLICATE DIGEST, and that refusal is not decoration.
+       * `McpToken.tokenHash` and `McpBearerToken.tokenHash` are both `@unique`,
+       * so the real store answers a second insert of one digest with a
+       * constraint violation; a double that overwrote instead would let a use
+       * case pass a test that the canonical store fails.
+       *
+       * The record it returns carries the tier the DOMAIN means — OPERATOR for
+       * an `mcp-token`, whose principal is the user who minted it, END_USER for
+       * an `entity-bearer-token`, whose principal is an end user of that entity
+       * — and never `McpToken.tier`, which is the MCP permission tier and a
+       * different axis entirely. The adapter's banner records the same trap.
+       */
+      async mint(credential) {
+        const key = bearerKey(credential.kind, credential.tokenHash);
+        if (state.bearerCredentials.has(key)) {
+          throw new Error(`a ${credential.kind} credential already carries this digest`);
+        }
+        const record: BearerCredentialRecord = {
+          credentialId: credential.credentialId,
+          kind: credential.kind,
+          tokenHash: credential.tokenHash,
+          tier: credential.kind === "mcp-token" ? "OPERATOR" : "END_USER",
+          principalId: credential.principalId,
+          scope: credential.scope,
+          permissions: credential.permissions,
+          expiresAt: credential.expiresAt,
+          revokedAt: null,
+          lastUsedAt: null,
+        };
+        state.bearerCredentials.set(key, record);
+        return record;
+      },
     },
 
     endUsers: {

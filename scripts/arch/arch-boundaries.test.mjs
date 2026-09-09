@@ -1250,7 +1250,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1637 off a
     // second, independent scan. A branch whose files were double-counted here
     // would disagree with that one.
-    assert.equal(result.fileCount, 1637, "the generated V1 source census must stay exact");
+    //
+    // WIN-268 (M4.2) P1 1637 -> 1644. SEVEN files: FIVE in `apps/core-api/src`
+    // (the MCP surface expression, the two token-mint controllers, the
+    // projection they share, and the real-concurrency integration suite) and
+    // TWO in `packages/contexts/identity-access/application` (the mint use case
+    // and its suite). NOT ONE of them crosses a boundary this gate names — the
+    // controllers reach `identity-access` and `tenancy` through their published
+    // contracts and touch no adapter, which is the whole point of the rule and
+    // is why the violation list below stays empty while the census moves.
+    // 1637 + 7 = 1644.
+    assert.equal(result.fileCount, 1644, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1287,7 +1297,14 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // resolver, and `governance-isolation.integration.test.ts` beside it.
       // Both terms are kept and ADDED: this is the re-derivation, so a merge
       // that had dropped either half would disagree with the flat pin above.
-      2);
+      2 +
+      // WIN-268 (M4.2) P1: the two MCP one-time-secret mints. transports 4 (the
+      // MCP surface expression, two controllers, the shared projection),
+      // composition 1 (the real-concurrency integration suite), contexts 2 (the
+      // mint use case and its suite). 4 + 1 + 2 = 7, and NOTHING under
+      // `packages/adapters` — the store's INSERT half lands inside the existing
+      // `identity-bearer.ts`.
+      4 + 1 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

@@ -445,7 +445,10 @@ test("the census is not vacuous — it reads the real suites", () => {
   // `governance-isolation.integration.test.ts`, the eleven-case two-tenant
   // proof that a TAMPERED scope triple is refused rather than served. 548 + 1
   // = 549.
-  assert.equal(live.totalFiles, 549);
+  //
+  // WIN-268 (M4.2) P1 549 -> 550: ONE more, `identity-access`'s
+  // `application/mint-bearer-credential.test.ts`. 549 + 1 = 550.
+  assert.equal(live.totalFiles, 550);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total. Each dimension appends its own
@@ -458,7 +461,7 @@ test("the census is not vacuous — it reads the real suites", () => {
   // G2 appends `+ 2`, the two read-seam suites on the same row. SUMMED: `+ 3`.
   // WIN-303 appends `+ 1`, `governance-isolation.integration.test.ts`, on that
   // same postgres-tenancy row and on no other.
-  assert.equal(live.totalFiles, 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1);
+  assert.equal(live.totalFiles, /* WIN-268 P1 mint suite */ 1 + 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -648,8 +651,9 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // queue's. WIN-267 G2 546 -> 548: TWO more on the same row, the read
   // seams' schema join and their two-tenant proof. SUMMED: 545 + 3 = 548.
   // WIN-303 548 -> 549, the tampered-triple proof. 545 + 4 = 549.
-  assert.equal(files, 549);
-  assert.equal(files, 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1);
+  // WIN-268 P1 549 -> 550, the mint suite. 549 + 1 = 550.
+  assert.equal(files, 550);
+  assert.equal(files, /* WIN-268 P1 mint suite */ 1 + 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -677,8 +681,8 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   // refusal-code cases underneath it. The terms are kept rather than the total
   // adjusted, so a tranche that removed the session-cookie suite while this
   // landed could not reach the same number.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 324, "231 at 3ed8f3ce, +25 contract suite, +28 end-user read, +34 session cookie, +6 server-side sign-out");
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 231 + 25 + 28 + 34 + 6);
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 339, "231 at 3ed8f3ce, +25 contract suite, +28 end-user read, +34 session cookie, +6 server-side sign-out, +15 WIN-268 P1 bearer-credential mint");
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 231 + 25 + 28 + 34 + 6 + 15);
   // WIN-259 (M2.4) 162 -> 209. `secrets` was one of the five asserted UNMOVED
   // above and it moves now, so the reasons are stated rather than the number
   // adjusted. THREE suites, in three terms so one shrinking while another grows
@@ -820,7 +824,14 @@ test("the providers context is pinned at what vitest prints", () => {
   // codes. No file arrives, so the `totalFiles` sum below is untouched, and that
   // asymmetry is the check working: a suite added to an EXISTING file moves cases
   // and not files, and a term appended to both sums would have been wrong.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  //
+  // WIN-268 (M4.2) P1 appends `+ 15` to the same twelve, and this time the FILE
+  // sum below moves too: `identity-access` gains a NEW suite,
+  // `application/mint-bearer-credential.test.ts`, rather than more cases in an
+  // existing one. Both sums moving together is the check working in the other
+  // direction — a file added without its cases, or cases without their file,
+  // fails one of the two.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -865,7 +876,9 @@ test("the skills adoption is pinned, and moved nothing else", () => {
     // from it, so the sum still spans every package it always spanned and a
     // suite deleted from `identity-access` while W3 landed cannot hide inside a
     // narrower span.
-    "packages/contexts/identity-access": 324,
+    // WIN-268 (M4.2) P1 324 -> 339: the bearer-credential mint suite, itemised
+    // on the row in `test-case-census.mjs`.
+    "packages/contexts/identity-access": 339,
     // WIN-259 (M2.4) 162 -> 215. `secrets` STOPS being untouched here too:
     // `sweep-root-key-reencryption.test.ts` adds sixteen cases for rotation as
     // a job, and the legacy-envelope migration adds thirty-seven more across its
@@ -1006,7 +1019,7 @@ test("the memory context is pinned at what vitest prints", () => {
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -1036,7 +1049,7 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the privacy context is pinned at what vitest prints", () => {
@@ -1074,7 +1087,7 @@ test("the privacy context is pinned at what vitest prints", () => {
   // observability's 288 and agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the observability context is pinned at what vitest prints", () => {
@@ -1107,7 +1120,7 @@ test("the observability context is pinned at what vitest prints", () => {
   // agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
   assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the agents context is pinned at what vitest prints", () => {
@@ -1150,7 +1163,7 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the tools context is pinned at what vitest prints", () => {
@@ -1179,7 +1192,7 @@ test("the tools context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/tools"].files, 19);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 362);
   assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the channels context is pinned at what vitest prints", () => {
@@ -1214,7 +1227,7 @@ test("the channels context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/channels"].files, 15);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 269);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the governance context is pinned at what vitest prints", () => {
@@ -1245,7 +1258,7 @@ test("the governance context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 610);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1271,17 +1284,20 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
   // The row this tranche moves. Its own branch read the package at 18 files and
   // 256 cases on v1; on this tree the same package is at 23 and 318, because the
   // later tranches land in it too. The +87 is what conserves.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 23);
+  // WIN-268 (M4.2) P1 23 -> 24: `application/mint-bearer-credential.test.ts`.
+  assert.equal(EXPECTED["packages/contexts/identity-access"].files, 24);
   // WIN-267 W3 318 -> 324, and the FILE count deliberately does not move: both
   // suites the six cases land in already existed.
-  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 324);
+  // WIN-268 P1 324 -> 339, and the FILE count DOES move this time: the mint is
+  // a new use case with a new suite, not more cases in an existing one.
+  assert.equal(EXPECTED["packages/contexts/identity-access"].cases, 339);
   assert.ok(
     listTestFiles(undefined, "packages/contexts/identity-access").includes(
       "packages/contexts/identity-access/application/identity-access-service.test.ts",
@@ -1363,7 +1379,7 @@ test("the conversations context is pinned at what vitest prints", () => {
   // above do NOT move for any of them: all four implement ports that already
   // existed and all four had their port entry point widened in place, which is
   // what this census distinguishes from an addition.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
 });
 
 test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
@@ -1739,7 +1755,7 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // `24 + 17 + 3 + 4` is four cases added to `agents-rows.test.ts`, a file this
   // row already counted, which is why that dimension's file tail gains 3 while
   // its case tail gains 48.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)

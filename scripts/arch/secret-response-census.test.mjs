@@ -150,13 +150,45 @@ test("a request BODY sent outward is not a response", () => {
   assert.deepEqual(found, []);
 });
 
-test("only the four request surfaces are in scope", () => {
+test("only the five request surfaces are in scope", () => {
   assert.equal(isRequestSurface("apps/agent/src/x/y.controller.ts"), true);
   assert.equal(isRequestSurface("apps/agent/src/mcp-platform/tools/y.ts"), true);
   assert.equal(isRequestSurface("apps/webapp/app/routes/a/route.tsx"), true);
   assert.equal(isRequestSurface("apps/webapp/app/services/z.server.ts"), true);
+  // WIN-268 (M4.2) P1 — THE FIFTH. The whole V1 transport tree, not just the
+  // controllers in it: ADR M0.3 §6's 500-line budget forces a route's response
+  // projection into a sibling file, so a controller-only scan reported this tree
+  // as clean no matter what its routes returned.
+  assert.equal(isRequestSurface("apps/core-api/src/transports/mcp/token-mint.ts"), true);
+  assert.equal(isRequestSurface("apps/core-api/src/transports/rest/envelope.ts"), true);
+  // And the negative controls, unchanged: a service is not a surface, a test is
+  // not a surface, and the tree OUTSIDE `transports/` is not one either — the
+  // composition root and the process edge answer no request.
   assert.equal(isRequestSurface("apps/agent/src/auth/auth.service.ts"), false);
   assert.equal(isRequestSurface("apps/agent/src/x/y.controller.test.ts"), false);
+  assert.equal(isRequestSurface("apps/core-api/src/composition/registry.ts"), false);
+  assert.equal(isRequestSurface("apps/core-api/src/transports/mcp/token-mint.test.ts"), false);
+});
+
+test("a V1 transport PROJECTION is a handler, and one outside that tree is not", () => {
+  // The gap WIN-268 P1 found by building the first V1 route that returns a
+  // credential. `mintedTokenResource(...)` is a function declaration, and
+  // `enclosingHandler` returns null for one — correct everywhere else, and wrong
+  // in the one tree whose line budget forces projections out of the handler.
+  const projection = [
+    "export function mintedTokenResource(minted) {",
+    "  return { tokenId: minted.credentialId, token: minted.token };",
+    "}",
+  ].join("\n");
+  assert.deepEqual(
+    scanFile("apps/core-api/src/transports/mcp/token-mint.ts", projection).map((site) => site.key),
+    ["token"],
+  );
+  // THE NEGATIVE CONTROL, and it is what keeps the widening honest: the same
+  // function shape in a file that is NOT a V1 transport stays invisible, because
+  // a helper that happens to build an object with a credential-shaped field in
+  // it is not a response.
+  assert.deepEqual(scanFile("apps/agent/src/auth/helper.ts", projection), []);
 });
 
 test("the key list is non-empty and every entry is a real response field name", () => {

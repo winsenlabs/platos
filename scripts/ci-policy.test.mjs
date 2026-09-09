@@ -241,8 +241,20 @@ const persistedStateIntegrationRun = [
 const workloadPackageTestTarget = "node --test scripts/workload-identity-package.test.mjs";
 const agentRuntimeSmokeTestTarget = "node --test tests/persisted-state-gate/agent-runtime-health.test.mjs";
 const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mjs";
+// The exact `build:platos:agent`, spelled ONCE. The equality rule below and the
+// ordering mutation control both read it, so the command has one pin rather
+// than two that can drift apart.
+//
+// `@platos/context-identity-access...` joins the prerequisites because M4.1 made
+// the control-plane generator scan `apps/core-api/src/transports` as a second
+// root, and the MCP mint DTO there is the first thing in that root to import a
+// context type. The generator derives its OpenAPI schemas off the TypeScript
+// checker, so without that package's declarations `MintedTokenResource.tier`
+// resolves to `any` and the derivation refuses it. A container starts cold and
+// has no earlier build to inherit, which is why this was invisible everywhere
+// except the image build.
 const agentBuildScriptTarget =
-  "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies";
+  'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
 const agentRuntimeSmokeInvocation =
   "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
 const expectedV1EvidenceCommands = [
@@ -376,6 +388,24 @@ const expectedV1EvidenceCommands = [
   // `v1` @ 21ca7a8b the suite is GREEN at 369/369, so the failure was this PR's
   // own and is repaired here rather than inherited.
   "node --test scripts/arch/contract-map.test.mjs",
+  // WIN-268 (M4.2) P1 (+2). The MCP no-second-spelling lint and its controls.
+  // It is the MCP row's counterpart to the `api/v1` no-bare-prefix lint above:
+  // ADR M0.4 §2 puts the REST major in the URL and the MCP major in
+  // `serverInfo.version`, and a drift in the second is INVISIBLE — a server
+  // reporting the wrong contract version answers every request correctly and
+  // lies only to the client's compatibility logic, where a drifted URL prefix
+  // 404s on the first call. The audit half holds the literal count at zero
+  // across the whole production tree and joins the declared constants and the
+  // measured 202-tool catalog to the generated manifest; the `test:` half
+  // carries the synthetic cases that make all four refusal codes reachable, so
+  // the pair belongs in one step read off one tree.
+  //
+  // Invoked directly rather than through package.json scripts, for the reason
+  // recorded above the capability-matrix controls: root package.json is a
+  // webapp image build input and a line there moves the SBOM receipt's
+  // buildInputsSha256.
+  "node scripts/arch/mcp-surface.mjs",
+  "node --test scripts/arch/mcp-surface.test.mjs",
   "pnpm audit:sbom:check",
   "pnpm audit:sbom:nonvacuity",
   "pnpm test:sbom",
@@ -2127,6 +2157,17 @@ function policyViolations(input) {
   return violations;
 }
 
+/**
+ * A string as it appears INSIDE a JSON document, without the surrounding quotes.
+ *
+ * The package.json fixtures are matched as raw text, so a command carrying a
+ * quoted `--filter` argument must be searched for in its escaped form. Deriving
+ * it here keeps one spelling of the command.
+ */
+function jsonEncoded(value) {
+  return JSON.stringify(value).slice(1, -1);
+}
+
 function replaceNth(sourceText, before, after, occurrence) {
   assert.ok(occurrence >= 0, "mutation occurrence must be non-negative");
   let cursor = 0;
@@ -3719,12 +3760,22 @@ test("CI policy controls fail under generated semantic source mutations", async 
     {
       name: "Agent workload identity build ordering",
       expected: "package.json must build workload identity before the strict Agent shipping build",
+      // The fixture is package.json's RAW TEXT, so the command has to be matched
+      // as JSON encodes it: the `--filter "@platos/context-identity-access..."`
+      // argument carries quotes, which appear escaped in the file. Both forms are
+      // derived from the one constant rather than spelled a second time, so the
+      // equality rule and this control cannot drift apart.
       mutate: (input) =>
         mutateFixture(
           input,
           "packageJson",
-          agentBuildScriptTarget,
-          agentBuildScriptTarget.replace("pnpm --filter @internal/workload-identity build && ", "")
+          jsonEncoded(agentBuildScriptTarget),
+          jsonEncoded(
+            agentBuildScriptTarget.replace(
+              "pnpm --filter @internal/workload-identity build && ",
+              ""
+            )
+          )
         ),
     },
     {
