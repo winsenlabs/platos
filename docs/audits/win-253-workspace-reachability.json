@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "802dc35109dcfcd12ea5453de007ffaf448640944daf6e3be6484d56d6e63b1e",
+  "evidenceSha256": "25ce5b044d940d3811433811c00e0c9fc779152b86207199246fc87fc0eef67c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "e704b82b6c917592ba877b4f5f301ef8c4455b06ac92d6ef8f49a9765d225632",
+    "aggregateSha256": "3c269f112dd1e02a4c086f820b042479d890bdc538e0d980b054267d91a465d7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -15271,7 +15271,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/mint-bearer-credential.ts",
-        "sha256": "28d73227a84f3c1eba3e7ad23bb527c085f0a9493a2a69d767c525ea6ac4bf5d"
+        "sha256": "8268ef79901933a4005780dcd1f911aa7d9e0ac260ae621ce2bfcfde36ff933a"
       },
       {
         "path": "packages/contexts/identity-access/application/ports/index.ts",
