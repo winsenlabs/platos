@@ -27,9 +27,11 @@ import type {
   CreateProjectRequest,
   MembershipMutationResult,
   ResolvedEnvironmentScope,
+  ResolveWorkspaceRequest,
   RevokeAccessKeyGenerationRequest,
   TenancyContract,
   TenantDescriptor,
+  WorkspaceDescriptor,
 } from "../contracts/index.js";
 
 import { createAddProjectMember } from "./add-project-member.js";
@@ -42,6 +44,7 @@ import {
   createListVisibleProjects,
 } from "./operator-read-models.js";
 import type { TenancyDependencies } from "./dependencies.js";
+import { createResolveWorkspace } from "./resolve-workspace.js";
 import { createRevokeAccessKeyGeneration } from "./revoke-access-key-generation.js";
 
 export function createTenancyService(dependencies: TenancyDependencies): TenancyContract {
@@ -54,6 +57,7 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
   const createProject = createCreateProject(dependencies);
   const listOperatorOrganizations = createListOperatorOrganizations(dependencies);
   const listVisibleProjects = createListVisibleProjects(dependencies);
+  const resolveWorkspace = createResolveWorkspace(dependencies);
   const revokeAccessKeyGeneration = createRevokeAccessKeyGeneration(dependencies);
 
   return {
@@ -81,6 +85,9 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
 
     authorizeEnvironmentOperator: (request: AuthorizeEnvironmentOperatorRequest) =>
       authorizeEnvironmentOperator(request),
+
+    resolveWorkspace: (request: ResolveWorkspaceRequest): Promise<Result<WorkspaceDescriptor>> =>
+      resolveWorkspace(request),
 
     verifyAuthorization: (value: unknown) => requireAuthorization(value),
 

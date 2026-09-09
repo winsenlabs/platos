@@ -117,6 +117,27 @@ export interface ResolvedEnvironmentScope {
   readonly archived: AncestryLevel | null;
 }
 
+/**
+ * A workspace addressed BY SLUG, and the authorization that earned it.
+ *
+ * This is what every environment-scoped dashboard page opens with. The
+ * `authorization` is the branded value tenancy minted while re-deriving the
+ * ancestry from the leaf — a consumer keys its own reads by
+ * `authorization.scope` and never by ids taken from the URL that produced it.
+ *
+ * `environments` is the project's unarchived environments, oldest first: the
+ * environment switcher's list, carried here because the page that resolves a
+ * workspace is the page that renders the switcher, and a second round trip for
+ * it would be a second chance to disagree about ordering.
+ */
+export interface WorkspaceDescriptor {
+  readonly authorization: EnvironmentOperatorAuthorization;
+  readonly organization: OrganizationRecord;
+  readonly project: ProjectRecord;
+  readonly environment: EnvironmentRecord;
+  readonly environments: readonly EnvironmentRecord[];
+}
+
 // --- commands ----------------------------------------------------------------
 
 export interface AuthorizeEnvironmentOperatorRequest {
@@ -126,6 +147,14 @@ export interface AuthorizeEnvironmentOperatorRequest {
    * caller has nothing to spoof.
    */
   readonly environmentId: EnvironmentId;
+  readonly operator: OperatorPrincipal;
+  readonly access: EnvironmentAccess;
+}
+
+export interface ResolveWorkspaceRequest {
+  readonly organizationSlug: string;
+  readonly projectSlug: string;
+  readonly environmentSlug: string;
   readonly operator: OperatorPrincipal;
   readonly access: EnvironmentAccess;
 }
@@ -220,6 +249,23 @@ export interface TenancyContract {
   authorizeEnvironmentOperator(
     request: AuthorizeEnvironmentOperatorRequest,
   ): Promise<Result<EnvironmentOperatorAuthorization>>;
+
+  /**
+   * Address a workspace by `(organizationSlug, projectSlug, environmentSlug)` and
+   * authorize the operator for it, in ONE decision.
+   *
+   * The resolution and the authorization are deliberately not separable. A
+   * published lookup that returned ids would let any authenticated operator learn
+   * that `acme/billing/production` exists without being allowed to address it, and
+   * slugs are guessable in a way `EnvironmentId` is not. So every failure — no such
+   * organization, no such project, no such environment, and all four RBAC gates —
+   * returns the SAME `TENANCY_ENVIRONMENT_FORBIDDEN`, with the gate in log-only
+   * `details`. See `application/resolve-workspace.ts`.
+   *
+   * This replaces the only remaining reason `apps/webapp` holds a database
+   * credential: the `environment.findFirst` slug walk in `auth.server.ts`.
+   */
+  resolveWorkspace(request: ResolveWorkspaceRequest): Promise<Result<WorkspaceDescriptor>>;
 
   /**
    * Re-check an authorization that crossed a boundary where its type was erased

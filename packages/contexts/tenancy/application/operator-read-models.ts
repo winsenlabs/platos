@@ -68,8 +68,13 @@ type Dependencies = Pick<TenancyDependencies, "repository">;
  * The id is the tiebreak. Rows created in one transaction share an instant, and
  * an unstable order among them would land the same operator somewhere different
  * on consecutive logins.
+ *
+ * EXPORTED because `resolve-workspace.ts` orders the environment switcher by the
+ * same rule the oracle's nested select carries (`orderBy: { createdAt: "asc" }`).
+ * Two spellings of one ordering decision is how the landing page and the switcher
+ * come to disagree about which environment is first.
  */
-function byCreation(
+export function byCreation(
   left: { readonly id: string; readonly createdAt: Date },
   right: { readonly id: string; readonly createdAt: Date },
 ): number {

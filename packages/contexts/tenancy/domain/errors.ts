@@ -34,7 +34,17 @@ export type DenialGate =
   | "organization-membership"
   | "project-membership"
   | "secret-mutate-role"
-  | "inconsistent-ancestry";
+  | "inconsistent-ancestry"
+  // The three SLUG-ADDRESSED resolution failures (`resolve-workspace.ts`). They
+  // are members of THIS union, and not a `tenantNotFound`, because a workspace
+  // addressed by name must refuse identically whether it is absent or merely
+  // out of reach: `acme/billing/production` is guessable in a way an
+  // `EnvironmentId` is not, so a distinguishable 404 here would be an
+  // enumeration oracle over the customer list. Same code, same message, gate in
+  // log-only `details` — the property the four gates above already hold.
+  | "no-such-organization"
+  | "no-such-project"
+  | "no-such-environment";
 
 export function environmentForbidden(gate: DenialGate): DomainError {
   return domainError(
