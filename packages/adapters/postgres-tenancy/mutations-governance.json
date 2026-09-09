@@ -329,7 +329,7 @@
       "file": "src/governance-ratings.ts",
       "from": "            where: { turnId: write.turnId, endUserId: write.endUserId, ...scopedWhere(scope) },\n            data: {",
       "to": "            where: { turnId: write.turnId, endUserId: write.endUserId },\n            data: {",
-      "note": "`@@unique([turnId, endUserId])` names no environment, so an update keyed on the pair alone reaches another tenant's row whenever the two ids collide.",
+      "note": "`@@unique([turnId, endUserId])` names no environment, so an update keyed on the pair alone reaches another tenant's row whenever the two ids collide. WIN-303: this entry was VACUOUS until the case asserted WHICH refusal. The mutated statement does reach the other tenant's row and rewrite it, but the scoped read-back that follows then finds nothing and returns an error -- and `runResult` rolls the whole unit of work back, restoring the row. `flip.ok` was false and the observer saw the original either way. Confirmed still green on the BASE commit in a second worktree, so it is a pre-existing hole rather than one this tranche opened.",
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],

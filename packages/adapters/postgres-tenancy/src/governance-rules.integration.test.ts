@@ -513,6 +513,17 @@ describe("every read and every write is narrowed to ONE environment", () => {
     // installation-wide unique index refuses it. Either way the other tenant's
     // row is untouched.
     expect(flip.ok).toBe(false);
+    // WHICH refusal, and this line is here because the case was VACUOUS without
+    // it — on this branch and, checked against a second worktree, on the base as
+    // well. `mutations-governance.json`'s M-G19 removes `scopedWhere` from the
+    // flip's `updateMany`; the statement then reaches the other tenant's row and
+    // rewrites it, fails to read it back IN SCOPE, and returns an error — which
+    // `runResult` ROLLS BACK, restoring the row. So `flip.ok` is false and the
+    // observer sees the original either way, and the only thing that differs is
+    // the reason: the guarded path never matched anything and is refused by the
+    // installation-wide unique index, while the mutated one matched and then
+    // lost the row it had just written.
+    expect(reasonOf(flip)).toBe("rating for this turn and end user exists in another environment");
     const untouched = await observer.messageRating.findFirst({
       where: { turnId: foreign.turnId, endUserId: foreign.endUserId },
       select: { comment: true, revision: true },
