@@ -8,6 +8,16 @@ import { MacroRecordingState } from "./tools/macros";
 import { compileSchema } from "./schema-validator";
 import { McpRouter, RPC_ERRORS, type McpToolHandler } from "./mcp-router";
 import type { VerifiedToken } from "./token.service";
+// WIN-268 (M4.2) P1 — the ONE expression of both MCP version axes.
+import {
+  MCP_PROTOCOL_VERSION,
+  PLATOS_MCP_CONTRACT_MAJOR,
+  PLATOS_MCP_CONTRACT_META_KEY,
+  PLATOS_MCP_CONTRACT_VERSION,
+  PLATOS_MCP_TOOL_META_KEY,
+  mcpCatalogDigest,
+  toolSchemaHash,
+} from "../http/mcp-surface";
 
 interface ManifestTool {
   name: string;
@@ -40,6 +50,15 @@ const manifest = manifestJson as unknown as {
     mcpTools: number;
     restOperations: number;
     adminTierTools: number;
+  };
+  mcpContract: {
+    version: string;
+    major: number;
+    protocolVersion: string;
+    catalogDigest: string;
+    platformScopes: string[];
+    entityScopes: string[];
+    rateTableVersion: null;
   };
 };
 
@@ -402,6 +421,104 @@ describe("WIN-129 canonical control-plane contract", () => {
     const namePattern = new RegExp(manifest.toolNamePolicy.syntax);
     expect(manifest.toolNamePolicy.baseline).toBe("canonical-dotted-202");
     expect(generated.every((tool) => namePattern.test(tool.name))).toBe(true);
+  });
+
+  // -------------------------------------------------------------------------
+  // WIN-268 (M4.2) P1 — THE MCP CONTRACT, JOINED TO THE COMMITTED MANIFEST.
+  //
+  // `scripts/arch/mcp-surface.mjs` proves the DECLARATION side: no second
+  // spelling anywhere in the tree, and the constants agree with the manifest.
+  // These cases prove the RUNTIME side, which a lint cannot see: what a client
+  // is actually told when it calls `initialize` and `tools/list`.
+  // -------------------------------------------------------------------------
+
+  it("reports the manifest's contract in the platform handshake", async () => {
+    const handlers = runtimeHandlers();
+    const router = testRouter();
+    router.registerAll(handlers);
+    const response = await router.handle(
+      { jsonrpc: "2.0", id: 1, method: "initialize" },
+      token("admin")
+    );
+    const result = response.result as {
+      protocolVersion: string;
+      serverInfo: { name: string; version: string; _meta: Record<string, Record<string, unknown>> };
+    };
+
+    // THE TWO AXES ARE SEPARATE AND BOTH ARE CHECKED. ADR M0.4 §7 D2: the
+    // protocol date is negotiated with the client and carries no Platos
+    // semantics; the semver is the break axis. A server that reported the same
+    // string in both would satisfy a test that only looked at one.
+    expect(result.protocolVersion).toBe(MCP_PROTOCOL_VERSION);
+    expect(result.protocolVersion).toBe(manifest.mcpContract.protocolVersion);
+    expect(result.serverInfo.version).toBe(PLATOS_MCP_CONTRACT_VERSION);
+    expect(result.serverInfo.version).toBe(manifest.mcpContract.version);
+
+    const contract = result.serverInfo._meta[PLATOS_MCP_CONTRACT_META_KEY];
+    expect(contract).toBeDefined();
+    expect(contract?.["major"]).toBe(PLATOS_MCP_CONTRACT_MAJOR);
+    expect(contract?.["major"]).toBe(manifest.mcpContract.major);
+    // THE DIGEST IS THE ASSERTION THAT CANNOT BE SATISFIED BY AGREEMENT. It is
+    // computed here over the 202 handlers this process built, and in the
+    // manifest by a separate `tsx` run of `runtime-mcp-catalog.ts` whose output
+    // is byte-compared by `generate-control-plane.mjs --check`. One tool's input
+    // schema changing without the manifest being regenerated turns this red.
+    expect(contract?.["catalogDigest"]).toBe(manifest.mcpContract.catalogDigest);
+    expect(contract?.["catalogDigest"]).toBe(mcpCatalogDigest(handlers));
+    // Recorded as an explicit null rather than omitted: there is no MCP rate
+    // table in this tree to version. See `http/mcp-surface.ts`.
+    expect(contract?.["rateTableVersion"]).toBeNull();
+    expect(manifest.mcpContract.rateTableVersion).toBeNull();
+  });
+
+  it("stamps every listed tool with the schema hash the manifest carries", async () => {
+    const router = testRouter();
+    router.registerAll(runtimeHandlers());
+    const listed = await router.handle(
+      { jsonrpc: "2.0", id: 1, method: "tools/list" },
+      token("admin")
+    );
+    const tools = (listed.result as {
+      tools: Array<{
+        name: string;
+        description: string;
+        inputSchema: unknown;
+        category: string;
+        _meta: Record<string, { v: number; schemaHash: string; admin: boolean }>;
+      }>;
+    }).tools;
+
+    // NOT VACUOUS: an admin token sees the whole catalog, so a router that
+    // listed nothing would fail here rather than pass the loop below zero times.
+    expect(tools).toHaveLength(manifest.summary.mcpTools);
+
+    const byName = new Map(manifest.inventories.mcpTools.map((tool) => [tool.name, tool]));
+    for (const listedTool of tools) {
+      const declared = byName.get(listedTool.name);
+      expect(declared, listedTool.name).toBeDefined();
+      const meta = listedTool._meta[PLATOS_MCP_TOOL_META_KEY];
+      expect(meta, listedTool.name).toBeDefined();
+      expect(meta?.v, listedTool.name).toBe(PLATOS_MCP_CONTRACT_MAJOR);
+      expect(meta?.admin, listedTool.name).toBe(declared?.requiresAdminTier);
+      // The manifest's own per-tool hash, and the hash recomputed from the
+      // schema the RUNTIME is serving. A schema edited in one place only fails.
+      expect(meta?.schemaHash, listedTool.name).toBe(
+        (declared as unknown as { schemaHash: string }).schemaHash
+      );
+      expect(meta?.schemaHash, listedTool.name).toBe(toolSchemaHash(listedTool.inputSchema));
+    }
+
+    // ADR M0.4 §2: the four declared fields are UNCHANGED by this milestone, so
+    // a client compiled against the old `tools/list` still reads what it read.
+    for (const listedTool of tools) {
+      expect(Object.keys(listedTool).sort()).toEqual([
+        "_meta",
+        "category",
+        "description",
+        "inputSchema",
+        "name",
+      ]);
+    }
   });
 
   it("accepts representative valid input and rejects invalid input for every tool schema", () => {

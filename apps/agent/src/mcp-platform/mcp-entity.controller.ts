@@ -33,6 +33,14 @@ import type { RequestScope } from "../auth/scope.guard";
 import { requireOperator } from "../auth/scope.guard";
 import type { JsonRpcRequest, JsonRpcResponse } from "./mcp-router";
 import { RPC_ERRORS } from "./mcp-router";
+// WIN-268 P1 — the ONE expression of both MCP version axes.
+import {
+  ENTITY_MCP_SCOPES,
+  MCP_PROTOCOL_VERSION,
+  entityMcpServerName,
+  mcpScopeSetDigest,
+  mcpServerInfo,
+} from "../http/mcp-surface";
 import { McpBearerTokenService } from "./mcp-bearer-token.service";
 import { McpIdentityResolverService } from "./identity-resolver.service";
 import { McpToolAclService } from "./mcp-tool-acl.service";
@@ -904,12 +912,22 @@ export class McpEntityController {
             jsonrpc: "2.0",
             id,
             result: {
-              protocolVersion: "2025-06-18",
+              // WIN-268 P1 — both axes from `http/mcp-surface.ts`; see the
+              // banner there. This server reports the SAME Platos contract
+              // major as the platform and docs servers, which is the property
+              // ADR M0.4 §5 asks to be asserted "across all 3".
+              protocolVersion: MCP_PROTOCOL_VERSION,
               capabilities: { tools: {}, logging: {} },
-              serverInfo: {
-                name: `platos-entity-mcp:${entity.entityId}`,
-                version: "0.1.0",
-              },
+              // NO `catalogDigest`, AND THAT IS THE ADR'S OWN RULE RATHER THAN
+              // an omission: ADR M0.4 §5 excludes entity tools from the digest
+              // because they are DISCOVERED from the entity's own downstream MCP
+              // endpoint. A digest over them would move when somebody else's
+              // server changed, and a client would read that as a Platos
+              // contract break. `mcpServerInfo` emits the field as an explicit
+              // null so a client can tell "not digested" from "forgot to send".
+              serverInfo: mcpServerInfo(entityMcpServerName(entity.entityId), {
+                scopeSetDigest: mcpScopeSetDigest([ENTITY_MCP_SCOPES]),
+              }),
             },
           };
         case "notifications/ping":

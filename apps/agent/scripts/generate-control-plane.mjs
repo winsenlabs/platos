@@ -430,13 +430,40 @@ function extractMcpSourceProvenance() {
   return sources;
 }
 
+/**
+ * WIN-268 P1 — the Platos MCP contract, read out of the RUNNING servers.
+ *
+ * Set by `extractMcpTools()` from the same helper run that produces the tool
+ * inventory, so the version block and the catalog it digests can never come from
+ * two different reads of the tree.
+ */
+let mcpContract = null;
+
 function extractMcpTools() {
   const helper = join(scriptDir, "runtime-mcp-catalog.ts");
   const tsx = join(repoDir, "node_modules", ".bin", "tsx");
-  const runtimeTools = JSON.parse(
+  const catalog = JSON.parse(
     execFileSync(tsx, [helper], { cwd: repoDir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
   );
-  if (!Array.isArray(runtimeTools)) throw new Error("runtime MCP catalog helper returned non-array");
+  if (catalog === null || typeof catalog !== "object" || Array.isArray(catalog)) {
+    throw new Error("runtime MCP catalog helper returned a non-object");
+  }
+  const runtimeTools = catalog.tools;
+  if (!Array.isArray(runtimeTools)) throw new Error("runtime MCP catalog helper returned non-array tools");
+  if (catalog.contract === null || typeof catalog.contract !== "object") {
+    throw new Error("runtime MCP catalog helper returned no contract block");
+  }
+  // THE TWO DIGESTS MUST AGREE. One is taken by the router over what it actually
+  // registered, the other over the handler list the builder returned. They differ
+  // only if registration dropped or duplicated a handler — a defect that would
+  // otherwise show up as a client seeing fewer tools than the manifest declares.
+  if (catalog.contract.catalogDigest !== catalog.handlerCatalogDigest) {
+    throw new Error(
+      `MCP catalog digest disagrees between the router (${String(catalog.contract.catalogDigest)}) ` +
+        `and the handler list (${String(catalog.handlerCatalogDigest)})`
+    );
+  }
+  mcpContract = catalog.contract;
 
   const sources = extractMcpSourceProvenance();
   const tools = runtimeTools.map((tool) => ({
@@ -947,10 +974,31 @@ function buildManifest() {
     tool.classification = tool.restMappings.length > 0 ? "MAPPED" : "MCP_ONLY";
   }
 
+  if (mcpContract === null) throw new Error("MCP contract block was never extracted");
+
   return {
     manifestVersion: "M0.1",
     canonicalPolicy: "explicit-operation-manifest",
     tenancyAuthority: ["organizationId", "projectId", "environmentId", "userId"],
+    /**
+     * WIN-268 P1 — ADR M0.4 §2's MCP row, as DATA.
+     *
+     * The row fixes two independent axes: a spec-negotiated `protocolVersion`
+     * date and a Platos contract semver whose MAJOR is the break axis. Both are
+     * read out of `apps/agent/src/http/mcp-surface.ts` by the runtime helper, so
+     * this block is what a client is actually told rather than a second
+     * declaration of it. `--check` byte-compares, so moving the const without
+     * regenerating fails, and editing this block without moving the const fails
+     * the same way.
+     *
+     * `catalogDigest` is `sha256` over every registered platform tool's name,
+     * `schemaHash` and admin flag, sorted by name. It moves when a tool is added,
+     * removed, renamed, made admin-only, or given a different input schema —
+     * which is the list of changes ADR M0.4 §2 calls breaking, plus the additive
+     * ones. Entity tools are excluded by §5 because they are discovered
+     * downstream.
+     */
+    mcpContract,
     toolNamePolicy: {
       baseline: "canonical-dotted-202",
       syntax: TOOL_NAME_PATTERN.source,
@@ -1027,6 +1075,7 @@ function buildReport(manifest) {
     "## Summary",
     "",
     `- MCP tools: **${manifest.summary.mcpTools}** across **${manifest.summary.mcpNamespaces}** namespaces (${manifest.summary.adminTierTools} admin-tier).`,
+    `- MCP contract: **v${manifest.mcpContract.version}** (major **${manifest.mcpContract.major}**), MCP protocol \`${manifest.mcpContract.protocolVersion}\`, catalog digest \`${manifest.mcpContract.catalogDigest.slice(0, 16)}\`.`,
     `- REST operations: **${manifest.summary.restOperations}** unique method/path pairs from **${manifest.summary.restRouteBindings}** route bindings.`,
     `- Ambiguous duplicate REST method/path pairs: **${manifest.summary.ambiguousRestOperations}**.`,
     `- MCP classifications: ${Object.entries(manifest.summary.mcpClassifications)

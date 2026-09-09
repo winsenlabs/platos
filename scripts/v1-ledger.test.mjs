@@ -533,7 +533,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // judged by. Both land on the existing `apps-agent.tooling.scripts` rule
     // (11 -> 13); `generate-control-plane.mjs` is edited in place and adds no
     // file.
-    "apps-agent": 4,
+    // WIN-268 (M4.2, P1) 4 -> 5. ONE file, and it is the version expression
+    // again: `apps/agent/src/http/mcp-surface.ts`, the one place both MCP
+    // version axes are written, beside the `api-surface.ts` T1 added for REST.
+    // The three MCP servers are edited IN PLACE and add no file — the same
+    // shape T1 had: seven literals deleted, one declaration added. It lands on
+    // `apps-agent.source.runtime`, a rule that already existed; NO LEDGER RULE
+    // CHANGED.
+    //
+    // 5 -> 6 with `apps/agent/src/http/mcp-surface.test.ts`, which drives the
+    // docs server's TWO version doors — the JSON-RPC handshake and the
+    // `GET /mcp/docs` capability probe — and requires them to agree. That pair
+    // is the one divergence neither the lint nor the manifest join can see: the
+    // docs catalog is not in the manifest, and both doors were spelling their
+    // own literal. It lands on `apps-agent.test.suites`, a rule that already
+    // existed.
+    "apps-agent": 6,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1698,7 +1713,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // alone recorded; `root-infra.test.script-suites` takes W2's two suites only
     // and moves 32 -> 34 unchanged. W1 is NOT in this branch, so its +1 on this
     // key is not here either -- see the merge commit for the tree fact.
-    "root-infra": 64,
+    // WIN-268 (M4.2, P1) 64 -> 66. TWO files, both `root-infra.tooling.scripts`:
+    // `scripts/arch/mcp-surface.mjs`, the no-second-spelling lint that holds the
+    // MCP version literal count at zero and joins the declared constants and the
+    // measured 202-tool catalog to the generated manifest, and
+    // `scripts/arch/mcp-surface.test.mjs`, the synthetic cases that make all
+    // four of its refusal codes reachable. NO LEDGER RULE CHANGED.
+    "root-infra": 66,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1777,7 +1798,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // the eight-key re-derivation from the merged `expectedDeltas` above is
   // 4 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1679. Side-picking either branch's
   // own total (1678 or 1672) is red here AND at the second reconciliation below.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1679);
+  //
+  // WIN-268 (M4.2) P1 1679 -> 1683. FOUR files across TWO areas, each itemised
+  // on its own delta above: `apps-agent` +2 (the MCP version expression and the
+  // suite that holds the docs server's two doors together) and `root-infra` +2
+  // (the no-second-spelling lint and its controls). The eight-key re-derivation
+  // from the merged `expectedDeltas` is
+  // 6 + 0 + 75 + 4 + 10 + 1503 + 19 + 66 = 1683. Two sibling branches move this
+  // same pin for their own tranches, so the integrator SUMS rather than taking
+  // any one branch's total — the mistake recorded for A1+A2 and A3 above.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1683);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1936,7 +1966,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // mutation manifest), reached here by summing the per-area counts instead of
     // reading the total, so the two arithmetics can disagree and be caught.
     // 1671 + 7 + 1 = 1679.
-    rulesDocument.baseline.totalFiles + 1679
+    //
+    // WIN-268 (M4.2) P1 1679 -> 1683 -- the THIRTEENTH hand move of this second
+    // reconciliation. The same four files as the `totalFiles` assertion above
+    // (the MCP version expression and its suite, plus the lint and its
+    // controls), reached here by summing the per-area counts instead of reading
+    // the total, so the two arithmetics can disagree and be caught.
+    // 1679 + 4 = 1683.
+    rulesDocument.baseline.totalFiles + 1683
   );
 });
 

@@ -21,6 +21,18 @@ import type {
   MonitoringApprovalsService,
 } from "../monitoring/approvals.service";
 import { compileSchema, type CompiledValidator } from "./schema-validator";
+// WIN-268 P1 — the ONE expression of both MCP version axes. Nothing in this file
+// spells a protocol date or a contract semver; see `http/mcp-surface.ts`.
+import {
+  MCP_PROTOCOL_VERSION,
+  PLATFORM_MCP_SCOPES,
+  PLATFORM_MCP_SERVER_NAME,
+  PLATOS_MCP_TOOL_META_KEY,
+  mcpCatalogDigest,
+  mcpScopeSetDigest,
+  mcpServerInfo,
+  mcpToolMeta,
+} from "../http/mcp-surface";
 
 export interface McpToolHandler {
   name: string;
@@ -222,6 +234,25 @@ export class McpRouter {
   }
 
   /**
+   * WIN-268 P1 — the digest of the catalog THIS PROCESS actually registered.
+   *
+   * IT IS COMPUTED OVER `getRegisteredTools()` AND NOT OVER THE TOKEN'S
+   * ALLOWLIST. `tools/list` filters by permission and by admin tier, so two
+   * tokens see two different inventories of the same server; a digest that moved
+   * with the caller would tell every client its contract had changed the moment
+   * a permission was edited. What the contract block describes is the SERVER,
+   * which is the full registered catalog.
+   *
+   * It is recomputed per handshake rather than cached at construction because
+   * `registerAll` is called after the router is built and the controller
+   * re-registers `macros.*` once its recorder exists — a value memoised in the
+   * constructor would be the digest of an empty map.
+   */
+  catalogDigest(): string {
+    return mcpCatalogDigest(this.getRegisteredTools());
+  }
+
+  /**
    * Dispatch a single JSON-RPC request. Returns the response body.
    *
    * `requestCtx` carries transport-level metadata (e.g. the
@@ -242,15 +273,28 @@ export class McpRouter {
             jsonrpc: "2.0",
             id,
             result: {
-              protocolVersion: "2025-06-18",
+              // WIN-268 P1 — both version axes come from `http/mcp-surface.ts`
+              // and neither is spelled here. The wire revision is the MCP
+              // specification's own negotiated date; the Platos contract semver
+              // and its `_meta` block are the break axis a third-party client
+              // pins. ADR M0.4 §2 (MCP row) / §7 D2 keeps them separate, and
+              // `scripts/arch/mcp-surface.mjs` refuses a literal in either
+              // position anywhere in this repository.
+              protocolVersion: MCP_PROTOCOL_VERSION,
               capabilities: {
                 tools: {},
                 logging: {},
               },
-              serverInfo: {
-                name: "platos-platform-mcp",
-                version: "0.1.0",
-              },
+              // THE DIGEST IS OVER THIS PROCESS'S OWN REGISTERED CATALOG, not
+              // over a number somebody maintains. `control-plane-contract.test.ts`
+              // joins it to the digest the generated manifest carries, so a tool
+              // whose input schema moved without the manifest being regenerated
+              // fails a named test rather than reaching a client as a silent
+              // change of shape.
+              serverInfo: mcpServerInfo(PLATFORM_MCP_SERVER_NAME, {
+                catalogDigest: this.catalogDigest(),
+                scopeSetDigest: mcpScopeSetDigest([PLATFORM_MCP_SCOPES]),
+              }),
             },
           };
         }
@@ -285,6 +329,13 @@ export class McpRouter {
                 // round-trip. Defaults to `"uncategorized"` for any
                 // handler the factory didn't stamp.
                 category: h.category ?? "uncategorized",
+                // WIN-268 P1 — ADR M0.4 §2 MCP row: the four fields above are
+                // UNCHANGED and the version rides in `_meta`, which every MCP
+                // client is required to ignore when it does not understand it.
+                // That is what makes stamping 202 tools an additive change
+                // rather than a break: a client compiled against the old
+                // `tools/list` sees exactly the entry it saw before.
+                _meta: { [PLATOS_MCP_TOOL_META_KEY]: mcpToolMeta(h) },
               })),
             },
           };

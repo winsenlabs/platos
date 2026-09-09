@@ -2108,16 +2108,16 @@
     ]
   },
   "expected": {
-    "totalFiles": 5148,
+    "totalFiles": 5152,
     "areaCounts": {
-      "apps-agent": 518,
+      "apps-agent": 520,
       "apps-core-api": 86,
       "apps-mcp-stdio": 8,
       "apps-webapp": 183,
       "docs-content": 739,
       "internal-packages": 1174,
       "packages": 2140,
-      "root-infra": 300
+      "root-infra": 302
     },
     "kindCounts": {
       "asset": 155,
@@ -2128,12 +2128,12 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2069,
-      "test": 1038
+      "source": 2072,
+      "test": 1039
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1639,
+      "move-refactor": 1643,
       "regenerate": 39,
       "retain": 3461,
       "unresolved": 2
@@ -2147,8 +2147,8 @@
       "apps-agent.entry.process": 1,
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
-      "apps-agent.source.runtime": 277,
-      "apps-agent.test.suites": 206,
+      "apps-agent.source.runtime": 278,
+      "apps-agent.test.suites": 207,
       "apps-agent.tooling.scripts": 13,
       "apps-core-api.config.package": 6,
       "apps-core-api.doc.package": 1,
@@ -2275,9 +2275,9 @@
       "root-infra.test.harness": 69,
       "root-infra.test.script-suites": 34,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 95,
+      "root-infra.tooling.scripts": 97,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "b1c85e10e47d20034282900cded0e752bd5c370e7d8053326de5abee21e3a2cb"
+    "classificationSha256": "614d41b25e08cbf6598e9ced17bfc6eb82246456a38491daaae3f4ac5d98c305"
   }
 }

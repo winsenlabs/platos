@@ -376,6 +376,24 @@ const expectedV1EvidenceCommands = [
   // `v1` @ 21ca7a8b the suite is GREEN at 369/369, so the failure was this PR's
   // own and is repaired here rather than inherited.
   "node --test scripts/arch/contract-map.test.mjs",
+  // WIN-268 (M4.2) P1 (+2). The MCP no-second-spelling lint and its controls.
+  // It is the MCP row's counterpart to the `api/v1` no-bare-prefix lint above:
+  // ADR M0.4 §2 puts the REST major in the URL and the MCP major in
+  // `serverInfo.version`, and a drift in the second is INVISIBLE — a server
+  // reporting the wrong contract version answers every request correctly and
+  // lies only to the client's compatibility logic, where a drifted URL prefix
+  // 404s on the first call. The audit half holds the literal count at zero
+  // across the whole production tree and joins the declared constants and the
+  // measured 202-tool catalog to the generated manifest; the `test:` half
+  // carries the synthetic cases that make all four refusal codes reachable, so
+  // the pair belongs in one step read off one tree.
+  //
+  // Invoked directly rather than through package.json scripts, for the reason
+  // recorded above the capability-matrix controls: root package.json is a
+  // webapp image build input and a line there moves the SBOM receipt's
+  // buildInputsSha256.
+  "node scripts/arch/mcp-surface.mjs",
+  "node --test scripts/arch/mcp-surface.test.mjs",
   "pnpm audit:sbom:check",
   "pnpm audit:sbom:nonvacuity",
   "pnpm test:sbom",

@@ -7,6 +7,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
+- MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
 - REST operations: **308** unique method/path pairs from **308** route bindings.
 - Ambiguous duplicate REST method/path pairs: **0**.
 - MCP classifications: MAPPED=82, MCP_ONLY=120.

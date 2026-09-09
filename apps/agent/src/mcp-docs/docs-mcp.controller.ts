@@ -20,6 +20,16 @@
 import { Body, Controller, Get, Headers, HttpException, HttpStatus, Post, Req, Res, VERSION_NEUTRAL } from "@nestjs/common";
 import type { Request, Response } from "express";
 import { DocsMcpService } from "./docs-mcp.service";
+// WIN-268 P1 — the ONE expression of both MCP version axes.
+import {
+  DOCS_MCP_SERVER_NAME,
+  MCP_PROTOCOL_VERSION,
+  PLATOS_MCP_CONTRACT_VERSION,
+  PLATOS_MCP_TOOL_META_KEY,
+  mcpCatalogDigest,
+  mcpServerInfo,
+  mcpToolMeta,
+} from "../http/mcp-surface";
 
 interface JsonRpcReq {
   jsonrpc: "2.0";
@@ -70,6 +80,17 @@ const SEARCH_DOCS_TOOL = {
     additionalProperties: false,
   },
 };
+
+/**
+ * WIN-268 P1 — this server's catalog, as a list rather than as one constant
+ * mentioned in three places.
+ *
+ * The digest in the handshake, the `tools/list` reply and the probe's tool-name
+ * array all read THIS array, so a second tool added here appears in all three
+ * without anybody remembering to. Before, adding one meant editing `tools/list`
+ * and the probe separately and nothing would have failed if only one was.
+ */
+const DOCS_MCP_TOOLS = [SEARCH_DOCS_TOOL] as const;
 
 /**
  * Two paths, one controller. `mcp/docs` is the canonical internal path
@@ -137,13 +158,18 @@ export class DocsMcpController {
     // can sanity-check the endpoint without crafting a JSON-RPC envelope.
     this.applyCors(res);
     res.status(200).json({
-      service: "platos-docs-mcp",
-      version: "0.1.0",
+      // WIN-268 P1 — THE FOURTH LITERAL. This probe advertised `"0.1.0"` to the
+      // same clients through a different door, so a handshake and a `curl` of
+      // the same server could disagree about its version. Both now read the one
+      // constant.
+      service: DOCS_MCP_SERVER_NAME,
+      version: PLATOS_MCP_CONTRACT_VERSION,
+      protocolVersion: MCP_PROTOCOL_VERSION,
       transport: ["http+jsonrpc", "sse"],
       auth: "none",
       rateLimit: { requestsPerMinute: 60, scope: "ip" },
       methods: ["initialize", "notifications/ping", "tools/list", "tools/call", "resources/list", "resources/read"],
-      tools: [SEARCH_DOCS_TOOL.name],
+      tools: DOCS_MCP_TOOLS.map((tool) => tool.name),
     });
   }
 
@@ -259,20 +285,41 @@ export class DocsMcpController {
             jsonrpc: "2.0",
             id,
             result: {
-              protocolVersion: "2025-06-18",
+              // WIN-268 P1 — both axes from `http/mcp-surface.ts`.
+              protocolVersion: MCP_PROTOCOL_VERSION,
               capabilities: {
                 tools: {},
                 resources: { listChanged: false },
                 logging: {},
               },
-              serverInfo: { name: "platos-docs-mcp", version: "0.1.0" },
+              // The docs catalog is ONE static tool declared in this file, so it
+              // is digestible here and is digested. There is no scope set: this
+              // surface is unauthenticated (`auth: "none"` in the probe below),
+              // so `mcpServerInfo` emits an explicit null rather than a digest
+              // of the empty set, which would be indistinguishable from a real
+              // one-scope answer.
+              serverInfo: mcpServerInfo(DOCS_MCP_SERVER_NAME, {
+                catalogDigest: mcpCatalogDigest(DOCS_MCP_TOOLS),
+              }),
             },
           };
         case "notifications/ping":
         case "ping":
           return { jsonrpc: "2.0", id, result: {} };
         case "tools/list":
-          return { jsonrpc: "2.0", id, result: { tools: [SEARCH_DOCS_TOOL] } };
+          return {
+            jsonrpc: "2.0",
+            id,
+            result: {
+              tools: DOCS_MCP_TOOLS.map((tool) => ({
+                ...tool,
+                // WIN-268 P1 — ADR M0.4 §2 MCP row. The declared fields are
+                // unchanged; the contract rides in `_meta`, which an MCP client
+                // is required to ignore when it does not understand it.
+                _meta: { [PLATOS_MCP_TOOL_META_KEY]: mcpToolMeta(tool) },
+              })),
+            },
+          };
         case "tools/call": {
           const params = req.params as { name?: string; arguments?: Record<string, unknown> } | undefined;
           if (params?.name !== "search_docs") {
