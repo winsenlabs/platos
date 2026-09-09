@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "c8d00e40a63e3b920dde9013d9ba5cc174f00e884e40183a31c773953039f256",
+  "evidenceSha256": "e4d05b9031d0dbc607d3e486c1cc8503dcce64711bbe4a90a6e0a2fa55cd0ce6",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9f8a725c0b71e00c2ced400f0e086aa89bc654c901fa110824bcf87ab1e5ddc3",
+    "aggregateSha256": "0f55db74023d0ae05774098bf2bfd6216439af024cd69073a53930151b7541cc",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6031,7 +6031,7 @@
       },
       {
         "path": "docs/sdk-v1-migration.md",
-        "sha256": "043a37da978dd370b52185c289d95166a28dd2d69a765d487fa5cc35e7469730"
+        "sha256": "2850437e85f511e8d5e1de864e784af8e0874c86ea9cc3e9bd1cbd37f10b3948"
       },
       {
         "path": "docs/security-audit-2026-07-16.md",
@@ -22128,6 +22128,11 @@
               "line": 787
             },
             {
+              "from": "docs/sdk-v1-migration.md",
+              "kind": "reference",
+              "line": 144
+            },
+            {
               "from": "docs/security-audit-2026-07-16.md",
               "kind": "reference",
               "line": 349
@@ -22452,6 +22457,10 @@
               "docs/research/llm-serving-and-caching.md"
             ],
             [
+              "docs/sdk-v1-migration.md",
+              "docs/sdk-v1-migration.md"
+            ],
+            [
               "docs/security-audit-2026-07-16.md",
               "docs/security-audit-2026-07-16.md"
             ],
@@ -22585,6 +22594,7 @@
             "docs/refactor/IMPLEMENTATION-STATUS.md",
             "docs/refactor/platos-trigger-refactor.md",
             "docs/research/llm-serving-and-caching.md",
+            "docs/sdk-v1-migration.md",
             "docs/security-audit-2026-07-16.md",
             "docs/security-audit-authz-2026-07-22.md",
             "docs/security-rls-design.md",
@@ -25691,7 +25701,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "969a940bc9695b9e5c34e131db560515140f9de6ea683a6d4424e0cf2e8202c8",
+      "evidenceSha256": "9d9d4e4ff0821f501534607c96eed773316023c459b20a8e4bf9c349c13351e9",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -93193,6 +93203,11 @@
               "line": 7333
             },
             {
+              "from": "docs/sdk-v1-migration.md",
+              "kind": "reference",
+              "line": 109
+            },
+            {
               "from": "examples/platos-nextjs-starter/app/platos/token/route.ts",
               "kind": "reference",
               "line": 1
@@ -93254,6 +93269,10 @@
               "docs/audits/win-284-differential-coverage.json"
             ],
             [
+              "docs/sdk-v1-migration.md",
+              "docs/sdk-v1-migration.md"
+            ],
+            [
               "examples/platos-nextjs-starter/app/platos/token/route.ts",
               "examples/platos-nextjs-starter/app/platos/token/route.ts"
             ],
@@ -93289,6 +93308,7 @@
             "docs/audits/M0.2-capability-matrix.json",
             "docs/audits/M0.5-dependency-sbom.md",
             "docs/audits/win-284-differential-coverage.json",
+            "docs/sdk-v1-migration.md",
             "examples/platos-nextjs-starter/README.md",
             "examples/platos-nextjs-starter/app/platos/token/route.ts",
             "examples/platos-nextjs-starter/package.json",
@@ -93540,7 +93560,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "31267f423ffbc16a0d6e0a621213ee02adf503fe795941178232d72032d090a5",
+      "evidenceSha256": "ed730ed7ebcf2fee71ca719139f12c03262c0155732d735face47342592e6d51",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {
