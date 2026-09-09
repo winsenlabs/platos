@@ -1735,7 +1735,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // measured 202-tool catalog to the generated manifest, and
     // `scripts/arch/mcp-surface.test.mjs`, the synthetic cases that make all
     // four of its refusal codes reachable. NO LEDGER RULE CHANGED.
-    "root-infra": 66,
+    // WIN-268 (M4.2) P1 66 -> 67 with `scripts/mutations-win268-p1.json`, this
+    // tranche's mutation ledger: twenty mutations, twenty killed, zero
+    // survivors, each applied to ONE file and run individually — eleven on the
+    // laptop and nine on the mini against a real PostgreSQL and Redis.
+    "root-infra": 67,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1830,7 +1834,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // suite) and `packages` +2 (the mint use case and its suite). The eight-key
   // re-derivation from the merged `expectedDeltas` is
   // 6 + 0 + 80 + 4 + 10 + 1505 + 19 + 66 = 1690.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1690);
+  //
+  // AND P1's mutation ledger 1690 -> 1691. ONE file, `root-infra`, itemised on
+  // that area's delta above: 6 + 0 + 80 + 4 + 10 + 1505 + 19 + 67 = 1691.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1691);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2001,7 +2008,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // same seven as the `totalFiles` assertion above, reached here by summing
     // the per-area counts instead of reading the total, so the two arithmetics
     // can disagree and be caught. 1683 + 7 = 1690.
-    rulesDocument.baseline.totalFiles + 1690
+    //
+    // AND P1's mutation ledger 1690 -> 1691, the same one file, reached here by
+    // summing the per-area counts instead of reading the total.
+    rulesDocument.baseline.totalFiles + 1691
   );
 });
 

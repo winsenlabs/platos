@@ -1,0 +1,336 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-268",
+  "tranche": "P1 \u2014 version the MCP surface and serve its two one-time-secret mints",
+  "branch": "tejas/win-268-p1-mcp-versioning",
+  "base": "3b3f1ebb (v1, M4.1)",
+  "purpose": [
+    "P1 has two halves and each has a different way of being wrong.",
+    "",
+    "THE VERSIONING HALF fails INVISIBLY. A REST prefix that drifts 404s on the",
+    "first request; a server reporting the wrong `serverInfo.version` answers every",
+    "request correctly and lies only to the client's compatibility logic. So the",
+    "mutations that matter there are the ones that leave every behavioural case",
+    "green: a literal that agrees with the constant TODAY (M01), a hand-assembled",
+    "`serverInfo` built from the RIGHT names (M02), a constant moved without",
+    "regenerating the artifact that records it (M03, M04), a digest that stops",
+    "covering the one field whose change is invisible to a client (M07), and a",
+    "canonicalisation that turns a reformat into a false break (M08).",
+    "",
+    "M02 IS THE ENTRY THIS LEDGER EXISTS FOR. It replaces the one builder with an",
+    "object literal carrying the correct name and the correct version, so no",
+    "literal appears anywhere and the version on the wire does not change. What is",
+    "lost is the `_meta` contract block \u2014 silently, on one of three servers. A lint",
+    "that refused only LITERALS would bless it; the shape rule is what does not.",
+    "",
+    "M05 IS THE ONE THE LINT CANNOT SEE. The docs server advertises its version",
+    "through a second door, `GET /mcp/docs`, and that `version:` is not in a",
+    "`serverInfo` position. It is killed by the vitest that drives BOTH handlers of",
+    "the real controller and requires them to agree \u2014 which is the whole reason",
+    "that suite exists beside the lint.",
+    "",
+    "THE MINTS HALF fails EXPENSIVELY. M10, M11, M12, M15, M16 and M17 each leave a",
+    "compiling, type-checking, unit-green tree that hands somebody a live credential",
+    "they should not have, or stores one in plaintext, or attributes it to the wrong",
+    "human. Every one of them is killed only against a real PostgreSQL over a real",
+    "socket, which is why this tranche has an integration suite.",
+    "",
+    "M18 MUTATES A GATE THIS BRANCH DOES NOT OWN \u2014 `http/idempotency.ts`'s",
+    "`in-flight` refusal \u2014 so that the race property is proven by the rule going",
+    "AWAY rather than by the suite agreeing with it. With the loser admitted, two",
+    "sockets reach the mint at once and the database ends with two rows."
+  ],
+  "procedure": [
+    "Every mutation is applied to ONE file and run INDIVIDUALLY, then reverted.",
+    "The laptop runs the eleven that need no container; Docker is quit there by",
+    "standing instruction, so the nine that need PostgreSQL 16 and Redis run on the",
+    "Mac mini over ssh, in a FRESH worktree at 54154f47, against",
+    "pgvector/pgvector:pg16 and redis:7-alpine through @testcontainers/*.",
+    "",
+    "M03, M04 AND M09 MUTATE A SOURCE THE MANIFEST IS GENERATED FROM, and are run",
+    "WITHOUT regenerating on purpose: the drift they model is exactly a constant or",
+    "a declaration moving while the committed artifact stays where it was.",
+    "",
+    "M19 MUTATES A GENERATOR, so the kill is the artifact CHECK rather than the",
+    "suite: the committed matrix still records the truth, and the recomputation no",
+    "longer reproduces it. Run against the suite alone it SURVIVES, which is",
+    "recorded here rather than hidden \u2014 a mutation is only as good as the command",
+    "it is run under."
+  ],
+  "commands": {
+    "mcp-surface-lint": "node scripts/arch/mcp-surface.mjs",
+    "mcp-surface-vitest": "pnpm --filter platos-agent exec vitest run src/http/mcp-surface.test.ts",
+    "control-plane-contract": "pnpm --filter platos-agent exec vitest run src/mcp-platform/control-plane-contract.test.ts",
+    "route-manifest": "pnpm --filter @platos/core-api exec vitest run src/transports/rest/route-manifest.test.ts",
+    "idempotency-policy": "pnpm --filter @platos/core-api exec vitest run src/http/idempotency-policy.test.ts",
+    "capability-matrix": "node scripts/capability-matrix.mjs --check && node --test scripts/capability-matrix.test.mjs && node scripts/differential-coverage.mjs --check",
+    "rest-census": "node scripts/rest-census-independent.mjs --check",
+    "mint-integration": "pnpm --filter @platos/core-api exec vitest run src/composition/mcp-token-mint.integration.test.ts --no-file-parallelism"
+  },
+  "baseline": "Every command above is green at 54154f47 before any mutation is applied.",
+  "mutations": [
+    {
+      "name": "M01 a protocol date is spelled as a literal again",
+      "guards": "apps/agent/src/http/mcp-surface.ts as the ONE home of MCP_PROTOCOL_VERSION",
+      "why": "The value is CORRECT today, so nothing on the wire changes and no test of behaviour can see it. What is lost is the property that the three servers cannot privately disagree tomorrow.",
+      "file": "apps/agent/src/mcp-platform/mcp-router.ts",
+      "command": "mcp-surface-lint",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "MCP-1-PROTOCOL_LITERAL"
+      ]
+    },
+    {
+      "name": "M02 serverInfo is hand-assembled from the RIGHT constants",
+      "guards": "the shape rule: every serverInfo is built by mcpServerInfo(...)",
+      "why": "No literal appears and the version on the wire is unchanged. The _meta contract block silently vanishes from ONE of three servers. A literal-only lint blesses this.",
+      "file": "apps/agent/src/mcp-docs/docs-mcp.controller.ts",
+      "command": "mcp-surface-lint",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "MCP-2-SERVER_INFO_LITERAL"
+      ]
+    },
+    {
+      "name": "M03 the contract major moves without regenerating the manifest",
+      "guards": "the join between the declared constant and the generated artifact",
+      "why": "An assertion that compared the const to itself would pass. The manifest is produced by EXECUTING the servers' modules, so the two disagree only when the declaration and the runtime do.",
+      "file": "apps/agent/src/http/mcp-surface.ts",
+      "command": "mcp-surface-lint",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "MCP-3-CONTRACT_DRIFT"
+      ]
+    },
+    {
+      "name": "M04 an OAuth scope grant is narrowed",
+      "guards": "ADR M0.4 \u00a74: narrowing a scope is a major-version event",
+      "why": "THE CHANGE NO CLIENT CAN OBSERVE. A client whose token still validates cannot tell that a grant it had not yet exercised is gone. The scope-set digest is the only place it is visible at all.",
+      "file": "apps/agent/src/http/mcp-surface.ts",
+      "command": "mcp-surface-lint",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "MCP-3-CONTRACT_DRIFT"
+      ]
+    },
+    {
+      "name": "M05 the docs capability probe re-grows its own version literal",
+      "guards": "the agreement between a server's TWO version doors",
+      "why": "THE ORIGINAL DEFECT, restored. `GET /mcp/docs` advertises a version outside any serverInfo, so the lint cannot see it; a handshake and a curl of the same server disagree.",
+      "file": "apps/agent/src/mcp-docs/docs-mcp.controller.ts",
+      "command": "mcp-surface-vitest",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "reports the same version from the handshake and from the capability probe"
+      ]
+    },
+    {
+      "name": "M06 the router reports a constant catalog digest",
+      "guards": "the runtime-to-manifest digest join",
+      "why": "A digest nothing computes is a digest that cannot detect anything. The manifest carries what a separate tsx run of the same functions produced.",
+      "file": "apps/agent/src/mcp-platform/mcp-router.ts",
+      "command": "control-plane-contract",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "reports the manifest's contract in the platform handshake"
+      ]
+    },
+    {
+      "name": "M07 the catalog digest stops covering the admin flag",
+      "guards": "ADR M0.4 \u00a72: flipping scope->admin is a BREAKING change",
+      "why": "An admin-only tool disappears from every scope-tier client's tools/list while its name, description and schema are unchanged. A digest over schemas alone would not notice.",
+      "file": "apps/agent/src/http/mcp-surface.ts",
+      "command": "mcp-surface-vitest",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "moves the catalog digest when a tool flips to admin-only"
+      ]
+    },
+    {
+      "name": "M08 canonicalisation stops sorting object keys",
+      "guards": "ADR M0.4 \u00a75 item 5: a benign reformat is not drift",
+      "why": "The failure in the OTHER direction: re-ordering two properties of an inputSchema would report a breaking change that did not happen, and a gate that cried wolf would be weakened until it was quiet.",
+      "file": "apps/agent/src/http/mcp-surface.ts",
+      "command": "mcp-surface-vitest",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "canonicalises object keys but not array order"
+      ]
+    },
+    {
+      "name": "M09 a tool declaration is renamed in the source tree",
+      "guards": "the 202-tool count, joined to the manifest",
+      "why": "The tranche was told to MEASURE the catalog rather than inherit '202 tools'. This proves the measurement is a join and not a restatement.",
+      "file": "apps/agent/src/mcp-platform/tools/mcp.ts",
+      "command": "mcp-surface-lint",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "MCP-4-CATALOG_DRIFT"
+      ]
+    },
+    {
+      "name": "M10 the mint asks for metadata instead of secret:mutate",
+      "guards": "tenancy gate 4",
+      "why": "COMPILES, TYPE-CHECKS, AND EVERY UNIT CASE STAYS GREEN. An organization member who may only READ the environment walks away with a ninety-day credential. It survived every case in the suite until the gate-4 fixture was added, which is why that fixture exists.",
+      "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
+      "command": "mint-integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "refuses an ORGANIZATION MEMBER at gate 4, and names a DIFFERENT gate than the outsider"
+      ],
+      "host": "mini"
+    },
+    {
+      "name": "M11 the impersonation refusal is removed",
+      "guards": "an impersonated session may not mint a durable credential",
+      "why": "An admin borrows an account for ten minutes and leaves with a ninety-day credential that outlives the impersonation session they were audited under.",
+      "file": "apps/core-api/src/transports/mcp/token-mint.ts",
+      "command": "mint-integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "refuses a mint from an IMPERSONATED session under its own code"
+      ],
+      "host": "mini"
+    },
+    {
+      "name": "M12 the entity/environment project check is removed",
+      "guards": "the forged PAIR",
+      "why": "Every part is legitimate \u2014 the operator owns the organization, the entity exists, the environment exists \u2014 and the pair is wrong. A two-tenant fixture passes either way because its foreign scope is coherent.",
+      "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+      "command": "mint-integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "refuses an entity and an environment that do not share a project"
+      ],
+      "host": "mini"
+    },
+    {
+      "name": "M13 a mint controller moves into the DYNAMIC module array",
+      "guards": "registration order against NotFoundController's @All(\"{*path}\")",
+      "why": "The defect that killed three earlier tranches, in a new costume: the handler, its refusals and its envelope are all still correct, the manifest still declares the route, and only a request can see the 404.",
+      "file": "apps/core-api/src/http/http.module.ts",
+      "command": "route-manifest",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "is not vacuous: this deployable mounts routes and the manifest declares some"
+      ]
+    },
+    {
+      "name": "M14 the idempotency policy template drifts by one segment",
+      "guards": "the templates the mint contract binds",
+      "why": "The route would serve and the gate would bind nothing, so a keyless mint would execute \u2014 the exact hole this tranche exists to close, moved one character.",
+      "file": "apps/core-api/src/http/idempotency-policy.ts",
+      "command": "idempotency-policy",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "every required template names an operation the manifest declares"
+      ]
+    },
+    {
+      "name": "M15 the empty-array refusal is removed from the body validator",
+      "guards": "`permissions: []` is refused BY NAME",
+      "why": "The domain still refuses it, so the request still fails \u2014 with no `body.permissions` in fields[], so a client learns the request was wrong without learning which field. This mutation was found by the suite BEFORE it was written as a mutation: the real run on the mini failed on it.",
+      "file": "apps/core-api/src/transports/mcp/token-mint.ts",
+      "command": "mint-integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "reports every bad field of a body at once, with names a client can act on"
+      ],
+      "host": "mini"
+    },
+    {
+      "name": "M16 the raw secret is stored instead of its digest",
+      "guards": "a one-time secret exists in this process exactly once",
+      "why": "Every response is byte-identical. The database now holds live credentials in plaintext, and nothing about the wire says so.",
+      "file": "packages/contexts/identity-access/application/mint-bearer-credential.ts",
+      "command": "mint-integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "mints a platform token and stores only its digest"
+      ],
+      "host": "mini"
+    },
+    {
+      "name": "M17 the entity token is attributed to its own principal",
+      "guards": "the two actor columns are two different humans",
+      "why": "`createdByUserId` has a foreign key to User and `mcpUserId` does not, because one is the operator who issued the credential and the other is an end user of the entity. Collapsing them loses the audit trail while the mint still succeeds.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer.ts",
+      "command": "mint-integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "mints an entity token bounded by the environment, acting as the entity's own principal"
+      ],
+      "host": "mini"
+    },
+    {
+      "name": "M18 the idempotency gate lets the LOSER of a race proceed",
+      "guards": "two identical requests racing produce ONE row",
+      "why": "MUTATES A GATE THIS BRANCH DOES NOT OWN, so the race property is proven by the rule going away rather than by the suite agreeing with it. Both sockets reach the mint and the database ends with two rows.",
+      "file": "apps/core-api/src/http/idempotency.ts",
+      "command": "mint-integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "RACES two identical requests and leaves one row and one secret"
+      ],
+      "host": "mini"
+    },
+    {
+      "name": "M19 the matrix reports no operations shared across roots",
+      "guards": "the cross-root surplus is measured, not assumed",
+      "why": "Without it the subtraction added for the cross-deployable mints would be an unchecked escape hatch. SURVIVES against the suite alone \u2014 the committed matrix still records the truth \u2014 and is killed by the artifact CHECK, which recomputes it. Recorded rather than hidden: a mutation is only as good as the command it runs under.",
+      "file": "scripts/capability-matrix.mjs",
+      "command": "capability-matrix",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "capability-matrix --check: the committed matrix does not match a fresh render"
+      ]
+    },
+    {
+      "name": "M20 the census inflates its surplus to absorb a disagreement",
+      "guards": "bindings - surplus === uniqueOperations",
+      "why": "The other half of the same escape hatch: any disagreement between the two enumerations could be swallowed by claiming more operations are shared than are.",
+      "file": "scripts/rest-census-independent.mjs",
+      "command": "rest-census",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "rest-census-independent --check: artifact out of date / identity violated"
+      ]
+    }
+  ],
+  "survivors": [],
+  "declared": [
+    "TWENTY mutations, TWENTY killed, ZERO survivors.",
+    "",
+    "ELEVEN ran on the laptop (M01-M09, M13, M14, M19, M20 \u2014 thirteen commands, two",
+    "of which are re-runs of M19 under a different command) and NINE needed",
+    "containers and ran on the mini (M10, M11, M12, M15, M16, M17, M18).",
+    "",
+    "WHAT IS NOT MUTATED, AND WHY. The Entity MCP server's tools/list is left",
+    "alone: its catalog is DISCOVERED from the entity's own downstream endpoint and",
+    "ADR M0.4 \u00a75 excludes it from the digest, so there is nothing here whose",
+    "corruption this tranche could detect. `apps/agent/src/tool-gateway/` is",
+    "M4.3's (WIN-269) and `AgentController` is M3.1's (WIN-261); neither is",
+    "mutated, and the two `required` mints they own are named in the report as",
+    "still unserved rather than counted."
+  ]
+}
