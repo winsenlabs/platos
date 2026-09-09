@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "9b38201351bf6bcd6e0dc0a71c5531e6c50d293fcb1b4d122eb08abd0c9168ac",
+  "evidenceSha256": "52a2d83318753967c4119e7b0178bfe9b9fb99d40db7ec4cbbf340b6994e8000",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "8938040d53dab43775752b46b1b71acc8c64048a458d7a79c232696bbcd8cff0",
+    "aggregateSha256": "2200dac7166e6e774dedb8e14b3e128ad0e92168b33d6ef5c97a453563f3185e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20131,7 +20131,7 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "9d6c02fdab5c9ec501ed2cc554c428e5f17402a11c29da51ce63e3ecdfeea39b"
+        "sha256": "50ad01abdab2919d98d3094611e5ecab723d939af85567ab7653dbbee8c7bda9"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -20635,7 +20635,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "50a3ab870b163eb86043d7619571a3a3eb14837a52384a618625ac44b85a5274"
+        "sha256": "87d12868a533a05583564f52dffb23bdc5063bdb4d20a062e614cdb74d79c3c6"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -47561,7 +47561,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 779
+              "line": 789
             }
           ],
           "reversePaths": [
@@ -47650,7 +47650,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "e4a56690baca6fff49c4fcff9a57e389c3f86d3a0770ec4781e0f7998efdbfd5",
+      "evidenceSha256": "e960ba29e4e9e382fb061dc1b300fcf454577852d5726938e86e0c71298a31c5",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
