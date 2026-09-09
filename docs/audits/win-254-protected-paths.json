@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "1b2d8b5bd2e7075e1480296ce201278ca74a0169dd256d446892c713b0b5d0e6"
+      "sha256": "74e55096af78b14c78bbb286dc77de72fe1e299e86640db575e2f6514fbd0c14"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "3efd2caff14809d66e3d7bd4393aac3b89365d95574b26000c2fbb3cc63d486c"
+      "sha256": "0df5e0fbe789b1006868237aa1bd176b65eb89b59ab1a968d8c294956095c6f8"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1083,7 +1083,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "8e5b8b5fd3d08777bcfe7370f0b8092fe7388b5ebb9b85725e59c4730d48552e"
+      "sha256": "a6367ef2c89af527d9ffb6ea92e4e6eff97665a88d72e2287388092088d30021"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3888,7 +3888,7 @@
     {
       "path": "scripts/docs-link-integrity.test.mjs",
       "mode": "100644",
-      "sha256": "64e61310b79e868ffae24d6d8723baaab021be3b23e8694105347566633a40d5"
+      "sha256": "7e0e23c516eb159506d9306586e2f2f001eabde48acc6b5d0cbaa09ef323424d"
     },
     {
       "path": "scripts/evidence-lifecycle.mjs",
@@ -3898,7 +3898,7 @@
     {
       "path": "scripts/evidence-lifecycle.test.mjs",
       "mode": "100644",
-      "sha256": "51ccae8665148b79b3974115017d9435801bac36632a4f0b81ca9207acca02ed"
+      "sha256": "d751a477c5a8e753b85fd7ea3ddb7ff17453baa3f2b5d0b0316f948602a26513"
     },
     {
       "path": "scripts/lib/advisory-dispositions.mjs",

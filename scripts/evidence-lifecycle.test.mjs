@@ -79,8 +79,15 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // M2 INTEGRATION: the two additions are DIFFERENT files and different
   // categories, so both counts move: 250 -> 252, ACCEPTED 225 -> 226 and
   // POINT-IN-TIME 20 -> 21. Either branch figure alone (251) is wrong merged.
-  assert.equal(manifest.entryCount, 252, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, and the WIN-260 M2.5 milestone note");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 226, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  //
+  // WIN-268 P3 252 -> 254, BOTH ACCEPTED (226 -> 228) and none of the other
+  // three statuses moved: `docs/audits/win-268-mcp-tool-store-reach.{json,md}`,
+  // the pair `audit:mcp-tool-store-reach` re-measures and refuses on drift. They
+  // are ACCEPTED for the same reason as the WIN-284 pair rather than
+  // POINT-IN-TIME: they bind CURRENT repository truth — the delegate-call count
+  // falls as the conversion lands — instead of recording one dated scan.
+  assert.equal(manifest.entryCount, 254, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, and the WIN-268 MCP tool store-reach pair");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 228, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

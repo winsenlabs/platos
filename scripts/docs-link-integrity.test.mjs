@@ -139,7 +139,14 @@ test("the live corpora are enumerated with exact non-vacuous counts", () => {
     //      relativeLinks and anchorReferences below are deliberately unchanged;
     //      its only cross-references are inline code spans naming source paths,
     //      which this corpus does not treat as links. 394 -> 395.
-    docsMarkdownFiles: 395,
+    //   +1 WIN-268 P3 docs/audits/win-268-mcp-tool-store-reach.md, the generated
+    //      store-reach summary. Its sibling .json is not markdown and so is
+    //      outside this corpus. Like the WIN-284 summary above it carries no
+    //      relative link and no anchor reference — its cross-references are
+    //      inline code spans naming source paths, which this corpus does not
+    //      treat as links — so relativeLinks and anchorReferences below are
+    //      deliberately unchanged. 395 -> 396.
+    docsMarkdownFiles: 396,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,
