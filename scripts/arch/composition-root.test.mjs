@@ -169,7 +169,15 @@ test("the live repository satisfies both the boundary rules and the composition-
   // would have needed a second Prisma client, which `tenancy-prisma-only`
   // forbids.
   // SUMMED: 54 + 1 (G1) + 3 (G2) = 58, directories unmoved at fifteen.
-  assert.equal(audit.bindingCount, 58);
+  //
+  // WIN-271 (M4.5) takes it to 59, and the DIRECTORY count is again unmoved:
+  // `channel-slack:ChannelRuntime` is a second row on the channel directory,
+  // satisfied by the SAME object holding the SAME vendor client because
+  // `ChannelRuntime` extends `ChannelAdapter`. A sixteenth package for the
+  // inbound half would have needed a second chat SDK install for one provider,
+  // which `chat-sdk-only` forbids for the reason `tenancy-prisma-only` forbids
+  // the second Prisma client.
+  assert.equal(audit.bindingCount, 59);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -357,7 +365,11 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-    assert.ok(problems.some((problem) => problem.includes("declares 57 binding(s)")));
+    // 57 -> 58: the table declares 59 and this edit removes ONE of the two
+    // `channel-slack` rows. The regex is deliberately non-global, so the
+    // directory keeps its OTHER binding and the refusal is still "omits", not
+    // "unknown adapter" — which is the case this exercises.
+    assert.ok(problems.some((problem) => problem.includes("declares 58 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -469,8 +481,13 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // drops. Both halves move in one commit — the C7 rule itself joins the list to
   // the filesystem in both directions, so a list edited without an
   // implementation, or an implementation added without the list edit, fails.
+  // 7 -> 6 (WIN-271, M4.5). `channel-slack` is the SECOND directory ever to
+  // leave this list, and the shape is A3's exactly: no directory is added, the
+  // unimplemented count falls, and the constructible set below gains a NINTH
+  // member without `ADAPTERS.length` moving. Both halves move in one commit
+  // because C7 joins the list to the filesystem in both directions.
   const listed = parseUnimplementedAdapters(source);
-  assert.equal(listed.length, 7, "seven of the fifteen directories are still generated interfaces");
+  assert.equal(listed.length, 6, "six of the fifteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
   // WIN-267 A1 and A2 add the SIXTH and SEVENTH constructible directories while
   // the unimplemented count stays at EIGHT, which is their claim from the other
@@ -479,8 +496,12 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // its kind -- it adds no directory and takes `redis-ratelimit` OFF the
   // unimplemented list, 8 -> 7, so the constructible set gains an EIGHTH member
   // without ADAPTERS.length moving at all. The identity below is what holds the
-  // two apart: 7 + 8 = 15.
+  // two apart: 7 + 8 = 15, and after WIN-271, 6 + 9 = 15.
   assert.deepEqual(constructible, [
+    // WIN-271 (M4.5). The NINTH constructible directory, and the second one to
+    // arrive by an existing generated interface gaining an implementation
+    // rather than by a new directory being written.
+    "channel-slack",
     "keyring-envelope",
     "model-router-providers",
     // WIN-267 A1. The sixth constructible directory, and the only one in the
@@ -535,12 +556,12 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FIFTY-EIGHT bindings, across fifteen directories", () => {
+test("the binding-table parser reads all FIFTY-NINE bindings, across fifteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 58);
+  assert.equal(bindings.length, 59);
   assert.equal(ADAPTERS.length, 15);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
@@ -630,7 +651,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-        problem.includes("binding table names outbox -> memory Cache, which is not one of the 58 declared bindings")
+        problem.includes("binding table names outbox -> memory Cache, which is not one of the 59 declared bindings")
     )
   );
 });
@@ -661,7 +682,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-    assert.ok(problems.some((problem) => problem.includes("declares 57 binding(s)")));
+    assert.ok(problems.some((problem) => problem.includes("declares 58 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {

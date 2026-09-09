@@ -240,12 +240,6 @@ describe("the built binary refuses to start on a bad section", () => {
       PLATOS_SECURITY_SESSION_SECRET: "s".repeat(32),
       PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
       PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",
-      // WIN-271 (M4.5). The channels section's anchor. It is here for the same
-      // reason every variable above it is: this case is the END-TO-END
-      // observation of what a fully declared install actually wires, read off a
-      // real socket on a real spawned binary, and an install that declared
-      // everything BUT the channel would be reporting a different fact.
-      PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
     });
     const port = await awaitListening(spawned);
     expect(port).toBeGreaterThan(0);

@@ -1315,7 +1315,17 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // contracts and touch no adapter, which is the whole point of the rule and
     // is why the violation list below stays empty while the census moves.
     // 1637 + 7 = 1644.
-    assert.equal(result.fileCount, 1644, "the generated V1 source census must stay exact");
+    //
+    // WIN-271 (M4.5) 1644 -> 1663. NINETEEN files: FOURTEEN net-new under
+    // `packages/adapters/channel-slack/src` (the directory held two generated
+    // placeholders and now holds sixteen, so the NET is fourteen) and FIVE under
+    // `packages/contexts/channels`. NOT ONE crosses a boundary this gate names,
+    // and the adapter's own case is the interesting one: it is the ONLY file in
+    // the V1 tree permitted to import `@chat-adapter/*`, and `chat-sdk-only`
+    // — added by this tranche — is what makes that a rule rather than a habit.
+    // The violation list below stays empty while the census moves, which is the
+    // same shape every adoption has had. 1644 + 19 = 1663.
+    assert.equal(result.fileCount, 1663, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1359,7 +1369,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // mint use case and its suite). 4 + 1 + 2 = 7, and NOTHING under
       // `packages/adapters` — the store's INSERT half lands inside the existing
       // `identity-bearer.ts`.
-      4 + 1 + 2);
+      4 + 1 + 2 +
+      // WIN-271 (M4.5): channel-slack 14 NET (16 real files less the 2 generated
+      // placeholders they replace) and channels 5 -- the ChannelRuntime port,
+      // the admitSignedDelivery use case, the inbound conformance harness, the
+      // delivery-disposition rule and its suite. 14 + 5 = 19, and NOTHING under
+      // `apps/`.
+      14 + 5);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

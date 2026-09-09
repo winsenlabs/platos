@@ -81,7 +81,7 @@ test("the composition root's declared external dependencies are exactly the revi
   });
 });
 
-test("exactly FIVE projects may hold an external dependency, and they are named", () => {
+test("exactly SIX projects may hold an external dependency, and they are named", () => {
   // The list is short on purpose and its shortness is the property. A fourth
   // entry appearing here is a reviewed decision to let a registry package into
   // the V1 layout, and it has to be made by moving this line.
@@ -107,8 +107,26 @@ test("exactly FIVE projects may hold an external dependency, and they are named"
   // one to be adopted holds a second CLIENT by design rather than by accident.
   // The lockfile cost is again seven lines and no new resolution, and again that
   // is not the argument: this line is.
+  //
+  // WIN-271 (M4.5) makes the SIXTH: `packages/adapters/channel-slack` declares
+  // `@chat-adapter/slack`. The argument is ADR M0.3 §1's own — `channels` is the
+  // "sole holder of Slack/etc SDKs behind `ChannelAdapter`" — and §5.1(h)'s "one
+  // vendor client, one adapter directory". Two tranches had already tried and
+  // failed to de-Prisma the channel surface IN PLACE, which is what the port and
+  // this declaration replace.
+  //
+  // AND IT IS THE ONE ENTRY WHOSE SPECIFIER IS NOT BYTE-IDENTICAL TO
+  // `apps/agent`'s, which every argument above turns on. The other five are
+  // pinned to the legacy specifier precisely so extraction cannot become a
+  // supply-chain change; WIN-271 asks for the opposite — a STAGED move of the
+  // audited 4.34 line toward current stable — so this one really does add a
+  // resolution. That is a reviewed decision and this line is where it was made:
+  // the adapter runs ^4.40.0, the legacy monolith stays on ^4.34.0, and
+  // `sdk-upgrade.test.ts` asks both builds the same questions about the same
+  // provider fixtures and requires identical answers.
   assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
     "apps/core-api",
+    "packages/adapters/channel-slack",
     "packages/adapters/model-router-providers",
     "packages/adapters/postgres-tenancy",
     "packages/adapters/redis-cache",
