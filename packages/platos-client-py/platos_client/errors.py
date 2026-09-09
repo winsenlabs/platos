@@ -108,7 +108,7 @@ class PlatosRefusal(PlatosError):
     the ones minted after this SDK was built, which by construction have no
     named subclass here. Code that narrows to a named class keeps working.
 
-    429 is deliberately NOT in this family. A rate limit refuses THIS attempt
+    429 is deliberately NOT in this family. A rate limit refuses THIS request
     and invites another, which is why ``is_retryable`` returns true for it.
     """
 

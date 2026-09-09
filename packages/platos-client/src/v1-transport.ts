@@ -9,12 +9,12 @@
 //
 //   A MINT THAT RETRIES WITHOUT A KEY MINTS TWICE.
 //   ADR M0.4 section 2 requires `Idempotency-Key` on the one-time-secret mints,
-//   and the reason is a retry: the first attempt hands back a credential nobody
+//   and the reason is a retry: the first try hands back a credential nobody
 //   ever sees again, the socket drops before the response lands, and the client
 //   tries again. With a STABLE key the server replays the first answer and the
-//   caller recovers the secret it already created. With a FRESH key per attempt
+//   caller recovers the secret it already created. With a FRESH key per try
 //   — or with none — it creates a second live credential nobody knows about.
-//   So the key is minted ONCE PER LOGICAL CALL, before the first attempt, and
+//   So the key is minted ONCE PER LOGICAL CALL, before the first try, and
 //   every retry of that call carries the same value. `_fetchWithRetry` in
 //   `client.ts` predates this rule and reaches no mint; nothing here is routed
 //   through it.
@@ -88,11 +88,11 @@ export interface V1ClientOptions {
    * replay a mint whose response was lost to a crash rather than to a socket.
    */
   readonly idempotencyKey?: IdempotencyKeyFactory;
-  /** Attempts after the first. Default 3. */
+  /** Retries after the first try. Default 3. */
   readonly maxRetries?: number;
   readonly baseDelayMs?: number;
   readonly maxDelayMs?: number;
-  /** Per-attempt timeout. Default 30s. */
+  /** Per-try timeout. Default 30s. */
   readonly timeoutMs?: number;
   /** Merged into every `fetch` init — `credentials`, `mode`, `keepalive`. */
   readonly fetchOptions?: RequestInit;
@@ -155,7 +155,7 @@ export class V1HttpTransport implements V1Transport {
   }
 
   /**
-   * The key this call will carry on EVERY attempt, or null when the operation
+   * The key this call will carry on EVERY try, or null when the operation
    * is a read or an exemption.
    */
   keyFor(request: V1Request): string | null {
@@ -175,7 +175,7 @@ export class V1HttpTransport implements V1Transport {
     const sleep = this.options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
     const maxRetries = this.options.maxRetries ?? DEFAULTS.maxRetries;
     // MINTED ONCE, HERE, OUTSIDE THE LOOP. Moving this line inside the loop is
-    // the two-credential bug; `v1-idempotency.test.ts` asserts every attempt of
+    // the two-credential bug; `tests/v1-contract.test.ts` asserts every try of
     // one call carries the same value, so the move fails a named case.
     const idempotencyKey = this.keyFor(request);
     const url = this.urlFor(request);
@@ -188,7 +188,7 @@ export class V1HttpTransport implements V1Transport {
     };
 
     let last: PlatosError | null = null;
-    for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    for (let retryCount = 0; retryCount <= maxRetries; retryCount += 1) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), this.options.timeoutMs ?? DEFAULTS.timeoutMs);
       let response: Response;
@@ -197,8 +197,8 @@ export class V1HttpTransport implements V1Transport {
       } catch (cause) {
         clearTimeout(timer);
         last = new PlatosNetworkError(cause);
-        if (attempt < maxRetries) {
-          await sleep(this.backoffMs(attempt));
+        if (retryCount < maxRetries) {
+          await sleep(this.backoffMs(retryCount));
           continue;
         }
         throw last;
@@ -214,11 +214,11 @@ export class V1HttpTransport implements V1Transport {
 
       const refusal = await errorFromResponse(response);
       last = refusal;
-      if (attempt < maxRetries && isRetryableError(refusal)) {
+      if (retryCount < maxRetries && isRetryableError(refusal)) {
         const delay =
           refusal instanceof PlatosRateLimitError && refusal.retryAfterMs !== undefined
             ? refusal.retryAfterMs
-            : this.backoffMs(attempt);
+            : this.backoffMs(retryCount);
         await sleep(delay);
         continue;
       }
@@ -227,8 +227,8 @@ export class V1HttpTransport implements V1Transport {
     throw last ?? new PlatosServerError(0, "exhausted retries");
   }
 
-  private backoffMs(attempt: number): number {
-    const base = (this.options.baseDelayMs ?? DEFAULTS.baseDelayMs) * 2 ** attempt;
+  private backoffMs(retryCount: number): number {
+    const base = (this.options.baseDelayMs ?? DEFAULTS.baseDelayMs) * 2 ** retryCount;
     return Math.min(base, this.options.maxDelayMs ?? DEFAULTS.maxDelayMs);
   }
 }

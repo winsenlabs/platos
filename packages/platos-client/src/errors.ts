@@ -119,8 +119,8 @@ export class PlatosError extends Error {
  * built, which by construction have no named subclass here. Existing code that
  * narrows to a named class keeps working; this only widens what can be caught.
  *
- * 429 is deliberately NOT in this family. A rate limit is a refusal of THIS
- * attempt and an invitation to make another, which is why `isRetryableError`
+ * 429 is deliberately NOT in this family. A rate limit refuses THIS request
+ * and invites another, which is why `isRetryableError`
  * returns true for it — catching it beside a permanent refusal would lose that
  * distinction.
  */

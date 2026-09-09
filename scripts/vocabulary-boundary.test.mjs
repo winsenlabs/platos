@@ -652,7 +652,35 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         of a comparison whose entire value is that it is exhaustive, which
   //         would have bought silence about four operations to avoid one
   //         manifest line --> 19411.
-  assert.equal(manifest.exceptions.length, 19411);
+  //   -3    THREE reviewed occurrences REMOVED by WIN-270 (M4.4), in
+  //         `packages/platos-token-mint/src/index.ts`. Each was a doc comment on
+  //         a published SDK type attributing an id Platos mints, owns and
+  //         validates to the external durable-runtime vendor's schema. WIN-270
+  //         asks for stale vendor vocabulary to leave the package APIs, and the
+  //         right answer to a vendor word in a type comment is to delete the
+  //         word rather than to review it — `--write` then drops the exception,
+  //         which is what happened here. Nothing about the wire format moved
+  //         --> 19408.
+  //   +38   reviewed WIN-269 (M4.3) occurrences that were left UNREVIEWED by the
+  //         tranche that wrote them, in four files: 20 in
+  //         `apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts`,
+  //         17 in `scripts/mutations-win269-m43.json`, 6 in
+  //         `apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts`
+  //         (counted in the 38 as the `attempt` rows) and 1 in
+  //         `scripts/v1-ledger.test.mjs`. THE GATE WAS RED ON THE BRANCH, and
+  //         `.github/workflows/ci.yml` runs it, so the merge would have been
+  //         red; WIN-270 found it while establishing its own baseline.
+  //
+  //         All 38 are classified `technical` rather than `vendor`, for the same
+  //         reason the WIN-258 pair above is: the PostgreSQL occurrences are the
+  //         database ENGINE's DDL keyword and system catalogue (`pg_trigger`,
+  //         `ALTER TABLE ... DISABLE TRIGGER`, the `EnvironmentEntityTool_ancestry`
+  //         object those statements name), not the external durable-runtime
+  //         product this rule exists to keep out, and the `attempt` occurrences
+  //         are general-language English naming whether a discovery pass RAN at
+  //         all — a distinction with no retry in it. Each is bound to a removal
+  //         EVENT rather than a date --> 19446.
+  assert.equal(manifest.exceptions.length, 19446);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

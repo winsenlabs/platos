@@ -8,12 +8,12 @@ deciding, and each is here because getting it wrong has a name:
 
 **A mint that retries without a key mints twice.** ADR M0.4 section 2 requires
 ``Idempotency-Key`` on the one-time-secret mints, and the reason is a retry: the
-first attempt hands back a credential nobody ever sees again, the socket drops
+first try hands back a credential nobody ever sees again, the socket drops
 before the response lands, and the client tries again. With a STABLE key the
 server replays the first answer and the caller recovers the secret it already
-created. With a fresh key per attempt — or with none — it creates a second live
+created. With a fresh key per try — or with none — it creates a second live
 credential nobody knows about. So the key is minted ONCE PER LOGICAL CALL,
-before the first attempt, and every retry of that call carries the same value.
+before the first try, and every retry of that call carries the same value.
 
 **A refusal is a code, not a sentence.** Every non-2xx answer from the V1
 surface is ADR M0.4 section 2's envelope; :class:`PlatosRefusal` carries
@@ -148,7 +148,7 @@ class V1HttpTransport:
         return f"{self.base_url}{request['path']}{suffix}"
 
     def key_for(self, request: V1Request) -> str | None:
-        """The key this call carries on EVERY attempt, or ``None`` for a read."""
+        """The key this call carries on EVERY try, or ``None`` for a read."""
         if request["operation"]["idempotency"] not in SENDS_IDEMPOTENCY_KEY:
             return None
         key = self._key_factory(request)
@@ -161,8 +161,8 @@ class V1HttpTransport:
 
     def send(self, request: V1Request) -> Any:
         # MINTED ONCE, HERE, OUTSIDE THE LOOP. Moving this line inside the loop
-        # is the two-credential bug; ``test_v1_contract.py`` asserts every
-        # attempt of one call carries the same value, so the move fails a case.
+        # is the two-credential bug; ``test_v1_contract.py`` asserts every try
+        # of one call carries the same value, so the move fails a case.
         idempotency_key = self.key_for(request)
         url = self.url_for(request)
         headers = self.headers_for(request, idempotency_key)
@@ -170,13 +170,13 @@ class V1HttpTransport:
         method = request["operation"]["method"]
 
         last: PlatosError | None = None
-        for attempt in range(self.max_retries + 1):
+        for retry_count in range(self.max_retries + 1):
             try:
                 answer = self._opener(method, url, headers, body)
             except Exception as cause:  # noqa: BLE001 - any transport failure is a network error
                 last = PlatosNetworkError(cause)
-                if attempt < self.max_retries:
-                    self._sleep(self._backoff_s(attempt))
+                if retry_count < self.max_retries:
+                    self._sleep(self._backoff_s(retry_count))
                     continue
                 raise last from cause
 
@@ -190,8 +190,8 @@ class V1HttpTransport:
 
             refusal = refusal_from(answer)
             last = refusal
-            if attempt < self.max_retries and is_retryable(refusal):
-                delay = self._backoff_s(attempt)
+            if retry_count < self.max_retries and is_retryable(refusal):
+                delay = self._backoff_s(retry_count)
                 if isinstance(refusal, PlatosRateLimitError) and refusal.retry_after_ms:
                     delay = refusal.retry_after_ms / 1000
                 self._sleep(delay)
@@ -200,8 +200,8 @@ class V1HttpTransport:
 
         raise last if last is not None else PlatosServerError(0, "exhausted retries")
 
-    def _backoff_s(self, attempt: int) -> float:
-        return min(self.base_delay_s * (2**attempt), self.max_delay_s)
+    def _backoff_s(self, retry_count: int) -> float:
+        return min(self.base_delay_s * (2**retry_count), self.max_delay_s)
 
 
 def refusal_from(answer: HttpAnswer) -> PlatosError:

@@ -329,7 +329,7 @@ describe("an unauthenticated caller gets a refusal with a CODE, never a partial 
     ]);
   });
 
-  it("does not retry a refusal into a second attempt", async () => {
+  it("does not retry a refusal into a second request", async () => {
     const fetchImpl = vi.fn(
       async () => new Response(JSON.stringify(envelope), { status: 401 }),
     );
