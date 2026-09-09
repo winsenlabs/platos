@@ -60,6 +60,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { asIdentifier } from "@platos/kernel";
 
 import { loadPlatformConfiguration } from "../config/platform.js";
+import { API_VERSION_PREFIX } from "../http/api-surface.js";
 import { createProcessDefaults, startCoreApi, type RunningCoreApi } from "../runtime/lifecycle.js";
 import { constructAdapters, type AdapterConstruction } from "./adapter-bindings.js";
 import { assembleContextPorts } from "./context-ports.js";
@@ -161,6 +162,31 @@ async function call(
   }
   return { status: response.status, headers: response.headers, body, text };
 }
+
+/**
+ * A GET, for the ONE route this suite reads rather than writes.
+ *
+ * `GET /api/v1/environments/:id/end-users` asks tenancy for `metadata`, which is
+ * what makes it the control the mint cases need: an operator who can reach it
+ * and cannot mint is an operator gate 4 refused, and nothing weaker than a
+ * second route at a DIFFERENT access level can show that over the wire.
+ */
+async function read(path: string, token: string): Promise<Answer> {
+  const response = await fetch(`${base}${path}`, {
+    method: "GET",
+    headers: { authorization: `Bearer ${token}` },
+  });
+  const text = await response.text();
+  let body: Record<string, unknown> = {};
+  try {
+    body = text === "" ? {} : (JSON.parse(text) as Record<string, unknown>);
+  } catch {
+    body = {};
+  }
+  return { status: response.status, headers: response.headers, body, text };
+}
+
+const END_USERS = `${API_VERSION_PREFIX}/environments/${ENVIRONMENT}/end-users`;
 
 function errorCode(answer: Answer): string {
   const error = answer.body["error"] as Record<string, unknown> | undefined;
@@ -507,14 +533,13 @@ describe("WIN-268 P1 — the two mints are served, and served exactly once", () 
     });
     expect(errorCode(answer)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
     expect(answer.status).toBe(committedStatus("TENANCY_ENVIRONMENT_FORBIDDEN"));
-    // A DIFFERENT GATE from the member case above: this one holds no membership
-    // at all, so the refusal happens two gates earlier. One code, two gates, and
-    // the pair is what makes each case falsifiable.
-    const details = (answer.body["error"] as Record<string, unknown>)["details"] as
-      | Record<string, unknown>
-      | undefined;
-    expect(details?.["gate"]).toBe("organization-membership");
     expect(await observe(`SELECT count(*) FROM "McpToken" WHERE "name" = 'outsider key'`)).toEqual(["0"]);
+    // REFUSED TWO GATES EARLIER than the member above, and the same control
+    // shows it: this operator holds no membership at all, so even the `metadata`
+    // route refuses them. The pair — one operator readable and unable to mint,
+    // one operator neither — is what separates the two access levels.
+    const readable = await read(END_USERS, OUTSIDER_TOKEN);
+    expect(errorCode(readable)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
   });
 
   it("refuses an ORGANIZATION MEMBER at gate 4, and names a DIFFERENT gate than the outsider", async () => {
@@ -530,15 +555,22 @@ describe("WIN-268 P1 — the two mints are served, and served exactly once", () 
       body: platformBody("member key"),
     });
     expect(errorCode(answer)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
-    // AND THE GATE IS THE ONE THAT NARROWS SECRET MUTATION. The outsider case
-    // below reaches the SAME code at a different gate, so a route that had
-    // dropped to `metadata` would move this string and not that one — which is
-    // the whole reason `details.gate` exists.
-    const details = (answer.body["error"] as Record<string, unknown>)["details"] as
-      | Record<string, unknown>
-      | undefined;
-    expect(details?.["gate"]).toBe("secret-mutate-role");
+    expect(answer.status).toBe(committedStatus("TENANCY_ENVIRONMENT_FORBIDDEN"));
     expect(await observe(`SELECT count(*) FROM "McpToken" WHERE "name" = 'member key'`)).toEqual(["0"]);
+
+    // AND THE HALF THAT MAKES IT A GATE-4 REFUSAL RATHER THAN JUST A REFUSAL.
+    // The SAME operator reaches a `metadata` route on the SAME environment and
+    // is answered, so gates 1, 2 and 3 all passed for them. The refusal above is
+    // therefore the one gate `secret:mutate` narrows, and a mint that had asked
+    // for `metadata` would answer 201 here instead.
+    //
+    // `details.gate` names the gate, and it is NOT on the wire: M0.4 §2's error
+    // envelope has no `details`, and `tenancy` records that its gate detail is
+    // log-only. Two routes at two access levels is what the envelope leaves a
+    // test to prove — and it is a better proof, because it is the difference a
+    // CLIENT can observe.
+    const readable = await read(END_USERS, MEMBER_TOKEN);
+    expect(readable.status, readable.text).toBe(200);
   });
 
   it("refuses a mint from an IMPERSONATED session under its own code", async () => {
