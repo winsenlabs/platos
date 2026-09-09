@@ -93,6 +93,8 @@
         "docs/audits/win-284-differential-coverage.json",
         "docs/audits/win-284-differential-coverage.md",
         "docs/audits/win-259-secret-response-census.json",
+        "docs/audits/win-268-mcp-tool-store-reach.json",
+        "docs/audits/win-268-mcp-tool-store-reach.md",
         "docs/audits/win253-removals/clickhouse-split.json",
         "docs/audits/win253-removals/clickhouse-split.md",
         "docs/audits/win253-removals/vendored-build.json",
@@ -125,7 +127,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "f341cd78961e90ed459f1dad75aabbefc299dcf92326c3f3636605ed760bc40d",
+  "protectedPathSetSha256": "4e2ed508f8988481174eb52c270b77ab40614b2c8f6c6e5310321d496507f3b2",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -135,9 +137,9 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 252,
+  "entryCount": 254,
   "counts": {
-    "ACCEPTED": 226,
+    "ACCEPTED": 228,
     "SUPERSEDED-BY": 4,
     "POINT-IN-TIME": 21,
     "DRAFT": 1
@@ -1408,7 +1410,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "99b1fbb95a096370e4f292243d17bd9dac1fa352beb0d24ff993157434e6f505",
+      "sha256": "e09335b8ddc95083e7a314fde69c340c5c5943100337e7fcd0fe17d92acf1399",
       "binds": "current-repository-truth"
     },
     {
@@ -1522,14 +1524,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "e54ce7a247c89c9257de931f5bde21653aaff5dd4aa6bf100c6fff5ef2ed73b8",
+      "sha256": "1b2d8b5bd2e7075e1480296ce201278ca74a0169dd256d446892c713b0b5d0e6",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c5f1af6a271eedf39ee582b12377b5d146f4ff0cc13b64441b5b9a9bf9d39b5b",
+      "sha256": "3efd2caff14809d66e3d7bd4393aac3b89365d95574b26000c2fbb3cc63d486c",
       "binds": "current-repository-truth"
     },
     {
@@ -1537,6 +1539,20 @@
       "status": "ACCEPTED",
       "mode": "100644",
       "sha256": "99f2d1970f404cb8df25270100b6a0928b90254058703fe80eafd6344a7fdec8",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-268-mcp-tool-store-reach.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "87aeda16497ed6b4ca2e536ceb6eee6642ebf93a4241f842fc2adffeda1c07a4",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/win-268-mcp-tool-store-reach.md",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0f7c7b867f6646a22dcbff462e77f8b6c93e60304e2529daff83654ba2bd5c36",
       "binds": "current-repository-truth"
     },
     {
@@ -1571,7 +1587,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "fc9380df1e2be2a3d3cbdf628172cc5d8553525fbf923d11b2e242587ec23926",
+      "sha256": "8e5b8b5fd3d08777bcfe7370f0b8092fe7388b5ebb9b85725e59c4730d48552e",
       "binds": "current-repository-truth"
     },
     {

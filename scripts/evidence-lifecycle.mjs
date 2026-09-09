@@ -120,6 +120,15 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // and a human writes the disposition and the reason — which is why it is
   // pinned here by name rather than picked up by a generated-artifact root.
   "docs/audits/win-259-secret-response-census.json",
+  // WIN-268 P3. ACCEPTED rather than POINT-IN-TIME for the same reason as the
+  // WIN-284 pair above: `audit:mcp-tool-store-reach` re-measures the MCP tool
+  // modules on every run and fails when the live measurement and these files
+  // disagree, so a delegate call cannot appear or vanish without somebody
+  // editing them. The whole value of the artifact is that the count stays
+  // reconciled to the tree as the conversion lands, not that it records what the
+  // surface looked like on some past date.
+  "docs/audits/win-268-mcp-tool-store-reach.json",
+  "docs/audits/win-268-mcp-tool-store-reach.md",
   "docs/audits/win253-removals/clickhouse-split.json",
   "docs/audits/win253-removals/clickhouse-split.md",
   "docs/audits/win253-removals/vendored-build.json",

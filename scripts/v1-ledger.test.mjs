@@ -533,7 +533,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // judged by. Both land on the existing `apps-agent.tooling.scripts` rule
     // (11 -> 13); `generate-control-plane.mjs` is edited in place and adds no
     // file.
-    "apps-agent": 4,
+    // WIN-268 P3 4 -> 6. TWO PostgreSQL suites under
+    // `apps/agent/src/mcp-platform/tools/`, both on the existing
+    // `apps-agent.test.suites` rule: the `end_users.*` forged-triple tenancy
+    // proof and the macro replay round trip. `macros.ts` is edited in place and
+    // adds no file.
+    "apps-agent": 6,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1617,7 +1622,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // breaking-change ratchet compares against. Both are `retain`, and both are
     // under `docs/**` and therefore PROTECTED, which is why protectedCount moves
     // +2 while move-refactor moves +5.
-    "docs-content": 19,
+    // WIN-268 P3 19 -> 21. The store-reach artifact pair, on the existing
+    // audit-notes and audit-receipts rules — one .md and one .json.
+    "docs-content": 21,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1698,7 +1705,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // alone recorded; `root-infra.test.script-suites` takes W2's two suites only
     // and moves 32 -> 34 unchanged. W1 is NOT in this branch, so its +1 on this
     // key is not here either -- see the merge commit for the tree fact.
-    "root-infra": 64,
+    // WIN-268 P3 64 -> 68. FOUR files on the existing
+    // `root-infra.tooling.scripts` rule: `scripts/arch/mcp-tool-store-reach.mjs`
+    // and `scripts/arch/end-user-presence-ancestry.mjs`, each with its suite.
+    "root-infra": 68,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1777,7 +1787,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // the eight-key re-derivation from the merged `expectedDeltas` above is
   // 4 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1679. Side-picking either branch's
   // own total (1678 or 1672) is red here AND at the second reconciliation below.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1679);
+  //
+  // WIN-268 P3 1679 -> 1687. EIGHT files, none of them a rule change and none of
+  // them a project adoption, itemised on the three area deltas below:
+  // `root-infra` +4 (two audits and their two suites — `mcp-tool-store-reach`
+  // and `end-user-presence-ancestry`), `docs-content` +2 (the store-reach
+  // artifact pair), `apps-agent` +2 (the two PostgreSQL suites that prove
+  // `end_users.*` tenancy against a forged triple and the macro replay round
+  // trip). `apps/agent/src/mcp-platform/tools/macros.ts` and `package.json` are
+  // edited IN PLACE and add no file. 4 + 2 + 2 = 8, and the eight-key
+  // re-derivation from `expectedDeltas` is
+  // 6 + 0 + 75 + 4 + 10 + 1503 + 21 + 68 = 1687.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1687);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1936,7 +1957,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // mutation manifest), reached here by summing the per-area counts instead of
     // reading the total, so the two arithmetics can disagree and be caught.
     // 1671 + 7 + 1 = 1679.
-    rulesDocument.baseline.totalFiles + 1679
+    // WIN-268 P3: the SAME eight files as the totalFiles assertion above and not
+    // one more, which is the identity this pair of assertions exists to hold —
+    // the total and the per-area sums are the same arithmetic, so a file that
+    // arrived in one and not the other cannot pass both. 1679 + 8 = 1687.
+    rulesDocument.baseline.totalFiles + 1687
   );
 });
 

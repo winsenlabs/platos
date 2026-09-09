@@ -89,7 +89,21 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "f341cd78961e90ed459f1dad75aabbefc299dcf92326c3f3636605ed760bc40d";
+//
+// WIN-268 P3 — the anchor moves from
+// f341cd78961e90ed459f1dad75aabbefc299dcf92326c3f3636605ed760bc40d to the value
+// below, and the difference is verified SET-WISE against the base at 3b3f1ebb:
+// the 796 paths at this head are exactly the 794-path base plus
+//
+//   docs/audits/win-268-mcp-tool-store-reach.json
+//   docs/audits/win-268-mcp-tool-store-reach.md
+//
+// with NOTHING removed. Both fall inside the existing `docs/**` selection rather
+// than widening it, and both are the evidence `audit:mcp-tool-store-reach`
+// reads — the selection protects the evidence a gate reads, not the gate, so
+// neither `scripts/arch/mcp-tool-store-reach.mjs` nor its suite is added to
+// SCRIPT_PREFIXES.
+export const EXPECTED_PATH_SET_SHA256 = "4e2ed508f8988481174eb52c270b77ab40614b2c8f6c6e5310321d496507f3b2";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",
