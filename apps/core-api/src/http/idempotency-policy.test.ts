@@ -60,13 +60,20 @@ describe("the policy table against the frozen operation manifest", () => {
     // /api/v1/bff/session`. 300 agent operations + 8 core-api operations = 308,
     // and `summary.restScanRoots` in the manifest carries the same split.
     //
-    // NONE OF THE EIGHT NEEDS A POLICY ROW. `OPERATION_POLICIES` classifies the
+    // 308 -> 309 (WIN-257 T8). ONE route, and it is a READ:
+    // `GET /api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug`,
+    // the slug walk `apps/webapp/app/services/auth.server.ts` has owned since the
+    // product existed. 300 agent + 9 core-api = 309.
+    //
+    // NONE OF THE NINE NEEDS A POLICY ROW. `OPERATION_POLICIES` classifies the
     // one-time-secret mints as `required` and names the exemptions; the R1 routes
     // mint no secret, so they take the unlisted default (`accepted`: a key is
-    // honoured if sent and not demanded). The credential-path case below is what
-    // proves that is a classification rather than an oversight — it would fail if
-    // any of the eight looked like a credential route.
-    expect(OPERATIONS.length).toBe(308);
+    // honoured if sent and not demanded). T8's route is a GET, which
+    // `classifyRequest` answers `not-applicable` for whatever its path. The
+    // credential-path case below is what proves that is a classification rather
+    // than an oversight — it would fail if any of the nine looked like a
+    // credential route.
+    expect(OPERATIONS.length).toBe(309);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {

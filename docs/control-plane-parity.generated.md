@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
-- REST operations: **308** unique method/path pairs from **308** route bindings.
+- REST operations: **309** unique method/path pairs from **309** route bindings.
 - Ambiguous duplicate REST method/path pairs: **0**.
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=152.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=153.
 
 ## REST inventory
 
@@ -271,6 +271,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#list` |
 | `POST /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#create` |
 | `POST /api/v1/public/guest-token` | PUBLIC_TRANSPORT | — | `public-token-mint` | `apps/agent/src/auth/public-guest-token.controller.ts#mint` |
+| `GET /api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/workspace.controller.ts#resolve` |
 | `POST /internal/batch-turn` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#batchTurn` |
 | `POST /internal/env/invalidate` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#invalidateEnv` |
 | `POST /internal/execute-tool` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#executeTool` |

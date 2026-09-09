@@ -103,6 +103,7 @@ const CORE_API_MOUNTED_CONTROLLERS = {
   OrganizationsController: "http/http.module.ts",
   ProjectsController: "http/http.module.ts",
   EnvironmentEndUsersController: "http/http.module.ts",
+  WorkspaceController: "http/http.module.ts",
   BffSessionController: "http/http.module.ts",
 };
 

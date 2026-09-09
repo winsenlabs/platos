@@ -102,6 +102,14 @@ const ENVIRONMENT = "bbbbbbbb-0003-4000-8000-000000000003";
 const ADMIN = "bbbbbbbb-0004-4000-8000-000000000004";
 const OUTSIDER = "bbbbbbbb-0005-4000-8000-000000000005";
 const MEMBERSHIP = "bbbbbbbb-0006-4000-8000-000000000006";
+/**
+ * A SECOND environment under the SAME project (WIN-257 T8). The workspace route
+ * publishes the environment switcher's list, and a list of one cannot show that
+ * the list is ordered, filtered or scoped to the right project.
+ */
+const STAGING = "bbbbbbbb-0007-4000-8000-000000000007";
+/** Later than `AT`, so "oldest first" is an observable claim and not a tie. */
+const STAGING_AT = new Date("2026-05-02T09:00:00.000Z");
 
 /** Raw tokens an operator would present. Never stored; only their digests are. */
 const ADMIN_TOKEN = "win267-r1-admin-session-token";
@@ -219,6 +227,11 @@ beforeAll(async () => {
     );
     await store.saveEnvironment(
       { id: asIdentifier(ENVIRONMENT), projectId: asIdentifier(PROJECT), slug: asIdentifier("prod"), name: "Production", archivedAt: null, accessKeyRevocationVersion: 0, memoryFeedbackBackfillCursor: null, memoryFeedbackBackfillCompletedAt: null, createdAt: AT, updatedAt: AT } as never,
+      transaction,
+    );
+ 
+    await store.saveEnvironment(
+      { id: asIdentifier(STAGING), projectId: asIdentifier(PROJECT), slug: asIdentifier("staging"), name: "Staging", archivedAt: null, accessKeyRevocationVersion: 0, memoryFeedbackBackfillCursor: null, memoryFeedbackBackfillCompletedAt: null, createdAt: STAGING_AT, updatedAt: STAGING_AT } as never,
       transaction,
     );
   });
@@ -634,5 +647,114 @@ describe("WIN-267 R1 — the BFF sets bytes and nothing else", () => {
     const cookie = String(answer.headers.get("set-cookie"));
     expect(cookie).toContain("Max-Age=0");
     expect(cookie).toContain("platos_operator_session=;");
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// WIN-257 T8 — the slug walk, over HTTP, against the real store.
+//
+// `GET /api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug` is the
+// route `apps/webapp/app/services/auth.server.ts:75` has served with a Prisma
+// `environment.findFirst` since the product existed. Everything below addresses
+// the seeded tree BY NAME and never by id, so the walk really is exercised: the
+// ids in the assertions are the fixture's, and the server reached them through
+// three slug indexes in PostgreSQL.
+
+describe("WIN-257 T8 — a workspace addressed by name", () => {
+  const WORKSPACE = `${API_VERSION_PREFIX}/workspaces/win267-r1/r1-project/prod`;
+
+  it("resolves the tree and publishes the AUTHORIZATION's scope, not the URL's", async () => {
+    const answer = await call("GET", WORKSPACE, { token: ADMIN_TOKEN });
+    expect(answer.status, answer.text).toBe(200);
+    const data = answer.body["data"] as Record<string, Record<string, unknown>>;
+
+    // Reached by slug; asserted by id. The two are joined by the store.
+    expect(data["organization"]!["id"]).toBe(ORGANIZATION);
+    expect(data["project"]!["id"]).toBe(PROJECT);
+    expect(data["environment"]!["id"]).toBe(ENVIRONMENT);
+
+    // THE SCOPE IS THE ONE TENANCY RE-DERIVED FROM THE LEAF. A route that echoed
+    // the URL back would pass every assertion above and publish an unchecked
+    // scope; this is the one that separates them.
+    const authorization = data["authorization"] as Record<string, unknown>;
+    expect(authorization["scope"]).toEqual({
+      organizationId: ORGANIZATION,
+      projectId: PROJECT,
+      environmentId: ENVIRONMENT,
+    });
+    expect(authorization["organizationRole"]).toBe("OWNER");
+    expect(authorization["access"]).toBe("metadata");
+  });
+
+  it("carries the environment switcher, oldest first and scoped to the project", async () => {
+    const answer = await call("GET", WORKSPACE, { token: ADMIN_TOKEN });
+    const data = answer.body["data"] as Record<string, unknown>;
+    const environments = data["environments"] as { readonly id: string; readonly slug: string }[];
+    // `prod` was created a day before `staging`, and the list is not alphabetical.
+    expect(environments.map((row) => row.id)).toEqual([ENVIRONMENT, STAGING]);
+    expect(environments.map((row) => row.slug)).toEqual(["prod", "staging"]);
+  });
+
+  // THE CASE THE WHOLE DESIGN EXISTS FOR.
+  //
+  // Four requests: a real workspace the caller may not enter, and three that name
+  // rows which do not exist at each of the three levels. If any one of them
+  // answered differently — a 404, a different code, a different message — a
+  // caller could walk the customer list by guessing names. The assertion is on
+  // the SET of observable answers having exactly one member.
+  it("answers a forbidden workspace and a non-existent one identically", async () => {
+    const observed = await Promise.all([
+      call("GET", WORKSPACE, { token: OUTSIDER_TOKEN }),
+      call("GET", `${API_VERSION_PREFIX}/workspaces/no-such-org/r1-project/prod`, { token: ADMIN_TOKEN }),
+      call("GET", `${API_VERSION_PREFIX}/workspaces/win267-r1/no-such-project/prod`, { token: ADMIN_TOKEN }),
+      call("GET", `${API_VERSION_PREFIX}/workspaces/win267-r1/r1-project/no-such-env`, { token: ADMIN_TOKEN }),
+    ]);
+
+    const distinct = new Set(
+      observed.map((answer) => {
+        const error = answer.body["error"] as Record<string, unknown>;
+        return JSON.stringify({
+          status: answer.status,
+          code: error["code"],
+          message: error["message"],
+        });
+      }),
+    );
+    expect([...distinct], "a slug must not be usable to probe for tenants").toHaveLength(1);
+
+    // And it is the RBAC refusal, at the status the committed taxonomy records.
+    expect(errorCode(observed[0]!)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
+    expect(observed[0]!.status).toBe(committedStatus("TENANCY_ENVIRONMENT_FORBIDDEN"));
+    // No body leaks past the refusal.
+    for (const answer of observed) expect(answer.body["data"]).toBeUndefined();
+  });
+
+  it("evaluates the EFFECTIVE user under impersonation", async () => {
+    // The ADMIN acting as the OUTSIDER, who holds no membership. Gate 2 refuses,
+    // so impersonating does not carry the impersonator's reach with it.
+    const answer = await call("GET", WORKSPACE, { token: IMPERSONATION_TOKEN });
+    expect(errorCode(answer)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
+  });
+
+  it("lets the caller ask for secret:mutate, and refuses an access it does not have", async () => {
+    const granted = await call("GET", `${WORKSPACE}?access=secret%3Amutate`, { token: ADMIN_TOKEN });
+    expect(granted.status, granted.text).toBe(200);
+    const data = granted.body["data"] as Record<string, Record<string, unknown>>;
+    expect(data["authorization"]!["access"]).toBe("secret:mutate");
+
+    // A TYPO IS NOT A DOWNGRADE. Coercing an unknown value to `metadata` would
+    // render a form the operator cannot submit and fail at the write instead.
+    const typo = await call("GET", `${WORKSPACE}?access=secret-mutate`, { token: ADMIN_TOKEN });
+    expect(typo.status).toBe(committedStatus("TRANSPORT_REQUEST_INVALID"));
+    expect(errorCode(typo)).toBe("TRANSPORT_REQUEST_INVALID");
+    const fields = (typo.body["error"] as Record<string, unknown>)["fields"] as { readonly field: string }[];
+    expect(fields.map((field) => field.field)).toEqual(["query.access"]);
+  });
+
+  it("refuses an anonymous caller before it resolves anything", async () => {
+    const answer = await call("GET", WORKSPACE);
+    expect(errorCode(answer)).toBe("UNAUTHENTICATED");
+    expect(answer.status).toBe(committedStatus("UNAUTHENTICATED"));
   });
 });

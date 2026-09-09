@@ -31,6 +31,7 @@ import { EnvironmentEndUsersController } from "../transports/rest/environment-en
 import { IdentitySessionController } from "../transports/rest/identity-session.controller.js";
 import { OrganizationsController } from "../transports/rest/organizations.controller.js";
 import { ProjectsController } from "../transports/rest/projects.controller.js";
+import { WorkspaceController } from "../transports/rest/workspace.controller.js";
 import { DomainExceptionFilter } from "./domain-exception.filter.js";
 import { HEALTH_DEPENDENCIES, HealthController, type HealthDependencies } from "./health.controller.js";
 import { createIdempotencyGate } from "./idempotency-middleware.js";
@@ -39,7 +40,7 @@ import { NotFoundController } from "./not-found.controller.js";
 /**
  * THE V1 BUSINESS SURFACE, DECLARED STATICALLY — AND THE ORDER IS THE REASON.
  *
- * These five controllers are in the DECORATOR's `controllers` array while the two
+ * These six controllers are in the DECORATOR's `controllers` array while the two
  * process-edge ones stay in `forApplication`'s, and that is not a stylistic split.
  * Nest's `DependenciesScanner.reflectControllers` reads
  * `[...reflectMetadata(class), ...dynamicMetadataByToken(...)]` — static first,
@@ -63,6 +64,7 @@ import { NotFoundController } from "./not-found.controller.js";
     OrganizationsController,
     ProjectsController,
     EnvironmentEndUsersController,
+    WorkspaceController,
     BffSessionController,
   ],
 })

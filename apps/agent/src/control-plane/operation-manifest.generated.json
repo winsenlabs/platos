@@ -11287,6 +11287,23 @@
         ]
       },
       {
+        "id": "GET /api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug",
+        "method": "GET",
+        "path": "/api/v1/workspaces/:organizationSlug/:projectSlug/:environmentSlug",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "WorkspaceController",
+            "handler": "resolve",
+            "source": "apps/core-api/src/transports/rest/workspace.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "POST /internal/batch-turn",
         "method": "POST",
         "path": "/internal/batch-turn",
@@ -12197,15 +12214,15 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 308,
-    "restRouteBindings": 308,
+    "restOperations": 309,
+    "restRouteBindings": 309,
     "ambiguousRestOperations": 0,
     "restClassifications": {
       "DEPRECATED": 15,
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 152
+      "REST_ONLY": 153
     },
     "restScanRoots": [
       {
@@ -12220,9 +12237,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 5,
-        "operations": 8,
-        "routeBindings": 8
+        "registeredControllers": 6,
+        "operations": 9,
+        "routeBindings": 9
       }
     ]
   }

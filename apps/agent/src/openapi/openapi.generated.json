@@ -8089,6 +8089,58 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/workspaces/{organizationSlug}/{projectSlug}/{environmentSlug}": {
+      "get": {
+        "operationId": "get__api_v1_workspaces_by_organizationSlug_by_projectSlug_by_environmentSlug",
+        "summary": "WorkspaceController.resolve",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "organizationSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/internal/batch-turn": {
       "post": {
         "operationId": "post__internal_batch_turn",
@@ -9529,6 +9581,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 308,
+  "x-platos-rest-operation-count": 309,
   "x-platos-mcp-tool-count": 202
 }
