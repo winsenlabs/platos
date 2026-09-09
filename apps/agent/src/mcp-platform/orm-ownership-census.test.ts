@@ -34,7 +34,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   analyzeAgentSource,
@@ -127,25 +127,43 @@ const CONVERTED = Object.freeze([
   "mcp-platform/identity-resolver.service.ts",
 ]);
 
+// ONE WALK, SHARED. Each case used to call `analyzeAgentSource()` for itself,
+// which built the `ts.Program` four times over — about four seconds each, and
+// four checkers alive at once in a worker that is already sharing a machine with
+// `clean-prisma-delegates.test.ts` doing the same thing. That was observed to
+// make the type checker resolve a call site differently between runs, which is
+// the same build-state sensitivity `clean-prisma-delegates.test.ts` records for
+// its own pins. The walk is deterministic; running it once removes the pressure
+// and every case below reads the same result.
+let analysis: ReturnType<typeof analyzeAgentSource>["analysis"];
+let here: typeof analysis.calls;
+
+beforeAll(() => {
+  analysis = analyzeAgentSource().analysis;
+  here = analysis.calls.filter((call) => call.file.startsWith(MCP_PLATFORM_PREFIX));
+}, 180_000);
+
 afterAll(async () => {
   await disconnectGeneratedClient();
 });
 
 describe("WIN-268 P2 — the mcp-platform ORM surface, by owning context", () => {
   it("every model this directory reaches resolves to an owner in the ADR's map", () => {
-    const { analysis } = analyzeAgentSource();
-    const here = analysis.calls.filter((call) => call.file.startsWith(MCP_PLATFORM_PREFIX));
     expect(here.length).toBeGreaterThan(0);
 
     const unowned = new Set<string>();
+    const unresolved = new Set<string>();
     for (const call of here) {
       const model = modelForDelegate.get(call.delegate);
       // A delegate with no model would mean the analyzer resolved something the
-      // generated client does not have — which `clean-prisma-delegates.test.ts`
-      // already refuses app-wide, so it is an assertion about THIS filter.
-      expect(model, `${call.delegate} is not a generated delegate`).toBeDefined();
-      if (model && OWNERSHIP[model] === undefined) unowned.add(model);
+      // generated client does not have. `clean-prisma-delegates.test.ts` already
+      // refuses that app-wide against the SAME walk, so it is collected here
+      // rather than thrown per item — one named list beats 123 chances to abort
+      // the loop before the ownership claim is even reached.
+      if (model === undefined) unresolved.add(call.delegate);
+      else if (OWNERSHIP[model] === undefined) unowned.add(model);
     }
+    expect([...unresolved].sort(), "a resolved delegate is not in the generated client").toEqual([]);
     expect(
       [...unowned].sort(),
       "a row this directory writes has no owning context in ADR M0.3 §5.2",
@@ -153,7 +171,6 @@ describe("WIN-268 P2 — the mcp-platform ORM surface, by owning context", () =>
   });
 
   it("the three converted services hold ZERO ORM call sites", () => {
-    const { analysis } = analyzeAgentSource();
     const offenders = analysis.calls
       .filter((call) => CONVERTED.includes(call.file))
       .map((call) => `${call.file}:${call.line} ${call.delegate}.${call.operation}`);
@@ -161,7 +178,6 @@ describe("WIN-268 P2 — the mcp-platform ORM surface, by owning context", () =>
   });
 
   it("RATCHET: no file in this directory holds more ORM call sites than its ceiling", () => {
-    const { analysis } = analyzeAgentSource();
     const counts = new Map<string, number>();
     for (const call of analysis.calls) {
       if (!call.file.startsWith(MCP_PLATFORM_PREFIX)) continue;
@@ -180,9 +196,6 @@ describe("WIN-268 P2 — the mcp-platform ORM surface, by owning context", () =>
   });
 
   it("reports the split, and the split is joined to the app-wide pin", () => {
-    const { analysis } = analyzeAgentSource();
-    const here = analysis.calls.filter((call) => call.file.startsWith(MCP_PLATFORM_PREFIX));
-
     const byOwner = new Map<string, number>();
     for (const call of here) {
       const owner = OWNERSHIP[modelForDelegate.get(call.delegate) ?? ""] ?? "<unowned>";
