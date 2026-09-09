@@ -86,6 +86,35 @@ export interface AuthenticateOperatorRequest {
   readonly presentedToken: string | null;
 }
 
+/**
+ * The credential whose session is to be ENDED.
+ *
+ * A separate type from `AuthenticateOperatorRequest` even though the field is
+ * the same one, because the two carry different authority: presenting a token to
+ * be checked is a read, and presenting it to be destroyed is a write. A shared
+ * type would make widening one of them silently widen the other.
+ */
+export interface RevokeOperatorSessionRequest {
+  readonly presentedToken: string | null;
+}
+
+/**
+ * What a SUCCESSFUL revocation reports.
+ *
+ * `revokedAt` is the instant the store now holds, not the instant the caller
+ * asked — a caller that stamped its own clock into an audit line would be
+ * recording something no row says.
+ *
+ * NOTHING ELSE IS HERE. The use case returns the whole `OperatorSessionRecord`,
+ * which carries `tokenHash`, `parentSessionId` and the impersonation chain; this
+ * context's own banner calls those "internals it has no business with", and a
+ * sign-out has less business with them than anything else on this contract.
+ */
+export interface RevokedOperatorSessionView {
+  readonly sessionId: string;
+  readonly revokedAt: Date;
+}
+
 export interface AuthenticateBearerRequest {
   readonly presentedToken: string | null;
   /** Where the request is addressed. Null skips the cross-scope check. */
@@ -216,6 +245,39 @@ export interface IdentityAccessContract {
   authenticateOperator(
     request: AuthenticateOperatorRequest,
   ): Promise<Result<OperatorAuthorizationView>>;
+
+  /**
+   * END a dashboard session, server-side (WIN-267 W3).
+   *
+   * WHY THIS IS PUBLISHED AND MINTING IS NOT. The banner above says no other
+   * context may ISSUE a credential, and that is unchanged: this method creates
+   * nothing and can only ever be aimed at a credential the caller is already
+   * holding. A caller with no token cannot end anybody's session, and a caller
+   * with a token can already do everything that session can do — so publishing
+   * the destruction of it hands out no authority the presenter did not have.
+   *
+   * IT IS THE OTHER HALF OF `clearSessionCookie`, AND UNTIL NOW ONLY ONE HALF
+   * EXISTED. `DELETE /api/v1/bff/session` could clear the browser and nothing
+   * more, because `revokeOperatorSession` lived in `application/` behind no
+   * contract method and a V1 transport may only reach a contract method. A user
+   * who signed out was told the session had ended while it stayed valid, on the
+   * server, for the rest of its lifetime — which is precisely the window a
+   * stolen cookie is stolen for. The two are separate methods rather than one
+   * because they fail independently: the row is ended even if the header never
+   * reaches the browser, and that is the order a sign-out must happen in.
+   *
+   * THE REFUSALS ARE THREE AND THEY ARE DISTINCT. `UNAUTHENTICATED` for an
+   * absent token and for one no row matches — deliberately the same code, since
+   * separating them would confirm whether a token exists — and `SESSION_REVOKED`
+   * for a session that was already ended, which tells the caller only what
+   * holding that token already told them. `SESSION_EXPIRED` is NOT among them: a
+   * session past its window is still ended on request, exactly as the extraction
+   * source's conditional update does, so a lapsed browser can still be signed
+   * out for good.
+   */
+  revokeOperatorSession(
+    request: RevokeOperatorSessionRequest,
+  ): Promise<Result<RevokedOperatorSessionView>>;
 
   /**
    * Verify a scoped bearer credential and, when a scope is supplied, deny it

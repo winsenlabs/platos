@@ -2,7 +2,7 @@
 
 > Deterministic WIN-129 artifact. Do not edit by hand; run `pnpm --filter platos-agent generate:control-plane`.
 
-The **explicit operation manifest** is canonical. Platform MCP metadata is seeded from the 206 runtime-shaped handler declarations; REST metadata is derived from Nest controller decorators. Compact policy rules classify every operation. MCP schemas are authoritative for MCP calls; generated OpenAPI intentionally does not invent REST request/response schemas.
+The **explicit operation manifest** is canonical. Platform MCP metadata is seeded from the 206 runtime-shaped handler declarations; REST metadata is derived from Nest controller decorators. Compact policy rules classify every operation. MCP schemas are authoritative for MCP calls. WIN-267 W2: the generated OpenAPI now carries request and response schemas for the V1 core-api operations, derived from the TypeScript types of their handlers and validated against the published OpenAPI 3.1 meta-schema; agent operations declare no wire DTO and carry no invented schema.
 
 ## Summary
 

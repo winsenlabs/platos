@@ -524,7 +524,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // CHANGED. The 28 controllers T1 rewrites and `main.ts` are edited IN PLACE
     // and add no file — which is the whole shape of this tranche: 24 literals
     // deleted, one declaration added.
-    "apps-agent": 2,
+    //
+    // WIN-267 W2 2 -> 4, and BOTH are tooling beside the control-plane
+    // generator rather than runtime: `apps/agent/scripts/rest-schema-derivation.mjs`,
+    // which reads the V1 wire schemas off the core-api handlers' RESOLVED
+    // TypeScript types, and `apps/agent/scripts/openapi-meta-schema.mjs`, which
+    // compiles the vendored OpenAPI 3.1 meta-schema the generated document is
+    // judged by. Both land on the existing `apps-agent.tooling.scripts` rule
+    // (11 -> 13); `generate-control-plane.mjs` is edited in place and adds no
+    // file.
+    "apps-agent": 4,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1598,7 +1607,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // mine. No other area moves: T0 edits enumerators and censuses in place, and
     // an edited file is not a new one.
     // root-infra 43 + 2 + 2 + 4 + 2 = 53.
-    "docs-content": 17,
+    //
+    // WIN-267 W2 17 -> 19, and BOTH need a NEW ledger rule because there is no
+    // `docs/*.json` catch-all -- docs-content carries per-file pins only.
+    // `docs/openapi-3.1-meta-schema.json` is the OpenAPI Initiative's published
+    // 3.1 meta-schema, vendored byte-for-byte and pinned by SHA-256, so the
+    // generated document is judged by an authority this repository did not
+    // write; `docs/openapi-v1-baseline.json` is the frozen V1 wire contract the
+    // breaking-change ratchet compares against. Both are `retain`, and both are
+    // under `docs/**` and therefore PROTECTED, which is why protectedCount moves
+    // +2 while move-refactor moves +5.
+    "docs-content": 19,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1650,7 +1669,36 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // inside `apps-core-api`, and every gate, generator and artifact it touches
     // outside the deployable is an EDIT or a REGENERATION of a file that already
     // existed. 59 + 1 = 60.
-    "root-infra": 60,
+    //
+    // WIN-267 W2 60 -> 63: `scripts/openapi-compat.mjs`, the classifier and the
+    // baseline ratchet, on `root-infra.tooling.scripts` (93 -> 94), with
+    // `scripts/openapi-compat.test.mjs` and
+    // `scripts/openapi-schema-derivation.test.mjs` on
+    // `root-infra.test.script-suites` (32 -> 34). W2 adds no guard ledger: its
+    // mutations are EXECUTED rather than catalogued -- each one edits a real DTO
+    // source in memory, re-derives through the compiler and asserts the
+    // classification, so the cases are the ledger. 60 + 3 = 63.
+    //
+    // WIN-267 W3 60 -> 61: `scripts/mutations-win267-w3.json`, the EIGHTH guard
+    // ledger to land beside its siblings, on the same
+    // `root-infra.tooling.scripts` rule. It is the WHOLE of this branch's file
+    // delta. W3 adds no source file and no suite: its six identity-access cases
+    // go into two suites that already existed, its four integration cases and
+    // its two controller-branch cases go into two files that already existed,
+    // and the census, the ledger pins and the four derived artifacts are all
+    // EDITS or REGENERATIONS of tracked files. 60 + 1 = 61.
+    //
+    // THE CLOSEOUT SUMS THEM RATHER THAN SIDE-PICKING, which is the whole reason
+    // both branches wrote their arithmetic down: W2's three files and W3's one
+    // are DISJOINT -- `openapi-compat.mjs`, `openapi-compat.test.mjs`,
+    // `openapi-schema-derivation.test.mjs` and `mutations-win267-w3.json` are
+    // four distinct paths, none of which either branch shares. 60 + 3 + 1 = 64.
+    // The `root-infra.tooling.scripts` rule takes W2's `openapi-compat.mjs` and
+    // W3's mutation ledger, so it moves 93 -> 95, not 93 -> 94 as either branch
+    // alone recorded; `root-infra.test.script-suites` takes W2's two suites only
+    // and moves 32 -> 34 unchanged. W1 is NOT in this branch, so its +1 on this
+    // key is not here either -- see the merge commit for the tree fact.
+    "root-infra": 64,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1721,7 +1769,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // independently-merged keys. R1 moved `apps-core-api` and `root-infra`; R303
   // moved `packages`; no key took a contribution from both, which is why the
   // auto-merge of that object is safe and is checked here rather than assumed.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1671);
+  //
+  // WIN-267 W2 1671 -> 1678 (seven files: apps-agent +2, root-infra +3,
+  // docs-content +2) and W3 1671 -> 1672 (one file: root-infra +1). THE CLOSEOUT
+  // SUMS THEM: 1671 + 7 + 1 = 1679. The identity this pair of assertions exists
+  // to hold is that the total and the per-area sums are the same arithmetic, and
+  // the eight-key re-derivation from the merged `expectedDeltas` above is
+  // 4 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1679. Side-picking either branch's
+  // own total (1678 or 1672) is red here AND at the second reconciliation below.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1679);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1873,7 +1929,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and the assertion above are two different arithmetics over the same tree
     // and a merge that had side-picked either branch's total would be red here
     // even if the other assertion had been patched to match.
-    rulesDocument.baseline.totalFiles + 1671
+    //
+    // WIN-267 W2 1671 -> 1678 and W3 1671 -> 1672, SUMMED by the closeout to
+    // 1679 -- the TWELFTH hand move of this second reconciliation. The same
+    // eight files as the `totalFiles` assertion above (W2's seven plus W3's one
+    // mutation manifest), reached here by summing the per-area counts instead of
+    // reading the total, so the two arithmetics can disagree and be caught.
+    // 1671 + 7 + 1 = 1679.
+    rulesDocument.baseline.totalFiles + 1679
   );
 });
 

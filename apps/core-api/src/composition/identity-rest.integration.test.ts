@@ -109,6 +109,9 @@ const OUTSIDER_TOKEN = "win267-r1-outsider-session-token";
 const EXPIRED_TOKEN = "win267-r1-expired-session-token";
 const REVOKED_TOKEN = "win267-r1-revoked-session-token";
 const IMPERSONATION_TOKEN = "win267-r1-impersonation-session-token";
+/** W3's own session. It is signed out during the run, so nothing else may hold it. */
+const SIGN_OUT_TOKEN = "win267-w3-sign-out-session-token";
+const SIGN_OUT_SESSION = "bbbbbbbb-1006-4000-8000-000000000006";
 
 let postgres: StartedPostgreSqlContainer;
 let redis: StartedRedisContainer;
@@ -260,6 +263,11 @@ beforeAll(async () => {
   await store.operatorSessions.save(
     session("bbbbbbbb-1004-4000-8000-000000000004", REVOKED_TOKEN, { revokedAt: AT }),
   );
+  // W3'S SESSION, SEEDED LIVE AND ENDED BY THE ROUTE UNDER TEST. It is separate
+  // from ADMIN_TOKEN because every other case in this file needs that one to stay
+  // usable, and a sign-out suite that shared it would make its neighbours depend
+  // on execution order.
+  await store.operatorSessions.save(session(SIGN_OUT_SESSION, SIGN_OUT_TOKEN, {}));
   // AN IMPERSONATING SESSION: the ADMIN acting AS the OUTSIDER. It is the fixture
   // that separates `actorUserId` from `effectiveUserId`, and without it a route
   // that used the wrong one would pass every other case in this file.
@@ -634,5 +642,120 @@ describe("WIN-267 R1 — the BFF sets bytes and nothing else", () => {
     const cookie = String(answer.headers.get("set-cookie"));
     expect(cookie).toContain("Max-Age=0");
     expect(cookie).toContain("platos_operator_session=;");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WIN-267 W3 — SIGNING OUT ENDS THE SESSION ON THE SERVER
+//
+// The route above used to clear a cookie and stop. The cookie is a COPY of the
+// credential, so deleting the copy in the one browser that asked left the
+// session valid — for days, on this install — for every other copy of it. The
+// case that matters is therefore not "the header says Max-Age=0"; it is that the
+// EXACT SAME COOKIE BYTES, replayed afterwards, are refused, and that the row in
+// PostgreSQL says why.
+//
+// THE ROW IS READ BY `psql` INSIDE THE CONTAINER, which shares no pool, driver or
+// transaction with the adapter that wrote it — the banner at the top of this file
+// explains why that matters. And it is read as `id, revokedAt` rather than as a
+// count, because "the session is gone from the cache" and "the session is ended
+// in the database" are two different claims and only the second one is a
+// sign-out. A DELETE that had removed the row would pass a `SELECT count(*) = 0`
+// and would be a different, worse bug: an audit trail with the evidence deleted.
+describe("WIN-267 W3 — a sign-out ends the session on the SERVER, not only in the browser", () => {
+  /** `id|revokedAt` for one session, straight out of the container. */
+  async function sessionRow(id: string): Promise<string[]> {
+    return observe(
+      `SELECT "id", COALESCE("revokedAt"::text, 'NULL') FROM "OperatorSession" WHERE "id" = '${id}'`,
+    );
+  }
+
+  it("REFUSES THE REPLAYED COOKIE, and the row says SESSION_REVOKED rather than expiry", async () => {
+    // 1. The browser gets the credential the way a browser gets it.
+    const exchanged = await call("POST", `${API_VERSION_PREFIX}/bff/session`, {
+      body: { token: SIGN_OUT_TOKEN },
+    });
+    expect(exchanged.status, exchanged.text).toBe(200);
+    const cookie = String(exchanged.headers.get("set-cookie")).split(";")[0] ?? "";
+    expect(cookie).not.toBe("");
+
+    // 2. IT IS LIVE. Without this the refusal in step 5 would also be produced by
+    // a session that never worked, which is the shape a broken fixture takes.
+    const before = await call("GET", `${API_VERSION_PREFIX}/identity/session`, { cookie });
+    expect(before.status, before.text).toBe(200);
+    expect(await sessionRow(SIGN_OUT_SESSION)).toEqual([`${SIGN_OUT_SESSION}|NULL`]);
+
+    // 3. Sign out, presenting the cookie the way a browser presents it.
+    const out = await call("DELETE", `${API_VERSION_PREFIX}/bff/session`, { cookie });
+    expect(out.status, out.text).toBe(204);
+    expect(String(out.headers.get("set-cookie"))).toContain("Max-Age=0");
+
+    // 4. THE ROW, READ BACK. It still EXISTS and it now carries a revocation
+    // instant: the session was ended, not evicted, not merely forgotten by a
+    // cache this process happens to hold.
+    const rows = await sessionRow(SIGN_OUT_SESSION);
+    expect(rows).toHaveLength(1);
+    const revokedAt = String(rows[0]).split("|")[1];
+    expect(revokedAt, "the sign-out wrote a revocation instant").not.toBe("NULL");
+
+    // 5. THE REPLAY. The same bytes, on a request that ignores the Set-Cookie the
+    // sign-out returned — which is exactly what a thief holding a copied cookie
+    // does, and what the old handler could not refuse.
+    const replay = await call("GET", `${API_VERSION_PREFIX}/identity/session`, { cookie });
+    expect(replay.status).toBe(committedStatus("SESSION_REVOKED"));
+    // AND THE CODE IS THE ONE THAT TELLS THE OPERATOR STORY. A session somebody
+    // ENDED and a session that ran out of time are two different events with two
+    // different follow-ups, and this route now produces the first.
+    expect(errorCode(replay)).toBe("SESSION_REVOKED");
+    const lapsed = await call("GET", `${API_VERSION_PREFIX}/identity/session`, {
+      token: EXPIRED_TOKEN,
+    });
+    expect(errorCode(lapsed)).toBe("SESSION_EXPIRED");
+    expect(new Set([errorCode(replay), errorCode(lapsed)]).size).toBe(2);
+  });
+
+  it("signs out again without re-stamping the revocation", async () => {
+    // The instant is evidence. A second sign-out that moved `revokedAt` forward
+    // would answer "when was this session ended?" with the time of the retry,
+    // and the domain rule that forbids it (`revoked` refuses a session that
+    // already carries one) is only worth having if it reaches the database.
+    const [firstRow] = await sessionRow(SIGN_OUT_SESSION);
+    const again = await call("DELETE", `${API_VERSION_PREFIX}/bff/session`, {
+      token: SIGN_OUT_TOKEN,
+    });
+    expect(again.status).toBe(204);
+    expect(await sessionRow(SIGN_OUT_SESSION)).toEqual([firstRow]);
+  });
+
+  it("answers an ALREADY-ENDED token, an unknown token and no token IDENTICALLY", async () => {
+    // The route must not become an oracle for whether a token is real. It is the
+    // one route on this surface that takes a credential and declines to
+    // authenticate it, so the only thing keeping that safe is that every answer
+    // is the same answer — 204, the same bytes, no body. The three cases below
+    // reach three DIFFERENT branches inside the handler (SESSION_REVOKED,
+    // UNAUTHENTICATED/no-session, UNAUTHENTICATED/no-token) and are
+    // indistinguishable from outside, which is the property being measured.
+    const ended = await call("DELETE", `${API_VERSION_PREFIX}/bff/session`, {
+      token: SIGN_OUT_TOKEN,
+    });
+    const unknown = await call("DELETE", `${API_VERSION_PREFIX}/bff/session`, {
+      token: "win267-w3-not-a-real-token",
+    });
+    const anonymous = await call("DELETE", `${API_VERSION_PREFIX}/bff/session`);
+    expect([ended.status, unknown.status, anonymous.status]).toEqual([204, 204, 204]);
+    expect(unknown.headers.get("set-cookie")).toBe(anonymous.headers.get("set-cookie"));
+    expect(ended.headers.get("set-cookie")).toBe(anonymous.headers.get("set-cookie"));
+    expect([ended.text, unknown.text]).toEqual([anonymous.text, anonymous.text]);
+    // AND THE UNKNOWN TOKEN ENDED NOTHING: no other seeded session moved. The
+    // ADMIN's is the one every case above depends on, so a sign-out that revoked
+    // by anything other than the presented digest would be caught here.
+    expect(await sessionRow("bbbbbbbb-1001-4000-8000-000000000001")).toEqual([
+      "bbbbbbbb-1001-4000-8000-000000000001|NULL",
+    ]);
+  });
+
+  it("leaves the ADMIN session usable, which is what makes the revocation targeted", async () => {
+    const answer = await call("GET", `${API_VERSION_PREFIX}/identity/session`, { token: ADMIN_TOKEN });
+    expect(answer.status, answer.text).toBe(200);
   });
 });

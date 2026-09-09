@@ -2616,7 +2616,16 @@ export const EXPECTED = Object.freeze({
   // constructors themselves move the EXISTING uniqueness case's list rather than
   // adding one, which is not a new case.
   "packages/contexts/governance": { files: 31, cases: 610 },
-  "packages/contexts/identity-access": { files: 23, cases: 318 },
+  // WIN-267 W3: 318 -> 324 cases, files unmoved — the sign-out that had no
+  // server side. FOUR in `application/identity-access-service.test.ts` for the
+  // newly published `revokeOperatorSession` (it ends the row and the token stops
+  // authenticating; the view carries exactly two keys; an already-ended session
+  // is told apart from one that never existed; an EXPIRED session is still ended
+  // rather than refused) and TWO in `application/authenticate-operator.test.ts`
+  // (a second revoke does not re-stamp `revokedAt`; an unknown token and an
+  // absent one stay under ONE code on purpose). No new file: both suites
+  // existed, which is why `files` does not move.
+  "packages/contexts/identity-access": { files: 23, cases: 324 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -3463,8 +3472,23 @@ export const EXPECTED = Object.freeze({
  * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
  * Two sibling branches move these pins in the same window, so the integrator
  * SUMS the deltas rather than taking any one branch's total.
+ *
+ * WIN-267 W3 DELTA, the server-side sign-out. ONE row moves and NO file does:
+ *
+ *   packages/contexts/identity-access 23 -> 23 files, 318 -> 324 cases
+ *
+ * All six run anywhere — they are in-memory port doubles, and the case that
+ * needs a real PostgreSQL (the replayed cookie, read back with `psql` inside the
+ * container) lives in `apps/core-api`, which is OUTSIDE `PACKAGE_ROOTS` and
+ * therefore moves nothing here. That asymmetry is worth stating plainly: this
+ * census does not see the evidence the tranche turns on.
+ *
+ * 8124 + 6 = 8130 over 549 files, READ BACK from
+ * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
+ * Two sibling branches move this pin in the same window, so the integrator SUMS
+ * the deltas rather than taking any one branch's total.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8124;
+export const EXPECTED_RUNTIME_TOTAL = 8130;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

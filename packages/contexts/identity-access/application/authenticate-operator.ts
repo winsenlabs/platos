@@ -19,11 +19,13 @@
 import {
   evaluateOperatorSession,
   isTotpEnabled,
+  revoked,
   touched,
   unauthenticated,
   type OperatorAuthorization,
   type OperatorSessionRecord,
   type OperatorUserRecord,
+  type RevokedOperatorSession,
 } from "../domain/index.js";
 import type { PortsOf } from "./dependencies.js";
 import { err, ok, type Result } from "@platos/kernel";
@@ -85,19 +87,36 @@ async function loadParentSession(
  * Reports whether THIS call ended it, because a logout that silently succeeds on
  * an already-revoked session cannot be distinguished from one that worked, and
  * the impersonation-stop path depends on that distinction.
+ *
+ * THE ALREADY-REVOKED BRANCH IS THE DOMAIN'S, NOT THIS FUNCTION'S (WIN-267 W3).
+ * `domain/session.ts::revoked` has carried that rule since it was written, with
+ * a banner explaining why revoking is not idempotent, and it answers
+ * `SESSION_REVOKED`. This use case used to re-derive the same check inline and
+ * answer `UNAUTHENTICATED { reason: "already-revoked" }` instead — two guards
+ * deciding one thing under two codes, which is the exact defect
+ * `error-taxonomy.mjs` exists to prevent and which `impersonation.ts` never had
+ * because it called the domain helper. A caller could not tell "there is no such
+ * session" from "that session was already ended", and those are different
+ * answers to somebody chasing a stolen cookie.
+ *
+ * The three refusals are now distinct: no credential and no matching row stay
+ * `UNAUTHENTICATED` (they must — telling them apart is an enumeration oracle,
+ * and `unauthenticated`'s banner says so), while an already-ended session is
+ * `SESSION_REVOKED`, which reveals nothing a holder of that token did not
+ * already know.
  */
 export async function revokeOperatorSession(
   ports: AuthenticateOperatorPorts,
   input: AuthenticateOperatorInput,
-): Promise<Result<OperatorSessionRecord>> {
+): Promise<Result<RevokedOperatorSession>> {
   if (!input.presentedToken) return err(unauthenticated({ reason: "no-token" }));
   const now = ports.clock.now();
   const sessions = ports.repository.operatorSessions;
   const session = await sessions.findByTokenHash(ports.hasher.hash(input.presentedToken));
   if (session === null) return err(unauthenticated({ reason: "no-session" }));
-  if (session.revokedAt !== null) return err(unauthenticated({ reason: "already-revoked" }));
 
-  const ended: OperatorSessionRecord = { ...session, revokedAt: now };
-  await sessions.save(ended);
-  return ok(ended);
+  const ended = revoked(session, now);
+  if (!ended.ok) return ended;
+  await sessions.save(ended.value);
+  return ended;
 }
