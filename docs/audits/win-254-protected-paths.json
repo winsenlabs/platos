@@ -1058,7 +1058,7 @@
     {
       "path": "docs/audits/win-268-mcp-store-ownership.md",
       "mode": "100644",
-      "sha256": "e601ff5c8fdd6452497ca87aefc2ca24e35a709d821331d2d7ee85c80e7bd588"
+      "sha256": "8dabf4cee680f3350d7f6b4e67c2c0bf8da15fc51e2dcb246ab68a2c05a0104b"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
