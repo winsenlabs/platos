@@ -131,6 +131,15 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // name rather than swept up by a generated-artifact root.
   "docs/audits/win-268-mcp-store-ownership.json",
   "docs/audits/win-268-mcp-store-ownership.md",
+  // WIN-269 (M4.3). The TOOL LIFECYCLE's ORM register, ACCEPTED for exactly the
+  // reason its sibling above is and for one more of its own: as well as
+  // re-deriving every site from the schema, the ownership map, the composition
+  // root and each contract, it classifies every slot of `ToolsDependencies`
+  // against that composition root — so the claim "composing `tools` takes these
+  // things" is re-measured on every run rather than recorded on a date. A
+  // POINT-IN-TIME classification would say the opposite of what the artifact is.
+  "docs/audits/win-269-tool-lifecycle-reach.json",
+  "docs/audits/win-269-tool-lifecycle-reach.md",
   "docs/audits/win253-removals/clickhouse-split.json",
   "docs/audits/win253-removals/clickhouse-split.md",
   "docs/audits/win253-removals/vendored-build.json",

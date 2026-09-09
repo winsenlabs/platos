@@ -163,6 +163,8 @@ jobs:
           pnpm test:secret-response-census
           pnpm audit:mcp-store-ownership
           pnpm test:mcp-store-ownership
+          pnpm audit:tool-lifecycle-reach
+          pnpm test:tool-lifecycle-reach
           pnpm audit:end-user-presence-ancestry
           pnpm test:end-user-presence-ancestry
           pnpm test:webapp-image-inventory

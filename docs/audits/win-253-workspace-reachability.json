@@ -22,9 +22,9 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "47330effaa95df1fdc2786856833876b6f0f737a0f69149c4be07fedd44935eb",
+  "evidenceSha256": "ea0057579edee0ea635eb332ae50dd2e7dbd5522c8904609878b13663bd12f22",
   "generatedOwnership": {
-    "explicitHeaderFileCount": 25,
+    "explicitHeaderFileCount": 26,
     "generatedProjectCount": 39,
     "generatedProjects": [
       "apps/core-api",
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "80e32eea3a8ec2ea0039ec3d2afaa3cf50f2a056de9e98fca4ba914fb855ca11",
+    "aggregateSha256": "b95f2c0ff6651957e0f03fe39985f5d13faebedda174385890aeba8be04b8737",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -267,7 +267,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "826fc5d42902cc0cd315bb439440095e91c3a84d9e84f8be8721045b14dbf2a1"
+        "sha256": "a33697df8b50ed9f8e6df8a8859211d2fccc085ca95f51cc0857ed3f05e32e7a"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -4343,7 +4343,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "f3d178521d7e75e54284b00baa3d67ed22d5240c289e717838b32036907a58fd"
+        "sha256": "7ffa61e3028376a53ccc1473cdce8cff729ffdcc5209e40efd1ffe9b8e5fc365"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4416,6 +4416,14 @@
       {
         "path": "docs/audits/win-268-mcp-store-ownership.md",
         "sha256": "8dabf4cee680f3350d7f6b4e67c2c0bf8da15fc51e2dcb246ab68a2c05a0104b"
+      },
+      {
+        "path": "docs/audits/win-269-tool-lifecycle-reach.json",
+        "sha256": "b45e683fd8412c31e1a8b157ab7094a4f42116bff4967078cd858bfa313fa6d6"
+      },
+      {
+        "path": "docs/audits/win-269-tool-lifecycle-reach.md",
+        "sha256": "cfa53f43b60b7440e9d943fafecad34133f1466b397b9e2410c4e1eaf887d67d"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
@@ -6363,7 +6371,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "d8976f2ec425d1a770f512e3911b31df9fcdb6dec329d093425f4257048f9e22"
+        "sha256": "a1347452bbfb7c9a5a385d2b492146e6ccaa59e0570b9aafebc3f5624f0f18d1"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -11207,7 +11215,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "5cb126643d135e3c62106f99f7aa4091480ac3b4ce166a4a65dfb1d183e2c138"
+        "sha256": "0f918b5b560cfd13a772c64be16b2a6afb1302cd920d51e308ce3f3f0aea97ae"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -20074,6 +20082,14 @@
         "sha256": "cd7a80a18133ff196cdc34d4ea6710deeec9c32db5a4c64f8a71355091374a96"
       },
       {
+        "path": "scripts/arch/tool-lifecycle-reach.mjs",
+        "sha256": "a1d9d37634020994c60d2e2d3a1482d9c8240a73049bab15c45eba6a7152dff1"
+      },
+      {
+        "path": "scripts/arch/tool-lifecycle-reach.test.mjs",
+        "sha256": "f5103c318e9558df379dbd6e7749ef49bcb17b84461b77624c14fda22b43fe08"
+      },
+      {
         "path": "scripts/arch/transaction-outcome.mjs",
         "sha256": "77eb6216e85e6178f5690de5383dd61737b2513a2711e448f371579a466263d2"
       },
@@ -20139,7 +20155,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "d20bc76b5387e2fadbb00b02613ca905a022dc3aba0378a615af9be240b23f2e"
+        "sha256": "f8ec485941350dd358c0d5cb2de97ba4da2a3bee9706eade71796d3977dbf4d9"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -20187,7 +20203,7 @@
       },
       {
         "path": "scripts/docs-link-integrity.test.mjs",
-        "sha256": "ad51e0dd93279e42f7959f38ab778df45baae475e456cda8615ef96e5a86b94c"
+        "sha256": "22991033928e92c481eef040731eb38b84995758de3fc6a3f0fb3bbdf2e478be"
       },
       {
         "path": "scripts/error-taxonomy.mjs",
@@ -20199,7 +20215,7 @@
       },
       {
         "path": "scripts/evidence-lifecycle.mjs",
-        "sha256": "e926727bfd9f32955e7ec0d491596cf45e7665a8324fa768a5f712251bd4e403"
+        "sha256": "c78a91d77fb8d46a240f3da884c44587b94b14937f12d413fb9ba01c9937ec9d"
       },
       {
         "path": "scripts/evidence-lifecycle.test.mjs",
@@ -20307,7 +20323,7 @@
       },
       {
         "path": "scripts/protected-paths.mjs",
-        "sha256": "58d8ec99e9c07e1da0fec71c1b29ed8b1b5bd9072021e6dfe47a385011fe24b2"
+        "sha256": "dd3dddc798e68d09627ef66b4778793e65a32ad9527d2e7741bdd720749f4c84"
       },
       {
         "path": "scripts/protected-paths.test.mjs",
@@ -20379,7 +20395,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "017f3d754ab883b807d8e1563d436c1964ca71dda5321dad536695b55d31a8e9"
+        "sha256": "fdd826e77c3e651f1142e939afb29199ef017b17dc9cbca399c26c45dd58272a"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -21956,6 +21972,16 @@
               "line": 48
             },
             {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.json",
+              "kind": "reference",
+              "line": 3
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "reference",
+              "line": 5
+            },
+            {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
               "line": 37
@@ -22290,6 +22316,14 @@
               "docs/audits/win-268-mcp-store-ownership.md"
             ],
             [
+              "docs/audits/win-269-tool-lifecycle-reach.json",
+              "docs/audits/win-269-tool-lifecycle-reach.json"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "docs/audits/win-284-differential-coverage.json",
               "docs/audits/win-284-differential-coverage.json"
             ],
@@ -22475,6 +22509,8 @@
             "docs/audits/win-259-secret-response-census.json",
             "docs/audits/win-268-mcp-store-ownership.json",
             "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.json",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "docs/audits/win-284-differential-coverage.json",
             "docs/audits/win-284-differential-coverage.md",
             "docs/audits/win253-removals/clickhouse-split.json",
@@ -22525,6 +22561,10 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "explicit-generated-header-reference"
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -22539,12 +22579,17 @@
             [
               "docs/audits/win-268-mcp-store-ownership.md",
               "docs/audits/win-268-mcp-store-ownership.md"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
             ]
           ],
           "roots": [
             ".env.example",
             "content/docs/openapi-and-rest.md",
-            "docs/audits/win-268-mcp-store-ownership.md"
+            "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.md"
           ]
         },
         "license": {
@@ -25560,7 +25605,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "022773fb6542f2f088eaca9577e475a6416628b934aad2392839866b98e14013",
+      "evidenceSha256": "fd17338ae7a121957fef015df0062c138d1553f78a54356e4f1afb40f5d1572c",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -25687,7 +25732,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 625
+              "line": 627
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -25777,6 +25822,16 @@
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "reference",
               "line": 11
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.json",
+              "kind": "reference",
+              "line": 4
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "reference",
+              "line": 5
             },
             {
               "from": "docs/audits/win-284-differential-coverage.json",
@@ -25935,6 +25990,14 @@
               "docs/audits/win-268-mcp-store-ownership.md"
             ],
             [
+              "docs/audits/win-269-tool-lifecycle-reach.json",
+              "docs/audits/win-269-tool-lifecycle-reach.json"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "docs/audits/win-284-differential-coverage.json",
               "docs/audits/win-284-differential-coverage.json"
             ],
@@ -26035,6 +26098,8 @@
             "docs/audits/win-259-secret-response-census.json",
             "docs/audits/win-268-mcp-store-ownership.json",
             "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.json",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "docs/audits/win-284-differential-coverage.json",
             "docs/audits/win-284-differential-coverage.md",
             "docs/control-plane-parity.generated.md",
@@ -26080,6 +26145,10 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "explicit-generated-header-reference"
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "explicit-generated-header-reference"
             }
           ],
           "reversePaths": [
@@ -26098,13 +26167,18 @@
             [
               "docs/audits/win-268-mcp-store-ownership.md",
               "docs/audits/win-268-mcp-store-ownership.md"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
             ]
           ],
           "roots": [
             "apps/core-api/README.md",
             "apps/core-api/package.json",
             "apps/core-api/tsconfig.json",
-            "docs/audits/win-268-mcp-store-ownership.md"
+            "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.md"
           ]
         },
         "license": {
@@ -26483,7 +26557,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 172
+              "line": 183
             },
             {
               "from": "scripts/differential-coverage.test.mjs",
@@ -26825,7 +26899,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "8808f75487986b31741663cc08fd1ad38b5eb32675ff66d86b699a7d83f0a31f",
+      "evidenceSha256": "7a8f4a08e79157529512e9e4fbd8ab31bf0328c5d77b4166c507fde670de7a83",
       "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -27203,7 +27277,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 172
+              "line": 183
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -27320,7 +27394,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "2caf68980bb3239a06d480570d20fece05229c4a0e2b4559050dabe3bc51007b",
+      "evidenceSha256": "9148a8e23e6ca0fae79419d8ff4d9af98fddbfadb671b494396c0f0eb4c9a7ce",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -30308,6 +30382,16 @@
               "line": 1
             },
             {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.json",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "workspace-owned-file",
               "line": 7
@@ -32716,6 +32800,14 @@
               "docs/audits/win-268-mcp-store-ownership.md"
             ],
             [
+              "docs/audits/win-269-tool-lifecycle-reach.json",
+              "docs/audits/win-269-tool-lifecycle-reach.json"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "docs/audits/win-284-differential-coverage.json",
               "docs/audits/win-284-differential-coverage.json"
             ],
@@ -34407,6 +34499,8 @@
             "docs/audits/win-259-secret-response-census.json",
             "docs/audits/win-268-mcp-store-ownership.json",
             "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.json",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "docs/audits/win-284-differential-coverage.json",
             "docs/audits/win-284-differential-coverage.md",
             "docs/audits/win253-removals/clickhouse-split.json",
@@ -34825,6 +34919,11 @@
               "kind": "explicit-generated-header"
             },
             {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "generator": null,
+              "kind": "explicit-generated-header"
+            },
+            {
               "from": "scripts/workspace-reachability.mjs",
               "kind": "explicit-generated-header-reference"
             }
@@ -34851,6 +34950,10 @@
               "docs/audits/win-268-mcp-store-ownership.md"
             ],
             [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "scripts/workspace-reachability.mjs",
               "scripts/workspace-reachability.mjs"
             ]
@@ -34861,6 +34964,7 @@
             "docs/audits/M0.4-design-contract-map.md",
             "docs/audits/win-252-root-entry-manifest.md",
             "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "scripts/workspace-reachability.mjs"
           ]
         },
@@ -35242,6 +35346,11 @@
               "line": 132
             },
             {
+              "from": "scripts/arch/tool-lifecycle-reach.test.mjs",
+              "kind": "reference",
+              "line": 7
+            },
+            {
               "from": "scripts/audit-licenses.test.mjs",
               "kind": "reference",
               "line": 241
@@ -35502,6 +35611,10 @@
               "scripts/arch/test-case-census.test.mjs"
             ],
             [
+              "scripts/arch/tool-lifecycle-reach.test.mjs",
+              "scripts/arch/tool-lifecycle-reach.test.mjs"
+            ],
+            [
               "scripts/audit-licenses.test.mjs",
               "scripts/audit-licenses.test.mjs"
             ],
@@ -35639,6 +35752,7 @@
             "scripts/advisory-dispositions.test.mjs",
             "scripts/arch/mcp-surface.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
+            "scripts/arch/tool-lifecycle-reach.test.mjs",
             "scripts/audit-licenses.test.mjs",
             "scripts/audit-sbom.test.mjs",
             "scripts/capability-matrix.test.mjs",
@@ -35674,7 +35788,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b47474721141feb569ab96280daf6f8dc456dbee361beffd50519e2ece70aa57",
+      "evidenceSha256": "7b74e05aaaf13468dc76766b6bbb1d0613cce9be617300dd1affc111f621db06",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -36391,7 +36505,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 314
+              "line": 316
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -37264,7 +37378,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "75d94f2f1a98d528a7d854be9517cb010269bcf06f9294911fccc2d6ea85807b",
+      "evidenceSha256": "b75243cb9dcff81b6d842ecb4e5f882298ff988d7b1e90416b30e930643d959a",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -37710,7 +37824,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 275
+              "line": 286
             }
           ],
           "reversePaths": [
@@ -37822,7 +37936,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "75008fed0890dfbfded0d76078f86bb4b1ade4428d3c5cf84fd7687d33c3f8d6",
+      "evidenceSha256": "a7455e23ec4b4358cb696089c9a910aac50baec768e972e89df365d8b11d1ae5",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -38929,7 +39043,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2118
+              "line": 2148
             }
           ],
           "reversePaths": [
@@ -38954,7 +39068,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6cf2eebaafc105a68d1c864501d69a15bf09523d73bfba6840ffbc07f98c9f5e",
+      "evidenceSha256": "356a1cd6a79a653f3e76cfb64309b2c3d80df81b6dc86e65d85fb89b7e5b47eb",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -40095,7 +40209,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2117
+              "line": 2147
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -40320,7 +40434,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "d8dd43c77102ab11656ca7ee92f29e5c12417eb799abab89b1ac3bdc6ac65671",
+      "evidenceSha256": "2182112f61ffe0f8dcb3902ca2694788c26102bff0ef1732a9040abf956efa30",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -42319,7 +42433,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 234
+              "line": 245
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -43136,7 +43250,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "ca028140e035ba9a136186faad8b597745f1836094a53ae5a0f446344a5d346b",
+      "evidenceSha256": "114d70e750622ff4a0f298e08cd0b8f3b248c2a45d5711e3b8eeb60782ad5aea",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -43553,7 +43667,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 314
+              "line": 316
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -44250,7 +44364,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0928fcf14bf24503cd016a5a461c14752f8de4358dbe0fb1c75680567d01b9cb",
+      "evidenceSha256": "903a1ae9a94a2b6d3d2e5712ba2946f04f4c8efb920a47759e7dde8f4c6a756d",
       "manifestSha256": "f520bd992a361e114569baf55a1b1faed9d18dcc7a3fa8ad63396bef61a0141d",
       "name": "@internal/testcontainers",
       "ociImageClosure": {
@@ -45487,7 +45601,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2681
+              "line": 2709
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -45654,7 +45768,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "d75d483e4c26bcdd03dd8fb3800e56c042fbcf19d545fa4451e3b0e25ee339be",
+      "evidenceSha256": "0f72a7a6c41d19d101364aa9b3d992dc716697921ad0cd8416e6fb63c34dc11f",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -50567,6 +50681,16 @@
               "line": 325
             },
             {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.json",
+              "kind": "reference",
+              "line": 44
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "reference",
+              "line": 35
+            },
+            {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
               "line": 3068
@@ -50597,6 +50721,14 @@
               "docs/audits/M2.5-transaction-outbox-clock-retry.md"
             ],
             [
+              "docs/audits/win-269-tool-lifecycle-reach.json",
+              "docs/audits/win-269-tool-lifecycle-reach.json"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "docs/error-taxonomy.json",
               "docs/error-taxonomy.json"
             ],
@@ -50616,6 +50748,8 @@
           "roots": [
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/audits/M2.5-transaction-outbox-clock-retry.md",
+            "docs/audits/win-269-tool-lifecycle-reach.json",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "docs/error-taxonomy.json",
             "docs/v1-ledger-rules.json",
             "docs/win-260-mutation-ledger.json",
@@ -50625,6 +50759,10 @@
         "generated": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "explicit-generated-header-reference"
+            },
             {
               "from": "packages/adapters/postgres-tenancy/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
@@ -50643,6 +50781,10 @@
           ],
           "reversePaths": [
             [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "packages/adapters/postgres-tenancy/package.json",
               "packages/adapters/postgres-tenancy/package.json"
             ],
@@ -50656,6 +50798,7 @@
             ]
           ],
           "roots": [
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "packages/adapters/postgres-tenancy/README.md",
             "packages/adapters/postgres-tenancy/package.json",
             "packages/adapters/postgres-tenancy/tsconfig.json"
@@ -52451,7 +52594,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "83a0dce80b682543fff8dff6239813b4a66d28eae15015ac0076b2295985a622",
+      "evidenceSha256": "9d742d11803e3636dcdd9d87ca32c955eb65eda372fb453f71dd675bc73422b6",
       "manifestSha256": "c3c49b3941820594e187dcbb86c78001443c58add67ce25009e535c3f1374927",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -52553,7 +52696,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 621
+              "line": 623
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -53014,7 +53157,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "18ea80da30377e9ae5a5b00ea0fddac3bf2abbce212952b664d0b8f5c30c4687",
+      "evidenceSha256": "67555eee34cf1ddbd97e0ffd03aa79a78afe2986d424be0cd8e43a5078288cbb",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -54507,7 +54650,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 403
+              "line": 405
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -55469,7 +55612,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "d5db531b5644e67d1c5f2c84cf4801b1f9d520ac17062c85531b791b15de33f3",
+      "evidenceSha256": "fc1f23c708d49eaa9b780fe09109225f2798b0a90faa5dadc0b2da8ad074588c",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -55615,7 +55758,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 425
+              "line": 427
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -56366,7 +56509,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "af81755526be01b3875c6990a49e908f263f73cc8ea77dd350346cd2ea51d23d",
+      "evidenceSha256": "1c6a43775a88cf8449ce697e72d4a8b9ed878eacbeb2f9dee3606b5cf59795a3",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -56490,7 +56633,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 474
+              "line": 476
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -57384,7 +57527,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "2fe2af725e908bd54271c6394ad8cf00ce99b241e669b5f0b4fe951784bbdb68",
+      "evidenceSha256": "ceb3e57494051764820ea4fbb5515e42b23cfea7e95e94d2bea5d1f660667a9a",
       "manifestSha256": "218c32b5c5b423bdf39bf215d6365c07bbd746fca291a1b0609da87e2cebd4d8",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -57574,7 +57717,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 413
+              "line": 415
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -58477,7 +58620,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "dd3de55f40c2cf668e7dda02abd31f84451e88c05eb387a2811ddb56e9b42110",
+      "evidenceSha256": "a0e802e074fa96835a5fbd0ae27cd89b7aefbb2e1822bc109029b59d4d2ac2a0",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -58601,7 +58744,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 559
+              "line": 561
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -59333,7 +59476,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "1e49cfad6ad38c469ca09defc1a6ca7c2748ea2272e70462ea606690812d3420",
+      "evidenceSha256": "b0c91268b0878648af8c543dce60535fdc56202a49118f0c1e2567b6855ee779",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -59573,7 +59716,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 534
+              "line": 536
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -60524,7 +60667,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "49c94248797b2c1e8c53b410b34a9ace8c696c92bb111221e9717fe9b2062a29",
+      "evidenceSha256": "8aead03d6fbd8c586b9c9e79917d99ff4dc6451d22fef55ae00adeb0010943f3",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -60648,7 +60791,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 436
+              "line": 438
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -61750,7 +61893,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "cebc498cbd3afdf1d2d9645c8e0d5e752ccdfab668d4d921aab694abc0cc9152",
+      "evidenceSha256": "5b17ec4d21c9d40b0d638494f69cb85e102aea03100afbcd24a2686ef3f5ccf3",
       "manifestSha256": "2e4c46079d53cec680be1e27cbc15aed896688935706c604462aef1db775b330",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -62530,7 +62673,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 386
+              "line": 388
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -63546,7 +63689,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 266
+              "line": 277
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -64543,7 +64686,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "44397fc0dd521fd56db0cc9cbe19f44605afd49fe8c1a56ba3918545a233590b",
+      "evidenceSha256": "aab8de7ac333e563450cce47d936cd865e17c0553a52d8d3f1936c959b60d09c",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -64711,7 +64854,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 523
+              "line": 525
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -65620,7 +65763,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "d21464a25dfa824c4676de1d5c0dc14d78fe8c330fcf1fcc17472385f9370b2a",
+      "evidenceSha256": "abb9b30a4402d54d8a62e5024b5d656bfa5e71151425df7facd335805d3d15bf",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -65788,7 +65931,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 495
+              "line": 497
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -66830,7 +66973,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "4baa8233caba1ab8e8b9625d2474f4de168fe06ef7122b0b6b058f4219b24f5b",
+      "evidenceSha256": "14e36db267ecb933d3799777eaa32da33d4290b28635a4e8050cf0d62ca68d8b",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -66976,7 +67119,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 547
+              "line": 549
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -67653,7 +67796,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "2fca124077da8cda653793293aa5e184c311f433aea38327507f72db1a89aa8d",
+      "evidenceSha256": "9849d37dbe64e4a77e8d8e88f7e6ed190d5d438cd0d41e536b65b36ddfaf0fa0",
       "manifestSha256": "09d858b658a326451d6bdd026af44df9ba5d1b195ce0c71deffc0cb972afc6d7",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -67777,7 +67920,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 510
+              "line": 512
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -68483,7 +68626,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "e0606560e999fbd2462c792d8985feefdbc0380047d694e4c0743f813fde6e64",
+      "evidenceSha256": "75b413130b9c5b4cfd4d35d947d890325d5ac35f27ac93c6933c36b4449a20c3",
       "manifestSha256": "8d9032044280327b5d3d795c13039f78e41ca275c9d6bce9f093b794a97473f1",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -68861,7 +69004,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 460
+              "line": 462
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -70480,7 +70623,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d488ea185564123dbcffeb40e54e23fe8ee86c54fb89c285dd0bfa012be2e78a",
+      "evidenceSha256": "02f41ac9038f970007bda1b76050e36979e9b323ded179935dec070d00595f36",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -70918,7 +71061,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 447
+              "line": 449
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -72488,7 +72631,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f84134ec4d480dfc215c39cd85a5123300074aef4302c8db2388ed05cee6ed2e",
+      "evidenceSha256": "a72759f9965a1b13d6068b5d301e710b7cdcaf5a54f55d3cd1ad637bc23b126f",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -72680,7 +72823,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 484
+              "line": 486
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -73594,7 +73737,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "89a7825945642f59a6f286fa2c9c6414a94abadf443568f9a51674e3369b02fe",
+      "evidenceSha256": "c09182cb53e8373ef416e3931a7321534183a84f154ee6e242958b13db16fcbd",
       "manifestSha256": "f1e56a67ae6b3d846f0887d8a17048ad19d4e0356bf7f38d1056b58507a2e7e2",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -74222,7 +74365,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 379
+              "line": 381
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -76434,7 +76577,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "6c7f9a823b7170ea814e87b86dca9c3da72b53957ea01970ecf65c287bc035ac",
+      "evidenceSha256": "b007df770d9e2386956c7ddeb4e3e343d8fcaabe431476643fa9a86efc2d7117",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -76606,7 +76749,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 390
+              "line": 392
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -76658,6 +76801,16 @@
               "line": 53
             },
             {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.json",
+              "kind": "reference",
+              "line": 49
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "reference",
+              "line": 31
+            },
+            {
               "from": "docs/v1-ledger-rules.json",
               "kind": "reference",
               "line": 6
@@ -76682,6 +76835,14 @@
               "docs/audits/win-268-mcp-store-ownership.md"
             ],
             [
+              "docs/audits/win-269-tool-lifecycle-reach.json",
+              "docs/audits/win-269-tool-lifecycle-reach.json"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "docs/v1-ledger-rules.json",
               "docs/v1-ledger-rules.json"
             ],
@@ -76694,6 +76855,8 @@
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/audits/win-268-mcp-store-ownership.json",
             "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.json",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "docs/v1-ledger-rules.json",
             "packages/contexts/tools/README.md"
           ]
@@ -76703,6 +76866,10 @@
           "reasons": [
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
+              "kind": "explicit-generated-header-reference"
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
               "kind": "explicit-generated-header-reference"
             },
             {
@@ -76727,6 +76894,10 @@
               "docs/audits/win-268-mcp-store-ownership.md"
             ],
             [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "packages/contexts/tools/package.json",
               "packages/contexts/tools/package.json"
             ],
@@ -76741,6 +76912,7 @@
           ],
           "roots": [
             "docs/audits/win-268-mcp-store-ownership.md",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "packages/contexts/tools/README.md",
             "packages/contexts/tools/package.json",
             "packages/contexts/tools/tsconfig.json"
@@ -77604,7 +77776,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "e46d6da56d74c3e6bfeecb0ecc0c058aa2e40480e5c00bea88237e6bb47f4ddf",
+      "evidenceSha256": "ee0e6904a0bc32234253b27522bfb99aac95e0051b88b683eee8daa46a512c04",
       "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -77661,7 +77833,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 323
+              "line": 325
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -79249,7 +79421,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6b65832009a8ab3ec0eaab033aa20ba6944c918daa9c86786cd7787949362f59",
+      "evidenceSha256": "2c5f658738361f461a66bc75096db326ca5825e24cb87cadfa9a38dc66771722",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {

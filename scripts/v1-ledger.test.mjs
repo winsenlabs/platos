@@ -1667,7 +1667,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `.md` on `docs-content.evidence.audit-notes` (12 -> 13). Both are
     // `retain`, both are under `docs/**` and therefore PROTECTED, which is why
     // protectedCount moves +2 with them. NO LEDGER RULE CHANGED.
-    "docs-content": 21,
+    // WIN-269 (M4.3) 21 -> 23. TWO files, the TOOL LIFECYCLE's ORM register,
+    // landing on the same two existing rules its WIN-268 sibling did:
+    // `docs/audits/win-269-tool-lifecycle-reach.json` on
+    // `docs-content.evidence.audit-receipts` (20 -> 21) and its rendered `.md`
+    // on `docs-content.evidence.audit-notes` (13 -> 14). Both are `retain`,
+    // both are under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 23,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1775,7 +1781,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `scripts/arch/end-user-presence-ancestry.mjs` and its suite, also salvaged.
     // The scanner takes `root-infra.tooling.scripts` (101 -> 102) and the suite
     // `root-infra.test.script-suites`. NO LEDGER RULE CHANGED.
-    "root-infra": 72,
+    // WIN-269 (M4.3) 72 -> 74 with the TOOL LIFECYCLE register and its second
+    // reconciliation: `scripts/arch/tool-lifecycle-reach.mjs` on the blanket
+    // `root-infra.tooling.scripts` rule (102 -> 103) and
+    // `scripts/arch/tool-lifecycle-reach.test.mjs` on
+    // `root-infra.test.script-suites`. The suite is the SECOND reconciliation
+    // that gate needs: it re-sums the site total three independent ways, re-counts
+    // the composition delta from the raw site list, and re-checks the disjointness
+    // of the two registers' roots against the sibling module's own export. NO
+    // LEDGER RULE CHANGED.
+    "root-infra": 74,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1892,7 +1907,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `apps-agent` +1 (the real-database tenancy suite) and `root-infra` +2 (the
   // static ancestry scanner and its suite). The eight-key re-derivation is
   // 9 + 0 + 80 + 4 + 10 + 1505 + 21 + 72 = 1701.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1701);
+  //
+  // WIN-269 (M4.3) THE TOOL LIFECYCLE REGISTER 1701 -> 1705. FOUR files across
+  // TWO areas, each itemised on its own delta above: `root-infra` +2 (the
+  // register and its second reconciliation) and `docs-content` +2 (the
+  // register's JSON receipt and its rendered note). It is the same shape as
+  // WIN-268's register four paragraphs above, over the roots that one
+  // deliberately excludes. The eight-key re-derivation from the merged
+  // `expectedDeltas` is 9 + 0 + 80 + 4 + 10 + 1505 + 23 + 74 = 1705.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1705);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2085,7 +2108,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND THE SALVAGED end_users PROOF 1698 -> 1701 -- the SEVENTEENTH hand move.
     // The same three files as the `totalFiles` assertion above, reached here by
     // summing the per-area counts instead of reading the total.
-    rulesDocument.baseline.totalFiles + 1701
+    //
+    // AND WIN-269's TOOL LIFECYCLE REGISTER 1701 -> 1705 -- the EIGHTEENTH hand
+    // move. The same four files as the `totalFiles` assertion above (the
+    // register and its second reconciliation in `root-infra`, its JSON receipt
+    // and rendered note in `docs-content`), reached here by summing the per-area
+    // counts instead of reading the total, so the two arithmetics can disagree
+    // and be caught. 1701 + 4 = 1705.
+    rulesDocument.baseline.totalFiles + 1705
   );
 });
 

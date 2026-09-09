@@ -101,10 +101,27 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // added to SCRIPT_PREFIXES, for the reason the openapi ratchet was not: the
 // selection protects the EVIDENCE a gate reads, not the gate.
 //
+// WIN-269 (M4.3) adds TWO, no removals and no content substitutions, taking the
+// set from 796 to 798:
+//   docs/audits/win-269-tool-lifecycle-reach.json  (the tool lifecycle's ORM
+//                                                   register — every store call
+//                                                   site under
+//                                                   apps/agent/src/tool-gateway,
+//                                                   its owning context, and the
+//                                                   slot-by-slot account of what
+//                                                   composing `tools` takes)
+//   docs/audits/win-269-tool-lifecycle-reach.md    (the same, rendered)
+// Both fall inside the existing `docs/**` selection rather than widening it, and
+// the difference was verified SET-WISE against the base at 5a2e7bf8: the 798
+// paths at this head are exactly the 796-path base plus those two, with nothing
+// removed and nothing substituted. `scripts/arch/tool-lifecycle-reach.mjs` is
+// NOT added to SCRIPT_PREFIXES, for the reason its sibling register was not:
+// the selection protects the EVIDENCE a gate reads, not the gate.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "54454b79d8af5b6a7a66df06b78d9eadb5b191cfb8a35f7d9362e5448f6794db";
+export const EXPECTED_PATH_SET_SHA256 = "9b6d64c45c230c89c857251eb8877d85f2898c667cf3acd503968a359285e389";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

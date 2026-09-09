@@ -2108,37 +2108,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 5170,
+    "totalFiles": 5174,
     "areaCounts": {
       "apps-agent": 523,
       "apps-core-api": 91,
       "apps-mcp-stdio": 8,
       "apps-webapp": 183,
-      "docs-content": 741,
+      "docs-content": 743,
       "internal-packages": 1174,
       "packages": 2142,
-      "root-infra": 308
+      "root-infra": 310
     },
     "kindCounts": {
       "asset": 155,
       "config": 313,
-      "doc": 611,
+      "doc": 612,
       "fixture": 6,
-      "generated": 45,
+      "generated": 46,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2083,
+      "source": 2085,
       "test": 1044
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1652,
-      "regenerate": 40,
-      "retain": 3469,
+      "move-refactor": 1654,
+      "regenerate": 41,
+      "retain": 3470,
       "unresolved": 2
     },
-    "protectedCount": 1637,
+    "protectedCount": 1639,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2182,8 +2182,8 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 13,
-      "docs-content.evidence.audit-receipts": 20,
+      "docs-content.evidence.audit-notes": 14,
+      "docs-content.evidence.audit-receipts": 21,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2275,9 +2275,9 @@
       "root-infra.test.harness": 69,
       "root-infra.test.script-suites": 34,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 103,
+      "root-infra.tooling.scripts": 105,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "8e06b4bc254de5fb50b2d437af35bacec80957b6449e9c44c87bbc41371ad4d5"
+    "classificationSha256": "cd88522f2481ca1e13ec6c6605be6c416dfc008f9b51e5cb9acb06c544bb54d6"
   }
 }

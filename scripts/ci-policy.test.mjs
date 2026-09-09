@@ -150,6 +150,17 @@ const v1ReleaseGateCommands = [
   // that is gone.
   "pnpm audit:mcp-store-ownership",
   "pnpm test:mcp-store-ownership",
+  // WIN-269 (M4.3), +2. The TOOL LIFECYCLE's ORM register — the sibling of the
+  // two lines above, over the roots those roots deliberately exclude
+  // (`apps/agent/src/tool-gateway`). It is admitted for the same reason and for
+  // one more: its generator asserts the two registers' roots are DISJOINT, so
+  // without these lines somebody could widen either root list and turn one
+  // register into a superset of the other while both stayed green. It also
+  // classifies every slot of `ToolsDependencies` against the composition root,
+  // which is the measurement that says what composing `tools` would take — a
+  // claim that goes stale the moment a slot is added to the context.
+  "pnpm audit:tool-lifecycle-reach",
+  "pnpm test:tool-lifecycle-reach",
   // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
   // the `end_users` tenancy conjunction: every relation the presence clause names
   // must resolve to a model that carries the organization ancestry rule. The
@@ -380,6 +391,17 @@ const expectedV1EvidenceCommands = [
   // that is gone.
   "pnpm audit:mcp-store-ownership",
   "pnpm test:mcp-store-ownership",
+  // WIN-269 (M4.3), +2. The TOOL LIFECYCLE's ORM register — the sibling of the
+  // two lines above, over the roots those roots deliberately exclude
+  // (`apps/agent/src/tool-gateway`). It is admitted for the same reason and for
+  // one more: its generator asserts the two registers' roots are DISJOINT, so
+  // without these lines somebody could widen either root list and turn one
+  // register into a superset of the other while both stayed green. It also
+  // classifies every slot of `ToolsDependencies` against the composition root,
+  // which is the measurement that says what composing `tools` would take — a
+  // claim that goes stale the moment a slot is added to the context.
+  "pnpm audit:tool-lifecycle-reach",
+  "pnpm test:tool-lifecycle-reach",
   // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
   // the `end_users` tenancy conjunction: every relation the presence clause names
   // must resolve to a model that carries the organization ancestry rule. The
@@ -2392,11 +2414,17 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      like the census above it nothing but its own gate can see it go stale.
   //   +2 WIN-268 (M4.2): end-user-presence-ancestry (audit + test), the static
   //      half of the `end_users` cross-tenant conjunction.
-  // 26 + 2 + 4 + 2 + 2 = 36.
+  //   +2 WIN-269 (M4.3): tool-lifecycle-reach (audit + test). The TOOL
+  //      LIFECYCLE's ORM register, over the roots the MCP surface register
+  //      deliberately excludes, plus the slot-by-slot classification of
+  //      `ToolsDependencies` against the composition root. Its generator asserts
+  //      the two registers' roots are disjoint, so this gate is also what stops
+  //      either root list being widened into a superset of the other.
+  // 26 + 2 + 4 + 2 + 2 + 2 = 38.
   assert.equal(
     v1ReleaseGateCommands.length,
-    36,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census and the MCP store-ownership register"
+    38,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4603,12 +4631,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   WIN-268 (M4.2), +2 more. audit/test:end-user-presence-ancestry join the
   //   same V1 release gate list, so each gains the same `|| true` control.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 = 371. The count is pinned rather
-  // than derived so that a control silently disappearing is a failure rather
-  // than a smaller number nobody reads.
+  //   WIN-269 (M4.3), +2. audit/test:tool-lifecycle-reach join the same V1
+  //   release gate list, so each gains the same `|| true` control -- the same
+  //   shape as WIN-268's two pairs immediately above, and for the same reason.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 = 373. The count is pinned
+  // rather than derived so that a control silently disappearing is a failure
+  // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    371,
+    373,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
