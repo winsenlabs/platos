@@ -7,13 +7,13 @@
     "docs/audits/win-254-protected-paths.json",
     "docs/audits/win-254-evidence-lifecycle.json"
   ],
-  "pathCount": 794,
-  "pathSetSha256": "f341cd78961e90ed459f1dad75aabbefc299dcf92326c3f3636605ed760bc40d",
+  "pathCount": 796,
+  "pathSetSha256": "54454b79d8af5b6a7a66df06b78d9eadb5b191cfb8a35f7d9362e5448f6794db",
   "entries": [
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "7381ab7f53f028d0cab1678beaa18ff892104feff1189f36d0d51c16b7f31c6a"
+      "sha256": "1731ac514b23d2b0c5ed23fe4aa89ac71f3983cdc33663fb3cf4e59fa146a021"
     },
     {
       "path": "LICENSE",
@@ -1038,17 +1038,27 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "1b8ca783c5d990f86e55ea375498d0def2059bc652bf0b4f53021f51e2ec9214"
+      "sha256": "089fb49df6e69663d22cf7fc09d1a72e4c620e52dc4e6683a1c91b79df27ddfe"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "a3a3aebf1c8a71017ad8bea0de6fdc7025da9fb09793bad622877f615d8ad611"
+      "sha256": "19ea04fbdcc02525bf6d8e3266ce5807870114ae9f981f61aea6f29bf3429a95"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "mode": "100644",
       "sha256": "6416924763f1172075de88d96f3756017d26ecf0211e1d9788e83d4670b243f1"
+    },
+    {
+      "path": "docs/audits/win-268-mcp-store-ownership.json",
+      "mode": "100644",
+      "sha256": "9e3231808e48c6a1f9ead12a6e1e61e002ec9e970d59656d004a5cc351b37adf"
+    },
+    {
+      "path": "docs/audits/win-268-mcp-store-ownership.md",
+      "mode": "100644",
+      "sha256": "bd49a3c444266cb4fe1ba53722d337250e610b0e2093fff2612309e7401700f4"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1073,7 +1083,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "5620cbdc7460882b8061d672f11d3b5bf83f16ea7561f4f5cc8fd8cec466de0a"
+      "sha256": "7f8006e5c6b5f541b011a8b6ad9167f9495a430e8b2382234a905254e7704ab1"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3668,7 +3678,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "e649f32eaff32aed81f61a648ec972f9dc99c01f9066363c13f66aff6c6b32bc"
+      "sha256": "78d2b0a2f5f950bae63ff4cde793c0fa604a48dbb59fc9586eb437f8bdb3696b"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3883,7 +3893,7 @@
     {
       "path": "scripts/evidence-lifecycle.mjs",
       "mode": "100644",
-      "sha256": "87823f321a8876ace9e9047378ac75b0c62ccb5c244a700b14d593d0615f0a8f"
+      "sha256": "e926727bfd9f32955e7ec0d491596cf45e7665a8324fa768a5f712251bd4e403"
     },
     {
       "path": "scripts/evidence-lifecycle.test.mjs",

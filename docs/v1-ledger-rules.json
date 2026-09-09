@@ -2108,37 +2108,37 @@
     ]
   },
   "expected": {
-    "totalFiles": 5160,
+    "totalFiles": 5164,
     "areaCounts": {
       "apps-agent": 520,
       "apps-core-api": 91,
       "apps-mcp-stdio": 8,
       "apps-webapp": 183,
-      "docs-content": 739,
+      "docs-content": 741,
       "internal-packages": 1174,
       "packages": 2142,
-      "root-infra": 303
+      "root-infra": 305
     },
     "kindCounts": {
       "asset": 155,
       "config": 313,
-      "doc": 610,
+      "doc": 611,
       "fixture": 6,
-      "generated": 44,
+      "generated": 45,
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2078,
+      "source": 2080,
       "test": 1041
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1644,
-      "regenerate": 39,
-      "retain": 3468,
+      "move-refactor": 1646,
+      "regenerate": 40,
+      "retain": 3469,
       "unresolved": 2
     },
-    "protectedCount": 1635,
+    "protectedCount": 1637,
     "ruleCounts": {
       "apps-agent.asset.brand": 1,
       "apps-agent.config.embedded-data": 1,
@@ -2182,8 +2182,8 @@
       "docs-content.design.provenance": 1,
       "docs-content.evidence.adr": 2,
       "docs-content.evidence.audit-history": 13,
-      "docs-content.evidence.audit-notes": 12,
-      "docs-content.evidence.audit-receipts": 19,
+      "docs-content.evidence.audit-notes": 13,
+      "docs-content.evidence.audit-receipts": 20,
       "docs-content.evidence.lifecycle-controls": 2,
       "docs-content.generated.audit": 2,
       "docs-content.governance.root-manifest": 2,
@@ -2275,9 +2275,9 @@
       "root-infra.test.harness": 69,
       "root-infra.test.script-suites": 34,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 98,
+      "root-infra.tooling.scripts": 100,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "065a46026fc1c635120b5d2a4b78ed6b43d01dbf1fec4cd2b2f58e818d847d7b"
+    "classificationSha256": "08e17a566ba7c0bf238284b141ab821456923da9011f4c39069509491749f59e"
   }
 }

@@ -120,6 +120,17 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // and a human writes the disposition and the reason — which is why it is
   // pinned here by name rather than picked up by a generated-artifact root.
   "docs/audits/win-259-secret-response-census.json",
+  // WIN-268 (M4.2). The MCP surface's ORM register, ACCEPTED for the same reason
+  // as the secret-response census beside it: `audit:mcp-store-ownership` re-derives
+  // the whole thing from the Prisma schema, `table-ownership.mjs`, the composition
+  // root and each context's published contract on every run, and `--check` fails
+  // when the tree and the file disagree. A site cannot appear or vanish, and a
+  // context cannot become composed, without somebody regenerating it. Like the
+  // census it is HALF generated — the sites and verdicts are derived and the
+  // per-file dispositions are written by a human — which is why it is pinned by
+  // name rather than swept up by a generated-artifact root.
+  "docs/audits/win-268-mcp-store-ownership.json",
+  "docs/audits/win-268-mcp-store-ownership.md",
   "docs/audits/win253-removals/clickhouse-split.json",
   "docs/audits/win253-removals/clickhouse-split.md",
   "docs/audits/win253-removals/vendored-build.json",
