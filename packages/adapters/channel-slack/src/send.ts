@@ -62,7 +62,11 @@ export interface SlackTransportOptions {
   readonly fetch: typeof fetch;
 }
 
-interface Attempt<Value> {
+/**
+ * One dispatched call's answer, wrapped so `underDeadline` can return a `Result`
+ * over a value that may itself legitimately be `undefined`.
+ */
+interface Dispatched<Value> {
   readonly value: Value;
 }
 
@@ -77,7 +81,7 @@ interface Attempt<Value> {
 async function underDeadline<Value>(
   timeoutMs: number,
   run: (signal: AbortSignal) => Promise<Value>,
-): Promise<Result<Attempt<Value>>> {
+): Promise<Result<Dispatched<Value>>> {
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
@@ -120,7 +124,7 @@ export async function sendSlackMessage(
     return err(adapterRejected(SLACK_PROVIDER, "channelThreadKey is not a Slack thread key"));
   }
 
-  const attempt = await underDeadline<SlackPostedMessage>(transport.timeoutMs, async (signal) => {
+  const dispatched = await underDeadline<SlackPostedMessage>(transport.timeoutMs, async (signal) => {
     const common = {
       token: credential.token,
       apiUrl: transport.apiUrl,
@@ -136,16 +140,16 @@ export async function sendSlackMessage(
       ? postSlackMessage({ ...common, threadTs: address.threadTs })
       : updateSlackMessage({ ...common, ts: message.replacesProviderMessageId });
   });
-  if (!attempt.ok) return err(attempt.error);
+  if (!dispatched.ok) return err(dispatched.error);
 
   return ok({
-    providerMessageId: attempt.value.value.id,
+    providerMessageId: dispatched.value.value.id,
     // THE PROVIDER'S OWN TIMESTAMP, and not this process's clock. Slack's
     // message id IS a timestamp (`1712000000.000100`), and it is the instant the
     // message exists at as far as every other Slack client is concerned. Falling
     // back to the wall clock only when it will not parse keeps the field
     // populated without inventing a provider fact.
-    deliveredAt: slackTimestampToDate(attempt.value.value.id),
+    deliveredAt: slackTimestampToDate(dispatched.value.value.id),
   });
 }
 

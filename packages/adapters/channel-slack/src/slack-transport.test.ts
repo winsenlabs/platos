@@ -123,9 +123,9 @@ describe("a delivery that times out mid-flight", () => {
   });
 
   it("answers normally when the far side is merely SLOW rather than silent", async () => {
-    // The deadline must not be a hair trigger: a provider that answers inside
-    // the budget is a success, not an indeterminate outcome, or every busy
-    // afternoon becomes a reconciliation queue.
+    // The deadline must not fire on a merely busy provider: one that answers
+    // inside the budget is a success, not an indeterminate outcome, or every
+    // busy afternoon becomes a reconciliation queue.
     farSide.next({ kind: "slow", afterMs: 30 });
     const sent = await adapter.send(CREDENTIAL, message());
     expect(sent.ok).toBe(true);

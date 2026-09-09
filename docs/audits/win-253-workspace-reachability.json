@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "8e474d0aa3bf22b747658a7c2b2228efb9d19fc3b6251d069baf1fc46990399e",
+  "evidenceSha256": "9b38201351bf6bcd6e0dc0a71c5531e6c50d293fcb1b4d122eb08abd0c9168ac",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "e3a960aa98ba3d9e812795239b2ac986836d514e178a032d3c550b71c69aea93",
+    "aggregateSha256": "8938040d53dab43775752b46b1b71acc8c64048a458d7a79c232696bbcd8cff0",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4343,7 +4343,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "88ccb63800014ffc43b4fa480502a144b35af6d00b978d963a7ea4e8d66ee4c2"
+        "sha256": "6180d23ce4925d26b93b9a2fccb636c59b5c1197261ceeb0571087e5d1e51d5e"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -6399,7 +6399,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "7dcfd70ccb9c7df067dfa36b267e52d3d63c381df4a1049ea60ccb8c271fd5db"
+        "sha256": "963648569c664b11cf094ffd33aad092845c9fa620e7d25158769f0ea3cc9623"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -11275,7 +11275,7 @@
       },
       {
         "path": "packages/adapters/channel-slack/src/send.ts",
-        "sha256": "91922a60669a7d2a8bf9beec37d0b877e79c7a791942304ac02cf0aefa6d4026"
+        "sha256": "56994965c3599c0a7e3cc9bfc6cda0f59404006ef9a7260b594b3913b5d5f2fb"
       },
       {
         "path": "packages/adapters/channel-slack/src/signed-admission.test.ts",
@@ -11287,7 +11287,7 @@
       },
       {
         "path": "packages/adapters/channel-slack/src/slack-transport.test.ts",
-        "sha256": "890b99b99bfdfc236284b4fbfcf75579885c2f64ab0d9f47daf30ce9f89d5d51"
+        "sha256": "0807b046d12bafdf5c2a8c01ac5a55c64b9dfa9e6c5faae76335719513beb5bd"
       },
       {
         "path": "packages/adapters/channel-slack/src/vendor.ts",
@@ -20575,7 +20575,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "482ff401ffffac55d942a80f693aa1435c57562c1b4f06136297ea99f36e5279"
+        "sha256": "70b5b70aab43ccfc99c0fc5d4e877304305ea8b4c8ba5c2817b723f01449902b"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -46712,6 +46712,11 @@
               "from": "scripts/license-distribution.test.mjs",
               "kind": "reference",
               "line": 296
+            },
+            {
+              "from": "scripts/vocabulary-boundary.test.mjs",
+              "kind": "reference",
+              "line": 685
             }
           ],
           "reversePaths": [
@@ -46750,6 +46755,10 @@
             [
               "scripts/license-distribution.test.mjs",
               "scripts/license-distribution.test.mjs"
+            ],
+            [
+              "scripts/vocabulary-boundary.test.mjs",
+              "scripts/vocabulary-boundary.test.mjs"
             ]
           ],
           "roots": [
@@ -46761,7 +46770,8 @@
             "packages/adapters/channel-slack/src/slack-transport.test.ts",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
-            "scripts/license-distribution.test.mjs"
+            "scripts/license-distribution.test.mjs",
+            "scripts/vocabulary-boundary.test.mjs"
           ]
         }
       },
@@ -46820,7 +46830,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "ab660c8557a47c6a33cd5d0805769bbf422a9b68bb4534a3329bf05afc7ada0e",
+      "evidenceSha256": "0902613f0555b1bc379b136733e477f8fd54f60dd8929bf5b7c6df23493cbd17",
       "manifestSha256": "602133cd6f0a158f3dd4764775171821935d6905555f731042114748187eaa04",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
