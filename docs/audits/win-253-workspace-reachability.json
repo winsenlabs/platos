@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e3ed6ba8ca6026caf05d68519c727e34062aece852d83cbca84f8bb143a0efe2",
+  "evidenceSha256": "e05000e4ea50912e9bbc3d4aefc8f8501d4fe2094a5395fd1b147b460dd0b389",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b3d2417594af6cd68ab9e30dc8bcd21707a124ad65d61b9cf7824738baf752ac",
+    "aggregateSha256": "37e621bd8ba8965b1a7e47252fdcead89205c370382b80b6f32998b59fc22ac7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11027,7 +11027,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/upgrade-expand-contract.integration.test.ts",
-        "sha256": "3141386a77ad0dcb6df404b7d6661b0f2bd95720775271970f2277da463e0601"
+        "sha256": "219bf0e67e2ebb001672c3582f1a1aae6d8856314c6da5307ad18b4d95af5315"
       },
       {
         "path": "internal-packages/tenancy-database/src/upgrade-fixture.ts",
