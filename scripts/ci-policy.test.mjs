@@ -4572,10 +4572,27 @@ function agentTestFiles(relativeDirectory) {
   });
 }
 
+// WIN-268 P2 — THE PREDICATE MOVED WITH THE ANALYZER, AND ONLY THE PREDICATE.
+//
+// The discovery used to look for `Prisma.dmmf` beside `inventoryDigest`, because
+// the census suite read the generated datamodel itself. It does not any more:
+// the type-checker walk is `apps/agent/src/prisma-delegate-census.ts`, so a
+// SECOND gate — `mcp-platform/orm-ownership-census.test.ts` — can split the same
+// call sites by owning context without a second analyzer that could disagree
+// with this one.
+//
+// So the marker is now the IMPORT of that module. The property this function
+// exists for is unchanged and is the one that matters: the path is DISCOVERED
+// from the tree rather than spelled as a constant this file could quietly edit,
+// so renaming or moving the suite without updating the workflow still fails
+// here. The `assert.equal(candidates.length, 1)` below is what keeps the marker
+// honest in the other direction: `orm-ownership-census.test.ts` imports the same
+// module and would be a second candidate if it also pinned an inventory digest,
+// and this would fail rather than silently pick one.
 function delegateCensusSuitePath() {
   const candidates = agentTestFiles(AGENT_SOURCE_ROOT).filter((file) => {
     const contents = readFileSync(path.join(repositoryRoot, file), "utf8");
-    return contents.includes("inventoryDigest") && contents.includes("Prisma.dmmf");
+    return contents.includes("inventoryDigest") && contents.includes("prisma-delegate-census");
   });
   assert.equal(
     candidates.length,

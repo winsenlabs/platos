@@ -237,6 +237,33 @@ jobs:
         # analyzer finds fewer call sites than the pin expects.
         run: pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts
 
+      - name: WIN-268 P2 MCP platform ORM ownership census
+        # The SPLIT, not the total. `clean-prisma-delegates.test.ts` above pins
+        # how many ORM call sites the whole app holds; this pins WHICH CONTEXT
+        # OWNS the rows `apps/agent/src/mcp-platform/**` still reaches, and
+        # ratchets it per file so a tranche cannot trade one file's statements
+        # for another's and report progress.
+        #
+        # Its own step, and AFTER the tenancy-database build, for both reasons
+        # the step above gives: a red log should name the gate that failed, and
+        # this census walks the same type-checker program, so an unbuilt client
+        # makes it under-count rather than fail.
+        run: pnpm --filter platos-agent exec vitest run src/mcp-platform/orm-ownership-census.test.ts
+
+      - name: WIN-268 P2 MCP authorization refusals against real PostgreSQL
+        # The forged-triple proof. Two tenants, and a scope whose environment is
+        # tenant A's while its organization id is tenant B's — the shape
+        # `apps/agent/src/auth/scope.guard.ts` admits, because it assembles the
+        # triple from three unrelated request headers and joins them only when an
+        # agent id is also present.
+        #
+        # A COHERENT two-tenant case passes with or without the ancestry check
+        # this tranche added, which is why the suite carries the forged one and
+        # why it runs here rather than being left to a reviewer to run by hand.
+        # It starts its own PostgreSQL testcontainer and FAILS when Docker is
+        # absent rather than skipping.
+        run: pnpm --filter platos-agent exec vitest run src/mcp-platform/mcp-scope.integration.test.ts
+
       - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
         run: pnpm test:win-290
 
