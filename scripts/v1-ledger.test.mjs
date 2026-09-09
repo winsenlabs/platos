@@ -1341,7 +1341,32 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // gains an `insert` half inside the EXISTING `identity-bearer.ts`, and the
     // domain gains its mint planning inside the EXISTING `bearer-token.ts`, so
     // both are edits.
-    packages: 1513,
+    //
+    // WIN-271 (M4.5) 1513 -> 1532. NINETEEN files across TWO package trees, each
+    // itemised where it lands.
+    //
+    //   FOURTEEN NET in `packages/adapters/channel-slack`. The directory held
+    //   TWO generated placeholders and now holds SIXTEEN real files, and
+    //   adoption replaces the placeholders in place rather than adding beside
+    //   them — so this is the only term in this table that is a NET rather than a
+    //   count. Nine are production (`adapter`, `vendor`, `verify`, `normalize`,
+    //   `provider`, `failure`, `send`, `index`, and `provider`'s key reader),
+    //   two are test support (`published-vector`, `fixtures`), one is
+    //   `far-side.ts` — a REAL `node:http` server the outbound suites drive —
+    //   and five are suites. They land on `packages.adapters.source` and
+    //   `.test`, rules that already matched this directory's placeholders.
+    //
+    //   FIVE in `packages/contexts/channels`: the `ChannelRuntime` port, the
+    //   `admitSignedDelivery` use case, the inbound conformance harness the
+    //   adapter's suite drives, `domain/delivery.ts` and its suite. The context's
+    //   `errors.ts`, `domain/index.ts`, `application/index.ts`,
+    //   `application/ports/index.ts`, `dependencies.ts`,
+    //   `testing/fixtures.ts` and `testing/in-memory-adapters.ts` are all
+    //   WIDENED rather than added, and `docs/error-taxonomy.json` — which gains
+    //   the five new codes — is tracked already.
+    //
+    // NO LEDGER RULE CHANGED. 1513 + 14 + 5 = 1532.
+    packages: 1532,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1803,7 +1828,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // survivors and zero declared equivalent. It takes the same blanket
     // `root-infra.tooling.scripts` rule its ten predecessors took (103 -> 104).
     // NO LEDGER RULE CHANGED.
-    "root-infra": 80,
+    // WIN-271 (M4.5) 80 -> 83 with this tranche's mutation sweep, and it is
+    // THREE files rather than the one its ten predecessors took, because this
+    // sweep is RE-RUNNABLE rather than described:
+    // `scripts/mutations-win271-m45.json` (the ledger — nineteen mutations,
+    // nineteen killed, each row naming the CASE that noticed),
+    // `scripts/win271-mutation-plan.json` (the rows it applies) and
+    // `scripts/run-win271-mutations.mjs` (the driver, which was wrong three
+    // times and whose three wrong versions are recorded as a control). All three
+    // take the same blanket `root-infra.tooling.scripts` rule its predecessors
+    // took (104 -> 107). NO LEDGER RULE CHANGED.
+    "root-infra": 83,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1975,7 +2010,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // are non-private with `publishConfig.access: public`, so the entry is
   // mandatory rather than optional, and `pnpm exec changeset status` reads it
   // without complaint. 10 + 0 + 80 + 4 + 10 + 1513 + 23 + 80 = 1720.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1720);
+  //
+  // WIN-271 (M4.5) 1720 -> 1742. TWENTY-TWO files across TWO areas, each
+  // itemised on its own delta above: `packages` +19 (the ChannelRuntime port,
+  // the channel-slack adoption's fourteen NET, and the delivery rule) and
+  // `root-infra` +3 (the mutation ledger, its plan and its driver). The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 10 + 0 + 80 + 4 + 10 + 1532 + 23 + 83 = 1742.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1742);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2195,7 +2237,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND WIN-270's CHANGESET 1719 -> 1720 -- the TWENTY-SECOND hand move. The
     // same one `root-infra` file, reached here by summing the per-area counts.
     // 1719 + 1 = 1720.
-    rulesDocument.baseline.totalFiles + 1720
+    //
+    // AND WIN-271 (M4.5) 1720 -> 1742 -- the TWENTY-THIRD hand move. The same
+    // twenty-two files as the `totalFiles` assertion above (nineteen in
+    // `packages` -- fourteen NET in the newly adopted `channel-slack` and five in
+    // `channels` -- and three in `root-infra`: the mutation ledger, its plan and
+    // its driver), reached here by summing the per-area counts instead of reading
+    // the total, so the two arithmetics can disagree and be caught.
+    // 1720 + 22 = 1742.
+    rulesDocument.baseline.totalFiles + 1742
   );
 });
 
