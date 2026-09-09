@@ -510,6 +510,9 @@ export const AGENTS_UNBOUND_PORTS: readonly string[] = Object.freeze([
  * claim this file has been wrong about before, so it is measured against Node's
  * own resolver rather than asserted, and the day a manifest publishes one of
  * these the case fails and this list has to move.
+ *
+ * `channels` IS STILL ON THIS LIST AFTER WIN-271, and `CHANNELS_UNCOMPOSABLE`
+ * below says why in an operator's own words.
  */
 export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([
   // WIN-267 — `governance` LEFT THIS LIST, and it is the first context ever to.
@@ -547,6 +550,46 @@ export const GOVERNANCE_UNCOMPOSABLE =
   " needing SkillSourceFetcher, EnvironmentKeyDirectory and SkillSandbox on no" +
   " binding row either, and a files peer whose ObjectStore is objectstore-minio," +
   " still on UNIMPLEMENTED_ADAPTERS";
+
+/**
+ * WHY `channels` IS NOT COMPOSED, EVEN THOUGH ITS ADAPTER NOW EXISTS.
+ *
+ * WIN-271 (M4.5) built `channel-slack` and took it off `UNIMPLEMENTED_ADAPTERS`,
+ * so the context's provider-facing half is real: an install that sets
+ * `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` gets an object that verifies Slack
+ * signatures and posts messages. THAT IS NOT ENOUGH TO COMPOSE THE CONTEXT, and
+ * the reason is worth stating rather than leaving for the next tranche to
+ * rediscover.
+ *
+ * `ChannelsDependencies` names `durableRuntime` and `eventBus`, and they are not
+ * conveniences: ADR M0.3 §3 forbids `channels` from importing `conversations` in
+ * either direction, so INBOUND becomes a job enqueued through the kernel's
+ * `DurableRuntime` and OUTBOUND becomes a subscription on the kernel's
+ * `EventBus`. Those two ports are exactly the reverse-edge inversion that makes
+ * the context extractable — and both of their directories, `durable-runtime` and
+ * `redis-streams`, are still generated interfaces on `UNIMPLEMENTED_ADAPTERS`.
+ * A `channels` composed without them would be a context that can authenticate a
+ * webhook and then has nowhere to send the turn.
+ *
+ * A CONSTANT AND NOT A COMMENT, for the reason `GOVERNANCE_UNCOMPOSABLE` is one:
+ * `installation.test.ts` reads it back against `UNIMPLEMENTED_ADAPTERS` and
+ * `ADAPTER_BINDINGS`, so the day either directory gains a constructor this
+ * sentence has to move rather than quietly becoming false.
+ */
+export const CHANNELS_UNCOMPOSABLE =
+  "its ChannelRuntime and ChannelAdapter are satisfied by channel-slack from" +
+  " WIN-271, and its ChannelsRepository by postgres-tenancy. What it still" +
+  " cannot get is the pair ADR M0.3 section 3 makes load-bearing: DurableRuntime," +
+  " which inbound enqueues a turn job through, and EventBus, which outbound" +
+  " subscribes to. Both directories -- durable-runtime and redis-streams -- are" +
+  " generated interfaces on UNIMPLEMENTED_ADAPTERS, so a composed channels" +
+  " could verify a webhook and then have nowhere to send the turn";
+
+/** The two adapter directories `CHANNELS_UNCOMPOSABLE` names. Read back. */
+export const CHANNELS_UNCOMPOSABLE_CHAIN: readonly string[] = Object.freeze([
+  "durable-runtime",
+  "redis-streams",
+]);
 
 /**
  * Assemble every context bundle the constructed adapters can satisfy.

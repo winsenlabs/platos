@@ -19,7 +19,7 @@
   "baseline": {
     "packages/adapters/channel-slack": "61/61 across 5 files",
     "packages/contexts/channels": "274/274 across 16 files",
-    "apps/core-api": "420/420 unit (integration excluded: no Docker on this machine)",
+    "apps/core-api": "421/421 unit on this laptop, and 61/61 integration on the mini against real PostgreSQL 16 + Redis (four testcontainers suites)",
     "scripts/arch/composition-root.mjs": "ok: 59 bindings"
   },
   "mutations": [

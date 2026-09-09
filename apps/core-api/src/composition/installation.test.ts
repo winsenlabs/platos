@@ -55,6 +55,8 @@ import {
 } from "./adapter-bindings.js";
 import {
   AGENTS_UNBOUND_PORTS,
+  CHANNELS_UNCOMPOSABLE,
+  CHANNELS_UNCOMPOSABLE_CHAIN,
   GOVERNANCE_BOUND_READ_SEAMS,
   GOVERNANCE_ROOT_SATISFIED_PORTS,
   GOVERNANCE_UNCOMPOSABLE,
@@ -70,9 +72,11 @@ import {
  * A platform an install could really set, with every group this tranche can
  * construct declared.
  *
- * The four ClickHouse/object-store/channel/durable groups are deliberately NOT
- * here: their directories have no constructor, so declaring them would prove
- * nothing and would only make the case read as though it had.
+ * The ClickHouse, object-store and durable groups are deliberately NOT here:
+ * their directories have no constructor, so declaring them would prove nothing
+ * and would only make the case read as though it had. The CHANNEL group used to
+ * be in that list and left it at WIN-271 (M4.5), when `channel-slack` gained
+ * one.
  */
 const FULLY_DECLARED = Object.freeze({
   PLATOS_ENVIRONMENT: "test",
@@ -659,6 +663,47 @@ describe("the context bundles those adapters can satisfy", () => {
     // AND THE TWO AGENTS PORTS ARE THE SAME TWO `AGENTS_UNBOUND_PORTS` NAMES, so
     // the chain constant cannot drift away from the list G3 wrote.
     expect(GOVERNANCE_UNCOMPOSABLE_CHAIN).toEqual(expect.arrayContaining([...AGENTS_UNBOUND_PORTS]));
+  });
+
+  it("still cannot compose channels, and names the two directories that stop it", () => {
+    // WIN-271 (M4.5) BUILT THE ADAPTER AND DID NOT COMPOSE THE CONTEXT, and this
+    // case exists so nobody reads the adoption as the composition. An install
+    // that declares `channels.slack` now gets an object that verifies Slack
+    // signatures over the exact received octets and posts messages under a
+    // deadline — and `channels` is still absent.
+    const { app, construction } = readiness(FULLY_DECLARED);
+    expect(construction.adapters["channel-slack"]).toBeDefined();
+    expect(app.contexts.channels).toBeUndefined();
+
+    // THE CHAIN, JOINED TO THE BINDING TABLE AND TO THE UNIMPLEMENTED LIST
+    // rather than to the sentence. Both directories are DECLARED — the ports
+    // exist and are bound — and both are generated interfaces, which is a
+    // different fact from an unbound port and must not be allowed to look like
+    // one. `ChannelsDependencies` names `durableRuntime` and `eventBus` because
+    // ADR M0.3 §3 forbids `channels` from importing `conversations` in either
+    // direction: inbound enqueues a job and outbound subscribes to an event, so
+    // a `channels` composed without them could authenticate a webhook and then
+    // have nowhere to send the turn.
+    expect(CHANNELS_UNCOMPOSABLE_CHAIN).toEqual(["durable-runtime", "redis-streams"]);
+    for (const directory of CHANNELS_UNCOMPOSABLE_CHAIN) {
+      expect(ADAPTER_BINDINGS.map((binding) => binding.adapter)).toContain(directory);
+      expect(UNIMPLEMENTED_ADAPTERS).toContain(directory);
+      expect(construction.adapters[directory as AdapterName]).toBeUndefined();
+    }
+
+    // AND THE PORTS THOSE TWO CARRY ARE THE TWO SLOTS THE CONTEXT NAMES, read
+    // off the binding table rather than retyped, so the sentence cannot drift
+    // away from the wiring it describes.
+    const carried = CHANNELS_UNCOMPOSABLE_CHAIN.flatMap((directory) =>
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === directory).map((binding) => binding.port),
+    );
+    expect(carried.sort()).toEqual(["DurableRuntime", "EventBus"]);
+    for (const port of carried) expect(CHANNELS_UNCOMPOSABLE).toContain(port);
+
+    // The context's factory is not importable either, which is the SECOND
+    // blocker and the one `UNIMPORTABLE_CONTEXT_FACTORIES` measures against
+    // Node's own resolver.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toContain("channels");
   });
 
   it("holds the governance port partition, and the sink it does build", () => {
