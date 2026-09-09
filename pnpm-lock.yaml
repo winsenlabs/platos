@@ -292,6 +292,9 @@ importers:
       '@platos/adapter-model-router-providers':
         specifier: workspace:*
         version: link:../../packages/adapters/model-router-providers
+      '@platos/adapter-node-crypto-digest':
+        specifier: workspace:*
+        version: link:../../packages/adapters/node-crypto-digest
       '@platos/adapter-notifier-email':
         specifier: workspace:*
         version: link:../../packages/adapters/notifier-email
@@ -316,6 +319,9 @@ importers:
       '@platos/adapter-redis-streams':
         specifier: workspace:*
         version: link:../../packages/adapters/redis-streams
+      '@platos/adapter-tokenmint-totp':
+        specifier: workspace:*
+        version: link:../../packages/adapters/tokenmint-totp
       '@platos/context-agents':
         specifier: workspace:*
         version: link:../../packages/contexts/agents
@@ -377,6 +383,9 @@ importers:
         specifier: ^7.8.1
         version: 7.8.2
     devDependencies:
+      '@testcontainers/postgresql':
+        specifier: ^10.28.0
+        version: 10.28.0
       '@testcontainers/redis':
         specifier: ^10.28.0
         version: 10.28.0
@@ -1024,6 +1033,9 @@ importers:
 
   packages/adapters/keyring-envelope:
     dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../contexts/identity-access
       '@platos/context-secrets':
         specifier: workspace:*
         version: link:../../contexts/secrets
@@ -1054,6 +1066,12 @@ importers:
       zod:
         specifier: 3.25.76
         version: 3.25.76
+
+  packages/adapters/node-crypto-digest:
+    dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../contexts/identity-access
 
   packages/adapters/notifier-email:
     dependencies:
@@ -1151,6 +1169,9 @@ importers:
       '@platos/context-memory':
         specifier: workspace:*
         version: link:../../contexts/memory
+      '@platos/context-providers':
+        specifier: workspace:*
+        version: link:../../contexts/providers
       '@platos/kernel':
         specifier: workspace:*
         version: link:../../kernel
@@ -1167,12 +1188,25 @@ importers:
       '@platos/context-identity-access':
         specifier: workspace:*
         version: link:../../contexts/identity-access
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
+    devDependencies:
+      '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
 
   packages/adapters/redis-streams:
     dependencies:
       '@platos/kernel':
         specifier: workspace:*
         version: link:../../kernel
+
+  packages/adapters/tokenmint-totp:
+    dependencies:
+      '@platos/context-identity-access':
+        specifier: workspace:*
+        version: link:../../contexts/identity-access
 
   packages/contexts/agents:
     dependencies:

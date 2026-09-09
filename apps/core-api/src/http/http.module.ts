@@ -25,12 +25,47 @@ import { APP_FILTER } from "@nestjs/core";
 
 import type { AppModule } from "../app.module.js";
 import type { LifecycleState } from "../health/readiness.js";
+import { BffSessionController } from "../transports/bff/session.controller.js";
+import { REST_APPLICATION, type RestApplication } from "../transports/rest/dependencies.js";
+import { EnvironmentEndUsersController } from "../transports/rest/environment-end-users.controller.js";
+import { IdentitySessionController } from "../transports/rest/identity-session.controller.js";
+import { OrganizationsController } from "../transports/rest/organizations.controller.js";
+import { ProjectsController } from "../transports/rest/projects.controller.js";
 import { DomainExceptionFilter } from "./domain-exception.filter.js";
 import { HEALTH_DEPENDENCIES, HealthController, type HealthDependencies } from "./health.controller.js";
 import { createIdempotencyGate } from "./idempotency-middleware.js";
 import { NotFoundController } from "./not-found.controller.js";
 
-@Module({})
+/**
+ * THE V1 BUSINESS SURFACE, DECLARED STATICALLY — AND THE ORDER IS THE REASON.
+ *
+ * These five controllers are in the DECORATOR's `controllers` array while the two
+ * process-edge ones stay in `forApplication`'s, and that is not a stylistic split.
+ * Nest's `DependenciesScanner.reflectControllers` reads
+ * `[...reflectMetadata(class), ...dynamicMetadataByToken(...)]` — static first,
+ * dynamic second — and Express matches in registration order. So a business route
+ * declared here is registered AHEAD of `NotFoundController`'s `@All("{*path}")`,
+ * which is the only arrangement in which it can ever be reached. Move one of these
+ * into the dynamic array and every route in it answers 404 while every test that
+ * mounts a controller directly keeps passing.
+ *
+ * IT IS ALSO WHAT THE MANIFEST GENERATOR READS. `assertMountedControllerPolicy` in
+ * `apps/agent/scripts/generate-control-plane.mjs` resolves each core-api controller
+ * to the module file whose `@Module({ controllers: [...] })` INLINE ARRAY lists it,
+ * and refuses generation for a class it cannot find there. A controller added to
+ * `apps/core-api/src/transports` and not to this array fails the generator by name
+ * rather than silently leaving the census — the "strict root" the second scan root
+ * was added to create.
+ */
+@Module({
+  controllers: [
+    IdentitySessionController,
+    OrganizationsController,
+    ProjectsController,
+    EnvironmentEndUsersController,
+    BffSessionController,
+  ],
+})
 export class CoreApiHttpModule implements NestModule {
   /**
    * The module class takes the SAME value the health controller takes.
@@ -56,11 +91,19 @@ export class CoreApiHttpModule implements NestModule {
    */
   static forApplication(app: AppModule, state: LifecycleState): DynamicModule {
     const dependencies: HealthDependencies = { app, state };
+    const restApplication: RestApplication = { app };
     return {
       module: CoreApiHttpModule,
       controllers: [HealthController, NotFoundController],
       providers: [
         { provide: HEALTH_DEPENDENCIES, useValue: dependencies },
+        /**
+         * What every V1 controller is handed. `useValue` for the reason the filter
+         * below is: the value is THIS application, and a class the container
+         * instantiated would have to be told which one by reflection — the wiring
+         * this module refuses.
+         */
+        { provide: REST_APPLICATION, useValue: restApplication },
         {
           /**
            * WIN-267 (M4.1) / WIN-260 (c). The global exception filter.

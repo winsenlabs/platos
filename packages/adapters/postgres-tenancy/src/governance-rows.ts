@@ -96,7 +96,28 @@ export const UNREADABLE_EVAL_COST = "governance.row.unreadable_eval_cost";
 /** The discriminator that tells an envelope from a legacy attribute bag. */
 export const SAFETY_METADATA_MARKER = "__governance";
 
-/** Restrict a read to one environment. Every read in the five stores uses it. */
+/**
+ * Restrict a read to one environment. Every read in the five stores uses it.
+ *
+ * THE LEAF ALONE, AND SINCE WIN-303 THAT IS SAFE RATHER THAN A HOLE. It used to
+ * be the hole: a scope is a TRIPLE, this checked one member of it, and a caller
+ * presenting a real environment beside somebody else's project or organization
+ * was served by every read and every write below. `governance-scope.ts` now
+ * resolves the whole triple against `Environment` and `Project` before any of
+ * the five stores sends a statement, and refuses a forged ancestry under a code
+ * of each store's own — so the identifier this function narrows by has already
+ * been proven to sit where the scope claims it does.
+ *
+ * IT IS DELIBERATELY NOT WIDENED TO REPEAT THAT CHECK. The `where`-clause
+ * spelling — `{ environmentId, environment: { project: { id, organizationId } } }`,
+ * which is what the three READ SEAMS use — would be a second copy of one fact,
+ * and the copy could never be turned red: the resolver refuses first, so no test
+ * could distinguish this function with the clauses from this function without
+ * them. A guard nothing can falsify is the same as no guard at all, and the two
+ * answers are not interchangeable anyway: a filter answers a tampered scope with
+ * an EMPTY SET, which this context has already spent on concealing whose row an
+ * id belongs to. `governance-scope.ts` carries the argument in full.
+ */
 export function scopedWhere(scope: EnvironmentScope): { readonly environmentId: string } {
   return { environmentId: scope.environmentId };
 }
@@ -110,6 +131,17 @@ export function scopedWhere(scope: EnvironmentScope): { readonly environmentId: 
  * `Project`, resolved by the database in the SAME statement — not a widening
  * read of the tree followed by an `IN` list, which is the N+1 this shape is easy
  * to write by accident.
+ *
+ * EACH LEVEL NAMES ONE CLAUSE, AND THE MEMBERS IT DROPS ARE CHECKED BEFORE IT
+ * RUNS. An environment-level tenant scope narrows by the environment alone and a
+ * project-level one by the project alone, which on its own would accept the same
+ * tampered triple `scopedWhere` used to. Since WIN-303 the four subject methods
+ * that use this — `SafetyLedger.countSubject`/`anonymizeSubject` and
+ * `RatingsRepository.countSubject`/`eraseSubject` — resolve their scope through
+ * `governance-scope.ts` first, which is where an environment under a foreign
+ * project, or a project under a foreign organization, is refused. An
+ * ORGANIZATION-level scope asserts no relation at all, so there is nothing to
+ * contradict and no statement is spent looking.
  */
 export function tenantWhere(scope: TenantScope): Record<string, unknown> {
   if (scope.level === "environment") return { environmentId: scope.environmentId };

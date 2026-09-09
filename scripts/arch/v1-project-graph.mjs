@@ -13,7 +13,15 @@ const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
 // thirteenth adapter directory. This expectation is derived independently of
 // `scripts/arch/gen-v1-skeleton.mjs` and is maintained separately on purpose,
 // so the two agreeing is evidence rather than a tautology.
-export const EXPECTED_PROJECT_COUNT = 33;
+// WIN-267 A1 33 -> 34. `packages/adapters/node-crypto-digest`, the fourteenth
+// adapter directory: the identity-access `SecretHasher`, which holds no key and
+// no client and therefore could not be a row on an existing directory.
+// WIN-267 A2 33 -> 34. `packages/adapters/tokenmint-totp`, the fourteenth
+// adapter directory. Derived independently of `scripts/arch/gen-v1-skeleton.mjs`
+// for the reason above, and it is not a formality: the two models disagreed on
+// the EDGE count on the first run of this tranche, which is exactly what
+// maintaining them separately is for.
+export const EXPECTED_PROJECT_COUNT = 35;
 // 94 -> 95 (WIN-297). `apps/core-api` gained one workspace edge, to
 // `packages/kernel`.
 //
@@ -209,7 +217,39 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // the count by DIFFERENT models -- one walks the discovered graph, one derives a
 // reference per row owner -- and are maintained separately on purpose, so the
 // two can disagree and be caught.
-export const EXPECTED_EDGE_COUNT = 116;
+//
+// WIN-267 A1: three edges, each one nameable.
+//   1. `keyring-envelope` -> `identity-access`, the owner edge carrying
+//      `MfaSecretCipher`. A reference is per PACKAGE, so a directory that
+//      already served `secrets` and now serves a second context gains exactly
+//      one -- and becomes the layout's second multi-owner directory.
+//   2. `node-crypto-digest` -> `identity-access`, the fourteenth directory's
+//      only owner edge.
+//   3. `apps/core-api` -> `node-crypto-digest`, the composition-root edge every
+//      adapter gets.
+// NO CYCLE. `identity-access` is ADR M0.3 §1's strictest allow-list -- the kernel
+// and nothing else -- so it names no adapter and cannot name either of these, and
+// `apps/core-api` is the sink of the whole graph.
+//
+// WIN-267 A2: two more of the same two shapes, for the fifteenth directory --
+// `tokenmint-totp` -> `identity-access` and `apps/core-api` -> `tokenmint-totp`.
+// 116 + 3 + 2 = 121.
+//
+// WIN-267 A3: ONE more. `packages/adapters/redis-cache` ->
+// `packages/contexts/providers`, carrying `ProviderProbeCache`. A FOURTH owner
+// edge on the directory that had three, and a reference per PACKAGE rather than
+// per port, so one new binding is again exactly one new edge. The tranche's
+// OTHER half -- `redis-ratelimit` becoming a real adapter -- moves NO edge: its
+// `identity-access` reference has existed since the skeleton was generated, and
+// a placeholder that becomes real changes what a project CONTAINS rather than
+// what it points AT. That is also why WIN-267's composition tranche adds none:
+// `apps/core-api` already referenced `@platos/context-secrets` and
+// `@platos/context-providers` for their contract TYPES, and composing them turns
+// two type imports into value imports off the same package entry.
+//
+// 121 + 1 = 122, the merged figure, which no single branch stated: A1+A2 pinned
+// 121 for themselves and A3 pinned 117 for itself, both over the same 116 base.
+export const EXPECTED_EDGE_COUNT = 122;
 
 // EXTERNAL (registry) dependencies, per project. Deliberately a SECOND axis.
 //
@@ -280,6 +320,22 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   // runtime set would follow the adapter into the production image and into the
   // SBOM of a process that never starts a container.
   "packages/adapters/redis-cache": {
+    ioredis: "^5.6.1",
+  },
+  // WIN-267 A3. The SECOND directory to declare the Redis client, and it is a
+  // widening of the entry above rather than a breach of it. `ioredis` is
+  // deliberately absent from `SDK_CONTAINMENT` in
+  // scripts/arch/boundary-rules.mjs — ADR M0.3 §4 lists THREE `redis-*`
+  // directories, each with "one namespaced keyspace, one owner", so a
+  // containment rule naming one home would refuse the other two. What §4 asks
+  // for is one CLIENT per directory, which is what `src/client.ts` in each of
+  // them is, and this table is where that second client becomes a reviewed line
+  // rather than an accident. Range byte-identical to the entry above and to
+  // `apps/agent`'s, so the lockfile gained seven lines and no new resolution.
+  //
+  // `@testcontainers/redis` is deliberately NOT here, for the reason the entry
+  // above states: it is a devDependency and this axis is about what SHIPS.
+  "packages/adapters/redis-ratelimit": {
     ioredis: "^5.6.1",
   },
   "packages/adapters/model-router-providers": {
@@ -366,7 +422,13 @@ export const EXPECTED_ADAPTER_OWNERS = {
   "clickhouse-observability": ["observability"],
   "objectstore-minio": ["files"],
   "redis-ratelimit": ["identity-access"],
-  "redis-cache": ["memory", "jobs", "kernel"],
+  // WIN-267 A3 adds `providers`, the FOURTH owner. It is an owner edge and not
+  // an `ADAPTER_EXTRA_PROJECTS` row because `providers` PUBLISHES
+  // `ProviderProbeCache` — its own `application/ports/index.ts` calls it "a
+  // context-owned cache seam" and records why ADR M0.3 §13's map has no home for
+  // it — so this directory reaches the context through a port the context owns,
+  // which is exactly what an owner edge is.
+  "redis-cache": ["memory", "jobs", "kernel", "providers"],
   "redis-streams": ["kernel"],
   "model-router-providers": ["providers"],
   "channel-slack": ["channels"],
@@ -380,7 +442,26 @@ export const EXPECTED_ADAPTER_OWNERS = {
   // It gets no row in `EXPECTED_MULTI_OWNER_ADAPTERS` for exactly that reason,
   // and the omission is the claim: the one directory entitled to more than one
   // OWNER is still `postgres-tenancy`, at seventeen.
-  "keyring-envelope": ["secrets"],
+  // WIN-267 A1. A SECOND owner, and the first on this directory that is not
+  // `secrets`: `identity-access`'s `MfaSecretCipher`. One more owner is one more
+  // edge, because a project reference is per package — and it is here rather
+  // than in a fourteenth directory because AES-256 root key bytes have exactly
+  // one custodian in this tree and rule (j2) forbids a second directory from
+  // reaching them. It therefore joins `postgres-tenancy` and `redis-cache` in
+  // `EXPECTED_MULTI_OWNER_ADAPTERS` below, and the sentence that used to say the
+  // omission was the claim is now false and is corrected rather than deleted.
+  "keyring-envelope": ["secrets", "identity-access"],
+  // WIN-267 A1. The fourteenth directory: one owner, one edge, one port.
+  "node-crypto-digest": ["identity-access"],
+  // WIN-267 A2. ONE owner and TWO bindings, for the same reason
+  // `keyring-envelope` above has one owner and three: this map is keyed by
+  // OWNER, and `identity-access` publishing `TokenMinter` and
+  // `TotpCodeVerifier` separately is still one project reference.
+  //
+  // No row in `EXPECTED_MULTI_OWNER_ADAPTERS`, and the omission is again the
+  // claim: `postgres-tenancy` at seventeen and `redis-cache` at three remain the
+  // only directories entitled to more than one owner.
+  "tokenmint-totp": ["identity-access"],
 };
 
 /**
@@ -391,7 +472,18 @@ export const EXPECTED_ADAPTER_OWNERS = {
  * check below fails BOTH ways: an unlisted directory with two owners, and a
  * listed one that has stopped having the number recorded here.
  */
-export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 3 };
+// WIN-267 A1 adds the THIRD entry: `keyring-envelope` at 2 (`secrets` and
+// `identity-access`). It is an exception with a reason no other directory can
+// borrow -- it is the sole custodian of AES-256 root key bytes, and rule (j2)
+// `adapter-is-self-contained` makes "put the second port in its own directory"
+// unrepresentable for anything that needs those bytes.
+//
+// WIN-267 A3 takes `redis-cache` from three to FOUR: `providers`'
+// `ProviderProbeCache` is the same client again, so that directory carries an
+// owner edge into `packages/contexts/providers` alongside `memory`, `jobs` and
+// `kernel`. `tokenmint-totp` earns NO row: two ports, ONE owner, so it is
+// multi-PORT without being multi-OWNER.
+export const EXPECTED_MULTI_OWNER_ADAPTERS = { "postgres-tenancy": 17, "redis-cache": 4, "keyring-envelope": 2 };
 
 /**
  * Edges an adapter has that are NOT owner edges, declared separately.

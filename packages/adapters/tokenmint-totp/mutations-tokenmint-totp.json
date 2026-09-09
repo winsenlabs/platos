@@ -1,0 +1,725 @@
+{
+  "issue": "WIN-267",
+  "tranche": "A2",
+  "dimension": "the identity-access TokenMinter and TotpCodeVerifier, and the fourteenth adapter directory that holds them",
+  "branch": "tejas/win-267-a2-tokens",
+  "generatedFrom": "tejas/win-267-a2-tokens, branched from v1 @ 007007f2",
+  "howToReproduce": "Apply the `from` -> `to` replacement in `file`, run `command`, and observe the named case(s) fail. Restore. NO ENTRY NEEDS DOCKER: this directory holds no vendor client, so every suite it drives runs on any machine with node and pnpm, and the two composition suites drive an unroutable PostgreSQL and Redis on purpose. A `pnpm build:v1` entry LEAVES A BROKEN dist BEHIND when it fails, and the next vitest run resolves the workspace package through that dist -- rebuild between entries or a later entry records failures that belong to the previous one's wreckage. That was observed on the first sweep of this ledger and is the reason the driver rebuilds after every build-command entry.",
+  "summary": {
+    "entries": 50,
+    "killed": 48,
+    "survived": 0,
+    "declaredUnfalsifiable": 2
+  },
+  "notes": [
+    "NOTHING SURVIVED UNEXPLAINED. Two entries are DECLARED UNFALSIFIABLE with a measured reason and neither is a shrug: `verify-constant-time-primitive-replaced` is a timing property a value-based suite cannot see, and `port-satisfaction-obligation-dropped` is a PRE-EXISTING hole in the composition root's compile-time proof that this sweep FOUND and that affects all fifty-one bindings rather than this tranche's two. Both are written out in full below.",
+    "ONE MUTATION WAS WITHDRAWN AS VACUOUS RATHER THAN COUNTED AS A SURVIVOR. `identity-access-assembled-anyway` guarded the `unassembled.push` for identity-access on `postgres !== undefined`, which is TRUE in every case the suite drives -- the fully-declared install constructs `postgres-tenancy` against an unresolvable host and gets an object anyway -- so it changed no behaviour and was not a mutation at all. It is not in the entry list; `identity-access-declared-assembled`, which deletes the push outright, replaces it and IS killed.",
+    "NO ENTRY IS KILLED BY AN ASSERTION COMPARING TWO THINGS THIS TRANCHE CONTROLS. The eleven width entries are killed against `internal-packages/tenancy-database/src/auth.ts`, `apps/agent/src/oauth/oauth.service.ts` and three further extraction-source files, none of which this tranche edits and all of which are byte-identical between `v1` and `origin/main`. The algorithm entries are killed against RFC 4226 Appendix D and RFC 6238 Appendix B, which are outside this repository entirely, and against eighteen answers recorded from the extraction source's own `generateTotp`. The base32 entries are killed against RFC 4648 §10. The composition entries are killed by gates whose expectations are derived from the generator's `ADAPTERS` table and the filesystem.",
+    "THE `verify-returns-on-first-match` ENTRY IS THE ONE THIS LEDGER WAS HARDEST TO MAKE HONEST. \"It does not early-exit\" is normally unfalsifiable by value: with one matching candidate the two implementations agree exactly. A secret whose codes COLLIDE at two adjacent counters was searched for (652,483 draws of a 20-byte secret) and confirmed against the extraction source's `generateTotp`, and with it the two disagree on the RETURNED COUNTER rather than on timing. That is why this entry is a kill and `verify-constant-time-primitive-replaced` is not.",
+    "TWO ENTRIES MUTATE A TEST RATHER THAN PRODUCTION CODE, and they are the controls on the control. `extractor-misses-the-inline-mint-sites` and `extractor-reads-one-file-instead-of-five` break the parser that reads the extraction source, and both are killed by the non-vacuity cases in the same file -- the pinned site count and the prefix-set comparison against `TOKEN_PREFIXES`. Without them, a regex that silently matched nothing would have made all eleven width comparisons pass while proving nothing, which is this programme's first lesson arriving in a new disguise.",
+    "THE TWO CANARY GATES ARE MUTATED TOO. `generator-adoption-removed` un-adopts the project and `gen-v1-skeleton --check` fails CLOSED -- the two released placeholders reappear MISSING and the eleven real files become EXTRA -- and `census-row-removed` / `census-row-understated` show the test-case census refusing an unpinned package and an understated pin by one case. A pin that could be lowered to match reality is not a pin."
+  ],
+  "entries": [
+    {
+      "id": "encode-alphabet-base32hex",
+      "file": "packages/adapters/tokenmint-totp/src/base32.ts",
+      "from": "const ALPHABET = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567\";",
+      "to": "const ALPHABET = \"0123456789ABCDEFGHIJKLMNOPQRSTUV\";",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'f' as the RFC's 'MY======' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'fo' as the RFC's 'MZXQ====' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foo' as the RFC's 'MZXW6===' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foob' as the RFC's 'MZXW6YQ=' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'fooba' as the RFC's 'MZXW6YTB' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foobar' as the RFC's 'MZXW6YTBOI======' without its padding",
+        "src/base32.test.ts > decodeBase32 against RFC 4648 §10 > decodes the RFC's padded 'MY======' back to 'f'",
+        "src/base32.test.ts > decodeBase32 against RFC 4648 §10 > decodes the RFC's padded 'MZXQ====' back to 'fo'"
+      ]
+    },
+    {
+      "id": "encode-trailing-group-dropped",
+      "file": "packages/adapters/tokenmint-totp/src/base32.ts",
+      "from": "  if (bits > 0) output += ALPHABET[(value << (5 - bits)) & 31];",
+      "to": "  if (bits > 99) output += ALPHABET[(value << (5 - bits)) & 31];",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'f' as the RFC's 'MY======' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'fo' as the RFC's 'MZXQ====' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foo' as the RFC's 'MZXW6===' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foob' as the RFC's 'MZXW6YQ=' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foobar' as the RFC's 'MZXW6YTBOI======' without its padding",
+        "src/base32.test.ts > the alphabet is §6's and not §7's > maps the first five-bit group to A, which both alphabets agree on",
+        "src/base32.test.ts > the alphabet is §6's and not §7's > maps the value 26 to 2, which is §6, and never to Q, which is §7",
+        "src/base32.test.ts > the alphabet is §6's and not §7's > maps the value 31 to 7, which is §6, and never to V, which is §7"
+      ]
+    },
+    {
+      "id": "encode-shift-off-by-one",
+      "file": "packages/adapters/tokenmint-totp/src/base32.ts",
+      "from": "      output += ALPHABET[(value >>> (bits - 5)) & 31];",
+      "to": "      output += ALPHABET[(value >>> (bits - 4)) & 31];",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'f' as the RFC's 'MY======' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'fo' as the RFC's 'MZXQ====' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foo' as the RFC's 'MZXW6===' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foob' as the RFC's 'MZXW6YQ=' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'fooba' as the RFC's 'MZXW6YTB' without its padding",
+        "src/base32.test.ts > encodeBase32 against RFC 4648 §10 > encodes 'foobar' as the RFC's 'MZXW6YTBOI======' without its padding",
+        "src/base32.test.ts > the alphabet is §6's and not §7's > maps the value 26 to 2, which is §6, and never to Q, which is §7",
+        "src/base32.test.ts > the alphabet is §6's and not §7's > maps the value 31 to 7, which is §6, and never to V, which is §7"
+      ]
+    },
+    {
+      "id": "decode-skips-unknown-character",
+      "file": "packages/adapters/tokenmint-totp/src/base32.ts",
+      "from": "    if (index === undefined) {\n      throw new Base32SecretError(\"secret is not RFC 4648 base32\");\n    }",
+      "to": "    if (index === undefined) {\n      continue;\n    }",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/base32.test.ts > the alphabet is §6's and not §7's > refuses V, which is a §7 character and not a §6 one",
+        "src/base32.test.ts > a secret that is not base32 is refused rather than repaired > refuses a digit outside 2-7",
+        "src/base32.test.ts > a secret that is not base32 is refused rather than repaired > refuses a space, so a retyped secret is not silently a different one",
+        "src/base32.test.ts > a secret that is not base32 is refused rather than repaired > refuses the group separator a human might type",
+        "src/base32.test.ts > a secret that is not base32 is refused rather than repaired > refuses padding that is not at the end",
+        "src/totp-code-verifier.test.ts > an unreadable secret is a broken credential, not a wrong code > throws rather than answering null on a secret that is not base32"
+      ]
+    },
+    {
+      "id": "decode-case-fold-removed",
+      "file": "packages/adapters/tokenmint-totp/src/base32.ts",
+      "from": "  for (const character of input.toUpperCase().replace(/=+$/u, \"\")) {",
+      "to": "  for (const character of input.replace(/=+$/u, \"\")) {",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/base32.test.ts > a secret that is not base32 is refused rather than repaired > folds case, because an otpauth URI is routinely lower-cased in transit"
+      ]
+    },
+    {
+      "id": "decode-byte-threshold-off-by-one",
+      "file": "packages/adapters/tokenmint-totp/src/base32.ts",
+      "from": "    if (bits >= 8) {",
+      "to": "    if (bits > 8) {",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/base32.test.ts > decodeBase32 against RFC 4648 §10 > decodes the RFC's padded 'MZXW6YTB' back to 'fooba'",
+        "src/base32.test.ts > decodeBase32 against RFC 4648 §10 > decodes the unpadded 'MZXW6YTB' back to 'fooba'",
+        "src/base32.test.ts > round trip over the width this adapter actually mints > recovers all twenty bytes, and needs no padding to do it",
+        "src/base32.test.ts > round trip over the width this adapter actually mints > recovers every length from one byte to twenty",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '755224' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '287082' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '083773' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '081804' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 37037036n"
+      ]
+    },
+    {
+      "id": "mint-one-width-for-every-kind",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "randomBytes(MINTED_TOKEN_BYTES[kind])",
+      "to": "randomBytes(32)",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/token-minter.test.ts > the random part is the width the table declares > decodes to exactly the declared number of bytes, for every kind",
+        "src/token-minter.test.ts > the random part is the width the table declares > emits the character length base64url gives each width"
+      ]
+    },
+    {
+      "id": "mint-entity-bearer-narrowed-to-32",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "  entityBearerToken: 48,",
+      "to": "  entityBearerToken: 32,",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-mint-widths.test.ts > MINTED_TOKEN_BYTES equals the extraction source, kind by kind > mints 'entityBearerToken' at the width production mints it at",
+        "src/oracle-mint-widths.test.ts > MINTED_TOKEN_BYTES equals the extraction source, kind by kind > keeps the two kinds that are not thirty-two bytes",
+        "src/token-minter.test.ts > the random part is the width the table declares > emits the character length base64url gives each width"
+      ]
+    },
+    {
+      "id": "mint-client-id-widened-to-32",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "  oauthClientId: 16,",
+      "to": "  oauthClientId: 32,",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-mint-widths.test.ts > MINTED_TOKEN_BYTES equals the extraction source, kind by kind > mints 'oauthClientId' at the width production mints it at",
+        "src/oracle-mint-widths.test.ts > MINTED_TOKEN_BYTES equals the extraction source, kind by kind > keeps the two kinds that are not thirty-two bytes",
+        "src/token-minter.test.ts > the random part is the width the table declares > emits the character length base64url gives each width"
+      ]
+    },
+    {
+      "id": "mint-base64-not-base64url",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": ".toString(\"base64url\")}` as RawToken;",
+      "to": ".toString(\"base64\")}` as RawToken;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/token-minter.test.ts > the random part is the width the table declares > emits the character length base64url gives each width",
+        "src/token-minter.test.ts > the random part is the width the table declares > emits base64url and never base64, so a token is URL- and cookie-safe"
+      ]
+    },
+    {
+      "id": "mint-prefix-omitted",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "      return `${prefixOf(kind)}${randomBytes(MINTED_TOKEN_BYTES[kind]).toString(\"base64url\")}` as RawToken;",
+      "to": "      return `${randomBytes(MINTED_TOKEN_BYTES[kind]).toString(\"base64url\")}` as RawToken;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/token-minter.test.ts > every kind mints under its registered prefix > carries the domain registry's prefix for every one of the eleven kinds",
+        "src/token-minter.test.ts > every kind mints under its registered prefix > carries no other kind's prefix, so classification cannot be ambiguous",
+        "src/token-minter.test.ts > the random part is the width the table declares > decodes to exactly the declared number of bytes, for every kind",
+        "src/token-minter.test.ts > the random part is the width the table declares > emits the character length base64url gives each width"
+      ]
+    },
+    {
+      "id": "totp-secret-sixteen-bytes",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "export const TOTP_SECRET_BYTES = 20;",
+      "to": "export const TOTP_SECRET_BYTES = 16;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-mint-widths.test.ts > the two widths that are not token widths > mints a TOTP secret at the extraction source's twenty bytes",
+        "src/token-minter.test.ts > the TOTP secret is what an authenticator application reads > is thirty-two upper-case base32 characters with no padding",
+        "src/token-minter.test.ts > the TOTP secret is what an authenticator application reads > decodes to the twenty bytes RFC 4226 §4 R6 asks for"
+      ]
+    },
+    {
+      "id": "recovery-code-count-guard-removed",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "      if (!Number.isSafeInteger(count) || count < 1) throw new RecoveryCodeCountError(count);",
+      "to": "      if (count === -999) throw new RecoveryCodeCountError(count);",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/token-minter.test.ts > a count that is not a count is refused rather than rounded > refuses zero",
+        "src/token-minter.test.ts > a count that is not a count is refused rather than rounded > refuses a negative count, which Array.from would silently make empty",
+        "src/token-minter.test.ts > a count that is not a count is refused rather than rounded > refuses a fraction, which Array.from would silently truncate",
+        "src/token-minter.test.ts > a count that is not a count is refused rather than rounded > refuses NaN",
+        "src/token-minter.test.ts > a count that is not a count is refused rather than rounded > refuses a count past the safe integer range"
+      ]
+    },
+    {
+      "id": "recovery-code-not-uppercased",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "  return out.toUpperCase();",
+      "to": "  return out;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/token-minter.test.ts > recovery codes are the display form the extraction source shows > emits four groups of five upper-case hexadecimal characters",
+        "src/token-minter.test.ts > recovery codes are the display form the extraction source shows > normalises to the twenty hexadecimal characters ten bytes produce"
+      ]
+    },
+    {
+      "id": "recovery-code-group-of-four",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "const RECOVERY_CODE_GROUP = 5;",
+      "to": "const RECOVERY_CODE_GROUP = 4;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/token-minter.test.ts > recovery codes are the display form the extraction source shows > emits four groups of five upper-case hexadecimal characters"
+      ]
+    },
+    {
+      "id": "recovery-codes-not-frozen",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "      return Object.freeze(\n        Array.from({ length: count }, () => formatRecoveryCode(randomBytes(RECOVERY_CODE_BYTES))),\n      );",
+      "to": "      return Array.from({ length: count }, () => formatRecoveryCode(randomBytes(RECOVERY_CODE_BYTES)));",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/token-minter.test.ts > recovery codes are the display form the extraction source shows > hands back a frozen array, so a caller cannot lengthen the batch it showed"
+      ]
+    },
+    {
+      "id": "recovery-code-bytes-narrowed",
+      "file": "packages/adapters/tokenmint-totp/src/token-minter.ts",
+      "from": "export const RECOVERY_CODE_BYTES = 10;",
+      "to": "export const RECOVERY_CODE_BYTES = 8;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-mint-widths.test.ts > the two widths that are not token widths > mints a recovery code at the extraction source's ten bytes",
+        "src/token-minter.test.ts > recovery codes are the display form the extraction source shows > emits four groups of five upper-case hexadecimal characters",
+        "src/token-minter.test.ts > recovery codes are the display form the extraction source shows > normalises to the twenty hexadecimal characters ten bytes produce"
+      ]
+    },
+    {
+      "id": "verify-returns-on-first-match",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "        matches += equal;",
+      "to": "        if (equal === 1) return counter;\n        matches += equal;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/totp-code-verifier.test.ts > verify tests every candidate rather than returning on the first match > returns the LAST matching counter when two candidates match",
+        "src/totp-code-verifier.test.ts > verify tests every candidate rather than returning on the first match > still returns the last match when the window carries a non-matching tail"
+      ]
+    },
+    {
+      "id": "verify-sign-mask-removed",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "    (((digest[offset] as number) & SIGN_MASK) << 24) |",
+      "to": "    (((digest[offset] as number) & 0xff) << 24) |",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '755224' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '287082' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '965462' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1234567890n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '269518' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '050071' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '219645' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '493723' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 1234567890n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '858575' for 'AAAQEAYEAUDAOCAJBIFQYDIOB4IBCEQT' at counter 0n"
+      ]
+    },
+    {
+      "id": "verify-offset-mask-widened",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "const OFFSET_MASK = 0x0f;",
+      "to": "const OFFSET_MASK = 0x1f;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/adapter.test.ts > the minted secret and the verifier read the same alphabet > refuses that code one counter outside the window it was generated for",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '755224' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '081804' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '965462' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1234567890n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '070117' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 59999999999n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '858575' for 'AAAQEAYEAUDAOCAJBIFQYDIOB4IBCEQT' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '626036' for 'AAAQEAYEAUDAOCAJBIFQYDIOB4IBCEQT' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '388714' for 'AAAQEAYEAUDAOCAJBIFQYDIOB4IBCEQT' at counter 1234567890n"
+      ]
+    },
+    {
+      "id": "verify-sha256-not-sha1",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "createHmac(\"sha1\", key)",
+      "to": "createHmac(\"sha256\", key)",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '755224' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '287082' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '083773' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '081804' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '965462' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1234567890n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '873652' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59999999999n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '249715' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '269518' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 1n"
+      ]
+    },
+    {
+      "id": "verify-counter-little-endian",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "  message.writeBigUInt64BE(counter);",
+      "to": "  message.writeBigUInt64LE(counter);",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '287082' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '083773' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '081804' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '965462' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1234567890n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '873652' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59999999999n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '269518' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '050071' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '219645' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 37037036n"
+      ]
+    },
+    {
+      "id": "verify-counter-buffer-widened",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "const COUNTER_BYTES = 8;",
+      "to": "const COUNTER_BYTES = 16;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '755224' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '287082' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '083773' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '081804' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '965462' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1234567890n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '873652' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59999999999n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '249715' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '269518' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 1n"
+      ]
+    },
+    {
+      "id": "verify-eight-digits",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "  return String(binary % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, \"0\");",
+      "to": "  return String(binary % 10 ** 8).padStart(8, \"0\");",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '755224' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '287082' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '083773' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '081804' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '965462' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 1234567890n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '873652' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59999999999n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '249715' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 0n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '269518' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 1n"
+      ]
+    },
+    {
+      "id": "verify-leading-zero-not-padded",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "  return String(binary % 10 ** TOTP_DIGITS).padStart(TOTP_DIGITS, \"0\");",
+      "to": "  return String(binary % 10 ** TOTP_DIGITS);",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '083773' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '081804' for 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' at counter 37037036n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '050071' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 59n",
+        "src/oracle-totp-differential.test.ts > this adapter reproduces the extraction source's generateTotp > returns '070117' for 'UWS2LJNFUWS2LJNFUWS2LJNFUWS2LJNF' at counter 59999999999n",
+        "src/rfc-vectors.test.ts > RFC 6238 Appendix B — the SHA-1 rows, at the counter the RFC prints > generates '081804' at the RFC's time 1111111109",
+        "src/rfc-vectors.test.ts > RFC 6238 Appendix B — the SHA-1 rows, at the counter the RFC prints > generates '050471' at the RFC's time 1111111111",
+        "src/rfc-vectors.test.ts > RFC 6238 Appendix B — the SHA-1 rows, at the counter the RFC prints > generates '005924' at the RFC's time 1234567890"
+      ]
+    },
+    {
+      "id": "verify-length-guard-removed",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "  if (leftBytes.length !== rightBytes.length) return false;",
+      "to": "  if (leftBytes.length === -1) return false;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/totp-code-verifier.test.ts > a code that is not a code is refused, and refused as a code > refuses a five-digit code rather than throwing on the length",
+        "src/totp-code-verifier.test.ts > a code that is not a code is refused, and refused as a code > refuses a seven-digit code",
+        "src/totp-code-verifier.test.ts > a code that is not a code is refused, and refused as a code > refuses an empty code"
+      ]
+    },
+    {
+      "id": "verify-constant-time-primitive-replaced",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "  return timingSafeEqual(leftBytes, rightBytes);",
+      "to": "  return left === right;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "declared-unfalsifiable",
+      "measuredReason": "`timingSafeEqual(a, b)` and `a === b` return the SAME boolean for every input this suite can construct; they differ only in how long the comparison takes, and a unit case that asserted a timing difference would be a flake rather than a guard. The property is real and the mutation is real -- replacing the primitive is exactly the regression that would reintroduce a compare-loop oracle on the six digits -- but nothing in a value-based suite can observe it. Its TWIN, `verify-length-guard-removed`, IS killed: that half of the primitive's contract (it THROWS on unequal lengths) is observable, so the pair together shows precisely where the constant-time choice is guarded and where it is only stated."
+    },
+    {
+      "id": "verify-empty-secret-allowed",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "  if (key.length === 0) throw new Base32SecretError(\"secret decodes to no key material\");",
+      "to": "  if (key.length === -1) throw new Base32SecretError(\"secret decodes to no key material\");",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/totp-code-verifier.test.ts > an unreadable secret is a broken credential, not a wrong code > throws on an empty secret rather than verifying against a zero-length key",
+        "src/totp-code-verifier.test.ts > an unreadable secret is a broken credential, not a wrong code > throws on an empty secret in generate for the same reason"
+      ]
+    },
+    {
+      "id": "verify-index-selection-ignores-match",
+      "file": "packages/adapters/tokenmint-totp/src/totp-code-verifier.ts",
+      "from": "        matchedIndex = equal * index + (1 - equal) * matchedIndex;",
+      "to": "        matchedIndex = index;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/adapter.test.ts > the minted secret and the verifier read the same alphabet > verifies a code generated for a secret this adapter just minted",
+        "src/rfc-vectors.test.ts > the published vectors are reachable through verify, not only generate > accepts RFC 4226 count 3 when it is one of three candidates",
+        "src/totp-code-verifier.test.ts > verify tests every candidate rather than returning on the first match > still returns the last match when the window carries a non-matching tail",
+        "src/totp-code-verifier.test.ts > verify tests every candidate rather than returning on the first match > returns the only match when there is only one, wherever it sits"
+      ]
+    },
+    {
+      "id": "adapter-name-changed",
+      "file": "packages/adapters/tokenmint-totp/src/adapter.ts",
+      "from": "    adapterName: \"tokenmint-totp\",",
+      "to": "    adapterName: \"tokenmint\" as \"tokenmint-totp\",",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/adapter.test.ts > one object carries both ports > names itself after its directory, as every adapter in the layout does"
+      ]
+    },
+    {
+      "id": "adapter-drops-the-verifier-half",
+      "file": "packages/adapters/tokenmint-totp/src/adapter.ts",
+      "from": "    verify: totp.verify,\n    generate: totp.generate,",
+      "to": "    generate: totp.generate,",
+      "command": "pnpm build:v1",
+      "outcome": "killed",
+      "killedBy": [
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.ts(60,3): error TS2741: Property 'verify' is missing in type '{ adapterName: \"tokenmint-totp\"; mint: (kind: TokenKind) => RawToken; min"
+      ]
+    },
+    {
+      "id": "construction-guarded-by-configuration",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  adapters[\"tokenmint-totp\"] = createTokenmintTotpAdapter();",
+      "to": "  if (redis !== null) adapters[\"tokenmint-totp\"] = createTokenmintTotpAdapter();",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition",
+      "outcome": "killed",
+      "killedBy": [
+        "src/composition/installation.test.ts > readiness over what was actually constructed > is 2 of 51 with nothing wired, and says which kind of nothing the rest are",
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > constructs the randomness adapter with nothing configured at all"
+      ]
+    },
+    {
+      "id": "binding-rows-removed",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  Object.freeze({ adapter: \"tokenmint-totp\", port: \"TokenMinter\", owner: \"identity-access\" }),\n  Object.freeze({ adapter: \"tokenmint-totp\", port: \"TotpCodeVerifier\", owner: \"identity-access\" }),\n",
+      "to": "",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition",
+      "outcome": "killed",
+      "killedBy": [
+        "src/composition/installation.test.ts > readiness over what was actually constructed > counts the satisfied bindings off the declared table, so the figure moves with what is wired",
+        "src/composition/installation.test.ts > readiness over what was actually constructed > reports 43 of 51, and the 8 that remain are exactly the bindings with no implementation",
+        "src/composition/installation.test.ts > readiness over what was actually constructed > is 2 of 51 with nothing wired, and says which kind of nothing the rest are",
+        "src/composition/installation.test.ts > readiness over what was actually constructed > carries every unwired reason from the construction through to the detail body",
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > composes tenancy from the adapter, with every port under its own name",
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > composes no context at all when the database is absent",
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > does not compose identity-access, and its reason holds against the binding table",
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > constructs the randomness adapter with nothing configured at all"
+      ]
+    },
+    {
+      "id": "binding-rows-removed-fails-the-gate",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  Object.freeze({ adapter: \"tokenmint-totp\", port: \"TokenMinter\", owner: \"identity-access\" }),\n  Object.freeze({ adapter: \"tokenmint-totp\", port: \"TotpCodeVerifier\", owner: \"identity-access\" }),\n",
+      "to": "",
+      "command": "node scripts/arch/composition-root.mjs",
+      "outcome": "killed",
+      "killedBy": [
+        "binding table omits tokenmint-totp -> identity-access TokenMinter",
+        "binding table omits tokenmint-totp -> identity-access TotpCodeVerifier",
+        "binding table declares 49 binding(s); ADR M0.3 §4/§15 declares 51"
+      ]
+    },
+    {
+      "id": "port-satisfaction-obligation-dropped",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  readonly \"tokenmint-totp:TotpCodeVerifier\": Satisfies<TokenmintTotpAdapter, TotpCodeVerifier>;",
+      "to": "",
+      "command": [
+        "pnpm build:v1",
+        "node scripts/arch/composition-root.mjs"
+      ],
+      "outcome": "declared-unfalsifiable",
+      "measuredReason": "Deleting the OBLIGATION -- the `readonly \"tokenmint-totp:TotpCodeVerifier\"` member of the `PortSatisfaction` interface -- while leaving its `true` in the frozen table changes nothing observable, and this was MEASURED against both enforcers rather than assumed: `pnpm build:v1` is green because `Object.freeze({...})` infers its type parameter from the literal and the outer annotation is applied to `Readonly<T>`, so TypeScript's excess-property check never runs on the extra key; and `scripts/arch/composition-root.mjs` is green because its rule reads the KEYS of the frozen literal (`/export const PORT_SATISFACTION[^=]*=\\s*Object\\.freeze\\(\\{([\\s\\S]*?)\\}\\);/`) and never parses the interface at all. THIS IS A PRE-EXISTING HOLE IN THE COMPOSITION ROOT'S COMPILE-TIME PROOF AND IT AFFECTS ALL FIFTY-ONE BINDINGS EQUALLY, not only this tranche's two -- the same deletion on `keyring-envelope:Hasher` survives identically. It is DECLARED rather than fixed because both available fixes belong to code this tranche does not own: adding `satisfies PortSatisfaction` inside the freeze, or removing the outer annotation, both break the gate's own regex, and widening the gate to parse the interface is a change to `composition-root.mjs` and its pinned control suite. WHAT IS STILL PROVEN: the opposite deletion is killed by `tsc` (`port-satisfaction-value-dropped`), and the substantive claim -- that the adapter really implements the port -- is killed by `tsc` too (`adapter-stops-extending-the-verifier-port`), so the binding is not unguarded; only this one way of deleting its statement is."
+    },
+    {
+      "id": "adapter-declared-unimplemented",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  \"notifier-webhook\",\n]);",
+      "to": "  \"notifier-webhook\",\n  \"tokenmint-totp\",\n]);",
+      "command": "node scripts/arch/composition-root.mjs",
+      "outcome": "killed",
+      "killedBy": [
+        "UNIMPLEMENTED_ADAPTERS says tokenmint-totp cannot be constructed, but packages/adapters/tokenmint-totp/src/index.ts exports a constructor; drop it from the list"
+      ]
+    },
+    {
+      "id": "unassembled-sentence-still-names-both",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "  \"two of its eight driven ports have no implementation: RateLimiter is\" +\n  \" packages/adapters/redis-ratelimit, a generated interface, and SecretHasher\" +\n  \" and MfaSecretCipher are satisfied by no adapter directory\";",
+      "to": "  \"four of its eight driven ports have no implementation: RateLimiter is\" +\n  \" packages/adapters/redis-ratelimit, a generated interface, and SecretHasher,\" +\n  \" TokenMinter, TotpCodeVerifier and MfaSecretCipher are satisfied by no adapter\" +\n  \" directory\";",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition",
+      "outcome": "killed",
+      "killedBy": [
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > does not compose identity-access, and its reason holds against the binding table"
+      ]
+    },
+    {
+      "id": "graph-owner-edge-dropped",
+      "file": "scripts/arch/v1-project-graph.mjs",
+      "from": "  \"tokenmint-totp\": [\"identity-access\"],",
+      "to": "",
+      "command": "node scripts/arch/v1-project-graph.mjs",
+      "outcome": "killed",
+      "killedBy": [
+        "root references must list the exact 34 projects in architecture order",
+        "discovered project set [apps/core-api, apps/mcp-stdio, packages/adapters/channel-slack, packages/adapters/clickhouse-observability, packages/adapters/durable-runtime, packages/adapters/keyring-envelope, packages/adapters/model-router-providers, packages/adapters/notifier-email, packages/adapters/notifier-webhook, packages/adapters/objectstore-minio, packages/adapters/outbox, packages/adapters/postgres-tenancy, packages/adapters/redis-cache, packages/adapters/redis-ratelimit, packages/adapters/redis-streams, packages/adapters/tokenmint-totp, packages/contexts/agents, packages/contexts/channels, packages/contexts/conversations, packages/contexts/cost-monitoring, packages/contexts/eventing, packages/contexts/files, packages/contexts/governance, packages/contexts/identity-access, packages/contexts/jobs, packages/contexts/memory, packages/contexts/observability, packages/contexts/privacy, packages/contexts/providers, packages/contexts/secrets, packages/contexts/skills, packages/contexts/tenancy, packages/contexts/tools, packages/kernel] does not equal expected [apps/core-api, apps/mcp-stdio, packages/adapters/channel-slack, packages/adapters/clickhouse-observability, packages/adapters/durable-runtime, packages/adapters/keyring-envelope, packages/adapters/model-router-providers, packages/adapters/notifier-email, packages/adapters/notifier-webhook, packages/adapters/objectstore-minio, packages/adapters/outbox, packages/adapters/postgres-tenancy, packages/adapters/redis-cache, packages/adapters/redis-ratelimit, packages/adapters/redis-streams, packages/contexts/agents, packages/contexts/channels, packages/contexts/conversations, packages/contexts/cost-monitoring, packages/contexts/eventing, packages/contexts/files, packages/contexts/governance, packages/contexts/identity-access, packages/contexts/jobs, packages/contexts/memory, packages/contexts/observability, packages/contexts/privacy, packages/contexts/providers, packages/contexts/secrets, packages/contexts/skills, packages/contexts/tenancy, packages/contexts/tools, packages/kernel]",
+        "apps/core-api references [packages/adapters/channel-slack, packages/adapters/clickhouse-observability, packages/adapters/durable-runtime, packages/adapters/keyring-envelope, packages/adapters/model-router-providers, packages/adapters/notifier-email, packages/adapters/notifier-webhook, packages/adapters/objectstore-minio, packages/adapters/outbox, packages/adapters/postgres-tenancy, packages/adapters/redis-cache, packages/adapters/redis-ratelimit, packages/adapters/redis-streams, packages/adapters/tokenmint-totp, packages/contexts/agents, packages/contexts/channels, packages/contexts/conversations, packages/contexts/cost-monitoring, packages/contexts/eventing, packages/contexts/files, packages/contexts/governance, packages/contexts/identity-access, packages/contexts/jobs, packages/contexts/memory, packages/contexts/observability, packages/contexts/privacy, packages/contexts/providers, packages/contexts/secrets, packages/contexts/skills, packages/contexts/tenancy, packages/contexts/tools, packages/kernel]; expected [packages/adapters/channel-slack, packages/adapters/clickhouse-observability, packages/adapters/durable-runtime, packages/adapters/keyring-envelope, packages/adapters/model-router-providers, packages/adapters/notifier-email, packages/adapters/notifier-webhook, packages/adapters/objectstore-minio, packages/adapters/outbox, packages/adapters/postgres-tenancy, packages/adapters/redis-cache, packages/adapters/redis-ratelimit, packages/adapters/redis-streams, packages/contexts/agents, packages/contexts/channels, packages/contexts/conversations, packages/contexts/cost-monitoring, packages/contexts/eventing, packages/contexts/files, packages/contexts/governance, packages/contexts/identity-access, packages/contexts/jobs, packages/contexts/memory, packages/contexts/observability, packages/contexts/privacy, packages/contexts/providers, packages/contexts/secrets, packages/contexts/skills, packages/contexts/tenancy, packages/contexts/tools, packages/kernel]",
+        "apps/core-api dependencies [@platos/adapter-channel-slack, @platos/adapter-clickhouse-observability, @platos/adapter-durable-runtime, @platos/adapter-keyring-envelope, @platos/adapter-model-router-providers, @platos/adapter-notifier-email, @platos/adapter-notifier-webhook, @platos/adapter-objectstore-minio, @platos/adapter-outbox, @platos/adapter-postgres-tenancy, @platos/adapter-redis-cache, @platos/adapter-redis-ratelimit, @platos/adapter-redis-streams, @platos/adapter-tokenmint-totp, @platos/context-agents, @platos/context-channels, @platos/context-conversations, @platos/context-cost-monitoring, @platos/context-eventing, @platos/context-files, @platos/context-governance, @platos/context-identity-access, @platos/context-jobs, @platos/context-memory, @platos/context-observability, @platos/context-privacy, @platos/context-providers, @platos/context-secrets, @platos/context-skills, @platos/context-tenancy, @platos/context-tools, @platos/kernel]; expected [@platos/adapter-channel-slack, @platos/adapter-clickhouse-observability, @platos/adapter-durable-runtime, @platos/adapter-keyring-envelope, @platos/adapter-model-router-providers, @platos/adapter-notifier-email, @platos/adapter-notifier-webhook, @platos/adapter-objectstore-minio, @platos/adapter-outbox, @platos/adapter-postgres-tenancy, @platos/adapter-redis-cache, @platos/adapter-redis-ratelimit, @platos/adapter-redis-streams, @platos/context-agents, @platos/context-channels, @platos/context-conversations, @platos/context-cost-monitoring, @platos/context-eventing, @platos/context-files, @platos/context-governance, @platos/context-identity-access, @platos/context-jobs, @platos/context-memory, @platos/context-observability, @platos/context-privacy, @platos/context-providers, @platos/context-secrets, @platos/context-skills, @platos/context-tenancy, @platos/context-tools, @platos/kernel]",
+        "apps/core-api source edges [packages/adapters/channel-slack, packages/adapters/clickhouse-observability, packages/adapters/durable-runtime, packages/adapters/keyring-envelope, packages/adapters/model-router-providers, packages/adapters/notifier-email, packages/adapters/notifier-webhook, packages/adapters/objectstore-minio, packages/adapters/outbox, packages/adapters/postgres-tenancy, packages/adapters/redis-cache, packages/adapters/redis-ratelimit, packages/adapters/redis-streams, packages/adapters/tokenmint-totp, packages/contexts/agents, packages/contexts/channels, packages/contexts/conversations, packages/contexts/cost-monitoring, packages/contexts/eventing, packages/contexts/files, packages/contexts/governance, packages/contexts/identity-access, packages/contexts/jobs, packages/contexts/memory, packages/contexts/observability, packages/contexts/privacy, packages/contexts/providers, packages/contexts/secrets, packages/contexts/skills, packages/contexts/tenancy, packages/contexts/tools, packages/kernel]; expected [packages/adapters/channel-slack, packages/adapters/clickhouse-observability, packages/adapters/durable-runtime, packages/adapters/keyring-envelope, packages/adapters/model-router-providers, packages/adapters/notifier-email, packages/adapters/notifier-webhook, packages/adapters/objectstore-minio, packages/adapters/outbox, packages/adapters/postgres-tenancy, packages/adapters/redis-cache, packages/adapters/redis-ratelimit, packages/adapters/redis-streams, packages/contexts/agents, packages/contexts/channels, packages/contexts/conversations, packages/contexts/cost-monitoring, packages/contexts/eventing, packages/contexts/files, packages/contexts/governance, packages/contexts/identity-access, packages/contexts/jobs, packages/contexts/memory, packages/contexts/observability, packages/contexts/privacy, packages/contexts/providers, packages/contexts/secrets, packages/contexts/skills, packages/contexts/tenancy, packages/contexts/tools, packages/kernel]",
+        "project-reference edge count is 117, expected 118",
+        "workspace-dependency edge count is 117, expected 118",
+        "source-import edge count is 117, expected 118"
+      ]
+    },
+    {
+      "id": "generator-adoption-removed",
+      "file": "scripts/arch/gen-v1-skeleton.mjs",
+      "from": "  \"packages/adapters/tokenmint-totp\", // WIN-267 A2",
+      "to": "  // removed: \"packages/adapters/tokenmint-totp\", // WIN-267 A2",
+      "command": "node scripts/arch/gen-v1-skeleton.mjs --check",
+      "outcome": "killed",
+      "killedBy": [
+        "gate: STALE   packages/adapters/tokenmint-totp/package.json",
+        "gate: STALE   packages/adapters/tokenmint-totp/src/index.ts",
+        "gate: STALE   packages/adapters/tokenmint-totp/src/adapter.ts",
+        "gate: EXTRA   packages/adapters/tokenmint-totp/src/adapter.test.ts",
+        "gate: EXTRA   packages/adapters/tokenmint-totp/src/base32.test.ts",
+        "gate: EXTRA   packages/adapters/tokenmint-totp/src/base32.ts",
+        "gate: EXTRA   packages/adapters/tokenmint-totp/src/oracle-mint-widths.test.ts",
+        "gate: EXTRA   packages/adapters/tokenmint-totp/src/oracle-totp-differential.test.ts"
+      ]
+    },
+    {
+      "id": "census-row-removed",
+      "file": "scripts/arch/test-case-census.mjs",
+      "from": "  \"packages/adapters/tokenmint-totp\": { files: 7, cases: 136 },",
+      "to": "",
+      "command": "node scripts/arch/test-case-census.mjs",
+      "outcome": "killed",
+      "killedBy": [
+        "gate: UNPINNED packages/adapters/tokenmint-totp has 7 test file(s) and 136 case(s) but no pinned row"
+      ]
+    },
+    {
+      "id": "census-row-understated",
+      "file": "scripts/arch/test-case-census.mjs",
+      "from": "  \"packages/adapters/tokenmint-totp\": { files: 7, cases: 136 },",
+      "to": "  \"packages/adapters/tokenmint-totp\": { files: 7, cases: 135 },",
+      "command": "node scripts/arch/test-case-census.mjs",
+      "outcome": "killed",
+      "killedBy": [
+        "gate: CASES    packages/adapters/tokenmint-totp has 136 case(s); 135 pinned (GAINED 1) — update the delta comment in scripts/arch/test-case-census.mjs, never the number alone",
+        "gate: RUNTIME  the pinned rows sum to 7968 but EXPECTED_RUNTIME_TOTAL is 7969; one of them no longer matches what `pnpm test:v1-packages` prints"
+      ]
+    },
+    {
+      "id": "port-satisfaction-value-dropped",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "  \"tokenmint-totp:TotpCodeVerifier\": true,",
+      "to": "",
+      "command": "pnpm build:v1",
+      "outcome": "killed",
+      "killedBy": [
+        "tsc: apps/core-api/src/composition/adapter-bindings.ts(515,14): error TS2741: Property '\"tokenmint-totp:TotpCodeVerifier\"' is missing in type 'Readonly<{ \"postgres-tenancy:TenancyReposi"
+      ]
+    },
+    {
+      "id": "adapter-stops-extending-the-verifier-port",
+      "file": "packages/adapters/tokenmint-totp/src/adapter.ts",
+      "from": "export interface TokenmintTotpAdapter extends TokenMinter, TotpCodeVerifier {",
+      "to": "export interface TokenmintTotpAdapter extends TokenMinter {",
+      "command": "pnpm build:v1",
+      "outcome": "killed",
+      "killedBy": [
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.ts(65,5): error TS2353: Object literal may only specify known properties, and 'verify' does not exist in type 'TokenmintTotpAdapter'.",
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.test.ts(31,27): error TS2339: Property 'verify' does not exist on type 'TokenmintTotpAdapter'.",
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.test.ts(32,27): error TS2339: Property 'generate' does not exist on type 'TokenmintTotpAdapter'.",
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.test.ts(50,26): error TS2339: Property 'generate' does not exist on type 'TokenmintTotpAdapter'.",
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.test.ts(51,20): error TS2339: Property 'verify' does not exist on type 'TokenmintTotpAdapter'.",
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.test.ts(58,26): error TS2339: Property 'generate' does not exist on type 'TokenmintTotpAdapter'.",
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.test.ts(59,20): error TS2339: Property 'verify' does not exist on type 'TokenmintTotpAdapter'.",
+        "tsc: packages/adapters/tokenmint-totp/src/adapter.test.ts(69,28): error TS2339: Property 'generate' does not exist on type 'TokenmintTotpAdapter'."
+      ]
+    },
+    {
+      "id": "identity-access-declared-assembled",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "  unassembled.push(\n    Object.freeze({ context: \"identity-access\", reason: IDENTITY_ACCESS_UNASSEMBLED }),\n  );",
+      "to": "",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition",
+      "outcome": "killed",
+      "killedBy": [
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > does not compose identity-access, and its reason holds against the binding table"
+      ]
+    },
+    {
+      "id": "ports-index-stops-republishing-the-registry",
+      "file": "packages/contexts/identity-access/application/ports/index.ts",
+      "from": "export { prefixOf, TOKEN_KINDS, TOTP_DIGITS } from \"../../domain/index.js\";",
+      "to": "",
+      "command": "pnpm build:v1",
+      "outcome": "killed",
+      "killedBy": [
+        "tsc: packages/adapters/tokenmint-totp/src/token-minter.ts(35,10): error TS2305: Module '\"@platos/context-identity-access/application/ports/index.js\"' has no exported member 'prefixOf'.",
+        "tsc: packages/adapters/tokenmint-totp/src/totp-code-verifier.ts(31,10): error TS2305: Module '\"@platos/context-identity-access/application/ports/index.js\"' has no exported member 'TOTP_",
+        "tsc: packages/adapters/tokenmint-totp/src/oracle-mint-widths.test.ts(37,10): error TS2305: Module '\"@platos/context-identity-access/application/ports/index.js\"' has no exported member '",
+        "tsc: packages/adapters/tokenmint-totp/src/oracle-mint-widths.test.ts(37,20): error TS2724: '\"@platos/context-identity-access/application/ports/index.js\"' has no exported member named 'T",
+        "tsc: packages/adapters/tokenmint-totp/src/oracle-mint-widths.test.ts(190,47): error TS7006: Parameter 'kind' implicitly has an 'any' type.",
+        "tsc: packages/adapters/tokenmint-totp/src/token-minter.test.ts(17,10): error TS2305: Module '\"@platos/context-identity-access/application/ports/index.js\"' has no exported member 'prefix",
+        "tsc: packages/adapters/tokenmint-totp/src/token-minter.test.ts(17,20): error TS2724: '\"@platos/context-identity-access/application/ports/index.js\"' has no exported member named 'TOKEN_K",
+        "tsc: packages/adapters/tokenmint-totp/src/token-minter.test.ts(46,43): error TS7006: Parameter 'other' implicitly has an 'any' type."
+      ]
+    },
+    {
+      "id": "extractor-misses-the-inline-mint-sites",
+      "file": "packages/adapters/tokenmint-totp/src/oracle-mint-widths.test.ts",
+      "from": "const MINT_TEMPLATE = /`(?:\\$\\{(\\w+)\\}|(plt_[a-z]+_))\\$\\{(?:crypto\\.)?randomBytes\\((\\w+)\\)\\.toString\\(\"base64url\"\\)\\}`/gu;",
+      "to": "const MINT_TEMPLATE = /`(?:\\$\\{(\\w+)\\})\\$\\{randomBytes\\((\\w+)\\)\\.toString\\(\"base64hex\"\\)\\}`/gu;",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-mint-widths.test.ts > the extraction is not vacuous > finds every mint site across the five extraction-source files",
+        "src/oracle-mint-widths.test.ts > the extraction is not vacuous > covers every prefix in the domain registry, and invents none",
+        "src/oracle-mint-widths.test.ts > the extraction is not vacuous > reads more than one width, so the comparison can distinguish them",
+        "src/oracle-mint-widths.test.ts > MINTED_TOKEN_BYTES equals the extraction source, kind by kind > mints 'mcpToken' at the width production mints it at",
+        "src/oracle-mint-widths.test.ts > MINTED_TOKEN_BYTES equals the extraction source, kind by kind > mints 'entityBearerToken' at the width production mints it at"
+      ]
+    },
+    {
+      "id": "extractor-reads-one-file-instead-of-five",
+      "file": "packages/adapters/tokenmint-totp/src/oracle-mint-widths.test.ts",
+      "from": "  ...inlineSites(MCP_BEARER),",
+      "to": "",
+      "command": "pnpm --filter @platos/adapter-tokenmint-totp exec vitest run",
+      "outcome": "killed",
+      "killedBy": [
+        "src/oracle-mint-widths.test.ts > the extraction is not vacuous > finds every mint site across the five extraction-source files",
+        "src/oracle-mint-widths.test.ts > the extraction is not vacuous > covers every prefix in the domain registry, and invents none",
+        "src/oracle-mint-widths.test.ts > the extraction is not vacuous > reads more than one width, so the comparison can distinguish them",
+        "src/oracle-mint-widths.test.ts > MINTED_TOKEN_BYTES equals the extraction source, kind by kind > mints 'entityBearerToken' at the width production mints it at"
+      ]
+    },
+    {
+      "id": "unassembled-sentence-drops-a-remaining-port",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "  \" packages/adapters/redis-ratelimit, a generated interface, and SecretHasher\" +\n  \" and MfaSecretCipher are satisfied by no adapter directory\";",
+      "to": "  \" packages/adapters/redis-ratelimit, a generated interface, and SecretHasher\" +\n  \" is satisfied by no adapter directory\";",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition",
+      "outcome": "killed",
+      "killedBy": [
+        "src/composition/installation.test.ts > the context bundles those adapters can satisfy > does not compose identity-access, and its reason holds against the binding table"
+      ]
+    },
+    {
+      "id": "ports-index-stops-republishing-raw-token",
+      "file": "packages/contexts/identity-access/application/ports/index.ts",
+      "from": "  RawToken,\n  RecoveryCodeRecord,",
+      "to": "  RecoveryCodeRecord,",
+      "command": "pnpm build:v1",
+      "outcome": "killed",
+      "killedBy": [
+        "tsc: packages/adapters/tokenmint-totp/src/token-minter.ts(31,3): error TS2305: Module '\"@platos/context-identity-access/application/ports/index.js\"' has no exported member 'RawToken'."
+      ]
+    },
+    {
+      "id": "index-stops-exporting-the-adapter-factory",
+      "file": "packages/adapters/tokenmint-totp/src/index.ts",
+      "from": "export { createTokenmintTotpAdapter } from \"./adapter.js\";",
+      "to": "",
+      "command": "node scripts/arch/composition-root.mjs",
+      "outcome": "killed",
+      "killedBy": [
+        "packages/adapters/tokenmint-totp/src/index.ts exports no constructor, so the composition root cannot build it; name it in UNIMPLEMENTED_ADAPTERS"
+      ]
+    }
+  ]
+}

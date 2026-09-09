@@ -32,21 +32,55 @@
 //   `TranscriptReader`, `ActivityReader` — and not one of them reads a row this
 //   context owns. They answer questions about `Turn`, `Thread`, `ToolCallAudit`
 //   and `AgentApproval`, which ADR M0.3 §1 gives to `conversations`, `tools` and
-//   `jobs`. Implementing them here would make this directory a reader of four
-//   other owners' tables under the name of `governance`'s adapter, which is the
-//   sideways access §5.2 forbids and which the port's own header says the
-//   composition root resolves "by asking whichever context owns the rows".
+//   `jobs`. They are NOT in this object, and WIN-267 G2 implemented them next
+//   door in `governance-read-seams.ts`.
+//
+//   THIS PARAGRAPH USED TO SAY THEY COULD NOT BE IMPLEMENTED IN THIS DIRECTORY
+//   AT ALL — "that would make this directory a reader of four other owners'
+//   tables ... the sideways access §5.2 forbids". THAT WAS FALSE, and false at
+//   v1 rather than newly false. `CANONICAL_STORE_ADAPTERS` in
+//   `scripts/arch/table-ownership.mjs` maps all EIGHTEEN owners, `conversations`
+//   and `tools` and `jobs` included, to `packages/adapters/postgres-tenancy`.
+//   This directory is not a stranger to those four tables: under ADR M0.3 §15 it
+//   is their canonical store and their sole writer, and
+//   `conversations-threads.ts`, `tools-audit-rows.ts` and `jobs-approvals.ts`
+//   are its own files. "Asking whichever context owns the rows" and asking this
+//   directory are the same act — there is no sideways here to access.
+//
+//   WHAT REMAINS TRUE, AND IS WHY THEY ARE A SEPARATE OBJECT. These five are the
+//   rows `governance` may WRITE; those three are questions about rows it may
+//   not. `sole-writer.mjs` would refuse a write to `Turn` from this directory
+//   under the `governance` tag, and should. Splitting the objects keeps the
+//   difference legible rather than only enforced.
 //
 //   `judge.ts` is the entire vendor surface of the eval pipeline — a model
 //   call, priced and timed. It is a transport to a provider, bound where
 //   `ModelRouter` is bound, and it writes no row at all.
 //
-//   `eval-run-queue.ts` is the durable seam a golden-set run is handed to. ADR
-//   M0.3 §7 decision 10 puts durable work behind `packages/adapters/durable-runtime`,
-//   and its own error constructor — `queueUnavailable`, deliberately distinct
-//   from `ledgerUnavailable` — exists so "the dispatcher refused the work" and
-//   "a table is down" stay separable. Satisfying it from the canonical store
-//   would merge exactly those two incidents.
+//   `eval-run-queue.ts` USED TO BE LISTED HERE, and the reason given was wrong.
+//   It said: "its own error constructor — `queueUnavailable`, deliberately
+//   distinct from `ledgerUnavailable` — exists so 'the dispatcher refused the
+//   work' and 'a table is down' stay separable. Satisfying it from the canonical
+//   store would merge exactly those two incidents."
+//
+//   WHAT MINTS `ledgerUnavailable` IS NOT THIS DIRECTORY. It is
+//   `governance-refusal.ts`'s `refuse`, one helper the five stores above share.
+//   `governance-eval-runs.ts` does not call it: it has its own `refuseQueue`,
+//   catching the same three kinds of throw and minting `queueUnavailable`, so
+//   ONE induced outage answers `GOVERNANCE_QUEUE_UNAVAILABLE` on that port and
+//   `GOVERNANCE_LEDGER_UNAVAILABLE` on `evals.append`, in the same process
+//   against the same database. `governance-eval-runs.integration.test.ts` pins
+//   exactly that, which is what turns "separable" from a belief into a property.
+//
+//   The half that WAS true is kept and stated where it belongs, in that file's
+//   header: one unreachable database fails both ports at once, because ADR M0.3
+//   §15 puts them behind one client — which is already true of every other pair
+//   of ports in this directory and is not what the two codes are for.
+//
+//   WIN-267 G1 therefore adds a SIXTH store beside these five. It is not
+//   assembled by `createGovernanceStores` — that function's name and its five
+//   slots are `GovernanceDependencies`' canonical-store half — but by
+//   `createEvalRunStore`, called from `adapter.ts` beside it.
 
 import type {
   CriteriaRepository,

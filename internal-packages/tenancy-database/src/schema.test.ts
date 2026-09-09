@@ -61,9 +61,9 @@ const expectedEndUserModels = [
 describe("clean-slate domain schema", () => {
   test("uses the approved normalized target and no persisted Platos prefixes", () => {
     const models = ControlPrisma.dmmf.datamodel.models.map((model) => model.name);
-    expect(models).toHaveLength(93);
-    expect(domainModelNames).toHaveLength(76);
-    expect(new Set(domainModelNames).size).toBe(76);
+    expect(models).toHaveLength(94);
+    expect(domainModelNames).toHaveLength(77);
+    expect(new Set(domainModelNames).size).toBe(77);
     expect(new Set([...domainModelNames, ...tenancyOnlyModels])).toEqual(new Set(models));
     expect(models.some((name) => name.startsWith("Platos"))).toBe(false);
     expect(schema.match(/@@map\("[^"]+"\)/g) ?? []).toEqual(['@@map("AlertDeliveryAttempt")']);
@@ -298,6 +298,10 @@ describe("clean-slate domain schema", () => {
       "20260825070000_access_key_revocation_fence",
       "20260828120000_win296_access_key_bootstrap_grant",
       "20260906120000_win258_thread_listing_index",
+      // WIN-267 G1. The eval-run queue's row, and the FIRST post-initial table
+      // since WIN-296 — added the same way, with its foreign keys in SQL rather
+      // than as Prisma relations, because the initial migration is hash-pinned.
+      "20260909120000_win267_eval_run_queue",
     ]);
 
     const observabilityVocabularyMigration = readFileSync(

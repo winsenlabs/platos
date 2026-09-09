@@ -89,7 +89,7 @@ function adapterDouble(name: string): unknown {
 }
 
 describe("the declared binding table", () => {
-  it("declares FORTY-NINE bindings across ADR M0.3 §4's THIRTEEN adapter directories", () => {
+  it("declares FIFTY-EIGHT bindings across ADR M0.3 §4's FIFTEEN adapter directories", () => {
     // The two numbers stopped being the same number at WIN-258 tranche 2:
     // ADR M0.3 §15 lets one directory satisfy more than one port, and
     // `postgres-tenancy` satisfies `TenancyRepository`,
@@ -184,24 +184,99 @@ describe("the declared binding table", () => {
     // fact worth stating: bindings 44 + 3 + 2 = 49, directories 12 + 1 = 13.
     // WIN-259 adds a directory and three rows on it; WIN-260 adds two rows on a
     // directory that already existed.
-    expect(ADAPTER_BINDINGS).toHaveLength(49);
-    expect(DECLARED_BINDING_COUNT).toBe(49);
-    expect(ADAPTER_NAMES).toHaveLength(13);
+    //
+    // WIN-267 INTEGRATION: bindings 49 + 2 + 2 + 1 = 54, directories 13 + 2 = 15,
+    // and the two counts move by DIFFERENT amounts again for reasons that are
+    // different from each other. A1 adds ONE directory and TWO rows, because
+    // `keyring-envelope:MfaSecretCipher` is a row on an EXISTING directory --
+    // `root-key-ring.ts` is the tree's only holder of AES-256 root key bytes and
+    // rule (j2) forbids a second package from reaching them -- while
+    // `node-crypto-digest:SecretHasher` is a new directory, a keyless SHA-256
+    // sharing no client with anything and §15's consolidation rule existing to
+    // stop a SECOND CLIENT rather than a second module. A2 adds ONE directory
+    // and TWO rows on that one directory, because the port that WRITES a TOTP
+    // secret and the port that READS it must share a base32 alphabet. A3 adds
+    // ONE ROW AND NO DIRECTORY: `providers:ProviderProbeCache` is the FOURTH
+    // port on `redis-cache`, the cleanest instance of the property this pair
+    // exists to state -- the port has a new home and the system has no new
+    // vendor client.
+    //
+    // WIN-267 G1 ADDS ONE ROW AND NO DIRECTORY and WIN-267 G2 ADDS THREE MORE,
+    // 54 -> 58, and together they are the sharpest instance yet of the property
+    // A3's probe cache first stated. `governance:EvalRunQueue` is the SIXTEENTH
+    // port on `postgres-tenancy`; the three inverted read seams are the
+    // seventeenth, eighteenth and nineteenth, and that directory is not merely
+    // an existing one but the canonical store of all four tables they read --
+    // `Thread` and `Turn` for `conversations`, `ToolCallAudit` for `tools`,
+    // `AgentApproval` for `jobs`. Four new ports, no new vendor client,
+    // directories unmoved at 15. The alternative for the queue -- a real
+    // `packages/adapters/durable-runtime` -- would have moved BOTH counts and
+    // decided a supplier question that directory's own configuration group
+    // already answers with an external API URL.
+    expect(ADAPTER_BINDINGS).toHaveLength(58);
+    expect(DECLARED_BINDING_COUNT).toBe(58);
+    expect(ADAPTER_NAMES).toHaveLength(15);
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
+        (binding) => binding.port,
+      ),
+    ).toEqual(["TokenMinter", "TotpCodeVerifier"]);
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === "node-crypto-digest").map(
+        (binding) => binding.port,
+      ),
+    ).toEqual(["SecretHasher"]);
+    // And A3's went on the directory that already held the Redis client, which
+    // is §15's amendment applied rather than asserted.
+    expect(
+      ADAPTER_BINDINGS.filter((binding) => binding.port === "ProviderProbeCache").map(
+        (binding) => binding.adapter,
+      ),
+    ).toEqual(["redis-cache"]);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "keyring-envelope").map(
         (binding) => binding.port,
       ),
-    ).toEqual(["KeyRing", "AeadCipher", "Hasher"]);
-    // THREE directories now hold more than one binding, where one did before M2
-    // and two did on the errors-and-idempotency branch alone. `keyring-envelope`
-    // joins the list merged, which is a claim NEITHER branch could make: it has
-    // three ports and exactly ONE owner, so it is multi-PORT without being
-    // multi-OWNER, and `EXPECTED_MULTI_OWNER_ADAPTERS` in the graph gate stays
-    // at two entries while this list goes to three.
+    ).toEqual(["KeyRing", "AeadCipher", "Hasher", "MfaSecretCipher"]);
+    // AND THE CLAIM THAT CHANGED SIGN. `keyring-envelope` was the layout's one
+    // multi-PORT, single-OWNER directory; its fourth port belongs to
+    // `identity-access`, so it is now multi-owner too and
+    // `EXPECTED_MULTI_OWNER_ADAPTERS` gains its THIRD entry. Asserting the owner
+    // set here rather than only the port list is what keeps the two files from
+    // disagreeing silently.
+    expect(
+      new Set(
+        ADAPTER_BINDINGS.filter((binding) => binding.adapter === "keyring-envelope").map(
+          (binding) => binding.owner,
+        ),
+      ),
+    ).toEqual(new Set(["secrets", "identity-access"]));
+    // AND THE ONE THAT DID NOT. `tokenmint-totp` is multi-PORT and single-OWNER:
+    // two ports, both `identity-access`. So the multi-PORT list below goes to
+    // FOUR while the graph gate's multi-OWNER allow-list goes to three, and the
+    // two lists diverging is the point of keeping them apart.
+    expect(
+      new Set(
+        ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
+          (binding) => binding.owner,
+        ),
+      ),
+    ).toEqual(new Set(["identity-access"]));
+    // FOUR directories hold more than one binding, where one did before M2 and
+    // two did on the errors-and-idempotency branch alone. `keyring-envelope`
+    // joined the list merged with three ports and exactly ONE owner — multi-PORT
+    // without being multi-OWNER — and WIN-267 A1 ended that: its fourth port is
+    // `identity-access`'s. WIN-267 A2 adds `tokenmint-totp` in the shape
+    // `keyring-envelope` used to have.
     const multiPort = [...new Set(ADAPTER_BINDINGS.map((binding) => binding.adapter))].filter(
       (adapter) => ADAPTER_BINDINGS.filter((binding) => binding.adapter === adapter).length > 1,
     );
-    expect(multiPort.sort()).toEqual(["keyring-envelope", "postgres-tenancy", "redis-cache"]);
+    expect(multiPort.sort()).toEqual([
+      "keyring-envelope",
+      "postgres-tenancy",
+      "redis-cache",
+      "tokenmint-totp",
+    ]);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
       (binding) => binding.adapter === "postgres-tenancy",
     );
@@ -218,6 +293,14 @@ describe("the declared binding table", () => {
       "CriteriaRepository",
       "EvalsRepository",
       "GoldenSetsRepository",
+      "EvalRunQueue",
+      // WIN-267 G2. The three inverted READ SEAMS, and the only rows on this
+      // directory that are not canonical stores: they read `Thread`, `Turn`,
+      // `ToolCallAudit` and `AgentApproval`, four tables this same directory
+      // owns on behalf of `conversations`, `tools` and `jobs`.
+      "RatingTargetReader",
+      "TranscriptReader",
+      "ActivityReader",
       "SecretsRepository",
       "EnvironmentVariableRepository",
       "ProvidersRepository",
@@ -253,6 +336,15 @@ describe("the declared binding table", () => {
       "governance",
       "governance",
       "governance",
+      // WIN-267 G1's queue and G2's three read seams are FOUR more rows whose
+      // OWNER is `governance`, because the owner column names who owns the PORT.
+      // `read-seams.ts` declares all three seams in `governance`'s vocabulary,
+      // which is the whole point of a dependency-inverted seam; the rows behind
+      // them belong to three other contexts, all delegated to this directory.
+      "governance",
+      "governance",
+      "governance",
+      "governance",
       "secrets",
       "secrets",
       "providers",
@@ -280,7 +372,7 @@ describe("the declared binding table", () => {
     ]);
   });
 
-  it("names each adapter DIRECTORY exactly once, even though one has THIRTY-THREE bindings", () => {
+  it("names each adapter DIRECTORY exactly once, even though one has THIRTY-SIX bindings", () => {
     // `ADAPTER_NAMES` is what an install iterates to CONSTRUCT adapters. A
     // duplicate there would open a second pool over the one database.
     expect(new Set(ADAPTER_NAMES).size).toBe(ADAPTER_NAMES.length);
@@ -310,16 +402,16 @@ describe("the declared binding table", () => {
 
 describe("adapter supply validation", () => {
   // WIN-267 T3 renamed this case. It used to say "the honest M2.1b state", which
-  // read as though 0/49 were a fact about the milestone; it is a fact about a
+  // read as though 0/51 were a fact about the milestone; it is a fact about a
   // caller that supplied NOTHING, and that is now one configuration among
   // several rather than the only one reachable. What an install actually wires
   // is `src/composition/installation.test.ts`.
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(49);
+    expect(report.unsatisfied).toHaveLength(58);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/49 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/58 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -346,7 +438,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(48);
+    expect(report.unsatisfied).toHaveLength(57);
 
     expect(report.faults).toEqual([]);
   });
@@ -369,14 +461,14 @@ describe("adapter supply validation", () => {
 
   it("rejects an adapter name that is not one of the declared bindings", () => {
     const report = reportAdapterSupply({ "redis-queue": adapterDouble("redis-queue") } as SuppliedAdapters);
-    expect(report.faults[0]).toContain("is not one of the 13 declared adapters");
+    expect(report.faults[0]).toContain("is not one of the 15 declared adapters");
   });
 });
 
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(49);
+    expect(app.bindings.unsatisfied).toHaveLength(58);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -398,13 +490,18 @@ describe("composing the application", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(CompositionFault);
       const fault = error as CompositionFault;
-      // THREE faults, not one, since WIN-260 (M2.5): `redis-cache` carries
-      // `Cache`, `IdempotencyStore` and — since this dimension —
-      // `RequestIdempotency`, so an adapter wired into that slot that identifies
-      // as something else fails every binding on the directory. A pin of `1`
-      // would have gone green on a directory that had quietly stopped satisfying
-      // its second and third ports.
-      expect(fault.faults).toHaveLength(3);
+      // FOUR faults, not one. `redis-cache` carries `Cache`,
+      // `IdempotencyStore`, `RequestIdempotency` (WIN-260) and —
+      // since WIN-267 A3 — `ProviderProbeCache`, so an adapter wired into that
+      // slot that identifies as something else fails every binding on the
+      // directory. A pin of `1` would have gone green on a directory that had
+      // quietly stopped satisfying its second, third or fourth port, and this
+      // number is derived rather than chosen: it is the row count for that
+      // directory in the binding table.
+      expect(fault.faults).toHaveLength(
+        ADAPTER_BINDINGS.filter((binding) => binding.adapter === "redis-cache").length,
+      );
+      expect(fault.faults).toHaveLength(4);
       expect(fault.message).not.toContain("127.0.0.1");
     }
   });
@@ -412,7 +509,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(48);
+    expect(app.bindings.unsatisfied).toHaveLength(57);
 
   });
 

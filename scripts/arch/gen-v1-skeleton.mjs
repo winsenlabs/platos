@@ -113,6 +113,39 @@ export const ADAPTERS = [
       { port: "CriteriaRepository", owner: "governance" },
       { port: "EvalsRepository", owner: "governance" },
       { port: "GoldenSetsRepository", owner: "governance" },
+      // WIN-267 G1 adds a SIXTH `governance` binding, and it is the first on
+      // this directory that is not a canonical-store CRUD port. ADR M0.3 §1 row
+      // 14 says eval runs enqueue as durable jobs; `EvalRunQueue` is that
+      // hand-over, and the row it lands in is in the SAME PostgreSQL database as
+      // the five above, so by §15 it is written from the same directory behind
+      // the same client. It is not a new directory for the reason §15 gives and
+      // not `packages/adapters/durable-runtime` for a different one: that
+      // directory's configuration section anchors an EXTERNAL service, so
+      // implementing the kernel `DurableRuntime` over this database would decide
+      // a supplier question §7 decision 10 has already answered. Recording a ROW
+      // is not that decision.
+      { port: "EvalRunQueue", owner: "governance" },
+      // WIN-267 G2 (ADR M0.3 §2). `governance`'s THREE INVERTED READ SEAMS, on
+      // the same directory and under the same owner tag — because the owner
+      // column names who owns the PORT, and `read-seams.ts` declares all three.
+      //
+      // THE ROWS THEY READ BELONG TO THREE OTHER CONTEXTS: `Thread` and `Turn`
+      // to `conversations`, `ToolCallAudit` to `tools`, `AgentApproval` to
+      // `jobs`. That is not an exception to §15, it is §15: all three of those
+      // owners map to this same directory in `CANONICAL_STORE_ADAPTERS`, so the
+      // package that answers the seam IS the package that owns the rows. What
+      // §5.2 still forbids — a WRITE to any of those four tables under the
+      // `governance` tag — `sole-writer.mjs` still refuses, per write, and these
+      // three write nothing.
+      //
+      // THEY ARE PROPERTIES on the adapter (`ratingTargets`, `transcripts`,
+      // `activity`) rather than spread-in methods, for the reason tenancy's five
+      // are: `GovernanceDependencies` has a named slot for each, and two readers
+      // over the same two tables handed over in the wrong slots would answer
+      // plausible values for ever.
+      { port: "RatingTargetReader", owner: "governance" },
+      { port: "TranscriptReader", owner: "governance" },
+      { port: "ActivityReader", owner: "governance" },
       // WIN-258 T5 adds the SEVENTH and EIGHTH. `secrets` owns four canonical
       // rows in that same database and publishes TWO canonical-store ports over
       // them, because `environment-variable-repository.ts` keeps the vault and
@@ -343,9 +376,23 @@ export const ADAPTERS = [
     // their keyspaces are disjoint by prefix so neither can read the other's
     // records. Its owner is `kernel`, which is what gives this directory its
     // `packages/kernel` project reference and moves EXPECTED_EDGE_COUNT.
+    // WIN-267 A3 ADDS A FOURTH, `providers:ProviderProbeCache`, and the question
+    // it answers is "does the adapter that already exists satisfy the port".
+    // Half of that is NO: `memory`'s `Cache` and this port share not one
+    // signature, and ADR M0.3 §1 row 4 gives `providers` an allow-list of
+    // `tenancy`, `secrets` and `kernel`, so it could not reach `Cache` even if
+    // the shapes matched — the port's own header records that as the reason it
+    // exists. The other half is YES, at the level §15's amendment operates on:
+    // one VENDOR CLIENT is one DIRECTORY, and this is the same Redis, the same
+    // connection and the same namespace discipline as the three ports above. A
+    // fourteenth directory would have been a second Redis client for one Redis.
+    //
+    // It is the FOURTH owner of this directory and therefore its fourth project
+    // reference, which moves EXPECTED_EDGE_COUNT by one.
     additional: [
       { port: "IdempotencyStore", owner: "jobs" },
       { port: "RequestIdempotency", owner: "kernel" },
+      { port: "ProviderProbeCache", owner: "providers" },
     ],
     note: "one namespaced keyspace behind one Redis client",
   },
@@ -382,8 +429,78 @@ export const ADAPTERS = [
     additional: [
       { port: "AeadCipher", owner: "secrets" },
       { port: "Hasher", owner: "secrets" },
+      // WIN-267 A1 — the FOURTH port, and the first on this directory owned by a
+      // context other than `secrets`.
+      //
+      // `MfaSecretCipher` needs AES-256 key material and there is exactly one
+      // place in the tree that holds any: `root-key-ring.ts`, whose `resolve` is
+      // reachable only through the closure `createRootKeyRing` returns and is
+      // published by no export. A composition root cannot obtain the bytes to
+      // hand to another directory, and rule (j2) `adapter-is-self-contained`
+      // forbids a second directory from importing this one to get at them. The
+      // only alternative would be a directory parsing its OWN root key out of its
+      // OWN variable — a second key hierarchy for one installation, which is the
+      // arrangement this directory was created to end.
+      //
+      // It makes `keyring-envelope` the second MULTI-OWNER adapter, which is a
+      // row in `EXPECTED_MULTI_OWNER_ADAPTERS` and one new project edge
+      // (`keyring-envelope` -> `identity-access`); the contexts themselves stay
+      // apart, exactly as seventeen contexts share `postgres-tenancy` without
+      // importing each other.
+      { port: "MfaSecretCipher", owner: "identity-access" },
     ],
     note: "the versioned root key ring and the AES-256-GCM envelope over it",
+  },
+  // WIN-267 A1 — the FOURTEENTH directory, and the only one in the table that
+  // holds no client, no connection and no key.
+  //
+  // `SecretHasher` is SHA-256 hex, a constant-time comparison and the RFC 7636
+  // challenge derivation. §15's "one vendor client, one directory" rule sends a
+  // new binding to an existing directory when it shares that directory's client;
+  // this shares nothing with anything, because `node:crypto` is not a client an
+  // install wires. It is not `keyring-envelope`'s fourth port for two reasons
+  // that both stand alone: the argument that put `secrets`' `Hasher` beside the
+  // keys was about a COST PARAMETER, which this port cannot have (it is
+  // synchronous, and the ADR paragraph on it says a work factor "would only make
+  // every request slower"); and `Hasher.hash` and `SecretHasher.hash` are two
+  // signatures under one name, so the flat `extends` shape that directory uses
+  // could not take it even if the custody argument had held.
+  {
+    dir: "node-crypto-digest",
+    port: "SecretHasher",
+    owner: "identity-access",
+    note: "the stored-verifier digest, the constant-time comparison and the PKCE challenge",
+  },
+  // WIN-267 A2. THE FIFTEENTH DIRECTORY, and the second one added since the §15
+  // amendment — for a reason §15 does not cover at all.
+  //
+  // §15 is a rule about a VENDOR CLIENT: one client is one directory, however
+  // many ports sit behind it. There is no vendor client here. Both ports are
+  // `node:crypto`, which every project in this tree may already call, so nothing
+  // about a shared client argues for or against putting them together. The
+  // argument that does apply is `keyring-envelope`'s: two ports belong in one
+  // directory when SPLITTING them would break something that has to hold.
+  //
+  // WHAT HAS TO HOLD. `TokenMinter.mintTotpSecret` ENCODES the shared secret as
+  // base32 and `TotpCodeVerifier.generate` DECODES it. Two directories are two
+  // packages with two copies of an alphabet that can be versioned apart, and the
+  // day they disagree by one character every enrolment fails on a real phone and
+  // nothing in this repository notices. One directory means `base32.ts` is one
+  // module both import.
+  //
+  // WHY IT IS NOT A ROW ON `postgres-tenancy` OR `keyring-envelope`. The ORM's
+  // directory refused `secrets`' cryptography ports because holding key material
+  // beside the database connection puts both halves of a credential in one
+  // process; the same sentence applies to the generator that MINTS the secrets
+  // those rows store. And `keyring-envelope` is the custodian of REVERSIBLE
+  // envelopes — nothing in this directory can decrypt or verify anything, which
+  // is a property worth keeping true by construction.
+  {
+    dir: "tokenmint-totp",
+    port: "TokenMinter",
+    owner: "identity-access",
+    additional: [{ port: "TotpCodeVerifier", owner: "identity-access" }],
+    note: "the credential randomness and the RFC 6238 keyed hash over one base32 alphabet",
   },
 ];
 
@@ -639,8 +756,51 @@ export function adapterOwnerPackages(adapter) {
 // WIN-260, whose two bindings are rows on a directory that already existed:
 // 12 + 1 = 13. The BINDING pin takes both: 44 + 3 + 2 = 49. The two moving by
 // different amounts is exactly what the separate pins exist to show.
-export const EXPECTED_ADAPTER_COUNT = 13;
-export const EXPECTED_BINDING_COUNT = 49;
+// WIN-267 A1. The DIRECTORY pin moves for the second time ever, 13 -> 14, and
+// the BINDING pin moves by two, 49 -> 51. The two amounts differ again and the
+// difference is the whole statement: `keyring-envelope:MfaSecretCipher` is a row
+// on an EXISTING directory, because AES-256 root key bytes have exactly one
+// custodian in this tree and `adapter-is-self-contained` forbids a second
+// directory from borrowing them; `node-crypto-digest:SecretHasher` is a NEW
+// directory, because a keyless SHA-256 shares no client with anything and §15's
+// consolidation rule is about sharing a client.
+//
+// WIN-267 A2: 14 -> 15 directories, 51 -> 53 bindings. The FIFTEENTH directory
+// takes TWO bindings with it (`identity-access:TokenMinter` and
+// `identity-access:TotpCodeVerifier`), so both pins move and they move by
+// different amounts -- which is again what the separate pins exist to show.
+//
+// WIN-267 A3: 53 -> 54 bindings and the DIRECTORY pin does not move at all.
+// `redis-cache:ProviderProbeCache` is a row on an existing directory, which is
+// the distinction §15's amendment is entirely about; and `redis-ratelimit`
+// gained an IMPLEMENTATION in the same tranche while moving no binding, because
+// it was already declared and was simply unsatisfiable.
+//
+// THE MERGED FIGURES ARE STATED BY NO SINGLE BRANCH. Over the same 13/49 base
+// A1+A2 pinned 15/53 and A3 pinned 13/50; the tree then held 15 and 54.
+//
+// WIN-267 G2: 54 -> 57 bindings and the DIRECTORY pin does not move a
+// TWENTY-FIRST time. `governance`'s three inverted read seams are three rows on
+// `postgres-tenancy`, which is the §15 amendment's whole subject; a thirteenth
+// package for them would have needed its own Prisma client, and the ONE-HOME
+// rule `tenancy-prisma-only` states is what forbids that. This branch pins
+// 15/57 over the 15/54 base; two sibling branches move the same pin for the
+// remaining governance ports, so the integrator SUMS the deltas rather than
+// taking any one branch's total.
+//
+// WIN-267 G1: 54 -> 55 bindings and the DIRECTORY pin does not move.
+// `postgres-tenancy:EvalRunQueue` is a row on an existing directory, which is
+// what §15's amendment is about: the run it records lives in the ONE PostgreSQL
+// database, so it is written from the one directory that holds that client. The
+// alternative -- a real `packages/adapters/durable-runtime` -- would have moved
+// the directory pin AND decided a supplier question that section's own
+// configuration group has already answered with an external API URL.
+//
+// SUMMED FOR THE INTEGRATION: 54 + 3 (G2) + 1 (G1) = 57 + 1 = 58 bindings
+// over the SAME fifteen directories. Neither branch could state this
+// figure: G1 pinned 55 and G2 pinned 57, both over the same 54 base.
+export const EXPECTED_ADAPTER_COUNT = 15;
+export const EXPECTED_BINDING_COUNT = 58;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -667,7 +827,19 @@ export const ROOT_SOLUTION_PATH = "tsconfig.json";
 // §2 lets only an adapter package implement a driven port: without its own
 // tsconfig and its own package it could not be referenced by the composition
 // root, and `secrets`' three cryptography ports would have stayed unimplemented.
-export const EXPECTED_PROJECT_COUNT = 33;
+// 33 -> 34 (WIN-267 A1). `packages/adapters/node-crypto-digest`, the fourteenth
+// adapter directory and the second V1 project ever added. Same argument as the
+// thirteenth and one clause further: only an adapter package may implement a
+// driven port, and this is the only port of the four `context-ports.ts` names as
+// missing whose implementation needs no key, no client and no configuration —
+// so it is the one that could not be a row on an existing directory either.
+// 33 -> 34 (WIN-267 A2). `packages/adapters/tokenmint-totp`, the fourteenth
+// adapter directory. A PROJECT for the same reason the thirteenth was one: ADR
+// M0.3 §2 lets only an adapter package implement a driven port, so without its
+// own tsconfig and its own package the composition root could not reference it
+// and `identity-access`'s `TokenMinter` and `TotpCodeVerifier` would have stayed
+// where `context-ports.ts` found them — "satisfied by no adapter directory".
+export const EXPECTED_PROJECT_COUNT = 35;
 // 94 -> 95 (WIN-297): apps/core-api -> packages/kernel. The composition root
 // binds twelve adapters to the ports they implement and three of those ports
 // (OutboxWriter, DurableRuntime, EventBus) are kernel-hosted, so without this
@@ -860,7 +1032,24 @@ export const EXPECTED_PROJECT_COUNT = 33;
 // thirteenth directory) + 3 (WIN-260's postgres-tenancy -> kernel consumer edge
 // and redis-cache's two further owner edges) = 116. READ BACK from
 // `gen-v1-skeleton --check` rather than trusted from this arithmetic.
-export const EXPECTED_EDGE_COUNT = 116;
+//
+// WIN-267 A1: 116 + 3 = 119 -- `keyring-envelope` -> `identity-access` (the
+// fourth binding's owner edge), `node-crypto-digest` -> `identity-access` (the
+// fourteenth directory's owner edge) and `apps/core-api` ->
+// `node-crypto-digest` (the composition-root edge every adapter gets).
+//
+// WIN-267 A2: 119 + 2 = 121 -- the same two shapes for the fifteenth directory.
+//
+// WIN-267 A3: 121 + 1 = 122 -- `packages/adapters/redis-cache` ->
+// `packages/contexts/providers`, carrying `ProviderProbeCache`. A FOURTH owner
+// edge on a directory that had three, and a reference per PACKAGE rather than
+// per port, so one new binding is again exactly one new edge. It cannot create a
+// cycle: `providers` depends on `tenancy`, `secrets` and `kernel` and on no
+// adapter, and `adapters-only-from-core` makes the return edge unrepresentable.
+//
+// READ BACK from `gen-v1-skeleton --check` rather than trusted from this
+// arithmetic, and carried independently in `scripts/arch/v1-project-graph.mjs`.
+export const EXPECTED_EDGE_COUNT = 122;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -875,7 +1064,12 @@ export const SCAFFOLDING_BASENAMES = ["package.json", "tsconfig.json", "README.m
 // comment that said so is corrected rather than deleted: it was true for as long
 // as every port had a home, and `secrets`' three cryptography ports did not.
 // The thirteenth directory brings the three files every project brings.
-export const EXPECTED_SCAFFOLDING_FILE_COUNT = 100;
+//
+// 100 -> 103 (WIN-267 A1): 34 projects x 3 files + 1. The fourteenth directory
+// brings the same three, for the same reason.
+// 100 -> 103 (WIN-267 A2). The fourteenth directory brings the three files every
+// project brings: 34 projects x 3 files + 1 = 103.
+export const EXPECTED_SCAFFOLDING_FILE_COUNT = 106;
 
 // Declaration-only source placeholders in a fully unadopted skeleton:
 // kernel 3 + contexts 17x4 + adapters 13x2 + core-api 8 + mcp-stdio 1.
@@ -896,7 +1090,23 @@ export const EXPECTED_SCAFFOLDING_FILE_COUNT = 100;
 // DIRECTORY; WIN-260 adopts `redis-cache`, and adoption releases placeholders
 // from the emitted set rather than adding to what a fully unadopted skeleton
 // would hold.
-export const EXPECTED_PLACEHOLDER_FILE_COUNT = 106;
+//
+// 106 -> 108 (WIN-267 A1). `packages/adapters/node-crypto-digest`'s
+// `src/index.ts` and `src/adapter.ts`, on the same terms: both are emitted for an
+// UNADOPTED project and immediately released by this issue's adoption, so the
+// released count moves by two in the same run and the EMITTED placeholder count
+// does not move at all. Raising the CEILING rather than the floor is what keeps
+// un-adoption failing closed — remove the adoption entry while the real source
+// is on disk and the two files reappear as MISSING.
+// WIN-267 A2: 106 -> 108. The FOURTEENTH adapter's `src/index.ts` and
+// `src/adapter.ts`, emitted for an unadopted project and immediately released by
+// this tranche's adoption — which is why the RELEASED count moves by two in the
+// same run while the number below, a property of a fully UNADOPTED skeleton,
+// moves by two as well. Raising the CEILING keeps un-adoption failing closed:
+// the check refuses a placeholder count above this number, so removing the
+// adoption entry while the real source is on disk makes both files reappear as
+// MISSING.
+export const EXPECTED_PLACEHOLDER_FILE_COUNT = 110;
 
 // ---------------------------------------------------------------------------
 // ADOPTED PROJECTS (WIN-256). Append-only, one project path per entry, each with
@@ -937,6 +1147,9 @@ export const ADOPTED_PROJECTS = [
   "apps/core-api", // WIN-297 — the bootable process and THE composition root
   "apps/mcp-stdio", // WIN-297 — the thin stdio binary and its host-injected runtime seam
   "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
+  "packages/adapters/node-crypto-digest", // WIN-267 A1 — the identity-access SecretHasher: SHA-256 hex over the extraction source's own digests, a constant-time comparison, and RFC 7636's S256 challenge
+  "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
+  "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
 ];
 
 // ---------------------------------------------------------------------------
@@ -996,6 +1209,25 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // alternative — a second double living in the adapter — would measure the
   // adapter against a copy of itself.
   "packages/contexts/skills",
+  // WIN-267 — imported by `apps/core-api/src/composition/context-ports.ts`,
+  // which is the ORIGINAL reason this list exists rather than the widening the
+  // three entries above are: the composition root names a factory from it.
+  //
+  // WHAT IT IMPORTS AND WHY THE ENTRY IS NOT PREMATURE. The list's rule is "the
+  // contexts whose `application/index.js` a V1 project actually imports", and
+  // the note below records that WIN-267 T3 added nothing here because an entry
+  // without a matching import is dead surface. This entry HAS its import:
+  // `createGovernanceSafetyEventSink`, the only implementation of the kernel
+  // `SafetyEventSink` in this tree, without which `identity-access` cannot be
+  // composed at all -- `consume-rate-limit.ts` writes
+  // `identity.rate_limit.degraded` into that sink on every refusal.
+  //
+  // THE CONTEXT ITSELF IS STILL NOT COMPOSED, and the entry does not claim it
+  // is. `GOVERNANCE_UNCOMPOSABLE_CHAIN` in `composition/context-ports.ts` names
+  // the six unbound ports across four contexts that stop it. What this line
+  // publishes is a factory for a KERNEL PORT, which is why the import is real
+  // today rather than a placeholder for a composition that has not happened.
+  "packages/contexts/governance",
 ];
 
 // ---------------------------------------------------------------------------
@@ -1010,37 +1242,58 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // THE COUNT, AND WHERE IT FALLS AWAY. A context is composable only when three
 // things hold at once:
 //
-//   1. it publishes a factory over its whole contract. ELEVEN do —
-//      `createTenancyService`, `createIdentityAccessService`, and the nine
-//      `create*Contract` functions in `channels`, `conversations`, `eventing`,
-//      `files`, `governance`, `jobs`, `observability`, `privacy` and `skills`.
-//      SIX do not: `agents`, `tools`, `secrets`, `memory`, `cost-monitoring` and
-//      `providers` publish their use cases one at a time and no assembler.
+//   1. it publishes a factory over its whole contract, AND `apps/core-api` can
+//      IMPORT that factory. SEVENTEEN publish one; NINE are importable.
 //
 //   2. every driven port in its bundle has an implementation in this tree;
 //
 //   3. that implementation is reachable from a constructed adapter.
+//
+// CONDITION 1 USED TO BE ONE CLAUSE HERE AND IT WAS FALSE (WIN-267 G3). It read
+// "ELEVEN do ... SIX do not: `agents`, `tools`, `secrets`, `memory`,
+// `cost-monitoring` and `providers` publish their use cases one at a time and no
+// assembler". Every one of those six publishes an assembler, and publishes it
+// from `.`: `agentsContract`, `toolsContract`, `secretsContract`,
+// `memoryContract`, `costMonitoringContract` and `providersContract` are all in
+// their own packages' `contracts/index.ts`. `secrets` and `providers` were
+// corrected in `context-ports.ts` when they were composed; this copy of the
+// claim was not, and kept the other four wrong for a further tranche. There is
+// no context in this tree without an assembler, and there never was.
+//
+// WHAT IS REAL IS THE OTHER HALF, and it is this list's own subject. NINE
+// factories can be named from the composition root — six from `.`, and
+// `identity-access`, `tenancy` and `skills` from the `./application/index.js`
+// entries below. The remaining EIGHT — `channels`, `conversations`, `eventing`,
+// `files`, `governance`, `jobs`, `observability` and `privacy` — keep a
+// `create*Contract` in `application/` behind a manifest publishing only `.`,
+// `./application/ports/index.js` and `./application/testing/index.js`. That is
+// WIN-297's finding, still open for eight contexts, and the fix is one line here
+// each — held back by this list's own rule until the context is actually
+// composed.
 //
 // ONE context clears all three: `tenancy`, whose six driven ports and unit of
 // work are all properties of a single `PostgresTenancyAdapter` (WIN-258 tranches
 // 1 and 3). It is already on the list, and what changed is that it is now
 // composed over REAL PostgreSQL rather than over a bundle an install handed in.
 //
-// `identity-access` is the near miss and the one worth naming, because it looks
-// composable and is not: its `repository` IS on that adapter (tranche 2) and
-// `clock`, `ids` and `logger` are kernel ports the process holds, but
-// `rateLimiter` is `packages/adapters/redis-ratelimit` — still this generator's
-// own placeholder — and `hasher`, `minter`, `totp` and `cipher` are satisfied by
-// no adapter directory at all. `keyring-envelope`'s `Hasher` is `secrets`' port,
-// a different type in a different package, and nothing implements
-// `SecretHasher`, `TokenMinter`, `TotpCodeVerifier` or `MfaSecretCipher`.
+// `identity-access` WAS the near miss and its ports have since landed, so the
+// paragraph that stood here is withdrawn rather than carried: it said
+// `rateLimiter` is "still this generator's own placeholder" and that `hasher`,
+// `minter`, `totp` and `cipher` are "satisfied by no adapter directory at all".
+// WIN-267 A1, A2 and A3 closed all five — `redis-ratelimit`,
+// `node-crypto-digest`, `keyring-envelope` and `tokenmint-totp` — and all six of
+// its driven ports are now satisfied. What holds it is the kernel
+// `SafetyEventSink`, implemented only by `governance`.
 //
-// Of the other nine assemblers, every one needs at least one port whose adapter
-// is a placeholder — `ObjectStore`, `DurableRuntime`, `ObservabilitySink`,
-// `EventBus`, `ChannelAdapter` — or a peer contract from one of the six that
-// publish no assembler. `apps/core-api/src/composition/context-ports.ts` states
-// this per context and its suite checks the identity-access half against
-// `ADAPTER_BINDINGS` rather than asserting it.
+// AND `governance` IS IN THE UNIMPORTABLE EIGHT, which is the fact a tranche
+// planning that work needs first: landing adapters for its five unbound ports
+// still would not make it composable, because `createGovernanceContract` cannot
+// be named from the composition root until an entry appears above. Its
+// `AgentsContract` slot needs a composed `agents` too, and `agents` is short
+// `AgentVersionLock` and `MacroRecorder` plus a `skills` peer.
+// `apps/core-api/src/composition/context-ports.ts` states this per context, and
+// its suite checks the identity-access, agents and importability halves against
+// `ADAPTER_BINDINGS` and against the resolver rather than asserting them.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -1207,6 +1460,13 @@ const PROJECT_TEST_SCRIPTS = {
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "packages/adapters/redis-cache":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  // WIN-267 A3 adds `packages/adapters/redis-ratelimit` for the same reason and
+  // with a byte-identical run: it ships a real-Redis suite that proves two
+  // concurrent consumers cannot both take the last token of a window, which
+  // needs a container and therefore a daemon `pnpm test:v1-packages` does not
+  // have. Byte-identical to the two above so the three cannot drift.
+  "packages/adapters/redis-ratelimit":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "apps/core-api":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
@@ -1333,6 +1593,19 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   "redis-cache": {
     ioredis: "^5.6.1",
   },
+  // WIN-267 A3. The SECOND of the three redis-* directories to hold a client,
+  // and it is a second CLIENT rather than a second copy of one: ADR M0.3 §4
+  // gives `redis-ratelimit` its own directory with "one namespaced keyspace, one
+  // owner", so the limiter's `platos:identity:ratelimit:` keyspace and the
+  // cache's `platos:jobs:idem:`/`platos:http:idem:` are held by different
+  // objects with different lifetimes. `ioredis` is deliberately absent from
+  // SDK_CONTAINMENT for exactly that reason — the ADR's own layout has three
+  // homes for it, and a containment rule naming one would refuse the other two.
+  // The specifier is byte-identical to `redis-cache`'s and to `apps/agent`'s, so
+  // pnpm resolves it to the entry already in pnpm-lock.yaml (ioredis@5.10.1).
+  "redis-ratelimit": {
+    ioredis: "^5.6.1",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -1364,6 +1637,14 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // SBOM of something that never starts a container. Byte-identical to the
   // specifier already in the lockfile (@testcontainers/redis@10.28.0).
   "redis-cache": {
+    "@testcontainers/redis": "^10.28.0",
+  },
+  // WIN-267 A3. The Redis container the atomicity of the last token is proved
+  // against. A DEV dependency for the reason the two above are, and with the
+  // same specifier: a sequential test cannot tell an atomic `INCR` from a
+  // `GET`-then-`SET`, so the only proof of the port's own "MUST make the
+  // read-and-increment atomic" is real concurrent consumers on a real server.
+  "redis-ratelimit": {
     "@testcontainers/redis": "^10.28.0",
   },
 };
@@ -1518,7 +1799,16 @@ const CORE_API_RUNTIME_DEPENDENCIES = {
 // a container. The specifier is byte-identical to the two already in the
 // lockfile, so pnpm resolves it to @testcontainers/redis@10.28.0 rather than
 // opening a new resolution.
+//
+// WIN-267 ADDS `@testcontainers/postgresql`, and it is the SAME argument one
+// step further: the composition root now COMPOSES `identity-access`, and the
+// only honest proof that an operator can authenticate through it is a real
+// PostgreSQL holding a real `OperatorSession` -- `InMemoryIdentityAccessRepository`
+// hashes nothing and would pass against a `SecretHasher` that returned a
+// constant. Byte-identical to the specifier `postgres-tenancy` already uses, so
+// it resolves to the entry already in the lockfile.
 const CORE_API_DEV_DEPENDENCIES = {
+  "@testcontainers/postgresql": "^10.28.0",
   "@testcontainers/redis": "^10.28.0",
 };
 

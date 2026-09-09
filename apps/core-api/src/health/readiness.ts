@@ -12,13 +12,19 @@
 // READINESS IS STILL RED, AND FOR THE FIRST TIME IT IS RED ABOUT SOMETHING
 // (WIN-267 T3). It used to read "AT M2.1b READINESS IS HONESTLY RED. None of the
 // twelve adapters has an implementation, so no binding is satisfied" — which had
-// stopped being why. Five of the thirteen directories now have real
+// stopped being why. SIX of the fourteen directories now have real
 // constructors, `main.ts` calls them from the validated configuration, and the
-// satisfied count moves with what an install actually wired: a process with a
-// database URL satisfies thirty-four bindings, one with the four store and
-// security groups declared satisfies forty-one.
+// satisfied count moves with what an install actually wired: a process with
+// nothing declared at all satisfies ONE binding, one with a database URL
+// satisfies thirty-five, and one with the four store and security groups
+// declared satisfies forty-three.
 //
-// GREEN STILL REQUIRES ALL FORTY-NINE, and that is deliberate rather than
+// THE FLOOR IS NO LONGER ZERO (WIN-267 A1). `node-crypto-digest` reads no
+// configuration — a SHA-256 has no key, no endpoint and no connection — so it is
+// built under every environment, and an operator who has set nothing now reads
+// `1 of 51` rather than a line that could not move.
+//
+// GREEN STILL REQUIRES ALL FIFTY-ONE, and that is deliberate rather than
 // unfinished. Eight directories are WIN-251's generated interfaces, so eight
 // bindings cannot be satisfied by any configuration; a readiness rule that went
 // green on "everything this install COULD wire" would be comparing the supply to
@@ -89,7 +95,7 @@ export function evaluateReadiness(app: AppModule, state: LifecycleState): Readin
       // BOTH HALVES, AND BOTH COUNTED OFF THE SAME REPORT. The satisfied figure
       // is what an operator watches move as they wire an install; without it the
       // line said only how far there was left to go, which read the same at
-      // 0/49 as at 41/49 to anyone skimming a log.
+      // 1/51 as at 43/51 to anyone skimming a log.
       reason:
         `${app.bindings.satisfied.length} of ${DECLARED_BINDING_COUNT} adapter bindings are satisfied;` +
         ` ${app.bindings.unsatisfied.length} are not`,

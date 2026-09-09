@@ -1,0 +1,298 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-267",
+  "tranche": "A3 — a real RateLimiter, and the providers ProviderProbeCache",
+  "branch": "tejas/win-267-a3-redis",
+  "base": "007007f2 (v1)",
+  "purpose": [
+    "A3 turns `packages/adapters/redis-ratelimit` from a generated placeholder",
+    "into a real adapter, and gives `providers`' `ProviderProbeCache` its first",
+    "implementation as a FOURTH port on `packages/adapters/redis-cache`.",
+    "",
+    "THE ENTRIES THIS LEDGER EXISTS FOR ARE M06 AND M07. They mutate the ORACLE —",
+    "`internal-packages/tenancy-database/src/auth.ts`, byte-identical to",
+    "origin/main — and watch this branch's differential go red. Without them,",
+    "'the hot limiter's windows are the canonical store's windows' would be an",
+    "argument about a table this tranche wrote. `oracle-source.ts` LIFTS four",
+    "expressions and three literals out of that file and EVALUATES them, so",
+    "nothing on the oracle's side of the comparison is written here.",
+    "",
+    "M09 IS A 2x2 RATHER THAN A MUTATION, and it is the only shape that could",
+    "settle the claim it is about. `evictionPattern` derives its SCAN pattern from",
+    "`domain/health.ts`'s own key builder instead of writing the layout out again.",
+    "Mutating the adapter alone kills for the wrong reason; what proves the",
+    "derivation load-bearing is moving the DOMAIN's layout and observing that the",
+    "derived pattern follows it (green) while a hand-written one does not (red).",
+    "",
+    "M04 IS RECORDED WITH THE STEP THAT MADE IT FIRE, because the first run was",
+    "a FALSE GREEN. A context edit does not reach an adapter's suite until",
+    "`pnpm build:v1` re-emits the context's `dist/`, which the workspace `exports`",
+    "map points at. Anyone re-running this ledger must build between applying a",
+    "mutation in `packages/contexts/**` and running the command.",
+    "",
+    "WHAT IS NOT HERE. The atomicity claim — 'two processes consuming the last",
+    "token must not both succeed' — is declared UNFALSIFIABLE ON THIS MACHINE",
+    "below, with the reason and the suite that would settle it. A Map in one",
+    "process cannot exhibit the race, and no unit mutation can kill a case that",
+    "does not run."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST. The unmutated tree was run green before and after every",
+    "entry below: 19 cases in `pnpm --filter @platos/adapter-redis-ratelimit test`,",
+    "68 in `pnpm --filter @platos/adapter-redis-cache test`, and 357 in",
+    "`pnpm --filter @platos/core-api test`. An entry whose suite was already red",
+    "proves nothing, and a 'kill' with no named failing line is VACUOUS.",
+    "",
+    "For one entry: apply `to` to `file`, run `command` (running `pnpm build:v1`",
+    "first when `file` is under `packages/contexts/**` or",
+    "`internal-packages/**` — see M04), confirm the NAMED case in `kills` appears",
+    "and the process exits non-zero. Then revert and confirm exit 0. Every `kills`",
+    "line below was SEEN, on this branch, at the commit that introduces this file.",
+    "",
+    "`file` is REPOSITORY-relative. AFTER any entry that touches the oracle, run",
+    "`git diff origin/main -- internal-packages/tenancy-database/src/auth.ts` and",
+    "confirm it is EMPTY. That file is the frozen oracle; a tranche that left it",
+    "edited would have edited the thing it is measured against."
+  ],
+  "commands": {
+    "limiter": "pnpm --filter @platos/adapter-redis-ratelimit test",
+    "cache": "pnpm --filter @platos/adapter-redis-cache test",
+    "composition": "pnpm --filter @platos/core-api exec vitest run src/composition",
+    "build": "pnpm build:v1"
+  },
+  "mutations": [
+    {
+      "name": "M01 the bucket key forgets which window it is counting",
+      "guards": "packages/adapters/redis-ratelimit/src/rate-limiter.ts — `bucketKey`, where rollover actually lives",
+      "why": "The window start is IN the key, which is what makes a rolled-over window a different counter with no sweeper and no TTL dependence. Drop it and every window for one identifier shares one counter forever.",
+      "file": "packages/adapters/redis-ratelimit/src/rate-limiter.ts",
+      "from": "`platos:identity:ratelimit:${action}:${identifierHash}:${windowStart.getTime()}`",
+      "to": "`platos:identity:ratelimit:${action}:${identifierHash}`",
+      "command": "limiter",
+      "exit": 1,
+      "kills": [
+        "× the window rolls over because the KEY changes, not because a TTL fired > addresses a DIFFERENT key the instant the window ends",
+        "→ expected 'platos:identity:ratelimit:LOGIN:01234…' not to be 'platos:identity:ratelimit:LOGIN:01234…'",
+        "× the window rolls over because the KEY changes, not because a TTL fired > starts the next window's counter at one, with the clock ADVANCED and never read",
+        "→ expected 8 to be 1",
+        "× this adapter's window is the oracle's window > gives two instants ONE key exactly when the oracle gives them one row",
+        "→ LOGIN 2026-03-04T10:17:00.000Z vs 2026-03-04T10:18:00.000Z: expected true to be false"
+      ],
+      "killCount": 3,
+      "note": "The third kill is the ORACLE's: the equivalence relation the adapter's key induces stopped matching the one the canonical store's unique index induces."
+    },
+    {
+      "name": "M02 the reported count is off by one",
+      "guards": "packages/adapters/redis-ratelimit/src/rate-limiter.ts — `requestCount` INCLUDES this request",
+      "why": "The port says the returned count includes the current request, which is why a caller compares with `>` and a policy of ten admits the tenth. Off by one and a policy of ten admits eleven.",
+      "file": "packages/adapters/redis-ratelimit/src/rate-limiter.ts",
+      "from": "        requestCount,",
+      "to": "        requestCount: requestCount - 1,",
+      "command": "limiter",
+      "exit": 1,
+      "kills": [
+        "× the bucket a consumption folds into > reports the count the server returned, including this request",
+        "→ expected [ +0, 1, 2, 3 ] to deeply equal [ 1, 2, 3, 4 ]",
+        "× the request the oracle refuses is the request this adapter's count identifies > refuses the (limit + 1)th and no earlier one, for all three policies",
+        "→ LOGIN: expected [ 12 ] to deeply equal [ 11, 12 ]"
+      ],
+      "killCount": 3,
+      "note": "The second kill is the ORACLE's own comparison, evaluated from its source text, applied to this adapter's count. It is the strongest single line of evidence in this ledger."
+    },
+    {
+      "name": "M03 a dead Redis fails OPEN by inventing a bucket",
+      "guards": "packages/adapters/redis-ratelimit/src/rate-limiter.ts — the catch that refuses instead of fabricating",
+      "why": "A synthesised `requestCount: 1` is indistinguishable from a real first request of a window: `decide()` allows it, no safety event is recorded, and the outage is invisible. This is the live security hole the tranche brief names.",
+      "file": "packages/adapters/redis-ratelimit/src/rate-limiter.ts",
+      "from": "      } catch (error) {\n        return err(rateLimiterUnavailable(reasonOf(error)));\n      }",
+      "to": "      } catch {\n        requestCount = 1;\n      }",
+      "command": "limiter",
+      "exit": 1,
+      "kills": [
+        "× a Redis that is gone > refuses with its own code rather than throwing",
+        "→ expected true to be false",
+        "× a Redis that is gone > FAILS CLOSED: it never invents a bucket a caller could mistake for a quiet window",
+        "→ expected true to be false",
+        "× a Redis that is gone > carries the driver's MESSAGE and never the connection URL",
+        "→ expected true to be false"
+      ],
+      "killCount": 3
+    },
+    {
+      "name": "M04 the limiter refuses under the identity store's code",
+      "guards": "packages/contexts/identity-access/domain/errors.ts — RATE_LIMITER_UNAVAILABLE as a code of its own",
+      "why": "`consume-rate-limit.ts` copies `consumed.error.code` verbatim into the `identity.rate_limit.degraded` safety event. Two guards under one code cannot be told apart, so an operator reading that event could not say whether Redis or PostgreSQL had gone.",
+      "file": "packages/contexts/identity-access/domain/errors.ts",
+      "from": "domainError(\"RATE_LIMITER_UNAVAILABLE\", \"unavailable\", \"Rate limiter is unavailable\", {",
+      "to": "domainError(\"IDENTITY_STORE_UNAVAILABLE\", \"unavailable\", \"Rate limiter is unavailable\", {",
+      "command": "build, then limiter",
+      "exit": 1,
+      "kills": [
+        "× a Redis that is gone > refuses with its own code rather than throwing",
+        "→ expected 'IDENTITY_STORE_UNAVAILABLE' to be 'RATE_LIMITER_UNAVAILABLE'"
+      ],
+      "killCount": 1,
+      "note": "FALSE GREEN ON THE FIRST RUN, recorded because it is a trap for the next agent: without `pnpm build:v1` the adapter's suite resolves the context through its published `dist/` and the mutation is invisible. 19/19 passed. After the build it kills."
+    },
+    {
+      "name": "M05 the counter is written with a lifetime of zero",
+      "guards": "packages/adapters/redis-ratelimit/src/rate-limiter.ts — `reclamationTtlMs`'s lower clamp",
+      "why": "Redis treats `PEXPIRE key 0` as a DEL, so a caller whose `at` sat on or past the boundary would silently reset a live window — a rate limiter that resets itself on request.",
+      "file": "packages/adapters/redis-ratelimit/src/rate-limiter.ts",
+      "from": "  if (!Number.isFinite(remaining) || remaining < 1) return 1;",
+      "to": "  if (!Number.isFinite(remaining) || remaining < 1) return 0;",
+      "command": "limiter",
+      "exit": 1,
+      "kills": [
+        "× the lifetime the counter is written with > is never zero or negative, because PEXPIRE 0 is a DELETE",
+        "→ expected +0 to be 1"
+      ],
+      "killCount": 1
+    },
+    {
+      "name": "M06 the ORACLE's limit comparison becomes >=",
+      "guards": "the differential itself — that it reads the extraction source rather than a copy of this tranche's own belief",
+      "why": "If the differential were comparing this adapter against numbers written in its own suite, mutating the oracle would change nothing. This is the entry that makes every other oracle claim in the tranche checkable.",
+      "file": "internal-packages/tenancy-database/src/auth.ts",
+      "from": "if (bucket.requestCount > limit.requests) {",
+      "to": "if (bucket.requestCount >= limit.requests) {",
+      "command": "limiter",
+      "exit": 1,
+      "kills": [
+        "× the request the oracle refuses is the request this adapter's count identifies > refuses the (limit + 1)th and no earlier one, for all three policies",
+        "→ LOGIN: expected [ 10, 11, 12 ] to deeply equal [ 11, 12 ]"
+      ],
+      "killCount": 1,
+      "control": "`git diff origin/main -- internal-packages/tenancy-database/src/auth.ts` was EMPTY after the revert."
+    },
+    {
+      "name": "M07 the ORACLE's login window becomes 30 seconds",
+      "guards": "the differential's literal-for-literal claim about `domain/rate-limit.ts`'s header",
+      "why": "`domain/rate-limit.ts` says its defaults are 'The extraction source's defaults, unchanged'. This is that sentence made falsifiable from the SOURCE side rather than restated.",
+      "file": "internal-packages/tenancy-database/src/auth.ts",
+      "from": "options.loginRateLimit ?? { requests: 10, windowMs: 60_000 }",
+      "to": "options.loginRateLimit ?? { requests: 10, windowMs: 30_000 }",
+      "command": "limiter",
+      "exit": 1,
+      "kills": [
+        "× the extraction's claim that it copied the oracle's defaults > still holds, literal for literal",
+        "→ expected { LOGIN: { requests: 10, …(1) }, …(2) } to deeply equal { LOGIN: { requests: 10, …(1) }, …(2) }"
+      ],
+      "killCount": 1,
+      "control": "`git diff origin/main -- internal-packages/tenancy-database/src/auth.ts` was EMPTY after the revert."
+    },
+    {
+      "name": "M08 eviction drops the health verdict and leaves the model list",
+      "guards": "packages/adapters/redis-cache/src/provider-probe-cache.ts — `forgetProvider` covering BOTH builders",
+      "why": "The port says 'drop every entry for one provider'. Evicting one kind leaves a rotated credential's model list addressable — the same defect one aisle over from the one WIN-259 repaired.",
+      "file": "packages/adapters/redis-cache/src/provider-probe-cache.ts",
+      "from": "        await forgetMatching(evictionPattern(healthCacheKey, provider));\n        await forgetMatching(evictionPattern(modelListCacheKey, provider));",
+      "to": "        await forgetMatching(evictionPattern(healthCacheKey, provider));",
+      "command": "cache",
+      "exit": 1,
+      "kills": [
+        "× a key rotated because it leaked must stop answering healthy > EVICTS the pre-rotation verdict, so nothing still holding the old fingerprint can read it",
+        "→ expected 1 to be +0"
+      ],
+      "killCount": 1
+    },
+    {
+      "name": "M09 the eviction pattern is written out instead of derived — a 2x2",
+      "guards": "packages/adapters/redis-cache/src/provider-probe-cache.ts — `evictionPattern` deriving the layout from the domain's own builder",
+      "why": "A hand-written `provider-health/<id>/*` agrees with the domain until somebody changes the domain, and then eviction silently stops matching and a rotated credential's verdict survives its whole freshness window. A single mutation cannot show that; the 2x2 can.",
+      "file": "packages/adapters/redis-cache/src/provider-probe-cache.ts (adapter axis) and packages/contexts/providers/domain/health.ts (layout axis)",
+      "from": "const [before] = build(provider, FINGERPRINT_SLOT).split(FINGERPRINT_SLOT); return `${NAMESPACE}${escapeGlob(before ?? \"\")}*`;",
+      "to": "return `${NAMESPACE}provider-health/${escapeGlob(provider)}/*`;",
+      "command": "build, then cache",
+      "exit": 1,
+      "matrix": [
+        "derived pattern + live layout          -> 68 passed  (the unmutated tree)",
+        "hand-written pattern + live layout     -> 1 failed   (it drops the model-list half; the WEAK kill)",
+        "hand-written pattern + MOVED layout    -> 3 failed   (the layouts diverge; the REAL kill)",
+        "derived pattern + MOVED layout         -> 68 passed  (the derivation follows: THE CONTROL)"
+      ],
+      "kills": [
+        "× a key rotated because it leaked must stop answering healthy > EVICTS the pre-rotation verdict, so nothing still holding the old fingerprint can read it",
+        "→ expected 2 to be +0",
+        "× a key rotated because it leaked must stop answering healthy > evicts ONLY that provider, so one rotation does not re-probe every other",
+        "→ expected [ …(2) ] to deeply equal [ Array(1) ]",
+        "× the eviction pattern is DERIVED from the domain's key builder > matches every fingerprint under one provider and nothing under another",
+        "→ expected 'platos:providers:probe:provider-healt…' to be 'platos:providers:probe:probe/health/o…'"
+      ],
+      "killCount": 3,
+      "control": "The fourth row of the matrix is the load-bearing one: with the layout moved to `probe/health/${provider}/...` and the DERIVED pattern restored, all 68 cases pass. `packages/contexts/providers/domain/health.ts` was restored afterwards and `git diff` was empty for it."
+    },
+    {
+      "name": "M10 an empty model list is treated as a miss",
+      "guards": "packages/adapters/redis-cache/src/provider-probe-cache.ts — `decodeModels`",
+      "why": "The port is explicit that an empty array is a STORED ANSWER: caching the empty result of a failed fetch briefly is what stops a broken upstream being called once per page load.",
+      "file": "packages/adapters/redis-cache/src/provider-probe-cache.ts",
+      "from": "if (!Array.isArray(parsed) || parsed.some((entry) => typeof entry !== \"string\")) return null;",
+      "to": "if (!Array.isArray(parsed) || parsed.length === 0 || parsed.some((entry) => typeof entry !== \"string\")) return null;",
+      "command": "build, then cache",
+      "exit": 1,
+      "kills": [
+        "× what a stored value is when it comes back > keeps an EMPTY model list as an answer, because the port says it is one",
+        "→ expected { ok: true, value: null } to deeply equal { ok: true, value: [] }"
+      ],
+      "killCount": 1
+    },
+    {
+      "name": "M11 the stored instant comes back as a string",
+      "guards": "packages/adapters/redis-cache/src/provider-probe-cache.ts — `decodeReport` reviving `checkedAt`",
+      "why": "`isFresh` does arithmetic on `checkedAt`. A string would make every freshness comparison NaN-false, so every cached verdict would read as stale and every page load would re-probe — a cache that silently does nothing.",
+      "file": "packages/adapters/redis-cache/src/provider-probe-cache.ts",
+      "from": "    return { ...parsed, checkedAt };",
+      "to": "    return parsed as unknown as ProviderHealthReport;",
+      "command": "build, then cache",
+      "exit": 1,
+      "kills": [
+        "× what a stored value is when it comes back > round-trips a report, with its instant still an instant",
+        "→ expected { provider: 'openai', …(6) } to deeply equal { provider: 'openai', …(6) }"
+      ],
+      "killCount": 1
+    },
+    {
+      "name": "M12 the composition root stops constructing the limiter",
+      "guards": "apps/core-api/src/composition/adapter-bindings.ts — the limiter is BUILT, not merely declared",
+      "why": "Every other claim in this tranche is about a package. This is the one that says the running process holds the object: without it `identity-access` is exactly as unassemblable as it was before the tranche, and the readiness figure would be the only thing that had changed.",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "from": "    const limiter = createRedisRatelimitAdapter({ url: redis.url });\n    adapters[\"redis-ratelimit\"] = limiter;\n    closers.push(() => limiter.close());",
+      "to": "",
+      "command": "build, then composition",
+      "exit": 1,
+      "kills": [
+        "× constructing the adapters an install declared > leaves the outbox unbuilt when there is no database, because the ORM has one home",
+        "→ expected [ 'redis-cache' ] to deeply equal [ 'redis-cache', 'redis-ratelimit' ]",
+        "× readiness over what was actually constructed > reports 43 of 50, and the 7 that remain are exactly the bindings with no implementation",
+        "→ expected [ …(42) ] to have a length of 43 but got 42",
+        "× the context bundles those adapters can satisfy > does not compose identity-access, and its reason holds against the binding table",
+        "→ expected undefined to be defined"
+      ],
+      "killCount": 3
+    }
+  ],
+  "declared": [
+    {
+      "name": "D01 THE ATOMICITY OF THE LAST TOKEN — unfalsifiable on this machine, and named",
+      "claim": "Two processes consuming the last token of a window must not both succeed. `client.ts` does INCR and the expiry decision in ONE Lua script, so of two callers arriving at a counter of nine one is handed ten and the other eleven.",
+      "why-not-mutated": "The only suite that can exhibit the race is `packages/adapters/redis-ratelimit/src/ratelimit.integration.test.ts`, which needs a real Redis in a container. Docker is quit on the laptop by standing instruction, and this agent's worktree isolation REFUSED the mutating git-over-ssh calls that put a commit on the Mac mini — `ssh mini 'git -C ~/work/platos-oss fetch …'` is declined because the remote command's text cannot be shown not to be a git operation on another checkout. Routing around that guard was refused.",
+      "measured-instead": "The suite compiles (it is inside `pnpm build:v1`, which passes) and FAILS LOCALLY with `Error: Could not find a working container runtime strategy`, which is the correct behaviour for a suite reaching for an absent daemon. It is UNVERIFIED, not passing.",
+      "what-would-settle-it": "On a host with a daemon: `pnpm --filter @platos/adapter-redis-ratelimit exec vitest run src/ratelimit.integration.test.ts`. The mutation that would kill it is replacing the Lua script in `client.ts` with a client-side `GET` then `SET`, at which point 'hands 32 simultaneous consumers 32 DISTINCT counts' must go red. A sequential loop cannot tell the two implementations apart, which is why no unit entry above claims it."
+    },
+    {
+      "name": "D02 `SET … PXAT` on a real server — unfalsifiable on this machine, and named",
+      "claim": "`RedisConnection.writeUntil` honours an ABSOLUTE instant, so the probe cache needs no clock; an instant already past stores nothing rather than storing an immortal key.",
+      "why-not-mutated": "Same reason as D01: `packages/adapters/redis-cache/src/provider-probe.integration.test.ts` needs a container. The unit suite proves the instant crosses the seam unchanged (`writes the domain's INSTANT and computes no lifetime of its own`) and can prove nothing about what Redis does with it.",
+      "measured-instead": "Compiles; excluded from the laptop run by the package's own `test` script; UNVERIFIED.",
+      "what-would-settle-it": "`pnpm --filter @platos/adapter-redis-cache exec vitest run src/provider-probe.integration.test.ts` on a host with a daemon. `PXAT` is Redis 6.2+ and the harness runs `redis:7-alpine`."
+    },
+    {
+      "name": "D03 THE COMPOSED SYSTEM STILL FAILS OPEN — a measured divergence from the brief, not an oversight",
+      "claim": "This ADAPTER fails closed (M03 pins it). The SYSTEM does not: `packages/contexts/identity-access/domain/rate-limit.ts` declares `LIMITER_UNAVAILABLE_POLICY = \"allow\"`, and `consume-rate-limit.ts` admits the request as `degraded` and records a safety event.",
+      "why-not-changed": "It is the ORACLE's behaviour — `apps/agent/src/auth/rate-limit.guard.ts` catches a failed pipeline with `// Redis down -> fail open (availability over rate limiting).` and returns `true`. Flipping the constant is a behaviour change to a live authentication path, it is a DOMAIN edit rather than an adapter one, and it would be invisible in a diff of the two adapter directories this tranche is scoped to.",
+      "already-pinned": "`packages/contexts/identity-access/domain/rate-limit.test.ts` — 'the documented behaviour when the limiter itself is unreachable > is fail-open, and it is a named policy rather than a swallowed error' asserts the constant is \"allow\". A second copy in the adapter would be one fact stated twice, in a package that cannot import the constant.",
+      "what-would-change-it": "One constant, in the context, with every use case following and no other edit."
+    }
+  ]
+}

@@ -102,7 +102,26 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // than computed.
   // M2 INTEGRATION: 33 projects (only WIN-259 adds one; WIN-260 adopts one that
   // already existed) and 111 + 2 + 3 = 116 edges. Still READ BACK, not computed.
-  assert.match(output, /33 V1 projects and 116 project edges/u);
+  // WIN-267 A1 + A2: 35 projects and 116 + 3 + 2 = 121 edges. A1's three are
+  // `keyring-envelope` -> `identity-access` (the fourth binding's owner edge),
+  // `node-crypto-digest` -> `identity-access` (its owner edge) and
+  // `apps/core-api` -> `node-crypto-digest` (the composition-root edge every
+  // adapter gets). A2's two are `tokenmint-totp` -> `identity-access` and
+  // `apps/core-api` -> `tokenmint-totp` -- TWO for TWO bindings, because a
+  // project reference is per PACKAGE.
+  //
+  // WIN-267 A3: 121 + 1 = 122. `packages/adapters/redis-cache` ->
+  // `packages/contexts/providers`, a FOURTH owner edge on that directory, and NO
+  // new project. Its other half -- `redis-ratelimit` becoming a real adapter --
+  // adds no edge and no project either: the reference into `identity-access` has
+  // existed since the skeleton was generated, and adoption changes what a
+  // project CONTAINS rather than what it points at.
+  //
+  // Still READ BACK from the generator's own line rather than computed here,
+  // which is what caught the one-short pin at WIN-259 and is why the merged
+  // 35/122 -- a pair no branch stated, against A1+A2's 35/121 and A3's 33/117 --
+  // is a reading rather than a sum somebody trusted.
+  assert.match(output, /35 V1 projects and 122 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -156,7 +175,7 @@ test("stale, missing, and extra owned files each fail closed", () => {
 // source tier is released only by an explicit, monotonic adoption.
 // ---------------------------------------------------------------------------
 
-test("the scaffolding tier is exactly 100 files and is only ever manifests, tsconfigs and READMEs", () => {
+test("the scaffolding tier is exactly 103 files and is only ever manifests, tsconfigs and READMEs", () => {
   const files = renderSkeleton([]);
   const { scaffolding, placeholders, total } = tierCounts(files);
   assert.equal(scaffolding, EXPECTED_SCAFFOLDING_FILE_COUNT);
@@ -165,7 +184,13 @@ test("the scaffolding tier is exactly 100 files and is only ever manifests, tsco
   // scaffolding files and two source placeholders; 97 + 3 = 100 and
   // 104 + 2 = 106. The literal is asserted BESIDE the two constants above so a
   // pin moved without the tree moving, or the reverse, cannot pass here.
-  assert.equal(total, 206, "an unadopted skeleton is the M1 tree plus the thirteenth adapter");
+  //
+  // WIN-267 A1 + A2 206 -> 216, by the same arithmetic twice: each new adapter
+  // directory brings three scaffolding files and two source placeholders, so
+  // 100 + 3 + 3 = 106 and 106 + 2 + 2 = 110. `keyring-envelope`'s fourth BINDING
+  // adds nothing here — a binding is a row in a table, not a file on disk —
+  // which is exactly the distinction this total is worth asserting for.
+  assert.equal(total, 216, "an unadopted skeleton is the M1 tree plus the thirteenth, fourteenth and fifteenth adapters");
 
   const scaffoldingPaths = [...files.keys()].filter((path) => isScaffoldingPath(path));
   assert.equal(scaffoldingPaths.length, EXPECTED_SCAFFOLDING_FILE_COUNT);
@@ -529,6 +554,12 @@ const LIVE_ADAPTERS = [
       { port: "CriteriaRepository", owner: "governance" },
       { port: "EvalsRepository", owner: "governance" },
       { port: "GoldenSetsRepository", owner: "governance" },
+      // WIN-267 G1. The SIXTH `governance` binding on this directory, and the
+      // first that is not a canonical-store CRUD port: `EvalRunQueue`, the
+      // durable hand-over ADR M0.3 §1 row 14 needs. The fixture carries it for
+      // the same reason it carries the five above — it is a COPY of the live
+      // table, and a copy that lost a row would let the live one lose it too.
+      { port: "EvalRunQueue", owner: "governance" },
       // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, which now
       // carry binding slots of their own on the directory that already
       // satisfied them. SEVENTEEN bindings on one row.
@@ -581,6 +612,13 @@ const LIVE_ADAPTERS = [
       // live one, so a copy missing a binding would make the refusal COUNTS
       // wrong rather than the refusals.
       { port: "NotificationRuleRepository", owner: "eventing" },
+      // WIN-267 G2. `governance`'s THREE inverted read seams, in the fixture
+      // copy for the reason every binding above is: this copy is the
+      // non-vacuity anchor every refusal below stands on, so a copy behind the
+      // tree makes the refusal COUNTS wrong rather than the refusals.
+      { port: "RatingTargetReader", owner: "governance" },
+      { port: "TranscriptReader", owner: "governance" },
+      { port: "ActivityReader", owner: "governance" },
     ], note: "n" },
   { dir: "outbox", port: "OutboxWriter", owner: "kernel", note: "n" },
   { dir: "durable-runtime", port: "DurableRuntime", owner: "kernel", note: "n" },
@@ -591,10 +629,15 @@ const LIVE_ADAPTERS = [
   // `IdempotencyStore` behind the SAME Redis client as `memory`'s `Cache`.
   // The fixture copy has to carry it, or the non-vacuity anchor below is
   // comparing the refusals against a table the tree no longer has.
+  // WIN-267 A3 adds the FOURTH, `providers:ProviderProbeCache`. The fixture copy
+  // has to carry it for the reason the header above states: without it,
+  // `checkAdapterTable(LIVE_ADAPTERS)` is a table the tree no longer has, and
+  // every refusal below would be measured against a stale baseline.
   { dir: "redis-cache", port: "Cache", owner: "memory", note: "n",
     additional: [
       { port: "IdempotencyStore", owner: "jobs" },
       { port: "RequestIdempotency", owner: "kernel" },
+      { port: "ProviderProbeCache", owner: "providers" },
     ] },
   { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "n" },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "n" },
@@ -607,6 +650,21 @@ const LIVE_ADAPTERS = [
   { dir: "keyring-envelope", port: "KeyRing", owner: "secrets", additional: [
       { port: "AeadCipher", owner: "secrets" },
       { port: "Hasher", owner: "secrets" },
+      // WIN-267 A1. The FOURTH binding, and the first on this directory owned by
+      // a context other than `secrets`. The fixture copy carries it for the
+      // reason it carries the other three: `checkAdapterTable(LIVE_ADAPTERS)`
+      // has to stay a real copy of the live table rather than a stale one that
+      // happens to pass.
+      { port: "MfaSecretCipher", owner: "identity-access" },
+    ], note: "n" },
+  // WIN-267 A1. The FOURTEENTH directory, in the fixture copy for the same
+  // reason: this copy is the non-vacuity anchor every refusal below stands on,
+  // so a copy behind the tree makes the refusal COUNTS wrong rather than the
+  // refusals.
+  { dir: "node-crypto-digest", port: "SecretHasher", owner: "identity-access", note: "n" },
+  // WIN-267 A2. The FIFTEENTH, with its two bindings.
+  { dir: "tokenmint-totp", port: "TokenMinter", owner: "identity-access", additional: [
+      { port: "TotpCodeVerifier", owner: "identity-access" },
     ], note: "n" },
 ];
 
@@ -624,17 +682,26 @@ test("the live adapter table passes its own check, and the fixture copy of it do
 // holds no rows and no database client — `keyring-envelope`, which holds the
 // AES-256 root keys the ORM's own adapter refused to hold. The refusal it
 // proves is unchanged: a directory beyond the declared count still fails.
-test("§15 refusal: a FOURTEENTH adapter directory fails, even though bindings may exceed thirteen", () => {
+// WIN-267 RENAMES IT TWICE MORE, FOURTEENTH -> FIFTEENTH -> SIXTEENTH, and the
+// two renames record two exceptions. `keyring-envelope` was a directory that
+// holds no rows and no database client but DOES hold a vendor-shaped thing, the
+// AES-256 root keys. `node-crypto-digest` and `tokenmint-totp` are the cases §15
+// does not reach at all — a keyless SHA-256, and `node:crypto` plus the one
+// base32 alphabet two ports must agree on. Neither shares a CLIENT with
+// anything, which is what §15's consolidation rule is about. The refusal this
+// case proves is unchanged in any rename: a directory beyond the declared count
+// still fails.
+test("§15 refusal: a SIXTEENTH adapter directory fails, even though bindings may exceed fifteen", () => {
   const errors = checkAdapterTable([
     ...LIVE_ADAPTERS,
     { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
   ]);
-  assert.ok(errors.some((error) => error.includes("names 13 concrete adapter directories; ADAPTERS has 14")));
+  assert.ok(errors.some((error) => error.includes("names 15 concrete adapter directories; ADAPTERS has 16")));
 });
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a FIFTIETH binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a FIFTY-NINTH binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -644,14 +711,38 @@ test("§15 refusal: a FIFTIETH binding fails, even though a directory may hold m
   // §15 amendment anywhere but `postgres-tenancy`. Its errors-and-idempotency
   // dimension moved it again to forty-six, in the same directory and for the
   // kernel: `redis-cache:RequestIdempotency`, M0.4 §2's Idempotency-Key
-  // envelope.
+  // envelope. WIN-267 A3 moved it to FIFTY, in the same directory again and for
+  // `providers`: `redis-cache:ProviderProbeCache`.
+  //
+  // The MUTATION still adds `memory:Cache` to `postgres-tenancy`, which fires
+  // the count rule and the second-home rule at once; only the count is asserted,
+  // because that is the rule this case is about.
   const widened = LIVE_ADAPTERS.map((adapter) =>
     adapter.dir === "postgres-tenancy"
       ? { ...adapter, additional: [...adapter.additional, { port: "Cache", owner: "memory" }] }
       : adapter
   );
+  // WIN-267 A2 moved it to fifty-one, and again NOT in `postgres-tenancy`: the
+  // fiftieth and fifty-first are `tokenmint-totp:TokenMinter` and
+  // `tokenmint-totp:TotpCodeVerifier`, the first two bindings in the layout on a
+  // directory that holds no vendor client at all.
   const errors = checkAdapterTable(widened);
-  assert.ok(errors.some((error) => error.includes("declares 49 adapter bindings; ADAPTERS flattens to 50")));
+  // WIN-267 moved it to fifty-four, by five rows across three directories:
+  // `keyring-envelope:MfaSecretCipher` on an existing one,
+  // `node-crypto-digest:SecretHasher` on a new one, `tokenmint-totp`'s two on
+  // another new one, and A3's `redis-cache:ProviderProbeCache` on an existing
+  // one again. G1 moved it to FIFTY-FIVE with a sixth row on
+  // `postgres-tenancy`, `governance:EvalRunQueue` -- so the refusal this case
+  // exercises is now the fifty-SIXTH.
+    // WIN-267 G2 moved it to FIFTY-SEVEN, and back inside `postgres-tenancy`:
+  // `governance`'s three inverted read seams are three rows on the directory
+  // that already owns the four tables they read. The DIRECTORY pin above did
+  // not move with it, which is the distinction §15's amendment is entirely
+  // about and the reason these two pins are separate.
+  //
+  // SUMMED: 54 + 1 + 3 = 58, so the refusal this case exercises is the
+  // fifty-NINTH.
+  assert.ok(errors.some((error) => error.includes("declares 58 adapter bindings; ADAPTERS flattens to 59")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

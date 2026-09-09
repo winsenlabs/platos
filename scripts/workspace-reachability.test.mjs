@@ -239,14 +239,40 @@ test("lockfile importer parser rejects malformed and duplicate keys", () => {
 // anchored to the lines around it, and a comment inserted INSIDE the body moves
 // those anchors into a context nobody has reviewed. Out here the reviewed
 // surroundings are untouched and the gate relocates them by line alone.
+// WIN-267 A2 MOVES THE SAME FOUR BY ONE AGAIN, for `tokenmint-totp`, and it is
+// recorded because A2 DID NOT MOVE THEM. The fifteenth adapter directory landed
+// on `tejas/win-267-adapters` with this suite red on four assertions here and on
+// two more in the generated-ownership case, and no branch of WIN-267 saw it: the
+// gate is not one of the sixty-two in the V1 M0 block, it is its own earlier CI
+// step, and every tranche measured itself against v1 rather than against the
+// integration branch. That is the same class of dark gate A4 lit for
+// `clean-prisma-delegates.test.ts`, found here by running the step rather than
+// by reading it.
+//
+// A3 MOVES NONE OF THEM. `redis-ratelimit` was already a registered workspace,
+// already a root reference and already in both closures; adoption changes what a
+// project CONTAINS, not whether it is reached.
+//
+// THIS PARAGRAPH IS OUT HERE FOR THE REASON THE ONE ABOVE IT IS. Two identifiers
+// inside the body carry a word the vocabulary boundary reserves, each with a
+// reviewed exception anchored to the lines around it, and a comment inserted
+// INSIDE the body moves those anchors into a context nobody has reviewed --
+// which `pnpm audit:vocabulary` reported as CHANGED-CONTEXT the first time this
+// note was written there.
 test("committed baseline independently captures OCI, application/deployable, and migrations-union closures", () => {
   const report = repositoryReport();
-  assert.equal(report.summary.registeredWorkspaceCount, 61);
+  // WIN-267 A1 moves four of these by ONE and leaves three alone, which is the
+  // shape of a fourteenth ADAPTER: `packages/adapters/node-crypto-digest` is a
+  // registered workspace, is reached by the application/deployable closure
+  // through `apps/core-api`, joins the union with it, and is traversed on a
+  // frozen install. It is NOT in an OCI image closure (no shipping Dockerfile
+  // roots it), NOT in the OCI+dev closure, and NOT a review candidate.
+  assert.equal(report.summary.registeredWorkspaceCount, 63);
   assert.equal(report.summary.ociImageWorkspaceCount, 6);
-  assert.equal(report.summary.applicationDeployableWorkspaceCount, 38);
-  assert.equal(report.summary.deploymentUnionWorkspaceCount, 39);
+  assert.equal(report.summary.applicationDeployableWorkspaceCount, 40);
+  assert.equal(report.summary.deploymentUnionWorkspaceCount, 41);
   assert.equal(report.summary.repositoryDevWorkspaceCount, 10);
-  assert.equal(report.summary.installTraversalWorkspaceCount, 61);
+  assert.equal(report.summary.installTraversalWorkspaceCount, 63);
   assert.equal(report.summary.reviewCandidateCount, 22);
   const applicationRootKinds = new Set(
     Object.values(report.roots.applicationDeployable.reasons)
@@ -297,7 +323,15 @@ test("the entire root-referenced V1 application graph is retained, never classif
   // was drawn, which is exactly why this count is asserted rather than derived:
   // a project added to `tsconfig.json` and to nothing else would be built, would
   // be reachable, and would still be invisible to every gate that reads a list.
-  assert.equal(v1Projects.length, 33);
+  // WIN-267 A1 33 -> 34. `packages/adapters/node-crypto-digest` is the
+  // THIRTY-FOURTH root reference, and the same sentence applies to it.
+  // WIN-267 A2 34 -> 35. `packages/adapters/tokenmint-totp` is the THIRTY-FIFTH,
+  // and this pin is the exact case its own comment warns about: A2 added the
+  // project to `tsconfig.json` and NOT to this list, so the suite went red on
+  // `tejas/win-267-adapters` and no branch of WIN-267 noticed until the merge.
+  // A3 adds none -- it ADOPTS `redis-ratelimit`, a project that has existed
+  // since the skeleton was generated.
+  assert.equal(v1Projects.length, 35);
   for (const project of v1Projects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
     assert.equal(workspace.applicationDeployableClosure.reachable, true, project);
@@ -497,7 +531,7 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 118 outputs across 33 V1 projects", () => {
+test("generated ownership includes the generator's exact 120 outputs across 35 V1 projects", () => {
   const report = repositoryReport();
   // M2 INTEGRATION DELTA — 201 -> 117. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
@@ -692,15 +726,22 @@ test("generated ownership includes the generator's exact 118 outputs across 33 V
   // and 116 project edges (25 project(s) adopted, 90 placeholder(s) released)".
   // Scaffolding 97 -> 100, placeholders 18 -> 16, adopted 23 -> 25, released
   // 86 -> 90.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 116);
-  assert.equal(report.generatedOwnership.ownedOutputProjectCount, 33);
+  //
+  // WIN-267 A1, read back the same way, prints
+  // "103 scaffolding + 16 placeholder = 119 generated file(s) for 34 V1 projects
+  // and 119 project edges (26 project(s) adopted, 92 placeholder(s) released)".
+  // Scaffolding 100 -> 103 (the fourteenth directory's manifest, tsconfig and
+  // README), placeholders EMITTED unmoved at 16 because the directory is adopted
+  // in the same run that creates it, adopted 25 -> 26 and released 90 -> 92.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 120);
+  assert.equal(report.generatedOwnership.ownedOutputProjectCount, 35);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 116 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 116);
+  // Same 119 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 120);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);

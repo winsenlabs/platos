@@ -91,7 +91,17 @@ export const sourceModelManifest = [
   { source: "PlatosErasureOperation", targets: ["ErasureOperation"], owner: "organization", surface: "operator", decision: "rename" },
 ] as const satisfies readonly SourceModelDisposition[];
 
-/** New support models required by the approved normalized design. */
+/**
+ * New support models required by the approved normalized design.
+ *
+ * WIN-267 G1 adds `EvalRun`, and it belongs HERE rather than in
+ * `sourceModelManifest` for the reason that list is defined by: it is not a
+ * rename, merge, split or re-home of a legacy `Platos`-prefixed model, because
+ * the legacy tree has no such row at all. `GoldenSetService.run` executes the
+ * whole fan-out inside the HTTP request, so there was nothing durable to record
+ * and nothing for a source disposition to point at. ADR M0.3 §1 row 14 says eval
+ * runs enqueue as durable jobs; this is the row that sentence needs.
+ */
 export const supportDomainModels = [
   "AgentToolPolicy",
   "AlertChannel",
@@ -105,6 +115,7 @@ export const supportDomainModels = [
   "CredentialSecretVersion",
   "EnvironmentVariable",
   "ErasureTombstone",
+  "EvalRun",
   "OAuthConsentTransaction",
   "Model",
   "ModelPrice",

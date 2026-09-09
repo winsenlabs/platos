@@ -51,6 +51,8 @@
     "@platos/adapter-notifier-email": "workspace:*",
     "@platos/adapter-notifier-webhook": "workspace:*",
     "@platos/adapter-keyring-envelope": "workspace:*",
+    "@platos/adapter-node-crypto-digest": "workspace:*",
+    "@platos/adapter-tokenmint-totp": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
     "@nestjs/platform-express": "^11.0.0",
@@ -58,6 +60,7 @@
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
+    "@testcontainers/postgresql": "^10.28.0",
     "@testcontainers/redis": "^10.28.0"
   }
 }

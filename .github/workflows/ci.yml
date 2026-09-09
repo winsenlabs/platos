@@ -177,6 +177,8 @@ jobs:
           pnpm test:sbom
           pnpm test:differential-coverage
           pnpm audit:differential-coverage
+          pnpm audit:openapi-compat
+          pnpm test:openapi-compat
 
       - name: WIN-284 differential harness and its negative controls
         # The suites prove the comparators, the register and the engine's
@@ -215,6 +217,25 @@ jobs:
 
       - name: Reproduce clean hosted-CI focused Agent Vitest consumers
         run: pnpm --filter platos-agent exec vitest run chat-session.task.test.ts internal-chat-turn-options.test.ts
+
+      - name: Tenancy Prisma delegate boundary and census
+        # WIN-267 A4. This suite existed since before PR #120 and NO job ran
+        # it, because this job names its Vitest files one at a time and this
+        # was not among them. It was consequently RED on `v1` for 1,064
+        # commits (`expected 815 to be 751`) while 64 production delegate call
+        # sites accumulated unobserved. Naming it here is the repair; the
+        # re-pin alone would only have reset the clock on the same failure.
+        #
+        # It is its own step rather than an argument appended to the step
+        # above so that a future reader of a red log sees WHICH gate failed
+        # without opening the Vitest summary, and so that deleting it from the
+        # workflow is a visible deletion rather than a quiet edit to a list.
+        #
+        # It must stay AFTER "Generate and build compiled Agent dependencies":
+        # the census is type-checker driven, and with
+        # `@platos/tenancy-database` unbuilt the client type is opaque and the
+        # analyzer finds fewer call sites than the pin expects.
+        run: pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts
 
       - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
         run: pnpm test:win-290
@@ -588,6 +609,45 @@ jobs:
         #
         # They FAIL when Docker is absent rather than skipping.
         run: pnpm test:postgres-tenancy:integration
+
+      - name: Build the core-api composition graph
+        # The core-api idempotency integration suite resolves
+        # `@platos/adapter-redis-cache` through its package `main`, which is
+        # dist/, and composes the real application over it. `...` builds that
+        # package and every workspace dependency of it, so the suite fails an
+        # ASSERTION rather than failing to LOAD.
+        run: pnpm --filter "@platos/core-api..." build
+
+      - name: Redis-backed adapter and composition-root integration suites
+        # WIN-267. FOUR suites that ran in NO job at all, and the count is four
+        # rather than the three the hand-off named: `redis-cache` carries an
+        # `idempotency.integration.test.ts` as well as the `provider-probe` one.
+        #
+        # WHY THEY WERE DARK. Every one of these packages excludes
+        # `**/*.integration.test.ts` from its own `test` script, which is what
+        # keeps `pnpm test:v1-packages` runnable with no Docker daemon; and
+        # `test:postgres-tenancy:integration` selects `integration` for exactly
+        # one package. So `ratelimit.integration.test.ts` (7 cases),
+        # `provider-probe.integration.test.ts` (4),
+        # `redis-cache/src/idempotency.integration.test.ts` and
+        # `core-api/src/http/idempotency.integration.test.ts` were excluded from
+        # the suite that runs and selected by nothing that runs. They are the
+        # same class of defect as the tenancy Prisma delegate census A4 lit after
+        # 1,064 commits: a gate is a gate only while a job names it.
+        #
+        # `scripts/ci-policy.test.mjs` now joins this step to the FILESYSTEM: it
+        # enumerates every V1 integration suite on disk and fails if any package
+        # holding one is not selected by some job here. Deleting either line
+        # below turns `pnpm test:ci-policy` red, so this cannot go dark again by
+        # omission.
+        #
+        # They FAIL when Docker is absent rather than skipping, exactly as the
+        # step above does. A skipped run and a passing one are indistinguishable
+        # in a summary.
+        run: |
+          pnpm test:redis-ratelimit:integration
+          pnpm test:redis-cache:integration
+          pnpm test:core-api:integration
 
   differential-state-conservation:
     name: differential-state-conservation

@@ -34,7 +34,11 @@ import type {
 
 import type {
   IdentityAccessRepository,
+  MfaSecretCipher,
   RateLimiter,
+  SecretHasher,
+  TokenMinter,
+  TotpCodeVerifier,
 } from "@platos/context-identity-access/application/ports/index.js";
 import type {
   EnvironmentAccessKeyRevocationCounter,
@@ -73,6 +77,7 @@ import type {
 } from "@platos/context-memory/application/ports/index.js";
 import type {
   ModelRouter,
+  ProviderProbeCache,
   ProvidersRepository,
 } from "@platos/context-providers/application/ports/index.js";
 import type {
@@ -85,11 +90,15 @@ import type {
   Notifier,
 } from "@platos/context-cost-monitoring/application/ports/index.js";
 import type {
+  ActivityReader,
   CriteriaRepository,
+  EvalRunQueue,
   EvalsRepository,
   GoldenSetsRepository,
+  RatingTargetReader,
   RatingsRepository,
   SafetyLedger,
+  TranscriptReader,
 } from "@platos/context-governance/application/ports/index.js";
 import type {
   ConversationsErasureStore,
@@ -126,6 +135,11 @@ import type { DurableRuntimeAdapter } from "@platos/adapter-durable-runtime";
 import type { ClickhouseObservabilityAdapter } from "@platos/adapter-clickhouse-observability";
 import type { ObjectstoreMinioAdapter } from "@platos/adapter-objectstore-minio";
 import type { RedisRatelimitAdapter } from "@platos/adapter-redis-ratelimit";
+// WIN-267 A3 — the SIXTH value import, and the first that turns a generated
+// placeholder into a constructed object. `redis-ratelimit` left
+// `UNIMPLEMENTED_ADAPTERS` in the same commit, which rule (C7) checks against the
+// directory's own source in both directions.
+import { createRedisRatelimitAdapter } from "@platos/adapter-redis-ratelimit";
 import type { RedisCacheAdapter } from "@platos/adapter-redis-cache";
 import { createRedisCacheAdapter } from "@platos/adapter-redis-cache";
 import type { RedisStreamsAdapter } from "@platos/adapter-redis-streams";
@@ -136,6 +150,10 @@ import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
 import { buildKeyringEnvelope } from "@platos/adapter-keyring-envelope";
+import type { NodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-digest";
+import { createNodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-digest";
+import type { TokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
+import { createTokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
 
 import type { ProvidersConfiguration } from "../config/providers.js";
 import type { SecurityConfiguration } from "../config/security.js";
@@ -143,14 +161,16 @@ import type { StoresConfiguration } from "../config/stores.js";
 import type { Drainable } from "../runtime/shutdown-drain.js";
 
 /**
- * The thirteen adapter slots, keyed by directory name.
+ * The fourteen adapter slots, keyed by directory name.
  *
  * The key is the adapter's directory because that is the name every other gate
  * already uses — `scripts/arch/boundary-rules.mjs`, the generator's `ADAPTERS`
  * table and `v1-project-graph.mjs`'s `EXPECTED_ADAPTER_OWNERS` all agree on it,
  * so a mismatch here is mechanically detectable rather than a matter of taste.
  *
- * THIRTEEN SLOTS, FORTY-SEVEN BINDINGS (ADR M0.3 §15, amended by WIN-259). An
+ * FOURTEEN SLOTS, FIFTY-ONE BINDINGS (ADR M0.3 §15, amended by WIN-259, and
+ * WIN-267 A2 for the case §15 does not reach at all — a directory with NO vendor
+ * client). An
  * install wires a DIRECTORY — one process-lifetime object holding one vendor
  * client — so this table stays keyed by directory. What a directory SATISFIES is
  * a different question, and `PORT_SATISFACTION` below answers it per binding.
@@ -184,6 +204,29 @@ export interface AdapterInstances {
   // every envelope the ORM stores. `secrets-repository.ts` declined all three of
   // its ports on exactly that ground.
   readonly "keyring-envelope": KeyringEnvelopeAdapter;
+  // WIN-267 A1 — the FOURTEENTH slot, and the only one an install cannot
+  // misconfigure. It holds no vendor client, so §15's consolidation rule has
+  // nothing to consolidate it INTO: that rule collapses directories that would
+  // otherwise open a second connection to one server, and a SHA-256 opens
+  // nothing. It is not a row on `keyring-envelope` for the reason that
+  // directory's own header gives for keeping `Hasher` there — the cost
+  // parameter — which this port cannot have, being synchronous and digesting
+  // only high-entropy random tokens.
+  readonly "node-crypto-digest": NodeCryptoDigestAdapter;
+  // WIN-267 A2 — the FIFTEENTH slot. It is a slot rather than a row on an
+  // existing directory because an install wires ONE process-lifetime object per
+  // directory and this one holds no vendor client at all: it is `node:crypto`'s
+  // CSPRNG and the base32 alphabet that the minted TOTP secret and the verifier
+  // that reads it must share. `keyring-envelope` declined it for the reason it
+  // states about the ORM's directory in reverse — the custodian of reversible
+  // envelopes should not also be the generator of the secrets they seal.
+  //
+  // IT IS ONE OF THE TWO SLOTS NO CONFIGURATION GROUP DECLARES — the other is
+  // `node-crypto-digest` directly above. Every other entry needs a URL, a key or
+  // a model name; these two need nothing, so `constructAdapters` builds them
+  // unconditionally and both are present in the NOTHING_DECLARED install as well
+  // as the fully declared one.
+  readonly "tokenmint-totp": TokenmintTotpAdapter;
 }
 
 export type AdapterName = keyof AdapterInstances;
@@ -256,6 +299,36 @@ interface PortSatisfaction {
   readonly "postgres-tenancy:GoldenSetsRepository": Satisfies<
     PostgresTenancyAdapter["goldenSets"],
     GoldenSetsRepository
+  >;
+  // WIN-267 G1. `governance`'s SIXTH port on this directory, and the first that
+  // is not a canonical-store CRUD pair. Proven through the property for the same
+  // reason the five above are — `enqueue` would not collide, but the consumer
+  // half beside it (`claim`, `acknowledge`, `abandon`) must not become reachable
+  // by spreading a queue into an object seventeen contexts read.
+  readonly "postgres-tenancy:EvalRunQueue": Satisfies<
+    PostgresTenancyAdapter["evalRuns"],
+    EvalRunQueue
+  >;
+  // WIN-267 G2. `governance`'s THREE inverted read seams, proven through the
+  // property that carries each one — the same shape the five stores above use,
+  // and for a sharper reason than collision. `find`, `read` and `countByAgent`
+  // do not collide with anything in this directory, so all three COULD have been
+  // spread; they are properties because `GovernanceDependencies` has three
+  // separate slots for them and a bundle assembled from a spread would have to
+  // name them again. `ratingTargets` and `transcripts` are the pair that makes
+  // this load-bearing: both read `Thread` and `Turn` inside one environment, so
+  // two readers transposed would answer plausible values for ever.
+  readonly "postgres-tenancy:RatingTargetReader": Satisfies<
+    PostgresTenancyAdapter["ratingTargets"],
+    RatingTargetReader
+  >;
+  readonly "postgres-tenancy:TranscriptReader": Satisfies<
+    PostgresTenancyAdapter["transcripts"],
+    TranscriptReader
+  >;
+  readonly "postgres-tenancy:ActivityReader": Satisfies<
+    PostgresTenancyAdapter["activity"],
+    ActivityReader
   >;
   // WIN-258 M2.3. Tenancy's five NON-REPOSITORY driven ports, proven through the
   // PROPERTY that carries each one rather than through the adapter itself.
@@ -463,6 +536,16 @@ interface PortSatisfaction {
     RedisCacheAdapter["requests"],
     RequestIdempotency
   >;
+  // WIN-267 A3. The FOURTH port on this directory, indexed through the PROPERTY
+  // for the reason the three above it are: the adapter is one object serving
+  // four contracts, and `Satisfies<RedisCacheAdapter, ProviderProbeCache>` would
+  // ask whether the whole adapter is a probe cache, which it is not. The
+  // obligation that matters is that `probes` IS one, so the day the adapter
+  // renames or re-types it, `pnpm build:v1` fails here.
+  readonly "redis-cache:ProviderProbeCache": Satisfies<
+    RedisCacheAdapter["probes"],
+    ProviderProbeCache
+  >;
   readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
   readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
   readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
@@ -481,6 +564,34 @@ interface PortSatisfaction {
   readonly "keyring-envelope:KeyRing": Satisfies<KeyringEnvelopeAdapter, KeyRing>;
   readonly "keyring-envelope:AeadCipher": Satisfies<KeyringEnvelopeAdapter, AeadCipher>;
   readonly "keyring-envelope:Hasher": Satisfies<KeyringEnvelopeAdapter, Hasher>;
+  // WIN-267 A1. The FOURTH port on this directory, and the first one indexed
+  // through a PROPERTY — for the same forced reason `secrets`', `memory`'s and
+  // `jobs`' store bindings are. `AeadCipher.seal(request): Promise<Result<...>>`
+  // and `MfaSecretCipher.seal(plaintext): string` are one name with two
+  // signatures, so `KeyringEnvelopeAdapter` cannot extend both and
+  // `Satisfies<KeyringEnvelopeAdapter, MfaSecretCipher>` would resolve to
+  // `never` and fail a binding that holds. Indexing `["mfaSecrets"]` makes the
+  // obligation the TRUE one, and the day that property is renamed or re-typed
+  // `pnpm build:v1` fails here.
+  readonly "keyring-envelope:MfaSecretCipher": Satisfies<
+    KeyringEnvelopeAdapter["mfaSecrets"],
+    MfaSecretCipher
+  >;
+  // WIN-267 A1. The `node-crypto-digest` directory's ONE binding, proven through the
+  // adapter itself: `hash`, `equals` and `deriveCodeChallenge` collide with
+  // nothing else it publishes, so `NodeCryptoDigestAdapter extends SecretHasher`
+  // resolves directly.
+  readonly "node-crypto-digest:SecretHasher": Satisfies<NodeCryptoDigestAdapter, SecretHasher>;
+  // WIN-267 A2. `identity-access`' TWO randomness ports, both proven against the
+  // ADAPTER rather than through a property: `mint`, `mintTotpSecret`,
+  // `mintRecoveryCodes`, `verify` and `generate` are five names with no
+  // collision, so one interface extends both.
+  //
+  // TWO OBLIGATIONS AND NOT ONE, for the reason `keyring-envelope`'s three are
+  // three: a missing obligation is not a wrong one, so collapsing them would
+  // leave the compiler silent the day `verify` changed shape.
+  readonly "tokenmint-totp:TokenMinter": Satisfies<TokenmintTotpAdapter, TokenMinter>;
+  readonly "tokenmint-totp:TotpCodeVerifier": Satisfies<TokenmintTotpAdapter, TotpCodeVerifier>;
 }
 
 export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
@@ -496,6 +607,10 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "postgres-tenancy:CriteriaRepository": true,
   "postgres-tenancy:EvalsRepository": true,
   "postgres-tenancy:GoldenSetsRepository": true,
+  "postgres-tenancy:EvalRunQueue": true,
+  "postgres-tenancy:RatingTargetReader": true,
+  "postgres-tenancy:TranscriptReader": true,
+  "postgres-tenancy:ActivityReader": true,
   "postgres-tenancy:TenancyLocks": true,
   "postgres-tenancy:OperatorSessionRevoker": true,
   "postgres-tenancy:EnvironmentAccessKeyRevocationCounter": true,
@@ -525,6 +640,7 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "redis-cache:Cache": true,
   "redis-cache:IdempotencyStore": true,
   "redis-cache:RequestIdempotency": true,
+  "redis-cache:ProviderProbeCache": true,
   "redis-streams:EventBus": true,
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
@@ -533,6 +649,10 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "keyring-envelope:KeyRing": true,
   "keyring-envelope:AeadCipher": true,
   "keyring-envelope:Hasher": true,
+  "keyring-envelope:MfaSecretCipher": true,
+  "node-crypto-digest:SecretHasher": true,
+  "tokenmint-totp:TokenMinter": true,
+  "tokenmint-totp:TotpCodeVerifier": true,
 });
 
 /**
@@ -655,16 +775,56 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // safety event is never touched again, and a golden set is a pinned sample
   // that shares no invariant with any of them.
   //
-  // The context's other five ports get no row here, and that is a claim rather
-  // than an omission: `read-seams.ts` declares three READERS of rows
-  // `conversations`, `tools` and `jobs` own, `judge.ts` is a provider transport,
-  // and `eval-run-queue.ts` is durable work whose own refusal code exists to
-  // stay separable from a store outage.
+  // The context's other ONE port gets no row here, and the sentence that said
+  // why has been HALVED TWICE BY MEASUREMENT rather than edited quietly. It read:
+  // "`read-seams.ts` declares three READERS of rows `conversations`, `tools` and
+  // `jobs` own, `judge.ts` is a provider transport, and `eval-run-queue.ts` is
+  // durable work whose own refusal code exists to stay separable from a store
+  // outage."
+  //
+  // THE READ-SEAM CLAUSE WAS FALSE (WIN-267 G2). It never checked its own
+  // premise: `CANONICAL_STORE_ADAPTERS` in `scripts/arch/table-ownership.mjs`
+  // maps `conversations`, `tools` and `jobs` — the owners of the four tables
+  // those readers read — to THIS directory. Asking the owner and asking this
+  // directory are the same act, so all three are rows below.
+  //
+  // THE QUEUE CLAUSE WAS FALSE TOO (WIN-267 G1). What mints
+  // `GOVERNANCE_LEDGER_UNAVAILABLE` is one helper the five stores share, not the
+  // directory; `packages/adapters/postgres-tenancy/src/governance-eval-runs.ts`
+  // has its own and mints `GOVERNANCE_QUEUE_UNAVAILABLE`, so one induced outage
+  // answers the two codes on the two ports in the same process against the same
+  // database. Its integration suite pins exactly that.
+  //
+  // ONE CLAUSE STANDS: `judge.ts`, which
+  // `apps/core-api/src/composition/governance-judge.ts` measures three ways as
+  // unable to be an adapter at all, and which is therefore satisfied in the
+  // composition root and named in `GOVERNANCE_ROOT_SATISFIED_PORTS`.
   Object.freeze({ adapter: "postgres-tenancy", port: "SafetyLedger", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "RatingsRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "CriteriaRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "EvalsRepository", owner: "governance" }),
   Object.freeze({ adapter: "postgres-tenancy", port: "GoldenSetsRepository", owner: "governance" }),
+  // WIN-267 G1. The SIXTEENTH binding of this directory and the SIXTH row
+  // `governance` owns: `EvalRunQueue`, ADR M0.3 §1 row 14's "eval runs enqueue
+  // as durable jobs", landed as a row because §15 says a row in the one
+  // PostgreSQL database is written from the one directory that holds its client.
+  Object.freeze({ adapter: "postgres-tenancy", port: "EvalRunQueue", owner: "governance" }),
+  // WIN-267 G2 (ADR M0.3 §2 and §15). `governance`'s THREE inverted READ SEAMS.
+  //
+  // The OWNER is `governance` because the owner column names who owns the PORT,
+  // and `read-seams.ts` declares all three — in `governance`'s vocabulary,
+  // deliberately, so the arrow points inward. The ROWS behind them belong to
+  // three other contexts, and this directory is the canonical store of all three
+  // (§15, one PostgreSQL database behind one client), which is why answering
+  // them from here is asking the owner rather than reaching sideways.
+  //
+  // THREE ROWS AND NOT ONE, because they are three ports on three slots of
+  // `GovernanceDependencies` and a missing obligation is not a wrong one — the
+  // same argument `keyring-envelope`'s three and `tokenmint-totp`'s two are made
+  // with.
+  Object.freeze({ adapter: "postgres-tenancy", port: "RatingTargetReader", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "TranscriptReader", owner: "governance" }),
+  Object.freeze({ adapter: "postgres-tenancy", port: "ActivityReader", owner: "governance" }),
   // WIN-258 T5 (ADR M0.3 §15). The THIRTEENTH and FOURTEENTH bindings of the
   // same directory, and the eighth owner of the one PostgreSQL client. They are two
   // rows and not one because `secrets` publishes two ports:
@@ -913,6 +1073,24 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // of them decides anything with the key, which is the test `CorrelationSource`
   // passed to become a kernel port.
   Object.freeze({ adapter: "redis-cache", port: "RequestIdempotency", owner: "kernel" }),
+  // WIN-267 A3. The FOURTH row on this directory and the FIFTIETH binding —
+  // `providers`' `ProviderProbeCache`, the port T3 recorded as having no
+  // implementation anywhere in this tree.
+  //
+  // IT IS A ROW HERE AND NOT A FOURTEENTH DIRECTORY, and the question was asked
+  // in that order. `redis-cache`'s `Cache` does NOT satisfy it — the two share
+  // not one signature, and ADR M0.3 §1 row 4 gives `providers` an allow-list of
+  // `tenancy`, `secrets` and `kernel`, so `memory`'s port is not one it could be
+  // handed at all. What DOES satisfy it is the directory, under §15's amendment:
+  // one vendor client is one directory, and this is the same Redis, the same
+  // connection and the same namespace discipline as the three rows above.
+  //
+  // ITS OWNER IS `providers` AND THAT IS A FINDING RATHER THAN A CHOICE. ADR
+  // M0.3 §13 publishes an "exhaustive" port-to-owner map and this port is not on
+  // it; the port's own header records the gap and resolves it by §13's stated
+  // principle — "an adapter-facing port belongs to the context whose capability
+  // it serves" — rather than by amending an accepted ADR.
+  Object.freeze({ adapter: "redis-cache", port: "ProviderProbeCache", owner: "providers" }),
   Object.freeze({ adapter: "redis-streams", port: "EventBus", owner: "kernel" }),
   Object.freeze({ adapter: "model-router-providers", port: "ModelRouter", owner: "providers" }),
   Object.freeze({ adapter: "channel-slack", port: "ChannelAdapter", owner: "channels" }),
@@ -924,13 +1102,33 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   Object.freeze({ adapter: "keyring-envelope", port: "KeyRing", owner: "secrets" }),
   Object.freeze({ adapter: "keyring-envelope", port: "AeadCipher", owner: "secrets" }),
   Object.freeze({ adapter: "keyring-envelope", port: "Hasher", owner: "secrets" }),
+  // WIN-267 A1. The FIFTIETH binding, and the first on this directory owned by a
+  // context other than `secrets`. It is here rather than in a directory of its
+  // own because `root-key-ring.ts` is the tree's only holder of AES-256 root key
+  // bytes and publishes no export that hands them out, and rule (j2)
+  // `adapter-is-self-contained` forbids a second directory from importing this
+  // one to reach them — so the alternative was not a fourteenth slot but a
+  // SECOND key hierarchy.
+  Object.freeze({ adapter: "keyring-envelope", port: "MfaSecretCipher", owner: "identity-access" }),
+  // WIN-267 A1. The FIFTY-FIRST binding and `node-crypto-digest`'s only one.
+  // It sits at the END for the reason the three above it do: every ordinal
+  // already written stays true.
+  Object.freeze({ adapter: "node-crypto-digest", port: "SecretHasher", owner: "identity-access" }),
+  // WIN-267 A2. The two bindings of the `tokenmint-totp` directory, appended at
+  // the END for the reason every row above them was: every ordinal already
+  // written stays true. They are the FIFTY-SECOND and FIFTY-THIRD. With the two
+  // A1 rows above them, four of the five ports
+  // `composition/context-ports.ts` recorded as having no implementation are now
+  // filled, and its `IDENTITY_ACCESS_UNASSEMBLED` sentence names one.
+  Object.freeze({ adapter: "tokenmint-totp", port: "TokenMinter", owner: "identity-access" }),
+  Object.freeze({ adapter: "tokenmint-totp", port: "TotpCodeVerifier", owner: "identity-access" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
  * Every DIRECTORY that carries a binding, each once and in declaration order.
  *
- * De-duplicated because `ADAPTER_BINDINGS` now holds FORTY-NINE rows across
- * thirteen directories: a caller iterating this list to construct or close
+ * De-duplicated because `ADAPTER_BINDINGS` now holds FIFTY-ONE rows across
+ * fourteen directories: a caller iterating this list to construct or close
  * adapters would otherwise build `postgres-tenancy` THIRTY-THREE times and
  * open thirty-three pools over the one database.
  */
@@ -992,7 +1190,11 @@ export const UNIMPLEMENTED_ADAPTERS: readonly AdapterName[] = Object.freeze([
   "durable-runtime",
   "clickhouse-observability",
   "objectstore-minio",
-  "redis-ratelimit",
+  // WIN-267 A3 — `redis-ratelimit` LEFT THIS LIST. It is the first directory
+  // ever to do so, and rule (C7) is what makes the removal honest rather than
+  // optimistic: it reads this list back and joins it to the filesystem, so a
+  // directory dropped from here without gaining a `create*Adapter` fails, and
+  // one that gained a factory and stayed here fails too.
   "redis-streams",
   "channel-slack",
   "notifier-email",
@@ -1138,10 +1340,30 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
       "configuration",
       "PLATOS_STORE_REDIS_URL is not set, so the stores.redis group is undeclared",
     );
+    // WIN-267 A3 — the SAME variable declines BOTH Redis directories, and they
+    // are two declines rather than one because they are two objects. ADR M0.3 §4
+    // gives `redis-ratelimit` its own directory with "one namespaced keyspace,
+    // one owner": the limiter holds `platos:identity:ratelimit:` and the cache
+    // holds `platos:jobs:idem:` and `platos:http:idem:`, and an install that
+    // wired one and not the other would be a state this table has to be able to
+    // report.
+    decline(
+      "redis-ratelimit",
+      "configuration",
+      "PLATOS_STORE_REDIS_URL is not set, so the stores.redis group is undeclared",
+    );
   } else {
     const adapter = createRedisCacheAdapter({ url: redis.url });
     adapters["redis-cache"] = adapter;
     closers.push(() => adapter.close());
+    // A SECOND CLIENT AGAINST THE SAME URL, DELIBERATELY. Sharing one connection
+    // between the two directories would make `adapter-is-self-contained` a
+    // sentence nobody could check — the limiter would hold an object built by
+    // another adapter — and it would tie two lifetimes together, so closing the
+    // cache would silently disarm authentication rate limiting.
+    const limiter = createRedisRatelimitAdapter({ url: redis.url });
+    adapters["redis-ratelimit"] = limiter;
+    closers.push(() => limiter.close());
   }
 
   const encryption = input.security.encryption;
@@ -1162,6 +1384,37 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     if (ring.ok) adapters["keyring-envelope"] = ring.value;
     else faults.push(`keyring-envelope could not be constructed: ${ring.error.code}`);
   }
+
+  // WIN-267 A1. ONE OF THE TWO DIRECTORIES BUILT UNCONDITIONALLY (the other is
+  // `tokenmint-totp` below), and the reason is the whole of its design rather
+  // than an exemption. Every other constructor above
+  // is behind an `if`: a group is declared or it is not, and a directory with no
+  // configuration to read cannot be built from configuration that was not set.
+  // This one reads nothing. There is no key, no endpoint, no credential and no
+  // pool, so there is no state an operator could get wrong and no `Result` a
+  // failure could arrive on — and putting it behind a group would invent a
+  // variable whose only effect would be to turn sign-in off.
+  //
+  // It therefore appears in NEITHER report: not in `unwired`, because it is
+  // always wired, and not in `faults`, because nothing it does can fault. The
+  // group table in `installation.test.ts` says the same thing from the other
+  // side — it is one of the two directories no configuration group produces.
+  adapters["node-crypto-digest"] = createNodeCryptoDigestAdapter();
+  // WIN-267 A2. UNCONDITIONAL, the second of the two unconditional constructions
+  // here; `node-crypto-digest` directly above is the first.
+  //
+  // Every CONFIGURED adapter above is guarded by a configuration group because
+  // it holds something an operator has to supply — a database URL, a Redis URL,
+  // root key material, a default model. This one holds the process's CSPRNG. There is no group to declare, nothing to parse, and no failure mode
+  // that a `Result` could report: `createTokenmintTotpAdapter` closes over two
+  // pure functions and `node:crypto`.
+  //
+  // So it is built before the guarded ones can decline, it never appears in
+  // `unwired`, and an install with NOTHING configured still has it. That is the
+  // observable difference between these two slots and the thirteen configured
+  // ones, and `installation.test.ts` asserts it on the nothing-declared install
+  // rather than only on the fully declared one.
+  adapters["tokenmint-totp"] = createTokenmintTotpAdapter();
 
   if (input.providers.modelRouter === null) {
     decline(

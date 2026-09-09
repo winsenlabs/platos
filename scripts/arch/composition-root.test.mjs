@@ -142,7 +142,34 @@ test("the live repository satisfies both the boundary rules and the composition-
   // RequestIdempotency, both rows on an EXISTING directory) = 49 bindings across
   // THIRTEEN directories. The two pins move by different amounts, which is the
   // whole reason they are pinned separately.
-  assert.equal(audit.bindingCount, 49);
+  //
+  // WIN-267 A1 + A2 + A3: 49 + 2 + 2 + 1 = 54 across FIFTEEN directories, and by
+  // different amounts a further time. `keyring-envelope:MfaSecretCipher` is a
+  // row on an EXISTING directory, because `root-key-ring.ts` is the tree's only
+  // holder of AES-256 root key bytes and rule (j2) forbids a second package from
+  // reaching them; `node-crypto-digest:SecretHasher` is a new DIRECTORY, because
+  // a keyless SHA-256 shares no vendor client with anything and §15's
+  // consolidation rule is about sharing one; `tokenmint-totp` is a new directory
+  // carrying TWO bindings, because the port that MINTS a TOTP secret and the
+  // port that READS it must share one base32 alphabet; and
+  // `redis-cache:ProviderProbeCache` is a row on an existing directory again,
+  // for the plainest §15 reason there is -- it is the same Redis client.
+  //
+  // WIN-267 G1: 54 + 1 = 55 across the SAME FIFTEEN directories.
+  // `postgres-tenancy:EvalRunQueue` is a row on an existing directory, for the
+  // plainest §15 reason there is -- the eval run it records is a row in the one
+  // PostgreSQL database, so it is written from the one directory that holds
+  // that database's client. The DIRECTORY pin does not move, which is the
+  // distinction the two pins exist to state.
+  
+  // WIN-267 G2 takes it to 57, all three rows on `postgres-tenancy` and the
+  // DIRECTORY count unmoved at fifteen: `governance`'s three inverted read seams
+  // read `Thread`, `Turn`, `ToolCallAudit` and `AgentApproval`, four tables that
+  // directory is already the canonical store of. A thirteenth package for them
+  // would have needed a second Prisma client, which `tenancy-prisma-only`
+  // forbids.
+  // SUMMED: 54 + 1 (G1) + 3 (G2) = 58, directories unmoved at fifteen.
+  assert.equal(audit.bindingCount, 58);
   //
   // AND `memory` adds `MemoryRepository` and
   // `KnowledgeGraphRepository` over its three canonical rows, so that directory
@@ -166,7 +193,17 @@ test("the live repository satisfies both the boundary rules and the composition-
   // drawn. `keyring-envelope` holds no rows and no database client: it holds the
   // AES-256 root keys, which ADR M0.3 §15's "one vendor client, one directory"
   // does not reach.
-  assert.equal(ADAPTERS.length, 13);
+  //
+  // WIN-267 MOVES IT TWICE, 13 -> 15, and further outside §15 than the
+  // thirteenth went. `node-crypto-digest` holds no rows, no client and no key:
+  // it is a SHA-256 and a constant-time comparison. §15's consolidation rule
+  // collapses directories that would otherwise open a second connection to one
+  // server, and this opens none — so there is nothing to collapse it into, and
+  // `keyring-envelope`'s own reason for holding `secrets`' `Hasher` (the cost
+  // parameter that belongs with the keys) does not carry: this port is
+  // synchronous and can never have one. `tokenmint-totp` holds no rows, no
+  // database client and no key material either.
+  assert.equal(ADAPTERS.length, 15);
 });
 
 // ---------------------------------------------------------------------------
@@ -320,7 +357,7 @@ test("C2: an entry removed from the binding table fails", () => {
   );
   const problems = auditCompositionRoot(root).problems;
   assert.ok(problems.some((problem) => problem.includes("binding table omits channel-slack")));
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+    assert.ok(problems.some((problem) => problem.includes("declares 57 binding(s)")));
 });
 
 test("C3: an adapter missing its compile-time satisfaction entry fails", () => {
@@ -363,14 +400,24 @@ test("C7: a directory left on the unimplemented list after it gains a constructo
 
 test("C7: a directory dropped from the list while still a generated interface fails", () => {
   // The OTHER direction, and the one that matters more: `constructAdapters` would
-  // then be silent about `redis-ratelimit`, so `/readyz` would report its binding
+  // then be silent about the directory, so `/readyz` would report its binding
   // unsatisfied with no reason at all — and an operator would go looking for a
   // variable that does not exist.
+  //
+  // WIN-267 A3 REPOINTED THIS CONTROL, and the reason is the whole point of the
+  // rule. It named `redis-ratelimit`, which now HAS a constructor — so dropping
+  // it from the list is no longer a lie and this case would have gone quietly
+  // green while proving nothing. `clickhouse-observability` is still a generated
+  // interface, which is what makes the control live again. The next tranche to
+  // implement it must repoint this the same way; the assertion names the file it
+  // reads, so there is no way to do that by accident.
   const root = realTreeCopy();
-  edit(root, COMPOSITION_ROOT_FILE, (source) => source.replace('  "redis-ratelimit",\n', ""));
+  edit(root, COMPOSITION_ROOT_FILE, (source) =>
+    source.replace('  "clickhouse-observability",\n', "")
+  );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("packages/adapters/redis-ratelimit/src/index.ts exports no constructor")
+      problem.includes("packages/adapters/clickhouse-observability/src/index.ts exports no constructor")
     )
   );
 });
@@ -416,15 +463,34 @@ test("C7 NON-VACUITY: the live list names exactly the directories with no constr
   // none did — the two controls above would still pass and prove nothing about
   // the real tree. This reads BOTH sides off the live repository.
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
+  // 8 -> 7 (WIN-267 A3). `redis-ratelimit` is the FIRST directory ever to leave
+  // this list: it gained `createRedisRatelimitAdapter` and a real
+  // implementation, so the constructible set below gains it and the count
+  // drops. Both halves move in one commit — the C7 rule itself joins the list to
+  // the filesystem in both directions, so a list edited without an
+  // implementation, or an implementation added without the list edit, fails.
   const listed = parseUnimplementedAdapters(source);
-  assert.equal(listed.length, 8, "eight of the thirteen directories are still generated interfaces");
+  assert.equal(listed.length, 7, "seven of the fifteen directories are still generated interfaces");
   const constructible = ADAPTERS.filter((adapter) => !listed.includes(adapter.dir)).map((a) => a.dir).sort();
+  // WIN-267 A1 and A2 add the SIXTH and SEVENTH constructible directories while
+  // the unimplemented count stays at EIGHT, which is their claim from the other
+  // side: they built new directories rather than filling in generated ones, so
+  // the two numbers move independently. A3 is the mirror image and the FIRST of
+  // its kind -- it adds no directory and takes `redis-ratelimit` OFF the
+  // unimplemented list, 8 -> 7, so the constructible set gains an EIGHTH member
+  // without ADAPTERS.length moving at all. The identity below is what holds the
+  // two apart: 7 + 8 = 15.
   assert.deepEqual(constructible, [
     "keyring-envelope",
     "model-router-providers",
+    // WIN-267 A1. The sixth constructible directory, and the only one in the
+    // list that takes no configuration at all.
+    "node-crypto-digest",
     "outbox",
     "postgres-tenancy",
     "redis-cache",
+    "redis-ratelimit",
+    "tokenmint-totp",
   ]);
   assert.equal(listed.length + constructible.length, ADAPTERS.length);
 });
@@ -469,13 +535,13 @@ test("the audit reads code, not prose: import( in a comment or a string is ignor
 // The parsers, independently.
 // ---------------------------------------------------------------------------
 
-test("the binding-table parser reads all FORTY-NINE bindings, across thirteen directories", () => {
+test("the binding-table parser reads all FIFTY-EIGHT bindings, across fifteen directories", () => {
   const source = readFileSync(join(repositoryRoot, COMPOSITION_ROOT_FILE), "utf8");
   const entries = parseBindingTable(source);
   const bindings = adapterBindings();
   assert.equal(entries.length, bindings.length);
-  assert.equal(bindings.length, 49);
-  assert.equal(ADAPTERS.length, 13);
+  assert.equal(bindings.length, 58);
+  assert.equal(ADAPTERS.length, 15);
   assert.deepEqual(
     entries.map((entry) => `${entry.adapter}:${entry.port}`).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
@@ -484,10 +550,10 @@ test("the binding-table parser reads all FORTY-NINE bindings, across thirteen di
     parseSatisfactionKeys(source).sort(),
     bindings.map((binding) => `${binding.adapter}:${binding.port}`).sort()
   );
-  // A directory with thirty-three bindings appears THIRTY-THREE TIMES in the
+  // A directory with thirty-seven bindings appears THIRTY-SEVEN TIMES in the
   // flattening and once in the directory set. Both halves are asserted so a
   // change that collapsed the table back to one row per directory cannot pass
-  // here. It is thirty-three rather than two because WIN-258 T5 landed all of
+  // here. It is thirty-six rather than two because WIN-258 T5 landed all of
   // tranche 5's canonical stores in this one directory — `tools` publishes one
   // port, `agents` two, `cost-monitoring` one, `channels` one, `governance`
   // FIVE, `secrets` two and `skills` one, all over the same client as tenancy's
@@ -496,14 +562,30 @@ test("the binding-table parser reads all FORTY-NINE bindings, across thirteen di
   // them, and WIN-258 T5 then added `providers`' one, `conversations`' four,
   // `skills`' one, `memory`'s two, `privacy`'s one, `jobs`' two, `files`' one,
   // `observability`'s one and `eventing`'s one.
-  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1 = 33.
-  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 33);
+  // 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1 = 33,
+  // and WIN-267 G1 then added `governance`'s SIXTH -- `EvalRunQueue`, the first
+  // binding on this directory that is not a canonical-store CRUD port. 33 + 1 = 34.
+  // WIN-267 G2 adds THREE more, and they are the first on this directory that
+  // are not canonical stores at all: `governance`'s inverted READ SEAMS over
+  // `conversations`', `tools`' and `jobs`' rows. They land here because those
+  // three owners are already delegated to this directory, so the reader and the
+  // sole writer are the same package.
+  // SUMMED: 1 + 1 + 1 + 2 + 1 + 1 + 5 + 2 + 5 + 1 + 4 + 1 + 2 + 1 + 2 + 1 + 1 + 1
+  // + 1 (G1's queue) + 3 (G2's seams) = 37.
+  assert.equal(entries.filter((entry) => entry.adapter === "postgres-tenancy").length, 37);
   // WIN-259 (M2.4) 12 -> 13. `keyring-envelope` appears THREE times in the
   // flattening and once in the directory set, which is the same both-halves
   // check the postgres row above gets: a change that collapsed its three
   // cryptography bindings back to one row per directory cannot pass here.
-  assert.equal(entries.filter((entry) => entry.adapter === "keyring-envelope").length, 3);
-  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 13);
+  // WIN-267 A1 3 -> 4: `identity-access`'s `MfaSecretCipher`, the first port on
+  // this directory owned by a context other than `secrets`.
+  assert.equal(entries.filter((entry) => entry.adapter === "keyring-envelope").length, 4);
+  // And each new directory appears the right number of times in BOTH halves,
+  // which is the same both-ways check: a directory must not be double-counted in
+  // the flattening, and must not vanish from the directory set.
+  assert.equal(entries.filter((entry) => entry.adapter === "node-crypto-digest").length, 1);
+  assert.equal(entries.filter((entry) => entry.adapter === "tokenmint-totp").length, 2);
+  assert.equal(new Set(entries.map((entry) => entry.adapter)).size, 15);
 });
 
 test("the parser reads a WRAPPED entry, not only a one-line one", () => {
@@ -548,7 +630,7 @@ test("§15 refusal: a binding table row the ADR does not declare fails", () => {
   );
   assert.ok(
     auditCompositionRoot(root).problems.some((problem) =>
-      problem.includes("binding table names outbox -> memory Cache, which is not one of the 49 declared bindings")
+        problem.includes("binding table names outbox -> memory Cache, which is not one of the 58 declared bindings")
     )
   );
 });
@@ -579,7 +661,7 @@ test("§15 refusal: a declared binding with no row in the table fails", () => {
       problem.includes("binding table omits postgres-tenancy -> identity-access IdentityAccessRepository")
     )
   );
-  assert.ok(problems.some((problem) => problem.includes("declares 48 binding(s)")));
+    assert.ok(problems.some((problem) => problem.includes("declares 57 binding(s)")));
 });
 
 test("the satisfaction parser reports absence rather than an empty list", () => {
@@ -640,4 +722,153 @@ test("PORT_SATISFACTION rejects an adapter that stops implementing its port", ()
   const broken = probe(original.replace("extends OutboxWriter ", ""));
   assert.notEqual(broken.status, 0, "an adapter that stops implementing its port must break the build");
   assert.match(`${broken.stdout}${broken.stderr}`, /is not assignable to type 'never'/u);
+});
+
+// ---------------------------------------------------------------------------
+// C8 — A TRANSPORT MAY NOT REACH A CANONICAL STORE OFF THE COMPOSED APPLICATION.
+//
+// WIN-267 (M4.1) T5. Every case below mutates the REAL tree and asserts TWICE:
+// that the ADR boundary rule set stays CLEAN — which is the finding, and the
+// reason the rule had to be written — and that C8 fires. A case that only
+// checked the second half would be proving that a gate this branch wrote agrees
+// with itself.
+//
+// The reach is not hypothetical. The first shape below was placed under
+// `apps/core-api/src/transports/bff/`, TYPECHECKED against the real project
+// graph, and `audit:arch-boundaries`, `audit:composition-root`,
+// `audit:max-file-lines` and `audit:sole-writer` all stayed at exit 0.
+// ---------------------------------------------------------------------------
+
+/** The five spellings of one reach, plus the prose that must not be one. */
+const C8_SHAPES = [
+  ["a property read with an element access", `export const sneak = (app: AppModule) => app.adapters["postgres-tenancy"];`],
+  ["optional chaining", `export const sneak = (app: AppModule) => app?.adapters?.["postgres-tenancy"];`],
+  ["a destructured parameter", `export const sneak = ({ adapters }: AppModule) => adapters["postgres-tenancy"];`],
+  ["a destructured const", `export const sneak = (app: AppModule) => { const { adapters } = app; return adapters["postgres-tenancy"]; };`],
+  ["a RENAMED destructure", `export const sneak = (app: AppModule) => { const { adapters: a } = app; return a["postgres-tenancy"]; };`],
+];
+
+for (const [shape, body] of C8_SHAPES) {
+  test(`C8: a bff transport reaching the canonical store through ${shape} fails`, () => {
+    const root = realTreeCopy();
+    edit(root, "apps/core-api/src/transports/bff/index.ts", (source) => `${source}\n${body}\n`);
+
+    // THE FINDING, ASSERTED FIRST. No adapter package is named, so rule (j) and
+    // C1 have nothing to see; no banned specifier is imported, so
+    // `tenancy-prisma-only` has nothing to see. This is a canonical-store read
+    // that the whole ADR rule set permits.
+    assert.deepEqual(
+      check(root).violations,
+      [],
+      "the reach must be legal under the ADR rule set — that is what C8 exists for",
+    );
+
+    const problems = auditCompositionRoot(root).problems;
+    assert.ok(
+      problems.some((problem) => problem.includes("transports/bff/index.ts") && problem.includes("may not reach an adapter")),
+      `C8 did not fire on ${shape}: ${problems.join("\n")}`,
+    );
+  });
+}
+
+test("C8: the rule reads the compiler's parse, so PROSE naming app.adapters is not a violation", () => {
+  // The `parse` banner in this audit records that its first draft used a regex
+  // and produced two false positives on the real tree within a minute. This file
+  // and `app.module.ts` between them name `adapters` in prose dozens of times; a
+  // gate that failed on a sentence is a gate somebody deletes.
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/bff/index.ts", (source) =>
+    `${source}\n// A transport must never read app.adapters, and "adapters" is not its business.\nexport const note = "app.adapters is off limits";\n`,
+  );
+  const problems = auditCompositionRoot(root).problems;
+  assert.deepEqual(
+    problems.filter((problem) => problem.includes("may not reach an adapter")),
+    [],
+    "a comment and a string literal are not a property read",
+  );
+});
+
+test("C8: the rule binds every transport, not just the bff", () => {
+  // Six seams live under `transports/`, and the rule is about the DIRECTORY
+  // rather than about the one seam this tranche had a reason to touch. A rule
+  // written for `bff/` alone would be re-learned by whoever lands the rest,
+  // websocket or webhook surface.
+  const root = realTreeCopy();
+  for (const seam of ["rest", "mcp", "ws", "webhook", "channels-ingress"]) {
+    edit(root, `apps/core-api/src/transports/${seam}/index.ts`, (source) =>
+      `${source}\nexport const sneak = (app: AppModule) => app.adapters["postgres-tenancy"];\n`,
+    );
+  }
+  const problems = auditCompositionRoot(root).problems.filter((problem) =>
+    problem.includes("may not reach an adapter"),
+  );
+  assert.equal(problems.length, 5, `every transport seam must be bound: ${problems.join("\n")}`);
+});
+
+test("C8 NON-VACUITY: the live tree reaches no adapter from a transport, and the property is REACHABLE", () => {
+  // Two halves, because either alone is worthless. The first is that the rule
+  // passes on the tree as it stands. The second is that `AppModule` really does
+  // publish `adapters` — if it did not, C8 would be a rule about a property that
+  // does not exist, and would pass forever no matter what a transport did.
+  assert.deepEqual(
+    auditCompositionRoot(repositoryRoot).problems.filter((problem) =>
+      problem.includes("may not reach an adapter"),
+    ),
+    [],
+  );
+  const appModule = readFileSync(join(repositoryRoot, "apps/core-api/src/app.module.ts"), "utf8");
+  assert.match(
+    appModule,
+    /readonly adapters: SuppliedAdapters;/u,
+    "AppModule must still publish `adapters` — without it C8 guards nothing",
+  );
+  // And that the transports are handed the whole `AppModule`, which is what makes
+  // the property reachable from one.
+  const bff = readFileSync(join(repositoryRoot, "apps/core-api/src/transports/bff/index.ts"), "utf8");
+  assert.match(bff, /readonly app: AppModule;/u, "a transport must still hold the composed application");
+});
+
+test("C8: the SHIPPED bff controller is governed, and the reach it would make is legal without C8", () => {
+  // WIN-267 R1. Until R1 the whole of `transports/` was six 20-line seams, and
+  // C8's own banner says so: "A containment rule is cheapest to write while the
+  // thing it contains is empty." The thing is no longer empty. `bff/
+  // session.controller.ts` serves two routes, holds the composed application,
+  // and is exactly the transport a reviewer would expect to reach past the
+  // contracts — a browser on the other end asking for a page's worth of joined
+  // data is the whole reason a BFF exists.
+  //
+  // So the rule is asserted against THAT file rather than against the seam:
+  // first that the reach is legal under every other gate (the finding), then
+  // that C8 fires on it by name.
+  const root = realTreeCopy();
+  const controller = "apps/core-api/src/transports/bff/session.controller.ts";
+  edit(root, controller, (source) =>
+    `${source}\nexport const sneak = (app: AppModule) => app.adapters["postgres-tenancy"].findOrganizationBySlug;\n`,
+  );
+
+  assert.deepEqual(
+    check(root).violations,
+    [],
+    "a BFF reading the canonical store breaks no other ADR rule — that is what C8 is for",
+  );
+
+  const problems = auditCompositionRoot(root).problems;
+  assert.ok(
+    problems.some((problem) => problem.includes("session.controller.ts") && problem.includes("may not reach an adapter")),
+    `C8 did not fire on the shipped BFF controller: ${problems.join("\n")}`,
+  );
+});
+
+test("C8 NON-VACUITY: the shipped bff controller exists, serves routes, and reaches only contracts", () => {
+  // The case above proves C8 fires when the file reaches an adapter. This proves
+  // the file is worth guarding: a rule tested only against a mutation is a rule
+  // that would pass just as well if the directory were empty again.
+  const controller = join(repositoryRoot, "apps/core-api/src/transports/bff/session.controller.ts");
+  const source = readFileSync(controller, "utf8");
+  assert.match(source, /@Controller\(/u, "the BFF must still carry a mounted controller");
+  assert.match(source, /@Post\(\)/u, "the BFF must still serve the session exchange");
+  assert.ok(
+    !/\badapters\b\s*[.[]/u.test(source.replace(/\/\/[^\n]*/gu, "")),
+    "the shipped BFF controller must reach the system through `contexts`",
+  );
 });

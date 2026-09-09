@@ -524,7 +524,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // CHANGED. The 28 controllers T1 rewrites and `main.ts` are edited IN PLACE
     // and add no file — which is the whole shape of this tranche: 24 literals
     // deleted, one declaration added.
-    "apps-agent": 2,
+    //
+    // WIN-267 W2 2 -> 4, and BOTH are tooling beside the control-plane
+    // generator rather than runtime: `apps/agent/scripts/rest-schema-derivation.mjs`,
+    // which reads the V1 wire schemas off the core-api handlers' RESOLVED
+    // TypeScript types, and `apps/agent/scripts/openapi-meta-schema.mjs`, which
+    // compiles the vendored OpenAPI 3.1 meta-schema the generated document is
+    // judged by. Both land on the existing `apps-agent.tooling.scripts` rule
+    // (11 -> 13); `generate-control-plane.mjs` is edited in place and adds no
+    // file.
+    "apps-agent": 4,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -618,7 +627,60 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `transports/rest/index.ts` -- is edited in place and adds nothing.
     //
     // NO LEDGER RULE CHANGED BY EITHER. 44 + 3 + 10 = 57.
-    "apps-core-api": 57,
+    //
+    // WIN-267 G1 +2, and both are the `governance` `Judge` port:
+    // `src/composition/governance-judge.ts` on `apps-core-api.source.process`
+    // and `src/composition/governance-judge.test.ts` on
+    // `apps-core-api.test.suites` -- two rules WIN-297 wrote, so NO LEDGER RULE
+    // CHANGED here either.
+    //
+    // THE PORT IS SATISFIED IN THIS DEPLOYABLE RATHER THAN IN AN ADAPTER
+    // DIRECTORY, WHICH IS WHY `packages` DOES NOT MOVE FOR IT. Its own header
+    // measures the three rules that forbid an adapter: `provider-sdk-only` pins
+    // every provider client to `model-router-providers`, `ModelRouter`'s methods
+    // take a credential `Judge.ask` is never handed, and the price the port
+    // requires comes off `ProvidersContract.priceModelUsage`. `app.module.ts` is
+    // edited in place to build it and adds no file. 57 + 2 = 59.
+    // WIN-267 G3 57 -> 58: `apps/core-api/mutations-win267-g3.json`, the THIRD
+    // mutation manifest to land beside `mutations.json` and
+    // `mutations-win267-t3.json` and the FOURTH tranche to use the convention.
+    // It classifies under the SAME rule its two siblings already do --
+    // `apps-core-api.config.package`, 5 -> 6 -- so no ledger rule changed for
+    // it either. Everything else G3 touches is an edit in place:
+    // `composition/context-ports.ts` and `composition/installation.test.ts`
+    // carry the correction and its three cases, and
+    // `scripts/arch/gen-v1-skeleton.mjs` carries the same correction to the
+    // second, staler copy of the claim. 44 + 3 + 10 + 1 = 58.
+    //
+    // SUMMED FOR THE INTEGRATION: 57 + 2 (G1) + 1 (G3) = 60, plus ONE the
+    // integration itself adds -- `src/composition/operator-authentication
+    // .integration.test.ts`, the suite that authenticates an operator through
+    // the composed context against a real PostgreSQL. It classifies under
+    // `apps-core-api.test.suites`, a rule WIN-297 wrote, so no ledger rule is
+    // new for it either. 60 + 1 = 61.
+    //
+    // WIN-267 R1 61 -> 75. FOURTEEN files, every one of them inside this
+    // deployable, because the V1 REST surface has no counterpart anywhere else:
+    //
+    //   NINE under `apps-core-api.source.transports` (11 -> 20) — five
+    //   controllers (`identity-session`, `organizations`, `projects`,
+    //   `environment-end-users`, and `bff/session`) and four modules they share
+    //   (`operator.ts`, the one authentication seam; `dependencies.ts`, the
+    //   injection token; `body.ts`, the shape-only body reader; `resources.ts`,
+    //   the declared wire DTOs);
+    //
+    //   ONE under `apps-core-api.source.process` (31 -> 32) —
+    //   `http/api-surface.ts`, where this deployable decides `/api/v1`;
+    //
+    //   FOUR under `apps-core-api.test.suites` (21 -> 25) — `api-surface.test.ts`,
+    //   `route-manifest.test.ts`, `identity-rest.test.ts` and
+    //   `composition/identity-rest.integration.test.ts`.
+    //
+    // 9 + 1 + 4 = 14, and 61 + 14 = 75. NO OTHER AREA MOVES: the manifest, the
+    // capability matrix, the census artifact, the operator enumeration and the
+    // taxonomy are all REGENERATED files that already exist, the generator and
+    // three gate suites are edited in place, and no ledger rule is new.
+    "apps-core-api": 75,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1162,8 +1224,73 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //      mutations.json were widened in place.
     // cost-monitoring's detect-crossings.ts LOST a class and gained no file.
     // M2 INTEGRATION, ALL FOUR: 1397 + 10 + 28 + 12 + 7 = 1454.
-    packages: 1454,
-    "internal-packages": 9,
+    //
+    //       package.json and tsconfig.json were widened IN PLACE and a widened
+    //       file is not a new one.
+    //   +1  packages/adapters/node-crypto-digest/mutations-node-crypto-digest.json
+    //   +16 packages/adapters/tokenmint-totp (A2) -- three scaffolding files,
+    //       five source modules, seven suites and its guard ledger.
+    //   +7  packages/adapters/redis-ratelimit (A3) -- every one under `src/`,
+    //       where this tranche turns a generated placeholder into a real
+    //       adapter. FOUR source (`client.ts`, the one holder of the second
+    //       Redis client; `rate-limiter.ts`, the port implementation and its
+    //       key; `oracle-source.ts`, the differential's reader of the
+    //       extraction source; `harness.ts`, the three connections its suites
+    //       are driven through) and THREE test (`rate-limiter.test.ts`,
+    //       `oracle-differential.test.ts`, `ratelimit.integration.test.ts`).
+    //       `src/adapter.ts` and `src/index.ts` were placeholders that were
+    //       REWRITTEN, and a rewritten file is not a new one.
+    //   +3  packages/adapters/redis-cache (A3) -- ONE source,
+    //       `provider-probe-cache.ts`, and TWO test. `client.ts` gained a verb,
+    //       `adapter.ts` a slot, `index.ts` two exports and `cache.test.ts` a
+    //       stub in its double: four widened files and no new one.
+    // 9 + 3 + 1 + 16 + 7 + 3 = 39, so 1454 + 39 = 1493. No ledger rule is new:
+    // `packages.adapters.source`, `.test`, `.config` and `.doc` already match
+    // every path above, and the three JSON ledgers land on `.config` exactly as
+    // `postgres-tenancy`'s twenty-one do.
+    //
+    // NEITHER BRANCH'S FIGURE SURVIVES. A1+A2 pinned 1483 and A3 pinned 1464,
+    // both over the same 1454 base; taking either side whole would drop files
+    // and leave the identities still holding, which is the failure mode this
+    // file's own comments record three times.
+    //
+    // WIN-267 G1 +2: `packages/adapters/postgres-tenancy/src/governance-eval-runs.ts`,
+    // the `EvalRunQueue` store, and `governance-eval-runs.integration.test.ts`
+    // beside it. TWO and not more because `adapter.ts`, `governance-repository.ts`,
+    // `json-columns.ts`, `governance-harness.ts` and the suites that re-pin
+    // counts are all WIDENED rather than added — see the note on
+    // `internal-packages` below for what the tranche adds outside `packages`.
+    // WIN-267 G1 +1: `internal-packages/tenancy-database/prisma/migrations/
+    // 20260909120000_win267_eval_run_queue/migration.sql`, the row the store
+    // above writes. `schema.prisma`, `src/json.ts`, `src/source-model-manifest.ts`
+    // and the three suites that pin the model count are edits.
+    "internal-packages": 10,
+    //   +6  packages/adapters/postgres-tenancy (WIN-267 G2) -- FOUR source,
+    //       `governance-read-seams.ts`, `governance-seam-guards.ts`,
+    //       `governance-seam-conversations.ts` and `governance-seam-activity.ts`,
+    //       and TWO test, `governance-read-seams.test.ts` and
+    //       `governance-read-seams.integration.test.ts`. `adapter.ts` gained
+    //       three slots, `index.ts` two exports, `governance-repository.ts` a
+    //       corrected header, and `governance`'s `errors.ts` and ports barrel
+    //       gained names: six widened files and no new one.
+    // No ledger rule is new: `packages.adapters.source` and `.test` already
+    // match all six.
+    //
+    // SUMMED FOR THE INTEGRATION: 1493 + 2 (G1) + 6 (G2) = 1501.
+    //
+    // WIN-303 +2, and BOTH are in `packages/adapters/postgres-tenancy`: ONE
+    // source, `governance-scope.ts`, which resolves the whole tenant triple
+    // against `Environment` and `Project` before any of the five canonical
+    // stores sends a statement, and ONE test,
+    // `governance-isolation.integration.test.ts`, the two-tenant proof that a
+    // forged ancestry is refused. TWO and not more because the five stores,
+    // `governance-rows.ts`, `governance-seam-guards.ts`, `governance`'s
+    // `errors.ts`, its ports barrel, its contracts suite, the statements suite
+    // and `mutations-governance.json` are all WIDENED rather than added — and
+    // `docs/error-taxonomy.json`, which gains the five new codes, is tracked
+    // already. No ledger rule is new: `packages.adapters.source` and `.test`
+    // match both. 1501 + 2 = 1503.
+    packages: 1503,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1409,6 +1536,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/adapters/postgres-tenancy`, and docs-content, root-infra and all
     // three apps areas are untouched — which is why the slices compose with
     // every one above, and with each other, by addition.
+    //
+    // WIN-267 A2: 1454 -> 1470, ALL SIXTEEN under
+    // `packages/adapters/tokenmint-totp`, the fourteenth adapter directory and
+    // the FIRST V1 project added since `keyring-envelope`. Three of the sixteen
+    // are the generator-owned scaffolding every project brings (package.json,
+    // tsconfig.json, README.md); five are source (base32, the minter, the
+    // verifier, the adapter and its index); seven are suites; and the
+    // sixteenth is `mutations-tokenmint-totp.json`, this tranche's guard ledger,
+    // on the same existing `packages.adapters.config` rule every guard ledger
+    // above it took. NO LEDGER RULE CHANGED and no other area moves: the
+    // composition root, the two arch gates, the census and the ports index are
+    // all edited IN PLACE, and an edited file is not a new one. The `identity-access`
+    // ports index gains three re-exported names and no file.
     // 13 -> 15. WIN-260's errors dimension adds TWO top-level docs/*.json, each
     // on a NEW rule, because no existing docs rule matches a top-level
     // docs/*.json and the audits rule would have called both `regenerate`, which
@@ -1467,7 +1607,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // mine. No other area moves: T0 edits enumerators and censuses in place, and
     // an edited file is not a new one.
     // root-infra 43 + 2 + 2 + 4 + 2 = 53.
-    "docs-content": 17,
+    //
+    // WIN-267 W2 17 -> 19, and BOTH need a NEW ledger rule because there is no
+    // `docs/*.json` catch-all -- docs-content carries per-file pins only.
+    // `docs/openapi-3.1-meta-schema.json` is the OpenAPI Initiative's published
+    // 3.1 meta-schema, vendored byte-for-byte and pinned by SHA-256, so the
+    // generated document is judged by an authority this repository did not
+    // write; `docs/openapi-v1-baseline.json` is the frozen V1 wire contract the
+    // breaking-change ratchet compares against. Both are `retain`, and both are
+    // under `docs/**` and therefore PROTECTED, which is why protectedCount moves
+    // +2 while move-refactor moves +5.
+    "docs-content": 19,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1483,12 +1633,151 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // would be its own beneficiary. The two arch gates T2 edits — `env-access.mjs`
     // and `arch-boundaries.test.mjs` — move their pinned census numbers in place
     // and add no file.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 = 55.
-    "root-infra": 55,
+    // WIN-267 (M4.1, T5) 55 -> 56: `scripts/mutations-win267-t5.json`, this
+    // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
+    // for the same stated reason. It is the FOURTH non-code file under
+    // `scripts/`. T0 said the rule would be worth splitting once a second
+    // arrived; four is past that, and it is STILL not being split inside a
+    // tranche that would be its own beneficiary -- the split wants a change that
+    // reclassifies all four at once and answers for the `kind: source` verdict
+    // on data, which is a different piece of work from this one.
+    //
+    // WIN-267 (M4.1, A4) 56 -> 57: `scripts/mutations-win267-a4.json`. A4
+    // carries T5's two rescued gates, so it inherits T5's file as well as adding
+    // its own.
+    //
+    // WIN-267 (M4.1, A3) 57 -> 58: `scripts/mutations-win267-a3.json`, the
+    // SIXTH. The four gates A3 edits -- `gen-v1-skeleton.mjs`,
+    // `v1-project-graph.mjs`, `env-access.mjs` and `test-case-census.mjs` -- and
+    // their suites move pinned numbers in place and add no file.
+    //
+    // THESE THREE TRANCHES ADD EXACTLY THREE FILES HERE AND EDIT THE REST IN
+    // PLACE. `.dependency-cruiser.js`, `scripts/arch/boundary-rules.mjs`,
+    // `scripts/arch/arch-boundaries.test.mjs`, `.github/workflows/ci.yml`,
+    // `scripts/ci-policy.test.mjs` and
+    // `apps/agent/src/clean-prisma-delegates.test.ts` are all tracked already,
+    // and an edited file is not a new one. In particular `apps-agent` does NOT
+    // move: re-pinning a suite's assertions changes bytes, not the census.
+    // WIN-267 G2 adds ONE: `scripts/mutations-win267-g2.json`, this tranche's
+    // guard ledger, on the same `root-infra.tooling.scripts` rule every earlier
+    // tranche's landed on.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 59.
+    //
+    // WIN-267 R1 59 -> 60: `scripts/mutations-win267-r1.json`, the SEVENTH guard
+    // ledger to land beside its siblings, on the same
+    // `root-infra.tooling.scripts` rule (92 -> 93). Every other file R1 adds is
+    // inside `apps-core-api`, and every gate, generator and artifact it touches
+    // outside the deployable is an EDIT or a REGENERATION of a file that already
+    // existed. 59 + 1 = 60.
+    //
+    // WIN-267 W2 60 -> 63: `scripts/openapi-compat.mjs`, the classifier and the
+    // baseline ratchet, on `root-infra.tooling.scripts` (93 -> 94), with
+    // `scripts/openapi-compat.test.mjs` and
+    // `scripts/openapi-schema-derivation.test.mjs` on
+    // `root-infra.test.script-suites` (32 -> 34). W2 adds no guard ledger: its
+    // mutations are EXECUTED rather than catalogued -- each one edits a real DTO
+    // source in memory, re-derives through the compiler and asserts the
+    // classification, so the cases are the ledger. 60 + 3 = 63.
+    //
+    // WIN-267 W3 60 -> 61: `scripts/mutations-win267-w3.json`, the EIGHTH guard
+    // ledger to land beside its siblings, on the same
+    // `root-infra.tooling.scripts` rule. It is the WHOLE of this branch's file
+    // delta. W3 adds no source file and no suite: its six identity-access cases
+    // go into two suites that already existed, its four integration cases and
+    // its two controller-branch cases go into two files that already existed,
+    // and the census, the ledger pins and the four derived artifacts are all
+    // EDITS or REGENERATIONS of tracked files. 60 + 1 = 61.
+    //
+    // THE CLOSEOUT SUMS THEM RATHER THAN SIDE-PICKING, which is the whole reason
+    // both branches wrote their arithmetic down: W2's three files and W3's one
+    // are DISJOINT -- `openapi-compat.mjs`, `openapi-compat.test.mjs`,
+    // `openapi-schema-derivation.test.mjs` and `mutations-win267-w3.json` are
+    // four distinct paths, none of which either branch shares. 60 + 3 + 1 = 64.
+    // The `root-infra.tooling.scripts` rule takes W2's `openapi-compat.mjs` and
+    // W3's mutation ledger, so it moves 93 -> 95, not 93 -> 94 as either branch
+    // alone recorded; `root-infra.test.script-suites` takes W2's two suites only
+    // and moves 32 -> 34 unchanged. W1 is NOT in this branch, so its +1 on this
+    // key is not here either -- see the merge commit for the tree fact.
+    "root-infra": 64,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1598);
+  //
+  // WIN-267 (M4.1) 1598 -> 1640, SUMMED across the four branches that landed
+  // rather than side-picked: A1 + A2 contribute twenty-nine files and A3 ten,
+  // all in `packages`; A4 contributes two and A3 one, all in `root-infra`
+  // (`scripts/mutations-win267-t5.json`, which arrives with the rescued T5
+  // gates, `scripts/mutations-win267-a4.json` and
+  // `scripts/mutations-win267-a3.json`). 29 + 10 + 2 + 1 = 42, and
+  // 1598 + 42 = 1640 -- a figure NO branch stated, against A1+A2+A4's 1629 and
+  // A3's 1609. The identity this number exists to hold is that the total delta
+  // and the per-area deltas are the SAME arithmetic, so a file that arrives in
+  // one and not the other cannot pass both halves of this case.
+  //
+  // WIN-267 G1 1640 -> 1642. TWO files, both `apps-core-api`, both the
+  // `governance` `Judge` port and its suite. It adds nothing to `packages`
+  // because the port CANNOT be an adapter -- `governance-judge.ts` measures the
+  // three rules that forbid one -- so this is the first WIN-267 slice whose
+  // whole delta is inside a deployable. 1640 + 2 = 1642.
+  //
+  // WIN-267 G1's SECOND HALF 1642 -> 1645, and it lands in TWO areas that its
+  // first half did not touch: `packages` +2
+  // (`postgres-tenancy/src/governance-eval-runs.ts`, the `EvalRunQueue` store,
+  // and `governance-eval-runs.integration.test.ts`, the eight cases that hold it
+  // to a real PostgreSQL) and `internal-packages` +1 (the
+  // `20260909120000_win267_eval_run_queue` migration that creates the row it
+  // writes). `apps-core-api` does NOT move again: the binding row, the two
+  // composition constants and the readiness pins are all edits.
+  // 1642 + 3 = 1645.
+  // WIN-267 G2: 1640 + 6 + 1 = 1647 -- SIX in `packages` and ONE in
+  // `root-infra`, this tranche's mutation ledger. Two sibling branches
+  // move this same delta for the remaining governance ports, so the
+  // integrator SUMS rather than taking any one branch's total -- the exact
+  // mistake the paragraph above records for A1+A2 and A3.
+  // WIN-267 G3 1640 -> 1641, and it is the WHOLE of that branch's file delta:
+  // ONE mutation manifest in `apps-core-api`, matching that area's 57 -> 58
+  // above. G3 adds no source file and no suite -- its three cases go into the
+  // `installation.test.ts` that already existed, which is also why the
+  // test-case census does not move (`apps/core-api` is outside PACKAGE_ROOTS).
+  // 1640 + 1 = 1641.
+  //
+  // SUMMED FOR THE INTEGRATION: 1640 + 5 (G1) + 7 (G2) + 1 (G3) = 1653, and the
+  // integration's own operator-authentication suite makes it 1654. Every one of
+  // the fourteen is additive: no ledger rule changed and no project was adopted.
+  //
+  // WIN-267 R1 1654 -> 1668. The SAME fourteen files as the `apps-core-api`
+  // delta above and not one more, which is the identity this pair of assertions
+  // exists to hold: the total and the per-area sums are the same arithmetic, so a
+  // file that arrived in one and not the other cannot pass both. 1654 + 14 = 1668,
+  // and R1's mutation ledger in `root-infra` makes it 1669.
+  //
+  // WIN-303 1654 -> 1656. TWO files, BOTH in `packages` and both itemised on
+  // that area's delta above, so the two halves of this case are the same
+  // arithmetic: `governance-scope.ts` and
+  // `governance-isolation.integration.test.ts`. Nothing lands in `root-infra`
+  // — this tranche's guard entries go into the EXISTING
+  // `packages/adapters/postgres-tenancy/mutations-governance.json` rather than
+  // into a new manifest, because they are more guards on the same port surface
+  // that file already covers.
+  //
+  // THE INTEGRATION SUMS THEM, WHICH IS WHAT R303 ASKED FOR IN THE LINE ABOVE:
+  // 1654 + 15 (R1: fourteen files plus its guard ledger) + 2 (R303) = 1671, a
+  // figure NEITHER branch states. R2 is deliberately not in this branch, so its
+  // +3 is not here either — see the merge commit for the tree fact. The sum is
+  // not taken on trust: `expectedDeltas` above is the per-area map, and
+  // 2 + 0 + 75 + 4 + 10 + 1503 + 17 + 60 = 1671 re-derives it from eight
+  // independently-merged keys. R1 moved `apps-core-api` and `root-infra`; R303
+  // moved `packages`; no key took a contribution from both, which is why the
+  // auto-merge of that object is safe and is checked here rather than assumed.
+  //
+  // WIN-267 W2 1671 -> 1678 (seven files: apps-agent +2, root-infra +3,
+  // docs-content +2) and W3 1671 -> 1672 (one file: root-infra +1). THE CLOSEOUT
+  // SUMS THEM: 1671 + 7 + 1 = 1679. The identity this pair of assertions exists
+  // to hold is that the total and the per-area sums are the same arithmetic, and
+  // the eight-key re-derivation from the merged `expectedDeltas` above is
+  // 4 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1679. Side-picking either branch's
+  // own total (1678 or 1672) is red here AND at the second reconciliation below.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1679);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1594,7 +1883,60 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, re-derived here by summing the
     // per-area counts independently of the assertion above.
-    rulesDocument.baseline.totalFiles + 1598
+    //
+    // and WIN-267 (M4.1) +42, from four branches. THIRTY-NINE are `packages`
+    // and all of them `packages/adapters` -- TEN in `node-crypto-digest` (three
+    // generator-owned scaffolding files, six source files and its guard ledger),
+    // THREE in `keyring-envelope` (the MFA envelope, its suite and that
+    // dimension's guard ledger), SIXTEEN in `tokenmint-totp` (three
+    // scaffolding, five source, seven suites and its guard ledger), SEVEN in
+    // `redis-ratelimit` (four source and three suites) and THREE in
+    // `redis-cache` (one source and two suites). THREE are `root-infra`:
+    // `scripts/mutations-win267-t5.json`, `scripts/mutations-win267-a4.json`
+    // and `scripts/mutations-win267-a3.json`. It ADOPTS THREE PROJECTS and
+    // CHANGES NO LEDGER RULE, so this delta too is purely additive:
+    // 1598 + 42 = 1640.
+    // WIN-267 G1 +2, both `apps-core-api`: see the note on the totalFiles
+    // assertion above. 1640 + 2 = 1642, re-derived here by summing the per-area
+    // counts independently, so the two can DISAGREE and be caught.
+    // WIN-267 G1's second half +3, `packages` +2 and `internal-packages` +1;
+    // same arithmetic, re-derived from the per-area counts. 1642 + 3 = 1645.
+    //
+    // This is the SECOND, INDEPENDENT derivation -- it sums the per-area counts
+    // rather than reading the total -- which is exactly why it is moved
+    // separately and by hand. A4 ran `--write`, watched `audit:v1-ledger` go
+    // green, and STILL landed red on both of these assertions: the sixth and
+    // seventh time this second reconciliation has caught what the first one
+    // signed off.
+    //
+    // WIN-267 G3 1640 -> 1641, and it caught this branch too -- the EIGHTH and
+    // NINTH time. `--write` regenerated the fingerprint and `audit:v1-ledger`
+    // went green on a tree where BOTH of these assertions were still 1640. The
+    // one file is `apps/core-api/mutations-win267-g3.json`, in `apps-core-api`,
+    // matching that area's 57 -> 58; it ADOPTS NO PROJECT and CHANGES NO LEDGER
+    // RULE, so this delta too is purely additive: 1640 + 1 = 1641.
+    //
+    // WIN-267 R1 1654 -> 1668, and this is the TENTH place the second
+    // reconciliation has had to be moved by hand. It is the same fourteen files
+    // as the `apps-core-api` delta and the `totalFiles` assertion above, summed
+    // here from the per-area counts instead of read off the total, so the three
+    // can disagree and be caught. 1654 + 14 = 1668, plus R1's guard ledger in
+    // `root-infra` = 1669. WIN-303 moves it 1654 -> 1656.
+    //
+    // THE INTEGRATION: 1654 + 15 + 2 = 1671, the ELEVENTH hand move of this
+    // second reconciliation. This derivation reaches it by summing
+    // `summary.areaCounts` rather than by reading `summary.totalFiles`, so it
+    // and the assertion above are two different arithmetics over the same tree
+    // and a merge that had side-picked either branch's total would be red here
+    // even if the other assertion had been patched to match.
+    //
+    // WIN-267 W2 1671 -> 1678 and W3 1671 -> 1672, SUMMED by the closeout to
+    // 1679 -- the TWELFTH hand move of this second reconciliation. The same
+    // eight files as the `totalFiles` assertion above (W2's seven plus W3's one
+    // mutation manifest), reached here by summing the per-area counts instead of
+    // reading the total, so the two arithmetics can disagree and be caught.
+    // 1671 + 7 + 1 = 1679.
+    rulesDocument.baseline.totalFiles + 1679
   );
 });
 

@@ -1982,6 +1982,79 @@ model GoldenSet {
   @@unique([environmentId, agentId, name])
 }
 
+/// One planned golden-set run, accepted durably and not yet finished.
+///
+/// WIN-267 G1. `governance`'s `EvalRunQueue` port is the enqueue half of ADR
+/// M0.3 §1 row 14 ("eval runs enqueue as durable jobs"): the request plans the
+/// fan-out, caps it, and hands over a handle rather than holding an HTTP
+/// response open for five hundred sequential model calls. This is the row that
+/// hand-over lands in, and it is in THIS database because §15 gives the one
+/// PostgreSQL client one adapter directory — the same sentence that put the
+/// five governance stores beside it.
+///
+/// IT CARRIES NO PRISMA @relation AND NO Json COLUMN, AND BOTH ARE THE SAME
+/// CONSTRAINT. `00000000000000_initial` is hash-pinned by
+/// `upgrade-contract.test.ts`, and `schema.test.ts` holds that file to the
+/// SCHEMA in two ways a post-initial table would otherwise break: it counts
+/// ` FOREIGN KEY ` in the initial SQL against every OWNING RELATION declared
+/// here, and it requires a `<Model>_<column>_json_root` CHECK in that same file
+/// for every `Json` field. (That first check reads this schema LINE BY LINE and
+/// recognises an owning relation by two tokens on one line, so this paragraph
+/// deliberately names neither together — a comment that did would be counted as
+/// a relation, which is how this very sentence first failed.)
+/// So the three foreign keys live in this table's own
+/// migration as SQL — the pattern `AccessKeyBootstrapGrant` established for
+/// WIN-296 and `access_key_revocation_fence` before it — and the plan is stored
+/// as two parallel TEXT ARRAYS rather than as JSON.
+///
+/// THE PARALLEL ARRAYS ARE NOT A WORKAROUND, THEY ARE `GoldenSet`'s OWN SHAPE.
+/// That table already stores `threadIds String[]` and `criterionIds String[]`,
+/// and a plan is the CROSS PRODUCT of those two lists in plan order. Pairing is
+/// by index, and the migration's `EvalRun_pairs_check` refuses a row where the
+/// two arrays differ in length or disagree with `pairCount`, so a half-written
+/// plan cannot be committed at all.
+///
+/// `idempotencyDigest` CARRIES THE UNIQUENESS AND `idempotencyKey` CARRIES THE
+/// EVIDENCE. The port computes the key over the set id, every pair in plan order
+/// and the baseline, so at this context's own five-hundred-pair ceiling it is
+/// tens of kilobytes. The digest is what the unique index sees; the key itself
+/// is kept, unindexed, so a merged run can be explained rather than assumed.
+model EvalRun {
+  id                String    @id @default(uuid()) @db.Uuid
+  environmentId     String    @db.Uuid
+  goldenSetId       String    @db.Uuid
+  agentId           String    @db.Uuid
+  baselineVersionId String?   @db.Uuid
+  requestedBy       String
+  /// The port's own key, verbatim and unindexed. See idempotencyDigest.
+  idempotencyKey    String
+  /// SHA-256 hex of idempotencyKey. The unique index is over THIS.
+  idempotencyDigest String
+  pairCount         Int
+  /// The plan, in plan order. Paired with pairCriterionIds by INDEX.
+  pairThreadIds     String[]  @default([])
+  /// The plan, in plan order. Paired with pairThreadIds by INDEX.
+  pairCriterionIds  String[]  @default([])
+  status            String    @default("QUEUED")
+  deliveries        Int       @default(0)
+  /// Which consumer holds the run, and until when. Both or neither.
+  leaseOwner        String?
+  leaseExpiresAt    DateTime?
+  lastError         String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // environmentId, goldenSetId and agentId are unmanaged scalar FKs, enforced by
+  // this table's own migration. They are intentionally NOT Prisma @relations:
+  // the frozen 00000000000000_initial migration is hash-pinned, so post-initial
+  // additions carry their FK in SQL only — the same pattern
+  // AccessKeyBootstrapGrant used. See WIN-296 and WIN-267 G1.
+
+  @@unique([environmentId, idempotencyDigest])
+  @@index([status, leaseExpiresAt])
+  @@index([environmentId, createdAt])
+}
+
 model Job {
   id               String     @id @default(uuid()) @db.Uuid
   environmentId    String     @db.Uuid

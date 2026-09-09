@@ -1,10 +1,11 @@
 # @platos/adapter-keyring-envelope
 
-Implements THREE owner-supplied ports — the versioned root key ring and the AES-256-GCM envelope over it:
+Implements FOUR owner-supplied ports — the versioned root key ring and the AES-256-GCM envelope over it:
 
 - the secrets `KeyRing` port
 - the secrets `AeadCipher` port
 - the secrets `Hasher` port
+- the identity-access `MfaSecretCipher` port
 
 ADR M0.3 §15 amendment: one vendor client is one adapter DIRECTORY, and a
 directory may satisfy more than one port when the ports sit behind the same

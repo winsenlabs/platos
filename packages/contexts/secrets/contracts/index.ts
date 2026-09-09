@@ -46,6 +46,14 @@ import type { Result } from "@platos/kernel";
 import * as useCases from "../application/index.js";
 import type { SecretsDependencies } from "../application/index.js";
 
+// WIN-267. RE-EXPORTED, because `secretsContract` below takes it and a factory
+// published without the type of its own parameter cannot be called from outside
+// this package. `providers` already publishes `ProvidersDependencies` beside
+// `providersContract` for exactly this reason; this is the same fact about the
+// same shape of entry point, and the composition root is the caller that found
+// the omission.
+export type { SecretsDependencies };
+
 import type {
   CredentialMetadata,
   EnvironmentVariableMetadata,

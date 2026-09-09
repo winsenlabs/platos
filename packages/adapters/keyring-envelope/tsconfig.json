@@ -18,6 +18,9 @@
   "references": [
     {
       "path": "../../contexts/secrets"
+    },
+    {
+      "path": "../../contexts/identity-access"
     }
   ]
 }

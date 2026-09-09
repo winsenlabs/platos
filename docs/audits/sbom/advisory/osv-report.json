@@ -1,19 +1,19 @@
 {
   "$schema": "platos.audit.osv-receipt/v2",
   "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
-  "scannedAt": "2026-09-07T15:56:29.280Z",
+  "scannedAt": "2026-09-08T23:44:51.945Z",
   "network": {
     "requestedMode": "public-osv-with-cache",
     "effectiveMode": "public-osv-live",
     "timeoutMs": 20000,
     "queryBatchSize": 1000,
     "detailConcurrency": 8,
-    "publicRequestsAttempted": 128,
-    "publicRequestsSucceeded": 128,
+    "publicRequestsAttempted": 134,
+    "publicRequestsSucceeded": 134,
     "cacheFallbacks": 0,
     "limitations": []
   },
-  "lockfileSha256": "64e965ebebddf3700c12259bec33dc7b35212666cd1499330187202e54c70d9b",
+  "lockfileSha256": "7bc02ffe59f77cd1b599433d2e0d79e5a80323b3d3c045fc2d4ae83b25c49055",
   "ecosystem": "npm",
   "scope": "agent production lock closure plus exact verified linux/amd64 webapp image inventory",
   "webappInventory": {
@@ -32,13 +32,13 @@
   "componentsScanned": 876,
   "agentComponents": 718,
   "webappComponents": 330,
-  "findingsCount": 151,
+  "findingsCount": 157,
   "withdrawnCount": 0,
   "bySeverity": {
     "CRITICAL": 3,
-    "HIGH": 55,
-    "MODERATE": 75,
-    "LOW": 18
+    "HIGH": 57,
+    "MODERATE": 78,
+    "LOW": 19
   },
   "m05Adjudication": [
     {
@@ -1414,6 +1414,25 @@
     {
       "package": "multer",
       "version": "2.1.1",
+      "id": "GHSA-535w-7cp7-47q4",
+      "aliases": [
+        "CVE-2026-82333"
+      ],
+      "cves": [
+        "CVE-2026-82333"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "multer vulnerable to Denial of Service via oversized array index in field names",
+      "fixedIn": "2.3.0",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "multer",
+      "version": "2.1.1",
       "id": "GHSA-72gw-mp4g-v24j",
       "aliases": [
         "CVE-2026-5079"
@@ -1425,6 +1444,25 @@
       "cvss": null,
       "summary": "Multer vulnerable to Denial of Service via deeply nested field names",
       "fixedIn": "2.2.0",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "multer",
+      "version": "2.1.1",
+      "id": "GHSA-wc9g-mqfw-jrwm",
+      "aliases": [
+        "CVE-2026-77078"
+      ],
+      "cves": [
+        "CVE-2026-77078"
+      ],
+      "severity": "HIGH",
+      "cvss": null,
+      "summary": "multer vulnerable to Denial of Service via crafted multipart field names",
+      "fixedIn": "2.3.0",
       "images": [
         "agent"
       ],
@@ -2235,6 +2273,25 @@
     {
       "package": "hono",
       "version": "4.11.8",
+      "id": "GHSA-crvj-82cr-hjcx",
+      "aliases": [
+        "CVE-2026-84363"
+      ],
+      "cves": [
+        "CVE-2026-84363"
+      ],
+      "severity": "MODERATE",
+      "cvss": null,
+      "summary": "Hono: Query parser reads parameters after the URL fragment, causing cache-key and proxy interpretation differentials",
+      "fixedIn": "4.13.5",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "hono",
+      "version": "4.11.8",
       "id": "GHSA-f23p-vx2j-j53r",
       "aliases": [
         "CVE-2026-71850"
@@ -2265,6 +2322,44 @@
       "cvss": null,
       "summary": "Hono: JWT middleware accepts any Authorization scheme, not only Bearer",
       "fixedIn": "4.12.21",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "hono",
+      "version": "4.11.8",
+      "id": "GHSA-g6gw-c38x-mqfc",
+      "aliases": [
+        "CVE-2026-84364"
+      ],
+      "cves": [
+        "CVE-2026-84364"
+      ],
+      "severity": "MODERATE",
+      "cvss": null,
+      "summary": "Hono: Unbounded dot-notation nesting in `parseBody()` can cause memory exhaustion",
+      "fixedIn": "4.13.5",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "hono",
+      "version": "4.11.8",
+      "id": "GHSA-gqvv-2mrq-wpjv",
+      "aliases": [
+        "CVE-2026-84365"
+      ],
+      "cves": [
+        "CVE-2026-84365"
+      ],
+      "severity": "MODERATE",
+      "cvss": null,
+      "summary": "Hono: Incomplete fix for CVE-2026-39408: `toSSG()` still writes files outside the output directory",
+      "fixedIn": "4.13.5",
       "images": [
         "agent"
       ],
@@ -3431,6 +3526,25 @@
       "cvss": null,
       "summary": "Hono has improper validation of NumericDate claims (exp, nbf, iat) in JWT verify()",
       "fixedIn": "4.12.18",
+      "images": [
+        "agent"
+      ],
+      "withdrawn": null
+    },
+    {
+      "package": "multer",
+      "version": "2.1.1",
+      "id": "GHSA-qvfw-j98x-7q72",
+      "aliases": [
+        "CVE-2026-77063"
+      ],
+      "cves": [
+        "CVE-2026-77063"
+      ],
+      "severity": "LOW",
+      "cvss": null,
+      "summary": "multer vulnerable to file size limit bypass via async fileFilter race condition",
+      "fixedIn": "2.3.0",
       "images": [
         "agent"
       ],

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { parseDocument } from "yaml";
@@ -387,6 +387,16 @@ const expectedV1EvidenceCommands = [
   // evidence artifact of the same class as the censuses it reads.
   "pnpm test:differential-coverage",
   "pnpm audit:differential-coverage",
+  // WIN-267 W2 (+2). The V1 OpenAPI contract ratchet. `audit:` compares the
+  // schemas DERIVED FROM THE core-api HANDLER TYPES against the committed
+  // baseline in `docs/openapi-v1-baseline.json` and fails on any breaking
+  // change; `test:` carries the named cases that separate a removed, renamed or
+  // narrowed field (BREAKING) from an added optional one (COMPATIBLE), by
+  // mutating the real DTO sources in memory and re-deriving. Both belong in the
+  // V1 evidence step because the generated document is an evidence artifact of
+  // the same class as the manifest it is built from.
+  "pnpm audit:openapi-compat",
+  "pnpm test:openapi-compat",
 ];
 // WIN-284. The two coverage commands inside the V1 evidence step, listed
 // separately so each gets its own removal and concealment control below. A gate
@@ -4513,4 +4523,258 @@ test("CI policy controls fail under generated semantic source mutations", async 
       );
     });
   }
+});
+
+// ---------------------------------------------------------------------------
+// WIN-267 A4 — the agent job must NAME the tenancy Prisma delegate census.
+//
+// This suite exists because CI steps are the only thing that makes a gate real,
+// and this repository has now paid for that lesson in the most expensive way
+// available: `apps/agent/src/clean-prisma-delegates.test.ts` sat RED on `v1` for
+// 1,064 commits without a single red build, because the agent job executes its
+// Vitest files ONE AT A TIME by name and that file was not among them. Sixty-four
+// production Prisma delegate call sites accumulated behind a gate nobody ran.
+//
+// Re-pinning the assertion repairs the symptom for exactly as long as it takes
+// the next call site to land. THIS is the repair: the wiring itself is now
+// asserted, so deleting the step turns a gate red instead of turning a gate off.
+//
+// WHY IT IS NOT JOINED TO ITSELF. The suite's path is DISCOVERED from the tree —
+// the one non-`.d.ts` test under `apps/agent/src` that both pins a delegate
+// inventory digest and reads the generated datamodel — and not spelled as a
+// constant this file could quietly edit. Renaming or moving that file without
+// updating the workflow fails here; so does deleting the step; so does moving
+// the step ahead of the build it depends on.
+//
+// THE ORDERING HALF IS NOT DECORATION, AND ITS TWO FAILURE MODES WERE MEASURED
+// RATHER THAN ASSUMED. With `internal-packages/tenancy-database/dist` removed
+// entirely, the suite does not under-count — it does not run at all: Vitest
+// reports `Failed to resolve entry for package "@platos/tenancy-database"` and
+// collects no tests. That is the loud mode. The quiet mode is the one this
+// assertion is really for: restore `dist` but delete its fifteen `.d.ts` files,
+// so the runtime import succeeds and only the TYPES are missing, and the census
+// reads 812 where it should read 815. Three call sites vanish with no error and
+// no warning, because a client the checker cannot type is a client the analyzer
+// cannot follow. A gate whose answer moves with the build state has to have that
+// build state asserted, not described in a comment somebody is trusted to read.
+// ---------------------------------------------------------------------------
+
+const AGENT_SOURCE_ROOT = "apps/agent/src";
+const TENANCY_BUILD_FRAGMENT = "pnpm --filter @platos/tenancy-database build";
+
+function agentTestFiles(relativeDirectory) {
+  const absolute = path.join(repositoryRoot, relativeDirectory);
+  return readdirSync(absolute, { withFileTypes: true }).flatMap((entry) => {
+    const next = `${relativeDirectory}/${entry.name}`;
+    if (entry.isDirectory()) return agentTestFiles(next);
+    if (!entry.isFile() || !entry.name.endsWith(".test.ts")) return [];
+    return [next];
+  });
+}
+
+function delegateCensusSuitePath() {
+  const candidates = agentTestFiles(AGENT_SOURCE_ROOT).filter((file) => {
+    const contents = readFileSync(path.join(repositoryRoot, file), "utf8");
+    return contents.includes("inventoryDigest") && contents.includes("Prisma.dmmf");
+  });
+  assert.equal(
+    candidates.length,
+    1,
+    `exactly one agent suite must carry the Prisma delegate census; found ${
+      candidates.length === 0 ? "none" : candidates.join(", ")
+    }`
+  );
+  return candidates[0];
+}
+
+test("the agent CI job names the tenancy Prisma delegate census", () => {
+  const suitePath = delegateCensusSuitePath();
+  const argument = suitePath.slice(`${AGENT_SOURCE_ROOT}/`.length);
+  const vitestArgument = `src/${argument}`;
+
+  const violations = [];
+  const workflow = parseWorkflow(
+    readFileSync(path.join(repositoryRoot, ".github/workflows/ci.yml"), "utf8"),
+    ".github/workflows/ci.yml",
+    violations
+  );
+  assert.deepEqual(violations, [], "ci.yml must parse before its steps can be read");
+
+  const jobs = workflowJobs(workflow);
+  const runningJobs = [...jobs.entries()].filter(([, job]) =>
+    executableRunValues(job).some(
+      (run) => run.includes("platos-agent") && run.includes(vitestArgument)
+    )
+  );
+
+  assert.ok(
+    runningJobs.length > 0,
+    `no CI job runs ${suitePath}. It is a gate only while a job names it: this suite was ` +
+      `red on v1 for 1,064 commits precisely because none did. Add ` +
+      `\`pnpm --filter platos-agent exec vitest run ${vitestArgument}\` to the agent job.`
+  );
+
+  for (const [jobName, job] of runningJobs) {
+    const runs = executableRunValues(job);
+    const censusIndex = runs.findIndex(
+      (run) => run.includes("platos-agent") && run.includes(vitestArgument)
+    );
+    const buildIndex = runs.findIndex((run) => run.includes(TENANCY_BUILD_FRAGMENT));
+    assert.ok(
+      buildIndex !== -1,
+      `job ${jobName} runs the delegate census but never runs ${JSON.stringify(
+        TENANCY_BUILD_FRAGMENT
+      )}. The census is type-checker driven and reads an opaque client type without it.`
+    );
+    assert.ok(
+      buildIndex < censusIndex,
+      `job ${jobName} runs the delegate census at step ${censusIndex} but builds ` +
+        `@platos/tenancy-database at step ${buildIndex}. The census must run AFTER the build, ` +
+        `or the type checker resolves the client to \`any\` and the pin is measured against a ` +
+        `census that silently stopped seeing call sites.`
+    );
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WIN-267 — EVERY V1 INTEGRATION SUITE IS SELECTED BY SOME JOB.
+//
+// The same defect A4 lit for `clean-prisma-delegates.test.ts`, in the shape it
+// takes for a container-backed suite. Every V1 package excludes
+// `**/*.integration.test.ts` from its own `test` script — deliberately, so that
+// `pnpm test:v1-packages` stays runnable with no Docker daemon — and a suite is
+// therefore reachable ONLY if some job selects it another way.
+// `test:postgres-tenancy:integration` did that for exactly one package, so FOUR
+// suites in three other packages were excluded from the run that happens and
+// selected by nothing that happens. They passed review, they had never executed,
+// and nothing in the tree could tell you so.
+//
+// THIS CASE READS BOTH SIDES OFF SOMETHING IT DOES NOT OWN. The left-hand side
+// is the FILESYSTEM — every `*.integration.test.ts` under the V1 roots,
+// discovered by walking, so a suite added tomorrow is required tomorrow. The
+// right-hand side is `.github/workflows/ci.yml`, with `pnpm <script>` references
+// expanded through the root manifest so that a step naming a script and a step
+// naming the command underneath it are the same claim. Neither side is a list
+// this file wrote.
+// ---------------------------------------------------------------------------
+
+const V1_INTEGRATION_ROOTS = [
+  "packages/kernel",
+  "packages/contexts",
+  "packages/adapters",
+  "apps/core-api",
+  "apps/mcp-stdio",
+];
+
+function integrationSuitesUnder(root) {
+  const found = [];
+  const walk = (directory) => {
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".integration.test.ts")) found.push(full);
+    }
+  };
+  walk(path.join(repositoryRoot, root));
+  return found;
+}
+
+/** The nearest enclosing package.json `name`, which is what a filter selects. */
+function owningPackageName(absoluteFile) {
+  let directory = path.dirname(absoluteFile);
+  while (directory.startsWith(repositoryRoot)) {
+    try {
+      const manifest = JSON.parse(readFileSync(path.join(directory, "package.json"), "utf8"));
+      if (typeof manifest.name === "string") return manifest.name;
+    } catch {
+      // keep walking upward
+    }
+    if (directory === repositoryRoot) break;
+    directory = path.dirname(directory);
+  }
+  throw new Error(`no package.json owns ${absoluteFile}`);
+}
+
+/** Every run value in the workflow, with `pnpm <script>` expanded to a fixpoint. */
+function expandedWorkflowRuns() {
+  const violations = [];
+  const workflow = parseWorkflow(
+    readFileSync(path.join(repositoryRoot, ".github/workflows/ci.yml"), "utf8"),
+    ".github/workflows/ci.yml",
+    violations
+  );
+  assert.deepEqual(violations, [], "ci.yml must parse before its steps can be read");
+  const scripts = JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8")).scripts;
+  const expand = (text, depth) => {
+    if (depth === 0) return text;
+    let expanded = text;
+    for (const [name, body] of Object.entries(scripts)) {
+      const reference = new RegExp(`pnpm\\s+(?:run\\s+)?${name.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?![\\w:.-])`, "gu");
+      if (reference.test(expanded)) expanded = expanded.replaceAll(reference, ` ${body} `);
+    }
+    return expanded === text ? text : expand(expanded, depth - 1);
+  };
+  const runs = [];
+  for (const [, job] of workflowJobs(workflow)) {
+    for (const run of executableRunValues(job)) runs.push(expand(run, 4));
+  }
+  return runs;
+}
+
+test("every V1 integration suite is selected by a CI job", () => {
+  const suites = V1_INTEGRATION_ROOTS.flatMap((root) => integrationSuitesUnder(root));
+  // NON-VACUITY. If the walk found nothing the loop below would pass while
+  // proving nothing, which is the exact failure this whole case exists to catch.
+  assert.ok(
+    suites.length > 0,
+    "the walk found no V1 integration suite at all; the roots or the suffix are wrong"
+  );
+
+  const byPackage = new Map();
+  for (const suite of suites) {
+    const name = owningPackageName(suite);
+    if (!byPackage.has(name)) byPackage.set(name, []);
+    byPackage.get(name).push(path.relative(repositoryRoot, suite));
+  }
+
+  const runs = expandedWorkflowRuns();
+  for (const [packageName, files] of byPackage) {
+    const selected = runs.some(
+      (run) => run.includes(`--filter ${packageName}`) && /\bintegration\b/u.test(run)
+    );
+    assert.ok(
+      selected,
+      `no CI job selects the integration suites of ${packageName}:\n  ${files.join("\n  ")}\n` +
+        `That package's own \`test\` script excludes **/*.integration.test.ts, so these run ` +
+        `NOWHERE. Add a step running \`pnpm --filter ${packageName} exec vitest run integration\` ` +
+        `to a job with a Docker daemon.`
+    );
+  }
+});
+
+test("the integration-suite selector fails when a job stops naming a package", () => {
+  // THE NEGATIVE CONTROL. The case above compares a walk of the tree to a parse
+  // of the workflow; if the matcher were wrong in the permissive direction it
+  // would pass on any workflow at all. This one asks the same question of a
+  // workflow with the Redis step deleted and requires the answer to change.
+  const workflowText = readFileSync(
+    path.join(repositoryRoot, ".github/workflows/ci.yml"),
+    "utf8"
+  );
+  const withoutRedisStep = workflowText.replace(
+    /\n {10}pnpm test:redis-ratelimit:integration\n/u,
+    "\n"
+  );
+  assert.notEqual(withoutRedisStep, workflowText, "the control must actually remove a line");
+  assert.ok(
+    !/test:redis-ratelimit:integration/u.test(withoutRedisStep),
+    "removing that line must remove the only reference to the limiter's integration script"
+  );
 });

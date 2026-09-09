@@ -794,7 +794,87 @@ test("the live selectors scan an exact nonzero source census", () => {
   // list below is unchanged. A controller monolith remains structurally
   // forbidden in the directory the routes are coming TO and in the directory
   // they are registered IN.
-  assert.equal(result.fileCount, 1542);
+  //
+  // WIN-267 A1 + A2 add TWENTY to this selector, all under
+  // `packages/adapters/**`: six in `node-crypto-digest`, two in
+  // `keyring-envelope` and twelve in `tokenmint-totp`.
+  //
+  // WIN-267 A3 adds TEN more to the same selector -- seven in
+  // `redis-ratelimit/src/` and three in `redis-cache/src/`. It moves the TREE
+  // rather than the selector too: `packages/adapters/**` has been inside the
+  // enforced slice at WARNING 400 / ERROR 500 effective lines since it was
+  // drawn; what changed is that one of its directories stopped being two
+  // declaration files.
+  //
+  // 1542 + 20 + 10 = 1572, then G1's +2 makes 1574. A figure NO branch stated:
+  // A1+A2 pinned 1562 and A3
+  // pinned 1552, both over the same 1542 base.
+  //
+  // THE BUDGET STILL BITES AND STILL FINDS NOTHING HERE. Measured with THIS
+  // MODULE'S OWN `effectiveLineCount` rather than eyeballed -- A3's first
+  // figures were the author's recollection and were wrong by 44 on the largest
+  // file, which is the reason the method is stated. The largest of the thirty:
+  //
+  //   220  redis-cache/src/provider-probe-cache.test.ts
+  //   190  keyring-envelope/src/mfa-secret-cipher.test.ts
+  //   165  redis-ratelimit/src/rate-limiter.test.ts
+  //   141  keyring-envelope/src/mfa-secret-cipher.ts
+  //   136  redis-ratelimit/src/ratelimit.integration.test.ts
+  //   128  node-crypto-digest/src/secret-hasher.test.ts
+  //   103  redis-ratelimit/src/oracle-source.ts
+  //    98  redis-cache/src/provider-probe-cache.ts
+  //
+  // Nothing reaches the 400 warning band, let alone the 500 error, and the
+  // warning list below is unchanged -- which is the property that matters for a
+  // directory about to grow: an adapter that needed a 500-line file to hold one
+  // port would be an adapter holding more than one job.
+  //
+  // WIN-267 G1 +2, both under the `packages/adapters/**` selector that already
+  // existed: `postgres-tenancy/src/governance-eval-runs.ts` (265) and its
+  // integration suite (403). The tranche's two `apps/core-api` files are NOT
+  // counted here and that is the selector rather than an omission -- this gate
+  // scans `src/http/**` and `src/transports/rest/**` in that deployable, and
+  // `src/composition/**` is in neither.
+    // WIN-267 G2 adds SIX more to the same selector, all in
+  // `packages/adapters/postgres-tenancy/src/`: `governance`'s three inverted
+  // read seams, the guard they share, and their two suites. 1572 + 6 = 1578.
+  // Measured with THIS MODULE'S OWN `effectiveLineCount`, for the reason stated
+  // above:
+  //
+  //   292  governance-read-seams.integration.test.ts
+  //   117  governance-seam-conversations.ts
+  //   101  governance-seam-activity.ts
+  //    93  governance-read-seams.test.ts
+  //    23  governance-read-seams.ts
+  //    19  governance-seam-guards.ts
+  //
+  // The largest is the integration suite, and it is the largest for the reason
+  // this tranche exists: every case in it is issued twice, once per tenant. All
+  // six are under the 400 warning band -- and the split into four source files
+  // rather than one is what keeps them there, since a single
+  // `governance-read-seams.ts` holding all three seams would have been 260.
+  // WIN-303 1580 -> 1582: two files in `packages/adapters`, itemised below.
+  // SUMMED FOR THE INTEGRATION: 1572 + 2 (G1) + 6 (G2) = 1580, and the
+  // ADAPTERS term is still the only one that moves.
+  //
+  // WIN-267 R1 1580 -> 1593, AND IT IS THE FIRST TRANCHE SINCE T2 IN WHICH THE
+  // ADAPTERS TERM DOES NOT MOVE AT ALL. Both app selectors move instead, which
+  // is the shape of a transport tranche: +11 under
+  // `apps/core-api/src/transports/**` (five controllers, four shared transport
+  // modules, and two suites) and +2 under `apps/core-api/src/http/**`
+  // (`api-surface.ts` and its suite). The integration suite it also adds is in
+  // `src/composition/`, which NO selector scans, so it is deliberately absent
+  // from both terms. 1580 + 11 + 2 = 1593.
+  //
+  // WIN-303 1580 -> 1582: the adapters term alone, +2.
+  //
+  // SUMMED: 1580 + 13 + 2 = 1595, and the two tranches move DIFFERENT terms —
+  // R1 both app selectors and R303 the adapters selector — so no file is
+  // counted twice. Note that R1 is +13 HERE and +14 in the two census pins:
+  // its HTTP integration suite lives in `src/composition/`, which those scans
+  // reach and no selector in this file does. A merge that had copied 14 into
+  // this pin would be red, which is the point of keeping both figures.
+  assert.equal(result.fileCount, 1595);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -811,7 +891,40 @@ test("the live selectors scan an exact nonzero source census", () => {
       12 +
       // WIN-267 T2, the REST chassis: 5 under `src/transports/rest/` and 4 under
       // `src/http/`, newly WRITTEN and inside selectors that already existed.
-      5 + 4
+      5 + 4 +
+      // WIN-267 A1: node-crypto-digest 6 and keyring-envelope 2; A2:
+      // tokenmint-totp 5 source + 7 suites; A3: 7 under
+      // `packages/adapters/redis-ratelimit/src/` and 3 under
+      // `packages/adapters/redis-cache/src/`. All thirty newly WRITTEN, and all
+      // thirty inside the `packages/adapters/**` selector that already existed.
+      6 + 2 + 12 + 7 + 3 +
+      // WIN-267 G1: the eval-run queue store and its integration suite, both
+      // under `packages/adapters/postgres-tenancy/src/`.
+      2 +
+      // WIN-267 G2: SIX under `packages/adapters/postgres-tenancy/src/` --
+      // four source modules for `governance`'s three inverted read seams plus
+      // their shared guard, and two suites. Newly WRITTEN, inside the same
+      // long-standing selector, and adding nothing to any other term: the three
+      // ports were already declared by the context and the composition root's
+      // rows are edits.
+      6 +
+      // WIN-267 R1: THIRTEEN, and none of them an adapter. ELEVEN under
+      // `apps/core-api/src/transports/**` — `identity-session`,
+      // `organizations`, `projects`, `environment-end-users` and `bff/session`
+      // controllers, the `operator`, `dependencies`, `body` and `resources`
+      // modules they share, and the `route-manifest` and `identity-rest`
+      // suites — plus TWO under `apps/core-api/src/http/**`, `api-surface.ts`
+      // and `api-surface.test.ts`. The V1 REST surface has no adapter half at
+      // all: every route reaches a published contract, which is why the term
+      // that has moved in every WIN-267 tranche since T2 is flat here.
+      11 + 2 +
+      // WIN-303: TWO under `packages/adapters/postgres-tenancy/src/` --
+      // `governance-scope.ts`, the tenant-triple resolver the five canonical
+      // stores now sit behind, and `governance-isolation.integration.test.ts`,
+      // its two-tenant proof. Newly WRITTEN, inside the same long-standing
+      // selector, and adding nothing to any other term: the five stores,
+      // `governance-rows.ts` and `governance-seam-guards.ts` are edits.
+      2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -926,7 +1039,67 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   APPS-TRANSPORTS  13
   //   APPS-HTTP        16
   // 27 + 1075 + 411 + 13 + 16 = 1542.
-  assert.equal(result.fileCount, 27 + 1075 + 411 + 13 + 16);
+  //
+  // WIN-267 (M4.1) MOVES ONLY THE ADAPTERS TERM, 411 -> 441, and that is the
+  // mirror claim of the whole issue: five driven ports got implementations and
+  // nothing else changed shape. Six files are `node-crypto-digest`, two are
+  // `keyring-envelope`'s MFA envelope with its suite, twelve are
+  // `tokenmint-totp`, seven are `redis-ratelimit` and three are `redis-cache`.
+  // Kernel, contexts and both apps terms are byte-for-byte the same scan. A
+  // tranche that widened a context or grew a transport while calling itself an
+  // adapter would show up here as a moved CONTEXTS or APPS term -- which is
+  // exactly how T2's move was read, in the other direction. A2's three new names
+  // on `identity-access`'s ports barrel and A3's five are EDITS to files that
+  // already existed and move no count.
+  //   ADAPTERS        441
+  // 27 + 1075 + 441 + 13 + 16 = 1572.
+  //
+  // WIN-267 G1 MOVES ONLY THE ADAPTERS TERM AGAIN, 441 -> 443: the eval-run
+  // queue store and its integration suite, both in
+  // `packages/adapters/postgres-tenancy/src/`. KERNEL, CONTEXTS and BOTH APPS
+  // TERMS ARE BYTE-FOR-BYTE THE SAME SCAN, and that is the mirror claim of this
+  // half of the tranche -- the `Judge` half lands two files in
+  // `apps/core-api/src/composition/`, which no selector here scans, so a term
+  // moving in `apps-http` or `apps-transports` would mean this tranche had
+  // grown a transport while calling itself an adapter. The context edits it does
+  // make -- three re-exports and a paragraph on `governance`'s port barrel --
+  // are EDITS to files that already existed and move no count.
+  //
+  // WIN-267 G2 MOVES ONLY THE ADAPTERS TERM AGAIN, 441 -> 447, and it is the
+  // same mirror claim: three driven ports got an implementation on a directory
+  // that already existed and nothing else changed shape. Kernel, contexts and
+  // both apps terms are byte-for-byte the same scan. The three names added to
+  // `governance`'s ports barrel, the three error constructors in its domain and
+  // the composition root's rows are all EDITS to files that already existed and
+  // move no count.
+  // SUMMED: 441 + 2 (G1) + 6 (G2) = 449.
+  //   ADAPTERS        449
+  // 27 + 1075 + 449 + 13 + 16 = 1580.
+  //
+  // WIN-267 R1 MOVES THE TWO APP TERMS AND NOTHING ELSE, which is the mirror
+  // claim of every adapter tranche above: APPS-HTTP 13 -> 15 and
+  // APPS-TRANSPORTS 16 -> 27. Kernel, contexts and adapters are byte-for-byte
+  // the same scan — the surface is built entirely out of published contracts, so
+  // no adapter directory changed shape, and the two contexts it serves were
+  // edited nowhere. 27 + 1075 + 449 + 15 + 27 = 1593.
+  //
+  // WIN-303 MOVES THE ADAPTERS TERM AND NOTHING ELSE: 449 -> 451,
+  // `governance-scope.ts` and `governance-isolation.integration.test.ts`. The
+  // five stores, `governance-rows.ts`, `governance-seam-guards.ts` and the
+  // statements suite are edits and move no count — though the stores do grow,
+  // which is why the warning band is re-read rather than assumed.
+  //
+  // THE INTEGRATION IS THE DISJOINT UNION OF THE TWO, TERM BY TERM, and that is
+  // what makes summing safe rather than hopeful: R1 moves only APPS-HTTP and
+  // APPS-TRANSPORTS, R303 moves only ADAPTERS, and neither touches KERNEL or
+  // CONTEXTS. No term takes a contribution from both branches.
+  //   KERNEL            27
+  //   CONTEXTS        1075
+  //   ADAPTERS         451
+  //   APPS-HTTP         15
+  //   APPS-TRANSPORTS   27
+  // 27 + 1075 + 451 + 15 + 27 = 1595.
+  assert.equal(result.fileCount, 27 + 1075 + 451 + 15 + 27);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -1041,7 +1214,7 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   cost-constraints.integration.test.ts          453 -> 454  (+1)
   //   files-scope.integration.test.ts               467 -> 468  (+1)
   //   governance-conformance.ts                     418 -> 420  (+2)
-  //   governance-rules.integration.test.ts          424 -> 425  (+1)
+  //   governance-rules.integration.test.ts          424 -> 425  (+1); WIN-303 -> 426
   //   memory-constraints.integration.test.ts        406 -> 409  (+3)
   //   providers-conformance.ts                      421 -> 423  (+2)
   //   secrets-rules.integration.test.ts             439 -> 441  (+2)
@@ -1093,8 +1266,30 @@ test("the live selectors scan an exact nonzero source census", () => {
       severity: "warning",
     },
     {
+      // WIN-267 G1. THE NINETEENTH, and it is in the band on purpose rather than
+      // queued for the hard error. Its length is thirteen cases that each need
+      // the SAME container: the enqueue half, the consumer half and the two
+      // refusal codes are one queue's behaviour, and four of the thirteen exist
+      // only because a mutation survived. Splitting it along any seam would put
+      // a second `startGovernanceHarness` and a second PostgreSQL container in
+      // the CI job for a file that is 403 against a 500 error -- which is the
+      // difference this list's own note draws between "a warning that is a
+      // shape" and "one that is a queue for the hard error". It is 404 rather
+      // than 403 because the forged-collision insert gained a column when the
+      // plan stopped being JSON.
+      path: "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
+      effectiveLines: 404,
+      severity: "warning",
+    },
+    {
       path: "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
-      effectiveLines: 425,
+      // WIN-303 425 -> 426: ONE assertion added to an existing case, naming
+      // WHICH refusal the cross-tenant flip produces. `mutations-governance.json`
+      // M-G19 was vacuous without it -- the mutated statement rewrites the other
+      // tenant's row and the unit of work then ROLLS IT BACK, so every other
+      // assertion in that case stayed green. No new case, so the test-case
+      // census does not move for it.
+      effectiveLines: 426,
       severity: "warning",
     },
     {

@@ -133,7 +133,12 @@ const CONTRACT_OPERATIONS = [
 ] as const;
 
 /** Tables the upgrade introduces. Invisible to a binary that predates them. */
-const ADDED_TABLES = ["AccessKeyBootstrapGrant", "PostmanExecution"] as const;
+// `EvalRun` (WIN-267 G1) is governance's eval-run queue, claimed under FOR UPDATE
+// SKIP LOCKED with a lease. It belongs here rather than among `mandatoryColumns`
+// because those are columns made mandatory on EXISTING tables — a narrowing that
+// breaks a writer already in flight. A table the upgrade introduces has no such
+// writer, so its NOT NULL columns are not a narrowing of anything.
+const ADDED_TABLES = ["AccessKeyBootstrapGrant", "PostmanExecution", "EvalRun"] as const;
 
 const mandatoryColumns = CONTRACT_OPERATIONS.filter(
   (operation): operation is Extract<(typeof CONTRACT_OPERATIONS)[number], { column: string }> =>
@@ -487,8 +492,13 @@ describe.runIf(process.env.CI === "true")("WIN-258 T7 expand/contract rollout re
 
   test("a table the upgrade introduced is invisible to the rollout partner, not broken for it", async () => {
     const known = new Set(oracleHead.models.map((model) => model.dbName ?? model.name));
+    // Of the tables this upgrade adds, these are the ones the oracle head has
+    // never heard of, so the rollout partner cannot see them at all. That is the
+    // property under test — invisible, not broken. `PostmanExecution` is absent
+    // because the oracle already declares it; `EvalRun` is new in V1.
     expect(ADDED_TABLES.filter((table) => !known.has(table))).toEqual([
       "AccessKeyBootstrapGrant",
+      "EvalRun",
     ]);
     const grants = await v1.$queryRawUnsafe<Array<{ count: bigint }>>(
       'SELECT count(*)::bigint AS count FROM "AccessKeyBootstrapGrant"',

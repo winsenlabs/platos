@@ -2,7 +2,7 @@
   "name": "@platos/adapter-keyring-envelope",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the secrets KeyRing port, the secrets AeadCipher port and the secrets Hasher port.",
+  "description": "Implements the secrets KeyRing port, the secrets AeadCipher port, the secrets Hasher port and the identity-access MfaSecretCipher port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,6 +19,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@platos/context-secrets": "workspace:*"
+    "@platos/context-secrets": "workspace:*",
+    "@platos/context-identity-access": "workspace:*"
   }
 }

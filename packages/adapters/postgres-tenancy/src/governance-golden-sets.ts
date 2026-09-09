@@ -41,11 +41,12 @@ import {
   err,
   goldenSetAlreadyExists,
   ledgerUnavailable,
+  goldenSetsScopeUnresolved,
   ok,
 } from "@platos/context-governance/application/ports/index.js";
 
 import { requireUuid } from "./governance-guards.js";
-import { refuse } from "./governance-refusal.js";
+import { inGovernanceScope } from "./governance-scope.js";
 import {
   readGoldenSet,
   scopedWhere,
@@ -78,21 +79,27 @@ export function createGoldenSetsRepository(
       createdBy: ActorId,
       transaction: TransactionScope,
     ): Promise<Result<GoldenSet>> {
-      return refuse(async () => {
-        requireUuid("GoldenSet.agentId", set.agentId);
-        const client = transactions.writer(transaction);
-        const at = now();
-        const created = await client.goldenSet.createManyAndReturn({
-          data: [{ ...writeGoldenSet(scope, set, createdBy), createdAt: at, updatedAt: at }],
-          skipDuplicates: true,
-          select: GOLDEN_SET_COLUMNS,
-        });
-        const row = created[0];
-        if (row === undefined) {
-          return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));
-        }
-        return ok(readGoldenSet(row as GoldenSetRow));
-      }, "goldenSets create");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        goldenSetsScopeUnresolved,
+        "goldenSets create",
+        async () => {
+          requireUuid("GoldenSet.agentId", set.agentId);
+          const client = transactions.writer(transaction);
+          const at = now();
+          const created = await client.goldenSet.createManyAndReturn({
+            data: [{ ...writeGoldenSet(scope, set, createdBy), createdAt: at, updatedAt: at }],
+            skipDuplicates: true,
+            select: GOLDEN_SET_COLUMNS,
+          });
+          const row = created[0];
+          if (row === undefined) {
+            return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));
+          }
+          return ok(readGoldenSet(row as GoldenSetRow));
+        },
+      );
     },
 
     async update(
@@ -100,41 +107,47 @@ export function createGoldenSetsRepository(
       set: GoldenSet,
       transaction: TransactionScope,
     ): Promise<Result<GoldenSet>> {
-      return refuse(async () => {
-        requireUuid("GoldenSet.id", set.goldenSetId);
-        requireUuid("GoldenSet.agentId", set.agentId);
-        const client = transactions.writer(transaction);
-        const held = await client.goldenSet.findFirst({
-          where: { id: set.goldenSetId, ...scopedWhere(scope) },
-          select: { id: true },
-        });
-        if (held === null) return err(ledgerUnavailable("golden_set_not_in_scope"));
-        const clash = await client.goldenSet.findFirst({
-          where: {
-            ...scopedWhere(scope),
-            agentId: set.agentId,
-            name: set.name,
-            id: { not: set.goldenSetId },
-          },
-          select: { id: true },
-        });
-        if (clash !== null) {
-          return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));
-        }
-        const outcome = await client.goldenSet.updateMany({
-          where: { id: set.goldenSetId, ...scopedWhere(scope) },
-          data: {
-            agentId: set.agentId,
-            name: set.name,
-            description: set.description,
-            threadIds: [...set.threadIds],
-            criterionIds: [...set.criterionIds],
-            updatedAt: set.updatedAt,
-          },
-        });
-        if (outcome.count === 0) return err(ledgerUnavailable("golden_set_not_in_scope"));
-        return ok(set);
-      }, "goldenSets update");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        goldenSetsScopeUnresolved,
+        "goldenSets update",
+        async () => {
+          requireUuid("GoldenSet.id", set.goldenSetId);
+          requireUuid("GoldenSet.agentId", set.agentId);
+          const client = transactions.writer(transaction);
+          const held = await client.goldenSet.findFirst({
+            where: { id: set.goldenSetId, ...scopedWhere(scope) },
+            select: { id: true },
+          });
+          if (held === null) return err(ledgerUnavailable("golden_set_not_in_scope"));
+          const clash = await client.goldenSet.findFirst({
+            where: {
+              ...scopedWhere(scope),
+              agentId: set.agentId,
+              name: set.name,
+              id: { not: set.goldenSetId },
+            },
+            select: { id: true },
+          });
+          if (clash !== null) {
+            return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));
+          }
+          const outcome = await client.goldenSet.updateMany({
+            where: { id: set.goldenSetId, ...scopedWhere(scope) },
+            data: {
+              agentId: set.agentId,
+              name: set.name,
+              description: set.description,
+              threadIds: [...set.threadIds],
+              criterionIds: [...set.criterionIds],
+              updatedAt: set.updatedAt,
+            },
+          });
+          if (outcome.count === 0) return err(ledgerUnavailable("golden_set_not_in_scope"));
+          return ok(set);
+        },
+      );
     },
 
     async remove(
@@ -142,26 +155,38 @@ export function createGoldenSetsRepository(
       goldenSetId: GoldenSetId,
       transaction: TransactionScope,
     ): Promise<Result<boolean>> {
-      return refuse(async () => {
-        const client = transactions.writer(transaction);
-        const outcome = await client.goldenSet.deleteMany({
-          where: { id: goldenSetId, ...scopedWhere(scope) },
-        });
-        return ok(outcome.count > 0);
-      }, "goldenSets remove");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        goldenSetsScopeUnresolved,
+        "goldenSets remove",
+        async () => {
+          const client = transactions.writer(transaction);
+          const outcome = await client.goldenSet.deleteMany({
+            where: { id: goldenSetId, ...scopedWhere(scope) },
+          });
+          return ok(outcome.count > 0);
+        },
+      );
     },
 
     async findById(
       scope: EnvironmentScope,
       goldenSetId: GoldenSetId,
     ): Promise<Result<GoldenSet | null>> {
-      return refuse(async () => {
-        const row = await transactions.reader().goldenSet.findFirst({
-          where: { id: goldenSetId, ...scopedWhere(scope) },
-          select: GOLDEN_SET_COLUMNS,
-        });
-        return ok(row === null ? null : readGoldenSet(row as GoldenSetRow));
-      }, "goldenSets findById");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        goldenSetsScopeUnresolved,
+        "goldenSets findById",
+        async () => {
+          const row = await transactions.reader().goldenSet.findFirst({
+            where: { id: goldenSetId, ...scopedWhere(scope) },
+            select: GOLDEN_SET_COLUMNS,
+          });
+          return ok(row === null ? null : readGoldenSet(row as GoldenSetRow));
+        },
+      );
     },
 
     async findByName(
@@ -169,32 +194,44 @@ export function createGoldenSetsRepository(
       agentId: AgentId,
       name: string,
     ): Promise<Result<GoldenSet | null>> {
-      return refuse(async () => {
-        const row = await transactions.reader().goldenSet.findFirst({
-          where: { agentId, name, ...scopedWhere(scope) },
-          select: GOLDEN_SET_COLUMNS,
-        });
-        return ok(row === null ? null : readGoldenSet(row as GoldenSetRow));
-      }, "goldenSets findByName");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        goldenSetsScopeUnresolved,
+        "goldenSets findByName",
+        async () => {
+          const row = await transactions.reader().goldenSet.findFirst({
+            where: { agentId, name, ...scopedWhere(scope) },
+            select: GOLDEN_SET_COLUMNS,
+          });
+          return ok(row === null ? null : readGoldenSet(row as GoldenSetRow));
+        },
+      );
     },
 
     async page(scope: EnvironmentScope, query: GoldenSetQuery): Promise<Result<GoldenSetPage>> {
-      return refuse(async () => {
-        const where = {
-          ...scopedWhere(scope),
-          ...(query.agentId === null ? {} : { agentId: query.agentId }),
-        };
-        const reader = transactions.reader();
-        const rows = await reader.goldenSet.findMany({
-          where,
-          select: GOLDEN_SET_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          skip: query.offset,
-          take: query.limit,
-        });
-        const total = await reader.goldenSet.count({ where });
-        return ok({ items: rows.map((row) => readGoldenSet(row as GoldenSetRow)), total });
-      }, "goldenSets page");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        goldenSetsScopeUnresolved,
+        "goldenSets page",
+        async () => {
+          const where = {
+            ...scopedWhere(scope),
+            ...(query.agentId === null ? {} : { agentId: query.agentId }),
+          };
+          const reader = transactions.reader();
+          const rows = await reader.goldenSet.findMany({
+            where,
+            select: GOLDEN_SET_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            skip: query.offset,
+            take: query.limit,
+          });
+          const total = await reader.goldenSet.count({ where });
+          return ok({ items: rows.map((row) => readGoldenSet(row as GoldenSetRow)), total });
+        },
+      );
     },
   };
 }

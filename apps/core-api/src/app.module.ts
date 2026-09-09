@@ -103,8 +103,10 @@ import type { IdentityAccessPorts } from "@platos/context-identity-access/applic
 import type { TenancyContract } from "@platos/context-tenancy";
 import { createTenancyService } from "@platos/context-tenancy/application/index.js";
 import type { TenancyDependencies } from "@platos/context-tenancy/application/index.js";
-import type { SecretsContract } from "@platos/context-secrets";
-import type { ProvidersContract } from "@platos/context-providers";
+import type { SecretsContract, SecretsDependencies } from "@platos/context-secrets";
+import { secretsContract } from "@platos/context-secrets";
+import type { ProvidersContract, ProvidersDependencies } from "@platos/context-providers";
+import { providersContract } from "@platos/context-providers";
 import type { AgentsContract } from "@platos/context-agents";
 import type { SkillsContract } from "@platos/context-skills";
 import type { ToolsContract } from "@platos/context-tools";
@@ -114,6 +116,7 @@ import type { FilesContract } from "@platos/context-files";
 import type { ObservabilityContract } from "@platos/context-observability";
 import type { CostMonitoringContract } from "@platos/context-cost-monitoring";
 import type { GovernanceContract } from "@platos/context-governance";
+import type { Judge } from "@platos/context-governance/application/ports/index.js";
 import type { JobsContract } from "@platos/context-jobs";
 import type { ConversationsContract } from "@platos/context-conversations";
 import type { EventingContract } from "@platos/context-eventing";
@@ -124,6 +127,7 @@ import {
   type SuppliedAdapters,
   type UnwiredAdapter,
 } from "./composition/adapter-bindings.js";
+import { createProvidersJudge } from "./composition/governance-judge.js";
 import { reportAdapterSupply, type AdapterSupplyReport } from "./composition/registry.js";
 import type { CoreApiConfiguration } from "./config/schema.js";
 import { correlationSource } from "./runtime/correlation.js";
@@ -215,6 +219,27 @@ export interface AppModule {
    * absence needs no second spelling here.
    */
   readonly correlation: CorrelationSource;
+  /**
+   * WIN-267 G1. `governance`'s `Judge` port, satisfied over the composed
+   * `providers` contract — null until `providers` itself is composed.
+   *
+   * IT IS A PORT HERE FOR THE REASON `requestIdempotency` IS, AND FOR ONE MORE.
+   * The shared reason is rule (j): whoever consumes it must name a PORT and not
+   * a module. The extra one is that it CANNOT be an adapter, and
+   * `composition/governance-judge.ts` measures why three separate ways — the
+   * short version is that `ModelRouter` takes a credential its caller must
+   * already hold and `Judge.ask` is handed none, so the only implementation
+   * possible is one that asks the context that owns the keys.
+   *
+   * IT IS A SINGLE PORT AND NOT A BUNDLE, DELIBERATELY. `GovernanceDependencies`
+   * names seventeen slots and this root can fill only some of them today;
+   * `context-ports.ts`'s `GOVERNANCE_UNBOUND_PORTS` is the list of what is still
+   * missing, and publishing a half-filled `governance` bundle would be the
+   * façade-over-undefined-stores that `composeApplication` refuses everywhere
+   * else. One satisfied port, published under its own name, is the honest shape
+   * until the rest of that list is closed.
+   */
+  readonly governanceJudge: Judge | null;
 }
 
 /**
@@ -238,7 +263,30 @@ export interface SuppliedContextPorts {
    * the one thing `changeMembershipRole` exists to guarantee.
    */
   readonly tenancy?: TenancyDependencies;
+  /**
+   * WIN-267. `secrets`' whole bundle, which needs no peer at all: two stores on
+   * the ORM adapter, three cryptography ports on the key ring, and the kernel's
+   * clock, ids and unit of work.
+   */
+  readonly secrets?: SecretsDependencies;
+  /**
+   * WIN-267. `providers`' bundle MINUS its two peers, and the subtraction is the
+   * whole reason this type exists.
+   *
+   * `ProvidersDependencies` names `tenancy: TenancyContract` and
+   * `secrets: SecretsPeer` — two CONTEXTS, not two adapters. Building contexts
+   * is this file's job and `composition/context-ports.ts` deliberately holds no
+   * context, so it hands over the eight slots that come from adapters, kernel
+   * ports and published domain defaults, and `composeApplication` fills the last
+   * two from the contracts it has just built. Every one of the ten is still
+   * assigned BY NAME below; the split is about which file knows the value, not
+   * about relaxing the convention.
+   */
+  readonly providers?: ProvidersAdapterPorts;
 }
+
+/** `ProvidersDependencies` without the two peers only this file can supply. */
+export type ProvidersAdapterPorts = Omit<ProvidersDependencies, "tenancy" | "secrets">;
 
 export interface CompositionInput {
   readonly configuration: CoreApiConfiguration;
@@ -283,13 +331,46 @@ export function composeApplication(input: CompositionInput): AppModule {
   // the context absent rather than producing a façade over undefined stores,
   // which would turn every authentication into a run-time crash instead of a
   // readiness signal a caller can see before it serves anything.
+  const identityAccess =
+    input.ports?.identityAccess === undefined
+      ? undefined
+      : createIdentityAccessService(input.ports.identityAccess);
+  const tenancy =
+    input.ports?.tenancy === undefined ? undefined : createTenancyService(input.ports.tenancy);
+  const secrets =
+    input.ports?.secrets === undefined ? undefined : secretsContract(input.ports.secrets);
+  // WIN-267. `providers` is the FIRST context in this tree composed from two
+  // PEERS as well as from adapters, and the order above is therefore load-bearing
+  // in a way none of the others is: both peers must already exist as objects. It
+  // is absent — rather than built over a half-filled bundle — the moment either
+  // one is, because a `ProvidersContract` whose `secrets` handle was undefined
+  // would refuse every runtime credential read at the first call instead of at
+  // readiness, which is the whole distinction this root is built around.
+  //
+  // EVERY SLOT IS ASSIGNED BY NAME. `repository` and `probeCache` are both
+  // reads, `modelRouter` and `probeCache` are both cache-shaped, and `clock` and
+  // `ids` are two kernel ports of similar shape; a bundle assembled by spreading
+  // one object over another would type-check with any of those transposed.
+  const providers =
+    input.ports?.providers === undefined || tenancy === undefined || secrets === undefined
+      ? undefined
+      : providersContract({
+          repository: input.ports.providers.repository,
+          modelRouter: input.ports.providers.modelRouter,
+          probeCache: input.ports.providers.probeCache,
+          clock: input.ports.providers.clock,
+          ids: input.ports.providers.ids,
+          unitOfWork: input.ports.providers.unitOfWork,
+          policy: input.ports.providers.policy,
+          catalogue: input.ports.providers.catalogue,
+          secrets,
+          tenancy,
+        });
   const contexts: ComposedContexts = Object.freeze({
-    ...(input.ports?.identityAccess === undefined
-      ? {}
-      : { identityAccess: createIdentityAccessService(input.ports.identityAccess) }),
-    ...(input.ports?.tenancy === undefined
-      ? {}
-      : { tenancy: createTenancyService(input.ports.tenancy) }),
+    ...(identityAccess === undefined ? {} : { identityAccess }),
+    ...(tenancy === undefined ? {} : { tenancy }),
+    ...(secrets === undefined ? {} : { secrets }),
+    ...(providers === undefined ? {} : { providers }),
   });
 
   return Object.freeze({
@@ -307,6 +388,16 @@ export function composeApplication(input: CompositionInput): AppModule {
     // the same as one nobody wired.
     requestIdempotency: adapters["redis-cache"]?.requests ?? null,
     correlation: input.correlation ?? correlationSource,
+    // WIN-267 G1. Built from the contract rather than from a bundle, and
+    // therefore built HERE: `context-ports.ts` holds no context by design, and
+    // this port's only possible implementation is one that asks `providers`.
+    // Null when `providers` is absent, for the reason every context above is
+    // absent when its ports are — a judge over an undefined contract would fail
+    // at the first score instead of at readiness.
+    governanceJudge:
+      providers === undefined
+        ? null
+        : createProvidersJudge({ providers, logger: input.logger }),
   });
 }
 

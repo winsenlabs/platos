@@ -1,0 +1,396 @@
+{
+ "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+ "issue": "WIN-267",
+ "tranche": "G2 — RatingTargetReader, TranscriptReader, ActivityReader",
+ "branch": "tejas/win-267-g2-readers",
+ "base": "ff06655f (tejas/win-267-compose, the head of PR #153, still OPEN against v1)",
+ "purpose": [
+  "G2 gives `governance`'s three inverted READ SEAMS their first implementation,",
+  "as three rows on `packages/adapters/postgres-tenancy` — the directory that is",
+  "already the canonical store of all four tables they read.",
+  "",
+  "THE ENTRIES THIS LEDGER EXISTS FOR ARE M01, M02, M10, M11 AND M12. Every one",
+  "of them removes a TENANT NARROWING, and every one of them leaves a reader",
+  "that type-checks, answers plausible values, and serves another tenant's rows.",
+  "`Turn` has no `environmentId` column at all, so its tenancy is a JOIN and the",
+  "type system has nothing to say about losing it. They are killed against a",
+  "REAL PostgreSQL with TWO tenants seeded, because a double cannot have this",
+  "bug: `InMemoryRatingTargets` stores an `environmentId` beside every seeded",
+  "turn precisely because it has nowhere else to put one.",
+  "",
+  "M08 SURVIVED ON THE FIRST RUN AND IS RECORDED WITH THE CASE THAT NOW KILLS",
+  "IT. Deleting the PROJECT limb of `narrowableScope`'s uuid check left all 27",
+  "cases green: the suite blanked the ENVIRONMENT and never the other two. An",
+  "unguarded limb is not a smaller guard — the value reaches a `@db.Uuid`",
+  "column, the driver raises, and `refuse()` reports it as",
+  "GOVERNANCE_LEDGER_UNAVAILABLE, which is the one shared code these three",
+  "constructors exist to stay out of. A nineteenth case blanks the project and",
+  "the organization across all three seams; M08 and M16 both kill against it.",
+  "",
+  "M17, M18 AND M19 MUTATE THINGS THIS BRANCH DOES NOT CONTROL — `schema.prisma`,",
+  "the initial migration, and the shipped `docs/error-taxonomy.json` — and watch",
+  "`governance-read-seams.test.ts` go red. Without them, that suite's claims",
+  "('`Turn` has no environment of its own', '`Turn_ancestry` ties the version to",
+  "the thread's agent', 'all three codes are internal/500') would be assertions",
+  "about strings this tranche wrote.",
+  "",
+  "WHAT IS NOT A MUTATION AND IS RECORDED AS A DIVERGENCE INSTEAD: the two",
+  "defects the ORACLE found. `apps/agent/src/evals/rating.service.ts` and",
+  "`apps/agent/src/monitoring/governance.service.ts` are byte-identical to",
+  "origin/main and implement all three of these questions. Reading them found",
+  "the readers wrong twice — an environment-only tenant filter where the oracle",
+  "uses the whole triple, and `toolErrors` counting FAILED where the oracle",
+  "counts FAILED or CANCELLED. Neither was reachable by mutation, because every",
+  "assertion on this branch compared the readers to themselves. See `oracle`."
+ ],
+ "procedure": [
+  "Every mutation is applied to ONE file, built, and run INDIVIDUALLY. The",
+  "container suite runs on the Mac mini over ssh (Docker is quit on the laptop",
+  "by standing instruction) against pgvector/pgvector:pg16 through",
+  "@testcontainers/postgresql; M17-M19 need no container and ran on the laptop.",
+  "",
+  "A CONTEXT EDIT DOES NOT REACH AN ADAPTER SUITE UNTIL THE CONTEXT'S dist/ IS",
+  "RE-EMITTED — WIN-267 A3 recorded a FALSE GREEN from exactly that. The driver",
+  "rebuilds `@platos/adapter-postgres-tenancy` before every run, and the two",
+  "mutations that touch `packages/contexts/**` are not in this ledger for that",
+  "reason: there are none. Every source mutation here is inside the adapter."
+ ],
+ "commands": {
+  "seams": "pnpm --filter @platos/adapter-postgres-tenancy exec vitest run governance-read-seams --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
+  "unit": "pnpm --filter @platos/adapter-postgres-tenancy exec vitest run src/governance-read-seams.test.ts",
+  "build": "pnpm --filter @platos/adapter-postgres-tenancy build"
+ },
+ "baseline": {
+  "command": "seams",
+  "exit": 0,
+  "cases": 28,
+  "note": "19 container cases + 9 that read the schema, the migrations and the taxonomy off disk."
+ },
+ "mutations": [
+  {
+   "name": "M01 RatingTargetReader loses the tenant join",
+   "guards": "governance-seam-conversations.ts — `find`, the one place a turn's tenancy is decided",
+   "why": "`Turn` has NO `environmentId` column: its tenancy is its thread's. `findFirst` with the relation filter removed still compiles, still answers a well-formed turn id, and answers ANY tenant's turn.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-conversations.ts",
+   "from": "where: { id: rowId, thread: threadTenantWhere(narrowed) },",
+   "to": "where: { id: rowId },",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× RatingTargetReader > a turn in ANOTHER tenant is null, not the row",
+    "× RatingTargetReader > a REAL environment under a FOREIGN project is null — the whole triple narrows"
+   ],
+   "killCount": 2,
+   "note": "The second kill is the ORACLE's clause: `threadScopeWhere` narrows by project and organization too."
+  },
+  {
+   "name": "M02 TranscriptReader loses the tenant filter on the thread",
+   "guards": "governance-seam-conversations.ts — `read`, before any turn is loaded",
+   "why": "This is the read a judge is PAID to consume. Losing the filter hands a model another tenant's whole conversation and bills for it.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-conversations.ts",
+   "from": "where: { id: threadRowId, ...threadTenantWhere(narrowed) },",
+   "to": "where: { id: threadRowId },",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× TranscriptReader > a thread in ANOTHER tenant is null, and its own scope can still read it",
+    "× TranscriptReader > a REAL environment under a FOREIGN project is null — the whole triple narrows"
+   ],
+   "killCount": 2
+  },
+  {
+   "name": "M03 a named turn stops narrowing the transcript",
+   "guards": "governance-seam-conversations.ts — the `id` filter on the turn read",
+   "why": "The port says a named turn that is not in the thread yields an EMPTY list rather than the whole thread, so 'a mistyped id cannot silently widen what a judge is paid to read'.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-conversations.ts",
+   "from": "                  ...(turnRowId === null ? {} : { id: turnRowId }),",
+   "to": "                  ...(turnRowId === null ? {} : {}),",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× TranscriptReader > a named turn narrows to one exchange",
+    "× TranscriptReader > a named turn from ANOTHER THREAD yields an empty list, not the whole thread"
+   ],
+   "killCount": 2,
+   "note": "The second case uses a REAL id — the foreign tenant's turn — so a reader that dropped the filter on a miss answers with this thread's turns and is paid to score them."
+  },
+  {
+   "name": "M04 the transcript stops excluding CANCELLED turns",
+   "guards": "governance-seam-conversations.ts — the status filter",
+   "why": "`read-seams.ts`: 'In conversation order. A cancelled turn is not included.' An abandoned exchange scored by a judge is evidence about nothing.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-conversations.ts",
+   "from": "                  status: { not: \"CANCELLED\" },",
+   "to": "",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× TranscriptReader > reads the thread in conversation order, without the cancelled turn"
+   ],
+   "killCount": 1,
+   "note": "Only kills because the suite SEEDS a cancelled turn; without the seed the port's rule would be a claim about an empty set."
+  },
+  {
+   "name": "M05 the transcript loses conversation order",
+   "guards": "governance-seam-conversations.ts — `orderBy`",
+   "why": "A judge shown a reversed conversation scores the assistant answering before it was asked.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-conversations.ts",
+   "from": "orderBy: { sequence: \"asc\" },",
+   "to": "orderBy: { sequence: \"desc\" },",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× TranscriptReader > reads the thread in conversation order, without the cancelled turn"
+   ],
+   "killCount": 1
+  },
+  {
+   "name": "M06 a mistyped turn id becomes a refusal instead of absence",
+   "guards": "governance-seam-conversations.ts — the row-id guard",
+   "why": "The port's concealment: a turn in another environment and a typo must answer identically. A refusal on the malformed shape is a channel that tells the two apart.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-conversations.ts",
+   "from": "      if (rowId === null) return ok(null);",
+   "to": "      if (rowId === null) return err(ratingTargetUnreadable(\"malformed turn id\"));",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× RatingTargetReader > a mistyped turn id is ABSENT, not an error"
+   ],
+   "killCount": 1
+  },
+  {
+   "name": "M07 two of the three seams share one refusal code",
+   "guards": "governance-seam-conversations.ts — the transcript's constructor",
+   "why": "Two guards sharing a code cannot be told apart. These three are ONE guard over ONE value in three files, which is the exact shape that collapses by accident.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-conversations.ts",
+   "from": "        return err(transcriptUnreadable(`no tenant to narrow by: ${resolvePath(scope)}`));",
+   "to": "        return err(ratingTargetUnreadable(`no tenant to narrow by: ${resolvePath(scope)}`));",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× TranscriptReader > a scope with no environment to narrow by REFUSES, under its own code",
+    "× the three seams refuse under three DISTINCT codes"
+   ],
+   "killCount": 2,
+   "note": "The second kill is over the LIVE objects rather than the catalogue, so a seam wired to the wrong constructor fails there even if the catalogue is intact."
+  },
+  {
+   "name": "M08 the guard stops checking the PROJECT is a uuid",
+   "guards": "governance-seam-guards.ts — `narrowableScope`, limb 2 of 3",
+   "why": "A non-uuid project reaches a `@db.Uuid` column, the driver raises, `refuse()` folds it into GOVERNANCE_LEDGER_UNAVAILABLE — the shared code the three constructors exist to stay out of.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-guards.ts",
+   "from": "  if (typeof projectId !== \"string\" || !UUID_SHAPE.test(projectId)) return null;",
+   "to": "  if (typeof projectId !== \"string\") return null;",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× every LIMB of the tenant triple refuses, not only the environment"
+   ],
+   "killCount": 1,
+   "note": "SURVIVED ON THE FIRST RUN (27 passed, exit 0). The suite blanked the ENVIRONMENT and never the other two limbs. A nineteenth case was added and this now kills."
+  },
+  {
+   "name": "M09 the guard stops checking the ENVIRONMENT is a uuid",
+   "guards": "governance-seam-guards.ts — `narrowableScope`, limb 3 of 3",
+   "why": "Same as M08 for the limb the suite did cover from the start.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-guards.ts",
+   "from": "  if (typeof environmentId !== \"string\" || !UUID_SHAPE.test(environmentId)) return null;",
+   "to": "  if (typeof environmentId !== \"string\") return null;",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× RatingTargetReader > a scope with no environment to narrow by REFUSES, under its own code",
+    "× TranscriptReader > a scope with no environment to narrow by REFUSES, under its own code",
+    "× ActivityReader > a scope with no environment to narrow by REFUSES rather than answering []",
+    "× the three seams refuse under three DISTINCT codes"
+   ],
+   "killCount": 4
+  },
+  {
+   "name": "M10 the turn count stops narrowing by project and organization",
+   "guards": "governance-seam-activity.ts — the two extra JOINs on the raw statement",
+   "why": "The raw statement reaches the project through two JOINs the two grouped reads reach in one relation hop, so it is the one most easily left behind when the triple is added.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-activity.ts",
+   "from": "             AND project.\"id\" = ${projectId}::uuid\n             AND project.\"organizationId\" = ${organizationId}::uuid\n",
+   "to": "             AND ${projectId}::uuid IS NOT NULL\n             AND ${organizationId}::uuid IS NOT NULL\n",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× ActivityReader > a REAL environment under a FOREIGN project counts NOTHING"
+   ],
+   "killCount": 1,
+   "note": "The parameters stay bound so the mutation is a NARROWING change and not an unused-variable change."
+  },
+  {
+   "name": "M11 the turn count stops narrowing by environment",
+   "guards": "governance-seam-activity.ts — the raw statement's WHERE",
+   "why": "`risk.ts` divides by `Math.max(1, turns)`, so an inflated denominator quietly DEFLATES every rate on the board and an agent over the threshold drops below it. No error, no empty page, nothing to notice.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-activity.ts",
+   "from": "           WHERE thread.\"environmentId\" = ${environmentId}::uuid\n",
+   "to": "           WHERE ${environmentId}::uuid IS NOT NULL\n",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× ActivityReader > a REAL environment under a FOREIGN project counts NOTHING"
+   ],
+   "killCount": 1,
+   "note": "ONE kill and not three, and that is honest rather than weak: the project and organization clauses still narrow, so the plain cross-tenant cases stay green. Only the tampered triple — every identifier real, the relation between them a lie — separates them."
+  },
+  {
+   "name": "M12 the tool-error count stops narrowing by tenant",
+   "guards": "governance-seam-activity.ts — `toolCallAudit.groupBy`",
+   "why": "One of three differently-shaped narrowings in one method; the whole point of asserting the three counts separately is that a narrowing lost on ONE of them is invisible in a total.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-activity.ts",
+   "from": "        const toolRows = await reader.toolCallAudit.groupBy({\n          by: [\"agentId\"],\n          where: {\n            ...tenantWhere,",
+   "to": "        const toolRows = await reader.toolCallAudit.groupBy({\n          by: [\"agentId\"],\n          where: {",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× ActivityReader > counts turns, tool failures and approvals for THIS environment's agents",
+    "× ActivityReader > each of the three counts is narrowed SEPARATELY",
+    "× ActivityReader > a REAL environment under a FOREIGN project counts NOTHING"
+   ],
+   "killCount": 3
+  },
+  {
+   "name": "M13 the approval count stops honouring `since`",
+   "guards": "governance-seam-activity.ts — `agentApproval.groupBy`",
+   "why": "A window that does not close is a risk board measuring all of history against thirty days of numerators.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-activity.ts",
+   "from": "          where: { ...tenantWhere, createdAt: { gte: since }, agentId: { not: null } },",
+   "to": "          where: { ...tenantWhere, agentId: { not: null } },",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× ActivityReader > `since` closes the window from below"
+   ],
+   "killCount": 1
+  },
+  {
+   "name": "M14 tool errors count FAILED alone, not FAILED or CANCELLED",
+   "guards": "governance-seam-activity.ts — the status predicate",
+   "why": "THIS IS THE DEFECT THE ORACLE FOUND. `apps/agent/src/monitoring/governance.service.ts` counts `status === 'FAILED' || status === 'CANCELLED'`. FAILED alone lowers every agent's tool-error rate, and a smaller number on a risk board looks like good news.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-activity.ts",
+   "from": "            status: { in: [\"FAILED\", \"CANCELLED\"] },",
+   "to": "            status: \"FAILED\",",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× ActivityReader > counts turns, tool failures and approvals for THIS environment's agents",
+    "× ActivityReader > each of the three counts is narrowed SEPARATELY"
+   ],
+   "killCount": 2,
+   "note": "The mutation IS the code as first written on this branch. It is in the ledger because it shipped green through 27 cases before the oracle was read; the CANCELLED row is now seeded so it cannot again."
+  },
+  {
+   "name": "M15 the activity reader answers [] instead of refusing",
+   "guards": "governance-seam-activity.ts — the guard's failure branch",
+   "why": "The most dangerous of the three to get wrong. `risk-report.ts` does not refuse on an activity failure — it renders the board with every denominator substituted and `complete: false`. An empty list is indistinguishable from a quiet installation.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-activity.ts",
+   "from": "        return err(activityUnreadable(`no tenant to narrow by: ${resolvePath(scope)}`));",
+   "to": "        return ok([]);",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× ActivityReader > a scope with no environment to narrow by REFUSES rather than answering []"
+   ],
+   "killCount": 1
+  },
+  {
+   "name": "M16 the guard stops checking the ORGANIZATION is a uuid",
+   "guards": "governance-seam-guards.ts — `narrowableScope`, limb 1 of 3",
+   "why": "The third limb, run separately from M08 so the new case is shown to cover both rather than one.",
+   "file": "packages/adapters/postgres-tenancy/src/governance-seam-guards.ts",
+   "from": "  if (typeof organizationId !== \"string\" || !UUID_SHAPE.test(organizationId)) return null;",
+   "to": "  if (typeof organizationId !== \"string\") return null;",
+   "command": "seams",
+   "exit": 1,
+   "kills": [
+    "× every LIMB of the tenant triple refuses, not only the environment"
+   ],
+   "killCount": 1
+  },
+  {
+   "name": "M17 the SCHEMA gives `Turn` an environment of its own",
+   "guards": "internal-packages/tenancy-database/prisma/schema.prisma — the model, not this branch's code",
+   "why": "The whole design rests on `Turn` having no environment column. Mutating the SCHEMA proves the unit suite reads it rather than restating it.",
+   "file": "internal-packages/tenancy-database/prisma/schema.prisma",
+   "from": "model Turn {\n  id                String             @id @default(uuid()) @db.Uuid\n  threadId          String             @db.Uuid",
+   "to": "model Turn {\n  id                String             @id @default(uuid()) @db.Uuid\n  environmentId     String             @db.Uuid\n  threadId          String             @db.Uuid",
+   "command": "unit",
+   "exit": 1,
+   "kills": [
+    "× the tenancy shape the readers narrow by > `Turn` carries NO environment of its own"
+   ],
+   "killCount": 1,
+   "note": "Nothing on this branch's side of the assertion moves. The day somebody really adds this column, the join in the activity reader has a simpler form and this case says so."
+  },
+  {
+   "name": "M18 the MIGRATION stops tying a turn's version to its thread's agent",
+   "guards": "internal-packages/tenancy-database/prisma/migrations/00000000000000_initial/migration.sql — `enforce_domain_ancestry`",
+   "why": "`RatingTarget.agentId` is read off the THREAD and `agentVersionId` off the TURN. That is safe only because the database refuses a turn whose version belongs to another agent, and that rule lives ONLY in the migration.",
+   "file": "internal-packages/tenancy-database/prisma/migrations/00000000000000_initial/migration.sql",
+   "from": "JOIN \"AgentVersion\" version ON version.id = NEW.\"agentVersionId\" AND version.\"agentId\" = t.\"agentId\"",
+   "to": "JOIN \"AgentVersion\" version ON version.id = NEW.\"agentVersionId\"",
+   "command": "unit",
+   "exit": 1,
+   "kills": [
+    "× the tenancy shape the readers narrow by > `Turn_ancestry` ties the turn's version to the THREAD's agent"
+   ],
+   "killCount": 1,
+   "note": "Unreachable from `schema.prisma`: the rule exists in no Prisma model."
+  },
+  {
+   "name": "M19 the SHIPPED taxonomy answers 503 for an unreadable scope",
+   "guards": "docs/error-taxonomy.json — the artifact, not the constructor",
+   "why": "`retryAfterSeconds` is populated only for `rate_limited` and `unavailable`. A scope with no tenant to narrow by will fail identically for ever, so a retry status is a lie a transport would repeat.",
+   "file": "docs/error-taxonomy.json",
+   "from": "    \"GOVERNANCE_ACTIVITY_UNREADABLE\": {\n      \"category\": \"internal\",\n      \"status\": 500,",
+   "to": "    \"GOVERNANCE_ACTIVITY_UNREADABLE\": {\n      \"category\": \"internal\",\n      \"status\": 503,",
+   "command": "unit",
+   "exit": 1,
+   "kills": [
+    "× the three seams' refusals > each is registered in the shipped taxonomy, at the status its category resolves to"
+   ],
+   "killCount": 1
+  }
+ ],
+ "oracle": [
+  {
+   "name": "O01 the tenant narrowing was the ENVIRONMENT alone",
+   "oracle": "apps/agent/src/evals/rating.service.ts:74 `threadScopeWhere`, and the four denominator reads in apps/agent/src/monitoring/governance.service.ts — both byte-identical to origin/main",
+   "oracle-shape": "{ environmentId, environment: { project: { id: projectId, organizationId } } }",
+   "as-first-written": "{ environmentId }",
+   "why-it-matters": "`Environment.id` is a globally unique uuid, so the extra clauses look redundant. The scope they refuse is a REAL environment carrying SOMEBODY ELSE'S project or organization — a grant that has been tampered with, or built by a bug in whatever resolved it. All three readers served it.",
+   "why-no-mutation-found-it": "Every assertion on this branch compared the readers to themselves. The scope cannot even be BUILT without two tenants on the table, and no case constructed one until the oracle said to.",
+   "resolution": "All three readers narrow by the whole triple. Three integration cases build exactly that scope. The FIVE canonical governance stores beside them still use `governance-rows.ts`' `scopedWhere`, which is `{ environmentId }` alone — REPORTED, not repaired: widening it is a change to five ports this tranche does not own."
+  },
+  {
+   "name": "O02 `toolErrors` counted FAILED alone",
+   "oracle": "apps/agent/src/monitoring/governance.service.ts — `r.status === \"FAILED\" || r.status === \"CANCELLED\"`",
+   "as-first-written": "status: \"FAILED\"",
+   "why-it-matters": "A narrower predicate LOWERS every agent's tool-error rate, and a smaller number on a risk board looks like good news rather than like a regression.",
+   "resolution": "`status: { in: [\"FAILED\", \"CANCELLED\"] }`, a CANCELLED row seeded, and M14 in this ledger is the first draft as a mutation."
+  },
+  {
+   "name": "O03 a divergence KEPT, because the port asks for it",
+   "oracle": "apps/agent/src/evals/rating.service.ts — `turn.thread.agent.bindings[0].activeAgentVersionId`",
+   "this-branch": "`Turn.agentVersionId`",
+   "why-diverged": "`read-seams.ts` names this a DELIBERATE DIVERGENCE in writing: stamping a rating with whichever version is live now credits a promotion with the old version's output, which silently corrupts `readVersionSatisfaction` — the rollup a canary decision is taken on. Recorded here so the divergence is not mistaken for O01's kind."
+  }
+ ],
+ "declared": [
+  {
+   "name": "D01 THE CASCADE ON `AgentEval.criterion` — an OPEN FOUNDER DECISION, not touched",
+   "claim": "`AgentEval.criterion` is `onDelete: Cascade`, which defeats `criterionSnapshot`: the snapshot exists so a deleted criterion's evals stay interpretable, and the cascade destroys the evals instead.",
+   "why-not-mutated": "It is an open founder decision and this tranche was told not to fix it. What is recorded instead is WHERE IT BITES for these three readers, which is the question the brief asked.",
+   "where-it-bites": "NOWHERE IN THESE THREE. Measured rather than assumed: none of the three seams reads `AgentEval` or `EvalCriterion`. They read `Thread`, `Turn`, `ToolCallAudit` and `AgentApproval`. The nearest approach is `TranscriptReader`, which resolves the thread an eval was taken over — but a cascade that removes the EVAL leaves the thread and its turns untouched, so a transcript re-read after a criterion deletion is byte-identical. The cascade destroys the interpretation, not the evidence.",
+   "adjacent-cascade-that-does-touch-them": "`AgentApproval.turn` and `AgentApproval.thread` are BOTH `onDelete: Cascade` (initial migration). Deleting a turn therefore deletes its approvals, so `ActivityReader.approvalEvents` falls for a window whose turns have been erased while `SafetyLedger`'s numerators — `SafetyEvent.turnId` is also Cascade — fall with them. The two move together, which is why no risk rate is distorted by it. Recorded, not changed."
+  },
+  {
+   "name": "D02 CONCURRENT READERS INSIDE ONE UNIT OF WORK — declared unfalsifiable here, with the reason",
+   "claim": "`rate-turn.ts` reads the turn back inside the transaction that writes the rating, so `createGovernanceReadSeams` takes the same `TenancyTransactions` and resolves through `transactions.reader()`, which inside a unit of work IS the caller's client.",
+   "why-not-mutated": "The mutation — building the seams over `transactions.pool()` instead — is REJECTED BY THE TYPE SYSTEM at no point and would be killed only by a case that writes a rating and reads its turn back in one transaction. That case belongs to `rate-turn.ts`'s own suite in `packages/contexts/governance`, which runs against in-memory doubles and has no transaction to lose; the adapter-side suite that could hold it would be a `RatingsRepository` + read-seam integration case, which is a use-case-level test this tranche did not add.",
+   "measured-instead": "`createGovernanceReadSeams(transactions)` takes the same object `createGovernanceStores(transactions)` does, from the same call site in `adapter.ts`, and `transaction.ts`' `reader()` is `ambient.getStore()?.client ?? client`. The property is structural and stated; it is NOT proven by a red test on this branch, and that is said here rather than implied."
+  }
+ ]
+}

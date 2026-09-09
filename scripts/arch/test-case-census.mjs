@@ -2467,16 +2467,140 @@ export const EXPECTED = Object.freeze({
   // the SECRET REFERENCE has real AES-256-GCM for the first time and five cases
   // in `wire-compatibility.test.ts` say what it does. The FILE count does not
   // move: they were appended to a suite that already existed.
-  "packages/adapters/keyring-envelope": { files: 6, cases: 76 },
+  // WIN-267 A1: keyring-envelope 6 + 1 = 7 files, 76 + 27 = 103 cases. ONE file,
+  // `mfa-secret-cipher.test.ts`, carrying the identity-access `MfaSecretCipher`
+  // this directory gained as a FOURTH port — six sealing cases, nine refusals,
+  // one rotation, four about the legacy columns `auth.ts` wrote, four about the
+  // frozen canonical envelopes and one about the port's place on the adapter.
+  // The TENTH refusal was added after a mutant survived: deleting the field-count
+  // half of the shape guard left every case in the file green, because each of
+  // them presents a payload whose first field is wrong and the marker check
+  // caught them all before the count was ever read.
+  //
+  // ITS THREE LEGACY CASES ARE THREE `it()`s RATHER THAN A LOOP, for the reason
+  // `wire-compatibility.test.ts`'s three are: this census REFUSES `it()` inside
+  // a `for`, and a construct it cannot count is one that can silently lose a
+  // case. The first draft was a loop and was refused here, which is the gate
+  // working.
+  "packages/adapters/keyring-envelope": { files: 7, cases: 103 },
+  // WIN-267 A1: the FOURTEENTH adapter directory's first row, 0 -> 2 files and
+  // 0 -> 30 cases. `secret-hasher.test.ts` (23) is the differential — three
+  // FIPS 180-4 vectors, seven produced by executing
+  // `internal-packages/tenancy-database/src/auth.ts`, RFC 7636 Appendix B's
+  // PKCE pair, and the equality cases that separate a byte comparison from a
+  // string one and from a hex-decoding one. `oracle-source-anchor.test.ts` (7)
+  // is the standing join: it reads the extraction source OFF DISK and asserts
+  // the expressions those vectors were taken from are still there, so a frozen
+  // vector cannot keep passing while the oracle moves underneath it.
+  "packages/adapters/node-crypto-digest": { files: 2, cases: 30 },
   // M2 INTEGRATION: 132 + 1 (projection's fence split) + 2 (lifecycle's two
   // legacy/key-version suites) = 135 files; 1483 + 2 + 12 = 1497 cases.
   // M2 INTEGRATION: postgres-tenancy 132 + 3 + 1 = 136 files,
   // 1483 + 14 + 9 = 1506 cases -- the two WIN-259 dimensions and WIN-260's
   // correlation integration suite, which add DIFFERENT files.
-  "packages/adapters/postgres-tenancy": { files: 136, cases: 1506 },
+  //
+  // WIN-267 G1 adds ONE file and EIGHT cases, all in
+  // `governance-eval-runs.integration.test.ts`, and each is named so this stays
+  // a claim rather than a number raised until the gate went quiet:
+  //
+  //   4 on the ENQUEUE half -- a repeated key costing one run; a unique index
+  //     over the key itself ACCEPTING a 37 kB key that compresses and REFUSING
+  //     one of the same length that does not, while the digest takes both; a
+  //     forged row whose digest matches a DIFFERENT key being refused rather
+  //     than answered `alreadyQueued`; and an error `Result` inside the unit of
+  //     work leaving NO row behind while the same shape committed does.
+  //   8 on the CONSUMER half -- thirty-two concurrent claims never taking one
+  //     run twice and losing none; a consumer that dies between claiming and
+  //     acknowledging getting its run back with its `deliveries` count raised; an
+  //     abandoned run returning with its reason; a consumer PAST its lease
+  //     unable to abandon the run another now holds; sixteen concurrent
+  //     enqueues of one key costing ONE run; the queue answering FIFO; the three
+  //     claim guards refusing before a statement is sent; and the plan reading
+  //     back in plan order.
+  //
+  //   FOUR of the eleven were added after a MUTATION SURVIVED -- the abandon
+  //     ownership fence, the concurrent double-click, the FIFO order and the
+  //     claim guards -- which is the only reason this row reads 1517 and not
+  //     1511.
+  //   1 on the two REFUSAL CODES -- one induced outage, two ports, two codes,
+  //     which is the claim `governance-repository.ts` used to give as the reason
+  //     this port could not live in this directory at all.
+  //
+  // 136 + 1 = 137 files, 1506 + 13 = 1519 cases.
+  // WIN-267 G2: 136 + 2 = 138 files, 1506 + 28 = 1534 cases. The two files are
+  // `governance-read-seams.test.ts` (9 cases, no container -- it joins the
+  // readers' load-bearing claims to `schema.prisma`, to the initial migration
+  // and to `docs/error-taxonomy.json`) and
+  // `governance-read-seams.integration.test.ts` (19 cases, container: every one
+  // of them issued against TWO tenants, which is the only way a missing
+  // narrowing on a table with no environment column can be seen).
+  //
+  // 15 -> 18 WHEN THE ORACLE WAS READ. `apps/agent/src/evals/rating.service.ts`
+  // narrows by the WHOLE tenant triple and these readers narrowed by the
+  // environment alone; the three added cases build a REAL environment under a
+  // FOREIGN project, one per seam, which is a scope only two tenants can make.
+  //
+  // 18 -> 19 WHEN A MUTATION SURVIVED. Deleting the project limb of
+  // `narrowableScope`'s uuid guard left every case green: the suite only ever
+  // blanked the ENVIRONMENT. The nineteenth blanks the project and the
+  // organization instead, across all three seams.
+  // SUMMED FOR THE INTEGRATION: 136 + 1 (G1) + 2 (G2) = 139 files,
+  // 1506 + 13 (G1) + 28 (G2) = 1547 cases. Neither branch could state this
+  // row and neither is right on its own.
+  //
+  // WIN-303: 139 + 1 = 140 files, 1547 + 11 = 1558 cases. ONE file,
+  // `governance-isolation.integration.test.ts`, and every one of its eleven
+  // cases needs TWO tenants in a container — which is the only shape in which a
+  // TAMPERED scope triple exists at all. Five cases are one per canonical store
+  // (a forged ancestry refused under that store's own code, with the honest
+  // scope answered in the same case so an unconditional refusal fails too, and
+  // the row read back on a second client); four separate the three FACTS the
+  // resolver reports, including the two that kill the organization half and the
+  // project half of the comparison ON THEIR OWN; two hold a TENANT scope to the
+  // ancestry it asserts and to no more. `governance-statements.integration.test.ts`
+  // is widened rather than added to — fifteen pins move by the one resolve and
+  // not one case is new, so this row gains a file and not two.
+  "packages/adapters/postgres-tenancy": { files: 140, cases: 1558 },
   // WIN-260 adopts this project and gives it its first suites.
-  "packages/adapters/redis-cache": { files: 4, cases: 65 },
-  "packages/adapters/redis-ratelimit": { files: 0, cases: 0 },
+  //
+  // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
+  // becomes this directory's FOURTH port. `provider-probe-cache.test.ts` 15 (the
+  // miss/outage split, the round trip, the absolute-instant write, and the four
+  // cases pinning the leaked-key eviction) and
+  // `provider-probe.integration.test.ts` 4 (that a real server honours `PXAT`
+  // and that the eviction pattern matches under Redis's own glob). 65 + 15 + 4 =
+  // 84. `cache.test.ts` gained a `writeUntil` stub in its connection double and
+  // no case; a widened file is not a new one.
+  "packages/adapters/redis-cache": { files: 6, cases: 84 },
+  // WIN-267 A3 adopts this project and gives it its first suites. THREE files,
+  // 26 cases: `rate-limiter.test.ts` 14 (the key, the window, the count, the
+  // TTL clamp and the fail-closed refusal), `oracle-differential.test.ts` 5
+  // (the extraction source's own expressions, lifted and evaluated), and
+  // `ratelimit.integration.test.ts` 7 (the atomicity claim, which needs a real
+  // server and, until WIN-267's composition tranche, ran in no job at all).
+  //
+  // The differential's five sweep the three policies INSIDE each case rather
+  // than declaring an `it()` per policy, because this census refuses a case
+  // declared in a loop -- the count would otherwise be one nobody could derive by
+  // reading, which is the property the whole file exists to keep.
+  "packages/adapters/redis-ratelimit": { files: 3, cases: 26 },
+  // WIN-267 A2 -- a NEW ROW, and the fifteenth adapter directory's first suites:
+  // 0 -> 7 files, 0 -> 136 cases.
+  //
+  // WHERE THE 136 ARE. base32 32 (RFC 4648 §10's seven vectors read three ways,
+  // plus the alphabet and refusal cases), rfc-vectors 21 (RFC 4226 Appendix D's
+  // ten and RFC 6238 Appendix B's six, plus the seed and three verify cases),
+  // oracle-totp-differential 21 (eighteen frozen answers from the extraction
+  // source's own `generateTotp`, plus three), oracle-mint-widths 20 (eleven kinds
+  // against the widths parsed out of five extraction-source files, plus the four
+  // non-vacuity controls and the three secret/recovery widths),
+  // token-minter 20, totp-code-verifier 15 and adapter 7.
+  //
+  // THE COUNT IS DOMINATED BY VECTORS AND THAT IS DELIBERATE. Every `it.each`
+  // row here is a published answer or a recorded one, so the census's own
+  // "it says nothing about whether a case ASSERTS anything" limitation bites
+  // less than usual: an emptied body would drop an authority, not a repetition.
+  "packages/adapters/tokenmint-totp": { files: 7, cases: 136 },
   "packages/adapters/redis-streams": { files: 0, cases: 0 },
   "packages/contexts/agents": { files: 25, cases: 515 },
   "packages/contexts/channels": { files: 15, cases: 269 },
@@ -2484,8 +2608,24 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
   "packages/contexts/eventing": { files: 15, cases: 157 },
   "packages/contexts/files": { files: 15, cases: 134 },
-  "packages/contexts/governance": { files: 31, cases: 609 },
-  "packages/contexts/identity-access": { files: 23, cases: 318 },
+  // WIN-303: 609 -> 610 cases, files unmoved. ONE case in `domain/errors.test.ts`
+  // — the five new store-scope codes are `internal` and carry no
+  // `retryAfterSeconds`, which is the difference from `ledgerUnavailable` beside
+  // them and the reason they are not it: an incoherent scope will fail the same
+  // way for ever, so a retry hint would be a lie the transport repeats. The five
+  // constructors themselves move the EXISTING uniqueness case's list rather than
+  // adding one, which is not a new case.
+  "packages/contexts/governance": { files: 31, cases: 610 },
+  // WIN-267 W3: 318 -> 324 cases, files unmoved — the sign-out that had no
+  // server side. FOUR in `application/identity-access-service.test.ts` for the
+  // newly published `revokeOperatorSession` (it ends the row and the token stops
+  // authenticating; the view carries exactly two keys; an already-ended session
+  // is told apart from one that never existed; an EXPIRED session is still ended
+  // rather than refused) and TWO in `application/authenticate-operator.test.ts`
+  // (a second revoke does not re-stamp `revokedAt`; an unknown token and an
+  // absent one stay under ONE code on purpose). No new file: both suites
+  // existed, which is why `files` does not move.
+  "packages/contexts/identity-access": { files: 23, cases: 324 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -3247,7 +3387,108 @@ export const EXPECTED = Object.freeze({
  * kernel 60 -> 129, outbox 46 -> 68 and eventing 149 -> 157; every other row is
  * carried from the composition of the first three.
  */
-export const EXPECTED_RUNTIME_TOTAL = 7833;
+/*
+ * WIN-267 A1 + A2: 7833 + 57 + 136 = 8026 over 530 + 3 + 7 = 540 files.
+ * THREE rows move and one is an EDIT rather than an addition --
+ * `keyring-envelope` 76 -> 103 over 6 -> 7 files (A1's MFA envelope suite),
+ * `node-crypto-digest` 0 -> 30 over 0 -> 2 as a new row (A1), and
+ * `tokenmint-totp` 0 -> 136 over 0 -> 7 as a new row (A2). 27 + 30 + 136 = 193.
+ * Every one of the 193 is runnable by `pnpm test:v1-packages`: none of the three
+ * needs a container, which is what a keyless digest, an in-memory key ring and a
+ * CSPRNG are for.
+ *
+ * WIN-267 A3 DELTA, the RateLimiter adapter and the ProviderProbeCache. TWO
+ * more rows move:
+ *
+ *   packages/adapters/redis-ratelimit 0 -> 3 files, 0 -> 26 cases;
+ *   packages/adapters/redis-cache     4 -> 6 files, 65 -> 84 cases.
+ *
+ * `redis-ratelimit` is the FIRST row under `packages/adapters` to go from zero
+ * to a real count -- every previous adapter adoption started from a row that
+ * already held something -- which is why its FILE term moves by three rather
+ * than by a widening.
+ *
+ * 14 + 5 + 7 = 26 and 15 + 4 = 19, each checked against what that package's own
+ * `vitest run` prints. ELEVEN of the forty-five carry `.integration.` in the
+ * name and need a container: seven in the limiter and four in the cache. Until
+ * WIN-267's composition tranche wired them into the containers job, NO job ran
+ * them -- the split this census does not model and the packages' own `test`
+ * scripts do.
+ *
+ * NO OTHER ROW MOVES. `apps/core-api` gained no case: `installation.test.ts` is
+ * outside PACKAGE_ROOTS. `packages/contexts/identity-access` gained a domain
+ * error factory and nine re-exports and not one case, and
+ * `packages/contexts/providers` gained three re-exports and none -- a widened
+ * file is not a new one, and the new code's behaviour is asserted where it is
+ * USED, in the adapters.
+ *
+ * 7833 + 193 + 45 = 8071 over 530 + 10 + 5 = 545 files. THAT TOTAL IS STATED BY
+ * NO BRANCH: A1+A2 pinned 8026 and A3 pinned 7878, both over the same 7833 base.
+ * READ BACK from `node scripts/arch/test-case-census.mjs` rather than trusted
+ * from this sum.
+ *
+ * WIN-267 G1: 8071 -> 8084 over 545 -> 546 files. THIRTEEN cases in ONE file,
+ * `packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts`,
+ * itemised on that package's row above. `apps/core-api` gains eleven cases in
+ * `governance-judge.test.ts` and moves NOTHING here, for the reason
+ * `installation.test.ts` moves nothing: that directory is outside PACKAGE_ROOTS.
+ * READ BACK the same way.
+ *
+ * WIN-267 G2 DELTA, `governance`'s three inverted read seams. ONE row moves:
+ *
+ *   packages/adapters/postgres-tenancy 136 -> 138 files, 1506 -> 1534 cases.
+ *
+ * NO OTHER ROW MOVES, and the `governance` row is the one worth saying so
+ * about: that context gained three error constructors, three re-exports on its
+ * ports barrel and a corrected header, and not one case -- a widened file is not
+ * a new one, and the new code's behaviour is asserted where it is USED, in the
+ * adapter. Its two pins DID move (`errors.test.ts`'s constructor list and
+ * `contracts/index.test.ts`'s 33 -> 36) and neither is a new case.
+ *
+ * NINETEEN of the twenty-eight carry `.integration.` in the name and need a
+ * container; the other nine read the schema, the migrations and the shipped
+ * taxonomy off disk and run anywhere.
+ *
+ * 8071 + 28 = 8099 over 545 + 2 = 547 files, READ BACK from
+ * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
+ * Two sibling branches move this pin for the remaining governance ports, so the
+ * integrator SUMS the deltas rather than taking any one branch's total.
+ *
+ * SUMMED FOR THE INTEGRATION: 8071 + 13 (G1) + 28 (G2) = 8112 over
+ * 545 + 1 + 2 = 548 files, all forty-one cases on the ONE
+ * `packages/adapters/postgres-tenancy` row. READ BACK from
+ * `node scripts/arch/test-case-census.mjs`, not trusted from this sum.
+ *
+ * WIN-303 DELTA, the tampered scope triple. TWO rows move, and 12 = 11 + 1:
+ *
+ *   packages/adapters/postgres-tenancy 139 -> 140 files, 1547 -> 1558 cases
+ *   packages/contexts/governance        31 ->  31 files,  609 ->  610 cases
+ *
+ * ELEVEN of the twelve carry `.integration.` in the name and need a container,
+ * because a tampered triple is a scope only TWO seeded tenants can express. The
+ * twelfth is a category assertion in `domain/errors.test.ts` and runs anywhere.
+ *
+ * 8112 + 12 = 8124 over 548 + 1 = 549 files, READ BACK from
+ * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
+ * Two sibling branches move these pins in the same window, so the integrator
+ * SUMS the deltas rather than taking any one branch's total.
+ *
+ * WIN-267 W3 DELTA, the server-side sign-out. ONE row moves and NO file does:
+ *
+ *   packages/contexts/identity-access 23 -> 23 files, 318 -> 324 cases
+ *
+ * All six run anywhere — they are in-memory port doubles, and the case that
+ * needs a real PostgreSQL (the replayed cookie, read back with `psql` inside the
+ * container) lives in `apps/core-api`, which is OUTSIDE `PACKAGE_ROOTS` and
+ * therefore moves nothing here. That asymmetry is worth stating plainly: this
+ * census does not see the evidence the tranche turns on.
+ *
+ * 8124 + 6 = 8130 over 549 files, READ BACK from
+ * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
+ * Two sibling branches move this pin in the same window, so the integrator SUMS
+ * the deltas rather than taking any one branch's total.
+ */
+export const EXPECTED_RUNTIME_TOTAL = 8130;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
