@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "918c8219c9c5ec6a1df0a84e20b7b6e1f880570721f2c7d7c88a873af12c469a",
+  "evidenceSha256": "a0f0d9a3bc36a2cbb04199efa9b294794064898e1c54c4779f8f212f4c6ca71e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "18d97c35a8770ae9809ba9655324751d588df3cb29daa9fd1dd1d5da6e58c190",
+    "aggregateSha256": "a832c200e896dd2977ffe1a5735500452b14e1d0daf4a4ecf7280483403b6ad8",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20430,6 +20430,10 @@
         "sha256": "269c4c7e5a6410f25cf18d56c01076d3e6eb177b8188b959201f03d60aa204a7"
       },
       {
+        "path": "scripts/mutations-win271-m45.json",
+        "sha256": "466806dcc07a760cbfee334a40b05f61fba9567c0d7243831f7bdc42d8bb06fc"
+      },
+      {
         "path": "scripts/openapi-compat.mjs",
         "sha256": "b90270c0ea3ce9cfaf29ce8996b0fb4500fab4b506c87ddeae59e099cb906bac"
       },
@@ -20492,6 +20496,10 @@
       {
         "path": "scripts/route-capability-parity.test.mjs",
         "sha256": "7660d99dac2fd39517059706a99c06084a318e49273e28cadd74530153edb309"
+      },
+      {
+        "path": "scripts/run-win271-mutations.mjs",
+        "sha256": "3704d8cc354642a0ebec6098ec11bc41f519612cd376cc763b0c1ec6f71f3ac8"
       },
       {
         "path": "scripts/sdk/v1-contract.mjs",
@@ -20620,6 +20628,10 @@
       {
         "path": "scripts/webapp-inventory-contract.test.mjs",
         "sha256": "b9f4170117ef040283323959f81829d320fbbfe1e3e7089af1d8be43a890048a"
+      },
+      {
+        "path": "scripts/win271-mutation-plan.json",
+        "sha256": "b5a930b115b469654db49817a8421e358041b93753d312ae6685d0fc14fac620"
       },
       {
         "path": "scripts/workload-identity-keygen.mjs",
