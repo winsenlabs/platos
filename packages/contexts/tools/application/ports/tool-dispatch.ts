@@ -32,11 +32,35 @@
 
 import type { Result } from "@platos/kernel";
 
-import type { ToolDeclarationIntake, ToolName } from "../../domain/index.js";
+import type { McpTransport, ToolDeclarationIntake, ToolName } from "../../domain/index.js";
 
 /** The already-resolved transport a call goes out on. Never a template. */
 export interface DispatchTarget {
   readonly kind: "wire" | "mcp";
+  /**
+   * WHICH MCP TRANSPORT, on an `mcp` target. Null on a `wire` one.
+   *
+   * WIN-269 (M4.3). THIS FIELD IS HERE BECAUSE THE PORT WAS NOT IMPLEMENTABLE
+   * WITHOUT IT, and that only became visible when somebody tried to write the
+   * adapter. `MCP_TRANSPORTS` is `http | sse | stdio`; `http` and `sse` are
+   * DIFFERENT CLIENT CONSTRUCTIONS over the same absolute URL, so an adapter
+   * handed `kind: "mcp"` and a URL cannot tell them apart. The header above says
+   * the port "hides which one is in play because the caller's decision is the
+   * same either way" — that is true of the two KINDS, `wire` and `mcp`, and it
+   * was never true of the three MCP transports underneath.
+   *
+   * `url === null` DOES NOT IDENTIFY `stdio` EITHER, which is the second half of
+   * the same gap: it is a NECESSARY condition and not a sufficient one, and an
+   * adapter deriving the transport from it would be inferring a protocol from a
+   * missing field.
+   *
+   * The value is ADMITTED rather than copied: `resolveMcpTarget` runs
+   * `admitTransport`, so a client row carrying a transport nobody recognises —
+   * or an `http` row with no URL — is refused at resolution instead of reaching
+   * an adapter that has to guess. Before this field existed that domain rule was
+   * called by nothing outside its own unit test.
+   */
+  readonly transport: McpTransport | null;
   /** The entity's own name for itself, which the wire transport routes on. */
   readonly externalEntityId: string;
   /** Absolute, substituted. Null only for a stdio MCP session. */

@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "fb9005d2448ac2b04471039c4339f757a45820e3a2112033d9fe2a54e3218c4c"
+      "sha256": "8739794497f95a92fe27feea4e20e0f61c224426e31ab5670760a1d0defd67a1"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "5f044a7b0ebba0fb2c4dd04dbc2618a92eaac97d063fa9305aa75ae2acf246d2"
+      "sha256": "b74bcbe8ab7fa7231168d1083cb89587769df65eff00ca54c35aec46dba7772d"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1063,12 +1063,12 @@
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
       "mode": "100644",
-      "sha256": "42dd9d16ee9f2b89df266e64b1aa40d4cd9d171bd47302742cd6abfe8eb0994f"
+      "sha256": "39ea8303c0566f570704b31b5fb47f50b0809cb5d4684a8c7ddf543a02ac3c92"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.md",
       "mode": "100644",
-      "sha256": "485d7baeca0c4cc9c779d1ae02a4a686e692a10278696f48713ad2f1c9446903"
+      "sha256": "cb30550086d3cfb325fa6ef315e0b122e683dea0bfd8ef56770fbdbae33ba2eb"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1093,7 +1093,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "10ff9b34f55390208f62ee3d66b274bda434ede340de40e29d6a959cf3656867"
+      "sha256": "7706f1fe05c0e6da2f1d73d735cbb8b4a5c47307beb7218275a5140a51c44dda"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",

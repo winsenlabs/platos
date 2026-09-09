@@ -2656,7 +2656,17 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/secrets": { files: 23, cases: 293 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
-  "packages/contexts/tools": { files: 19, cases: 362 },
+  // WIN-269 (M4.3): tools 362 -> 366 cases, files UNCHANGED at 19. All four land
+  // in `application/execution.test.ts` and all four are the `DispatchTarget`
+  // transport gap, which only became visible when somebody tried to write the
+  // adapter the port exists for: the mcp target now CARRIES its transport (two
+  // cases, one per transport, so a hard-coded constant fails), a transport
+  // nobody recognises is REFUSED at resolution rather than discovered inside an
+  // adapter, an `http` row with no URL is refused too (`url === null` is
+  // necessary for stdio and not sufficient), and a WIRE target names no
+  // transport at all. `admitTransport` is the domain rule all four exercise, and
+  // before this tranche nothing outside its own unit test called it.
+  "packages/contexts/tools": { files: 19, cases: 366 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   "packages/kernel": { files: 6, cases: 129 },
@@ -3520,7 +3530,10 @@ export const EXPECTED = Object.freeze({
  * moves not one number for it. A reader taking this file as the measure of what
  * WIN-268 P1 proved would be reading the smaller half.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8145;
+// WIN-269 (M4.3): 8145 + 4 = 8149 over 550 files — files UNCHANGED, because all
+// four cases land in a suite that already existed. They are the `DispatchTarget`
+// transport gap, itemised on the `packages/contexts/tools` row above.
+export const EXPECTED_RUNTIME_TOTAL = 8149;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

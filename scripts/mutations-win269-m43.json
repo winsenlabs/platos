@@ -1,7 +1,7 @@
 {
   "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
   "issue": "WIN-269",
-  "tranche": "M4.3 stage 2 \u2014 the tool lifecycle's ORM register, the three-valued discovery outcome, the stale double that was hiding three assertions, and the (entity, environment) pair against real PostgreSQL",
+  "tranche": "M4.3 stage 2 \u2014 the tool lifecycle's ORM register, the three-valued discovery outcome, the stale double that was hiding three assertions, and the (entity, environment) pair against real PostgreSQL, and the DispatchTarget gap that only writing the adapter revealed",
   "branch": "tejas/m4",
   "base": "5a2e7bf8 (tejas/m4, after WIN-268 stage 1); mutations run at b5302dc6+",
   "purpose": [
@@ -47,7 +47,15 @@
     "rather than the subject, and on a tree where the trigger is enabled a weaker",
     "assertion still passes. What kills that claim is the out-of-band control in",
     "`databaseControls` below, which disables the named trigger and shows the",
-    "incoherent row is then ACCEPTED."
+    "incoherent row is then ACCEPTED.",
+    "",
+    "THE PORT GAP fails by BEING UNIMPLEMENTABLE AND LOOKING FINE. M15, M16 and M17",
+    "are about `DispatchTarget`, which named no MCP transport at all:",
+    "`MCP_TRANSPORTS` is `http | sse | stdio`, two of the three carry an absolute",
+    "URL and are DIFFERENT CLIENT CONSTRUCTIONS, and `url === null` is a necessary",
+    "but not sufficient condition for the third. An adapter would have had to infer",
+    "a protocol from a missing field. The domain already had the rule that decides",
+    "this -- `admitTransport` -- and NOTHING outside its own unit test called it."
   ],
   "procedure": [
     "Each mutation is applied to the committed source, the named command is run,",
@@ -59,13 +67,15 @@
   "commands": {
     "acceptance": "pnpm --filter platos-agent exec vitest run src/tool-gateway/mcp-transport/mcp-connected-entity --reporter=basic",
     "register-test": "node --test scripts/arch/tool-lifecycle-reach.test.mjs",
-    "pair-postgres": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=postgresql://platos@127.0.0.1:55433/<db> TOOL_REGISTRY_TENANCY_REQUIRED=1 pnpm --filter platos-agent exec vitest run src/tool-gateway/registry-incoherent-pair-postgres --reporter=basic"
+    "pair-postgres": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=postgresql://platos@127.0.0.1:55433/<db> TOOL_REGISTRY_TENANCY_REQUIRED=1 pnpm --filter platos-agent exec vitest run src/tool-gateway/registry-incoherent-pair-postgres --reporter=basic",
+    "tools-context": "pnpm --filter @platos/context-tools test"
   },
   "baseline": {
     "acceptance": "18 passed / 0 failed (10 pre-existing cases, 8 added by this tranche). Before this tranche the same file was 7 passed / 3 failed; the three reds were the stale double, not a production defect.",
     "register-test": "13 passed / 0 failed",
     "toolGatewayWhole": "pnpm --filter platos-agent exec vitest run src/tool-gateway/ \u2014 86 passed / 0 failed across 8 files",
-    "pair-postgres": "7 passed / 0 failed against a throwaway native PostgreSQL 17.10 (Homebrew postgresql@17, port 55433, trust auth, its own migrated schema, dropped in afterAll). With no database URL: 7 skipped, and with TOOL_REGISTRY_TENANCY_REQUIRED=1 and no URL the suite FAILS rather than skipping \u2014 both verified."
+    "pair-postgres": "7 passed / 0 failed against a throwaway native PostgreSQL 17.10 (Homebrew postgresql@17, port 55433, trust auth, its own migrated schema, dropped in afterAll). With no database URL: 7 skipped, and with TOOL_REGISTRY_TENANCY_REQUIRED=1 and no URL the suite FAILS rather than skipping \u2014 both verified.",
+    "tools-context": "366 passed / 0 failed across 19 files (362 before this tranche, +4 for the transport admission)."
   },
   "mutations": [
     {
@@ -194,18 +204,45 @@
       "exit": 0,
       "outcome": "survived",
       "survivorReason": "IT MUTATES THE ASSERTION, NOT THE SUBJECT. On a tree where the trigger IS enabled, a weaker assertion about it still passes, and no arrangement of the test suite can kill that. The claim it makes is established instead by the out-of-band database control below, which is the honest place for it: a test cannot disable a trigger it is running inside without destroying the isolation every other case depends on. Recorded as a survivor rather than declared equivalent, because it is not equivalent \u2014 it is weaker, and a reader should know by how much."
+    },
+    {
+      "name": "M15 the mcp target hard-codes its transport instead of carrying the client row's",
+      "guards": "an adapter is handed the transport the ENTITY is configured with, not a constant",
+      "why": "A hard-coded `http` type-checks, passes every pre-existing case, and opens a StreamableHTTP client against an SSE server on the first real dispatch.",
+      "file": "packages/contexts/tools/application/resolve-transport.ts",
+      "command": "tools-context",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M16 the transport is copied onto the target without admission",
+      "guards": "`admitTransport` refuses a transport nobody recognises, and an http/sse row with no URL, at RESOLUTION",
+      "why": "`admitTransport` is a domain rule that existed and that nothing outside its own unit test called. Without it a misconfigured row reaches an adapter, which discovers it while building a client \u2014 the wrong place and the wrong error: a transport nobody recognises is a row an operator fixes, not a dispatch that failed.",
+      "file": "packages/contexts/tools/application/resolve-transport.ts",
+      "command": "tools-context",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M17 a wire target claims an MCP transport",
+      "guards": "`transport` is null on a wire target \u2014 a wire backend is reached on a socket Platos did not open",
+      "why": "The null is the half a reader would assume rather than check, and an adapter branching on `target.transport` before `target.kind` would then take the MCP path for a wire call.",
+      "file": "packages/contexts/tools/application/resolve-transport.ts",
+      "command": "tools-context",
+      "exit": 1,
+      "outcome": "killed"
     }
   ],
   "survivors": [
     "M14 \u2014 see `survivorReason` on the mutation. It weakens the suite's own assertion rather than the subject; the property is established by the `databaseControls` entry below."
   ],
   "declared": {
-    "total": 14,
-    "killed": 13,
+    "total": 17,
+    "killed": 16,
     "survived": 1,
     "anchorMissing": 0,
     "equivalent": 0,
-    "note": "Fourteen mutations, thirteen killed, ONE survivor \u2014 M14, which mutates an assertion rather than the subject and is compensated by the database control above. M03 is the one worth reading twice: it deletes the `isError` check and, before this tranche, it SURVIVED the entire repository."
+    "note": "Seventeen mutations, sixteen killed, ONE survivor \u2014 M14, which mutates an assertion rather than the subject and is compensated by the database control above. M03 is the one worth reading twice: it deletes the `isError` check and, before this tranche, it SURVIVED the entire repository."
   },
   "databaseControls": {
     "what": "The non-vacuity control for the ancestry claim, run out of band against the same native PostgreSQL 17.10: migrate a scratch schema, seed two tenants, and attempt the incoherent EnvironmentEntityTool insert twice \u2014 once with `EnvironmentEntityTool_ancestry` enabled and once with it disabled.",

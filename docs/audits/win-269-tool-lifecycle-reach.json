@@ -47,13 +47,13 @@
       "slot": "dispatch",
       "kind": "root-satisfied",
       "source": "packages/contexts/tools/adapters",
-      "note": "the ToolDispatch port. ADR M0.3 §5.1 rule (h) binds `@modelcontextprotocol/*` to `packages/contexts/tools/(adapters|transport)/` and to nowhere else, so this port's implementation cannot be a `packages/adapters/` directory and cannot be a binding row; it is built in the composition root from the factory that home publishes, the way `Judge` is."
+      "note": "the ToolDispatch port, and the ONLY unimplemented thing between this tree and a composed `tools`. ADR M0.3 §5.1 rule (h) (`SDK_CONTAINMENT.mcp-sdk-only-in-tools`) binds `@modelcontextprotocol/*` to `^packages/contexts/tools/(adapters|transport)/` and to nowhere else, so this port cannot be a `packages/adapters/` directory and cannot be a binding row; it is built in the composition root from the factory that home publishes, the way `Judge` is. FOUR CONCRETE STEPS, each measured rather than guessed: (1) the directory does not exist; (2) `gen-v1-skeleton.mjs` OWNS every context package.json `exports` map — it emits `.`, `./application/ports/index.js` and two conditional subpaths — so `./adapters/index.js` needs a THIRD list there beside APPLICATION_ENTRY_PROJECTS and TESTING_ENTRY_PROJECTS, with its own honesty check; (3) the same generator owns runtime dependencies through ADAPTER_RUNTIME_DEPENDENCIES, which is keyed on `packages/adapters/` directories and has no row shape for a context's own adapter, so `@modelcontextprotocol/sdk` has nowhere to be declared yet; (4) `apps/core-api` may import it — `firesCrossContextContractsOnly` requires the FROM side to be a context and an app is not one — so no boundary rule needs changing. WIN-269 landed the prerequisite instead: `DispatchTarget` now names its `transport`, without which the port is not implementable at all."
     },
     {
       "slot": "digest",
       "kind": "root-satisfied",
       "source": "packages/contexts/tools/adapters",
-      "note": "the ContentDigest port. `apps/core-api/src/composition/adapter-bindings.ts` states outright that ContentDigest is `a synchronous host hash with no failure channel and no row`, so it is satisfied where the dispatch is rather than by a binding."
+      "note": "the ContentDigest port — lowercase hex SHA-256 over node:crypto, and the cheap half of the pair. `apps/core-api/src/composition/adapter-bindings.ts` states outright that ContentDigest is `a synchronous host hash with no failure channel and no row`, so it is satisfied where the dispatch is rather than by a binding, and `GOVERNANCE_ROOT_SATISFIED_PORTS = [\"Judge\"]` is the precedent for a port the composition root fills itself. It needs no SDK and no new list; it is only here because it shares a home with the dispatch."
     },
     {
       "slot": "clock",
