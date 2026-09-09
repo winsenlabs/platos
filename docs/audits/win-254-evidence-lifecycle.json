@@ -1412,7 +1412,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "02e4ca09b865ea91b8defa553f3c7bdc218ee43816ddb877ffbe79055a97161a",
+      "sha256": "be96bcc71ed3be8bdd2f5f698fad1308f627253bf98b9111657f701439ccdb44",
       "binds": "current-repository-truth"
     },
     {
@@ -1526,14 +1526,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "ec341628c71b4daa80234787a223a26ab4922b49938dc2f4a481e55ea8b087c7",
+      "sha256": "d7448e85491bdaafd1d1436e3aa71d60f989f00068a7159a852287ad4c68165b",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "e9d37136edc801432deac73582f2d994f86479a3c705857192552e209b517332",
+      "sha256": "b09df3d41b8704d4728a91a5c7cfea3ea78f07887490cb60b7f621df4dde8c40",
       "binds": "current-repository-truth"
     },
     {
@@ -1589,7 +1589,7 @@
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "48fcc912598942174840f7629ce831298eb3cffc5e2ac4d65a103b7e7a5f033f",
+      "sha256": "6d239697cbdfa769b5ba702b4812f0af7e3588f9441d0879cf53e5466a439f99",
       "binds": "current-repository-truth"
     },
     {
@@ -1603,7 +1603,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "41566d67767ef93ec668b4d382fd8e60193ff35e720d8befedbef6e5d980e697",
+      "sha256": "fa96916d632f2cb16e0b97895a6891788768c1d49dbf9aa510bd29dbcc1ef379",
       "binds": "current-repository-truth"
     },
     {
