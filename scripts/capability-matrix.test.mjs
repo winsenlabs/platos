@@ -99,14 +99,22 @@ test("committed matrix: row counts are pinned exactly", () => {
   // the first through `/organizations`, which R1 added because `/orgs` is not a
   // substring of it. The oracle-derived count is therefore UNCHANGED at 42, which
   // is what `ORACLE_DERIVED_ROW_COUNT` pins.
-  assert.equal(REST.length, 308);
-  assert.equal(REST.filter((r) => r.ownerSource === "oracle-derived").length, 42);
+  //
+  // 308 -> 309 (WIN-257 T8), AND THE SPLIT MOVES THE OTHER WAY THIS TIME:
+  // 42 -> 43 oracle-derived, 266 path-prefix UNCHANGED. The workspace route is
+  // the first V1 route to take a `ROUTE_OWNERSHIP` row, because `/workspaces`
+  // matches no prefix rule — it names no canonical row, it is the SHAPE a
+  // dashboard page needs — and it does have an oracle handler to resolve
+  // against, `auth.server.ts:75`. A prefix rule for it would have been a guess
+  // about a URL where evidence about a handler was available.
+  assert.equal(REST.length, 309);
+  assert.equal(REST.filter((r) => r.ownerSource === "oracle-derived").length, 43);
   assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 266);
-  assert.equal(42 + 266, REST.length);
+  assert.equal(43 + 266, REST.length);
   assert.equal(MCP.length, 202);
-  assert.equal(MATRIX.totals.restOperations, 308);
-  assert.equal(MATRIX.ownership.restRows, 308);
-  assert.equal(MATRIX.ownership.oracleDerivedRestRows, 42);
+  assert.equal(MATRIX.totals.restOperations, 309);
+  assert.equal(MATRIX.ownership.restRows, 309);
+  assert.equal(MATRIX.ownership.oracleDerivedRestRows, 43);
   assert.equal(MATRIX.ownership.pathPrefixRestRows, 266);
 });
 
@@ -233,14 +241,22 @@ test("recorded evidence: every writing row agrees with the ADR write-owner", () 
     assert.equal(owners[0], entry.owner, `${id} writes ${entry.writes.join(", ")}`);
   }
   // Not vacuous: most of the resolved rows do write something.
+  // WIN-257 T8 does NOT move this: the workspace route is a read, so its row
+  // carries `writes: []` and falls out of the loop above. The write-free count
+  // in the next case is where it lands, and the two moving in opposite
+  // directions is what stops a write being smuggled in as a read.
   assert.equal(writingRows, 20);
   assert.equal(Object.keys(ROUTE_OWNERSHIP).length, ORACLE_DERIVED_ROW_COUNT);
-  assert.equal(ORACLE_DERIVED_ROW_COUNT, 42);
+  assert.equal(ORACLE_DERIVED_ROW_COUNT, 43);
 });
 
 test("recorded evidence: every write-free row records a rationale", () => {
   const writeFree = Object.entries(ROUTE_OWNERSHIP).filter(([, e]) => e.writes.length === 0);
-  assert.equal(writeFree.length, 22);
+  // 22 -> 23 (WIN-257 T8), the workspace route. 20 writing + 23 write-free = 43,
+  // which is `ORACLE_DERIVED_ROW_COUNT` — the identity that stops a row being
+  // added to one half without the other seeing it.
+  assert.equal(writeFree.length, 23);
+  assert.equal(writeFree.length + 20, ORACLE_DERIVED_ROW_COUNT);
   for (const [id, entry] of writeFree) {
     assert.ok(entry.rationale.trim().length > 0, `${id} has no rationale`);
   }
@@ -435,7 +451,9 @@ test("committed matrix: the REST total is split across the declared scan roots a
   // root was declared; R1 landed the V1 identity and tenancy surface — five
   // controllers, eight routes — and the split moved on its own. 300 + 8 = 308,
   // which is the `restOperations` total the line above sums back to.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 8 });
+  // 8 -> 9 (WIN-257 T8): a sixth controller carrying a ninth route, and the
+  // agent root is untouched. 300 + 9 = 309.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 9 });
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });
 
