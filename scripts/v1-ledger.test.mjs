@@ -557,7 +557,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // could be a unit case: both defects live in what the STORE does with a
     // where-clause and a Json value, and a doubled client answers whatever it was
     // told to. NO LEDGER RULE CHANGED.
-    "apps-agent": 8,
+    // WIN-268 (M4.2) 8 -> 9 with the `end_users` FORGED-scope tenancy proof
+    // salvaged from the refused P3 branch, on the same existing
+    // `apps-agent.test.suites` rule.
+    "apps-agent": 9,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1768,7 +1771,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // declared equivalent with the proof, zero survivors. It takes the same
     // blanket `root-infra.tooling.scripts` rule its nine predecessors took
     // (100 -> 101). NO LEDGER RULE CHANGED.
-    "root-infra": 70,
+    // WIN-268 (M4.2) 70 -> 72 with the STATIC half of that proof —
+    // `scripts/arch/end-user-presence-ancestry.mjs` and its suite, also salvaged.
+    // The scanner takes `root-infra.tooling.scripts` (101 -> 102) and the suite
+    // `root-infra.test.script-suites`. NO LEDGER RULE CHANGED.
+    "root-infra": 72,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1880,7 +1887,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   //
   // AND THE MUTATION LEDGER 1697 -> 1698. ONE file, `root-infra`, itemised on
   // that area's delta above: 8 + 0 + 80 + 4 + 10 + 1505 + 21 + 70 = 1698.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1698);
+  //
+  // AND THE SALVAGED end_users PROOF 1698 -> 1701. THREE files across TWO areas:
+  // `apps-agent` +1 (the real-database tenancy suite) and `root-infra` +2 (the
+  // static ancestry scanner and its suite). The eight-key re-derivation is
+  // 9 + 0 + 80 + 4 + 10 + 1505 + 21 + 72 = 1701.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1701);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2069,7 +2081,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // AND THE MUTATION LEDGER 1697 -> 1698 -- the SIXTEENTH hand move. The same
     // one `root-infra` file, reached here by summing the per-area counts.
-    rulesDocument.baseline.totalFiles + 1698
+    //
+    // AND THE SALVAGED end_users PROOF 1698 -> 1701 -- the SEVENTEENTH hand move.
+    // The same three files as the `totalFiles` assertion above, reached here by
+    // summing the per-area counts instead of reading the total.
+    rulesDocument.baseline.totalFiles + 1701
   );
 });
 
