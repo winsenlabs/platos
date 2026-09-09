@@ -2625,7 +2625,25 @@ export const EXPECTED = Object.freeze({
   // (a second revoke does not re-stamp `revokedAt`; an unknown token and an
   // absent one stay under ONE code on purpose). No new file: both suites
   // existed, which is why `files` does not move.
-  "packages/contexts/identity-access": { files: 23, cases: 324 },
+  //
+  // WIN-268 (M4.2) P1: 23 -> 24 files, 324 -> 339 cases. ONE new suite,
+  // `application/mint-bearer-credential.test.ts`, carrying FIFTEEN cases for the
+  // mint the two MCP one-time-secret routes reach through the contract. They are
+  // grouped by what breaks without them rather than by the order the code
+  // checks: THREE on the secret (minted once, hashed once, never stored raw; a
+  // fresh secret per call so a replay and a second mint are distinguishable; the
+  // ninety-day default and the requested instant), SEVEN refusals each under its
+  // OWN code and naming its own field (blank/over-long label at the inclusive
+  // 1-80 boundary, empty and blank-entry permission lists, a zero, fractional,
+  // negative or over-cap lifetime, a scope that is not one environment, a
+  // subject on the wrong KIND under `CREDENTIAL_SUBJECT_MISMATCH`, a permission
+  // tier on the table that has no such column, and a duplicate digest turned
+  // into `CREDENTIAL_MINT_REFUSED` rather than a crash), TWO on which kinds are
+  // mintable at all (the two with an oracle, and the self-referential
+  // `mcp:pat:<id>` principal the entity oracle defaults to), and TWO on the
+  // record the caller is shown being the STORE's rather than the request's.
+  // The other +1 file is that suite; no existing suite gained a case.
+  "packages/contexts/identity-access": { files: 24, cases: 339 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -3487,8 +3505,22 @@ export const EXPECTED = Object.freeze({
  * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
  * Two sibling branches move this pin in the same window, so the integrator SUMS
  * the deltas rather than taking any one branch's total.
+ *
+ * WIN-268 (M4.2) P1: 8130 + 15 = 8145 over 550 files. All fifteen are the ONE
+ * new suite `packages/contexts/identity-access/application/mint-bearer-credential.test.ts`
+ * — itemised on that package's row above — and every one of them runs anywhere,
+ * because they are in-memory port doubles.
+ *
+ * AND THE SAME ASYMMETRY THE PARAGRAPH ABOVE RECORDS APPLIES AGAIN, more
+ * sharply. The evidence this tranche actually turns on is
+ * `apps/core-api/src/composition/mcp-token-mint.integration.test.ts`: two
+ * identical mints RACING over real sockets against PostgreSQL 16 and Redis,
+ * with the row count read back by a `psql` process inside the container.
+ * `apps/core-api` is outside `PACKAGE_ROOTS`, so this census cannot see it and
+ * moves not one number for it. A reader taking this file as the measure of what
+ * WIN-268 P1 proved would be reading the smaller half.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8130;
+export const EXPECTED_RUNTIME_TOTAL = 8145;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
