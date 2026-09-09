@@ -45,6 +45,30 @@ const DEFAULT_SCAN_ROOTS = [
   "apps/mcp-stdio",
 ];
 
+// ---------------------------------------------------------------------------
+// THE STRANGLER RATCHET PASS (WIN-268 P2)
+//
+// `apps/agent` is deliberately outside `DEFAULT_SCAN_ROOTS`, and it has to stay
+// outside: nearly every file in it imports the ORM, so a full rule-set scan of
+// that tree fails on hundreds of files and the whole audit becomes something a
+// reader learns to ignore.
+//
+// But a rule that names files in an unscanned root is a rule that never runs.
+// WIN-258 T6 wrote exactly such a rule and enforced it ONLY from
+// `arch-boundaries.test.mjs` — which is the shape this repository has already
+// been burned by once: `apps/agent/src/clean-prisma-delegates.test.ts` sat RED
+// for 1,064 commits because no CI job executed it, and 64 net call sites
+// accumulated unobserved behind a gate everybody believed was on.
+//
+// So the ratchet gets its own PASS in the audit binary rather than only a test:
+// a second scan over `apps/agent`, from which only the ratchet rules' violations
+// are kept. Every other rule's opinion about that tree is discarded — this pass
+// makes no claim about the strangler's other 800-odd ORM call sites, and
+// `arch-boundaries.test.mjs` proves that narrowing does not make the pass
+// vacuous by driving the rule to RED on a fixture.
+const RATCHET_SCAN_ROOTS = ["apps/agent"];
+const RATCHET_RULE_IDS = new Set(["mcp-platform-service-no-prisma"]);
+
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts"]);
 const SKIP_DIRECTORIES = new Set([
   "node_modules",
@@ -363,12 +387,29 @@ function parseArgs(argv) {
   return opts;
 }
 
+/**
+ * The ratchet pass: scan the strangler root, keep only the ratchet rules.
+ *
+ * Returns `null` when the caller asked for explicit `--scan-root`s, because
+ * then the operator is driving the scan and a second pass they did not ask for
+ * would be a surprise. The default invocation — which is what `package.json`'s
+ * `audit:arch-boundaries` runs, and therefore what CI runs — always gets it.
+ */
+export function ratchetPass(root) {
+  const result = check(root, { scanRoots: RATCHET_SCAN_ROOTS });
+  return {
+    fileCount: result.fileCount,
+    violations: result.violations.filter((violation) => RATCHET_RULE_IDS.has(violation.rule)),
+  };
+}
+
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   const result = check(opts.root, { scanRoots: opts.scanRoots });
+  const ratchet = opts.scanRoots === undefined ? ratchetPass(opts.root) : null;
 
   if (opts.json) {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({ ...result, ratchet }, null, 2)}\n`);
   } else {
     const shownRoot = relative(process.cwd(), result.root) || ".";
     process.stdout.write(
@@ -389,7 +430,30 @@ function main() {
     }
   }
 
-  process.exitCode = result.violations.length > 0 || result.fileCount === 0 ? 1 : 0;
+  if (ratchet) {
+    if (ratchet.fileCount === 0) {
+      process.stdout.write(
+        `FAIL: the strangler ratchet pass scanned 0 file(s) under ${RATCHET_SCAN_ROOTS.join(", ")}; ` +
+          "the root moved or the selector drifted, and the rule is unenforced.\n"
+      );
+    } else if (ratchet.violations.length === 0) {
+      process.stdout.write(
+        `ok: strangler ratchet — ${ratchet.fileCount} file(s) under ${RATCHET_SCAN_ROOTS.join(", ")} ` +
+          `judged against ${[...RATCHET_RULE_IDS].join(", ")}.\n`
+      );
+    } else {
+      for (const v of ratchet.violations) {
+        process.stdout.write(`FAIL [${v.rule}] ${v.from} -> ${v.specifier}\n    ${v.comment}\n`);
+      }
+      process.stdout.write(`\n${ratchet.violations.length} strangler ratchet violation(s).\n`);
+    }
+  }
+
+  const failed =
+    result.violations.length > 0
+    || result.fileCount === 0
+    || (ratchet !== null && (ratchet.violations.length > 0 || ratchet.fileCount === 0));
+  process.exitCode = failed ? 1 : 0;
 }
 
 if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) {

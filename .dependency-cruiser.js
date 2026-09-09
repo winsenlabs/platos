@@ -322,6 +322,17 @@ module.exports = {
       }
     },
     {
+      "name": "mcp-platform-service-no-prisma",
+      "comment": "a converted apps/agent/src/mcp-platform service must reach data through its store seam, never through the ORM or the DI provider that carries the client.",
+      "severity": "error",
+      "from": {
+        "path": "^(apps/agent/src/mcp-platform/permission-gateway\\.service\\.ts|apps/agent/src/mcp-platform/mcp-tool-acl\\.service\\.ts|apps/agent/src/mcp-platform/identity-resolver\\.service\\.ts)$"
+      },
+      "to": {
+        "path": "^((node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))|internal-packages/tenancy-database(?:/|$))|apps/agent/src/shared/database\\.provider)"
+      }
+    },
+    {
       "name": "unknown-context-directory",
       "comment": "packages/contexts/<name>/ must be one of the 17 contexts named in ADR M0.3 §4; an adapter belongs under packages/adapters/.",
       "severity": "error",

@@ -28,8 +28,8 @@ import { after, describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 
-import { check } from "./arch-boundaries.mjs";
-import { ALL_RULES } from "./boundary-rules.mjs";
+import { check, ratchetPass } from "./arch-boundaries.mjs";
+import { ALL_RULES, DEPRISMA_MCP_PLATFORM_SERVICES } from "./boundary-rules.mjs";
 
 const tempRoots = [];
 after(() => {
@@ -1474,5 +1474,111 @@ describe("(h) tenancy-prisma-only reaches the workspace path a resolver actually
       importers.sort(),
       "the checker and the tree disagree about which webapp files import the canonical client",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WIN-268 (M4.2) P2 — THE STRANGLER RATCHET.
+//
+// `apps/agent` is not in `DEFAULT_SCAN_ROOTS` and must not be: nearly every file
+// in that tree imports the ORM, so a full rule-set scan of it fails on hundreds
+// of files. A rule naming files in an unscanned root, however, is a rule that
+// never runs — so `arch-boundaries.mjs` gives the ratchet its own PASS, and
+// these cases are what stop that pass being a decoration.
+//
+// FOUR CLAIMS, AND EACH IS JOINED TO SOMETHING THIS FILE DOES NOT WRITE:
+//   1. the rule FIRES on each of the two doors, on a fixture;
+//   2. it does NOT fire on the store seam that is supposed to replace them;
+//   3. it does NOT fire on an UNCONVERTED sibling — the ratchet is honest about
+//      its own coverage, and a careless widening of `from` to
+//      `^apps/agent/src/mcp-platform/` would turn this red;
+//   4. every path in the list EXISTS in the real tree, and the real tree is
+//      clean against the rule. Without (4) a rename silently disarms the gate
+//      and every suite stays green.
+// ---------------------------------------------------------------------------
+
+describe("WIN-268 P2 — the mcp-platform strangler ratchet", () => {
+  it("fires on BOTH doors to the ORM", () => {
+    const vendorDoor = fixture({
+      "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts":
+        `import { PolicyEffect } from "@platos/tenancy-database";\nexport const e = PolicyEffect;\n`,
+    });
+    assert.ok(
+      has(check(vendorDoor, { scanRoots: ["apps/agent"] }), "mcp-platform-service-no-prisma"),
+      "a converted service importing the workspace ORM wrapper must fire",
+    );
+
+    // The LOCAL door — the one all three converted services actually used. A
+    // rule that named only the vendor package would have missed every one of
+    // them, which is why `to` names two things instead of one.
+    const localDoor = fixture({
+      "apps/agent/src/mcp-platform/permission-gateway.service.ts":
+        `import { PRISMA_TOKEN } from "../shared/database.provider";\nexport const t = PRISMA_TOKEN;\n`,
+    });
+    assert.ok(
+      has(check(localDoor, { scanRoots: ["apps/agent"] }), "mcp-platform-service-no-prisma"),
+      "a converted service importing the DI provider that carries the client must fire",
+    );
+  });
+
+  it("passes the store seam that replaces them, and does not touch an unconverted sibling", () => {
+    const good = fixture({
+      "apps/agent/src/mcp-platform/identity-resolver.service.ts":
+        `import { McpIdentityStore } from "./mcp-identity.store";\nexport const s = McpIdentityStore;\n`,
+    });
+    assert.ok(
+      !has(check(good, { scanRoots: ["apps/agent"] }), "mcp-platform-service-no-prisma"),
+      "a converted service reaching data through its store must pass",
+    );
+
+    // SCOPED, NOT BLANKET. `token.service.ts` is in the same directory, holds
+    // ten ORM statements, and is deliberately NOT on the list. Asserting that
+    // keeps the ratchet honest about what it does and does not yet cover.
+    const unconverted = fixture({
+      "apps/agent/src/mcp-platform/token.service.ts":
+        `import { PRISMA_TOKEN } from "../shared/database.provider";\nexport const t = PRISMA_TOKEN;\n`,
+    });
+    assert.ok(
+      !has(check(unconverted, { scanRoots: ["apps/agent"] }), "mcp-platform-service-no-prisma"),
+      "an unconverted mcp-platform service must not fire this rule",
+    );
+  });
+
+  it("the converted-service list is joined to the real tree, not to itself", () => {
+    const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
+
+    assert.ok(
+      DEPRISMA_MCP_PLATFORM_SERVICES.length > 0,
+      "the converted-service list must not be empty, or the rule is unreachable",
+    );
+    for (const relativePath of DEPRISMA_MCP_PLATFORM_SERVICES) {
+      assert.ok(
+        existsSync(join(repositoryRoot, relativePath)),
+        `${relativePath} is named by mcp-platform-service-no-prisma but does not exist; ` +
+          "a renamed service must move its entry, not lose its gate",
+      );
+    }
+
+    // And every one of them is clean, in the tree AS COMMITTED.
+    const scan = check(repositoryRoot, { scanRoots: ["apps/agent"] });
+    assert.ok(scan.fileCount > 0, "the ratchet pass must not be vacuous");
+    assert.deepEqual(
+      scan.violations
+        .filter((violation) => violation.rule === "mcp-platform-service-no-prisma")
+        .map((violation) => `${violation.from} -> ${violation.specifier}`),
+      [],
+      "a converted mcp-platform service has reached for the ORM again",
+    );
+  });
+
+  it("the audit binary's ratchet pass is the one that runs, and it is not vacuous", () => {
+    // The pass, not the rule. WIN-258 T6 wrote an equivalent rule and enforced
+    // it ONLY from a test file; this repository has already lost 1,064 commits
+    // of coverage to exactly that shape (`clean-prisma-delegates.test.ts`). So
+    // the EXPORTED pass the CLI calls is exercised here, over the real tree.
+    const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
+    const pass = ratchetPass(repositoryRoot);
+    assert.ok(pass.fileCount > 0, "the ratchet pass scanned nothing; the root moved or the selector drifted");
+    assert.deepEqual(pass.violations, [], "the ratchet pass reports a violation on the committed tree");
   });
 });

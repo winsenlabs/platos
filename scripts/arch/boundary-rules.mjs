@@ -166,6 +166,57 @@ const TENANCY_DATABASE_SOURCE =
  */
 const TENANCY_DATABASE_HOME = `^(packages/adapters/postgres-tenancy|${TENANCY_DATABASE_HOME_PATH.replace(/\/$/u, "")})/`;
 
+// ---------------------------------------------------------------------------
+// WIN-268 (M4.2) P2 — THE MCP PLATFORM SERVICES THAT HAVE BEEN TAKEN OFF THE ORM
+//
+// THIS LIST IS A RATCHET, AND IT IS JOINED TO THE FILESYSTEM AND TO THE REAL
+// TREE. `arch-boundaries.test.mjs` asserts that every path here EXISTS and that
+// a scan of the actual `apps/agent` reports no violation against any of them.
+// Both halves matter, and the first is the one this programme keeps learning:
+// without the existence join, renaming a service would silently disarm its rule
+// and every suite would stay green — an assertion comparing two things you
+// control cannot fail.
+//
+// IT NAMES FILES RATHER THAN `^apps/agent/src/mcp-platform/`, because a rule is
+// only worth having if it is true. P2 converted THREE of the six services this
+// directory holds; `mcp-bearer-token.service.ts`, `token.service.ts` and
+// `events.service.ts` still hold the client, and so do
+// `mcp-entity.controller.ts` and every file under `tools/`. A blanket ban would
+// fail on day one and be suppressed, which is worse than no rule. Each entry
+// here can never regress, and the next tranche's job is to ADD to this array —
+// a one-line diff whose gate is already written.
+//
+// THE THREE THAT ARE HERE ARE THE AUTHORIZATION SURFACES. That is not an
+// accident of ordering: they are the files where an ORM statement IS the
+// admission decision, so they are the ones where "reaches data through a seam
+// shaped like the contract" buys something today rather than only at cutover.
+export const DEPRISMA_MCP_PLATFORM_SERVICES = [
+  "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+  "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+  "apps/agent/src/mcp-platform/identity-resolver.service.ts",
+];
+
+/**
+ * BOTH doors to the ORM, not just the vendor package.
+ *
+ * NONE of the three services above imported `@platos/tenancy-database` for its
+ * client: they took it through `apps/agent/src/shared/database.provider`, which
+ * is where `PRISMA_TOKEN` and `ControlDatabaseClient` live, and one of them
+ * (`mcp-tool-acl.service.ts`) imported the workspace package too — for the
+ * `PolicyEffect` enum. A rule that banned only the vendor scope would have been
+ * satisfied by walking through the local provider, which is the door all three
+ * actually used. `TENANCY_DATABASE_SOURCE` above makes the same argument about
+ * the workspace wrapper hiding `@prisma/client`; this is that argument one layer
+ * further in, inside the app.
+ */
+export const AGENT_ORM_DOORS =
+  `^(${TENANCY_DATABASE_SOURCE}|apps/agent/src/shared/database\\.provider)`;
+
+/** Escape a literal path so it can sit inside a rule's `from.path` regex. */
+function escapeForRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
+
 // Per-vendor single-adapter containment (ADR M0.3 §5.1 rule (h)). Each SDK lives
 // in exactly one place; any file outside that place importing the SDK fails.
 export const SDK_CONTAINMENT = [
@@ -433,6 +484,18 @@ export const RULES = [
     to: {
       path: "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)",
     },
+  },
+
+  // (k2) WIN-268 P2 — a converted MCP platform service may not reach the ORM
+  // again, through EITHER door. See `DEPRISMA_MCP_PLATFORM_SERVICES` above for
+  // why the `from` side is a list of files and not a directory prefix.
+  {
+    id: "mcp-platform-service-no-prisma",
+    severity: "error",
+    comment:
+      "a converted apps/agent/src/mcp-platform service must reach data through its store seam, never through the ORM or the DI provider that carries the client.",
+    from: { path: `^(${DEPRISMA_MCP_PLATFORM_SERVICES.map(escapeForRegex).join("|")})$` },
+    to: { path: AGENT_ORM_DOORS },
   },
 
   // (l) CONTEXT REGISTRY — packages/contexts/<name>/ must be one of the 17

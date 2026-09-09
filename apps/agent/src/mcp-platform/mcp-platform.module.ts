@@ -12,6 +12,7 @@ import { McpToolAclService } from "./mcp-tool-acl.service";
 // measurements that say why that call cannot be made from this process yet.
 import { McpPolicyStore } from "./mcp-policy.store";
 import { EntityToolPolicyStore } from "./entity-tool-policy.store";
+import { McpIdentityStore } from "./mcp-identity.store";
 import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
 import { MemoryModule } from "../memory/memory.module";
 import { EvalsModule } from "../evals/evals.module";
@@ -61,7 +62,7 @@ import { AdminModule } from "../admin/admin.module";
   // both share OAuthModule + ToolGatewayModule (ToolExecutorService +
   // ToolRouterService).
   controllers: [McpPlatformController, McpEntityController],
-  providers: [McpPolicyStore, EntityToolPolicyStore, PlatosMCPTokenService, MCPPermissionGatewayService, McpEventsService, McpBearerTokenService, McpIdentityResolverService, McpToolAclService],
+  providers: [McpPolicyStore, EntityToolPolicyStore, McpIdentityStore, PlatosMCPTokenService, MCPPermissionGatewayService, McpEventsService, McpBearerTokenService, McpIdentityResolverService, McpToolAclService],
   exports: [PlatosMCPTokenService, MCPPermissionGatewayService, McpEventsService, McpBearerTokenService, McpIdentityResolverService, McpToolAclService],
 })
 export class McpPlatformModule {}

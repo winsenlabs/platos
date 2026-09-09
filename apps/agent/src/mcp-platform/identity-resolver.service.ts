@@ -1,11 +1,7 @@
 import { Injectable, Inject } from "@nestjs/common";
-import {
-  type ControlDatabaseClient,
-  PRISMA_TOKEN,
-} from "../shared/database.provider";
+import { McpIdentityStore, type McpIdentityReader } from "./mcp-identity.store";
 import { McpBearerTokenService } from "./mcp-bearer-token.service";
 import type { Request } from "express";
-import { randomUUID } from "crypto";
 
 export interface McpIdentityResult {
   mcpUserId: string;
@@ -31,7 +27,7 @@ export interface McpIdentityRejectReason {
 @Injectable()
 export class McpIdentityResolverService {
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+    @Inject(McpIdentityStore) private readonly store: McpIdentityReader,
     private readonly bearerTokenService: McpBearerTokenService,
   ) {}
 
@@ -40,16 +36,13 @@ export class McpIdentityResolverService {
     entityPk: string,
   ): Promise<McpIdentityResult | McpIdentityRejectReason> {
     const authHeader = req.headers["authorization"] as string | undefined;
-    const entityConfig = await this.prisma.entityMcpConfig.findUnique({
-      where: { entityId: entityPk },
-      select: { identityMode: true, enabled: true },
-    });
+    const entityConfig = await this.store.readMcpSurface(entityPk);
 
     if (!entityConfig?.enabled) {
       return { error: "MCP not enabled for this entity", status: 403 };
     }
 
-    const identityMode = (entityConfig.identityMode as string) ?? "anonymous";
+    const identityMode = entityConfig.identityMode ?? "anonymous";
     const allowedModes = identityMode.split("+");
 
     // 1. Bearer PAT (plt_ent_ prefix)
@@ -118,37 +111,23 @@ export class McpIdentityResolverService {
     // Check for existing anon session cookie/header
     const existingId = req.headers["x-mcp-anon-session"] as string | undefined;
     if (existingId) {
-      const existing = await this.prisma.mcpAnonymousSession.findFirst({
-        where: {
-          mcpUserId: existingId,
-          entityId: entityPk,
-          environmentId,
-          revokedAt: null,
-        },
-        select: { id: true, mcpUserId: true },
-      });
+      const existing = await this.store.findLiveAnonymousSession(entityPk, environmentId, existingId);
       if (existing) {
-        void this.prisma.mcpAnonymousSession.update({
-          where: { id: existing.id },
-          data: { lastUsedAt: new Date() },
-        }).catch(() => undefined);
+        void this.store.touchAnonymousSession(existing.id);
         return existing;
       }
     }
 
-    // Create new anon session
-    const mcpUserId = `mcp:anon:${randomUUID().replace(/-/g, "")}`;
-    const session = await this.prisma.mcpAnonymousSession.create({
-      data: {
-        entityId: entityPk,
-        environmentId,
-        mcpUserId,
-        firstSeenIp: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? (req.socket.remoteAddress ?? null),
-        userAgent: req.headers["user-agent"] ?? null,
-      },
-      select: { id: true, mcpUserId: true },
+    // Create new anon session. `identity-access` owns `McpAnonymousSession` and
+    // its contract publishes NO mint — deliberately, per its own banner — so
+    // this is a call site WIN-268 P2 stopped at rather than routed. See
+    // `mcp-identity.store.ts`.
+    return this.store.createAnonymousSession(entityPk, environmentId, {
+      firstSeenIp:
+        (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim()
+        ?? (req.socket.remoteAddress ?? null),
+      userAgent: req.headers["user-agent"] ?? null,
     });
-    return session;
   }
 
   private async resolveAnonymousEnvironment(
@@ -165,18 +144,9 @@ export class McpIdentityResolverService {
     if (!requested) {
       return { error: "environmentId is required for anonymous MCP authentication", status: 400 };
     }
-    const environments = await this.prisma.environment.findMany({
-      where: {
-        id: requested,
-        archivedAt: null,
-        project: { entities: { some: { id: entityPk } } },
-      },
-      select: { id: true },
-      orderBy: { id: "asc" },
-      take: 1,
-    });
-    return environments[0]
-      ? { environmentId: environments[0].id }
+    const environmentId = await this.store.findActiveEnvironmentForEntity(entityPk, requested);
+    return environmentId
+      ? { environmentId }
       : { error: "environmentId is not active for this entity", status: 403 };
   }
 }
