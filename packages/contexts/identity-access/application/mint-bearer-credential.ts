@@ -152,7 +152,7 @@ export async function mintBearerCredential(
       kind: command.kind,
       // NOT the label and NOT the permissions: a label is caller-chosen text and
       // a permission list is the shape of an access grant. The credential id is
-      // enough to find the attempt and carries nothing on its own.
+      // enough to find the refused mint and carries nothing on its own.
       credentialId: plan.value.credentialId,
       reason,
     });
