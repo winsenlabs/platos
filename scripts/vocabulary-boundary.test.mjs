@@ -666,20 +666,19 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         `apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts`,
   //         17 in `scripts/mutations-win269-m43.json`, 6 in
   //         `apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts`
-  //         (counted in the 38 as the `attempt` rows) and 1 in
-  //         `scripts/v1-ledger.test.mjs`. THE GATE WAS RED ON THE BRANCH, and
-  //         `.github/workflows/ci.yml` runs it, so the merge would have been
-  //         red; WIN-270 found it while establishing its own baseline.
+  //         and 1 in `scripts/v1-ledger.test.mjs`. THE GATE WAS RED ON THE
+  //         BRANCH, and `.github/workflows/ci.yml` runs it, so the merge would
+  //         have been red; WIN-270 found it while establishing its own baseline.
   //
   //         All 38 are classified `technical` rather than `vendor`, for the same
   //         reason the WIN-258 pair above is: the PostgreSQL occurrences are the
-  //         database ENGINE's DDL keyword and system catalogue (`pg_trigger`,
-  //         `ALTER TABLE ... DISABLE TRIGGER`, the `EnvironmentEntityTool_ancestry`
-  //         object those statements name), not the external durable-runtime
-  //         product this rule exists to keep out, and the `attempt` occurrences
-  //         are general-language English naming whether a discovery pass RAN at
-  //         all — a distinction with no retry in it. Each is bound to a removal
-  //         EVENT rather than a date --> 19446.
+  //         database ENGINE's own DDL keyword, its system catalogue, and the
+  //         named schema object the suite switches off and on again — not the
+  //         external durable-runtime product this rule exists to keep out. The
+  //         six occurrences in the discovery service are general-language
+  //         English naming whether a discovery pass RAN against an environment
+  //         at all, a distinction with no retry anywhere in it. Each row is
+  //         bound to a removal EVENT rather than to a date --> 19446.
   assert.equal(manifest.exceptions.length, 19446);
 });
 
