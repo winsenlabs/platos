@@ -548,7 +548,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // docs catalog is not in the manifest, and both doors were spelling their
     // own literal. It lands on `apps-agent.test.suites`, a rule that already
     // existed.
-    "apps-agent": 6,
+    // WIN-268 (M4.2) 6 -> 8. TWO files, both `apps-agent.test.suites`, and both
+    // integration suites that SKIP without an explicit database URL:
+    // `mcp-platform/permission-gateway-forged-scope.integration.test.ts`, which
+    // drives the tier-2 forged-chain refusal against a real PostgreSQL, and
+    // `mcp-platform/tools/macros-replay-postgres.integration.test.ts`, which
+    // drives a recorded macro's params through the Json column and back. Neither
+    // could be a unit case: both defects live in what the STORE does with a
+    // where-clause and a Json value, and a doubled client answers whatever it was
+    // told to. NO LEDGER RULE CHANGED.
+    "apps-agent": 8,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1858,7 +1867,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // suite) and `docs-content` +2 (the register's JSON receipt and its rendered
   // note). The eight-key re-derivation from the merged `expectedDeltas` is
   // 6 + 0 + 80 + 4 + 10 + 1505 + 21 + 69 = 1695.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1695);
+  //
+  // AND THE TWO REAL-DATABASE SUITES 1695 -> 1697. TWO files, both `apps-agent`,
+  // itemised on that area's delta above: the tier-2 forged-chain refusal and the
+  // macro params round trip. The eight-key re-derivation is
+  // 8 + 0 + 80 + 4 + 10 + 1505 + 21 + 69 = 1697.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1697);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2039,7 +2053,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // receipt and rendered note in `docs-content`), reached here by summing the
     // per-area counts instead of reading the total, so the two arithmetics can
     // disagree and be caught. 1691 + 4 = 1695.
-    rulesDocument.baseline.totalFiles + 1695
+    //
+    // AND THE TWO REAL-DATABASE SUITES 1695 -> 1697 -- the FIFTEENTH hand move.
+    // The same two `apps-agent` files as the `totalFiles` assertion above,
+    // reached here by summing the per-area counts instead of reading the total.
+    // 1695 + 2 = 1697.
+    rulesDocument.baseline.totalFiles + 1697
   );
 });
 
