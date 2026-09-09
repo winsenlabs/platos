@@ -115,6 +115,8 @@
     "test:transaction-outcome": "node --test scripts/arch/transaction-outcome.test.mjs",
     "audit:sole-writer": "node scripts/arch/sole-writer.mjs",
     "test:sole-writer": "node --test scripts/arch/sole-writer.test.mjs",
+    "audit:end-user-presence-ancestry": "node scripts/arch/end-user-presence-ancestry.mjs",
+    "test:end-user-presence-ancestry": "node --test scripts/arch/end-user-presence-ancestry.test.mjs",
     "audit:mcp-tool-store-reach": "node scripts/arch/mcp-tool-store-reach.mjs",
     "generate:mcp-tool-store-reach": "node scripts/arch/mcp-tool-store-reach.mjs --write",
     "test:mcp-tool-store-reach": "node --test scripts/arch/mcp-tool-store-reach.test.mjs",
