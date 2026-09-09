@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "3fe8d76d392bf1162646f22d66a9767bea3593a617e2424be696e3d23737e037"
+      "sha256": "eb9400583f9c1f5fa1e60e179165f70da501dadf77aade3d3fd3147101bcaea4"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "54a47f7ecb8202a0b7917c7ca995fc974170a7ea0e80f4ca7b66207d981daffa"
+      "sha256": "e0091dfb414d3cfee9538f40e6aa981349dd264c957ecd8e118fd686d79fbdb7"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",

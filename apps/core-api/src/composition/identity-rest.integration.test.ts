@@ -108,6 +108,7 @@ const ADMIN_TOKEN = "win267-r1-admin-session-token";
 const OUTSIDER_TOKEN = "win267-r1-outsider-session-token";
 const EXPIRED_TOKEN = "win267-r1-expired-session-token";
 const REVOKED_TOKEN = "win267-r1-revoked-session-token";
+const IMPERSONATION_TOKEN = "win267-r1-impersonation-session-token";
 
 let postgres: StartedPostgreSqlContainer;
 let redis: StartedRedisContainer;
@@ -259,6 +260,22 @@ beforeAll(async () => {
   await store.operatorSessions.save(
     session("bbbbbbbb-1004-4000-8000-000000000004", REVOKED_TOKEN, { revokedAt: AT }),
   );
+  // AN IMPERSONATING SESSION: the ADMIN acting AS the OUTSIDER. It is the fixture
+  // that separates `actorUserId` from `effectiveUserId`, and without it a route
+  // that used the wrong one would pass every other case in this file.
+  await store.operatorSessions.save(
+    session("bbbbbbbb-1005-4000-8000-000000000005", IMPERSONATION_TOKEN, {
+      impersonatedUserId: asIdentifier(OUTSIDER),
+    }),
+  );
+  // `platformOperator` IS SET AS SQL, and it is the ONE thing in this fixture
+  // that is. `evaluateImpersonation` refuses unless the actor carries the flag,
+  // and NO published port writes it — `UserStore` exposes `findById`,
+  // `findByEmail` and `upsertByEmail` and nothing else. The alternatives were a
+  // second Prisma client, which `tenancy-prisma-only` pins to
+  // `packages/adapters/postgres-tenancy` and forbids here, or dropping the case.
+  // A `psql` process inside the container writes a column no contract owns.
+  await observe(`UPDATE "User" SET "platformOperator" = true WHERE "id" = '${ADMIN}'`);
 
   running = await startCoreApi({
     configuration: platform.value.core,
@@ -360,6 +377,44 @@ describe("WIN-267 R1 — an operator authenticates over HTTP", () => {
         `SELECT COALESCE("lastSeenAt"::text, 'NULL') FROM "OperatorSession" WHERE "id" = 'bbbbbbbb-1003-4000-8000-000000000003'`,
       ),
     ).toEqual(["NULL"]);
+  });
+});
+
+describe("WIN-267 R1 — impersonation, and the two user ids that are not the same", () => {
+  it("names the real human as the actor and the impersonated account as effective", async () => {
+    const answer = await call("GET", `${API_VERSION_PREFIX}/identity/session`, {
+      token: IMPERSONATION_TOKEN,
+    });
+    expect(answer.status, answer.text).toBe(200);
+    const data = answer.body["data"] as Record<string, unknown>;
+    expect(data["actorUserId"], "the actor is the real human, always").toBe(ADMIN);
+    expect(data["effectiveUserId"], "the effective user is whose permissions apply").toBe(OUTSIDER);
+    expect(data["impersonating"]).toEqual({ targetUserId: OUTSIDER });
+    // The email is the IMPERSONATED account's, which is the contract's own choice
+    // (`effectiveUser = impersonatedUser ?? actor`) and the thing a dashboard
+    // renders in the banner that says whose session this is.
+    expect(data["email"]).toBe("r1-outsider@example.test");
+  });
+
+  it("lists the IMPERSONATED account's organizations, not the impersonator's", async () => {
+    const answer = await call("GET", `${API_VERSION_PREFIX}/organizations`, { token: IMPERSONATION_TOKEN });
+    expect(answer.status, answer.text).toBe(200);
+    // THE WHOLE POINT. The ADMIN belongs to one organization and the OUTSIDER to
+    // none. A route that passed `actorUserId` to `listOperatorOrganizations`
+    // would answer with the ADMIN's organization here and would pass every other
+    // case in this file — a support engineer would be shown their own tenant
+    // while believing they were seeing the customer's, and nothing on the screen
+    // would say so.
+    expect(answer.body["data"]).toEqual([]);
+  });
+
+  it("refuses the environment to the impersonated account, on the impersonated account's memberships", async () => {
+    const answer = await call("GET", `${API_VERSION_PREFIX}/environments/${ENVIRONMENT}/end-users`, {
+      token: IMPERSONATION_TOKEN,
+    });
+    // Gate 2 evaluates the EFFECTIVE user's membership, and the OUTSIDER has
+    // none — so impersonating does not carry the impersonator's access with it.
+    expect(errorCode(answer)).toBe("TENANCY_ENVIRONMENT_FORBIDDEN");
   });
 });
 

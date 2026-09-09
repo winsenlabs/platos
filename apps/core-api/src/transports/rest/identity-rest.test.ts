@@ -32,7 +32,7 @@ import {
   offsetInCursor,
 } from "./environment-end-users.controller.js";
 import { createOrganizationValidator } from "./organizations.controller.js";
-import { readCookie } from "./operator.js";
+import { presentedOperatorToken, readCookie } from "./operator.js";
 import { refuseUnpagedQuery } from "./page.js";
 import { createProjectValidator } from "./projects.controller.js";
 
@@ -200,6 +200,38 @@ describe("WIN-267 R1 — the cookie the BFF writes is the contract's", () => {
     const header = serializeSetCookie(directive.value);
     expect(header).toContain("=;");
     expect(header).toContain("Max-Age=0");
+  });
+
+  it("asks the CONTRACT for the name on every request, and gets a different one over TLS", () => {
+    // THE MUTATION THIS KILLS is a hardcoded cookie name in the guard. Over plain
+    // HTTP the unprefixed name is what a hardcoded string would say, so the
+    // integration suite cannot see the difference; only the TLS branch can, and
+    // `__Host-` is not a name a transport is entitled to know.
+    const insecure = { headers: { cookie: "platos_operator_session=plain" } };
+    const secure = {
+      headers: { cookie: "__Host-platos_operator_session=tls" },
+      secure: true,
+    };
+    expect(presentedOperatorToken(identityAccess, insecure)).toBe("plain");
+    expect(presentedOperatorToken(identityAccess, secure)).toBe("tls");
+    // And each name is invisible to the other transport, which is what makes the
+    // pair a measurement rather than two independent assertions.
+    expect(presentedOperatorToken(identityAccess, { headers: insecure.headers, secure: true })).toBeNull();
+    expect(presentedOperatorToken(identityAccess, { headers: secure.headers })).toBeNull();
+  });
+
+  it("falls back to the Authorization header, which the contract's own input documents", () => {
+    expect(
+      presentedOperatorToken(identityAccess, { headers: { authorization: "Bearer header-token" } }),
+    ).toBe("header-token");
+    // The cookie wins when both are present: a browser that holds a session and
+    // a caller that pasted a token are two callers, and the browser is the one
+    // this transport is for.
+    expect(
+      presentedOperatorToken(identityAccess, {
+        headers: { cookie: "platos_operator_session=cookie-token", authorization: "Bearer header-token" },
+      }),
+    ).toBe("cookie-token");
   });
 
   it("finds the cookie by exact name among others", () => {

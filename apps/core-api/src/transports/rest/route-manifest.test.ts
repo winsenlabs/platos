@@ -34,12 +34,14 @@
 import { readFileSync } from "node:fs";
 
 import { Controller, Get, Module, RequestMethod, VERSION_NEUTRAL } from "@nestjs/common";
-import { describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
 
+import { loadPlatformConfiguration } from "../../config/platform.js";
 import { API_URI_VERSION_PREFIX, API_VERSION } from "../../http/api-surface.js";
 import { CoreApiHttpModule } from "../../http/http.module.js";
 import { HealthController } from "../../http/health.controller.js";
 import { NotFoundController } from "../../http/not-found.controller.js";
+import { startCoreApi, type RunningCoreApi } from "../../runtime/lifecycle.js";
 
 interface ManifestOperation {
   readonly method: string;
@@ -290,4 +292,94 @@ describe("WIN-267 R1 — the mounted route and the declared route are the same r
       expect(declared.get(route.id), `${route.id} is not in the manifest`).toBe(route.guarded);
     }
   });
+});
+
+// ---------------------------------------------------------------------------
+// AND THE SAME JOIN, AGAINST THE PROCESS `main.ts` STARTS.
+//
+// The cases above read metadata. Metadata is what Nest READS, not what Express
+// SERVES, and one thing sits between them that no decorator records: the ORDER
+// controllers are registered in. `NotFoundController` answers `@All("{*path}")`,
+// Express matches in registration order, and a business controller registered
+// after it answers 404 for every route it declares — with every unit case still
+// green and the manifest still correct.
+//
+// So each declared route is ISSUED, against a real server, and required not to be
+// the terminal handler's answer. No container is needed and none is used: with no
+// store configured the contexts are absent, so a mounted route answers
+// `TRANSPORT_CONTEXT_UNAVAILABLE` and an unmounted one answers
+// `TRANSPORT_ROUTE_NOT_FOUND`. Those are two different codes on purpose — that is
+// what `contextUnavailable` was minted for — and telling them apart is the whole
+// measurement.
+// ---------------------------------------------------------------------------
+
+describe("WIN-267 R1 — every declared route is REACHABLE in the process, in registration order", () => {
+  let running: RunningCoreApi | null = null;
+
+  afterAll(async () => {
+    await running?.stop("test");
+  });
+
+  it("answers each declared route from its handler, and a near-miss from the terminal one", async () => {
+    const platform = loadPlatformConfiguration({
+      PLATOS_ENVIRONMENT: "test",
+      PLATOS_CORE_API_PORT: "0",
+      PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
+    });
+    expect(platform.ok, JSON.stringify(platform)).toBe(true);
+    if (!platform.ok) return;
+    running = await startCoreApi({ configuration: platform.value.core });
+    const base = `http://${running.host}:${String(running.port)}`;
+
+    // NOT VACUOUS: no context is composed, which is the state that makes the two
+    // codes distinguishable. If one ever were, this case would be reading a
+    // different answer and would say so here rather than silently weakening.
+    expect(running.app.contexts.identityAccess).toBeUndefined();
+
+    const answers: string[] = [];
+    for (const row of manifestRoutes()) {
+      // `:param` segments are filled with a value that names itself, so a
+      // response that echoed one would be obvious. Nothing reads it — the
+      // contexts are absent — but a future reader should not have to wonder.
+      const path = row.path.replace(/:[A-Za-z0-9_]+/gu, "probe-parameter");
+      const response = await fetch(`${base}${path}`, {
+        method: row.method,
+        headers: { "content-type": "application/json" },
+        ...(row.method === "GET" || row.method === "DELETE" ? {} : { body: "{}" }),
+      });
+      const body = (await response.json()) as { readonly error?: { readonly code?: string } };
+      answers.push(`${row.method} ${row.path} -> ${String(body.error?.code)}`);
+    }
+    // THE EXPECTED CODE IS DERIVED FROM THE ROW, not listed by hand. Every
+    // declared POST carries a body pipe, and a pipe runs BEFORE the handler, so
+    // an empty body is refused with `TRANSPORT_REQUEST_INVALID` and never reaches
+    // the context check. That ordering is itself worth pinning: a malformed
+    // request is refused before anything authenticates, and a route that ever
+    // authenticated first would show up here as a changed code.
+    expect(answers).toEqual(
+      manifestRoutes().map(
+        (row) =>
+          `${row.method} ${row.path} -> ${
+            row.method === "POST" ? "TRANSPORT_REQUEST_INVALID" : "TRANSPORT_CONTEXT_UNAVAILABLE"
+          }`,
+      ),
+    );
+    // AND THE PROPERTY THAT MATTERS, STATED SEPARATELY so it survives any future
+    // change to the codes above: not one declared route reached the terminal
+    // handler.
+    for (const answer of answers) expect(answer).not.toContain("TRANSPORT_ROUTE_NOT_FOUND");
+
+    // THE NEGATIVE CONTROL. Without it the case above would pass against a
+    // process that answered `TRANSPORT_CONTEXT_UNAVAILABLE` to everything. One
+    // segment off in each direction — a wrong version and a missing prefix — and
+    // both must reach the terminal handler.
+    for (const miss of ["/api/v2/organizations", "/organizations", "/api/v1/organisations"]) {
+      const response = await fetch(`${base}${miss}`);
+      const body = (await response.json()) as { readonly error?: { readonly code?: string } };
+      expect(body.error?.code, `${miss} must not be served`).toBe("TRANSPORT_ROUTE_NOT_FOUND");
+    }
+
+    // AND THE PROCESS EDGE STILL ANSWERS AT THE ROOT.
+    expect((await fetch(`${base}/livez`)).status).toBe(200);
+  }, 60_000);
 });

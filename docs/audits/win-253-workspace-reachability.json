@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0eab0f7e3cfbc79fb73786b72e626bfb99a236be7747e2995fcd745b2e06608b",
+  "evidenceSha256": "66b0e259d1cfa0823e65599923e1055dc5b4945c86dfd8a76984c014986e6d0b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "4e87bd559c3ea144ba0fa173c7345700d72547ceb4f75256619deb58ead3995a",
+    "aggregateSha256": "9fbd2fff97ff351f33c9cfacc4a5d8f3afd616948a80378c5c613344a47f0b3f",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2495,7 +2495,7 @@
       },
       {
         "path": "apps/core-api/src/composition/identity-rest.integration.test.ts",
-        "sha256": "27608c06c0581e485e3c0421d76eabdcceb722884f7436390980dcfbc6d63989"
+        "sha256": "ab5b328d0597c7d1c1d7e8b80a86ffce0f538b4b00ae6590ddd637db8b6fc29c"
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
@@ -2739,7 +2739,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-rest.test.ts",
-        "sha256": "86450609a66adfd662de11da1ffd24330f33d6be24ba3a0650ff9aa1d8bbfde8"
+        "sha256": "9252d06f0d0637aebcbe50b9a40a9ba48e7273504bc0321d0a14067b407066af"
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-session.controller.ts",
@@ -2771,7 +2771,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/route-manifest.test.ts",
-        "sha256": "9dad63d06e1565dda4a86af09b2304848f7144df92e0e38e019a40cf48491359"
+        "sha256": "fc810e851a983058b0e99e9654173966c36370109076d3c4692fcb45695a58be"
       },
       {
         "path": "apps/core-api/src/transports/rest/transport-errors.ts",
@@ -41493,7 +41493,7 @@
             {
               "from": "apps/core-api/src/composition/identity-rest.integration.test.ts",
               "kind": "reference",
-              "line": 172
+              "line": 173
             },
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
@@ -42610,7 +42610,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "bb08c3d291439638c8d9692884b28f14e484fa5416edeebc529ea1cf4cbc7932",
+      "evidenceSha256": "fa975e9b09650fd996f4756adb3d33a1e67a8b75e02769250a92b3831fcf77d7",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -50259,6 +50259,11 @@
               "line": 62
             },
             {
+              "from": "apps/core-api/src/composition/identity-rest.integration.test.ts",
+              "kind": "reference",
+              "line": 276
+            },
+            {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "kind": "reference",
               "line": 110
@@ -51055,6 +51060,10 @@
               "apps/core-api/src/app.module.test.ts"
             ],
             [
+              "apps/core-api/src/composition/identity-rest.integration.test.ts",
+              "apps/core-api/src/composition/identity-rest.integration.test.ts"
+            ],
+            [
               "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "apps/core-api/src/composition/operator-authentication.integration.test.ts"
             ],
@@ -51689,6 +51698,7 @@
           ],
           "roots": [
             "apps/core-api/src/app.module.test.ts",
+            "apps/core-api/src/composition/identity-rest.integration.test.ts",
             "apps/core-api/src/composition/operator-authentication.integration.test.ts",
             "apps/core-api/src/http/rest-chassis.test.ts",
             "apps/core-api/src/runtime/correlation.test.ts",
@@ -51905,7 +51915,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "1d64a288bcc86eb861fbb67304695afc5bb3f706796774a6f289692022f889e0",
+      "evidenceSha256": "fff54ec6869bc13e25d5e7d61725b139d898301a50b38cf83b4e34326ab124a8",
       "manifestSha256": "c3c49b3941820594e187dcbb86c78001443c58add67ce25009e535c3f1374927",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
