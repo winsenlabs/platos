@@ -463,9 +463,42 @@ export function classifyChanges(baseline, current) {
   return findings;
 }
 
-/** The current slice, derived fresh from the tree rather than read off disk. */
+/** The committed generated document. */
+export function committedDocument(repoDir = repositoryRoot) {
+  return JSON.parse(
+    readFileSync(join(repoDir, "apps", "agent", "src", "openapi", "openapi.generated.json"), "utf8"),
+  );
+}
+
+/**
+ * The slice the SOURCE derives right now, ignoring what was committed.
+ *
+ * `currentSlice()` reads the committed artifact, which is the right input for
+ * the ratchet — it is the document consumers are handed. But a developer who
+ * edits a DTO and forgets to regenerate would then be compared against a stale
+ * artifact, and this gate would say nothing. So `check` computes BOTH and
+ * refuses when they disagree, rather than leaning on the control-plane drift
+ * check that happens to run in a later CI step.
+ */
+export function freshSlice({ repoDir = repositoryRoot, overrides = new Map() } = {}) {
+  const document = committedDocument(repoDir);
+  return v1Slice(rehydrate(document, deriveRestContract({ repoDir, overrides })));
+}
+
+/**
+ * How the committed artifact differs from what the source derives right now.
+ *
+ * Empty means the document is current. `overrides` exists so a named case can
+ * prove this refusal FIRES: it hands back one real DTO file with a property
+ * deleted and asserts the staleness is seen.
+ */
+export function stalenessFindings({ repoDir = repositoryRoot, overrides = new Map() } = {}) {
+  return classifyChanges(currentSlice({ repoDir }), freshSlice({ repoDir, overrides }));
+}
+
+/** The current slice, taken from the committed document. */
 export function currentSlice({ repoDir = repositoryRoot, overrides = new Map() } = {}) {
-  const document = JSON.parse(readFileSync(join(repoDir, "apps", "agent", "src", "openapi", "openapi.generated.json"), "utf8"));
+  const document = committedDocument(repoDir);
   if (overrides.size === 0) return v1Slice(document);
   // A MUTATION RUN RE-DERIVES rather than reading the committed artifact, which
   // is what makes the named mutation cases a proof about the SOURCE and not
@@ -566,6 +599,16 @@ function runCli(argv = process.argv.slice(2)) {
     writeFileSync(BASELINE_PATH, `${JSON.stringify(slice, null, 2)}\n`);
     process.stderr.write(`[openapi-compat] wrote the first baseline\n`);
     return;
+  }
+  // THE ARTIFACT MUST STILL BE WHAT THE SOURCE DERIVES. See `freshSlice`.
+  const stale = stalenessFindings();
+  if (stale.length > 0) {
+    const findings = stale;
+    process.stderr.write(
+      `[openapi-compat] the committed OpenAPI document is STALE against the core-api DTOs:\n${render(findings)}\n` +
+        "Run: pnpm --filter platos-agent generate:control-plane\n",
+    );
+    process.exit(1);
   }
   const decision = decide({ mode, baseline, slice });
   if (decision.action === "write") {

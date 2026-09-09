@@ -29,6 +29,8 @@ import {
   classifyChanges,
   currentSlice,
   decide,
+  freshSlice,
+  stalenessFindings,
   readBaseline,
   v1Slice,
 } from "./openapi-compat.mjs";
@@ -59,6 +61,26 @@ test("the committed V1 baseline records no breaking change against the current D
 
 test("the committed V1 baseline is exactly the slice the tree derives", () => {
   assert.deepEqual(baseline, currentSlice());
+});
+
+test("the committed OpenAPI document is what the core-api DTOs derive right now", () => {
+  // The ratchet compares the COMMITTED artifact to the baseline, so a developer
+  // who edits a DTO and forgets to regenerate would otherwise be measured
+  // against a stale document. `check` refuses that, and this is the case that
+  // says so.
+  assert.deepEqual(freshSlice(), currentSlice());
+  assert.deepEqual(stalenessFindings(), []);
+});
+
+test("the staleness refusal FIRES on a DTO edit that was never regenerated", () => {
+  const original = read(RESOURCES);
+  const mutated = original.replace("  readonly email: string;\n", "");
+  assert.notEqual(mutated, original);
+  const findings = stalenessFindings({ overrides: new Map([[RESOURCES, mutated]]) });
+  assert.ok(
+    findings.some((entry) => entry.kind === "property-removed"),
+    `a stale document was reported as current: ${JSON.stringify(findings)}`,
+  );
 });
 
 test("the V1 baseline is itself a valid OpenAPI 3.1 document", () => {
