@@ -88,7 +88,39 @@ describe("clean tenancy Prisma boundary", () => {
     // 0b36ea83f83a49ed4795881e9c9ccc00a6214c5e30ef654091d36dc13c2cc5a4 — which
     // is what establishes that 815 is real growth rather than a measurement
     // artifact of a different build state.
-    expect(analysis.calls.length).toBe(815);
+    // WIN-268 P2, 2026-09-09. RE-PINNED 815 -> 813, and the two are ACCOUNTED
+    // FOR rather than absorbed.
+    //
+    // THE ARITHMETIC. Base `3b3f1ebb` measured with THIS analyzer: 815 app-wide,
+    // of which `mcp-platform/**` held 125 —
+    // `permission-gateway.service.ts` 8, `mcp-tool-acl.service.ts` 11,
+    // `identity-resolver.service.ts` 5. Those three now hold ZERO and their
+    // statements live in three store seams: `mcp-policy.store.ts` 7,
+    // `entity-tool-policy.store.ts` 10, `mcp-identity.store.ts` 5.
+    // 8 + 11 + 5 = 24 OUT; 7 + 10 + 5 = 22 IN; net -2, so 815 - 2 = 813 and
+    // the directory's own 125 - 2 = 123.
+    //
+    // THE TWO THAT VANISHED ARE DUPLICATE STATEMENTS THE EXTRACTION MERGED, not
+    // deleted behaviour. `organizationMcpPolicy.findMany` was written TWICE in
+    // the gateway (once for tier 2, once for the operator listing) and is now
+    // one method both call; `entityToolPolicy.upsert` was written THREE times in
+    // the ACL (`upsert`, `bulk`, `autoInsert`) and is now two, with `autoInsert`
+    // delegating. Both merged rows are `tools`-owned, which is why the ownership
+    // split in `mcp-platform/orm-ownership-census.test.ts` moves `tools`
+    // 35 -> 33 and leaves the other nine owners untouched — a cross-check that a
+    // net-2 arrived at any other way would fail.
+    //
+    // NOT A LAUNDERED REDUCTION. This is the first time this pin has moved DOWN.
+    // `orm-ownership-census.test.ts` reads this digit back out of this file, so
+    // the two gates cannot be re-pinned independently, and its per-file ratchet
+    // pins where each of the 123 remaining sites lives.
+    //
+    // BUILD STATE UNCHANGED from the note above: measured on the mini under
+    // `pnpm install --frozen-lockfile --ignore-scripts`, then `pnpm --filter
+    // @platos/tenancy-database build && pnpm --filter @internal/workload-identity
+    // build`, which is the state ci.yml's agent job reaches before its Vitest
+    // steps. Re-measured on base `3b3f1ebb` in the SAME state: 815.
+    expect(analysis.calls.length).toBe(813);
     expect(inventory).toHaveLength(329);
     expect(inventoryDigest).toBe(
       "0c4fd159179dbf051d093ac039b87771c53d407adbf06e7aa79df0a3cc6f85ac",

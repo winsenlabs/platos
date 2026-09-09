@@ -62,16 +62,62 @@ const MCP_PLATFORM_PREFIX = "mcp-platform/";
  * lose the import while keeping a call through some other route.
  */
 const CEILING: Readonly<Record<string, number>> = Object.freeze({
+  // The strangler's own surfaces, untouched by P2.
   "mcp-platform/mcp-entity.controller.ts": 20,
-  "mcp-platform/mcp-bearer-token.service.ts": 9,
-  "mcp-platform/token.service.ts": 10,
+  "mcp-platform/mcp-bearer-token.service.ts": 11,
+  "mcp-platform/token.service.ts": 9,
   "mcp-platform/events.service.ts": 8,
+  // The seams P2 created. These are the ORM statements that USED to sit in the
+  // three converted services, and their ceilings are what those services held:
+  // 8 + 11 + 5 = 24 out, 7 + 10 + 5 = 22 in. The two that vanished are two
+  // DUPLICATE statements the extraction merged — `organizationMcpPolicy.findMany`
+  // was written twice in the gateway (tier 2 and the listing), and
+  // `entityToolPolicy.upsert` three times in the ACL (`upsert`, `bulk`,
+  // `autoInsert`). Both removed rows are `tools`-owned, which is why the
+  // ownership split moves `tools` 35 -> 33 and nothing else.
   "mcp-platform/entity-tool-policy.store.ts": 10,
   "mcp-platform/mcp-policy.store.ts": 7,
   "mcp-platform/mcp-identity.store.ts": 5,
-  "mcp-platform/tools/entities.ts": 0,
-  "mcp-platform/tools/events.ts": 0,
-  "mcp-platform/tools/mcp.ts": 0,
+  // The MCP tool handlers. WIN-269 territory, measured and left alone.
+  "mcp-platform/tools/end-users.ts": 12,
+  "mcp-platform/tools/jobs.ts": 11,
+  "mcp-platform/tools/macros.ts": 10,
+  "mcp-platform/tools/entities.ts": 5,
+  "mcp-platform/tools/reflection.ts": 4,
+  "mcp-platform/tools/admin.ts": 3,
+  "mcp-platform/tools/orchestration.ts": 3,
+  "mcp-platform/tools/channels.ts": 2,
+  "mcp-platform/tools/mcp.ts": 2,
+  "mcp-platform/tools/channel-apps.ts": 1,
+});
+
+/**
+ * The whole directory's ceiling, and the ownership split as measured.
+ *
+ * MEASURED ON BOTH TREES WITH THE SAME ANALYZER, which is the only way a delta
+ * means anything: base `3b3f1ebb` reports 125 here and 815 app-wide; this tree
+ * reports 123 and 813.
+ *
+ * WHAT THIS CENSUS DOES NOT SEE, said plainly rather than left for a reader to
+ * discover: it counts generated DELEGATE operations. `mcp-scope.ts` resolves the
+ * tenant ancestry with a `$queryRaw`, which is a client method and not a
+ * delegate operation, so it contributes 0 to every number here.
+ * `scripts/arch/sole-writer.mjs` is the gate that does attribute raw SQL, and it
+ * attributes by the table the statement names.
+ */
+const DIRECTORY_CEILING = 123;
+
+const OWNERSHIP_CEILING: Readonly<Record<string, number>> = Object.freeze({
+  "identity-access": 35,
+  tools: 33,
+  agents: 15,
+  tenancy: 15,
+  jobs: 11,
+  eventing: 6,
+  observability: 3,
+  conversations: 2,
+  "<kernel-outbox-adapter>": 2,
+  governance: 1,
 });
 
 /** The three services the tranche took off the ORM. They must hold ZERO. */
@@ -143,6 +189,20 @@ describe("WIN-268 P2 — the mcp-platform ORM surface, by owning context", () =>
       byOwner.set(owner, (byOwner.get(owner) ?? 0) + 1);
     }
 
+    // THE THREE IDENTITIES. Each is an equation between numbers derived
+    // separately, so a partial re-pin cannot go unnoticed:
+    //   the per-owner split sums to the directory total;
+    //   the directory total is at or under its own ceiling;
+    //   the directory total plus everything outside it is the app-wide pin.
+    const ownerSum = [...byOwner.values()].reduce((a, b) => a + b, 0);
+    expect(ownerSum).toBe(here.length);
+    expect(here.length).toBeLessThanOrEqual(DIRECTORY_CEILING);
+
+    const overOwner = [...byOwner.entries()]
+      .filter(([owner, count]) => count > (OWNERSHIP_CEILING[owner] ?? 0))
+      .map(([owner, count]) => `${owner}: ${count} > ${OWNERSHIP_CEILING[owner] ?? 0}`);
+    expect(overOwner.sort(), "an owning context gained ORM call sites in this directory").toEqual([]);
+
     // THE JOIN. `clean-prisma-delegates.test.ts` pins the app-wide total, and
     // that pin is itself joined to the frozen `main` oracle (see its own note).
     // Reading the digit out of that file rather than restating it here is what
@@ -153,11 +213,7 @@ describe("WIN-268 P2 — the mcp-platform ORM surface, by owning context", () =>
     );
     const pinned = /expect\(analysis\.calls\.length\)\.toBe\((\d+)\)/u.exec(gate);
     expect(pinned?.[1], "the app-wide call-site pin could not be read").toBeDefined();
-
-    const total = Number(pinned?.[1]);
-    const outside = analysis.calls.length - here.length;
-    expect(here.length + outside).toBe(analysis.calls.length);
-    expect(analysis.calls.length).toBe(total);
+    expect(analysis.calls.length).toBe(Number(pinned?.[1]));
 
     // Not an assertion — the report. Printed so a reviewer reading CI output
     // gets the ownership split without running anything.
@@ -166,7 +222,7 @@ describe("WIN-268 P2 — the mcp-platform ORM surface, by owning context", () =>
       .map(([owner, count]) => `${owner}=${count}`)
       .join(" ");
     process.stdout.write(
-      `\n[WIN-268 P2] mcp-platform ORM call sites: ${here.length} of ${total} app-wide\n` +
+      `\n[WIN-268 P2] mcp-platform ORM call sites: ${here.length} of ${analysis.calls.length} app-wide\n` +
         `[WIN-268 P2] ownership split: ${split}\n`,
     );
   });
