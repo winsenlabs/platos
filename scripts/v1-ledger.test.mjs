@@ -1763,7 +1763,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the derivation joins to all four rather than to itself. The boundary rule
     // this tranche adds is an edit to `scripts/arch/boundary-rules.mjs` and adds
     // no file. NO LEDGER RULE CHANGED.
-    "root-infra": 69,
+    // WIN-268 (M4.2) 69 -> 70 with `scripts/mutations-win268-m42.json`, this
+    // tranche's mutation ledger: twenty-four mutations, twenty-two killed, two
+    // declared equivalent with the proof, zero survivors. It takes the same
+    // blanket `root-infra.tooling.scripts` rule its nine predecessors took
+    // (100 -> 101). NO LEDGER RULE CHANGED.
+    "root-infra": 70,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1872,7 +1877,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // itemised on that area's delta above: the tier-2 forged-chain refusal and the
   // macro params round trip. The eight-key re-derivation is
   // 8 + 0 + 80 + 4 + 10 + 1505 + 21 + 69 = 1697.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1697);
+  //
+  // AND THE MUTATION LEDGER 1697 -> 1698. ONE file, `root-infra`, itemised on
+  // that area's delta above: 8 + 0 + 80 + 4 + 10 + 1505 + 21 + 70 = 1698.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1698);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2058,7 +2066,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // The same two `apps-agent` files as the `totalFiles` assertion above,
     // reached here by summing the per-area counts instead of reading the total.
     // 1695 + 2 = 1697.
-    rulesDocument.baseline.totalFiles + 1697
+    //
+    // AND THE MUTATION LEDGER 1697 -> 1698 -- the SIXTEENTH hand move. The same
+    // one `root-infra` file, reached here by summing the per-area counts.
+    rulesDocument.baseline.totalFiles + 1698
   );
 });
 
