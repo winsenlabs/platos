@@ -387,6 +387,16 @@ const expectedV1EvidenceCommands = [
   // evidence artifact of the same class as the censuses it reads.
   "pnpm test:differential-coverage",
   "pnpm audit:differential-coverage",
+  // WIN-267 W2 (+2). The V1 OpenAPI contract ratchet. `audit:` compares the
+  // schemas DERIVED FROM THE core-api HANDLER TYPES against the committed
+  // baseline in `docs/openapi-v1-baseline.json` and fails on any breaking
+  // change; `test:` carries the named cases that separate a removed, renamed or
+  // narrowed field (BREAKING) from an added optional one (COMPATIBLE), by
+  // mutating the real DTO sources in memory and re-deriving. Both belong in the
+  // V1 evidence step because the generated document is an evidence artifact of
+  // the same class as the manifest it is built from.
+  "pnpm audit:openapi-compat",
+  "pnpm test:openapi-compat",
 ];
 // WIN-284. The two coverage commands inside the V1 evidence step, listed
 // separately so each gets its own removal and concealment control below. A gate

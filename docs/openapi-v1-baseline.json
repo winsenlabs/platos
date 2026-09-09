@@ -1,0 +1,1308 @@
+{
+  "components": {
+    "schemas": {
+      "CollectionEnvelope_EndUserResource": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EndUserResource"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "type": "object"
+      },
+      "CollectionEnvelope_OrganizationResource": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationResource"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "type": "object"
+      },
+      "CollectionEnvelope_ProjectResource": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectResource"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "type": "object"
+      },
+      "CreateOrganizationBody": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "type": "object"
+      },
+      "CreateProjectBody": {
+        "properties": {
+          "environmentName": {
+            "type": "string"
+          },
+          "environmentSlug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentName",
+          "environmentSlug",
+          "name",
+          "organizationId",
+          "slug"
+        ],
+        "type": "object"
+      },
+      "CreatedProjectResource": {
+        "properties": {
+          "environment": {
+            "properties": {
+              "createdAt": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "slug": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "createdAt",
+              "id",
+              "name",
+              "slug"
+            ],
+            "type": "object"
+          },
+          "membership": {
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "role"
+            ],
+            "type": "object"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectResource"
+          }
+        },
+        "required": [
+          "environment",
+          "membership",
+          "project"
+        ],
+        "type": "object"
+      },
+      "DegradedNotice": {
+        "properties": {
+          "fallback": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fallback",
+          "service"
+        ],
+        "type": "object"
+      },
+      "EndUserIdentityResource": {
+        "properties": {
+          "channel": {
+            "type": "string"
+          },
+          "disabledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "issuer": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "verifiedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "channel",
+          "disabledAt",
+          "issuer",
+          "subject",
+          "verifiedAt"
+        ],
+        "type": "object"
+      },
+      "EndUserResource": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "disabledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "endUserId": {
+            "type": "string"
+          },
+          "identities": {
+            "items": {
+              "$ref": "#/components/schemas/EndUserIdentityResource"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "createdAt",
+          "disabledAt",
+          "displayName",
+          "endUserId",
+          "identities"
+        ],
+        "type": "object"
+      },
+      "ErrorEnvelope": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/WireError"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "ExchangeSessionBody": {
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_CreatedProjectResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CreatedProjectResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_OperatorSessionResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OperatorSessionResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_OrganizationResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OrganizationResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemMeta": {
+        "properties": {
+          "contractVersion": {
+            "type": "string"
+          },
+          "degraded": {
+            "$ref": "#/components/schemas/DegradedNotice"
+          }
+        },
+        "required": [
+          "contractVersion"
+        ],
+        "type": "object"
+      },
+      "OperatorSessionResource": {
+        "properties": {
+          "actorUserId": {
+            "type": "string"
+          },
+          "effectiveUserId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "impersonating": {
+            "properties": {
+              "targetUserId": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "targetUserId"
+            ],
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "mfaVerifiedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sessionId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "actorUserId",
+          "effectiveUserId",
+          "email",
+          "expiresAt",
+          "impersonating",
+          "mfaVerifiedAt",
+          "sessionId"
+        ],
+        "type": "object"
+      },
+      "OrganizationResource": {
+        "properties": {
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "membership": {
+            "properties": {
+              "deactivatedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "deactivatedAt",
+              "id",
+              "role"
+            ],
+            "type": "object"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "archivedAt",
+          "createdAt",
+          "id",
+          "membership",
+          "name",
+          "slug"
+        ],
+        "type": "object"
+      },
+      "PageBlock": {
+        "properties": {
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "cursor",
+          "hasMore",
+          "limit",
+          "nextCursor"
+        ],
+        "type": "object"
+      },
+      "ProjectResource": {
+        "properties": {
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "through": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "archivedAt",
+          "createdAt",
+          "id",
+          "name",
+          "organizationId",
+          "slug",
+          "through"
+        ],
+        "type": "object"
+      },
+      "WireError": {
+        "properties": {
+          "body": {
+            "type": "string"
+          },
+          "code": {
+            "enum": [
+              "ACCESS_KEY_ROTATION_SUPERSEDED",
+              "AGENTS_AGENT_ALREADY_EXISTS",
+              "AGENTS_AGENT_METADATA_INVALID",
+              "AGENTS_AGENT_NOT_BOUND",
+              "AGENTS_AGENT_NOT_FOUND",
+              "AGENTS_CANARY_ABSENT",
+              "AGENTS_CLUSTER_ALREADY_EXISTS",
+              "AGENTS_CLUSTER_NOT_FOUND",
+              "AGENTS_MACRO_INVALID",
+              "AGENTS_MACRO_NOT_EDITABLE",
+              "AGENTS_MACRO_NOT_FOUND",
+              "AGENTS_MACRO_RECORDING_UNKNOWN",
+              "AGENTS_PROVIDER_KEY_UNAVAILABLE",
+              "AGENTS_REPOSITORY_UNAVAILABLE",
+              "AGENTS_ROUTE_INVALID",
+              "AGENTS_ROUTE_NOT_FOUND",
+              "AGENTS_SCOPE_MISMATCH",
+              "AGENTS_SKILL_NOT_LOADED",
+              "AGENTS_TEMPLATE_INVALID",
+              "AGENTS_TEMPLATE_NOT_FOUND",
+              "AGENTS_VERSION_INVALID",
+              "AGENTS_VERSION_NOT_FOUND",
+              "BOOTSTRAP_GRANT_UNAVAILABLE",
+              "CHANNELS_ADAPTER_REJECTED",
+              "CHANNELS_ADAPTER_UNAUTHORIZED",
+              "CHANNELS_ADAPTER_UNAVAILABLE",
+              "CHANNELS_APP_NOT_FOUND",
+              "CHANNELS_CONNECTION_DISABLED",
+              "CHANNELS_CONNECTION_NOT_FOUND",
+              "CHANNELS_ERASURE_PLAN_FOREIGN",
+              "CHANNELS_EVENT_DUPLICATE",
+              "CHANNELS_EVENT_LEASE_LOST",
+              "CHANNELS_EVENT_NOT_CLAIMABLE",
+              "CHANNELS_EVENT_NOT_FOUND",
+              "CHANNELS_EVENT_PAYLOAD_INVALID",
+              "CHANNELS_INSTALLATION_NOT_FOUND",
+              "CHANNELS_INSTALLATION_REVOKED",
+              "CHANNELS_REFRESH_LOST",
+              "CHANNELS_REFRESH_NOT_CLAIMABLE",
+              "CHANNELS_REFRESH_REPAIR_REQUIRED",
+              "CHANNELS_REPOSITORY_UNAVAILABLE",
+              "CHANNELS_ROUTING_AGENT_UNKNOWN",
+              "CHANNELS_ROUTING_INVALID",
+              "CHANNELS_ROUTING_UNRESOLVED",
+              "CHANNELS_THREAD_KEY_INVALID",
+              "CHANNELS_THREAD_LINK_CONFLICT",
+              "CONVERSATIONS_AGENT_NOT_VISIBLE",
+              "CONVERSATIONS_AGENT_VERSION_NOT_VISIBLE",
+              "CONVERSATIONS_ATTACHMENT_COUNT_EXCEEDED",
+              "CONVERSATIONS_ATTACHMENT_FOREIGN",
+              "CONVERSATIONS_ATTACHMENT_MEDIA_TYPE_REFUSED",
+              "CONVERSATIONS_ATTACHMENT_TOO_LARGE",
+              "CONVERSATIONS_ATTACHMENT_TURN_TOO_LARGE",
+              "CONVERSATIONS_BUDGET_EXHAUSTED",
+              "CONVERSATIONS_COMPACTION_CURSOR_REGRESSED",
+              "CONVERSATIONS_COMPACTION_IN_PROGRESS",
+              "CONVERSATIONS_COMPACTION_LOCK_HELD",
+              "CONVERSATIONS_COMPACTION_SUMMARY_TOO_LONG",
+              "CONVERSATIONS_ERASURE_PLAN_FOREIGN",
+              "CONVERSATIONS_FORK_CEILING_EXCEEDED",
+              "CONVERSATIONS_FORK_DEPTH_EXCEEDED",
+              "CONVERSATIONS_FORK_TURN_FOREIGN",
+              "CONVERSATIONS_GENERATION_FAILED",
+              "CONVERSATIONS_OUTPUT_SCHEMA_INVALID",
+              "CONVERSATIONS_OUTPUT_UNPARSABLE",
+              "CONVERSATIONS_PAGE_REQUEST_INVALID",
+              "CONVERSATIONS_POSTMAN_ALREADY_SETTLED",
+              "CONVERSATIONS_POSTMAN_FINGERPRINT_MISMATCH",
+              "CONVERSATIONS_POSTMAN_HANDLE_EXPIRED",
+              "CONVERSATIONS_POSTMAN_NOT_FOUND",
+              "CONVERSATIONS_POSTMAN_REQUEST_REPLAYED",
+              "CONVERSATIONS_QUEUE_UNAVAILABLE",
+              "CONVERSATIONS_REPOSITORY_UNAVAILABLE",
+              "CONVERSATIONS_SCOPE_MISMATCH",
+              "CONVERSATIONS_SESSION_CONTEXT_INVALID",
+              "CONVERSATIONS_SESSION_CONTEXT_TOO_LARGE",
+              "CONVERSATIONS_STEP_ALREADY_SETTLED",
+              "CONVERSATIONS_STEP_CEILING_EXCEEDED",
+              "CONVERSATIONS_STEP_NOT_FOUND",
+              "CONVERSATIONS_STEP_RATE_MISSING",
+              "CONVERSATIONS_STEP_SEQUENCE_TAKEN",
+              "CONVERSATIONS_STEP_USAGE_INVALID",
+              "CONVERSATIONS_SUB_AGENTS_DISABLED",
+              "CONVERSATIONS_SUB_AGENT_CYCLE",
+              "CONVERSATIONS_SUB_AGENT_DEPTH_EXCEEDED",
+              "CONVERSATIONS_SUB_AGENT_FAN_OUT_EXCEEDED",
+              "CONVERSATIONS_THREAD_ARCHIVED",
+              "CONVERSATIONS_THREAD_FORBIDDEN",
+              "CONVERSATIONS_THREAD_NOT_FOUND",
+              "CONVERSATIONS_THREAD_TAGS_INVALID",
+              "CONVERSATIONS_THREAD_TITLE_INVALID",
+              "CONVERSATIONS_TOOL_CATALOGUE_EXCEEDED",
+              "CONVERSATIONS_TOOL_NOT_OFFERED",
+              "CONVERSATIONS_TURNS_DISABLED",
+              "CONVERSATIONS_TURN_ABORTED",
+              "CONVERSATIONS_TURN_ALREADY_SETTLED",
+              "CONVERSATIONS_TURN_CEILING_EXCEEDED",
+              "CONVERSATIONS_TURN_IDEMPOTENCY_CONFLICT",
+              "CONVERSATIONS_TURN_INPUT_INVALID",
+              "CONVERSATIONS_TURN_INPUT_TOO_LARGE",
+              "CONVERSATIONS_TURN_NOT_FOUND",
+              "CONVERSATIONS_TURN_SEQUENCE_TAKEN",
+              "COST_ALERT_CHANNEL_EXISTS",
+              "COST_ALERT_CHANNEL_INVALID",
+              "COST_ALERT_CHANNEL_NOT_FOUND",
+              "COST_ALERT_CHANNEL_UNCHANGED",
+              "COST_ALERT_TOPIC_INVALID",
+              "COST_BUDGET_INVALID",
+              "COST_BUDGET_NOT_FOUND",
+              "COST_BUDGET_TARGET_INVALID",
+              "COST_DELIVERY_FAILED",
+              "COST_DELIVERY_NOT_FOUND",
+              "COST_DELIVERY_UNAVAILABLE",
+              "COST_LEDGER_UNAVAILABLE",
+              "COST_REPOSITORY_UNAVAILABLE",
+              "COST_SCOPE_MISMATCH",
+              "COST_SPEND_INVALID",
+              "COST_THRESHOLD_EVENT_UNAVAILABLE",
+              "COST_THRESHOLD_INVALID",
+              "COST_WINDOW_INVALID",
+              "CREDENTIAL_EXPIRED",
+              "CREDENTIAL_FORBIDDEN",
+              "CREDENTIAL_NAME_TAKEN",
+              "CREDENTIAL_REVOKED",
+              "CREDENTIAL_UNAVAILABLE",
+              "ENVELOPE_FORMAT_UNWRITABLE",
+              "ENVIRONMENT_VARIABLE_KEY_INVALID",
+              "ENVIRONMENT_VARIABLE_UNAVAILABLE",
+              "ENVIRONMENT_VARIABLE_VALUE_REQUIRED",
+              "ENVIRONMENT_VARIABLE_VALUE_TOO_LONG",
+              "ENVIRONMENT_VARIABLE_VERSION_CONFLICT",
+              "EVENTING_ERASURE_PLAN_FOREIGN",
+              "EVENTING_QUEUE_UNAVAILABLE",
+              "EVENTING_REPOSITORY_UNAVAILABLE",
+              "EVENTING_RULE_DESTINATION_INVALID",
+              "EVENTING_RULE_DESTINATION_REJECTED",
+              "EVENTING_RULE_DISABLED",
+              "EVENTING_RULE_FILTERS_INVALID",
+              "EVENTING_RULE_NAME_INVALID",
+              "EVENTING_RULE_NAME_TAKEN",
+              "EVENTING_RULE_NOT_FOUND",
+              "EVENTING_RULE_PATTERN_INVALID",
+              "EVENTING_SCREEN_UNAVAILABLE",
+              "FILES_ARTIFACT_CONTENT_INVALID",
+              "FILES_ARTIFACT_CONTENT_TOO_LARGE",
+              "FILES_ARTIFACT_KEY_INVALID",
+              "FILES_ARTIFACT_KIND_IMMUTABLE",
+              "FILES_ARTIFACT_REVISION_CONFLICT",
+              "FILES_ARTIFACT_REVISION_NOT_FOUND",
+              "FILES_ATTACHMENT_BINDING_CONFLICT",
+              "FILES_ATTACHMENT_METADATA_INVALID",
+              "FILES_ATTACHMENT_NOT_FOUND",
+              "FILES_ATTACHMENT_QUOTA_EXCEEDED",
+              "FILES_ATTACHMENT_RETENTION_ELAPSED",
+              "FILES_ATTACHMENT_TOO_LARGE",
+              "FILES_BLOB_DESTRUCTION_FAILED",
+              "FILES_ERASURE_PLAN_FOREIGN",
+              "FILES_OBJECT_NOT_FOUND",
+              "FILES_OBJECT_PRECONDITION_FAILED",
+              "FILES_OBJECT_STORE_UNAVAILABLE",
+              "FILES_PRESIGNED_GRANT_ELAPSED",
+              "FILES_PRESIGN_WINDOW_INVALID",
+              "FILES_REPOSITORY_UNAVAILABLE",
+              "FILES_STORAGE_KEY_SCOPE_MISMATCH",
+              "FORBIDDEN_SCOPE",
+              "GOVERNANCE_ACTIVITY_UNREADABLE",
+              "GOVERNANCE_AGENT_NOT_VISIBLE",
+              "GOVERNANCE_CRITERIA_SCOPE_UNRESOLVED",
+              "GOVERNANCE_CRITERION_ALREADY_EXISTS",
+              "GOVERNANCE_CRITERION_INACTIVE",
+              "GOVERNANCE_CRITERION_NAME_INVALID",
+              "GOVERNANCE_CRITERION_NOT_FOUND",
+              "GOVERNANCE_CRITERION_PROMPT_INVALID",
+              "GOVERNANCE_CRITERION_RUBRIC_INVALID",
+              "GOVERNANCE_CRITERION_SCALE_INVALID",
+              "GOVERNANCE_ERASURE_PLAN_FOREIGN",
+              "GOVERNANCE_EVALS_DISABLED",
+              "GOVERNANCE_EVALS_SCOPE_UNRESOLVED",
+              "GOVERNANCE_EVAL_NOT_FOUND",
+              "GOVERNANCE_EVAL_SELF_JUDGED",
+              "GOVERNANCE_GOLDEN_SETS_SCOPE_UNRESOLVED",
+              "GOVERNANCE_GOLDEN_SET_ALREADY_EXISTS",
+              "GOVERNANCE_GOLDEN_SET_INVALID",
+              "GOVERNANCE_GOLDEN_SET_NOT_FOUND",
+              "GOVERNANCE_GOLDEN_SET_TOO_MANY_CRITERIA",
+              "GOVERNANCE_GOLDEN_SET_TOO_MANY_PAIRS",
+              "GOVERNANCE_GOLDEN_SET_TOO_MANY_THREADS",
+              "GOVERNANCE_JUDGE_MODEL_INVALID",
+              "GOVERNANCE_JUDGE_UNAVAILABLE",
+              "GOVERNANCE_LEDGER_UNAVAILABLE",
+              "GOVERNANCE_PAGE_REQUEST_INVALID",
+              "GOVERNANCE_QUEUE_UNAVAILABLE",
+              "GOVERNANCE_RATINGS_SCOPE_UNRESOLVED",
+              "GOVERNANCE_RATING_ACTOR_FORBIDDEN",
+              "GOVERNANCE_RATING_COMMENT_TOO_LONG",
+              "GOVERNANCE_RATING_TARGET_NOT_FOUND",
+              "GOVERNANCE_RATING_TARGET_UNREADABLE",
+              "GOVERNANCE_RATING_VALUE_INVALID",
+              "GOVERNANCE_SAFETY_ACTION_UNKNOWN",
+              "GOVERNANCE_SAFETY_DETECTOR_UNKNOWN",
+              "GOVERNANCE_SAFETY_RULE_MALFORMED",
+              "GOVERNANCE_SAFETY_SCOPE_UNRESOLVED",
+              "GOVERNANCE_SAFETY_SEVERITY_UNKNOWN",
+              "GOVERNANCE_SCOPE_MISMATCH",
+              "GOVERNANCE_TRANSCRIPT_NOT_FOUND",
+              "GOVERNANCE_TRANSCRIPT_UNREADABLE",
+              "IDEMPOTENCY_CONFLICT",
+              "IDEMPOTENCY_IN_PROGRESS",
+              "IDEMPOTENCY_KEY_MALFORMED",
+              "IDEMPOTENCY_KEY_REQUIRED",
+              "IDEMPOTENCY_RECORD_ABSENT",
+              "IDEMPOTENCY_RECORD_MALFORMED",
+              "IDEMPOTENCY_REQUEST_IN_FLIGHT",
+              "IDEMPOTENCY_REQUEST_MISMATCH",
+              "IDEMPOTENCY_STORE_UNAVAILABLE",
+              "IDEMPOTENCY_UNAVAILABLE",
+              "IDENTITY_STORE_UNAVAILABLE",
+              "IMPERSONATION_FORBIDDEN",
+              "INVALID_ACCESS_KEY_MATERIAL",
+              "INVALID_END_USER_FILTER",
+              "INVALID_GRANT",
+              "INVALID_KEY_RING",
+              "INVALID_MFA_CODE",
+              "INVALID_PURGE_REQUEST",
+              "INVALID_REQUEST",
+              "INVALID_RETENTION_REQUEST",
+              "INVALID_SECRET_MATERIAL",
+              "INVALID_SESSION_COOKIE",
+              "INVITATION_CONSUMED",
+              "INVITATION_EMAIL_MISMATCH",
+              "INVITATION_INVALID",
+              "JOBS_APPROVAL_ALREADY_RESOLVED",
+              "JOBS_APPROVAL_EDIT_MISSING",
+              "JOBS_APPROVAL_ELAPSED",
+              "JOBS_APPROVAL_NOT_FOUND",
+              "JOBS_APPROVAL_SUSPENSION_UNAVAILABLE",
+              "JOBS_ERASURE_PLAN_FOREIGN",
+              "JOBS_IDEMPOTENCY_RECORD_ABSENT",
+              "JOBS_IDEMPOTENCY_RECORD_MALFORMED",
+              "JOBS_IDEMPOTENCY_REPLAY_CODE_UNPROMISED",
+              "JOBS_INVOCATION_TYPE_INVALID",
+              "JOBS_JOB_ALREADY_EXISTS",
+              "JOBS_JOB_DEFINITION_INVALID",
+              "JOBS_JOB_KEY_INVALID",
+              "JOBS_JOB_NOT_FOUND",
+              "JOBS_REPOSITORY_UNAVAILABLE",
+              "JOB_EXECUTION_FAILED",
+              "JOB_NOT_AUTHORIZED",
+              "JOB_NOT_FOUND_OR_INACTIVE",
+              "JOB_NOT_REGISTERED",
+              "JOB_RESULT_REJECTED",
+              "JOB_SERVICE_UNAVAILABLE",
+              "JOB_TIMEOUT",
+              "LEGACY_ENVELOPE_UNREADABLE",
+              "MEMORY_AGENT_AMBIGUOUS",
+              "MEMORY_AGENT_SCOPE_DENIED",
+              "MEMORY_BULK_LIMIT_EXCEEDED",
+              "MEMORY_CACHE_NAMESPACE_INVALID",
+              "MEMORY_CACHE_TTL_INVALID",
+              "MEMORY_CACHE_UNAVAILABLE",
+              "MEMORY_EMBEDDING_UNAVAILABLE",
+              "MEMORY_END_USER_CONTEXT_REQUIRED",
+              "MEMORY_ENTITY_KEY_INVALID",
+              "MEMORY_ENTITY_NOT_FOUND",
+              "MEMORY_ENTITY_OWNERSHIP_CONFLICT",
+              "MEMORY_EXTRACTION_ENVELOPE_INVALID",
+              "MEMORY_EXTRACTION_JUDGE_UNAVAILABLE",
+              "MEMORY_INVALID_CONFIDENCE",
+              "MEMORY_INVALID_CONTENT",
+              "MEMORY_INVALID_KIND",
+              "MEMORY_INVALID_METADATA",
+              "MEMORY_INVALID_SOURCE",
+              "MEMORY_INVALID_VISIBILITY",
+              "MEMORY_NOT_FOUND",
+              "MEMORY_PROVENANCE_INCOMPLETE",
+              "MEMORY_QUERY_INVALID",
+              "MEMORY_RELATIONSHIP_ENDPOINTS_SPLIT",
+              "MEMORY_RELATIONSHIP_INVALID",
+              "MEMORY_REPOSITORY_UNAVAILABLE",
+              "MEMORY_SCOPE_MISMATCH",
+              "MEMORY_UNTRUSTED_SOURCE",
+              "MFA_REQUIRED",
+              "MISSING_PERMISSION",
+              "OBSERVABILITY_AUDIT_ACTION_INVALID",
+              "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
+              "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
+              "OBSERVABILITY_DRAIN_BUDGET_INVALID",
+              "OBSERVABILITY_ENVELOPE_MALFORMED",
+              "OBSERVABILITY_ENVELOPE_VERSION_UNSUPPORTED",
+              "OBSERVABILITY_ERASURE_PLAN_FOREIGN",
+              "OBSERVABILITY_ERASURE_RESIDUE",
+              "OBSERVABILITY_ERASURE_SUBJECT_UNADDRESSABLE",
+              "OBSERVABILITY_ERASURE_UNVERIFIED",
+              "OBSERVABILITY_PROJECTION_SCOPE_MISMATCH",
+              "OBSERVABILITY_QUEUE_UNAVAILABLE",
+              "OBSERVABILITY_REPOSITORY_UNAVAILABLE",
+              "OBSERVABILITY_SINK_DISABLED",
+              "OBSERVABILITY_SINK_MISCONFIGURED",
+              "OBSERVABILITY_SINK_REJECTED_BATCH",
+              "OBSERVABILITY_SINK_SCHEMA_MISSING",
+              "OBSERVABILITY_SINK_UNREACHABLE",
+              "OWNER_INVARIANT",
+              "PRIVACY_ALIAS_INVALID",
+              "PRIVACY_ERASURE_REGISTER_UNAVAILABLE",
+              "PRIVACY_IDEMPOTENCY_KEY_CONFLICT",
+              "PRIVACY_LEASE_HELD",
+              "PRIVACY_LEGAL_HOLD_IN_FORCE",
+              "PRIVACY_LEGAL_HOLD_REGISTER_UNAVAILABLE",
+              "PRIVACY_OPERATION_NOT_FOUND",
+              "PRIVACY_OPERATION_STORE_UNAVAILABLE",
+              "PRIVACY_RECEIPT_WOULD_LEAK_SUBJECT",
+              "PRIVACY_RETRY_BUDGET_EXHAUSTED",
+              "PRIVACY_RETRY_NOT_PERMITTED",
+              "PRIVACY_SUBJECT_DIRECTORY_UNAVAILABLE",
+              "PRIVACY_SUBJECT_ERASED",
+              "PRIVACY_SUBJECT_MISMATCH",
+              "PRIVACY_SUBJECT_NOT_RESOLVED",
+              "PRIVACY_TARGET_NOT_WIRED",
+              "PRIVACY_TARGET_REJECTED",
+              "PROVIDERS_CACHE_BUDGET_EXCEEDED",
+              "PROVIDERS_CONFIGURATION_UNAVAILABLE",
+              "PROVIDERS_CREDENTIAL_UNAVAILABLE",
+              "PROVIDERS_GENERATION_ABORTED",
+              "PROVIDERS_KEY_ALREADY_EXISTS",
+              "PROVIDERS_KEY_METADATA_INVALID",
+              "PROVIDERS_KEY_NOT_FOUND",
+              "PROVIDERS_KEY_PINNED_BY_AGENTS",
+              "PROVIDERS_MEDIA_TYPE_MISSING",
+              "PROVIDERS_MESSAGE_NOT_REPRESENTABLE",
+              "PROVIDERS_MODEL_KEY_INVALID",
+              "PROVIDERS_MODEL_PRICING_UNAVAILABLE",
+              "PROVIDERS_MODEL_RATE_INVALID",
+              "PROVIDERS_MODEL_SESSION_EXPIRED",
+              "PROVIDERS_MODEL_STRING_INVALID",
+              "PROVIDERS_OUTPUT_SCHEMA_INVALID",
+              "PROVIDERS_PASS_BUDGET_INVALID",
+              "PROVIDERS_PRICE_REVISION_CONFLICT",
+              "PROVIDERS_PROBE_CACHE_NOT_EVICTED",
+              "PROVIDERS_PROMPT_CONTENT_EMPTY",
+              "PROVIDERS_PROMPT_EMPTY",
+              "PROVIDERS_PROVIDER_CREDENTIAL_UNAVAILABLE",
+              "PROVIDERS_PROVIDER_REQUEST_FAILED",
+              "PROVIDERS_RATE_CARD_INVALID",
+              "PROVIDERS_REPOSITORY_UNAVAILABLE",
+              "PROVIDERS_RETRY_POLICY_INVALID",
+              "PROVIDERS_SCOPE_MISMATCH",
+              "PROVIDERS_SERVICE_ACCOUNT_INVALID",
+              "PROVIDERS_STEP_BUDGET_INVALID",
+              "PROVIDERS_STRUCTURED_OUTPUT_INVALID",
+              "PROVIDERS_TOKEN_USAGE_INVALID",
+              "PROVIDERS_TOOL_CALL_DUPLICATED",
+              "PROVIDERS_TOOL_EXECUTOR_FAILED",
+              "PROVIDERS_TOOL_NAME_DUPLICATED",
+              "PROVIDERS_TOOL_RESULT_UNMATCHED",
+              "PROVIDERS_UNKNOWN_PROVIDER",
+              "RATE_LIMITED",
+              "RATE_LIMITER_UNAVAILABLE",
+              "SECRET_INPUT_NOT_WRITE_ONLY",
+              "SECRET_VERSION_ALREADY_EXISTS",
+              "SESSION_EXPIRED",
+              "SESSION_REVOKED",
+              "SKILLS_ENVIRONMENT_KEYS_MISSING",
+              "SKILLS_ERASURE_PLAN_FOREIGN",
+              "SKILLS_MANIFEST_FIELD_INVALID",
+              "SKILLS_MANIFEST_FIELD_MISSING",
+              "SKILLS_MANIFEST_FRONTMATTER_MISSING",
+              "SKILLS_MANIFEST_ID_INVALID",
+              "SKILLS_MANIFEST_YAML_INDENT",
+              "SKILLS_MANIFEST_YAML_MISSING_COLON",
+              "SKILLS_OFFICIAL_SKILL_IMMUTABLE",
+              "SKILLS_REPOSITORY_UNAVAILABLE",
+              "SKILLS_SANDBOX_REFUSED",
+              "SKILLS_SANDBOX_UNAVAILABLE",
+              "SKILLS_SKILL_NOT_FOUND",
+              "SKILLS_SKILL_NOT_INSTALLED",
+              "SKILLS_SOURCE_FETCH_FAILED",
+              "SKILLS_SOURCE_PROTOCOL_UNSUPPORTED",
+              "SKILLS_SOURCE_TOO_LARGE",
+              "SKILLS_SOURCE_URL_INVALID",
+              "TENANCY_ACCESS_KEY_GENERATION_SUPERSEDED",
+              "TENANCY_ARCHIVED",
+              "TENANCY_AUTHORIZATION_FORGED",
+              "TENANCY_CROSS_TENANT_MEMBERSHIP",
+              "TENANCY_ENVIRONMENT_FORBIDDEN",
+              "TENANCY_INVALID_NAME",
+              "TENANCY_INVALID_SLUG",
+              "TENANCY_INVITATION_ALREADY_ACTIVE",
+              "TENANCY_INVITATION_CONSUMED",
+              "TENANCY_INVITATION_EMAIL_MISMATCH",
+              "TENANCY_INVITATION_INVALID",
+              "TENANCY_LAST_OWNER",
+              "TENANCY_MEMBERSHIP_FORBIDDEN",
+              "TENANCY_NOT_FOUND",
+              "TENANCY_PROJECT_CREATE_FORBIDDEN",
+              "TENANCY_SLUG_TAKEN",
+              "TENANCY_UNKNOWN_OPERATOR",
+              "TOKEN_REPLAYED",
+              "TOOLS_APPROVAL_REQUIRED",
+              "TOOLS_ARGUMENTS_INVALID",
+              "TOOLS_CALL_SEQUENCE_CONFLICT",
+              "TOOLS_CALL_TRANSITION_INVALID",
+              "TOOLS_CREDENTIAL_UNAVAILABLE",
+              "TOOLS_DECLARATION_INVALID",
+              "TOOLS_DISPATCH_FAILED",
+              "TOOLS_DISPATCH_RATE_LIMITED",
+              "TOOLS_DUPLICATE_TOOL_NAME",
+              "TOOLS_END_USER_REQUIRED",
+              "TOOLS_ENTITY_NOT_DISPATCHABLE",
+              "TOOLS_ENTITY_NOT_IN_SCOPE",
+              "TOOLS_ENVIRONMENT_NOT_IN_SCOPE",
+              "TOOLS_EXPOSURE_NOT_FOUND",
+              "TOOLS_MCP_DISABLED",
+              "TOOLS_MCP_TRANSPORT_INVALID",
+              "TOOLS_PERMISSION_BLOCKED",
+              "TOOLS_POLICY_EFFECT_UNSUPPORTED",
+              "TOOLS_POLICY_PATTERN_INVALID",
+              "TOOLS_REPOSITORY_UNAVAILABLE",
+              "TOOLS_RESIDUAL_TEMPLATE",
+              "TOOLS_ROUTE_AMBIGUOUS",
+              "TOOLS_ROUTE_NOT_IN_SCOPE",
+              "TOOLS_SCOPE_MISMATCH",
+              "TOOLS_TOOL_NOT_FOUND",
+              "TRANSPORT_CONTEXT_UNAVAILABLE",
+              "TRANSPORT_REQUEST_INVALID",
+              "TRANSPORT_ROUTE_NOT_FOUND",
+              "TRANSPORT_SHUTTING_DOWN",
+              "TRANSPORT_UNHANDLED_FAULT",
+              "UNAUTHENTICATED",
+              "UNKNOWN_CLIENT"
+            ],
+            "type": "string"
+          },
+          "errorId": {
+            "type": "string"
+          },
+          "fields": {
+            "items": {
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "field",
+                "message"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "retryAfterSec": {
+            "type": "number"
+          },
+          "title": {
+            "type": "string"
+          },
+          "traceRef": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body",
+          "code",
+          "errorId",
+          "title",
+          "traceRef",
+          "version"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "The frozen V1 wire contract: request and response schemas derived from the core-api handler types. Written only by `pnpm generate:openapi-baseline`, which refuses to absorb a breaking change.",
+    "title": "Platos V1 REST contract baseline",
+    "version": "1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/bff/session": {
+      "delete": {
+        "operationId": "delete__api_v1_bff_session",
+        "responses": {
+          "204": {
+            "description": "No content."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      },
+      "post": {
+        "operationId": "post__api_v1_bff_session",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeSessionBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_OperatorSessionResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/environments/{environmentId}/end-users": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_environmentId_end_users",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_EndUserResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "not-derived",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/identity/session": {
+      "get": {
+        "operationId": "get__api_v1_identity_session",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_OperatorSessionResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/organizations": {
+      "get": {
+        "operationId": "get__api_v1_organizations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_OrganizationResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "refused",
+        "x-platos-schema-source": "typescript-dto"
+      },
+      "post": {
+        "operationId": "post__api_v1_organizations",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_OrganizationResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "get__api_v1_projects",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_ProjectResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "refused",
+        "x-platos-schema-source": "typescript-dto"
+      },
+      "post": {
+        "operationId": "post__api_v1_projects",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_CreatedProjectResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    }
+  }
+}
