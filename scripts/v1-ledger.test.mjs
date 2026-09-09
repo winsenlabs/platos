@@ -695,7 +695,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // capability matrix, the census artifact, the operator enumeration and the
     // taxonomy are all REGENERATED files that already exist, the generator and
     // three gate suites are edited in place, and no ledger rule is new.
-    "apps-core-api": 75,
+    // WIN-268 (M4.2) P1 75 -> 80. FIVE files, all in `apps/core-api/src`: the
+    // MCP surface expression (`transports/mcp/mcp-surface.ts`, the one place the
+    // root segment and the decision NOT to put a version in the URL are
+    // written), the two token-mint controllers, the projection and guards they
+    // share (`transports/mcp/token-mint.ts`), and
+    // `composition/mcp-token-mint.integration.test.ts` — the suite that races
+    // two identical requests against a real PostgreSQL and a real Redis and
+    // reads the row count back with `psql`. Every one lands on a rule that
+    // already existed; NO LEDGER RULE CHANGED.
+    "apps-core-api": 80,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1305,7 +1314,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `docs/error-taxonomy.json`, which gains the five new codes, is tracked
     // already. No ledger rule is new: `packages.adapters.source` and `.test`
     // match both. 1501 + 2 = 1503.
-    packages: 1503,
+    // WIN-268 (M4.2) P1 1503 -> 1505. TWO files, both
+    // `packages/contexts/identity-access/application/`: `mint-bearer-credential.ts`,
+    // the use case the two MCP mints reach through the published contract, and
+    // its suite. NOTHING lands under `packages/adapters`: the postgres store
+    // gains an `insert` half inside the EXISTING `identity-bearer.ts`, and the
+    // domain gains its mint planning inside the EXISTING `bearer-token.ts`, so
+    // both are edits.
+    packages: 1505,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1807,7 +1823,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // 6 + 0 + 75 + 4 + 10 + 1503 + 19 + 66 = 1683. Two sibling branches move this
   // same pin for their own tranches, so the integrator SUMS rather than taking
   // any one branch's total — the mistake recorded for A1+A2 and A3 above.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1683);
+  //
+  // AND P1's SECOND HALF 1683 -> 1690, the two MCP one-time-secret mints:
+  // `apps-core-api` +5 (the MCP surface expression, the two mint controllers,
+  // the projection and guards they share, and the real-concurrency integration
+  // suite) and `packages` +2 (the mint use case and its suite). The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 6 + 0 + 80 + 4 + 10 + 1505 + 19 + 66 = 1690.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1690);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1973,7 +1996,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // controls), reached here by summing the per-area counts instead of reading
     // the total, so the two arithmetics can disagree and be caught.
     // 1679 + 4 = 1683.
-    rulesDocument.baseline.totalFiles + 1683
+    //
+    // AND P1's SECOND HALF 1683 -> 1690 -- seven files across TWO areas, the
+    // same seven as the `totalFiles` assertion above, reached here by summing
+    // the per-area counts instead of reading the total, so the two arithmetics
+    // can disagree and be caught. 1683 + 7 = 1690.
+    rulesDocument.baseline.totalFiles + 1690
   );
 });
 

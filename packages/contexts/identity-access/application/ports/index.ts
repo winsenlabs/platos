@@ -121,6 +121,7 @@ export type {
   AuthorizationScope,
   AuthorizationScopeKind,
   BearerCredentialKind,
+  BearerCredentialMint,
   BearerCredentialRecord,
   EmailAddress,
   EndUserId,

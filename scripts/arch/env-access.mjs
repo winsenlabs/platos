@@ -505,8 +505,18 @@ export const VIOLATION_CODES = Object.freeze({
  * not an overlap. THE DECLARED TABLE GAINS EXACTLY ONE ENTRY ACROSS BOTH,
  * R1's HTTP integration suite, because it spawns the ORM's CLI; R303's two
  * open no door at all. Fifteen files landed and one door was opened.
+ *
+ * WIN-268 (M4.2) P1: 1637 + 5 = 1642, and NO DOOR IS OPENED. Four of the five
+ * are `apps/core-api/src/transports/mcp/` — the MCP surface expression, the two
+ * token-mint controllers and the projection they share — and the fifth is
+ * `packages/contexts/identity-access/application/mint-bearer-credential.ts`, the
+ * use case behind them. Not one reads the environment: a mint takes its scope
+ * from an authorization it was handed and its lifetime from a request, which is
+ * exactly the shape this gate exists to keep. The declared table is UNCHANGED,
+ * which is the half of this pin that matters — a tranche that added five files
+ * and no reader should move only the denominator.
  */
-export const EXPECTED_FILE_COUNT = 1637;
+export const EXPECTED_FILE_COUNT = 1642;
 
 function listSourceFiles(root) {
   const found = [];

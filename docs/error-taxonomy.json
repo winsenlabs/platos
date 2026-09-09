@@ -870,6 +870,20 @@
         "secrets"
       ]
     },
+    "CREDENTIAL_MATERIAL_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "CREDENTIAL_MINT_REFUSED": {
+      "category": "conflict",
+      "status": 409,
+      "contexts": [
+        "identity-access"
+      ]
+    },
     "CREDENTIAL_NAME_TAKEN": {
       "category": "conflict",
       "status": 409,
@@ -880,6 +894,13 @@
     "CREDENTIAL_REVOKED": {
       "category": "unauthenticated",
       "status": 401,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "CREDENTIAL_SUBJECT_MISMATCH": {
+      "category": "invalid_input",
+      "status": 400,
       "contexts": [
         "identity-access"
       ]
@@ -1792,6 +1813,20 @@
       "status": 400,
       "contexts": [
         "secrets"
+      ]
+    },
+    "MCP_ENTITY_ENVIRONMENT_MISMATCH": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "MCP_TOKEN_MINT_WHILE_IMPERSONATING": {
+      "category": "forbidden",
+      "status": 403,
+      "contexts": [
+        "core-api"
       ]
     },
     "MEMORY_AGENT_AMBIGUOUS": {

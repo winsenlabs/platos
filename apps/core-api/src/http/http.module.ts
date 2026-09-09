@@ -26,6 +26,8 @@ import { APP_FILTER } from "@nestjs/core";
 import type { AppModule } from "../app.module.js";
 import type { LifecycleState } from "../health/readiness.js";
 import { BffSessionController } from "../transports/bff/session.controller.js";
+import { McpEntityTokensController } from "../transports/mcp/entity-tokens.controller.js";
+import { McpPlatformTokensController } from "../transports/mcp/platform-tokens.controller.js";
 import { REST_APPLICATION, type RestApplication } from "../transports/rest/dependencies.js";
 import { EnvironmentEndUsersController } from "../transports/rest/environment-end-users.controller.js";
 import { IdentitySessionController } from "../transports/rest/identity-session.controller.js";
@@ -64,6 +66,20 @@ import { NotFoundController } from "./not-found.controller.js";
     ProjectsController,
     EnvironmentEndUsersController,
     BffSessionController,
+    // WIN-268 (M4.2) P1 — the two MCP token mints. They sit in this SAME array
+    // and not in `forApplication`'s for the reason the banner above gives: only
+    // a statically declared controller is registered ahead of
+    // `NotFoundController`'s `@All("{*path}")`, and a mint that lost that race
+    // would 404 while every unit test that constructs it kept passing. That is
+    // precisely the state these two operations were in before this tranche.
+    //
+    // THEY ARE VERSION-NEUTRAL AND EVERY OTHER ENTRY IS NOT. ADR M0.4 §2 keeps
+    // MCP paths out of the URL-major scheme, so `transports/mcp/mcp-surface.ts`
+    // pins `VERSION_NEUTRAL` once and `route-manifest.test.ts` partitions this
+    // array by surface — every REST controller under `/api/v1`, every MCP
+    // controller under `/mcp` — and joins BOTH halves to the manifest.
+    McpPlatformTokensController,
+    McpEntityTokensController,
   ],
 })
 export class CoreApiHttpModule implements NestModule {

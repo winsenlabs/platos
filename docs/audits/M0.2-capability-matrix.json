@@ -12,7 +12,7 @@
     "endUserRestrictedModels": 14,
     "restOperationsByScanRoot": {
       "agent": 300,
-      "core-api-transports": 8
+      "core-api-transports": 10
     }
   },
   "scanRoots": {
@@ -27,8 +27,8 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "operations": 8,
-        "routeBindings": 8
+        "operations": 10,
+        "routeBindings": 10
       }
     ],
     "unattributed": [],
@@ -6054,5 +6054,5 @@
     }
   ],
   "acceptanceCriterion": "Every REST binding in operation-manifest.generated.json and every tenancy Prisma model appears here; counts are read from source, never hardcoded; --check fails on any drift. Every row names an ADR M0.3 §1 context, or the one non-context value `<platform-transport>` under the admission rule in scripts/arch/route-ownership.mjs; the retired unresolved-owner placeholder is neither producible nor accepted, and is refused by its own named rule.",
-  "sourceDigest": "99a9fd484c4b45afc1de8c04c41dfae9a8b411c13cd0a27db8a52ce3e59fee79"
+  "sourceDigest": "205f47e0d2fdf01c746ac258aaa81a67c3cdbfafe3d16645edd4848cf5452dcb"
 }

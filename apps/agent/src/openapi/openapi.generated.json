@@ -279,6 +279,21 @@
           "meta"
         ]
       },
+      "ItemEnvelope_MintedTokenResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MintedTokenResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemEnvelope_OperatorSessionResource": {
         "type": "object",
         "properties": {
@@ -321,6 +336,124 @@
         },
         "required": [
           "contractVersion"
+        ]
+      },
+      "MintEntityTokenBody": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "mcpUserId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ttlSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "environmentId",
+          "label",
+          "mcpUserId",
+          "scopes",
+          "ttlSeconds"
+        ]
+      },
+      "MintPlatformTokenBody": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "scope",
+              "admin"
+            ]
+          },
+          "ttlSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "environmentId",
+          "name",
+          "permissions",
+          "tier",
+          "ttlSeconds"
+        ]
+      },
+      "MintedTokenResource": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "scope",
+              "admin"
+            ]
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "expiresAt",
+          "label",
+          "permissions",
+          "tier",
+          "token",
+          "tokenId"
         ]
       },
       "OperatorSessionResource": {
@@ -623,8 +756,11 @@
               "COST_WINDOW_INVALID",
               "CREDENTIAL_EXPIRED",
               "CREDENTIAL_FORBIDDEN",
+              "CREDENTIAL_MATERIAL_INVALID",
+              "CREDENTIAL_MINT_REFUSED",
               "CREDENTIAL_NAME_TAKEN",
               "CREDENTIAL_REVOKED",
+              "CREDENTIAL_SUBJECT_MISMATCH",
               "CREDENTIAL_UNAVAILABLE",
               "ENVELOPE_FORMAT_UNWRITABLE",
               "ENVIRONMENT_VARIABLE_KEY_INVALID",
@@ -755,6 +891,8 @@
               "JOB_SERVICE_UNAVAILABLE",
               "JOB_TIMEOUT",
               "LEGACY_ENVELOPE_UNREADABLE",
+              "MCP_ENTITY_ENVIRONMENT_MISMATCH",
+              "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
               "MEMORY_AGENT_AMBIGUOUS",
               "MEMORY_AGENT_SCOPE_DENIED",
               "MEMORY_BULK_LIMIT_EXCEEDED",
@@ -10388,7 +10526,7 @@
       },
       "post": {
         "operationId": "post__mcp_entity_by_entityId_tokens",
-        "summary": "McpEntityController.generateBearerToken",
+        "summary": "McpEntityTokensController.mint",
         "tags": [
           "rest_only"
         ],
@@ -10403,8 +10541,25 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MintedTokenResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10419,8 +10574,18 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
-        "x-platos-schema-source": "undeclared",
-        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintEntityTokenBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
       }
     },
     "/mcp/entity/{entityId}/tokens/{tokenId}": {
@@ -10776,13 +10941,30 @@
       },
       "post": {
         "operationId": "post__mcp_platform_tokens",
-        "summary": "McpPlatformController.mintToken",
+        "summary": "McpPlatformTokensController.mint",
         "tags": [
           "rest_only"
         ],
         "responses": {
-          "200": {
-            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MintedTokenResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10797,8 +10979,18 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
-        "x-platos-schema-source": "undeclared",
-        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintPlatformTokenBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
       }
     },
     "/mcp/platform/tokens/{id}/revoke": {
@@ -11282,12 +11474,12 @@
   "x-platos-rest-operation-count": 308,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 8,
-    "undeclaredOperations": 300,
+    "derivedOperations": 10,
+    "undeclaredOperations": 298,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 20,
-    "canonicalErrorCodes": 429,
+    "componentSchemas": 24,
+    "canonicalErrorCodes": 434,
     "queryParametersNotDerived": [
       {
         "operation": "GET /api/v1/environments/:environmentId/end-users",

@@ -8,8 +8,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
 - MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
-- REST operations: **308** unique method/path pairs from **308** route bindings.
-- Ambiguous duplicate REST method/path pairs: **0**.
+- REST operations: **308** unique method/path pairs from **310** route bindings.
+- Ambiguous duplicate REST method/path pairs: **2**, of which **2** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
 - REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=152.
 
@@ -294,7 +294,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /mcp/entity/:entityId/messages` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#messages` |
 | `GET /mcp/entity/:entityId/sse` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#sse` |
 | `GET /mcp/entity/:entityId/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#listBearerTokens` |
-| `POST /mcp/entity/:entityId/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#generateBearerToken` |
+| `POST /mcp/entity/:entityId/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#generateBearerToken`<br>`apps/core-api/src/transports/mcp/entity-tokens.controller.ts#mint` |
 | `DELETE /mcp/entity/:entityId/tokens/:tokenId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#revokeBearerToken` |
 | `GET /mcp/entity/:entityId/tool-acl` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#listToolAcl` |
 | `PATCH /mcp/entity/:entityId/tool-acl/:toolId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#patchToolAcl` |
@@ -306,7 +306,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /mcp/platform/messages` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#messages` |
 | `GET /mcp/platform/sse` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#sse` |
 | `GET /mcp/platform/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#listTokens` |
-| `POST /mcp/platform/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#mintToken` |
+| `POST /mcp/platform/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#mintToken`<br>`apps/core-api/src/transports/mcp/platform-tokens.controller.ts#mint` |
 | `POST /mcp/platform/tokens/:id/revoke` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#revokeToken` |
 | `GET /mcp/sse` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-docs/docs-mcp.controller.ts#sse` |
 | `GET /metrics` | PUBLIC_TRANSPORT | — | `service-observability` | `apps/agent/src/monitoring/metrics.controller.ts#scrape` |

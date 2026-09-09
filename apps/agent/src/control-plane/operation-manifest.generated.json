@@ -11892,6 +11892,12 @@
             "handler": "generateBearerToken",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
             "requiresOperator": true
+          },
+          {
+            "controller": "McpEntityTokensController",
+            "handler": "mint",
+            "source": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12095,6 +12101,12 @@
             "controller": "McpPlatformController",
             "handler": "mintToken",
             "source": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
+            "requiresOperator": true
+          },
+          {
+            "controller": "McpPlatformTokensController",
+            "handler": "mint",
+            "source": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
             "requiresOperator": true
           }
         ]
@@ -12416,8 +12428,9 @@
       "MCP_ONLY": 120
     },
     "restOperations": 308,
-    "restRouteBindings": 308,
-    "ambiguousRestOperations": 0,
+    "restRouteBindings": 310,
+    "ambiguousRestOperations": 2,
+    "crossDeployableRestOperations": 2,
     "restClassifications": {
       "DEPRECATED": 15,
       "INTERNAL": 14,
@@ -12438,9 +12451,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 5,
-        "operations": 8,
-        "routeBindings": 8
+        "registeredControllers": 7,
+        "operations": 10,
+        "routeBindings": 10
       }
     ]
   }

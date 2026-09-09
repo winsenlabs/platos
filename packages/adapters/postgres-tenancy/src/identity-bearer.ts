@@ -30,14 +30,15 @@
 
 import type {
   BearerCredentialKind,
+  BearerCredentialMint,
   BearerCredentialRecord,
   TokenHash,
 } from "@platos/context-identity-access/application/ports/index.js";
 import type { BearerCredentialStore } from "@platos/context-identity-access/application/ports/index.js";
 
-import { IdentityWriteRefused } from "./identity-guards.js";
+import { IdentityWriteRefused, requireDigest } from "./identity-guards.js";
 import type { ScopeAncestry } from "./identity-mapping.js";
-import { readAuthorizationScope, readIdentityTier } from "./identity-mapping.js";
+import { readAuthorizationScope, readIdentityTier, writeAuthorizationScope } from "./identity-mapping.js";
 import { toBearerCredentialRecord } from "./identity-rows.js";
 import type { TenancyReader } from "./client.js";
 import type { TenancyTransactions } from "./transaction.js";
@@ -47,6 +48,20 @@ export const BEARER_CREDENTIAL_ABSENT = "identity.write.bearer_credential_absent
 
 /** A `kind` outside the four the domain enumerates. */
 export const UNKNOWN_BEARER_CREDENTIAL_KIND = "identity.row.unknown_bearer_kind";
+
+/**
+ * A `mint` of one of the two kinds that have no minting oracle.
+ *
+ * A DISTINCT CODE FROM `UNKNOWN_BEARER_CREDENTIAL_KIND`, because the two are
+ * different mistakes: that one is a kind no table holds, this one is a kind a
+ * table holds and nothing in the extraction source has ever written. An operator
+ * reading the first goes looking for a typo; reading the second, for the design
+ * decision recorded in `domain/bearer-token.ts`'s modelling note.
+ */
+export const UNMINTABLE_BEARER_CREDENTIAL_KIND = "identity.write.unmintable_bearer_kind";
+
+/** A `mint` whose scope is not one environment. */
+export const UNMINTABLE_BEARER_CREDENTIAL_SCOPE = "identity.write.unmintable_bearer_scope";
 
 const ENVIRONMENT_ANCESTORS = {
   select: { projectId: true, project: { select: { organizationId: true } } },
@@ -281,5 +296,134 @@ export function createBearerCredentialStore(
         );
       }
     },
+
+    /**
+     * WIN-268 (M4.2) P1 — the INSERT `save` deliberately is not.
+     *
+     * TWO TABLES, NOT FOUR. `PersonalAccessToken` and `EndUserSession` are
+     * refused here under the same code an unknown kind gets, and the reason is
+     * the modelling note in `domain/bearer-token.ts`: both tables exist in the
+     * baseline schema with ZERO production call sites, so nothing in the oracle
+     * says what a minted `role` or `identityId` should be. Writing a guess into
+     * a table nothing reads would be the worst of both — a row that satisfies a
+     * foreign key and means nothing.
+     *
+     * THE ROW IS READ BACK THROUGH THE SAME PROJECTION `findByTokenHash` USES,
+     * and that is not a convenience. The record's `scope` is re-derived from the
+     * environment's OWN ancestry (`environment.projectId`,
+     * `environment.project.organizationId`), so the value the caller receives is
+     * what the database says the credential's tenancy is — never the triple the
+     * request carried. A forged triple therefore cannot survive a round trip
+     * even if every layer above this one had missed it.
+     *
+     * A UNIQUE-CONSTRAINT VIOLATION IS LEFT TO PROPAGATE. `tokenHash` is
+     * `@unique` on both tables, so two concurrent inserts of one digest end with
+     * exactly one row and one driver error. Catching it and answering "already
+     * exists" would tell the loser its secret is live when the row belongs to
+     * the winner's secret, so the refusal travels and `mint-bearer-credential`
+     * turns it into `CREDENTIAL_MINT_REFUSED`.
+     */
+    async mint(credential: BearerCredentialMint): Promise<BearerCredentialRecord> {
+      const client = transactions.reader();
+      // The migrations' own `^[0-9a-f]{64}$` check, applied before the insert so
+      // a malformed digest is refused under its own code rather than as a
+      // constraint violation nobody can attribute.
+      const tokenHash = requireDigest(`${credential.kind}.tokenHash`, credential.tokenHash);
+      const environmentId = environmentIdOf(credential);
+      if (credential.kind === "mcp-token") {
+        await client.mcpToken.create({
+          data: {
+            id: credential.credentialId,
+            environmentId,
+            mintedByUserId: credential.createdByUserId,
+            name: credential.label,
+            tokenHash,
+            permissions: [...credential.permissions],
+            // `McpToken.tier` — the MCP PERMISSION tier, the String column, and
+            // NOT the domain's `PrincipalTier`. See the banner at the top of
+            // this file; the domain refuses a mint of this kind that does not
+            // carry one, so the fallback below is unreachable and is written as
+            // a refusal rather than as a default.
+            tier: requiredPermissionTier(credential),
+            expiresAt: credential.expiresAt,
+          },
+        });
+      } else if (credential.kind === "entity-bearer-token") {
+        await client.mcpBearerToken.create({
+          data: {
+            id: credential.credentialId,
+            entityId: requiredSubject(credential),
+            environmentId,
+            createdByUserId: credential.createdByUserId,
+            tokenHash,
+            label: credential.label,
+            // `mcpUserId` is a free-form identifier for an END USER of the
+            // entity, not a Platos user id, which is why it is a String with no
+            // foreign key. The domain carries it as the principal.
+            mcpUserId: credential.principalId,
+            scopes: [...credential.permissions],
+            expiresAt: credential.expiresAt,
+          },
+        });
+      } else {
+        throw new IdentityWriteRefused(
+          UNMINTABLE_BEARER_CREDENTIAL_KIND,
+          "BearerCredentialMint.kind",
+          `credentials of kind ${JSON.stringify(String(credential.kind))} have no minting oracle; ` +
+            "only mcp-token and entity-bearer-token may be minted",
+        );
+      }
+
+      const written = await this.findByTokenHash(credential.kind, credential.tokenHash);
+      if (written === null) {
+        // The insert reported success and the row is not readable. That is a
+        // defect in this store rather than in the caller, and it is refused
+        // loudly instead of being papered over with the plan the caller sent —
+        // which would report a scope nothing had verified.
+        throw new IdentityWriteRefused(
+          BEARER_CREDENTIAL_ABSENT,
+          `${credential.kind}.tokenHash`,
+          "the credential was inserted and could not be read back",
+        );
+      }
+      return written;
+    },
   };
+}
+
+/** The environment a mint is bounded by, or a refusal naming why it is not one. */
+function environmentIdOf(credential: BearerCredentialMint): string {
+  const columns = writeAuthorizationScope(credential.scope);
+  if (columns.scopeKind !== "ENVIRONMENT" || columns.environmentId === null) {
+    throw new IdentityWriteRefused(
+      UNMINTABLE_BEARER_CREDENTIAL_SCOPE,
+      "BearerCredentialMint.scope",
+      `a bearer credential is bounded by ONE environment; this mint carries a ${columns.scopeKind} scope`,
+    );
+  }
+  return columns.environmentId;
+}
+
+/** `McpToken.tier`, which the column requires and the domain has already checked. */
+function requiredPermissionTier(credential: BearerCredentialMint): string {
+  if (credential.permissionTier === null) {
+    throw new IdentityWriteRefused(
+      UNMINTABLE_BEARER_CREDENTIAL_KIND,
+      "McpToken.tier",
+      "an MCP platform token must declare its permission tier",
+    );
+  }
+  return credential.permissionTier;
+}
+
+/** `McpBearerToken.entityId`, likewise. */
+function requiredSubject(credential: BearerCredentialMint): string {
+  if (credential.subjectId === null) {
+    throw new IdentityWriteRefused(
+      UNMINTABLE_BEARER_CREDENTIAL_KIND,
+      "McpBearerToken.entityId",
+      "an entity bearer token must name the entity it is scoped to",
+    );
+  }
+  return credential.subjectId;
 }

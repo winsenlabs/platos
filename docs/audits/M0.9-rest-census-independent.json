@@ -24,10 +24,10 @@
     "unscannedControllers": "the exclusion list is joined to the tree in BOTH directions. Every *.controller.ts inside a scanned application's src/ must be under a declared scan root or named in PROCESS_EDGE_EXCLUSIONS; anything else fails as UNSCANNED ROUTE-BEARING CONTROLLER. Without this half a controller can be accounted for by nothing at all, which is what apps/core-api/src/http/not-found.controller.ts was until WIN-267 W3."
   },
   "totals": {
-    "controllers": 32,
-    "independentUniqueRoutes": 289,
+    "controllers": 34,
+    "independentUniqueRoutes": 291,
     "dualMountAliasOps": 19,
-    "manifestOps": 308,
+    "manifestOps": 310,
     "independentOperatorFloor": 103,
     "manifestOperator": 127,
     "scanRoots": [
@@ -48,11 +48,11 @@
         "dir": "apps/core-api/src/transports",
         "why": "WIN-267 (M4.1) publishes the canonical V1 REST surface here. It carries no controller yet; the root is declared NOW so the FIRST route to land is counted by this census rather than discovered by a reader months later.",
         "present": true,
-        "sourceControllers": 5,
-        "sourceDecorators": 8,
-        "expandedOperations": 8,
-        "manifestOperations": 8,
-        "manifestControllers": 5,
+        "sourceControllers": 7,
+        "sourceDecorators": 10,
+        "expandedOperations": 10,
+        "manifestOperations": 10,
+        "manifestControllers": 7,
         "ok": true
       }
     ]
@@ -318,6 +318,18 @@
       "operatorOk": true
     },
     {
+      "controller": "McpEntityTokensController",
+      "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
       "controller": "McpPlatformController",
       "file": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
       "scanRoot": "agent",
@@ -326,6 +338,18 @@
       "manifestOps": 8,
       "independentOperatorFloor": 4,
       "manifestOperator": 4,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "McpPlatformTokensController",
+      "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
       "routeOk": true,
       "operatorOk": true
     },
@@ -476,5 +500,5 @@
   ],
   "ok": true,
   "failures": [],
-  "sourceDigest": "3a1ac553991a7c8c8666ea8fd1b527b040e734fece5bcac41d0f6511c9e07787"
+  "sourceDigest": "7a205bec076fc63534f9fedb58fe17e28e2390b5d8b9832ba41600b16d71ef2c"
 }

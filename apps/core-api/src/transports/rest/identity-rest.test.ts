@@ -330,6 +330,14 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
     // revisited: the new method performs no rate-limited action either — a
     // sign-out spends no authentication budget — so the finding stands and the
     // name was added.
+    //
+    // AND A SECOND TIME, FOR WIN-268 (M4.2) P1's `mintBearerCredential`. Same
+    // question, same answer: minting an MCP token spends no AUTHENTICATION
+    // budget — its three actions are still LOGIN, INVITE_ACCEPT and MFA_VERIFY,
+    // all pre-authentication — so the finding below stands unchanged and the
+    // name is added. A mint is rate-limited, if at all, on a different axis
+    // (how many credentials one environment may hold), which no contract in
+    // this repository publishes.
     expect(methods).toEqual([
       "authenticateBearer",
       "authenticateOperator",
@@ -338,6 +346,7 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
       "describeSessionCookie",
       "issueSessionCookie",
       "listEndUsers",
+      "mintBearerCredential",
       "revokeOperatorSession",
       "rotateSessionCookie",
       "verifySessionCookie",
