@@ -1230,7 +1230,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // the first file this programme has added under `apps/core-api/src/` that is
     // an integration suite, and it lands in this census for the reason G1's did:
     // the scan does not exclude them. 1620 + 1 = 1621.
-    assert.equal(result.fileCount, 1621, "the generated V1 source census must stay exact");
+    //
+    // WIN-267 R1 1621 -> 1635. FOURTEEN files, ALL of them under
+    // `apps/core-api/src` and none under `packages/` — the first WIN-267 tranche
+    // whose whole delta is inside the deployable, because a REST surface built
+    // out of published contracts adds no adapter and edits no context. Nine
+    // under `src/transports/`, two under `src/http/`, two more suites (one
+    // `transports/`, one `http/`) and the integration suite under
+    // `src/composition/`. 1621 + 14 = 1635.
+    assert.equal(result.fileCount, 1635, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1257,7 +1265,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       6 +
       // WIN-267 integration: the operator-authentication suite in
       // `apps/core-api/src/composition/`.
-      1);
+      1 +
+      // WIN-267 R1: the V1 identity and tenancy REST surface. transports 11
+      // (five controllers, four shared modules, two suites), http 2
+      // (`api-surface.ts` and its suite), composition 1 (the HTTP integration
+      // suite). 11 + 2 + 1 = 14, and NOTHING under `packages/`.
+      11 + 2 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

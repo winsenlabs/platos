@@ -2935,6 +2935,13 @@
         "tools"
       ]
     },
+    "TRANSPORT_CONTEXT_UNAVAILABLE": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "core-api"
+      ]
+    },
     "TRANSPORT_REQUEST_INVALID": {
       "category": "invalid_input",
       "status": 400,

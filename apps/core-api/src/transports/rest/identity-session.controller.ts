@@ -9,7 +9,7 @@
 //
 // IT IS A READ AND IT MUTATES ONE THING, WHICH IS THE CONTRACT'S DOING AND NOT
 // THIS ROUTE'S. `authenticateOperator` stamps `lastSeenAt` on a session that
-// authenticates, deliberately AFTER the decision so a failed attempt cannot be
+// authenticates, deliberately AFTER the decision so a failed authentication cannot be
 // used to confirm a token exists by watching a timestamp move. That is why the
 // verb is GET and there is no `Idempotency-Key` question to answer: the write is
 // the context's liveness stamp, it is idempotent within a clock tick, and the

@@ -23,12 +23,12 @@
     "processEdge": "the named process-edge exclusions are measured, not assumed: the excluded file must exist, keep an EMPTY @Controller() argument list, and carry exactly the declared number of probes."
   },
   "totals": {
-    "controllers": 27,
-    "independentUniqueRoutes": 281,
+    "controllers": 32,
+    "independentUniqueRoutes": 289,
     "dualMountAliasOps": 19,
-    "manifestOps": 300,
+    "manifestOps": 308,
     "independentOperatorFloor": 103,
-    "manifestOperator": 120,
+    "manifestOperator": 127,
     "scanRoots": [
       {
         "id": "agent",
@@ -47,11 +47,11 @@
         "dir": "apps/core-api/src/transports",
         "why": "WIN-267 (M4.1) publishes the canonical V1 REST surface here. It carries no controller yet; the root is declared NOW so the FIRST route to land is counted by this census rather than discovered by a reader months later.",
         "present": true,
-        "sourceControllers": 0,
-        "sourceDecorators": 0,
-        "expandedOperations": 0,
-        "manifestOperations": 0,
-        "manifestControllers": 0,
+        "sourceControllers": 5,
+        "sourceDecorators": 8,
+        "expandedOperations": 8,
+        "manifestOperations": 8,
+        "manifestControllers": 5,
         "ok": true
       }
     ]
@@ -88,6 +88,18 @@
       "manifestOps": 1,
       "independentOperatorFloor": 0,
       "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "BffSessionController",
+      "file": "apps/core-api/src/transports/bff/session.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 2,
+      "mountMultiplier": 1,
+      "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 1,
       "routeOk": true,
       "operatorOk": true
     },
@@ -176,6 +188,18 @@
       "operatorOk": true
     },
     {
+      "controller": "EnvironmentEndUsersController",
+      "file": "apps/core-api/src/transports/rest/environment-end-users.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 1,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
       "controller": "ErasureController",
       "file": "apps/agent/src/privacy/erasure.controller.ts",
       "scanRoot": "agent",
@@ -208,6 +232,18 @@
       "manifestOps": 1,
       "independentOperatorFloor": 0,
       "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "IdentitySessionController",
+      "file": "apps/core-api/src/transports/rest/identity-session.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 1,
       "routeOk": true,
       "operatorOk": true
     },
@@ -332,6 +368,18 @@
       "operatorOk": true
     },
     {
+      "controller": "OrganizationsController",
+      "file": "apps/core-api/src/transports/rest/organizations.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 2,
+      "mountMultiplier": 1,
+      "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 2,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
       "controller": "PerformanceEvidenceController",
       "file": "apps/agent/src/performance-evidence/performance-evidence.controller.ts",
       "scanRoot": "agent",
@@ -340,6 +388,18 @@
       "manifestOps": 1,
       "independentOperatorFloor": 0,
       "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ProjectsController",
+      "file": "apps/core-api/src/transports/rest/projects.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 2,
+      "mountMultiplier": 1,
+      "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 2,
       "routeOk": true,
       "operatorOk": true
     },
@@ -394,5 +454,5 @@
   ],
   "ok": true,
   "failures": [],
-  "sourceDigest": "97191076fa02dc8dd0bbdb7526f10dc9c7db7ebe6e9af3e203b0b272c9227759"
+  "sourceDigest": "3a1ac553991a7c8c8666ea8fd1b527b040e734fece5bcac41d0f6511c9e07787"
 }

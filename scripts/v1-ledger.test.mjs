@@ -649,7 +649,29 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the composed context against a real PostgreSQL. It classifies under
     // `apps-core-api.test.suites`, a rule WIN-297 wrote, so no ledger rule is
     // new for it either. 60 + 1 = 61.
-    "apps-core-api": 61,
+    //
+    // WIN-267 R1 61 -> 75. FOURTEEN files, every one of them inside this
+    // deployable, because the V1 REST surface has no counterpart anywhere else:
+    //
+    //   NINE under `apps-core-api.source.transports` (11 -> 20) — five
+    //   controllers (`identity-session`, `organizations`, `projects`,
+    //   `environment-end-users`, and `bff/session`) and four modules they share
+    //   (`operator.ts`, the one authentication seam; `dependencies.ts`, the
+    //   injection token; `body.ts`, the shape-only body reader; `resources.ts`,
+    //   the declared wire DTOs);
+    //
+    //   ONE under `apps-core-api.source.process` (31 -> 32) —
+    //   `http/api-surface.ts`, where this deployable decides `/api/v1`;
+    //
+    //   FOUR under `apps-core-api.test.suites` (21 -> 25) — `api-surface.test.ts`,
+    //   `route-manifest.test.ts`, `identity-rest.test.ts` and
+    //   `composition/identity-rest.integration.test.ts`.
+    //
+    // 9 + 1 + 4 = 14, and 61 + 14 = 75. NO OTHER AREA MOVES: the manifest, the
+    // capability matrix, the census artifact, the operator enumeration and the
+    // taxonomy are all REGENERATED files that already exist, the generator and
+    // three gate suites are edited in place, and no ledger rule is new.
+    "apps-core-api": 75,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1654,7 +1676,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // SUMMED FOR THE INTEGRATION: 1640 + 5 (G1) + 7 (G2) + 1 (G3) = 1653, and the
   // integration's own operator-authentication suite makes it 1654. Every one of
   // the fourteen is additive: no ledger rule changed and no project was adopted.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1654);
+  //
+  // WIN-267 R1 1654 -> 1668. The SAME fourteen files as the `apps-core-api`
+  // delta above and not one more, which is the identity this pair of assertions
+  // exists to hold: the total and the per-area sums are the same arithmetic, so a
+  // file that arrived in one and not the other cannot pass both. 1654 + 14 = 1668.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1668);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1792,7 +1819,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // one file is `apps/core-api/mutations-win267-g3.json`, in `apps-core-api`,
     // matching that area's 57 -> 58; it ADOPTS NO PROJECT and CHANGES NO LEDGER
     // RULE, so this delta too is purely additive: 1640 + 1 = 1641.
-    rulesDocument.baseline.totalFiles + 1654
+    //
+    // WIN-267 R1 1654 -> 1668, and this is the TENTH place the second
+    // reconciliation has had to be moved by hand. It is the same fourteen files
+    // as the `apps-core-api` delta and the `totalFiles` assertion above, summed
+    // here from the per-area counts instead of read off the total, so the three
+    // can disagree and be caught. 1654 + 14 = 1668.
+    rulesDocument.baseline.totalFiles + 1668
   );
 });
 
