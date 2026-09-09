@@ -140,7 +140,13 @@ export { parseJudgeModel } from "../../domain/index.js";
 // in every method above, and an adapter reaching for `@platos/kernel` directly
 // would be a second import edge into the kernel from a package whose only
 // declared dependency is the context whose ports it satisfies.
-export type { EnvironmentScope, JsonValue, NotResult, Result, TenantScope, TransactionScope } from "@platos/kernel";
+// WIN-303 adds `DomainError`. The five stores' scope resolver is handed the
+// refusal constructor it must use, one per store, so the five codes are chosen
+// at the five call sites rather than switched on inside a shared helper — and a
+// function type over those constructors has to be able to name what they
+// return. It is the type every constructor in `domain/errors.ts` already
+// answers with, so publishing it adds no surface the port did not have.
+export type { DomainError, EnvironmentScope, JsonValue, NotResult, Result, TenantScope, TransactionScope } from "@platos/kernel";
 // WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
 // `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
 // callback RESOLVES, and a resolved callback COMMITS, which is the defect
@@ -213,4 +219,18 @@ export {
   PII_DETECTORS,
   ratingTargetUnreadable,
   transcriptUnreadable,
+  // WIN-303 — one scope refusal per canonical store, published for the same
+  // reason the three above are: an adapter narrowing by the environment alone
+  // serves a tampered triple, and the code it must refuse under is a property of
+  // the CONTRACT rather than of whichever adapter happens to notice. Five and
+  // not one so a resolver dropped from a single store cannot hide behind the
+  // other four. `governance-scope.ts` is the only implementation today, and the
+  // in-memory doubles deliberately raise none of them: a double holds no tenant
+  // tree, so a forged ancestry and a real one are the same value to it — the
+  // argument `tools-scope.ts` makes about its own two refusals.
+  criteriaScopeUnresolved,
+  evalsScopeUnresolved,
+  goldenSetsScopeUnresolved,
+  ratingsScopeUnresolved,
+  safetyScopeUnresolved,
 } from "../../domain/index.js";

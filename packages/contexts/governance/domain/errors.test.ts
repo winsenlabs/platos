@@ -9,8 +9,10 @@ import {
   criterionNotFound,
   criterionPromptInvalid,
   criterionRubricInvalid,
+  criteriaScopeUnresolved,
   criterionScaleInvalid,
   erasurePlanForeign,
+  evalsScopeUnresolved,
   evalNotFound,
   evalSelfJudged,
   evalsDisabled,
@@ -20,6 +22,7 @@ import {
   goldenSetTooManyCriteria,
   goldenSetTooManyPairs,
   goldenSetTooManyThreads,
+  goldenSetsScopeUnresolved,
   activityUnreadable,
   judgeModelInvalid,
   judgeUnavailable,
@@ -28,12 +31,14 @@ import {
   queueUnavailable,
   ratingActorForbidden,
   ratingCommentTooLong,
+  ratingsScopeUnresolved,
   ratingTargetNotFound,
   ratingTargetUnreadable,
   ratingValueInvalid,
   safetyActionUnknown,
   safetyDetectorUnknown,
   safetyRuleMalformed,
+  safetyScopeUnresolved,
   safetySeverityUnknown,
   scopeMismatch,
   transcriptNotFound,
@@ -51,6 +56,16 @@ const EVERY_CONSTRUCTOR = [
   ratingTargetUnreadable("no environment"),
   transcriptUnreadable("no environment"),
   activityUnreadable("no environment"),
+  // WIN-303 — the five canonical stores' own scope refusals. FIVE constructors
+  // and not one, for the reason the three above are three: this guard is
+  // instantiated once per store, and a resolver dropped from ONE of them must
+  // not be able to hide behind the other four still refusing. The uniqueness
+  // assertion below is what holds that.
+  safetyScopeUnresolved("foreign_ancestry"),
+  ratingsScopeUnresolved("foreign_ancestry"),
+  criteriaScopeUnresolved("foreign_ancestry"),
+  evalsScopeUnresolved("foreign_ancestry"),
+  goldenSetsScopeUnresolved("foreign_ancestry"),
   pageRequestInvalid("bad"),
   safetyRuleMalformed("nope"),
   safetyDetectorUnknown("nope"),
@@ -127,6 +142,25 @@ describe("the catalogue", () => {
 describe("categories carry the decision, not just the sentence", () => {
   it("a cross-scope grant is FORBIDDEN — the grant resolved, elsewhere", () => {
     expect(scopeMismatch("a", "b").category).toBe("forbidden");
+  });
+
+  it("a scope that does not join up in the tree is INTERNAL, never retryable", () => {
+    // The same argument the three read-seam codes carry: an incoherent scope is
+    // a defect in whatever built the grant, so the call will fail identically
+    // for ever. `unavailable` would attach `retryAfterSeconds` and the transport
+    // would repeat that lie on every attempt.
+    for (const error of [
+      safetyScopeUnresolved("foreign_ancestry"),
+      ratingsScopeUnresolved("foreign_ancestry"),
+      criteriaScopeUnresolved("foreign_ancestry"),
+      evalsScopeUnresolved("foreign_ancestry"),
+      goldenSetsScopeUnresolved("foreign_ancestry"),
+    ]) {
+      expect({ category: error.category, retryAfterSeconds: error.retryAfterSeconds }).toEqual({
+        category: "internal",
+        retryAfterSeconds: null,
+      });
+    }
   });
 
   it("an operator writing an end user's rating is FORBIDDEN, not invalid input", () => {

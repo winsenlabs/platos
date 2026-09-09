@@ -43,11 +43,12 @@ import {
   criterionAlreadyExists,
   err,
   ledgerUnavailable,
+  criteriaScopeUnresolved,
   ok,
 } from "@platos/context-governance/application/ports/index.js";
 
 import { requireStorableScale, requireUuid } from "./governance-guards.js";
-import { refuse } from "./governance-refusal.js";
+import { inGovernanceScope } from "./governance-scope.js";
 import { readCriterion, scopedWhere, type EvalCriterionRow } from "./governance-rows.js";
 import type { TenancyTransactions } from "./transaction.js";
 
@@ -95,15 +96,82 @@ export function createCriteriaRepository(
       createdBy: ActorId,
       transaction: TransactionScope,
     ): Promise<Result<EvalCriterion>> {
-      return refuse(async () => {
-        requireUuid("EvalCriterion.agentId", criterion.agentId);
-        requireStorableScale(criterion.scoreScaleMin, criterion.scoreScaleMax);
-        const client = transactions.writer(transaction);
-        const at = now();
-        const created = await client.evalCriterion.createManyAndReturn({
-          data: [
-            {
-              environmentId: scope.environmentId,
+      return inGovernanceScope(
+        transactions,
+        scope,
+        criteriaScopeUnresolved,
+        "criteria create",
+        async () => {
+          requireUuid("EvalCriterion.agentId", criterion.agentId);
+          requireStorableScale(criterion.scoreScaleMin, criterion.scoreScaleMax);
+          const client = transactions.writer(transaction);
+          const at = now();
+          const created = await client.evalCriterion.createManyAndReturn({
+            data: [
+              {
+                environmentId: scope.environmentId,
+                agentId: criterion.agentId,
+                name: criterion.name,
+                description: criterion.description,
+                judgePrompt: criterion.judgePrompt,
+                rubric: criterion.rubric,
+                judgeModel: criterion.judgeModel,
+                scoreScaleMin: criterion.scoreScaleMin,
+                scoreScaleMax: criterion.scoreScaleMax,
+                isActive: true,
+                createdBy,
+                createdAt: at,
+                updatedAt: at,
+              },
+            ],
+            skipDuplicates: true,
+            select: CRITERION_COLUMNS,
+          });
+          const row = created[0];
+          if (row === undefined) {
+            return err(criterionAlreadyExists(scope.environmentId, criterion.name));
+          }
+          return ok(readCriterion(row as EvalCriterionRow));
+        },
+      );
+    },
+
+    async update(
+      scope: EnvironmentScope,
+      criterion: EvalCriterion,
+      transaction: TransactionScope,
+    ): Promise<Result<EvalCriterion>> {
+      return inGovernanceScope(
+        transactions,
+        scope,
+        criteriaScopeUnresolved,
+        "criteria update",
+        async () => {
+          requireUuid("EvalCriterion.id", criterion.evalCriterionId);
+          requireUuid("EvalCriterion.agentId", criterion.agentId);
+          requireStorableScale(criterion.scoreScaleMin, criterion.scoreScaleMax);
+          const client = transactions.writer(transaction);
+          const held = await client.evalCriterion.findFirst({
+            where: { id: criterion.evalCriterionId, ...scopedWhere(scope) },
+            select: { id: true },
+          });
+          if (held === null) return err(ledgerUnavailable("criterion_not_in_scope"));
+          const clash = await client.evalCriterion.findFirst({
+            where: {
+              ...scopedWhere(scope),
+              name: criterion.name,
+              id: { not: criterion.evalCriterionId },
+            },
+            select: { id: true },
+          });
+          if (clash !== null) return err(criterionAlreadyExists(scope.environmentId, criterion.name));
+          // Keyed on BOTH id AND environmentId even though the row was just read
+          // in scope: the read and the write are two statements, and a key that
+          // was narrow only in the first would let a concurrently-moved row be
+          // written by the second.
+          const outcome = await client.evalCriterion.updateMany({
+            where: { id: criterion.evalCriterionId, ...scopedWhere(scope) },
+            data: {
               agentId: criterion.agentId,
               name: criterion.name,
               description: criterion.description,
@@ -112,69 +180,14 @@ export function createCriteriaRepository(
               judgeModel: criterion.judgeModel,
               scoreScaleMin: criterion.scoreScaleMin,
               scoreScaleMax: criterion.scoreScaleMax,
-              isActive: true,
-              createdBy,
-              createdAt: at,
-              updatedAt: at,
+              isActive: criterion.isActive,
+              updatedAt: criterion.updatedAt,
             },
-          ],
-          skipDuplicates: true,
-          select: CRITERION_COLUMNS,
-        });
-        const row = created[0];
-        if (row === undefined) {
-          return err(criterionAlreadyExists(scope.environmentId, criterion.name));
-        }
-        return ok(readCriterion(row as EvalCriterionRow));
-      }, "criteria create");
-    },
-
-    async update(
-      scope: EnvironmentScope,
-      criterion: EvalCriterion,
-      transaction: TransactionScope,
-    ): Promise<Result<EvalCriterion>> {
-      return refuse(async () => {
-        requireUuid("EvalCriterion.id", criterion.evalCriterionId);
-        requireUuid("EvalCriterion.agentId", criterion.agentId);
-        requireStorableScale(criterion.scoreScaleMin, criterion.scoreScaleMax);
-        const client = transactions.writer(transaction);
-        const held = await client.evalCriterion.findFirst({
-          where: { id: criterion.evalCriterionId, ...scopedWhere(scope) },
-          select: { id: true },
-        });
-        if (held === null) return err(ledgerUnavailable("criterion_not_in_scope"));
-        const clash = await client.evalCriterion.findFirst({
-          where: {
-            ...scopedWhere(scope),
-            name: criterion.name,
-            id: { not: criterion.evalCriterionId },
-          },
-          select: { id: true },
-        });
-        if (clash !== null) return err(criterionAlreadyExists(scope.environmentId, criterion.name));
-        // Keyed on BOTH id AND environmentId even though the row was just read
-        // in scope: the read and the write are two statements, and a key that
-        // was narrow only in the first would let a concurrently-moved row be
-        // written by the second.
-        const outcome = await client.evalCriterion.updateMany({
-          where: { id: criterion.evalCriterionId, ...scopedWhere(scope) },
-          data: {
-            agentId: criterion.agentId,
-            name: criterion.name,
-            description: criterion.description,
-            judgePrompt: criterion.judgePrompt,
-            rubric: criterion.rubric,
-            judgeModel: criterion.judgeModel,
-            scoreScaleMin: criterion.scoreScaleMin,
-            scoreScaleMax: criterion.scoreScaleMax,
-            isActive: criterion.isActive,
-            updatedAt: criterion.updatedAt,
-          },
-        });
-        if (outcome.count === 0) return err(ledgerUnavailable("criterion_not_in_scope"));
-        return ok(criterion);
-      }, "criteria update");
+          });
+          if (outcome.count === 0) return err(ledgerUnavailable("criterion_not_in_scope"));
+          return ok(criterion);
+        },
+      );
     },
 
     async remove(
@@ -182,80 +195,110 @@ export function createCriteriaRepository(
       criterionId: EvalCriterionId,
       transaction: TransactionScope,
     ): Promise<Result<boolean>> {
-      return refuse(async () => {
-        const client = transactions.writer(transaction);
-        const outcome = await client.evalCriterion.deleteMany({
-          where: { id: criterionId, ...scopedWhere(scope) },
-        });
-        return ok(outcome.count > 0);
-      }, "criteria remove");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        criteriaScopeUnresolved,
+        "criteria remove",
+        async () => {
+          const client = transactions.writer(transaction);
+          const outcome = await client.evalCriterion.deleteMany({
+            where: { id: criterionId, ...scopedWhere(scope) },
+          });
+          return ok(outcome.count > 0);
+        },
+      );
     },
 
     async findById(
       scope: EnvironmentScope,
       criterionId: EvalCriterionId,
     ): Promise<Result<EvalCriterion | null>> {
-      return refuse(async () => {
-        const row = await transactions.reader().evalCriterion.findFirst({
-          where: { id: criterionId, ...scopedWhere(scope) },
-          select: CRITERION_COLUMNS,
-        });
-        return ok(row === null ? null : readCriterion(row as EvalCriterionRow));
-      }, "criteria findById");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        criteriaScopeUnresolved,
+        "criteria findById",
+        async () => {
+          const row = await transactions.reader().evalCriterion.findFirst({
+            where: { id: criterionId, ...scopedWhere(scope) },
+            select: CRITERION_COLUMNS,
+          });
+          return ok(row === null ? null : readCriterion(row as EvalCriterionRow));
+        },
+      );
     },
 
     async findByName(scope: EnvironmentScope, name: string): Promise<Result<EvalCriterion | null>> {
-      return refuse(async () => {
-        // EXACT, not case-folded, because the port says so and because the
-        // unique index it pre-checks is itself exact: a case-insensitive
-        // pre-check would answer "taken" for a name `create` would then accept.
-        const row = await transactions.reader().evalCriterion.findFirst({
-          where: { name, ...scopedWhere(scope) },
-          select: CRITERION_COLUMNS,
-        });
-        return ok(row === null ? null : readCriterion(row as EvalCriterionRow));
-      }, "criteria findByName");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        criteriaScopeUnresolved,
+        "criteria findByName",
+        async () => {
+          // EXACT, not case-folded, because the port says so and because the
+          // unique index it pre-checks is itself exact: a case-insensitive
+          // pre-check would answer "taken" for a name `create` would then accept.
+          const row = await transactions.reader().evalCriterion.findFirst({
+            where: { name, ...scopedWhere(scope) },
+            select: CRITERION_COLUMNS,
+          });
+          return ok(row === null ? null : readCriterion(row as EvalCriterionRow));
+        },
+      );
     },
 
     async page(scope: EnvironmentScope, query: CriterionQuery): Promise<Result<CriterionPage>> {
-      return refuse(async () => {
-        const where = {
-          ...scopedWhere(scope),
-          ...(query.activeOnly ? { isActive: true } : {}),
-          ...agentFilter(query),
-          ...(query.search === null
-            ? {}
-            : { name: { contains: query.search, mode: "insensitive" as const } }),
-        };
-        const reader = transactions.reader();
-        const rows = await reader.evalCriterion.findMany({
-          where,
-          select: CRITERION_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-          skip: query.offset,
-          take: query.limit,
-        });
-        const total = await reader.evalCriterion.count({ where });
-        return ok({ items: rows.map((row) => readCriterion(row as EvalCriterionRow)), total });
-      }, "criteria page");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        criteriaScopeUnresolved,
+        "criteria page",
+        async () => {
+          const where = {
+            ...scopedWhere(scope),
+            ...(query.activeOnly ? { isActive: true } : {}),
+            ...agentFilter(query),
+            ...(query.search === null
+              ? {}
+              : { name: { contains: query.search, mode: "insensitive" as const } }),
+          };
+          const reader = transactions.reader();
+          const rows = await reader.evalCriterion.findMany({
+            where,
+            select: CRITERION_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+            skip: query.offset,
+            take: query.limit,
+          });
+          const total = await reader.evalCriterion.count({ where });
+          return ok({ items: rows.map((row) => readCriterion(row as EvalCriterionRow)), total });
+        },
+      );
     },
 
     async findMany(
       scope: EnvironmentScope,
       criterionIds: readonly EvalCriterionId[],
     ): Promise<Result<readonly EvalCriterion[]>> {
-      return refuse(async () => {
-        // ONE statement for the whole list, and the empty list is answered
-        // WITHOUT one. A rollup resolves its labels here, so a loop of
-        // `findById` would be the N+1 this port exists to prevent.
-        if (criterionIds.length === 0) return ok([]);
-        const rows = await transactions.reader().evalCriterion.findMany({
-          where: { id: { in: [...criterionIds] }, ...scopedWhere(scope) },
-          select: CRITERION_COLUMNS,
-          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-        });
-        return ok(rows.map((row) => readCriterion(row as EvalCriterionRow)));
-      }, "criteria findMany");
+      return inGovernanceScope(
+        transactions,
+        scope,
+        criteriaScopeUnresolved,
+        "criteria findMany",
+        async () => {
+          // ONE statement for the whole list, and the empty list is answered
+          // WITHOUT one. A rollup resolves its labels here, so a loop of
+          // `findById` would be the N+1 this port exists to prevent.
+          if (criterionIds.length === 0) return ok([]);
+          const rows = await transactions.reader().evalCriterion.findMany({
+            where: { id: { in: [...criterionIds] }, ...scopedWhere(scope) },
+            select: CRITERION_COLUMNS,
+            orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          });
+          return ok(rows.map((row) => readCriterion(row as EvalCriterionRow)));
+        },
+      );
     },
   };
 }

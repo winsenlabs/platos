@@ -2547,7 +2547,20 @@ export const EXPECTED = Object.freeze({
   // SUMMED FOR THE INTEGRATION: 136 + 1 (G1) + 2 (G2) = 139 files,
   // 1506 + 13 (G1) + 28 (G2) = 1547 cases. Neither branch could state this
   // row and neither is right on its own.
-  "packages/adapters/postgres-tenancy": { files: 139, cases: 1547 },
+  //
+  // WIN-303: 139 + 1 = 140 files, 1547 + 11 = 1558 cases. ONE file,
+  // `governance-isolation.integration.test.ts`, and every one of its eleven
+  // cases needs TWO tenants in a container — which is the only shape in which a
+  // TAMPERED scope triple exists at all. Five cases are one per canonical store
+  // (a forged ancestry refused under that store's own code, with the honest
+  // scope answered in the same case so an unconditional refusal fails too, and
+  // the row read back on a second client); four separate the three FACTS the
+  // resolver reports, including the two that kill the organization half and the
+  // project half of the comparison ON THEIR OWN; two hold a TENANT scope to the
+  // ancestry it asserts and to no more. `governance-statements.integration.test.ts`
+  // is widened rather than added to — fifteen pins move by the one resolve and
+  // not one case is new, so this row gains a file and not two.
+  "packages/adapters/postgres-tenancy": { files: 140, cases: 1558 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -2595,7 +2608,14 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
   "packages/contexts/eventing": { files: 15, cases: 157 },
   "packages/contexts/files": { files: 15, cases: 134 },
-  "packages/contexts/governance": { files: 31, cases: 609 },
+  // WIN-303: 609 -> 610 cases, files unmoved. ONE case in `domain/errors.test.ts`
+  // — the five new store-scope codes are `internal` and carry no
+  // `retryAfterSeconds`, which is the difference from `ledgerUnavailable` beside
+  // them and the reason they are not it: an incoherent scope will fail the same
+  // way for ever, so a retry hint would be a lie the transport repeats. The five
+  // constructors themselves move the EXISTING uniqueness case's list rather than
+  // adding one, which is not a new case.
+  "packages/contexts/governance": { files: 31, cases: 610 },
   "packages/contexts/identity-access": { files: 23, cases: 318 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
@@ -3429,8 +3449,22 @@ export const EXPECTED = Object.freeze({
  * 545 + 1 + 2 = 548 files, all forty-one cases on the ONE
  * `packages/adapters/postgres-tenancy` row. READ BACK from
  * `node scripts/arch/test-case-census.mjs`, not trusted from this sum.
+ *
+ * WIN-303 DELTA, the tampered scope triple. TWO rows move, and 12 = 11 + 1:
+ *
+ *   packages/adapters/postgres-tenancy 139 -> 140 files, 1547 -> 1558 cases
+ *   packages/contexts/governance        31 ->  31 files,  609 ->  610 cases
+ *
+ * ELEVEN of the twelve carry `.integration.` in the name and need a container,
+ * because a tampered triple is a scope only TWO seeded tenants can express. The
+ * twelfth is a category assertion in `domain/errors.test.ts` and runs anywhere.
+ *
+ * 8112 + 12 = 8124 over 548 + 1 = 549 files, READ BACK from
+ * `node scripts/arch/test-case-census.mjs` rather than trusted from this sum.
+ * Two sibling branches move these pins in the same window, so the integrator
+ * SUMS the deltas rather than taking any one branch's total.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8112;
+export const EXPECTED_RUNTIME_TOTAL = 8124;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

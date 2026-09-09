@@ -1,8 +1,8 @@
 {
   "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
   "purpose": [
-    "The guard ledger for WIN-258 TRANCHE 5 \u2014 `governance`'s canonical store, the",
-    "SIXTH owner behind the one PostgreSQL client ADR M0.3 \u00a715 gives the ORM. One",
+    "The guard ledger for WIN-258 TRANCHE 5 — `governance`'s canonical store, the",
+    "SIXTH owner behind the one PostgreSQL client ADR M0.3 §15 gives the ORM. One",
     "entry per guard: per scope predicate, per vocabulary check that stands where",
     "no enum stands, per shape check that stands where a migration-only CHECK",
     "stands, per envelope decision that keeps a row an older binary wrote",
@@ -21,8 +21,8 @@
     "",
     "WHY THIS TRANCHE NEEDED ITS OWN SWEEP. Three of its guards protect facts the",
     "DATABASE does not hold at all. `SafetyEvent.detector`, `.action` and",
-    "`.severity` are plain `String` columns \u2014 the closed sets live only in",
-    "`domain/safety-event.ts` \u2014 so a store that CAST them would put a value",
+    "`.severity` are plain `String` columns — the closed sets live only in",
+    "`domain/safety-event.ts` — so a store that CAST them would put a value",
     "outside the union into `summarise`, whose histograms are keyed by the union,",
     "and the total would stop equalling the sum of the parts with no error",
     "anywhere. And three fields of `AdmittedSafetyEvent` have no column, so they",
@@ -38,7 +38,7 @@
     "`CHECK (\"rating\" IN (-1, 1))` behind a preflight block that refuses to build the",
     "database at all if any row holds 2, 3, 4 or 5. An adapter written against the",
     "FIRST reading refuses every thumbs-down the product emits and accepts four",
-    "values no database this migration builds can hold \u2014 wrong in both directions at",
+    "values no database this migration builds can hold — wrong in both directions at",
     "once, with `schema.prisma` showing neither constraint. M-G20 and M-G46 are the",
     "two halves of that guard, and the constraints suite stands them side by side."
   ],
@@ -64,19 +64,19 @@
     "RESULT, 2026-09-06, against PostgreSQL 16 in a container: 46 entries, 46",
     "KILLED, 0 SURVIVED, 0 VACUOUS. Every baseline suite set was green with a",
     "non-zero executed case count before its mutation was applied, and every",
-    "`from` matched its file exactly once \u2014 the driver refuses an entry whose",
+    "`from` matched its file exactly once — the driver refuses an entry whose",
     "anchor occurs zero times or more than once, so a sweep that silently changed",
     "nothing is not a state this can reach.",
     "",
     "THE FIRST SWEEP FOUND FOUR SURVIVORS AND THEY ARE WHY FOUR CASES EXIST.",
     "M-G18 survived because the three scope refusals were measured through",
-    "`criteria.remove` alone, and `append` \u2014 the ONE method here whose transaction",
-    "parameter is NULLABLE \u2014 was the one an implementation could plausibly have",
+    "`criteria.remove` alone, and `append` — the ONE method here whose transaction",
+    "parameter is NULLABLE — was the one an implementation could plausibly have",
     "resolved through `reader()` on both branches. M-G19 survived because the",
     "cross-environment flip used a rating the CHECK refuses, so the DATABASE was",
     "refusing the write the missing scope predicate should have. M-G23 survived",
-    "because an erasure that drops its subject predicate returns the right COUNT \u2014",
-    "the rows it destroyed are the rows it counted \u2014 and only somebody ELSE'S vote",
+    "because an erasure that drops its subject predicate returns the right COUNT —",
+    "the rows it destroyed are the rows it counted — and only somebody ELSE'S vote",
     "can see it. M-G27 survived because `\"agentId\" in query` and",
     "`query.agentId === undefined` differ only when the KEY IS PRESENT and the",
     "value is undefined, a third case the scenario did not ask for. Each is now a",
@@ -129,7 +129,7 @@
       "file": "src/governance-rows.ts",
       "from": "  if (metadata[SAFETY_METADATA_MARKER] === undefined) {",
       "to": "  if (false) {",
-      "note": "Without the marker check every stored object is read as an envelope, so a legacy attribute bag loses its whole body and a detector attribute named `principalId` becomes the ledger's subject \u2014 erasable on somebody else's behalf.",
+      "note": "Without the marker check every stored object is read as an envelope, so a legacy attribute bag loses its whole body and a detector attribute named `principalId` becomes the ledger's subject — erasable on somebody else's behalf.",
       "suites": [
         "src/governance-rows.test.ts",
         "src/governance-rules.integration.test.ts"
@@ -237,7 +237,7 @@
       "file": "src/governance-safety.ts",
       "from": "            : { toolName: { contains: query.search, mode: \"insensitive\" as const } }),",
       "to": "            : { toolName: { contains: query.search } }),",
-      "note": "Tool names are not normalised anywhere in the schema, so a case-sensitive search finds `web_fetch` and not `WEB_fetch` \u2014 the same tool, spelled by a different producer.",
+      "note": "Tool names are not normalised anywhere in the schema, so a case-sensitive search finds `web_fetch` and not `WEB_fetch` — the same tool, spelled by a different producer.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
@@ -248,8 +248,8 @@
     {
       "name": "M-G13 safety: a NULL subject matches NOTHING, without a statement",
       "file": "src/governance-safety.ts",
-      "from": "        if (selector.principalId === null) return ok(0);\n        const total = await transactions.reader().safetyEvent.count({",
-      "to": "        const total = await transactions.reader().safetyEvent.count({",
+      "from": "      const principalId = selector.principalId;\n      if (principalId === null) return ok(0);\n      return inGovernanceScope(",
+      "to": "      const principalId = selector.principalId as string;\n      return inGovernanceScope(",
       "note": "The port says an implementation MUST treat a null selector as matching nothing rather than as 'match everything'. Answered without a statement, so the rule holds even if the filter were wrong.",
       "suites": [
         "src/governance-conformance.integration.test.ts",
@@ -264,7 +264,7 @@
       "file": "src/governance-safety.ts",
       "from": "      { metadata: { path: [SAFETY_METADATA_MARKER], equals: 1 } },\n      { metadata: { path: [\"principalId\"], equals: principalId } },",
       "to": "      { metadata: { path: [\"principalId\"], equals: principalId } },",
-      "note": "A legacy row's metadata is the producer's raw attribute bag. Without the marker clause a detector that emitted a key called `principalId` has its attribute read as the ledger's subject \u2014 and anonymised on somebody else's behalf.",
+      "note": "A legacy row's metadata is the producer's raw attribute bag. Without the marker clause a detector that emitted a key called `principalId` has its attribute read as the ledger's subject — and anonymised on somebody else's behalf.",
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
@@ -275,8 +275,8 @@
     {
       "name": "M-G15 safety: anonymising OVERWRITES and never deletes",
       "file": "src/governance-safety.ts",
-      "from": "        const outcome = await client.safetyEvent.updateMany({\n          where: subjectWhere(selector, selector.principalId),\n          data: { detail: null, metadata: nullableJson(null), endUserId: null },\n        });",
-      "to": "        const outcome = await client.safetyEvent.deleteMany({\n          where: subjectWhere(selector, selector.principalId),\n        });",
+      "from": "          const outcome = await client.safetyEvent.updateMany({\n            where: subjectWhere(selector, selector.principalId),\n            data: { detail: null, metadata: nullableJson(null), endUserId: null },\n          });",
+      "to": "          const outcome = await client.safetyEvent.deleteMany({\n            where: subjectWhere(selector, selector.principalId),\n          });",
       "note": "A compliance ledger that can be emptied is not a compliance ledger. The detector, action, severity and instant must survive the erasure of who it was about.",
       "suites": [
         "src/governance-rules.integration.test.ts"
@@ -301,8 +301,8 @@
     {
       "name": "M-G17 safety: the two detector families the risk score divides by",
       "file": "src/governance-safety.ts",
-      "from": "          if (PII_DETECTORS.includes(detector)) bucket.pii += group._count._all;\n          if (INJECTION_DETECTORS.includes(detector)) bucket.injection += group._count._all;",
-      "to": "          if (INJECTION_DETECTORS.includes(detector)) bucket.pii += group._count._all;\n          if (PII_DETECTORS.includes(detector)) bucket.injection += group._count._all;",
+      "from": "            if (PII_DETECTORS.includes(detector)) bucket.pii += group._count._all;\n            if (INJECTION_DETECTORS.includes(detector)) bucket.injection += group._count._all;",
+      "to": "            if (INJECTION_DETECTORS.includes(detector)) bucket.pii += group._count._all;\n            if (PII_DETECTORS.includes(detector)) bucket.injection += group._count._all;",
       "note": "Swapped, every agent's PII rate is its injection rate and the risk band a canary decision is taken on is computed from the wrong numerator.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -314,9 +314,9 @@
     {
       "name": "M-G18 safety: a write carrying a scope goes through `writer`, which refuses three ways",
       "file": "src/governance-safety.ts",
-      "from": "        const client = transaction === null ? transactions.reader() : transactions.writer(transaction);\n        const written = await client.safetyEvent.createManyAndReturn({",
-      "to": "        const client = transactions.reader();\n        const written = await client.safetyEvent.createManyAndReturn({",
-      "note": "`writer(scope)` is what proves the token a write was handed is the transaction it is actually inside. `append` is the ONE method here whose transaction parameter is NULLABLE, so it is the one an implementation could plausibly have resolved through `reader()` on both branches \u2014 and a stale or foreign token would then be accepted.",
+      "from": "          const client = transaction === null ? transactions.reader() : transactions.writer(transaction);\n          const written = await client.safetyEvent.createManyAndReturn({",
+      "to": "          const client = transactions.reader();\n          const written = await client.safetyEvent.createManyAndReturn({",
+      "note": "`writer(scope)` is what proves the token a write was handed is the transaction it is actually inside. `append` is the ONE method here whose transaction parameter is NULLABLE, so it is the one an implementation could plausibly have resolved through `reader()` on both branches — and a stale or foreign token would then be accepted.",
       "suites": [
         "src/governance-transaction.integration.test.ts"
       ],
@@ -327,8 +327,8 @@
     {
       "name": "M-G19 ratings: the flip is keyed on the ENVIRONMENT as well as the pair",
       "file": "src/governance-ratings.ts",
-      "from": "          where: { turnId: write.turnId, endUserId: write.endUserId, ...scopedWhere(scope) },\n          data: {",
-      "to": "          where: { turnId: write.turnId, endUserId: write.endUserId },\n          data: {",
+      "from": "            where: { turnId: write.turnId, endUserId: write.endUserId, ...scopedWhere(scope) },\n            data: {",
+      "to": "            where: { turnId: write.turnId, endUserId: write.endUserId },\n            data: {",
       "note": "`@@unique([turnId, endUserId])` names no environment, so an update keyed on the pair alone reaches another tenant's row whenever the two ids collide.",
       "suites": [
         "src/governance-rules.integration.test.ts"
@@ -342,7 +342,7 @@
       "file": "src/governance-ratings.ts",
       "from": "        requireStorableRating(write.rating);",
       "to": "",
-      "note": "`MessageRating_rating_check` exists only in the migrations, and that file installs it TWICE: `BETWEEN 1 AND 5` at line 2799, then `IN (-1, 1)` at line 3802 after dropping the first. Let raise, the refusal is still reported \u2014 and PostgreSQL aborts the caller's transaction with it, so a use case that writes a rating and then anything else loses both.",
+      "note": "`MessageRating_rating_check` exists only in the migrations, and that file installs it TWICE: `BETWEEN 1 AND 5` at line 2799, then `IN (-1, 1)` at line 3802 after dropping the first. Let raise, the refusal is still reported — and PostgreSQL aborts the caller's transaction with it, so a use case that writes a rating and then anything else loses both.",
       "suites": [
         "src/governance-constraints.integration.test.ts"
       ],
@@ -367,8 +367,8 @@
     {
       "name": "M-G22 ratings: withdrawing a vote that was not there answers FALSE",
       "file": "src/governance-ratings.ts",
-      "from": "        return ok(outcome.count > 0);\n      }, \"ratings remove\");",
-      "to": "        return ok(true);\n      }, \"ratings remove\");",
+      "from": "          return ok(outcome.count > 0);\n        },\n      );\n    },\n\n    async tallyTurn(",
+      "to": "          return ok(true);\n        },\n      );\n    },\n\n    async tallyTurn(",
       "note": "The port's `remove` answers false when there was nothing to withdraw. Always-true makes a second withdrawal indistinguishable from a first.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -380,9 +380,9 @@
     {
       "name": "M-G23 ratings: a subject's rows are DESTROYED, and only that subject's",
       "file": "src/governance-ratings.ts",
-      "from": "        const outcome = await client.messageRating.deleteMany({\n          where: { endUserId: selector.endUserId, ...tenantWhere(selector.scope) },\n        });",
-      "to": "        const outcome = await client.messageRating.deleteMany({\n          where: { ...tenantWhere(selector.scope) },\n        });",
-      "note": "An erasure that dropped the subject predicate would destroy every rating in the scope, and the COUNT it returns would still look right \u2014 the rows it destroyed are the rows it counted. The only thing that sees the missing predicate is somebody ELSE'S vote, which is why the case seeds a second subject.",
+      "from": "          const outcome = await client.messageRating.deleteMany({\n            where: { endUserId: selector.endUserId, ...tenantWhere(selector.scope) },\n          });",
+      "to": "          const outcome = await client.messageRating.deleteMany({\n            where: { ...tenantWhere(selector.scope) },\n          });",
+      "note": "An erasure that dropped the subject predicate would destroy every rating in the scope, and the COUNT it returns would still look right — the rows it destroyed are the rows it counted. The only thing that sees the missing predicate is somebody ELSE'S vote, which is why the case seeds a second subject.",
       "suites": [
         "src/governance-rules.integration.test.ts"
       ],
@@ -393,8 +393,8 @@
     {
       "name": "M-G24 criteria: the duplicate insert does not RAISE",
       "file": "src/governance-criteria.ts",
-      "from": "          skipDuplicates: true,\n          select: CRITERION_COLUMNS,\n        });\n        const row = created[0];\n        if (row === undefined) {\n          return err(criterionAlreadyExists(scope.environmentId, criterion.name));",
-      "to": "          select: CRITERION_COLUMNS,\n        });\n        const row = created[0];\n        if (row === undefined) {\n          return err(criterionAlreadyExists(scope.environmentId, criterion.name));",
+      "from": "            skipDuplicates: true,\n            select: CRITERION_COLUMNS,\n          });\n          const row = created[0];\n          if (row === undefined) {\n            return err(criterionAlreadyExists(scope.environmentId, criterion.name));",
+      "to": "            select: CRITERION_COLUMNS,\n          });\n          const row = created[0];\n          if (row === undefined) {\n            return err(criterionAlreadyExists(scope.environmentId, criterion.name));",
       "note": "`ON CONFLICT DO NOTHING` is what lets the caller keep its transaction. A raised unique index reports the same refusal and puts the block in 25P02, so every later statement in it fails.",
       "suites": [
         "src/governance-rules.integration.test.ts"
@@ -406,8 +406,8 @@
     {
       "name": "M-G25 criteria: a name clash is the port's OWN code, not a store outage",
       "file": "src/governance-criteria.ts",
-      "from": "          return err(criterionAlreadyExists(scope.environmentId, criterion.name));\n        }\n        return ok(readCriterion(row as EvalCriterionRow));\n      }, \"criteria create\");",
-      "to": "          return err(ledgerUnavailable(\"criterion create wrote no row\"));\n        }\n        return ok(readCriterion(row as EvalCriterionRow));\n      }, \"criteria create\");",
+      "from": "          const row = created[0];\n          if (row === undefined) {\n            return err(criterionAlreadyExists(scope.environmentId, criterion.name));\n          }",
+      "to": "          const row = created[0];\n          if (row === undefined) {\n            return err(ledgerUnavailable(\"criterion create wrote no row\"));\n          }",
       "note": "The port says an implementation MUST map the constraint violation to `GOVERNANCE_CRITERION_ALREADY_EXISTS`. Reported as an outage, a caller retries a name that will never be free.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -419,8 +419,8 @@
     {
       "name": "M-G26 criteria: the update checks SCOPE before it checks the name",
       "file": "src/governance-criteria.ts",
-      "from": "        if (held === null) return err(ledgerUnavailable(\"criterion_not_in_scope\"));\n        const clash = await client.evalCriterion.findFirst({",
-      "to": "        const clash = await client.evalCriterion.findFirst({",
+      "from": "          if (held === null) return err(ledgerUnavailable(\"criterion_not_in_scope\"));\n          const clash = await client.evalCriterion.findFirst({",
+      "to": "          const clash = await client.evalCriterion.findFirst({",
       "note": "A criterion that is BOTH out of scope and name-clashing must report the same refusal from this store as from the double, or a cross-tenant probe is distinguishable from a typo by which error comes back.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -434,7 +434,7 @@
       "file": "src/governance-criteria.ts",
       "from": "  if (!(\"agentId\" in query)) return {};",
       "to": "  if (query.agentId === undefined) return {};",
-      "note": "`undefined` does not filter; an explicit `null` matches only the SHARED criteria. The two are told apart by `\"agentId\" in query`, and the difference is only reachable when the KEY IS PRESENT and the value is undefined \u2014 a third case the port's `agentId?: AgentId | null` permits and the double already handles.",
+      "note": "`undefined` does not filter; an explicit `null` matches only the SHARED criteria. The two are told apart by `\"agentId\" in query`, and the difference is only reachable when the KEY IS PRESENT and the value is undefined — a third case the port's `agentId?: AgentId | null` permits and the double already handles.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
@@ -471,9 +471,9 @@
     {
       "name": "M-G30 criteria: the name pre-check is EXACT, not case-folded",
       "file": "src/governance-criteria.ts",
-      "from": "          where: { name, ...scopedWhere(scope) },\n          select: CRITERION_COLUMNS,",
-      "to": "          where: { name: { equals: name, mode: \"insensitive\" as const }, ...scopedWhere(scope) },\n          select: CRITERION_COLUMNS,",
-      "note": "The unique index it pre-checks is case-SENSITIVE, so a folded pre-check answers 'taken' for a name `create` would then accept \u2014 a better error message that is not the guarantee, disagreeing with the guarantee.",
+      "from": "            where: { name, ...scopedWhere(scope) },\n            select: CRITERION_COLUMNS,",
+      "to": "            where: { name: { equals: name, mode: \"insensitive\" as const }, ...scopedWhere(scope) },\n            select: CRITERION_COLUMNS,",
+      "note": "The unique index it pre-checks is case-SENSITIVE, so a folded pre-check answers 'taken' for a name `create` would then accept — a better error message that is not the guarantee, disagreeing with the guarantee.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
       ],
@@ -484,8 +484,8 @@
     {
       "name": "M-G31 criteria: removing a criterion DELETES it",
       "file": "src/governance-criteria.ts",
-      "from": "        const outcome = await client.evalCriterion.deleteMany({\n          where: { id: criterionId, ...scopedWhere(scope) },\n        });\n        return ok(outcome.count > 0);\n      }, \"criteria remove\");",
-      "to": "        const outcome = await client.evalCriterion.updateMany({\n          where: { id: criterionId, ...scopedWhere(scope) },\n          data: { isActive: false },\n        });\n        return ok(outcome.count > 0);\n      }, \"criteria remove\");",
+      "from": "          const outcome = await client.evalCriterion.deleteMany({\n            where: { id: criterionId, ...scopedWhere(scope) },\n          });\n          return ok(outcome.count > 0);",
+      "to": "          const outcome = await client.evalCriterion.updateMany({\n            where: { id: criterionId, ...scopedWhere(scope) },\n            data: { isActive: false },\n          });\n          return ok(outcome.count > 0);",
       "note": "The port's `remove` destroys the criterion AND, through `onDelete: Cascade`, every eval taken against it. A soft delete leaves both, and a second `remove` then answers true forever.",
       "suites": [
         "src/governance-conformance.integration.test.ts",
@@ -512,8 +512,8 @@
     {
       "name": "M-G33 evals: an EMPTY version list means every version",
       "file": "src/governance-evals.ts",
-      "from": "            ...(query.versionIds.length === 0\n              ? {}\n              : { agentVersionId: { in: [...query.versionIds] } }),",
-      "to": "            ...{ agentVersionId: { in: [...query.versionIds] } },",
+      "from": "              ...(query.versionIds.length === 0\n                ? {}\n                : { agentVersionId: { in: [...query.versionIds] } }),",
+      "to": "              ...{ agentVersionId: { in: [...query.versionIds] } },",
       "note": "`IN ()` matches nothing, so a scorecard asked for all versions reads as an agent that has never been evaluated.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -525,8 +525,8 @@
     {
       "name": "M-G34 evals: the search covers the JUDGE MODEL as well as the rationale",
       "file": "src/governance-evals.ts",
-      "from": "                  { rationale: { contains: query.search, mode: \"insensitive\" as const } },\n                  { judgeModel: { contains: query.search, mode: \"insensitive\" as const } },",
-      "to": "                  { rationale: { contains: query.search, mode: \"insensitive\" as const } },",
+      "from": "                    { rationale: { contains: query.search, mode: \"insensitive\" as const } },\n                    { judgeModel: { contains: query.search, mode: \"insensitive\" as const } },",
+      "to": "                    { rationale: { contains: query.search, mode: \"insensitive\" as const } },",
       "note": "The port names both columns. Dropped, an operator can no longer find the evals a particular judge produced, which is the query an incident about a bad judge starts with.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -538,8 +538,8 @@
     {
       "name": "M-G35 evals: the baseline sample is ONE version's scores",
       "file": "src/governance-evals.ts",
-      "from": "            agentVersionId: query.agentVersionId,\n            createdAt: { gte: query.since },\n          },\n          select: REGRESSION_COLUMNS,",
-      "to": "            createdAt: { gte: query.since },\n          },\n          select: REGRESSION_COLUMNS,",
+      "from": "              agentVersionId: query.agentVersionId,\n              createdAt: { gte: query.since },\n            },\n            select: REGRESSION_COLUMNS,",
+      "to": "              createdAt: { gte: query.since },\n            },\n            select: REGRESSION_COLUMNS,",
       "note": "The baseline is the version a candidate is compared against. Widened to every version, the comparison is the agent against itself and a regression is averaged away.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -578,8 +578,8 @@
     {
       "name": "M-G38 goldenSets: the duplicate insert does not RAISE either",
       "file": "src/governance-golden-sets.ts",
-      "from": "          skipDuplicates: true,\n          select: GOLDEN_SET_COLUMNS,",
-      "to": "          select: GOLDEN_SET_COLUMNS,",
+      "from": "            skipDuplicates: true,\n            select: GOLDEN_SET_COLUMNS,",
+      "to": "            select: GOLDEN_SET_COLUMNS,",
       "note": "Same argument as M-G24 on the other table: a raised unique index takes the caller's transaction with the answer.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -591,8 +591,8 @@
     {
       "name": "M-G39 goldenSets: a name clash is the port's OWN code",
       "file": "src/governance-golden-sets.ts",
-      "from": "          return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));\n        }\n        return ok(readGoldenSet(row as GoldenSetRow));",
-      "to": "          return err(ledgerUnavailable(\"golden set create wrote no row\"));\n        }\n        return ok(readGoldenSet(row as GoldenSetRow));",
+      "from": "            return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));\n          }\n          return ok(readGoldenSet(row as GoldenSetRow));",
+      "to": "            return err(ledgerUnavailable(\"golden set create wrote no row\"));\n          }\n          return ok(readGoldenSet(row as GoldenSetRow));",
       "note": "The port says an implementation MUST map the violation to `GOVERNANCE_GOLDEN_SET_ALREADY_EXISTS` rather than letting a store exception escape or reporting an outage.",
       "suites": [
         "src/governance-conformance.integration.test.ts"
@@ -604,7 +604,7 @@
     {
       "name": "M-G40 goldenSets: the RENAME checks the name the double does not",
       "file": "src/governance-golden-sets.ts",
-      "from": "        if (clash !== null) {\n          return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));\n        }",
+      "from": "          if (clash !== null) {\n            return err(goldenSetAlreadyExists(scope.environmentId, set.agentId, set.name));\n          }",
       "to": "",
       "note": "`InMemoryGoldenSetsRepository.update` performs no uniqueness check at all, so this guard has no counterpart in the double. Without it the rename raises `@@unique([environmentId, agentId, name])` and aborts the caller's transaction.",
       "suites": [
@@ -617,8 +617,8 @@
     {
       "name": "M-G41 goldenSets: a delete is narrowed to this environment",
       "file": "src/governance-golden-sets.ts",
-      "from": "        const outcome = await client.goldenSet.deleteMany({\n          where: { id: goldenSetId, ...scopedWhere(scope) },\n        });",
-      "to": "        const outcome = await client.goldenSet.deleteMany({\n          where: { id: goldenSetId },\n        });",
+      "from": "          const outcome = await client.goldenSet.deleteMany({\n            where: { id: goldenSetId, ...scopedWhere(scope) },\n          });",
+      "to": "          const outcome = await client.goldenSet.deleteMany({\n            where: { id: goldenSetId },\n          });",
       "note": "A golden set is addressed by a uuid a caller supplies. Unnarrowed, a caller holding another tenant's identifier destroys their regression sample and is told it worked.",
       "suites": [
         "src/governance-rules.integration.test.ts"
@@ -644,14 +644,14 @@
     {
       "name": "M-G43 criteria: `findMany` resolves the whole label set in ONE statement",
       "file": "src/governance-criteria.ts",
-      "from": "        const rows = await transactions.reader().evalCriterion.findMany({\n          where: { id: { in: [...criterionIds] }, ...scopedWhere(scope) },",
-      "to": "        for (const one of criterionIds) {\n          await transactions.reader().evalCriterion.findFirst({ where: { id: one } });\n        }\n        const rows = await transactions.reader().evalCriterion.findMany({\n          where: { id: { in: [...criterionIds] }, ...scopedWhere(scope) },",
-      "note": "THE EXACT SHAPE THE PORT EXISTS TO PREVENT, added back: a rollup resolving its criterion labels one at a time. The returned value does not change at all \u2014 only the statement count sees it, which is why the count is the contract.",
+      "from": "          const rows = await transactions.reader().evalCriterion.findMany({\n            where: { id: { in: [...criterionIds] }, ...scopedWhere(scope) },",
+      "to": "          for (const one of criterionIds) {\n            await transactions.reader().evalCriterion.findFirst({ where: { id: one } });\n          }\n          const rows = await transactions.reader().evalCriterion.findMany({\n            where: { id: { in: [...criterionIds] }, ...scopedWhere(scope) },",
+      "note": "THE EXACT SHAPE THE PORT EXISTS TO PREVENT, added back: a rollup resolving its criterion labels one at a time. The returned value does not change at all — only the statement count sees it, which is why the count is the contract.",
       "suites": [
         "src/governance-statements.integration.test.ts"
       ],
       "kills": [
-        "reads are a fixed number of statements, whatever the row count `CriteriaRepository.findMany` is one for the whole label set"
+        "reads are a fixed number of statements, whatever the row count `CriteriaRepository.findMany` is one read for the whole label set"
       ]
     },
     {
@@ -664,7 +664,7 @@
         "src/governance-statements.integration.test.ts"
       ],
       "kills": [
-        "reads are a fixed number of statements, whatever the row count `SafetyLedger.countByAgent` is one GROUP BY, not one read per agent"
+        "reads are a fixed number of statements, whatever the row count `SafetyLedger.countByAgent` is ONE GROUP BY beside the resolve, not one read per agent"
       ]
     },
     {
@@ -677,7 +677,7 @@
         "src/governance-statements.integration.test.ts"
       ],
       "kills": [
-        "the writes are a fixed number too `upsert` is TWO on both paths, so the count is a pin and not a path"
+        "the writes are a fixed number too `upsert` is THREE on both paths, so the count is a pin and not a path"
       ]
     },
     {
@@ -685,13 +685,143 @@
       "file": "src/governance-guards.ts",
       "from": "  if (value !== 1 && value !== -1) {",
       "to": "  if (value !== 1 && value !== -1 && value !== 3) {",
-      "note": "The inverse of M-G20: a guard WIDENED past the constraint the migration ends with lets a five-star value reach the column, where the CHECK raises and takes the caller's transaction. The refusal has to be exactly `IN (-1, 1)` \u2014 neither narrower nor wider.",
+      "note": "The inverse of M-G20: a guard WIDENED past the constraint the migration ends with lets a five-star value reach the column, where the CHECK raises and takes the caller's transaction. The refusal has to be exactly `IN (-1, 1)` — neither narrower nor wider.",
       "suites": [
         "src/governance-constraints.integration.test.ts"
       ],
       "kills": [
         "MessageRating_rating_check is the constraint the migration ENDS with the double stores a five-star `3`, and no database this migration builds can",
         "a refusal leaves the caller's transaction usable, which a raised CHECK would not"
+      ]
+    },
+    {
+      "name": "M-G47 safety: the store resolves its WHOLE scope, not only the environment",
+      "file": "src/governance-safety.ts",
+      "from": "        scope,\n        safetyScopeUnresolved,\n        \"safety page\",",
+      "to": "        { level: \"organization\", organizationId: scope.organizationId } as unknown as EnvironmentScope,\n        safetyScopeUnresolved,\n        \"safety page\",",
+      "note": "WIN-303. The mutation hands the resolver an ORGANIZATION scope built from the same grant, which asserts no relation and is therefore always admitted. Nothing else changes: the store's own `where` still narrows by `scope.environmentId`, so a caller presenting a legitimate environment beside somebody else's project is served in full again -- which is exactly the state this tranche found. No other suite in this package notices, because every other fixture builds a COHERENT scope, where the environment clause alone is enough.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a tampered triple is REFUSED by every one of the five stores `SafetyLedger` reads its own environment and refuses the forged ancestry"
+      ]
+    },
+    {
+      "name": "M-G48 ratings: the store resolves its WHOLE scope, not only the environment",
+      "file": "src/governance-ratings.ts",
+      "from": "        scope,\n        ratingsScopeUnresolved,\n        \"ratings upsert\",",
+      "to": "        { level: \"organization\", organizationId: scope.organizationId } as unknown as EnvironmentScope,\n        ratingsScopeUnresolved,\n        \"ratings upsert\",",
+      "note": "WIN-303. The mutation hands the resolver an ORGANIZATION scope built from the same grant, which asserts no relation and is therefore always admitted. Nothing else changes: the store's own `where` still narrows by `scope.environmentId`, so a caller presenting a legitimate environment beside somebody else's project is served in full again -- which is exactly the state this tranche found. No other suite in this package notices, because every other fixture builds a COHERENT scope, where the environment clause alone is enough.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a tampered triple is REFUSED by every one of the five stores `RatingsRepository` refuses, and the forged upsert moves NO row"
+      ]
+    },
+    {
+      "name": "M-G49 criteria: the store resolves its WHOLE scope, not only the environment",
+      "file": "src/governance-criteria.ts",
+      "from": "        scope,\n        criteriaScopeUnresolved,\n        \"criteria findById\",",
+      "to": "        { level: \"organization\", organizationId: scope.organizationId } as unknown as EnvironmentScope,\n        criteriaScopeUnresolved,\n        \"criteria findById\",",
+      "note": "WIN-303. The mutation hands the resolver an ORGANIZATION scope built from the same grant, which asserts no relation and is therefore always admitted. Nothing else changes: the store's own `where` still narrows by `scope.environmentId`, so a caller presenting a legitimate environment beside somebody else's project is served in full again -- which is exactly the state this tranche found. No other suite in this package notices, because every other fixture builds a COHERENT scope, where the environment clause alone is enough.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a tampered triple is REFUSED by every one of the five stores `CriteriaRepository` refuses, and the forged remove DELETES nothing"
+      ]
+    },
+    {
+      "name": "M-G50 evals: the store resolves its WHOLE scope, not only the environment",
+      "file": "src/governance-evals.ts",
+      "from": "        scope,\n        evalsScopeUnresolved,\n        \"evals sample\",",
+      "to": "        { level: \"organization\", organizationId: scope.organizationId } as unknown as EnvironmentScope,\n        evalsScopeUnresolved,\n        \"evals sample\",",
+      "note": "WIN-303. The mutation hands the resolver an ORGANIZATION scope built from the same grant, which asserts no relation and is therefore always admitted. Nothing else changes: the store's own `where` still narrows by `scope.environmentId`, so a caller presenting a legitimate environment beside somebody else's project is served in full again -- which is exactly the state this tranche found. No other suite in this package notices, because every other fixture builds a COHERENT scope, where the environment clause alone is enough.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a tampered triple is REFUSED by every one of the five stores `EvalsRepository` refuses, and the forged append WRITES nothing"
+      ]
+    },
+    {
+      "name": "M-G51 goldenSets: the store resolves its WHOLE scope, not only the environment",
+      "file": "src/governance-golden-sets.ts",
+      "from": "        scope,\n        goldenSetsScopeUnresolved,\n        \"goldenSets update\",",
+      "to": "        { level: \"organization\", organizationId: scope.organizationId } as unknown as EnvironmentScope,\n        goldenSetsScopeUnresolved,\n        \"goldenSets update\",",
+      "note": "WIN-303. The mutation hands the resolver an ORGANIZATION scope built from the same grant, which asserts no relation and is therefore always admitted. Nothing else changes: the store's own `where` still narrows by `scope.environmentId`, so a caller presenting a legitimate environment beside somebody else's project is served in full again -- which is exactly the state this tranche found. No other suite in this package notices, because every other fixture builds a COHERENT scope, where the environment clause alone is enough.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a tampered triple is REFUSED by every one of the five stores `GoldenSetsRepository` refuses, and the forged update MOVES nothing"
+      ]
+    },
+    {
+      "name": "M-G52 scope: the ORGANIZATION half of the ancestry comparison",
+      "file": "src/governance-scope.ts",
+      "from": "  if (resolved.projectId !== narrowed.projectId || resolved.organizationId !== narrowed.organizationId) {",
+      "to": "  if (resolved.projectId !== narrowed.projectId) {",
+      "note": "The half that is invisible everywhere else. Every fixture in this package seeds ONE chain, in which the right project is always under the right organization -- so a resolver that checked the project alone passes the whole suite, including the tampered-triple case, whose project half also disagrees. Only the scope with the organization forged ON ITS OWN separates them.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "each half of the ancestry comparison is refused on its own only the ORGANIZATION forged is still `foreign_ancestry`"
+      ]
+    },
+    {
+      "name": "M-G53 scope: the PROJECT half of the ancestry comparison",
+      "file": "src/governance-scope.ts",
+      "from": "  if (resolved.projectId !== narrowed.projectId || resolved.organizationId !== narrowed.organizationId) {",
+      "to": "  if (resolved.organizationId !== narrowed.organizationId) {",
+      "note": "The mirror of M-G52, and the reason both cases exist: a comparison with two terms needs two mutations, or one term can be dropped while the other keeps every assertion green.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "each half of the ancestry comparison is refused on its own only the PROJECT forged is `foreign_ancestry` too"
+      ]
+    },
+    {
+      "name": "M-G54 scope: an environment in NO row is refused, never admitted",
+      "file": "src/governance-scope.ts",
+      "from": "  if (resolved === undefined) {\n    return err(refusal(reasonFor(GOVERNANCE_SCOPE_UNKNOWN_ENVIRONMENT, operation, scope)));\n  }",
+      "to": "  if (resolved === undefined) {\n    return ok(true);\n  }",
+      "note": "An environment deleted since the grant was minted resolves to no row. Admitting it reads defensibly -- the reads that follow would find nothing anyway -- and it is the wrong answer: absence is what this context already says for another tenant's row, so a grant naming a dead environment would be reported for ever as a criterion that does not exist.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "each half of the ancestry comparison is refused on its own an environment in no row at all is `unknown_environment`, not absence"
+      ]
+    },
+    {
+      "name": "M-G55 scope: the uuid SHAPE check, which is what keeps the statement unsent",
+      "file": "src/governance-seam-guards.ts",
+      "from": "const UUID_SHAPE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/u;",
+      "to": "const UUID_SHAPE = /^.*$/u;",
+      "note": "Widened rather than deleted, because deleting it does not compile. With every string admitted, a malformed scope reaches a `@db.Uuid` column and the driver refuses the whole statement -- which on PostgreSQL ABORTS the enclosing transaction, so a caller mid-unit-of-work loses every later write. The case measures the statement COUNT, not only the code, so the mutation is caught by the fact that anything was sent at all.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "each half of the ancestry comparison is refused on its own a scope that is not uuid-shaped is refused with ZERO statements sent"
+      ]
+    },
+    {
+      "name": "M-G56 scope: a PROJECT-level tenant scope is held to its organization",
+      "file": "src/governance-scope.ts",
+      "from": "    if (resolved.organizationId !== scope.organizationId) {\n      return err(refusal(reasonFor(GOVERNANCE_SCOPE_FOREIGN_ANCESTRY, operation, scope)));\n    }",
+      "to": "",
+      "note": "`tenantWhere` narrows a project-level scope by the PROJECT alone, so this is the same hole one level up: the four subject methods take a tenant scope, and my project under their organization would otherwise count and erase my rows on their behalf. The organization-level branch above deliberately checks nothing, because a scope naming one identifier asserts no relation to contradict.",
+      "suites": [
+        "src/governance-isolation.integration.test.ts"
+      ],
+      "kills": [
+        "a TENANT scope is held to the ancestry it asserts, and to no more a PROJECT scope under a forged organization is refused, not counted"
       ]
     }
   ]

@@ -458,8 +458,21 @@ export const VIOLATION_CODES = Object.freeze({
  * so no variable is READ from `process.env` and no new door is opened. A suite
  * that had reached for the ambient environment instead would move this table and
  * fail the gate. 1620 + 1 = 1621.
+ *
+ * WIN-303 ADDS TWO, AND THE DECLARED TABLE IS UNMOVED BY BOTH.
+ * `packages/adapters/postgres-tenancy/src/governance-scope.ts` resolves the
+ * tenant triple against `Environment` and `Project` before the five canonical
+ * stores send anything; it reads a DATABASE, not an environment, and its client
+ * arrives through `TenancyTransactions` from the composition root exactly as
+ * every other file in that directory's does. 1621 + 1 = 1622.
+ *
+ * And `governance-isolation.integration.test.ts`, the two-tenant proof beside
+ * it, which reaches the container only through `governance-harness.ts` — the
+ * file `env-access.mjs` already declares as one of the harnesses entitled to
+ * read the ambient environment. A second reader in a suite would be an
+ * undeclared door and would move this table. 1622 + 1 = 1623.
  */
-export const EXPECTED_FILE_COUNT = 1621;
+export const EXPECTED_FILE_COUNT = 1623;
 
 function listSourceFiles(root) {
   const found = [];
