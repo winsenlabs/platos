@@ -228,6 +228,23 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL integration suite for the V1 REST surface. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
   }),
   Object.freeze({
+    // WIN-268 (M4.2) P1 — the MCP token mints' real-concurrency suite. The THIRD
+    // entry of this exact shape, and it earns the door for exactly the same
+    // reason as the two above: `prisma migrate deploy` is a spawned process and
+    // needs the inherited PATH.
+    //
+    // IT IS ONE READ AND THE PIN SAYS SO. The suite also names six configuration
+    // variables, and every one of them is a property of a plain object handed to
+    // `loadPlatformConfiguration` — including the Redis URL, without which the
+    // idempotency store is absent and the race case would be measuring a
+    // fail-closed refusal instead of the contract. A suite that had reached for
+    // `process.env` for any of them would appear here as a SECOND read.
+    path: "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL and real-Redis integration suite for the two MCP one-time-secret mints, including two identical requests racing. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+  }),
+  Object.freeze({
     path: "packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts",
     role: "test-support",
     reads: 1,
@@ -506,17 +523,23 @@ export const VIOLATION_CODES = Object.freeze({
  * R1's HTTP integration suite, because it spawns the ORM's CLI; R303's two
  * open no door at all. Fifteen files landed and one door was opened.
  *
- * WIN-268 (M4.2) P1: 1637 + 5 = 1642, and NO DOOR IS OPENED. Four of the five
- * are `apps/core-api/src/transports/mcp/` — the MCP surface expression, the two
- * token-mint controllers and the projection they share — and the fifth is
- * `packages/contexts/identity-access/application/mint-bearer-credential.ts`, the
- * use case behind them. Not one reads the environment: a mint takes its scope
- * from an authorization it was handed and its lifetime from a request, which is
- * exactly the shape this gate exists to keep. The declared table is UNCHANGED,
- * which is the half of this pin that matters — a tranche that added five files
- * and no reader should move only the denominator.
+ * WIN-268 (M4.2) P1: 1637 + 7 = 1644, and EXACTLY ONE DOOR IS OPENED.
+ *
+ * Five of the seven are production or use-case files — `transports/mcp/`'s
+ * surface expression, its two token-mint controllers and their shared
+ * projection, plus
+ * `packages/contexts/identity-access/application/mint-bearer-credential.ts` —
+ * and NOT ONE of them reads the environment. A mint takes its scope from an
+ * authorization it was handed and its lifetime from a request, which is exactly
+ * the shape this gate exists to keep.
+ *
+ * The sixth is that use case's suite, which reads nothing either. The SEVENTH is
+ * `apps/core-api/src/composition/mcp-token-mint.integration.test.ts`, and it
+ * takes ONE read for the same reason the two suites beside it in the table do:
+ * `prisma migrate deploy` is a spawned process and needs the inherited PATH.
+ * Seven files landed and one door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1642;
+export const EXPECTED_FILE_COUNT = 1644;
 
 function listSourceFiles(root) {
   const found = [];

@@ -16,7 +16,7 @@
     }
   ],
   "reconciliation": {
-    "routes": "independentUniqueRoutes + dualMountAliasOps === manifestOps; every controller's manifest ops === decorators × mount-multiplier.",
+    "routes": "independentUniqueRoutes + dualMountAliasOps === manifestOps; manifestOps - crossRootBindings === uniqueOperations, the denominator the capability matrix publishes; every controller's manifest ops === decorators × mount-multiplier.",
     "operator": "manifestOperator >= independentOperatorFloor per controller (wrapper/inherited operator enforcement legitimately lifts the manifest above the direct-call floor).",
     "omission": "a production controller found by glob but absent from the manifest FAILS --check.",
     "scanRoots": "every manifest route-implementation source falls under a DECLARED scan root, and each root's globbed decorators (expanded by mount multiplier) equal the manifest operations attributed to it. A surface built in a directory this census does not scan fails as UNDECLARED SCAN ROOT.",
@@ -28,8 +28,12 @@
     "independentUniqueRoutes": 291,
     "dualMountAliasOps": 19,
     "manifestOps": 310,
+    "crossRootBindings": 2,
+    "uniqueOperations": 308,
+    "crossRootOperatorBindings": 2,
+    "uniqueOperatorOperations": 127,
     "independentOperatorFloor": 103,
-    "manifestOperator": 127,
+    "manifestOperator": 129,
     "scanRoots": [
       {
         "id": "agent",
@@ -325,7 +329,7 @@
       "mountMultiplier": 1,
       "manifestOps": 1,
       "independentOperatorFloor": 0,
-      "manifestOperator": 0,
+      "manifestOperator": 1,
       "routeOk": true,
       "operatorOk": true
     },
@@ -349,7 +353,7 @@
       "mountMultiplier": 1,
       "manifestOps": 1,
       "independentOperatorFloor": 0,
-      "manifestOperator": 0,
+      "manifestOperator": 1,
       "routeOk": true,
       "operatorOk": true
     },
@@ -500,5 +504,5 @@
   ],
   "ok": true,
   "failures": [],
-  "sourceDigest": "7a205bec076fc63534f9fedb58fe17e28e2390b5d8b9832ba41600b16d71ef2c"
+  "sourceDigest": "4a07c6b36327193d22484fc4e2b3974b64f10f4b8d9f8c6d53cd05602a4a1ea5"
 }

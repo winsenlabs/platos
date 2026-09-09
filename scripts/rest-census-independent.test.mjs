@@ -257,11 +257,23 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   assert.equal(agent.manifestOperations, 300);
   assert.equal(agent.expandedOperations, 300);
   assert.equal(core.present, true, "the declared core-api transport root must exist on disk");
-  assert.equal(core.sourceControllers, 5);
-  assert.equal(core.sourceDecorators, 8);
-  assert.equal(core.expandedOperations, 8);
-  assert.equal(core.manifestOperations, 8);
-  assert.equal(agent.manifestOperations + core.manifestOperations, 308);
+  // WIN-268 (M4.2) P1 5 -> 7 controllers and 8 -> 10 decorators: the two MCP
+  // one-time-secret token mints, `POST /mcp/platform/tokens` and
+  // `POST /mcp/entity/:entityId/tokens`, each in its own controller under
+  // `transports/mcp/`. Both enumerators moved to the same numbers on their own.
+  assert.equal(core.sourceControllers, 7);
+  assert.equal(core.sourceDecorators, 10);
+  assert.equal(core.expandedOperations, 10);
+  assert.equal(core.manifestOperations, 10);
+  // 300 + 10 = 310 BINDINGS, and the manifest's `summary.restOperations` is 308
+  // UNIQUE operations: the two mints are served by both deployables, so each is
+  // counted under both roots. The census publishes that surplus and the identity
+  // it reconciles to, which is what keeps the per-root sum an equality rather
+  // than an approximation.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 310);
+  const totals = manifestCensus();
+  assert.equal(totals.crossRootBindings, 2);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 308);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

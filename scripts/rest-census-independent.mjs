@@ -315,7 +315,43 @@ export function manifestCensus() {
   const sources = {};
   let totalOps = 0;
   let totalOperator = 0;
+  // WIN-268 (M4.2) P1 — HOW MANY BINDINGS ARE THE SAME OPERATION SERVED TWICE.
+  //
+  // `totalOps` counts route BINDINGS: one per implementation, which is what the
+  // independent decorator scan can corroborate, because a decorator is a
+  // binding. The manifest's `restOperations` counts unique method/path pairs.
+  // The two were equal until an operation was served by BOTH deployables, and
+  // the difference is exactly that: the two MCP token mints, which `apps/agent`
+  // has served since before V1 and `apps/core-api` now serves as well because
+  // that is the process the `Idempotency-Key` gate runs in.
+  //
+  // Counting the SURPLUS bindings rather than the shared operations is what
+  // makes the identity below hold for an operation served three times as well
+  // as twice, which is the shape a longer migration would produce.
+  let crossRootBindings = 0;
+  // The same surplus, restricted to the OPERATOR-PROTECTED bindings, because the
+  // operator sub-denominator is reconciled separately and would otherwise
+  // inherit the same over-count.
+  let crossRootOperatorBindings = 0;
   for (const op of m.inventories.restOperations) {
+    const implementations = op.implementations || [];
+    const roots = new Set(
+      implementations.map((impl) =>
+        String(impl.source ?? "").split("\\").join("/").startsWith("apps/core-api/")
+          ? "core-api"
+          : "agent",
+      ),
+    );
+    if (roots.size > 1) {
+      crossRootBindings += implementations.length - 1;
+      const guarded = implementations.filter((impl) => impl.requiresOperator).length;
+      // One operation is one operator-protected operation however many
+      // deployables serve it, so the surplus is every guarded binding past the
+      // first. An operation guarded in ONE deployable and not the other
+      // contributes no surplus and is therefore still counted once — which is
+      // the honest answer while a migration is half-done.
+      if (guarded > 0) crossRootOperatorBindings += guarded - 1;
+    }
     for (const impl of op.implementations || []) {
       const c = impl.controller;
       if (!c) continue;
@@ -330,7 +366,7 @@ export function manifestCensus() {
       }
     }
   }
-  return { controllers, sources, totalOps, totalOperator };
+  return { controllers, sources, totalOps, totalOperator, crossRootBindings, crossRootOperatorBindings };
 }
 
 /**
@@ -532,6 +568,20 @@ export function reconcile(indep = independentCensus(), man = manifestCensus()) {
     independentUniqueRoutes: indepUniqueRoutes,
     dualMountAliasOps: man.totalOps - indepUniqueRoutes,
     manifestOps: man.totalOps,
+    /**
+     * WIN-268 P1. The surplus bindings of operations served by BOTH deployables,
+     * and the unique-operation count they reconcile to.
+     *
+     * `differential-coverage.mjs` compares this census's denominator against the
+     * capability matrix's, and the matrix counts unique method/path pairs while
+     * this census counts bindings. Publishing BOTH numbers and their difference
+     * is what lets that comparison stay an equality rather than becoming a
+     * tolerance — and it names the shared set instead of hiding it.
+     */
+    crossRootBindings: man.crossRootBindings,
+    uniqueOperations: man.totalOps - man.crossRootBindings,
+    crossRootOperatorBindings: man.crossRootOperatorBindings,
+    uniqueOperatorOperations: man.totalOperator - man.crossRootOperatorBindings,
     independentOperatorFloor: Object.values(indep).reduce((s, c) => s + c.requireOperator, 0),
     manifestOperator: man.totalOperator,
   };
@@ -555,7 +605,7 @@ function build() {
     scanRoots: SCAN_ROOTS.map((r0) => ({ id: r0.id, dir: r0.dir, why: r0.why })),
     reconciliation: {
       routes:
-        "independentUniqueRoutes + dualMountAliasOps === manifestOps; every controller's manifest ops === decorators × mount-multiplier.",
+        "independentUniqueRoutes + dualMountAliasOps === manifestOps; manifestOps - crossRootBindings === uniqueOperations, the denominator the capability matrix publishes; every controller's manifest ops === decorators × mount-multiplier.",
       operator:
         "manifestOperator >= independentOperatorFloor per controller (wrapper/inherited operator enforcement legitimately lifts the manifest above the direct-call floor).",
       omission:

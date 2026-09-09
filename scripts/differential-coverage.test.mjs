@@ -184,8 +184,27 @@ test("the independent REST census is declared as a source and is actually read",
   assert.equal(reconciliation.agrees, true);
   // The committed census really does corroborate the enumerated denominator,
   // rather than the check passing because both sides read the same file.
-  assert.equal(reconciliation.enumeratedRestCells, reconciliation.independentManifestOps);
-  assert.equal(reconciliation.enumeratedOperatorCells, reconciliation.independentManifestOperator);
+  // WIN-268 (M4.2) P1 — THE COMPARISON IS AGAINST THE UNIQUE COUNT, and the
+  // subtraction is stated rather than folded away. The census counts route
+  // BINDINGS because a decorator is a binding and a decorator is what it can
+  // corroborate from source; the matrix enumerates unique method/path
+  // OPERATIONS. They were the same number until the two MCP token mints became
+  // the first operations served by BOTH deployables.
+  assert.equal(reconciliation.enumeratedRestCells, reconciliation.independentUniqueOperations);
+  assert.equal(
+    reconciliation.independentUniqueOperations,
+    reconciliation.independentManifestOps - reconciliation.independentCrossRootBindings,
+  );
+  assert.equal(
+    reconciliation.enumeratedOperatorCells,
+    reconciliation.independentUniqueOperatorOperations,
+  );
+  // NOT VACUOUS: the surplus is real on this tree, so the subtraction above is
+  // exercised rather than being a subtraction of zero.
+  assert.ok(
+    reconciliation.independentCrossRootBindings > 0,
+    "expected at least one operation served by both deployables",
+  );
   assert.ok(reconciliation.independentUniqueRoutes > 0 && reconciliation.controllers > 0);
 });
 
@@ -196,10 +215,32 @@ test("MUTATION: a REST denominator the independent census disagrees with is refu
       census.totals.manifestOps -= 1;
       census.table[0].manifestOps -= 1;
       census.totals.independentUniqueRoutes -= 1;
+      // WIN-268 P1 — tampered CONSISTENTLY, so this mutation still reaches the
+      // denominator comparison rather than being stopped one check earlier by
+      // the cross-root identity. The identity has its own control below.
+      census.totals.uniqueOperations -= 1;
     }),
   );
   assert.ok(
     failures.some((failure) => failure.includes("two enumerations of one surface disagree")),
+    JSON.stringify(failures),
+  );
+});
+
+test("MUTATION: a census whose own cross-root identity does not hold is refused", () => {
+  // WIN-268 (M4.2) P1. The surplus is what lets bindings and operations differ,
+  // so a census that publishes a surplus its own two totals do not support is
+  // publishing an arbitrary denominator. Without this control the subtraction
+  // added for the cross-deployable mints would be an unchecked escape hatch:
+  // any disagreement could be absorbed by inflating `crossRootBindings`.
+  const { failures } = reconcileRestCensus(
+    enumerateCells(),
+    tamperedCensus((census) => {
+      census.totals.crossRootBindings += 3;
+    }),
+  );
+  assert.ok(
+    failures.some((failure) => failure.includes("cross-root identity")),
     JSON.stringify(failures),
   );
 });
@@ -210,6 +251,7 @@ test("MUTATION: an operator-protected count the independent census disagrees wit
     tamperedCensus((census) => {
       census.totals.manifestOperator += 1;
       census.table[0].manifestOperator += 1;
+      census.totals.uniqueOperatorOperations += 1;
     }),
   );
   assert.ok(
@@ -388,7 +430,17 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // BOTH enumerators moved to the same number on their own — the generator's AST
   // walk and the independent census's glob. Their agreement is `row.agrees`
   // above, and it is the whole reason two mechanisms exist.
-  assert.equal(core.enumeratedOperations, 8);
-  assert.equal(core.independentOperations, 8);
-  assert.equal(document.restScanRoots.total, document.reconciledAgainst.enumeratedRestCells);
+  //
+  // WIN-268 (M4.2) P1 8 -> 10: the two MCP one-time-secret token mints.
+  assert.equal(core.enumeratedOperations, 10);
+  assert.equal(core.independentOperations, 10);
+  // AND THE PER-ROOT SUM CARRIES THE SURPLUS TERM. A root sum counts an
+  // operation once per root that serves it, and the two mints are served by
+  // both, so the sum exceeds the unique denominator by exactly the surplus the
+  // census publishes. Stated as an equality with the term rather than relaxed.
+  assert.equal(
+    document.restScanRoots.total - document.reconciledAgainst.independentCrossRootBindings,
+    document.reconciledAgainst.enumeratedRestCells,
+  );
+  assert.equal(document.reconciledAgainst.independentCrossRootBindings, 2);
 });

@@ -874,7 +874,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // its HTTP integration suite lives in `src/composition/`, which those scans
   // reach and no selector in this file does. A merge that had copied 14 into
   // this pin would be red, which is the point of keeping both figures.
-  assert.equal(result.fileCount, 1595);
+  // WIN-268 (M4.2) P1 1595 -> 1601. SIX of the seven files this tranche adds
+  // fall under the enforced slice: `APPS-TRANSPORTS` +4 (the MCP surface
+  // expression, the two mint controllers and their shared projection) and
+  // `CONTEXTS` +2 (the mint use case and its suite). The seventh —
+  // `apps/core-api/src/composition/mcp-token-mint.integration.test.ts` — is
+  // outside `apps/core-api/src/transports/**` and therefore outside this slice,
+  // which is why the two censuses move by different amounts. 1595 + 6 = 1601.
+  assert.equal(result.fileCount, 1601);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -889,6 +896,13 @@ test("the live selectors scan an exact nonzero source census", () => {
       // WIN-267: the fifth selector, `apps/core-api/src/http/**`. Twelve files
       // already in the tree, newly JUDGED rather than newly written.
       12 +
+      // WIN-268 (M4.2) P1: 4 under `src/transports/mcp/` (the MCP surface
+      // expression, the two token-mint controllers and their shared projection)
+      // and 2 under `packages/contexts/identity-access/application/` (the mint
+      // use case and its suite). The integration suite is under
+      // `src/composition/`, which is outside every selector this gate carries,
+      // so it is deliberately absent from this sum.
+      4 + 2 +
       // WIN-267 T2, the REST chassis: 5 under `src/transports/rest/` and 4 under
       // `src/http/`, newly WRITTEN and inside selectors that already existed.
       5 + 4 +
@@ -1099,7 +1113,8 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   APPS-HTTP         15
   //   APPS-TRANSPORTS   27
   // 27 + 1075 + 451 + 15 + 27 = 1595.
-  assert.equal(result.fileCount, 27 + 1075 + 451 + 15 + 27);
+  // WIN-268 P1: CONTEXTS 1075 -> 1077, APPS-TRANSPORTS 27 -> 31.
+  assert.equal(result.fileCount, 27 + 1077 + 451 + 15 + 31);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

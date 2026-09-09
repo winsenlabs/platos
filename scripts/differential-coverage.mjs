@@ -224,16 +224,45 @@ export function reconcileRestCensus(cells, census) {
   // THE CROSS-CHECK. Two independent enumerations of the same surface must
   // produce the same denominator, or one of them is wrong and the coverage
   // percentage is measured against a number nobody agrees on.
-  if (totals.manifestOps !== restCells.length) {
+  //
+  // WIN-268 (M4.2) P1 — THE TWO ENUMERATIONS COUNT DIFFERENT THINGS AND THE
+  // DIFFERENCE IS NOW NON-ZERO. The capability matrix enumerates unique
+  // method/path OPERATIONS; the independent census counts route BINDINGS,
+  // because a decorator is a binding and a decorator is what it can corroborate
+  // from source. They were equal while every operation had exactly one handler.
+  // The two MCP token mints are the first served by BOTH deployables —
+  // `apps/agent` since before V1, and `apps/core-api` now, because that is the
+  // process the `Idempotency-Key` gate runs in — so bindings exceed operations
+  // by the surplus the census publishes as `crossRootBindings`.
+  //
+  // The identity is therefore stated with that term rather than relaxed into a
+  // tolerance: `bindings - surplus === operations`. A route accidentally mounted
+  // twice inside ONE deployable is not cross-deployable, contributes no surplus,
+  // and still fails here — which is the case the equality existed to catch.
+  const crossRootBindings = Number(totals.crossRootBindings ?? 0);
+  const uniqueOperations = Number(totals.uniqueOperations ?? totals.manifestOps);
+  if (totals.manifestOps - crossRootBindings !== uniqueOperations) {
     failures.push(
-      `the REST denominator is ${restCells.length} cells from the capability matrix but the independent census counted ` +
-        `${totals.manifestOps}; two enumerations of one surface disagree, so the denominator is not established`,
+      `${REST_CENSUS_PATH} does not satisfy its own cross-root identity: ${totals.manifestOps} binding(s) ` +
+        `minus ${crossRootBindings} cross-deployable surplus is not ${uniqueOperations} unique operation(s)`,
     );
   }
-  if (totals.manifestOperator !== operatorCells.length) {
+  if (uniqueOperations !== restCells.length) {
+    failures.push(
+      `the REST denominator is ${restCells.length} cells from the capability matrix but the independent census counted ` +
+        `${uniqueOperations} unique operation(s) (${totals.manifestOps} binding(s) less ${crossRootBindings} ` +
+        `cross-deployable surplus); two enumerations of one surface disagree, so the denominator is not established`,
+    );
+  }
+  const uniqueOperatorOperations = Number(
+    totals.uniqueOperatorOperations ?? totals.manifestOperator,
+  );
+  if (uniqueOperatorOperations !== operatorCells.length) {
     failures.push(
       `${operatorCells.length} enumerated REST cells require an operator but the independent census counted ` +
-        `${totals.manifestOperator}; the operator-protected sub-denominator is not established`,
+        `${uniqueOperatorOperations} unique operator-protected operation(s) (${totals.manifestOperator} binding(s) less ` +
+        `${String(totals.crossRootOperatorBindings ?? 0)} cross-deployable surplus); the operator-protected ` +
+        "sub-denominator is not established",
     );
   }
 
@@ -246,6 +275,14 @@ export function reconcileRestCensus(cells, census) {
       independentUniqueRoutes: totals.independentUniqueRoutes,
       dualMountAliasOps: totals.dualMountAliasOps,
       independentManifestOps: totals.manifestOps,
+      // WIN-268 P1 — the census counts BINDINGS and the matrix counts unique
+      // OPERATIONS, and the difference is the operations served by both
+      // deployables. Both numbers and the surplus are published so a reader of
+      // the artifact can see the subtraction rather than infer it.
+      independentCrossRootBindings: crossRootBindings,
+      independentUniqueOperations: uniqueOperations,
+      independentCrossRootOperatorBindings: Number(totals.crossRootOperatorBindings ?? 0),
+      independentUniqueOperatorOperations: uniqueOperatorOperations,
       independentOperatorFloor: totals.independentOperatorFloor,
       independentManifestOperator: totals.manifestOperator,
       controllers: table.length,
@@ -319,9 +356,19 @@ export function reconcileScanRoots(capability, census) {
   }
 
   const total = rows.reduce((sum, row) => sum + row.enumeratedOperations, 0);
-  if (Number.isFinite(capability?.totals?.restOperations) && total !== capability.totals.restOperations) {
+  // Read from the CENSUS, which publishes it, rather than recomputed here: two
+  // computations of one number are two answers that can disagree.
+  const crossRootBindings = Number(census?.totals?.crossRootBindings ?? 0);
+  // WIN-268 P1 — the same term, for the same reason. A per-root sum counts an
+  // operation once PER ROOT that serves it, so the roots' sum exceeds the unique
+  // count by exactly the cross-deployable surplus. Subtracting it keeps this an
+  // equality; a root double-counting INSIDE itself still fails.
+  if (
+    Number.isFinite(capability?.totals?.restOperations) &&
+    total - crossRootBindings !== capability.totals.restOperations
+  ) {
     failures.push(
-      `the per-root operation counts sum to ${total} but the capability matrix publishes ${capability.totals.restOperations} REST operations; a root is double-counting or an operation belongs to no root`,
+      `the per-root operation counts sum to ${total} (less ${crossRootBindings} cross-deployable surplus) but the capability matrix publishes ${capability.totals.restOperations} REST operations; a root is double-counting or an operation belongs to no root`,
     );
   }
 
@@ -429,12 +476,16 @@ export function renderMarkdown(document) {
     "Both counts must agree or the denominator is not established and this gate fails.",
     "",
     `- operations enumerated here: **${document.reconciledAgainst.enumeratedRestCells}**`,
-    `- operations counted independently: **${document.reconciledAgainst.independentManifestOps}**` +
-      ` (${document.reconciledAgainst.independentUniqueRoutes} unique routes` +
-      ` + ${document.reconciledAgainst.dualMountAliasOps} dual-mount aliases` +
+    `- operations counted independently: **${document.reconciledAgainst.independentUniqueOperations}**` +
+      ` (${document.reconciledAgainst.independentManifestOps} route bindings` +
+      ` = ${document.reconciledAgainst.independentUniqueRoutes} unique routes` +
+      ` + ${document.reconciledAgainst.dualMountAliasOps} dual-mount aliases,` +
+      ` less ${document.reconciledAgainst.independentCrossRootBindings} served by both deployables,` +
       ` across ${document.reconciledAgainst.controllers} controllers)`,
     `- operator-protected, enumerated here: **${document.reconciledAgainst.enumeratedOperatorCells}**;` +
-      ` counted independently: **${document.reconciledAgainst.independentManifestOperator}**,` +
+      ` counted independently: **${document.reconciledAgainst.independentUniqueOperatorOperations}**` +
+      ` (${document.reconciledAgainst.independentManifestOperator} bindings less` +
+      ` ${document.reconciledAgainst.independentCrossRootOperatorBindings} served by both),` +
       ` at or above the source-derived floor of ${document.reconciledAgainst.independentOperatorFloor}`,
     "",
     "### Split by scan root",

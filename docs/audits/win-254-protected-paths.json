@@ -808,12 +808,12 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "097c4763bc0a2adb5c7c7d7e72de01340142dad6841c8bb5d03b198215fd325f"
+      "sha256": "121846930e5414660a6f868102f17f8cdc85407e331be9428b48ddd1c7f1dee6"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "c8f467e5d5b3f4a8d1e92b4164b266667c2c28fed80f40284d9e40a77e6f9c8c"
+      "sha256": "e2f87529fd17d49f47bf107bc30dd2d8b1e9ca13b6d5b61a50a78c4d58b2fe2e"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "19d9c499c67a0c2133dfdc38ae183be1ac6e16611ab88321df2020e83e0bc01e"
+      "sha256": "39d8f768e3d7c53432d4db827fe4dc77627e81d79620a3396f033fe9316ce1a1"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "26848bf256545ddd04f55ab20b7e5be9c208811549d31ea79c465c3837a90222"
+      "sha256": "3266f0bb82f22dbbd51835055694e7a52e77f3f25f984c56fa2eb02bb29411f7"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "0d04735e7cdd1966026d52d1501217d24a896bd29c085fce822e10ebc6b02766"
+      "sha256": "dbc8a2e5bb905a4621857470df0adb79b1f168216dbccbc58d96244a836a1a5d"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1053,12 +1053,12 @@
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "55f2f3a512171627170e1b67021847d27d740d74331f4f31a1368f2d11af121a"
+      "sha256": "662828284afb3327442764e66fa504f3078971a36cdab3c37fe44d696648e5e4"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "977005ec19c28af15dd6d38a053bcfced5210cdce9ae5da0f56497570ef6caac"
+      "sha256": "6943839c187341e74a9719c770898e4f5a0387fc1cbdaf0b73fb1f57d1d0a9ea"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1073,7 +1073,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "846d5bf9f98541264e979a1b43bf152404f87c91990364e2b47ef56afdae2323"
+      "sha256": "333a3c843f63022d6ed57e86e3d04cbb977936587d9b27751a1005bc1f044124"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -2883,7 +2883,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "f23f9bba3e05642bc65ae71afaa6ee15e9dffa29103acc6d8054efce271ee44c"
+      "sha256": "ba47834d21f84f741c85d486ca319b0d971da2f55929be24e3f5f9571047f3e3"
     },
     {
       "path": "docs/openapi.yml",
