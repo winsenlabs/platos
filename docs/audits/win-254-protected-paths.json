@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "259f5880a49daeb0afb876f43a97b94d3efc05ea77f95a77d6130a4bb945f53c"
+      "sha256": "55faf6b43b041c07de4acf1679872020a974e40dccc797a25c6500d8a520f56a"
     },
     {
       "path": "LICENSE",
@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "308f6ff87f7d4ea2b874da923e7993383e46e36d40b0847d7e6da443704be74d"
+      "sha256": "e44f4f19d9858be19a407917ef644acc1d7beaa9439881023ce2d039902064df"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3658,7 +3658,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "8e0e59fc0b0840a8398448b71c772ed818206d8efbc25992e457b18ecdcc88e0"
+      "sha256": "af4802813a8fcdf00c0dc3bf4cc5b81ae3f2af082006f1dec73f78de2717c573"
     },
     {
       "path": "pnpm-lock.yaml",
