@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6f2f83e4f04a98f2e81642c31489e87454e19ddf8ab5a97ade5324ce1a5377a3",
+  "evidenceSha256": "918c8219c9c5ec6a1df0a84e20b7b6e1f880570721f2c7d7c88a873af12c469a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "4ebd4697b3966916b73d0aef53401c1da57e7dd7018ee2bd3c9de6fcefa9b7e8",
+    "aggregateSha256": "18d97c35a8770ae9809ba9655324751d588df3cb29daa9fd1dd1d5da6e58c190",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4443,7 +4443,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "77bfca6fda89000ef33b15861773e3b6a8793122c0dbed5d31dfc78b1f0235e9"
+        "sha256": "4621f7162d5bcee6538045f2ce40434376b3a5cf9bfcbb658f83c630d7da16a0"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6399,7 +6399,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "963648569c664b11cf094ffd33aad092845c9fa620e7d25158769f0ea3cc9623"
+        "sha256": "1d9390b28583d40b5eeb4206812048e9500e5ff64a5d10b7a9c7ab3e0fbfee79"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -20575,7 +20575,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "70b5b70aab43ccfc99c0fc5d4e877304305ea8b4c8ba5c2817b723f01449902b"
+        "sha256": "8fce9be5eecf947ca2b32c8f08d08a34b8bca08981cb412aa1d3ffa8349d98ac"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -46731,7 +46731,7 @@
             {
               "from": "scripts/vocabulary-boundary.test.mjs",
               "kind": "reference",
-              "line": 685
+              "line": 686
             }
           ],
           "reversePaths": [
@@ -46860,7 +46860,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "9aa5e8046c1cf513bac614f8be9a1f7ca9d20076230bbc2de2b9e2af90694e61",
+      "evidenceSha256": "b903528b706ea2d42362eed5e16904a7e21f452119d920516e3b3ac781008744",
       "manifestSha256": "602133cd6f0a158f3dd4764775171821935d6905555f731042114748187eaa04",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
