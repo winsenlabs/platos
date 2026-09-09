@@ -1413,7 +1413,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "546892e6766f29bf7a1e3812eeb3437d71b56a108c5c41def9cabacce3538852"
+      "sha256": "df31927f0a85460eefbe3f47be98b4b27fcae7731fc0554b086a81f9f2c4653a"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -3483,7 +3483,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "308f6ff87f7d4ea2b874da923e7993383e46e36d40b0847d7e6da443704be74d"
+      "sha256": "da460bd77194dc9d84ed4d29266dd476071e53fc800f45fb4fda4fcefc85d266"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3923,7 +3923,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "dc08918658ba8dde11eb05a34d4236cd106a4c0752c2e89035f0f484c10305e9"
+      "sha256": "56e6ef47993224c28885d6d5957b394a44251c7669ef70f3e8957abda37e554a"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
