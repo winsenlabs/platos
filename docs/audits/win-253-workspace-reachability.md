@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `c4612083c94b3ee3a801c1dfd0a04b8d37c80f4cbd5218c89909bf1bedbdcc00`
+Evidence SHA-256: `802dc35109dcfcd12ea5453de007ffaf448640944daf6e3be6484d56d6e63b1e`
 
 ## Baseline
 
@@ -43,7 +43,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `apps/core-api` | `@platos/core-api` | no | yes | yes | no | retain-application-deployable | no | no | `476120075c5430a3…` |
 | `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `7cd17e59745a4dc4…` |
 | `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `e6a26a698425bab4…` |
-| `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `faf1ac2952fb7fe7…` |
+| `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `27922c247d773cb2…` |
 | `internal-packages/cache` | `@internal/cache` | no | no | no | no | owner-review-repository-referenced | no | yes | `f9f2db1155272a42…` |
 | `internal-packages/compute` | `@internal/compute` | no | no | no | no | owner-review-repository-referenced | no | yes | `744fd4bd20e8d379…` |
 | `internal-packages/cost-rates` | `@internal/cost-rates` | no | no | no | no | owner-review-repository-referenced | no | yes | `6164efe052d457dc…` |
@@ -55,7 +55,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `internal-packages/redis` | `@internal/redis` | no | no | no | no | owner-review-repository-referenced | no | yes | `8b3c4e1600cd730f…` |
 | `internal-packages/run-engine` | `@internal/run-engine` | no | no | no | no | owner-review-repository-referenced | no | yes | `10b8c3c54888a292…` |
 | `internal-packages/schedule-engine` | `@internal/schedule-engine` | no | no | no | no | owner-review-repository-referenced | no | yes | `c6e22fe59eb7f562…` |
-| `internal-packages/tenancy-database` | `@platos/tenancy-database` | yes | yes | yes | yes | retain-oci-image | no | no | `0143161e9b6ebc92…` |
+| `internal-packages/tenancy-database` | `@platos/tenancy-database` | yes | yes | yes | yes | retain-oci-image | no | no | `812ffdef6c304b57…` |
 | `internal-packages/tenancy-database/migration-image` | `@platos/tenancy-migration-image` | yes | no | yes | yes | retain-oci-image | no | no | `f63a66d17bb21fb6…` |
 | `internal-packages/testcontainers` | `@internal/testcontainers` | no | no | no | yes | owner-review-repository-referenced | no | yes | `a01ae3fd3ca65ef1…` |
 | `internal-packages/tracing` | `@internal/tracing` | no | no | no | no | owner-review-repository-referenced | no | yes | `e03f6256d2d15deb…` |

@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "c4612083c94b3ee3a801c1dfd0a04b8d37c80f4cbd5218c89909bf1bedbdcc00",
+  "evidenceSha256": "802dc35109dcfcd12ea5453de007ffaf448640944daf6e3be6484d56d6e63b1e",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "d6ca8eaee7032d49175ed23c2c6cac8a59102433387e7eb91546262533616ff6",
+    "aggregateSha256": "e704b82b6c917592ba877b4f5f301ef8c4455b06ac92d6ef8f49a9765d225632",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2519,7 +2519,7 @@
       },
       {
         "path": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
-        "sha256": "a6d9eea58553c16cb0d157115e1e43a24bbfc0eabe1df233b4b78c4460700292"
+        "sha256": "64ae526aa682209f6df33a9a104ad0649d2e40569a5f166d0df3f03f30a31844"
       },
       {
         "path": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
@@ -20247,7 +20247,7 @@
       },
       {
         "path": "scripts/mutations-win268-p1.json",
-        "sha256": "1bb3acdec3b2b2527ca8dd5316d38d794d111f6fcf991d7fa8178e0cedd47029"
+        "sha256": "32d61ea9eddb7eef9bd1a9e4749959434c7f4289add79f3f811384969772702b"
       },
       {
         "path": "scripts/openapi-compat.mjs",
@@ -34940,7 +34940,7 @@
             {
               "from": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
               "kind": "reference",
-              "line": 68
+              "line": 69
             },
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
@@ -35480,7 +35480,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "faf1ac2952fb7fe7e2e82e5f7f5189aea34a7aae1364279a312960ff76d7db3d",
+      "evidenceSha256": "27922c247d773cb2b55318434cef6a9e1c8622d3fea434e5b63b5f800d555d5b",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -41770,7 +41770,7 @@
             {
               "from": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
               "kind": "reference",
-              "line": 191
+              "line": 224
             },
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
@@ -42902,7 +42902,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "0143161e9b6ebc924a86ab44f24b68558a6abd52394d1ed892dfca1648ddfa3d",
+      "evidenceSha256": "812ffdef6c304b5739103fa9da94d22882de9f56b0af11bde14e0b131934f2e9",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
