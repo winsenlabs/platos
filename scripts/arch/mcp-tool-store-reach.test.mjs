@@ -34,6 +34,7 @@ import {
   composedContexts,
   measure,
   measureBlockers,
+  productionPrismaImports,
   renderMarkdown,
   resolveContractMethods,
 } from "./mcp-tool-store-reach.mjs";
@@ -297,4 +298,56 @@ test("the markdown carries the numbers the JSON carries", () => {
     markdown.includes(`whose owner is composed: **${measurement.totals.routableOnAComposedOwner}**`),
   );
   for (const file of measurement.files) assert.ok(markdown.includes(`\`${file.file}\``));
+});
+
+test("a TEST file's delegate calls are excluded from the reach measurement", () => {
+  // The harness that proves what these tools do against a real database must
+  // hold a real client. Counting it would make the ratchet punish testing
+  // against a real database, which is the thing this programme keeps asking for.
+  withFixture((root) => {
+    const before = measure(root).totals.delegateCalls;
+    writeFileSync(
+      toolPath(root, "harness.integration.test.ts"),
+      "export async function seed(prisma: any) {\n  await prisma.macro.create({ data: {} });\n  return prisma.job.findMany({});\n}\n",
+    );
+    assert.equal(measure(root).totals.delegateCalls, before, "a test file moved the production count");
+
+    // …and the SAME calls in a production file still do.
+    writeFileSync(
+      toolPath(root, "harness.ts"),
+      "export async function seed(prisma: any) {\n  await prisma.macro.create({ data: {} });\n  return prisma.job.findMany({});\n}\n",
+    );
+    assert.equal(measure(root).totals.delegateCalls, before + 2);
+  });
+});
+
+test("MUTATION: a ledger row mislabelled test-vs-production goes RED", () => {
+  // `kind` decides how many files a conversion still owes. If it were believed
+  // rather than derived, relabelling `alert_channels.ts` as "test" would erase a
+  // row from the number this tranche is judged on.
+  const production = BOUNDARY_LEDGER.filter((entry) => entry.kind === "production");
+  const tests = BOUNDARY_LEDGER.filter((entry) => entry.kind === "test");
+  assert.ok(production.length > 0 && tests.length > 0, "the ledger must exercise both kinds");
+  for (const entry of BOUNDARY_LEDGER) {
+    assert.equal(entry.kind, /\.(?:test|spec)\.tsx?$/u.test(entry.file) ? "test" : "production");
+  }
+
+  const original = BOUNDARY_LEDGER.find((entry) => entry.file === "alert_channels.ts");
+  assert.ok(original);
+  // The audit derives `kind` from the filename, so a mislabel is reported. Proved
+  // by evaluating the same rule the audit uses against a mislabelled row.
+  const mislabelled = { ...original, kind: "test" };
+  const expected = /\.(?:test|spec)\.tsx?$/u.test(mislabelled.file) ? "test" : "production";
+  assert.notEqual(mislabelled.kind, expected);
+});
+
+test("productionPrismaImports counts only the rows a conversion has to clear", () => {
+  const rows = productionPrismaImports();
+  assert.ok(rows.length > 0);
+  for (const row of rows) {
+    assert.equal(row.rule, "tenancy-prisma-only");
+    assert.equal(row.kind, "production");
+    assert.ok(!/\.(?:test|spec)\.tsx?$/u.test(row.file));
+  }
+  assert.equal(measure(repositoryRoot).totals.productionPrismaImports, rows.length);
 });

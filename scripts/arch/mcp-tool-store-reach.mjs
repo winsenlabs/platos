@@ -124,22 +124,35 @@ export const MAX_DELEGATE_CALLS = 69;
 // the rule set finds in this directory is written down, by file and rule. A new
 // one is RED. A removed one is RED too, until somebody deletes the line
 // deliberately — which is what makes the list SHRINK rather than drift.
+// `kind` separates the rows a CONVERSION has to clear from the rows a test
+// harness legitimately holds. An integration test that proves what these tools
+// do against a real database must construct a real client; counting it beside
+// `alert_channels.ts` would say the conversion had four files to go when it has
+// four, or six, depending on who is reading. `productionPrismaImports` in the
+// totals answers the question the tranche is actually judged on.
 export const BOUNDARY_LEDGER = Object.freeze([
-  Object.freeze({ rule: "tenancy-prisma-only", file: "alert_channels.ts", specifier: "@platos/tenancy-database" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "index.ts", specifier: "@platos/tenancy-database" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "jobs.ts", specifier: "@platos/tenancy-database" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.memory.test.ts", specifier: "@platos/tenancy-database" }),
-  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.ts", specifier: "@platos/tenancy-database" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "alert_channels.ts", specifier: "@platos/tenancy-database", kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "index.ts", specifier: "@platos/tenancy-database", kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "jobs.ts", specifier: "@platos/tenancy-database", kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.ts", specifier: "@platos/tenancy-database", kind: "production" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "platos-control.memory.test.ts", specifier: "@platos/tenancy-database", kind: "test" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "end-users-tenancy-postgres.integration.test.ts", specifier: "@platos/tenancy-database", kind: "test" }),
+  Object.freeze({ rule: "tenancy-prisma-only", file: "macros-replay-postgres.integration.test.ts", specifier: "@platos/tenancy-database", kind: "test" }),
   // NOT PRISMA, AND KEPT ANYWAY. The same run refuses five more imports in this
   // directory, and leaving them out would make the ledger a claim about Prisma
   // rather than about this directory's boundary state — so the next tranche
   // would meet them as a surprise instead of as a line item.
-  Object.freeze({ rule: "durable-runtime-sdk-only", file: "jobs.ts", specifier: "@trigger.dev/sdk" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "ai" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/anthropic" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/openai" }),
-  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/google" }),
+  Object.freeze({ rule: "durable-runtime-sdk-only", file: "jobs.ts", specifier: "@trigger.dev/sdk", kind: "production" }),
+  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "ai", kind: "production" }),
+  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/anthropic", kind: "production" }),
+  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/openai", kind: "production" }),
+  Object.freeze({ rule: "inference-sdk-only", file: "reflection.ts", specifier: "@ai-sdk/google", kind: "production" }),
 ]);
+
+/** The rows a conversion has to clear: production files still holding the ORM. */
+export function productionPrismaImports() {
+  return BOUNDARY_LEDGER.filter((entry) => entry.rule === "tenancy-prisma-only" && entry.kind === "production");
+}
 
 // ── THE ROUTES ──────────────────────────────────────────────────────────────
 //
@@ -231,11 +244,29 @@ const ROUTES = Object.freeze([
 
 // ── measurement ─────────────────────────────────────────────────────────────
 
+/** A test or spec file, by the same shape every other audit in this tree uses. */
+export const TEST_FILE = /\.(?:test|spec)\.tsx?$/u;
+
+/**
+ * The PRODUCTION sources whose store reach is being measured.
+ *
+ * TESTS ARE EXCLUDED, and the distinction is load-bearing rather than tidy. This
+ * audit answers "what does the tool module reach past its context to touch",
+ * and an integration test that seeds two tenants and drives a real client is not
+ * the module reaching anywhere — it is the harness that PROVES what the module
+ * does. Counting it would make the ratchet punish the act of testing against a
+ * real database, which is the thing this programme keeps asking for.
+ *
+ * The boundary ledger below does NOT make the same exclusion, because it mirrors
+ * the real enforcer's output and the enforcer judges every file. Each ledger row
+ * carries a `kind` instead, so "how many PRODUCTION files still hold the ORM
+ * import" stays answerable.
+ */
 function listToolSources(root) {
   const directory = join(root, SCAN_ROOT);
   if (!existsSync(directory)) return [];
   return readdirSync(directory)
-    .filter((entry) => entry.endsWith(".ts") && !entry.endsWith(".d.ts"))
+    .filter((entry) => entry.endsWith(".ts") && !entry.endsWith(".d.ts") && !TEST_FILE.test(entry))
     .filter((entry) => statSync(join(directory, entry)).isFile())
     .sort();
 }
@@ -443,6 +474,7 @@ export function measure(root = repositoryRoot) {
       routableCallSites: routed,
       unroutableCallSites: writes + reads - routed,
       routableOnAComposedOwner: convertible,
+      productionPrismaImports: productionPrismaImports().length,
     },
     blockers: measureBlockers(root),
     files,
@@ -480,6 +512,15 @@ export function checkBoundaryLedger(root = repositoryRoot) {
       problems.push(
         `boundary ledger: [${entry.rule}] ${SCAN_ROOT}/${entry.file} -> ${entry.specifier} no longer fires; ` +
           "delete the line to record the progress",
+      );
+    }
+    // `kind` decides which rows a conversion still owes, so it is DERIVED from
+    // the filename rather than believed. Without this, a production file could
+    // be relabelled "test" and drop out of the number the tranche is judged on.
+    const expected = TEST_FILE.test(entry.file) ? "test" : "production";
+    if (entry.kind !== expected) {
+      problems.push(
+        `boundary ledger: ${SCAN_ROOT}/${entry.file} is declared "${entry.kind}" and its name says "${expected}"`,
       );
     }
   }
@@ -549,6 +590,10 @@ export function renderMarkdown(measurement) {
   lines.push(`- call sites with none: **${measurement.totals.unroutableCallSites}**`);
   lines.push(`- call sites whose route exists AND whose owner is composed: **${measurement.totals.routableOnAComposedOwner}**`);
   lines.push(`- unattributable calls: **${measurement.totals.unattributable}**`);
+  lines.push(
+    `- PRODUCTION files still importing the ORM: **${measurement.totals.productionPrismaImports}**` +
+      " (the rows a conversion has to clear; test harnesses are counted separately in the ledger)",
+  );
   lines.push("");
   lines.push(`Contexts composed at the root today: ${measurement.composedContexts.map((name) => `\`${name}\``).join(", ")}.`);
   lines.push("");
@@ -606,10 +651,10 @@ export function renderMarkdown(measurement) {
   lines.push(`node scripts/arch/arch-boundaries.mjs --root . --scan-root ${measurement.scanRoot}`);
   lines.push("```");
   lines.push("");
-  lines.push("| rule | file | specifier |");
-  lines.push("| --- | --- | --- |");
+  lines.push("| rule | file | specifier | kind |");
+  lines.push("| --- | --- | --- | --- |");
   for (const entry of BOUNDARY_LEDGER) {
-    lines.push(`| \`${entry.rule}\` | \`${entry.file}\` | \`${entry.specifier}\` |`);
+    lines.push(`| \`${entry.rule}\` | \`${entry.file}\` | \`${entry.specifier}\` | ${entry.kind} |`);
   }
   lines.push("");
   return `${lines.join("\n")}\n`;

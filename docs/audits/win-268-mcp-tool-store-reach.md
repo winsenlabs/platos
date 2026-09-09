@@ -18,6 +18,7 @@ The matcher is `scripts/arch/sole-writer.mjs`'s, unchanged; the ownership is
 - call sites with none: **28**
 - call sites whose route exists AND whose owner is composed: **4**
 - unattributable calls: **0**
+- PRODUCTION files still importing the ORM: **4** (the rows a conversion has to clear; test harnesses are counted separately in the ledger)
 
 Contexts composed at the root today: `identity-access`, `providers`, `secrets`, `tenancy`.
 
@@ -111,16 +112,18 @@ What the real enforcer reports for this directory:
 node scripts/arch/arch-boundaries.mjs --root . --scan-root apps/agent/src/mcp-platform/tools
 ```
 
-| rule | file | specifier |
-| --- | --- | --- |
-| `tenancy-prisma-only` | `alert_channels.ts` | `@platos/tenancy-database` |
-| `tenancy-prisma-only` | `index.ts` | `@platos/tenancy-database` |
-| `tenancy-prisma-only` | `jobs.ts` | `@platos/tenancy-database` |
-| `tenancy-prisma-only` | `platos-control.memory.test.ts` | `@platos/tenancy-database` |
-| `tenancy-prisma-only` | `platos-control.ts` | `@platos/tenancy-database` |
-| `durable-runtime-sdk-only` | `jobs.ts` | `@trigger.dev/sdk` |
-| `inference-sdk-only` | `reflection.ts` | `ai` |
-| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/anthropic` |
-| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/openai` |
-| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/google` |
+| rule | file | specifier | kind |
+| --- | --- | --- | --- |
+| `tenancy-prisma-only` | `alert_channels.ts` | `@platos/tenancy-database` | production |
+| `tenancy-prisma-only` | `index.ts` | `@platos/tenancy-database` | production |
+| `tenancy-prisma-only` | `jobs.ts` | `@platos/tenancy-database` | production |
+| `tenancy-prisma-only` | `platos-control.ts` | `@platos/tenancy-database` | production |
+| `tenancy-prisma-only` | `platos-control.memory.test.ts` | `@platos/tenancy-database` | test |
+| `tenancy-prisma-only` | `end-users-tenancy-postgres.integration.test.ts` | `@platos/tenancy-database` | test |
+| `tenancy-prisma-only` | `macros-replay-postgres.integration.test.ts` | `@platos/tenancy-database` | test |
+| `durable-runtime-sdk-only` | `jobs.ts` | `@trigger.dev/sdk` | production |
+| `inference-sdk-only` | `reflection.ts` | `ai` | production |
+| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/anthropic` | production |
+| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/openai` | production |
+| `inference-sdk-only` | `reflection.ts` | `@ai-sdk/google` | production |
 

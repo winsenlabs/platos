@@ -16,7 +16,8 @@
     "owners": 10,
     "routableCallSites": 41,
     "unroutableCallSites": 28,
-    "routableOnAComposedOwner": 4
+    "routableOnAComposedOwner": 4,
+    "productionPrismaImports": 4
   },
   "blockers": {
     "hostApp": "apps/agent/package.json",
@@ -999,7 +1000,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 241,
+      "line": 267,
       "kind": "write",
       "model": "Macro",
       "method": "create",
@@ -1007,7 +1008,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 268,
+      "line": 294,
       "kind": "read",
       "model": "Macro",
       "method": "findMany",
@@ -1015,7 +1016,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 290,
+      "line": 316,
       "kind": "read",
       "model": "Macro",
       "method": "findFirst",
@@ -1023,7 +1024,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 318,
+      "line": 344,
       "kind": "read",
       "model": "Macro",
       "method": "findFirst",
@@ -1031,7 +1032,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 335,
+      "line": 361,
       "kind": "write",
       "model": "Macro",
       "method": "update",
@@ -1039,7 +1040,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 351,
+      "line": 377,
       "kind": "read",
       "model": "Macro",
       "method": "findFirst",
@@ -1047,7 +1048,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 360,
+      "line": 386,
       "kind": "write",
       "model": "Macro",
       "method": "delete",
@@ -1055,7 +1056,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 380,
+      "line": 406,
       "kind": "read",
       "model": "Macro",
       "method": "findFirst",
@@ -1063,7 +1064,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 389,
+      "line": 415,
       "kind": "write",
       "model": "Macro",
       "method": "update",
@@ -1071,7 +1072,7 @@
     },
     {
       "file": "macros.ts",
-      "line": 412,
+      "line": 438,
       "kind": "read",
       "model": "Macro",
       "method": "findFirst",
@@ -1178,52 +1179,74 @@
     {
       "rule": "tenancy-prisma-only",
       "file": "alert_channels.ts",
-      "specifier": "@platos/tenancy-database"
+      "specifier": "@platos/tenancy-database",
+      "kind": "production"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "index.ts",
-      "specifier": "@platos/tenancy-database"
+      "specifier": "@platos/tenancy-database",
+      "kind": "production"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "jobs.ts",
-      "specifier": "@platos/tenancy-database"
-    },
-    {
-      "rule": "tenancy-prisma-only",
-      "file": "platos-control.memory.test.ts",
-      "specifier": "@platos/tenancy-database"
+      "specifier": "@platos/tenancy-database",
+      "kind": "production"
     },
     {
       "rule": "tenancy-prisma-only",
       "file": "platos-control.ts",
-      "specifier": "@platos/tenancy-database"
+      "specifier": "@platos/tenancy-database",
+      "kind": "production"
+    },
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "platos-control.memory.test.ts",
+      "specifier": "@platos/tenancy-database",
+      "kind": "test"
+    },
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "end-users-tenancy-postgres.integration.test.ts",
+      "specifier": "@platos/tenancy-database",
+      "kind": "test"
+    },
+    {
+      "rule": "tenancy-prisma-only",
+      "file": "macros-replay-postgres.integration.test.ts",
+      "specifier": "@platos/tenancy-database",
+      "kind": "test"
     },
     {
       "rule": "durable-runtime-sdk-only",
       "file": "jobs.ts",
-      "specifier": "@trigger.dev/sdk"
+      "specifier": "@trigger.dev/sdk",
+      "kind": "production"
     },
     {
       "rule": "inference-sdk-only",
       "file": "reflection.ts",
-      "specifier": "ai"
+      "specifier": "ai",
+      "kind": "production"
     },
     {
       "rule": "inference-sdk-only",
       "file": "reflection.ts",
-      "specifier": "@ai-sdk/anthropic"
+      "specifier": "@ai-sdk/anthropic",
+      "kind": "production"
     },
     {
       "rule": "inference-sdk-only",
       "file": "reflection.ts",
-      "specifier": "@ai-sdk/openai"
+      "specifier": "@ai-sdk/openai",
+      "kind": "production"
     },
     {
       "rule": "inference-sdk-only",
       "file": "reflection.ts",
-      "specifier": "@ai-sdk/google"
+      "specifier": "@ai-sdk/google",
+      "kind": "production"
     }
   ],
   "maxDelegateCalls": 69
