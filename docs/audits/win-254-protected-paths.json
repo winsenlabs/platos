@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "98b0cd2951e7b450d99393e7fe7368f3589fa9884dcfbe8ea7e390ac2ea855c2"
+      "sha256": "70e8847533e31cde196b4277061443af4409650637561db22b3b615b8db49418"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "f1841017bfb58d866679d480f39a3b26a192da03493e08d993b3550c8ad90f94"
+      "sha256": "cc452939ffea2d4785d3c15993102d275f7c103be04b64c280c0d404e9f94254"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1083,7 +1083,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "25f2c6c7c2a84940b1a7b8a20c7ea3e17a00635528ba20455c5f1f30606c26b7"
+      "sha256": "4b439609a431faf2f85374acd2d2f5fb886659ee5fe20b877597dd8f17f554ca"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3943,7 +3943,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "5ad965ad737cb78766f31ece2ea92ef51be5e87c56a228967f957bdbfb4f399c"
+      "sha256": "2cd96e3aee4db4ab73eb63cebb8dd4091864243e6cb56e3854f6f632871d1e66"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
