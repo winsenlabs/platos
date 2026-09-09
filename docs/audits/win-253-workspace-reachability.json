@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0f44db2f95de7d53568511e0f2847686be66a4eea94d890bd7c03cd4ed646e99",
+  "evidenceSha256": "123fe05b81cb40b1db2d50691b05578d9902a7f3ac309c7cfe31c795eacef441",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ee463211efa1741e860b48dd5bfdca7d2e50d8de7daf54e049d257bf93d91811",
+    "aggregateSha256": "6cc3f212f71353d0408f5c51d0197a694852db26e2a34e472593028913ac252f",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -19931,7 +19931,7 @@
       },
       {
         "path": "scripts/arch/webapp-prisma-surface.mjs",
-        "sha256": "55d1849cd8bfded9c2d81cfa4abcc7babfb058120a81b871c488201cd3145f09"
+        "sha256": "2af58039349a100825f162f953500deb1182873f0154feca3f94593db0ae46a2"
       },
       {
         "path": "scripts/arch/webapp-prisma-surface.test.mjs",
@@ -20107,7 +20107,7 @@
       },
       {
         "path": "scripts/mutations-win267-r2.json",
-        "sha256": "502a403cf61d1a2c3ea08f16c881609120eba76230a8fe2b0e635a51ce56a2fb"
+        "sha256": "008bdcdbfe508cdc0db3e165a591b8d2bd04e9654de747e21dbbac5c395868e4"
       },
       {
         "path": "scripts/mutations-win267-t0.json",
