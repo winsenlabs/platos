@@ -41,7 +41,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 from platos_client.errors import (
     PlatosError,
@@ -82,7 +82,12 @@ class HttpAnswer:
 
 
 #: ``(method, url, headers, body) -> HttpAnswer``. The only I/O seam.
-Opener = Callable[[str, str, dict[str, str], bytes | None], HttpAnswer]
+#:
+#: `Optional[bytes]` rather than `bytes | None`: this is a runtime type ALIAS,
+#: evaluated when the module loads, and `from __future__ import annotations` does
+#: not reach it. The `|` form needs 3.10 and this module is imported by
+#: `pnpm test:sdk-v1` with whatever `python3` the runner has.
+Opener = Callable[[str, str, dict[str, str], Optional[bytes]], HttpAnswer]
 
 
 def _urllib_opener(method: str, url: str, headers: dict[str, str], body: bytes | None) -> HttpAnswer:

@@ -122,6 +122,11 @@ const allowedProtectedSdkChanges = [
       "WIN-270 (M4.4): `pnpm test:sdk-v1` runs a real interpreter in this package, so a `__pycache__` appears whenever the V1 evidence step runs. Mirrors `packages/platools-py/.gitignore`.",
   },
   {
+    path: "packages/platos-client-py/platos_client/__init__.py",
+    reason:
+      "WIN-270 (M4.4): the package entry point imported `platos_client.client` (httpx) and `platos_client.apis.jobs` at module scope, so `import platos_client.errors` — which needs neither — pulled in the whole async HTTP stack. PEP 562 `__getattr__` makes those lazy; the public surface and `__all__` are unchanged, and `pnpm test:sdk-v1` now proves the error types import with no site-packages at all.",
+  },
+  {
     path: "packages/platos-client-py/platos_client/errors.py",
     reason:
       "WIN-270 (M4.4): the Python half of the envelope reader — `read_wire_error`, `PlatosError.code`, and `PlatosRefusal` as the base of the 4xx family.",

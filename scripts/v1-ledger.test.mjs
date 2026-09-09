@@ -1341,7 +1341,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // gains an `insert` half inside the EXISTING `identity-bearer.ts`, and the
     // domain gains its mint planning inside the EXISTING `bearer-token.ts`, so
     // both are edits.
-    packages: 1505,
+    packages: 1513,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1803,7 +1803,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // survivors and zero declared equivalent. It takes the same blanket
     // `root-infra.tooling.scripts` rule its ten predecessors took (103 -> 104).
     // NO LEDGER RULE CHANGED.
-    "root-infra": 75,
+    "root-infra": 79,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1936,7 +1936,38 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // AND WIN-269's REAL-DATABASE PAIR PROOF 1706 -> 1707. ONE file,
   // `apps-agent`, itemised on that area's delta above:
   // 10 + 0 + 80 + 4 + 10 + 1505 + 23 + 75 = 1707.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1707);
+  //
+  // WIN-270 (M4.4) THE GENERATED V1 SDK 1707 -> 1719. TWELVE files across TWO
+  // areas, each itemised on its own delta above.
+  //
+  //   `packages` +8 (1505 -> 1513), and it is 3 + 5.
+  //
+  //   THREE in `packages/platos-client`: `src/generated/v1.ts` (emitted),
+  //   `src/v1-transport.ts` (the hand-written auth/retry half) and
+  //   `tests/v1-contract.test.ts`. Nothing else — `src/errors.ts` and
+  //   `src/index.ts` are edited IN PLACE and add no file.
+  //
+  //   FIVE in `packages/platos-client-py`: `platos_client/generated/__init__.py`
+  //   and `platos_client/generated/v1.py` (emitted),
+  //   `platos_client/v1_transport.py`, `tests/test_v1_contract.py`, and the
+  //   package-scoped `.gitignore` the interpreter's byte-cache needs once
+  //   `pnpm test:sdk-v1` runs one here. `platos_client/errors.py` and
+  //   `platos_client/__init__.py` are edited in place.
+  //
+  //   `root-infra` +4 (75 -> 79): `scripts/sdk/v1-contract.mjs` (the generator
+  //   and the drift gate), `scripts/sdk/v1-contract.test.mjs` (its perturbation
+  //   controls and the Python execution), `scripts/mutations-win270-m44.json`
+  //   (this tranche's mutation ledger, the same shape as WIN-268's and
+  //   WIN-269's) and `tests/sdk-contract/v1-fixtures.json` (the ONE fixture both
+  //   languages drive — it is at the repository root and not inside either SDK
+  //   precisely because neither owns it).
+  //
+  // NO LEDGER RULE CHANGED: all twelve land on rules that already existed, which
+  // is why `node scripts/v1-ledger.mjs --check` is green without an edit to
+  // `docs/v1-ledger-rules.json` beyond its regenerated fingerprint. The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 10 + 0 + 80 + 4 + 10 + 1513 + 23 + 79 = 1719.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1719);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2144,7 +2175,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND WIN-269's REAL-DATABASE PAIR PROOF 1706 -> 1707 -- the TWENTIETH hand
     // move. The same one `apps-agent` file, reached here by summing the per-area
     // counts instead of reading the total. 1706 + 1 = 1707.
-    rulesDocument.baseline.totalFiles + 1707
+    //
+    // AND WIN-270's GENERATED V1 SDK 1707 -> 1719 -- the TWENTY-FIRST hand move.
+    // The same twelve files as the `totalFiles` assertion above (eight in
+    // `packages` across the two client packages, four in `root-infra`: the
+    // generator, its perturbation-control suite, the mutation ledger, and the
+    // one cross-language fixture), reached here by summing the per-area counts
+    // instead of reading the total, so the two arithmetics can disagree and be
+    // caught. 1707 + 12 = 1719.
+    rulesDocument.baseline.totalFiles + 1719
   );
 });
 

@@ -4793,6 +4793,11 @@
           "reason": "WIN-270 (M4.4): `pnpm test:sdk-v1` runs a real interpreter in this package, so a `__pycache__` appears whenever the V1 evidence step runs. Mirrors `packages/platools-py/.gitignore`."
         },
         {
+          "path": "packages/platos-client-py/platos_client/__init__.py",
+          "kind": "changed",
+          "reason": "WIN-270 (M4.4): the package entry point imported `platos_client.client` (httpx) and `platos_client.apis.jobs` at module scope, so `import platos_client.errors` — which needs neither — pulled in the whole async HTTP stack. PEP 562 `__getattr__` makes those lazy; the public surface and `__all__` are unchanged, and `pnpm test:sdk-v1` now proves the error types import with no site-packages at all."
+        },
+        {
           "path": "packages/platos-client-py/platos_client/errors.py",
           "kind": "changed",
           "reason": "WIN-270 (M4.4): the Python half of the envelope reader — `read_wire_error`, `PlatosError.code`, and `PlatosRefusal` as the base of the 4xx family."
@@ -4823,8 +4828,8 @@
   "integration": {
     "lockfileSha256": "7bc02ffe59f77cd1b599433d2e0d79e5a80323b3d3c045fc2d4ae83b25c49055",
     "vocabularySha256": "7dcfd70ccb9c7df067dfa36b267e52d3d63c381df4a1049ea60ccb8c271fd5db",
-    "ledgerRulesSha256": "33ecb60ea96597c28fe390f3f29c3cb4ab3a4a28b16ab854dc9168dfef55073a",
-    "reachabilitySha256": "a57595e3419766527f91c034f648fdf2796487ba0bfb3c5aa64ffcb46473a4c2",
+    "ledgerRulesSha256": "8cd9be84015186c1237d826031165379bc0db95f8c440980decaf798adef03a9",
+    "reachabilitySha256": "a22c1d6feae429724d6496f93e249722875102f7b56ce1dce0221b6ad930b4fd",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

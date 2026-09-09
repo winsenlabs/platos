@@ -1,0 +1,205 @@
+{
+  "$schema-note": "WIN-270 (M4.4) mutation ledger. Every row was APPLIED to the named file in the working tree, the named command was run, the file was restored, and the recorded exit code is what that run returned. Nothing here is a prediction.",
+  "issue": "WIN-270",
+  "tranche": "M4.4 — TypeScript/Python SDKs, token minting, embeds and widgets",
+  "branch": "tejas/m4",
+  "base": "9d78e2e1149b44a478eabf71e15a93cec46e3952",
+  "purpose": "A green suite proves the code passes its own cases. It does not prove the cases would notice if the property left. Each mutation removes exactly one property this tranche claims and records which named command turned red.",
+  "procedure": "Read the file, replace one exact anchor, run the command from the repository root, write the original back, record the exit code. Applied serially; the tree is verified clean afterwards.",
+  "commands": {
+    "ts": "pnpm --filter @platosdev/client exec vitest run tests/v1-contract.test.ts",
+    "py": "/opt/homebrew/bin/python3 -S -I packages/platos-client-py/tests/test_v1_contract.py",
+    "py39": "/usr/bin/python3 -S -I packages/platos-client-py/tests/test_v1_contract.py",
+    "widget": "pnpm --filter @platosdev/react-widget exec vitest run",
+    "embed": "pnpm --filter @platosdev/embed exec vitest run",
+    "sdkgate": "node --test scripts/sdk/v1-contract.test.mjs",
+    "sdkaudit": "node scripts/sdk/v1-contract.mjs --check",
+    "policy": "pnpm --filter @platos/core-api exec vitest run src/http/idempotency-policy.test.ts",
+    "vba": "node --test scripts/vendored-build-audit.test.mjs"
+  },
+  "baseline": {
+    "packages/platos-client": "83/83 (46 of them tests/v1-contract.test.ts)",
+    "packages/platos-client-py": "17/17 under python3 -S -I on 3.14.2 and on 3.9.6",
+    "packages/platos-react-widget": "5/5",
+    "packages/platos-embed": "6/6",
+    "packages/platos-token-mint": "3/3",
+    "apps/core-api": "420/420",
+    "scripts/sdk/v1-contract.test.mjs": "8/8",
+    "scripts/vendored-build-audit.test.mjs": "25/25"
+  },
+  "mutations": [
+    {
+      "name": "M01 the TypeScript idempotency key is minted inside the retry loop",
+      "guards": "one logical mint carries ONE key across every try",
+      "why": "The whole reason ADR M0.4 section 2 puts `Idempotency-Key` on a one-time-secret mint is a retry whose first answer was lost. A fresh key per try makes the server treat the retry as a NEW mint, so the caller ends the call holding one credential and the tenant holds two, one of them unknown to anybody. The key is minted once, above the loop, and this mutation moves the mint into it.",
+      "file": "packages/platos-client/src/v1-transport.ts",
+      "command": "pnpm --filter @platosdev/client exec vitest run tests/v1-contract.test.ts",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M02 the Python idempotency key is minted inside the retry loop",
+      "guards": "the same rule, in the other language",
+      "why": "The same defect in the other language, and it has to be proven separately: the two transports are hand-written, and the fixture that binds them says nothing about where a key is created.",
+      "file": "packages/platos-client-py/platos_client/v1_transport.py",
+      "command": "/opt/homebrew/bin/python3 -S -I packages/platos-client-py/tests/test_v1_contract.py",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M03 a `required` mint stops carrying the header",
+      "guards": "the class read off core-api's policy actually decides the header",
+      "why": "`required` and `accepted` are the two classes M0.4 section 2 puts the header on, and the class itself is read off core-api rather than written here. Dropping `required` from the set is what a client looks like when somebody decides mints are special and forgets which way.",
+      "file": "packages/platos-client/src/v1-transport.ts",
+      "command": "pnpm --filter @platosdev/client exec vitest run tests/v1-contract.test.ts",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M04 the TypeScript envelope reader never recognises an envelope",
+      "guards": "a refusal reaches the caller with its code",
+      "why": "Before WIN-270 this was the shipped behaviour, not a hypothetical: `errorFromResponse` looked for `parsed.message` or a STRING `parsed.error`, and the V1 envelope is neither. Every refusal reached the caller with its code on the floor.",
+      "file": "packages/platos-client/src/errors.ts",
+      "command": "pnpm --filter @platosdev/client exec vitest run tests/v1-contract.test.ts",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M05 the Python envelope reader never recognises an envelope",
+      "guards": "the same, in the other language",
+      "why": "The same reader in Python, proven separately for the same reason as M02.",
+      "file": "packages/platos-client-py/platos_client/errors.py",
+      "command": "/opt/homebrew/bin/python3 -S -I packages/platos-client-py/tests/test_v1_contract.py",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M06 PlatosAuthError leaves the refusal family",
+      "guards": "a caller can catch every coded 4xx with one class",
+      "why": "A caller catching `PlatosRefusal` must reach every coded 4xx, including the ones minted after this SDK was built. If the named subclasses are siblings rather than children, `catch (PlatosRefusal)` silently misses a 401.",
+      "file": "packages/platos-client/src/errors.ts",
+      "command": "pnpm --filter @platosdev/client exec vitest run tests/v1-contract.test.ts",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M07 the generator stops reading the idempotency table",
+      "guards": "the emitted class comes from core-api, not from the generator",
+      "why": "The generator parses `OPERATION_POLICIES` out of core-api rather than restating it. If `classifyTemplate` stopped consulting the table, every emitted operation would be `accepted` and the two mints would stop being mandatory — with no other gate able to see it.",
+      "file": "scripts/sdk/v1-contract.mjs",
+      "command": "node scripts/sdk/v1-contract.mjs --check",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M08 the generator ignores an override, so a perturbed input is never seen",
+      "guards": "the perturbation controls are real",
+      "why": "The perturbation controls in the gate beside this ledger substitute one real input file. If `buildArtifacts` ignored the override, all four of those controls would pass while proving nothing.",
+      "file": "scripts/sdk/v1-contract.mjs",
+      "command": "node --test scripts/sdk/v1-contract.test.mjs",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M09 the widget keeps the optimistic bubble after a refused mint",
+      "guards": "a declined visitor gets no partial answer",
+      "why": "The widget inserts the assistant bubble optimistically, before the token mint. Keeping it after a refused mint gives a visitor the server declined a transcript containing `[error]` — a partial answer where a refusal was owed.",
+      "file": "packages/platos-react-widget/src/usePlatosChat.ts",
+      "command": "pnpm --filter @platosdev/react-widget exec vitest run",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M10 the embed keeps its iframe handle after refusing to render",
+      "guards": "the postMessage trust check consults a live element",
+      "why": "`onMessage` decides which postMessages to trust by comparing `event.source` to `this.iframe.contentWindow`. Leaving the handle pointing at a detached frame makes a public embed rest its trust check on the DOM happening to answer null.",
+      "file": "packages/platos-embed/src/embed.ts",
+      "command": "pnpm --filter @platosdev/embed exec vitest run",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M11 an empty path parameter is substituted instead of refused (TypeScript)",
+      "guards": "a mint cannot be addressed at the wrong route",
+      "why": "An empty path parameter silently changes which route the server matches: a mint addressed at `/mcp/entity//tokens` is not that entity mint.",
+      "file": "packages/platos-client/src/generated/v1.ts",
+      "command": "pnpm --filter @platosdev/client exec vitest run tests/v1-contract.test.ts",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M12 an empty path parameter is substituted instead of refused (Python)",
+      "guards": "the same, in the other language",
+      "why": "The same substitution rule in the emitted Python.",
+      "file": "packages/platos-client-py/platos_client/generated/v1.py",
+      "command": "/opt/homebrew/bin/python3 -S -I packages/platos-client-py/tests/test_v1_contract.py",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M13 a deleted protected SDK file becomes reviewable",
+      "guards": "deletion has no reviewed form",
+      "why": "A published SDK file may be edited and never deleted; deletion is the collateral damage WIN-253 built the rule for. This mutation gives the deletion a reviewed form, using the strongest permission the table can express.",
+      "file": "scripts/vendored-build-audit.mjs",
+      "command": "node --test scripts/vendored-build-audit.test.mjs",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M14 a reviewed permission may go stale",
+      "guards": "the table cannot accumulate exemptions for reverted changes",
+      "why": "Without the stale-permission rule the reviewed table accumulates exemptions for changes somebody later reverted, and the next tranche inherits a hole shaped like whatever the last one touched.",
+      "file": "scripts/vendored-build-audit.mjs",
+      "command": "node --test scripts/vendored-build-audit.test.mjs",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M15 a generated file is edited by hand",
+      "guards": "the committed clients equal what the contract emits",
+      "why": "`audit:sdk-v1` exists to make a hand edit to a generated client revert rather than ship.",
+      "file": "packages/platos-client/src/generated/v1.ts",
+      "command": "node scripts/sdk/v1-contract.mjs --check",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M16 a refusal resolves to undefined instead of throwing",
+      "guards": "an unauthenticated caller never receives a value",
+      "why": "An unauthenticated caller must get a refusal, never a value. A `send` that resolves `undefined` on a refusal is indistinguishable to the caller from an endpoint with nothing to say.",
+      "file": "packages/platos-client/src/v1-transport.ts",
+      "command": "pnpm --filter @platosdev/client exec vitest run tests/v1-contract.test.ts",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M17 the emitted fixture reclassifies a mint as accepted",
+      "guards": "the generated class and the runtime classifyRequest agree",
+      "why": "The generator answers the idempotency question over TEMPLATES at generation time and `classifyRequest` answers it over a concrete path at runtime. Two implementations of one rule is the shape this programme keeps getting burned by, so the core-api suite instantiates every emitted template and compares. This mutation makes them disagree.",
+      "file": "tests/sdk-contract/v1-fixtures.json",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/http/idempotency-policy.test.ts",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M18 the package entry point imports the async client eagerly again",
+      "guards": "the Python contract suite really is standard-library only",
+      "why": "The Python contract suite claims to need nothing but the standard library, and that claim was FALSE until this tranche: importing `platos_client.errors` executed `platos_client/__init__.py`, which imported httpx and websockets. The gate now runs the suite and the package entry point under `-S -I`, so the eager import fails there.",
+      "file": "packages/platos-client-py/platos_client/__init__.py",
+      "command": "node --test scripts/sdk/v1-contract.test.mjs",
+      "exit": 1,
+      "outcome": "killed"
+    }
+  ],
+  "survivors": [],
+  "declared": [],
+  "controls": [
+    {
+      "name": "M19 the Python contract suite on the OLDEST interpreter on this machine",
+      "what": "No mutation. The suite is run unchanged under /usr/bin/python3 (3.9.6) with -S -I, the same way scripts/sdk/v1-contract.test.mjs runs it, because `pnpm test:sdk-v1` spawns whatever `python3` the runner has and a suite that only works on one version is a gate that goes red for the wrong reason.",
+      "command": "/usr/bin/python3 -S -I packages/platos-client-py/tests/test_v1_contract.py",
+      "exit": 0,
+      "outcome": "green, as a control must be"
+    }
+  ]
+}

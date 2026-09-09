@@ -198,7 +198,15 @@ test("the emitted fixture drives the Python client too", () => {
     console.log("# SKIP python3 is not on PATH; the Python half of the fixture did not run");
     return;
   }
-  const run = spawnSync("python3", [suite], { encoding: "utf8", cwd: repositoryRoot });
+  // `-S -I`: NO site-packages AND no inherited environment. The suite claims to
+  // need nothing but the standard library, and this is what turns that claim
+  // into a measurement — with site-packages on the path an `httpx` that happened
+  // to be installed would hide an import the runner does not have. It also
+  // proves the claim for the package: `import platos_client.errors` used to
+  // execute `platos_client/__init__.py`, which imported `httpx` and
+  // `websockets`, so the suite was only standard-library on a machine that had
+  // them. That import is lazy now.
+  const run = spawnSync("python3", ["-S", "-I", suite], { encoding: "utf8", cwd: repositoryRoot });
   assert.equal(
     run.status,
     0,
@@ -206,4 +214,26 @@ test("the emitted fixture drives the Python client too", () => {
   );
   assert.match(run.stderr ?? "", /python V1 contract cases passed/u);
   assert.doesNotMatch(run.stderr ?? "", /^0\//mu, "the Python runner collected no cases");
+
+  // AND THE PACKAGE'S OWN ENTRY POINT, under the same restriction. A caller that
+  // wants `PlatosError` should not have to install an async HTTP stack, and
+  // before WIN-270 it did.
+  const entry = spawnSync(
+    "python3",
+    [
+      "-S",
+      "-I",
+      "-c",
+      // `-I` keeps the working directory OFF `sys.path`, which is the point of
+      // it, so the package root is put back explicitly and nothing else is.
+      "import sys; sys.path.insert(0, '.'); import platos_client; print(platos_client.PlatosRefusal.__name__)",
+    ],
+    { encoding: "utf8", cwd: join(repositoryRoot, "packages", "platos-client-py") },
+  );
+  assert.equal(
+    entry.status,
+    0,
+    `importing platos_client without site-packages failed:\n${entry.stdout ?? ""}\n${entry.stderr ?? ""}`,
+  );
+  assert.match(entry.stdout ?? "", /PlatosRefusal/u);
 });
