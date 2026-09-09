@@ -148,7 +148,7 @@ describe("categories carry the decision, not just the sentence", () => {
     // The same argument the three read-seam codes carry: an incoherent scope is
     // a defect in whatever built the grant, so the call will fail identically
     // for ever. `unavailable` would attach `retryAfterSeconds` and the transport
-    // would repeat that lie on every attempt.
+    // would repeat that lie on every call.
     for (const error of [
       safetyScopeUnresolved("foreign_ancestry"),
       ratingsScopeUnresolved("foreign_ancestry"),
