@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "290ce4047dd432d014942b950cb178b0aa0f57703611dcd865ea72e33765e2b6",
+  "evidenceSha256": "63af33bd51c295c3688fcf07b27c0f39c12ecc3c95a3b84e07a9ddc236092a01",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "8bb3fddd64d385d477a1de772d53bcfeaf0b9b0371ad0fe02ed049a8a7758bd0",
+    "aggregateSha256": "8b7ac504d3fcc736613b7e1d89d33f3d3e667291c91dab25d3ce902d707168a2",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2739,7 +2739,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-rest.test.ts",
-        "sha256": "9e107953e0c252f4e0845f55ceac8d14f583480d8bf22b79cdddd5336484103a"
+        "sha256": "01ae7fd5ca08986e37bda8eaced3e9fddf3d1865a38c70d0be498e8683051c9a"
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-session.controller.ts",
@@ -6299,7 +6299,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "6778fffc32c013ccc7b7ef224b2fcf9c11b7d3ffe2d62cc7344fe3e8923704d8"
+        "sha256": "d44655774607b5119ba3078e45d61ecced6c1fac9d2758ce69232df73deeb771"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20182,6 +20182,10 @@
         "sha256": "d69daa782f4d42ee5a3968fc229a767d16ce88606af5a03888f5ddb84712fd4b"
       },
       {
+        "path": "scripts/mutations-win267-w3.json",
+        "sha256": "1e2861996059218682dd16a1e281b7d7f80ade264d6e4e71c915520d24090b51"
+      },
+      {
         "path": "scripts/operator-operations.mjs",
         "sha256": "6fe420bc65cd8a5b123481e02767a00ce50b29b5a02b54e85819b9beb638adfa"
       },
@@ -20259,7 +20263,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "637ba8f7636d1ac9881e200eab832b6efe214bfc9b53fd44cedcb7df40dd33a6"
+        "sha256": "4019b0cccb52634a5f42fb679f2e56caba5c872372be01a5ba915226f5fb9b0b"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -38475,7 +38479,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1906
+              "line": 1924
             }
           ],
           "reversePaths": [
@@ -38500,7 +38504,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "a08bd9cdfdd91cd5a5e0feeeadbc1c4d56f618ea6d3c64e37c1ff0ea95c64443",
+      "evidenceSha256": "2e11e828ddcfa5558cea89bd18af6971504191ee93b7fe8833a33c8ad8cc3eec",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -39641,7 +39645,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1905
+              "line": 1923
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -39866,7 +39870,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9b24129d2752a33022918a9fc76a56129ebdb633b84c72c93e4ad04704929113",
+      "evidenceSha256": "cf4a1f682997b5e1e364ebe32d709149adb13030a0b7b6bac38658cc7a25cbaa",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -62780,7 +62784,7 @@
             {
               "from": "apps/core-api/src/transports/rest/identity-rest.test.ts",
               "kind": "reference",
-              "line": 23
+              "line": 22
             },
             {
               "from": "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
@@ -63961,7 +63965,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "587293df458c7c81b62f6b16305f9c8fdfc2e9cb4dc1a0bdd515947f89d640c3",
+      "evidenceSha256": "5f79e44ccf2546e6ed859ed6d5301e058a4a93a912b04ac35190ecc3d24c43a2",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {

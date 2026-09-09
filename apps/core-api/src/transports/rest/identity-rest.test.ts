@@ -289,14 +289,14 @@ describe("WIN-267 W3 — a sign-out that could not end the session says so", () 
     // branch is on the kernel CATEGORY rather than on a list of codes copied into
     // the transport, so a new way for the store to be unreachable is handled
     // without a transport edit.
-    const attempt = signOutAgainst(
+    const handler = signOutAgainst(
       domainError(published("IDENTITY_STORE_UNAVAILABLE"), "unavailable", "Identity store is unavailable", {
         retryAfterSeconds: 1,
       }),
     );
-    const thrown = await attempt.run().catch((error: unknown) => error);
+    const thrown = await handler.run().catch((error: unknown) => error);
     expect(domainErrorOf(thrown)?.code).toBe("IDENTITY_STORE_UNAVAILABLE");
-    expect(attempt.written, "a sign-out that did not happen must not clear the browser").toEqual([]);
+    expect(handler.written, "a sign-out that did not happen must not clear the browser").toEqual([]);
   });
 
   it("CLEARS the browser anyway when there was simply nothing left to end", async () => {
@@ -305,10 +305,10 @@ describe("WIN-267 W3 — a sign-out that could not end the session says so", () 
     // cleared. Every `unauthenticated` refusal — no token, no such session,
     // already ended — reaches here.
     for (const code of ["UNAUTHENTICATED", "SESSION_REVOKED"] as const) {
-      const attempt = signOutAgainst(domainError(published(code), "unauthenticated", "refused"));
-      await attempt.run();
-      expect(attempt.written, code).toHaveLength(1);
-      expect(String(attempt.written[0]), code).toContain("Max-Age=0");
+      const handler = signOutAgainst(domainError(published(code), "unauthenticated", "refused"));
+      await handler.run();
+      expect(handler.written, code).toHaveLength(1);
+      expect(String(handler.written[0]), code).toContain("Max-Age=0");
     }
   });
 });

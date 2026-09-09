@@ -1,0 +1,365 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-267",
+  "tranche": "W3 — server-side sign-out, and the unscanned terminal route",
+  "branch": "tejas/win-267-w3-signout",
+  "base": "63388a9f (tejas/win-267-rest, the head of PR #159)",
+  "purpose": [
+    "W3 closes two defects the previous tranche NAMED rather than fixed, and the",
+    "two are the same shape one layer apart: something that was true was not",
+    "checkable, so nothing went red while it stopped being true.",
+    "",
+    "THE SIGN-OUT. `DELETE /api/v1/bff/session` cleared the browser cookie and",
+    "stopped, because `revokeOperatorSession` lived in `application/` behind no",
+    "contract method and a V1 transport may only reach a contract method. The",
+    "cookie is a COPY of the credential, so the route deleted the copy in the one",
+    "browser that asked and left every other copy valid for the rest of the",
+    "session's lifetime. M14 is that exact handler restored, and it is the",
+    "mutation this ledger exists for: it changes no status code, no envelope and",
+    "no header — only whether the replayed cookie still works.",
+    "",
+    "THE TERMINAL 404. `apps/core-api/src/http/not-found.controller.ts` was a",
+    "route-bearing controller under no scan root and named in no exclusion. Every",
+    "census case passed with it invisible, because the exclusion list was checked",
+    "in ONE direction only: each named file must exist and keep its shape, and",
+    "nothing enumerated the complement. M01 and M05 are the other direction.",
+    "",
+    "M03 IS THE ONE WORTH READING TWICE. Business surface would not arrive here",
+    "as a sixth method decorator — it would arrive as `@All(\"organizations\")`,",
+    "which leaves the method-decorator count at zero, keeps the empty base path,",
+    "satisfies every tripwire the sibling `HealthController` exclusion carries,",
+    "and serves every HTTP method of a real resource from a file no enumerator",
+    "can see."
+  ],
+  "procedure": [
+    "Every mutation is applied to ONE file and run INDIVIDUALLY. The laptop runs",
+    "the thirteen that need no container; Docker is quit there by standing",
+    "instruction, so the four that need PostgreSQL and Redis run on the Mac mini",
+    "over ssh, in a FRESH worktree, against pgvector/pgvector:pg16 and",
+    "redis:7-alpine through @testcontainers/*.",
+    "",
+    "A PACKAGE-SOURCE MUTATION MUST REBUILD, AND M15 PROVED IT THE HARD WAY.",
+    "`apps/core-api` resolves `@platos/context-identity-access` through that",
+    "package's `dist/`, so mutating `domain/session.ts` and running the container",
+    "suite without `pnpm build:v1` runs the UNMUTATED code and reports a false",
+    "survivor. M15 was recorded as SURVIVED on its first run for exactly that",
+    "reason, re-run with the rebuild, and killed. The first result is kept in this",
+    "note rather than deleted, because the trap is the finding.",
+    "",
+    "MUTATIONS RUN AGAINST COMMITTED WORK, and that is also learned rather than",
+    "assumed: the driver restores with `git checkout -- .`, so an UNCOMMITTED test",
+    "file is destroyed by the first restore and every later mutation is measured",
+    "against a suite that no longer contains the case meant to kill it. M11 and",
+    "M12 were recorded as survivors on their first run for that reason and were",
+    "re-run after committing."
+  ],
+  "commands": {
+    "census": "node scripts/rest-census-independent.mjs --check",
+    "identity-access": "pnpm --filter @platos/context-identity-access exec vitest run",
+    "identity-rest": "pnpm --filter @platos/core-api exec vitest run src/transports/rest/identity-rest.test.ts",
+    "build": "pnpm build:v1",
+    "integration": "pnpm test:core-api:integration"
+  },
+  "baseline": {
+    "census": "OK — 32 controllers, 289 unique + 19 dual-mount = 308 manifest ops, scan roots agent=300 + core-api-transports=8",
+    "identity-access": "324 cases across 23 files, green",
+    "identity-rest": "20 cases, green",
+    "build": "tsc -b tsconfig.json, clean",
+    "integration": "48 cases across 3 files, green (identity-rest 26, operator-authentication 6, idempotency 16) — 44 at the base, +4 from this tranche"
+  },
+  "mutations": [
+    {
+      "name": "M01 the terminal 404's exclusion entry is deleted",
+      "guards": "PROCESS_EDGE_EXCLUSIONS — the entry naming not-found.controller.ts",
+      "why": "This IS the tree as it stood at the base. The file was accounted for by nothing, and no gate said so. Without the completeness sweep this mutation is invisible: removing an exclusion entry for a file no root scans simply makes the file unmentioned again.",
+      "file": "scripts/rest-census-independent.mjs",
+      "from": "PROCESS_EDGE_EXCLUSIONS contains the NotFoundController entry",
+      "to": "the entry is removed",
+      "command": "census",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "UNSCANNED ROUTE-BEARING CONTROLLER: apps/core-api/src/http/not-found.controller.ts lives inside a scanned application but under no declared scan root and named in no process-edge exclusion"
+      ]
+    },
+    {
+      "name": "M02 a business @Get lands in the terminal handler",
+      "guards": "the exclusion's declared route count (0 method decorators)",
+      "why": "Business surface parked in the process edge, which is what the sibling HealthController tripwire was written for.",
+      "file": "apps/core-api/src/http/not-found.controller.ts",
+      "from": "@All(\"{*path}\") only",
+      "to": "@Get(\"organizations\") added beside it",
+      "command": "census",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "PROCESS-EDGE EXCLUSION DRIFT: now carries 1 route decorator(s); the exclusion is written for exactly 0 process probes"
+      ]
+    },
+    {
+      "name": "M03 the terminal @All takes a NAMED path",
+      "guards": "the exclusion's terminalCatchAll requirement",
+      "why": "THE MUTATION THE ROUTE-DECORATOR COUNT CANNOT SEE. `routes` counts only @Get/@Post/@Put/@Patch/@Delete, so this leaves it at zero, keeps the empty base path, and would have passed a tripwire copied from HealthController — while serving every HTTP method of a real resource from a file no enumerator scans.",
+      "file": "apps/core-api/src/http/not-found.controller.ts",
+      "from": "@All(\"{*path}\")",
+      "to": "@All(\"organizations\")",
+      "command": "census",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "PROCESS-EDGE EXCLUSION DRIFT: declares 1 @All decorator(s) whose path is not a bare wildcard"
+      ]
+    },
+    {
+      "name": "M04 a SECOND @All in the terminal handler",
+      "guards": "the exclusion's declared allRoutes count",
+      "why": "Two catch-alls are two handlers, and the second is unreachable — or, if registered first, shadows the one the module deliberately puts last. A wildcard-only check would accept both.",
+      "file": "apps/core-api/src/http/not-found.controller.ts",
+      "from": "one @All(\"{*path}\")",
+      "to": "@All(\"/{*any}\") added beside it — also a bare wildcard, so only the COUNT can see it",
+      "command": "census",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "PROCESS-EDGE EXCLUSION DRIFT: now carries 2 @All decorator(s); the exclusion is written for exactly 1"
+      ]
+    },
+    {
+      "name": "M05 a NEW controller lands in apps/core-api/src/http",
+      "guards": "unscannedControllerReport — the completeness sweep",
+      "why": "The general case of the defect rather than the one file that had it. A controller in a scanned application, under no root and in no exclusion, is ungoverned, and this is the case that will catch the next one.",
+      "file": "apps/core-api/src/http/probe.controller.ts",
+      "from": "(absent)",
+      "to": "@Controller({ path: \"probe\" }) with one @Get",
+      "command": "census",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "UNSCANNED ROUTE-BEARING CONTROLLER: apps/core-api/src/http/probe.controller.ts"
+      ]
+    },
+    {
+      "name": "M06 the excluded file is deleted",
+      "guards": "the exclusion's presence check",
+      "why": "An exclusion naming a file that is gone excludes nothing, and would sit in the list for ever claiming to.",
+      "file": "apps/core-api/src/http/not-found.controller.ts",
+      "from": "present",
+      "to": "deleted",
+      "command": "census",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "PROCESS-EDGE EXCLUSION DRIFT: is named as an excluded process-edge controller but is not on disk"
+      ]
+    },
+    {
+      "name": "M07 the revocation never reaches the store",
+      "guards": "revokeOperatorSession — the sessions.save",
+      "why": "The return value is unchanged and correct, and every caller that reads only the Result is satisfied. Only the store knows.",
+      "file": "packages/contexts/identity-access/application/authenticate-operator.ts",
+      "from": "await sessions.save(ended.value); return ended;",
+      "to": "return ended;",
+      "command": "identity-access",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× revoking a session > ends it and reports that this call was the one that did",
+        "× revoking a session > no longer authenticates once revoked",
+        "× revokeOperatorSession (W3) > ENDS the session, and the same token no longer authenticates"
+      ]
+    },
+    {
+      "name": "M08 the already-revoked branch answers UNAUTHENTICATED again",
+      "guards": "the distinct refusal codes",
+      "why": "THE DEFECT AS IT ACTUALLY STOOD, restored. The use case re-derived a rule `domain/session.ts::revoked` already owned and answered the same code as a token no row matches, so 'there is no such session' and 'that session was already ended' were indistinguishable. Every pre-W3 case stayed green because they asserted `.ok === false`.",
+      "file": "packages/contexts/identity-access/application/authenticate-operator.ts",
+      "from": "const ended = revoked(session, now);",
+      "to": "if (session.revokedAt !== null) return err(unauthenticated({ reason: \"already-revoked\" })); ...",
+      "command": "identity-access",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× revoking a session > refuses the second revoke, so a double logout is distinguishable",
+        "× revokeOperatorSession (W3) > tells an ALREADY-ENDED session apart from one that never existed"
+      ]
+    },
+    {
+      "name": "M09 the revoked view spreads the whole session record",
+      "guards": "revokedView — the projection",
+      "why": "A sign-out that hands back `tokenHash`, `parentSessionId` and the impersonation chain. No type error follows, because the extra keys are structural.",
+      "file": "packages/contexts/identity-access/application/identity-access-service.ts",
+      "from": "return { sessionId: session.sessionId, revokedAt: session.revokedAt };",
+      "to": "return { ...session, sessionId: session.sessionId, revokedAt: session.revokedAt };",
+      "command": "identity-access",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× revokeOperatorSession (W3) > carries EXACTLY the two published keys, so a sign-out leaks no session internals"
+      ]
+    },
+    {
+      "name": "M10 revoking becomes idempotent",
+      "guards": "domain/session.ts::revoked",
+      "why": "A second sign-out re-stamps `revokedAt`, so the answer to 'when was this session ended?' becomes the time of the retry. The rule's own banner says revoking is not idempotent; this is that sentence deleted.",
+      "file": "packages/contexts/identity-access/domain/session.ts",
+      "from": "if (session.revokedAt !== null) return err(sessionRevoked());",
+      "to": "(removed)",
+      "command": "identity-access",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× session mutation is explicit > reports who won: revoking twice refuses the second caller",
+        "× revoking a session > does not re-stamp a session it did not end",
+        "× revokeOperatorSession (W3) > tells an ALREADY-ENDED session apart from one that never existed"
+      ]
+    },
+    {
+      "name": "M11 the sign-out raises on EVERY refusal",
+      "guards": "the handler's category branch",
+      "why": "The property the route was designed around goes away: a browser holding a dead credential is answered 401 and can no longer get rid of it without opening developer tools.",
+      "file": "apps/core-api/src/transports/bff/session.controller.ts",
+      "from": "if (!ended.ok && ended.error.category !== \"unauthenticated\") raise(ended.error);",
+      "to": "if (!ended.ok) raise(ended.error);",
+      "command": "identity-rest",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× W3 — a sign-out that could not end the session says so > CLEARS the browser anyway when there was simply nothing left to end"
+      ]
+    },
+    {
+      "name": "M12 the sign-out swallows EVERY refusal",
+      "guards": "the handler's category branch, the other way",
+      "why": "The lie this tranche exists to remove, in its subtler form: the store is unreachable, nothing is ended, and the caller is told 204. Nothing on the wire distinguishes it from a sign-out that worked.",
+      "file": "apps/core-api/src/transports/bff/session.controller.ts",
+      "from": "if (!ended.ok && ended.error.category !== \"unauthenticated\") raise(ended.error);",
+      "to": "(removed)",
+      "command": "identity-rest",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× W3 — a sign-out that could not end the session says so > RAISES when the store could not be reached, and writes no cookie"
+      ]
+    },
+    {
+      "name": "M13 revokeOperatorSession is unpublished again",
+      "guards": "IdentityAccessContract",
+      "why": "The base state. A V1 transport may reach a contract method and nothing else, so unpublishing the method is what made the server-side sign-out impossible in the first place.",
+      "file": "packages/contexts/identity-access/contracts/index.ts",
+      "from": "revokeOperatorSession(request): Promise<Result<RevokedOperatorSessionView>>;",
+      "to": "(removed)",
+      "command": "build",
+      "exit": 2,
+      "outcome": "killed",
+      "kills": [
+        "identity-access-service.ts(224,11): error TS2353: Object literal may only specify known properties, and 'revokeOperatorSession' does not exist in type 'IdentityAccessContract'"
+      ]
+    }
+  ],
+  "container_mutations": [
+    {
+      "name": "M14 the sign-out reverts to clearing the cookie only",
+      "guards": "the handler's call to revokeOperatorSession",
+      "why": "THE PRE-W3 HANDLER, RESTORED VERBATIM. It is the mutation this whole tranche is measured by, and it changes nothing an ordinary assertion looks at: the status is still 204, the Set-Cookie is still Max-Age=0, the envelope is unchanged. Only the REPLAY of the same cookie can see it, and only against a real database.",
+      "file": "apps/core-api/src/transports/bff/session.controller.ts",
+      "from": "const ended = await identityAccess.revokeOperatorSession({ ... }); if (!ended.ok && ...) raise(...);",
+      "to": "(removed — clearSessionCookie only)",
+      "command": "integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× W3 — a sign-out ends the session on the SERVER > REFUSES THE REPLAYED COOKIE, and the row says SESSION_REVOKED rather than expiry"
+      ]
+    },
+    {
+      "name": "M15 revoking becomes idempotent, seen in the DATABASE",
+      "guards": "domain/session.ts::revoked, observed through psql",
+      "why": "M10 one layer out. The in-memory suite proves the rule; this proves the rule REACHES PostgreSQL, by reading `revokedAt` back with a psql process inside the container after a second sign-out.",
+      "file": "packages/contexts/identity-access/domain/session.ts",
+      "from": "if (session.revokedAt !== null) return err(sessionRevoked());",
+      "to": "(removed)",
+      "command": "integration (after pnpm build:v1 — see `procedure`)",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× W3 — a sign-out ends the session on the SERVER > signs out again without re-stamping the revocation"
+      ],
+      "false-survivor-recorded": "The first run of M15 reported SURVIVED because the mutation was applied to package SOURCE and the container suite resolves that context through its dist/. Re-run with pnpm build:v1 and killed. Kept here because the trap is the finding."
+    },
+    {
+      "name": "M16 the sign-out raises on EVERY refusal, over HTTP",
+      "guards": "the handler's category branch, at the socket",
+      "why": "M11 as a browser sees it: 401 instead of 204 for a dead cookie, and the three indistinguishable answers become distinguishable — the route turns into an oracle for whether a token is real.",
+      "file": "apps/core-api/src/transports/bff/session.controller.ts",
+      "from": "if (!ended.ok && ended.error.category !== \"unauthenticated\") raise(ended.error);",
+      "to": "if (!ended.ok) raise(ended.error);",
+      "command": "integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× R1 — the BFF sets bytes and nothing else > clears the cookie for anybody, authenticated or not",
+        "× W3 > signs out again without re-stamping the revocation",
+        "× W3 > answers an ALREADY-ENDED token, an unknown token and no token IDENTICALLY"
+      ]
+    },
+    {
+      "name": "M17 the sign-out AUTHENTICATES first",
+      "guards": "the route's deliberate refusal to authenticate",
+      "why": "The most plausible wrong fix, and the one a reviewer would ask for: 'surely you should check who is signing out'. It strands every browser holding an expired, revoked or unknown cookie — the browsers that most need it cleared — and it makes the route report whether a token is real.",
+      "file": "apps/core-api/src/transports/bff/session.controller.ts",
+      "from": "(no authentication)",
+      "to": "await authenticateOperator(this.application.app, request); before the revocation",
+      "command": "integration",
+      "exit": 1,
+      "outcome": "killed",
+      "kills": [
+        "× R1 — the BFF sets bytes and nothing else > clears the cookie for anybody, authenticated or not",
+        "× W3 > signs out again without re-stamping the revocation",
+        "× W3 > answers an ALREADY-ENDED token, an unknown token and no token IDENTICALLY"
+      ]
+    }
+  ],
+  "survivors": [],
+  "declared": [
+    "THE SIGN-OUT DOES NOT ROTATE OR CASCADE, and that is a scope statement rather",
+    "than an omission. Ending an IMPERSONATION session does not end its parent, and",
+    "ending a parent does not walk its children — `evaluateOperatorSession` already",
+    "refuses an impersonation whose parent chain is broken, with SESSION_REVOKED, so",
+    "the cascade is a READ-side rule that this write does not need to duplicate.",
+    "Nothing here changes that behaviour and no case in this tranche asserts it.",
+    "",
+    "THE STORE-OUTAGE BRANCH IS PROVEN AT THE CONTROLLER, NOT OVER HTTP. Making",
+    "PostgreSQL unreachable mid-suite would destroy the fixture every other case in",
+    "the file depends on, so `identity-rest.test.ts` drives the handler directly",
+    "against a real IdentityAccessContract with one method replaced. M12 kills it.",
+    "That is weaker than a socket-level proof and is recorded as such.",
+    "",
+    "THE TERMINAL 404 IS EXCLUDED RATHER THAN SCANNED, and the alternative was",
+    "considered. Scanning it would demand a manifest row, a capability and a",
+    "route-parity entry for 'no route matched' — an operation no client can call.",
+    "The exclusion is only honest because it is falsifiable in both directions, and",
+    "M01 through M06 are that falsifiability."
+  ],
+  "runs": {
+    "laptop": {
+      "where": "the laptop, no container runtime (Docker is quit by standing instruction)",
+      "mutations": 13,
+      "killed": 13,
+      "survived": 0,
+      "note": "M11 and M12 were recorded as survivors on their FIRST run and were re-run after committing — the driver restores with `git checkout -- .`, which had destroyed the uncommitted cases meant to kill them."
+    },
+    "mini": {
+      "where": "Mac mini over ssh, FRESH worktree /tmp/pl-w3-mut at a715a715, pgvector/pgvector:pg16 + redis:7-alpine through @testcontainers/*",
+      "mutations": 4,
+      "killed": 4,
+      "survived": 0,
+      "baseline": "pnpm test:core-api:integration — 48 cases across 3 files, all green",
+      "note": "M15 was a FALSE SURVIVOR on its first run: a package-source mutation without `pnpm build:v1` runs the unmutated dist. Re-run with the rebuild and killed."
+    },
+    "total": {
+      "mutations": 17,
+      "killed": 17,
+      "survivors_measured": 0
+    }
+  }
+}

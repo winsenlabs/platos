@@ -1650,7 +1650,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // inside `apps-core-api`, and every gate, generator and artifact it touches
     // outside the deployable is an EDIT or a REGENERATION of a file that already
     // existed. 59 + 1 = 60.
-    "root-infra": 60,
+    // WIN-267 W3 60 -> 61: `scripts/mutations-win267-w3.json`, the EIGHTH guard
+    // ledger to land beside its siblings, on the same
+    // `root-infra.tooling.scripts` rule (93 -> 94). It is the WHOLE of this
+    // branch's file delta. W3 adds no source file and no suite: its six
+    // identity-access cases go into two suites that already existed, its four
+    // integration cases and its two controller-branch cases go into two files
+    // that already existed, and the census, the ledger pins and the four derived
+    // artifacts are all EDITS or REGENERATIONS of tracked files. 60 + 1 = 61.
+    "root-infra": 61,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1721,7 +1729,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // independently-merged keys. R1 moved `apps-core-api` and `root-infra`; R303
   // moved `packages`; no key took a contribution from both, which is why the
   // auto-merge of that object is safe and is checked here rather than assumed.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1671);
+  //
+  // WIN-267 W3 1671 -> 1672. ONE file, `root-infra` only, itemised on that area's
+  // delta above, so the two halves of this case are the same arithmetic:
+  // 2 + 0 + 75 + 4 + 10 + 1503 + 17 + 61 = 1672. Two sibling branches move this
+  // pin in the same window and neither of their deltas is here, so the integrator
+  // SUMS rather than taking any one branch's total — the exact mistake the A1+A2
+  // paragraph above records.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1672);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1873,7 +1888,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and the assertion above are two different arithmetics over the same tree
     // and a merge that had side-picked either branch's total would be red here
     // even if the other assertion had been patched to match.
-    rulesDocument.baseline.totalFiles + 1671
+    //
+    // WIN-267 W3 1671 -> 1672, the TWELFTH hand move: one mutation manifest in
+    // `root-infra`, and it is the only file this branch adds anywhere.
+    rulesDocument.baseline.totalFiles + 1672
   );
 });
 
