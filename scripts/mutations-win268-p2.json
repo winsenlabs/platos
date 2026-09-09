@@ -1,0 +1,247 @@
+{
+  "$schema-note": "Not a schema-validated artifact. A committed record of mutations that were APPLIED to the working tree, RUN, and REVERTED, so a reviewer can re-run any row rather than take a green suite as proof.",
+  "issue": "WIN-268",
+  "tranche": "P2 - take the MCP platform authorization surfaces off the ORM",
+  "branch": "tejas/win-268-p2-mcp-platform-deprisma",
+  "base": "3b3f1ebb (v1, M4.1 #153)",
+  "purpose": [
+    "The tranche's central claim is that a FORGED tenant triple is now refused rather than answered.",
+    "A green suite is not evidence of that: the refusal path is new, so every case that exercises it",
+    "was written by the same hand that wrote the code, and a case that cannot be made to fail is a",
+    "case that proves the code compiles. Each row below removes exactly one guard and names the cases",
+    "that went from pass to fail.",
+    "",
+    "TWO ROWS SURVIVED AND BOTH ARE RECORDED WITH THEIR MEASURED REASON. Neither was omitted and",
+    "neither is counted as a kill."
+  ],
+  "procedure": [
+    "PROVE GREEN FIRST. The unmutated tree at d8d8ed75 ran green before and after every entry:",
+    "unit 27/27, integration 12/12, census 4/4, arch-boundaries 28/28 (1 skipped).",
+    "",
+    "EVERY ENTRY BELOW WAS APPLIED, RUN, AND REVERTED by scripts run on the mini against real",
+    "PostgreSQL 16 in a testcontainer. `kills` quotes what the runner actually printed, trimmed.",
+    "`killCount` is the number of CASES that went from pass to fail.",
+    "",
+    "M07 IS THE ROW THIS LEDGER EXISTS FOR. It survived the first pass: replacing the audit binary's",
+    "ratchet filter with a literal `violations: []` left every assertion green, because the standing",
+    "case asserted the pass was EMPTY on a clean tree and a pass that is empty on EVERY tree satisfies",
+    "that exactly. A case was added that drives the pass over a fixture carrying a real violation, and",
+    "over a mixed fixture carrying a violation of a rule the pass does not own. M07 was re-run against",
+    "the repaired suite and now kills 3."
+  ],
+  "commands": {
+    "unit": "pnpm --filter platos-agent exec vitest run src/mcp-platform/mcp-tool-acl.service.test.ts src/mcp-platform/permission-gateway.service.test.ts src/mcp-platform/identity-resolver.service.test.ts",
+    "integration": "pnpm --filter platos-agent exec vitest run src/mcp-platform/mcp-scope.integration.test.ts",
+    "census": "pnpm --filter platos-agent exec vitest run src/mcp-platform/orm-ownership-census.test.ts",
+    "arch-test": "node --test scripts/arch/arch-boundaries.test.mjs"
+  },
+  "build-state": [
+    "mini, macOS, Colima. DOCKER_HOST=unix:///Users/tejassuds/.colima/default/docker.sock and",
+    "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock. CI=true throughout.",
+    "pnpm install --frozen-lockfile --ignore-scripts, then `pnpm --filter @platos/tenancy-database build`",
+    "and `pnpm --filter @internal/workload-identity build` -- the state ci.yml's agent job reaches",
+    "before its Vitest steps. The census suites are type-checker driven and under-count without that",
+    "build; the integration suite starts its own PostgreSQL 16 container and applies the repository's",
+    "own migrations with `prisma migrate deploy`."
+  ],
+  "mutations": [
+    {
+      "name": "M01 the forged-ancestry clause is deleted from the scope resolver",
+      "guards": "apps/agent/src/mcp-platform/mcp-scope.ts -- the whole tranche. Without this clause a claimed triple whose organization belongs to another tenant is admitted.",
+      "file": "apps/agent/src/mcp-platform/mcp-scope.ts",
+      "from": "if (resolved.projectId !== scope.projectId || resolved.organizationId !== scope.organizationId) return scopeRefused(MCP_SCOPE_FOREIGN);",
+      "to": "(removed)",
+      "command": "integration",
+      "exit": 1,
+      "killCount": 4,
+      "kills": [
+        "x FORGED: alpha's environment under beta's organization is REFUSED, not answered -> expected { ok: true, value: [ { ...(6) } ] } to deeply equal { ok: false, reason: 'out_of_scope' }",
+        "x refuses every WRITE on a forged scope, including the delete that used to answer false -> promise resolved \"[ { ...(6) } ]\" instead of rejecting",
+        "x FORGED: the exposure page is refused, and the refusal is not an empty page -> expected { ok: true, value: { ...(3) } } to deeply equal { ok: false, reason: 'out_of_scope' }",
+        "x FORGED: every scoped write is refused and leaves no row behind -> expected { ok: true, value: { ...(10) } } to deeply equal { ok: false, reason: 'out_of_scope' }"
+      ],
+      "note": "The COHERENT two-tenant cases stayed green under this mutation, which is the point of carrying the forged one: a two-tenant test is not automatically a tenancy test."
+    },
+    {
+      "name": "M02 an absent environment is admitted instead of refused",
+      "guards": "the SECOND refusal reason. `unknown_environment` and `out_of_scope` are distinct so an operator can tell a deleted environment from a forged ancestry without reading a message.",
+      "file": "apps/agent/src/mcp-platform/mcp-scope.ts",
+      "from": "if (resolved === undefined) return scopeRefused(MCP_SCOPE_UNKNOWN);",
+      "to": "if (resolved === undefined) return scopeAllowed({ projectId: scope.projectId, organizationId: scope.organizationId });",
+      "command": "integration",
+      "exit": 1,
+      "killCount": 1,
+      "kills": [
+        "x distinguishes a forged ancestry from an environment that does not exist -> expected { ok: true, value: [ { ...(6) } ] } to deeply equal { ok: false, ...(1) }"
+      ]
+    },
+    {
+      "name": "M03 the gateway swallows a tier-2 scope refusal and abstains",
+      "guards": "permission-gateway.service.ts. This mutation RE-CREATES THE PRE-P2 DEFECT EXACTLY: a refusal becomes null, null is 'this tier has no objection', and the caller escapes the deny.",
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "from": "if (isScopeRefusal(tier2)) { ...; return { state: \"block\", tier: 2, reason: `scope ${tier2.refused}` }; } const t2 = tier2;",
+      "to": "const t2 = isScopeRefusal(tier2) ? null : tier2;",
+      "command": "unit",
+      "exit": 1,
+      "killCount": 3,
+      "kills": [
+        "x blocks at tier 2 when the claimed scope is out_of_scope, with no agent in play",
+        "x blocks at tier 2 when the claimed scope is unknown_environment, with no agent in play -> expected { state: 'auto_allow', tier: 1, ...(1) } to deeply equal { state: 'block', tier: 2, ...(1) }",
+        "x MUTATION GUARD: the pre-P2 behaviour - abstain on a forged scope - is now RED -> expected 'auto_allow' not to be 'auto_allow'"
+      ],
+      "note": "The third kill is the case written FOR this mutation, and its message is the defect in one line: the pre-P2 tree answered `auto_allow` to a caller standing in a tenant that denies the tool."
+    },
+    {
+      "name": "M05 the LOCAL door is dropped from the ratchet rule",
+      "guards": "AGENT_ORM_DOORS in scripts/arch/boundary-rules.mjs. All three converted services took the client through `apps/agent/src/shared/database.provider`, not through the vendor package, so a rule naming only the vendor scope would have caught none of them.",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "from": "`^(${TENANCY_DATABASE_SOURCE}|apps/agent/src/shared/database\\.provider)`",
+      "to": "`^(${TENANCY_DATABASE_SOURCE})`",
+      "command": "arch-test",
+      "exit": 1,
+      "killCount": 1,
+      "kills": [
+        "not ok - fires on BOTH doors to the ORM (AssertionError: a converted service importing the DI provider that carries the client must fire)"
+      ]
+    },
+    {
+      "name": "M06 the converted-service list names a file that does not exist",
+      "guards": "the NON-VACUITY JOIN. A `from` list naming absent files passes every scan forever: rename a service and its rule silently stops applying, with nothing red.",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "from": "\"apps/agent/src/mcp-platform/permission-gateway.service.ts\"",
+      "to": "\"apps/agent/src/mcp-platform/permission-gateway.service.ts.RENAMED\"",
+      "command": "arch-test",
+      "exit": 1,
+      "killCount": 2,
+      "kills": [
+        "not ok - fires on BOTH doors to the ORM",
+        "not ok - the converted-service list is joined to the real tree, not to itself"
+      ]
+    },
+    {
+      "name": "M07 the audit binary's ratchet pass reports nothing",
+      "guards": "ratchetPass in scripts/arch/arch-boundaries.mjs -- the WIRING, not the rule. THE ROW THIS LEDGER EXISTS FOR: it SURVIVED the first pass.",
+      "file": "scripts/arch/arch-boundaries.mjs",
+      "from": "violations: result.violations.filter((violation) => RATCHET_RULE_IDS.has(violation.rule)),",
+      "to": "violations: [],",
+      "command": "arch-test",
+      "exit": 1,
+      "killCount": 3,
+      "kills": [
+        "not ok - MUTATION: the ratchet pass can REPORT, not merely stay silent (the fixture pass reported no violation it was handed)",
+        "not ok - WIN-268 P2 - the mcp-platform strangler ratchet"
+      ],
+      "firstPass": {
+        "exit": 0,
+        "killCount": 0,
+        "reason": "The standing case asserted `deepEqual(pass.violations, [])` on the COMMITTED tree, and a pass that returns [] for every tree satisfies that exactly. An assertion that a gate is currently silent is not an assertion that it can speak.",
+        "repair": "A case was added that drives ratchetPass over a fixture containing a real violation and asserts the exact rule:path it reports, plus a mixed fixture carrying a violation of a rule the pass does NOT own, asserting that one is filtered out. Both halves are needed: the first stops `violations: []`, the second stops `violations: result.violations`."
+      }
+    },
+    {
+      "name": "M08 the tool ACL reports a refusal as an empty page",
+      "guards": "ToolAclScopeRefusedError. `list` answers a page and `bulk` answers a count; both have legitimate empty answers, so a refusal reported through either is a denial and a legitimate 'nothing here' in one value.",
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "from": "if (!result.ok) throw new ToolAclScopeRefusedError(result.reason);",
+      "to": "if (!result.ok) return undefined as unknown as Value;",
+      "command": "unit",
+      "exit": 1,
+      "killCount": 1,
+      "kills": [
+        "x propagates a scope refusal out of every scoped method, distinguishably -> expected error to be instance of ToolAclScopeRefusedError"
+      ]
+    },
+    {
+      "name": "M09 a converted service reaches for the ORM again",
+      "guards": "the ACCEPTANCE CRITERION, stated literally: `arch-boundaries` refuses a Prisma import from every service converted, and a mutation reintroducing one goes RED.",
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "from": "(no ORM import)",
+      "to": "import { PRISMA_TOKEN } from \"../shared/database.provider\";",
+      "command": "arch-test",
+      "exit": 1,
+      "killCount": 2,
+      "kills": [
+        "not ok - the converted-service list is joined to the real tree, not to itself",
+        "not ok - the audit binary's ratchet pass is the one that runs, and it is not vacuous"
+      ],
+      "secondRun": {
+        "command": "census",
+        "exit": 0,
+        "killCount": 0,
+        "reason": "CORRECT, AND IT IS EVIDENCE RATHER THAN A GAP. The census counts delegate CALLS; this mutation adds an IMPORT and no call. `orm-ownership-census.test.ts`'s own header says the zero-call claim is made twice on purpose 'because the boundary rule sees IMPORTS and this sees CALLS'. M09 is the measurement behind that sentence: neither gate subsumes the other, and the import half is caught by the rule that is about imports."
+      }
+    },
+    {
+      "name": "M10 the entity-tool page drops its scope check",
+      "guards": "entity-tool-policy.store.ts. The extraction source keyed every statement on { entityId, environmentId } and never asked whether that environment belongs to the claimed project and organization.",
+      "file": "apps/agent/src/mcp-platform/entity-tool-policy.store.ts",
+      "from": "const resolved = await resolveClaimedScope(this.prisma, scope); if (!resolved.ok) return resolved;",
+      "to": "(removed from pageExposures)",
+      "command": "integration",
+      "exit": 1,
+      "killCount": 1,
+      "kills": [
+        "x FORGED: the exposure page is refused, and the refusal is not an empty page -> expected { ok: true, value: { ...(3) } } to deeply equal { ok: false, reason: 'out_of_scope' }"
+      ]
+    },
+    {
+      "name": "M11 the identity resolver drops its entity-ancestry join",
+      "guards": "mcp-identity.store.ts. This guard is NOT new -- the extraction source already had it -- and the case exists to assert a hole is absent rather than to claim one was closed.",
+      "file": "apps/agent/src/mcp-platform/mcp-identity.store.ts",
+      "from": "project: { entities: { some: { id: entityId } } },",
+      "to": "(removed)",
+      "command": "integration",
+      "exit": 1,
+      "killCount": 1,
+      "kills": [
+        "x an environment from the OTHER tenant is not resolvable for this entity -> expected 'de079ffa-...' to be null"
+      ]
+    },
+    {
+      "name": "M12 the extracted analyzer stops following transaction aliases",
+      "guards": "prisma-delegate-census.ts. The analyzer moved out of clean-prisma-delegates.test.ts; this asks whether the move kept its teeth.",
+      "file": "apps/agent/src/prisma-delegate-census.ts",
+      "from": "if (ts.isCallExpression(node) && staticMemberName(node.expression) === \"$transaction\") {",
+      "to": "if (false && ...) {",
+      "command": "census",
+      "exit": 1,
+      "killCount": 1,
+      "kills": [
+        "x reports the split, and the split is joined to the app-wide pin -> expected 747 to be 813"
+      ],
+      "note": "66 call sites vanish when the transaction-callback alias resolution is switched off, and the census notices because it reads the app-wide pin out of clean-prisma-delegates.test.ts rather than restating it. That join is what makes a silently weakened analyzer red in the census as well as in the gate it was extracted from."
+    }
+  ],
+  "declared": [
+    {
+      "name": "M04 the store reads the CLAIMED organization instead of the RESOLVED one",
+      "file": "apps/agent/src/mcp-platform/mcp-policy.store.ts",
+      "from": "where: { organizationId: resolved.value.organizationId }",
+      "to": "where: { organizationId: scope.organizationId }",
+      "command": "integration",
+      "exit": 0,
+      "killCount": 0,
+      "reason": [
+        "SURVIVES, AND IT CANNOT BE KILLED BY ANY TEST WRITTEN AGAINST THIS CODE. `resolveClaimedScope`",
+        "has already refused every scope where the claimed organization differs from the resolved one, so",
+        "on every path that reaches this line the two values are equal by construction. Reading the",
+        "resolved one is DEFENCE IN DEPTH, not behaviour: it is there so that a future widening of the",
+        "check cannot silently widen what the read returns.",
+        "",
+        "IT IS RECORDED RATHER THAN DELETED because the alternative -- writing a case that forces the two",
+        "apart -- would mean weakening the resolver to create the difference, which is a test asserting",
+        "that a guard it disabled does nothing.",
+        "",
+        "OBSERVED ONCE AS exit=1 IN A BATCH RE-RUN AND NOT REPRODUCED. Re-run in isolation twice against",
+        "a fresh container: exit=0 both times, no failing case. The integration suite starts a PostgreSQL",
+        "container and applies migrations per run, and that one-off is recorded here rather than dropped."
+      ]
+    }
+  ],
+  "totals": {
+    "applied": 12,
+    "killed": 11,
+    "declared": 1,
+    "survivedFirstPassThenRepaired": 1
+  }
+}
