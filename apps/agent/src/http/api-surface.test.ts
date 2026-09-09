@@ -115,12 +115,51 @@ const PRODUCTION_CONTROLLERS = [
 
 type Ctor = (typeof PRODUCTION_CONTROLLERS)[number];
 
-const MANIFEST_OPERATIONS = manifest.inventories.restOperations as ReadonlyArray<{
-  id: string;
-  method: string;
-  path: string;
-  implementations: ReadonlyArray<{ controller: string }>;
-}>;
+/** The scan root this deployable's routes are attributed to in the manifest. */
+const AGENT_ROOT = "apps/agent/src";
+
+/**
+ * The manifest operations THIS DEPLOYABLE SERVES.
+ *
+ * WIN-268 (M4.2) P1 — A PRE-EXISTING RED, REPAIRED. Every case below joins the
+ * AGENT's Nest router to the manifest, and the manifest stopped being a census
+ * of one application in M4.1 (WIN-267 R1): it gained a second scan root,
+ * `apps/core-api/src/transports`, and eight operations served by a DIFFERENT
+ * process. Nothing here was taught about it, so three cases in this file have
+ * been red on `v1` since that tranche — measured at 3b3f1ebb, where they report
+ * five core-api controllers "the agent does not serve" and 252 versioned
+ * operations against a pin of 244 (244 + 8). `route-manifest.test.ts` filters to
+ * the OTHER root for exactly this reason and has done since the day it was
+ * written; this side simply never gained the mirror of that filter.
+ *
+ * WHY IT IS FIXED HERE. This tranche adds two more core-api controllers, so the
+ * failure message grows from five names to seven and a reader would reasonably
+ * read the growth as this branch's doing. The filter is the same one line the
+ * sibling file already carries, and restoring it turns three cases that could
+ * not pass back into the join they were written to be.
+ *
+ * IT IS A FILTER AND NOT AN EXCLUSION LIST. A core-api route is identified by
+ * the SOURCE the manifest records for its implementation, so a route that moved
+ * between the deployables moves between these sets on its own.
+ */
+const MANIFEST_OPERATIONS = (
+  manifest.inventories.restOperations as ReadonlyArray<{
+    id: string;
+    method: string;
+    path: string;
+    implementations: ReadonlyArray<{ controller: string; source: string }>;
+  }>
+).flatMap((operation) => {
+  const served = operation.implementations.filter(
+    (implementation) =>
+      implementation.source === AGENT_ROOT || implementation.source.startsWith(`${AGENT_ROOT}/`),
+  );
+  // An operation with no agent implementation is another deployable's route and
+  // is not this router's to serve. One with SOME is served here too — the two
+  // MCP token mints are served by both — and is kept, carrying only the
+  // implementations this application actually mounts.
+  return served.length === 0 ? [] : [{ ...operation, implementations: served }];
+});
 
 /**
  * Erase constructor/property injection so the container has nothing to resolve.
