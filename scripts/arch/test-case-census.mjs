@@ -3476,7 +3476,8 @@ export const EXPECTED = Object.freeze({
  *
  * NONE of the eleven needs a container: `resolve-workspace.test.ts` runs the use
  * case against this context's own in-memory repository. The route's own evidence
- * — seven cases in `apps/core-api/src/composition/identity-rest.integration.test.ts`
+ * — SIX cases in `apps/core-api/src/composition/identity-rest.integration.test.ts`,
+ * measured as 22 -> 28 on that file —
  * — DOES need one, and does not appear here: `apps/core-api` is outside
  * PACKAGE_ROOTS, which is why its composition cases have never counted.
  *

@@ -1338,9 +1338,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       2 +
       // WIN-257 T8: the workspace slug walk. transports 1
       // (`rest/workspace.controller.ts`) and packages/contexts/tenancy 2
-      // (`application/resolve-workspace.ts` and its suite). 1 + 2 = 3. Its seven
-      // route cases go into the R1 integration suite counted above, so
-      // `apps/core-api` gains no test file here.
+      // (`application/resolve-workspace.ts` and its suite). 1 + 2 = 3. Its SIX
+      // route cases go into the R1 integration suite counted above (measured
+      // 22 -> 28 on that file), so `apps/core-api` gains no test file here.
       1 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });

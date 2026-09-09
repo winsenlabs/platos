@@ -674,8 +674,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // WIN-257 T8 75 -> 76. ONE file, `transports/rest/workspace.controller.ts`,
     // on the existing `apps-core-api.source.transports` rule (20 -> 21). Its
-    // seven integration cases go into the `identity-rest.integration.test.ts`
-    // that R1 already added, so `apps-core-api.test.suites` does NOT move; the
+    // SIX integration cases go into the `identity-rest.integration.test.ts`
+    // that R1 already added (measured 22 -> 28 on that file), so
+    // `apps-core-api.test.suites` does NOT move; the
     // control-plane manifest, the capability matrix and the OpenAPI document are
     // regenerations of files that already exist. 75 + 1 = 76.
     "apps-core-api": 76,
