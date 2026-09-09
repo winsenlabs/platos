@@ -12,6 +12,7 @@ import {
   adapterUnauthorized,
   adapterUnavailable,
   appNotFound,
+  providerUnsupported,
   type SealedEventPayload,
 } from "../../domain/index.js";
 import type {
@@ -22,6 +23,8 @@ import type {
   ChannelCredentialReader,
   ChannelEventCipher,
   ChannelPrincipal,
+  ChannelRuntime,
+  ChannelRuntimeRegistry,
   DeliveredMessage,
   OutboundMessage,
 } from "../ports/index.js";
@@ -177,5 +180,36 @@ export class ReversibleEventCipher implements ChannelEventCipher {
       return err(adapterUnavailable("cipher", `unknown format version ${sealed.formatVersion}`));
     }
     return ok([...sealed.ciphertext].reverse().join(""));
+  }
+}
+
+/**
+ * The `ChannelRuntime` registry, EMPTY BY DEFAULT.
+ *
+ * THERE IS NO IN-MEMORY `ChannelRuntime` HERE, AND THAT IS DELIBERATE. A double
+ * that verifies a signature does so by being told to, which proves nothing about
+ * verification — the exact vacuity WIN-271 was told to avoid. The only honest
+ * `ChannelRuntime` is one that runs real cryptography over real bytes, and that
+ * lives in `packages/adapters/channel-slack`, which this package may not import
+ * (ADR M0.3 §2, boundary rule (b)). So this registry exists to be WIRED with a
+ * real runtime by the adapter package's own suites, and to be EMPTY in this
+ * package's — where "empty" is not a configured refusal but the plain absence of
+ * an adapter, which is the state `CHANNELS_PROVIDER_UNSUPPORTED` names.
+ */
+export class InMemoryRuntimeRegistry implements ChannelRuntimeRegistry {
+  private readonly runtimes = new Map<string, ChannelRuntime>();
+
+  constructor(...runtimes: readonly ChannelRuntime[]) {
+    for (const runtime of runtimes) this.runtimes.set(runtime.provider, runtime);
+  }
+
+  register(runtime: ChannelRuntime): void {
+    this.runtimes.set(runtime.provider, runtime);
+  }
+
+  runtimeFor(provider: string): Result<ChannelRuntime> {
+    const runtime = this.runtimes.get(provider);
+    if (runtime === undefined) return err(providerUnsupported(provider));
+    return ok(runtime);
   }
 }

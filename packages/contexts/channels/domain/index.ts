@@ -28,3 +28,8 @@ export * from "./installation.js";
 export * from "./thread-link.js";
 export * from "./event-inbox.js";
 export * from "./inbound.js";
+// WIN-271 (M4.5) — what a caller may do after an outbound delivery failed. A
+// rule and not a habit: three of the four outcome codes may be repeated and one
+// may not, and the one that may not is the only one that duplicates a
+// customer-visible message.
+export * from "./delivery.js";

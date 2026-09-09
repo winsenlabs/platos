@@ -8,3 +8,5 @@ export * from "./fixtures.js";
 export * from "./builders.js";
 export * from "./in-memory-adapters.js";
 export * from "./in-memory-channels-repository.js";
+// WIN-271 — the inbound-admission harness an ADAPTER drives with a REAL runtime.
+export * from "./inbound-conformance.js";

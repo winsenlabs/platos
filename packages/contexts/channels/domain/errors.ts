@@ -31,12 +31,17 @@ export const CHANNELS_ERROR_CODES = [
   "CHANNELS_EVENT_LEASE_LOST",
   "CHANNELS_EVENT_NOT_CLAIMABLE",
   "CHANNELS_EVENT_PAYLOAD_INVALID",
+  "CHANNELS_SIGNATURE_ABSENT",
+  "CHANNELS_SIGNATURE_STALE",
+  "CHANNELS_SIGNATURE_INVALID",
+  "CHANNELS_PROVIDER_UNSUPPORTED",
   "CHANNELS_REFRESH_NOT_CLAIMABLE",
   "CHANNELS_REFRESH_LOST",
   "CHANNELS_REFRESH_REPAIR_REQUIRED",
   "CHANNELS_ADAPTER_UNAUTHORIZED",
   "CHANNELS_ADAPTER_UNAVAILABLE",
   "CHANNELS_ADAPTER_REJECTED",
+  "CHANNELS_DELIVERY_INDETERMINATE",
   "CHANNELS_REPOSITORY_UNAVAILABLE",
   "CHANNELS_ERASURE_PLAN_FOREIGN",
 ] as const;
@@ -229,6 +234,85 @@ export function repositoryUnavailable(reason: string): DomainError {
   return domainError("CHANNELS_REPOSITORY_UNAVAILABLE", "unavailable", "channels repository is unavailable", {
     retryAfterSeconds: 5,
     details: { reason },
+  });
+}
+
+/**
+ * THE FOUR INBOUND-VERIFICATION CODES, AND WHY THEY ARE FOUR.
+ *
+ * A public webhook endpoint refuses for four reasons that call for four
+ * different operator actions, and one `CHANNELS_SIGNATURE_INVALID` covering all
+ * of them would be the defect this programme has already paid for twice: two
+ * guards returning the same code cannot be told apart. Concretely —
+ *
+ *   ABSENT   nothing signed the request. Either the caller is not the provider
+ *            at all, or the app is misconfigured to send unsigned deliveries.
+ *   STALE    the signature verifies over a timestamp outside the replay window.
+ *            The remedy is a clock, not a secret: an operator whose fleet drifts
+ *            widens `..._REQUEST_MAX_AGE_S` deliberately.
+ *   INVALID  the bytes and the signature disagree. Either the signing secret
+ *            rotated and this deployable did not, or the request is forged.
+ *   UNSUPPORTED  a delivery arrived for a provider no adapter in this build
+ *            speaks for. That is a composition gap, not an authentication one.
+ *
+ * ALL FOUR CARRY `unauthenticated` EXCEPT THE LAST. The three above it are the
+ * same answer to a caller — "you are not who you claim" — and none of them may
+ * say WHICH, because the difference is exactly what a forger would grind
+ * against. So the DETAILS carry no comparison, no expected value and no
+ * timestamp arithmetic; the code is the operator's signal and the message is
+ * the caller's, and the caller's says nothing.
+ */
+export function signatureAbsent(provider: string): DomainError {
+  return domainError("CHANNELS_SIGNATURE_ABSENT", "unauthenticated", "inbound delivery is not signed", {
+    details: { provider },
+  });
+}
+
+export function signatureStale(provider: string): DomainError {
+  return domainError("CHANNELS_SIGNATURE_STALE", "unauthenticated", "inbound delivery is outside the replay window", {
+    details: { provider },
+  });
+}
+
+export function signatureInvalid(provider: string): DomainError {
+  return domainError("CHANNELS_SIGNATURE_INVALID", "unauthenticated", "inbound delivery signature does not verify", {
+    details: { provider },
+  });
+}
+
+/**
+ * `precondition_failed`, not `not_found`: the provider name is well formed and
+ * the row that named it is real. What is missing is an adapter in THIS build,
+ * which an operator fixes by composing one — so a 404 would send them looking
+ * for a row that exists.
+ */
+export function providerUnsupported(provider: string): DomainError {
+  return domainError("CHANNELS_PROVIDER_UNSUPPORTED", "precondition_failed", "no channel adapter speaks for this provider", {
+    details: { provider },
+  });
+}
+
+/**
+ * THE FOURTH ADAPTER OUTCOME, AND THE ONE THE OTHER THREE CANNOT EXPRESS.
+ *
+ * `UNAVAILABLE` says the provider did not take the message and a retry is the
+ * remedy. That sentence is TRUE ONLY WHEN THE REQUEST PROVABLY DID NOT LAND —
+ * a refused connection, a DNS failure, a socket that closed before a byte of
+ * the request was written. A request that WAS written and whose response never
+ * came is a different fact: the message may be posted, and retrying it posts it
+ * twice into a customer's channel.
+ *
+ * Collapsing the two is how a five-second blip becomes a duplicated
+ * conversation. So a mid-flight timeout gets its own code, and the disposition
+ * rule in `domain/delivery.ts` sends it to RECONCILE rather than RETRY. It is
+ * `unavailable` in CATEGORY because a transport must still answer 503 and the
+ * work is not done — the difference it carries is for the retry policy, which
+ * reads the CODE.
+ */
+export function deliveryIndeterminate(provider: string, reason: string, retryAfterSeconds = 5): DomainError {
+  return domainError("CHANNELS_DELIVERY_INDETERMINATE", "unavailable", "channel delivery outcome is unknown", {
+    retryAfterSeconds,
+    details: { provider, reason },
   });
 }
 

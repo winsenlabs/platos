@@ -16,6 +16,12 @@
 // Implemented under `packages/adapters/*`, wired in `apps/core-api`, never
 // imported by `domain/` (ADR M0.3 §2).
 export * from "./channel-adapter.js";
+// WIN-271 (M4.5) — the CANONICAL port. `ChannelRuntime` extends
+// `ChannelAdapter` with the inbound half no port covered: verify the exact
+// received bytes, and say what they turned out to be. Published from here for
+// the same reason `ChannelAdapter` is — an adapter directory has exactly one
+// import edge, and it is to this entrypoint.
+export * from "./channel-runtime.js";
 export * from "./channels-repository.js";
 
 // WIN-258 T5 — the domain values `ChannelsRepository`'s SIGNATURES already name.
@@ -50,7 +56,7 @@ export * from "./channels-repository.js";
 // and an adapter that reached for `@platos/kernel` directly would be a second
 // import edge into the kernel from a package whose only declared dependency is
 // the context whose port it satisfies.
-export type { EnvironmentScope, NotResult, Result, TransactionScope } from "@platos/kernel";
+export type { DomainError, EnvironmentScope, NotResult, Result, TransactionScope } from "@platos/kernel";
 // WIN-260 (M2.5): `runResult` joins them, and `NotResult` beside it.
 // `UnitOfWork.run` REFUSES a callback whose answer is a `Result` — such a
 // callback RESOLVES, and a resolved callback COMMITS, which is the defect
@@ -92,14 +98,48 @@ export type {
   ThreadLinkOwner,
   TurnId,
 } from "../../domain/index.js";
+// WIN-271 (M4.5) — the mints a `ChannelRuntime` implementation needs.
+//
+// PUBLISHED FOR THE REASON `eventDuplicate` AND `threadLinkConflict` ARE. An
+// adapter is the only kind of package permitted to implement a driven port, and
+// an adapter that could not spell this context's refusals would either invent
+// its own codes — a second taxonomy, drifting from the first — or throw, which
+// the port forbids. The four inbound-verification mints and the outbound
+// indeterminate mint are exactly the vocabulary an adapter refuses in, so they
+// are published where an adapter can reach them and nowhere wider.
 export {
   APP_DISTRIBUTIONS,
   APP_PROVIDERS,
+  adapterRejected,
+  adapterUnauthorized,
+  adapterUnavailable,
+  admitChannelThreadKey,
   byClaimOrder,
+  deliveryIndeterminate,
+  // WIN-271 — the disposition rule an adapter's own suite joins its codes to.
+  // The adapter picks a code; `channels` decides what the code PERMITS. Publishing
+  // the decision is what lets `slack-transport.test.ts` assert, against the
+  // domain's own table rather than a copy of it, that a timed-out delivery is
+  // RECONCILE and a refused connection is RETRY.
+  deliveryDisposition,
+  mayRetryDelivery,
+  providerUnsupported,
+  signatureAbsent,
+  signatureInvalid,
+  signatureStale,
   CHANNEL_EVENT_STATUSES,
   CONNECTION_PROVIDERS,
   connectionOwner,
   eventDuplicate,
+  eventPayloadInvalid,
+  // WIN-271 — the READ half of the thread-key format an adapter WRITES.
+  // `domain/inbound.ts` renders the rule ("`<kind>:<channel>[:<thread>]`") and
+  // this function is what a `channel` routing rule matches on. An adapter that
+  // rendered the key in any other shape would make every channel-scoped rule
+  // silently stop matching, with no error anywhere. Publishing the reader is how
+  // the adapter's suite proves agreement against the domain's own code rather
+  // than against a copy of the format written in the adapter.
+  extractPlatformChannelId,
   INSTALLATION_STATUSES,
   installationOwner,
   isClaimable,

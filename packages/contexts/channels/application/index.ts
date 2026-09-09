@@ -14,6 +14,7 @@ export * from "./ports/index.js";
 export * from "./dependencies.js";
 export * from "./views.js";
 export * from "./admit-channel-event.js";
+export * from "./admit-signed-delivery.js";
 export * from "./process-channel-event.js";
 export * from "./dispatch-inbound-turn.js";
 export * from "./configure-agent-routing.js";
