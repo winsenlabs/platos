@@ -1678,7 +1678,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // mutations are EXECUTED rather than catalogued -- each one edits a real DTO
     // source in memory, re-derives through the compiler and asserts the
     // classification, so the cases are the ledger. 60 + 3 = 63.
-    "root-infra": 63,
+    //
+    // WIN-267 W3 60 -> 61: `scripts/mutations-win267-w3.json`, the EIGHTH guard
+    // ledger to land beside its siblings, on the same
+    // `root-infra.tooling.scripts` rule. It is the WHOLE of this branch's file
+    // delta. W3 adds no source file and no suite: its six identity-access cases
+    // go into two suites that already existed, its four integration cases and
+    // its two controller-branch cases go into two files that already existed,
+    // and the census, the ledger pins and the four derived artifacts are all
+    // EDITS or REGENERATIONS of tracked files. 60 + 1 = 61.
+    //
+    // THE CLOSEOUT SUMS THEM RATHER THAN SIDE-PICKING, which is the whole reason
+    // both branches wrote their arithmetic down: W2's three files and W3's one
+    // are DISJOINT -- `openapi-compat.mjs`, `openapi-compat.test.mjs`,
+    // `openapi-schema-derivation.test.mjs` and `mutations-win267-w3.json` are
+    // four distinct paths, none of which either branch shares. 60 + 3 + 1 = 64.
+    // The `root-infra.tooling.scripts` rule takes W2's `openapi-compat.mjs` and
+    // W3's mutation ledger, so it moves 93 -> 95, not 93 -> 94 as either branch
+    // alone recorded; `root-infra.test.script-suites` takes W2's two suites only
+    // and moves 32 -> 34 unchanged. W1 is NOT in this branch, so its +1 on this
+    // key is not here either -- see the merge commit for the tree fact.
+    "root-infra": 64,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1750,12 +1770,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // moved `packages`; no key took a contribution from both, which is why the
   // auto-merge of that object is safe and is checked here rather than assumed.
   //
-  // WIN-267 W2 1671 -> 1678. SEVEN files, and the identity this pair of
-  // assertions exists to hold is that the total and the per-area sums are the
-  // same arithmetic: apps-agent +2, root-infra +3, docs-content +2, which is the
-  // same 2/3/2 itemised on those three keys above. 1671 + 7 = 1678, and the
-  // eight-key re-derivation is 4 + 0 + 75 + 4 + 10 + 1503 + 19 + 63 = 1678.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1678);
+  // WIN-267 W2 1671 -> 1678 (seven files: apps-agent +2, root-infra +3,
+  // docs-content +2) and W3 1671 -> 1672 (one file: root-infra +1). THE CLOSEOUT
+  // SUMS THEM: 1671 + 7 + 1 = 1679. The identity this pair of assertions exists
+  // to hold is that the total and the per-area sums are the same arithmetic, and
+  // the eight-key re-derivation from the merged `expectedDeltas` above is
+  // 4 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1679. Side-picking either branch's
+  // own total (1678 or 1672) is red here AND at the second reconciliation below.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1679);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1908,11 +1930,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and a merge that had side-picked either branch's total would be red here
     // even if the other assertion had been patched to match.
     //
-    // WIN-267 W2 1671 -> 1678, the TWELFTH hand move of this second
-    // reconciliation. The same seven files as the `totalFiles` assertion above,
-    // reached here by summing the per-area counts instead of reading the total,
-    // so the two arithmetics can disagree and be caught. 1671 + 7 = 1678.
-    rulesDocument.baseline.totalFiles + 1678
+    // WIN-267 W2 1671 -> 1678 and W3 1671 -> 1672, SUMMED by the closeout to
+    // 1679 -- the TWELFTH hand move of this second reconciliation. The same
+    // eight files as the `totalFiles` assertion above (W2's seven plus W3's one
+    // mutation manifest), reached here by summing the per-area counts instead of
+    // reading the total, so the two arithmetics can disagree and be caught.
+    // 1671 + 7 + 1 = 1679.
+    rulesDocument.baseline.totalFiles + 1679
   );
 });
 

@@ -33,6 +33,7 @@ import {
   type BearerAuthorization,
   type EndUserWithIdentities,
   type OperatorAuthorization,
+  type RevokedOperatorSession,
   type SessionCookieDirective,
   type PermittedRateLimitDecision,
 } from "../domain/index.js";
@@ -44,6 +45,8 @@ import type {
   IdentityAccessContract,
   IssueSessionCookieRequest,
   ListEndUsersRequest,
+  RevokedOperatorSessionView,
+  RevokeOperatorSessionRequest,
   RotateSessionCookieRequest,
   SessionCookieDirectiveView,
   SessionCookieShapeView,
@@ -55,7 +58,7 @@ import type {
 } from "../contracts/index.js";
 import { authenticateBearerToken } from "./authenticate-bearer-token.js";
 import { listEndUsers, type EndUserPage } from "./list-end-users.js";
-import { authenticateOperator } from "./authenticate-operator.js";
+import { authenticateOperator, revokeOperatorSession } from "./authenticate-operator.js";
 import { consumeRateLimit } from "./consume-rate-limit.js";
 import type { IdentityAccessPorts } from "./dependencies.js";
 import { err, ok, type Result } from "@platos/kernel";
@@ -99,6 +102,20 @@ function operatorView(authorization: OperatorAuthorization): OperatorAuthorizati
         ? null
         : { targetUserId: authorization.impersonation.targetUserId },
   };
+}
+
+/**
+ * Project an ENDED session.
+ *
+ * TWO FIELDS, AND THE OTHER ELEVEN ARE DROPPED FOR THE REASON THE FILE BANNER
+ * GIVES: the record carries `tokenHash`, the parent session and the
+ * impersonation chain, and a consumer of a sign-out has no use for any of them.
+ * `revokedAt` needs no `?? null` because `RevokedOperatorSession` narrows it to
+ * a `Date` — the domain rule that produced the value has already excluded the
+ * null branch, so there is no unreachable fallback here to go untested.
+ */
+function revokedView(session: RevokedOperatorSession): RevokedOperatorSessionView {
+  return { sessionId: session.sessionId, revokedAt: session.revokedAt };
 }
 
 /**
@@ -202,6 +219,13 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
         presentedToken: request.presentedToken,
       });
       return authorization.ok ? ok(operatorView(authorization.value)) : authorization;
+    },
+
+    async revokeOperatorSession(
+      request: RevokeOperatorSessionRequest,
+    ): Promise<Result<RevokedOperatorSessionView>> {
+      const ended = await revokeOperatorSession(ports, { presentedToken: request.presentedToken });
+      return ended.ok ? ok(revokedView(ended.value)) : ended;
     },
 
     async authenticateBearer(

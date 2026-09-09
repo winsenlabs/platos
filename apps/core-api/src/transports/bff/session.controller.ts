@@ -36,7 +36,8 @@
 // `composition-root.test.mjs` goes red; the mutation ledger records the run.
 //
 // The exchange therefore reaches exactly two contract methods —
-// `authenticateOperator` and `issueSessionCookie` — and the sign-out reaches one.
+// `authenticateOperator` and `issueSessionCookie` — and the sign-out reaches two,
+// `revokeOperatorSession` and `clearSessionCookie`.
 
 import { Body, Controller, Delete, HttpCode, HttpStatus, Inject, Post, Req, Res } from "@nestjs/common";
 
@@ -56,6 +57,7 @@ import {
 import {
   authenticateOperator,
   isSecureTransport,
+  presentedOperatorToken,
   requireIdentityAccess,
   type InboundOperatorRequest,
 } from "../rest/operator.js";
@@ -161,28 +163,64 @@ export class BffSessionController {
   }
 
   /**
-   * End the session in the browser.
+   * End the session — on the SERVER first, then in the browser.
    *
-   * IT DOES NOT AUTHENTICATE, AND THAT IS THE POINT. A browser holding a cookie
-   * for a session that is already expired or revoked is exactly the browser that
-   * most needs the cookie cleared, and a sign-out that answered 401 would strand
-   * it there — one dead credential the user cannot get rid of without opening
-   * developer tools. The route reveals nothing: the directive it writes is the
-   * same bytes for every caller, authenticated or not.
+   * WIN-267 W3. Until this tranche the handler wrote one header and stopped, and
+   * the comment that stood here said so in as many words: "IT REVOKES NOTHING
+   * EITHER ... this route clears the browser and the session dies of its own
+   * expiry." That is now closed, because a sign-out that only clears a cookie is
+   * a sign-out that tells the user something untrue. The cookie is a COPY of the
+   * credential; deleting the copy in the one browser that asked leaves every
+   * other copy — the one in a proxy log, the one an attacker pasted into their
+   * own client — valid for the rest of the session's lifetime, which for this
+   * install is days. `revokeOperatorSession` ends the row, and
+   * `identity-rest.integration.test.ts` replays the exact same cookie afterwards
+   * against a real PostgreSQL and reads the row back to prove it.
    *
-   * IT REVOKES NOTHING EITHER, and the contract is why: `revokeOperatorSession`
-   * lives in `application/` and is not published, so a BFF cannot end the SERVER
-   * side of a session. That is a real gap and it is named here rather than papered
-   * over — until the contract publishes a revocation, this route clears the
-   * browser and the session dies of its own expiry.
+   * THE ORDER IS NOT INTERCHANGEABLE. The revocation happens BEFORE the header
+   * is written, so a store that cannot be reached refuses the sign-out instead of
+   * answering 204 over a session that is still live. Clearing first and revoking
+   * second would produce exactly the lie this change exists to remove, with the
+   * added twist that the user would no longer hold the cookie needed to try
+   * again.
+   *
+   * IT STILL DOES NOT AUTHENTICATE, AND THAT IS STILL THE POINT. A browser
+   * holding a cookie for a session that is already expired, already revoked, or
+   * that no row matches is exactly the browser that most needs the cookie
+   * cleared, and a 401 would strand it there. So every refusal in the
+   * `unauthenticated` CATEGORY — no token, no such session, already ended — means
+   * "there was nothing left to end", and the route goes on to clear the browser
+   * and answer 204. The branch is written against the kernel's category rather
+   * than a list of codes copied into this file, so a fourth way for a credential
+   * to be unestablishable does not need a transport edit to be handled.
+   *
+   * ANYTHING ELSE IS RAISED. In practice that is `IDENTITY_STORE_UNAVAILABLE` at
+   * 503: the server could not end the session, and the honest answer is to say
+   * so rather than to clear the cookie and call it done.
+   *
+   * IT STILL REVEALS NOTHING. A live token, an unknown token and no token at all
+   * get the same 204 and the same bytes, so the route cannot be used to ask
+   * whether a token is real.
+   *
+   * AND IT GAINS NO ROW IN `http/idempotency-policy.ts`, WHICH IS A DECISION NOW
+   * THAT IT WRITES. The revocations already in that table are `exempt`, and the
+   * reasoning transfers exactly — "naturally idempotent, and it returns no
+   * secret". What does not transfer is the cost of being wrong: `exempt` DROPS an
+   * `Idempotency-Key` a caller sent in good faith, and the default `accepted`
+   * honours it. For a route whose whole job is to make sure something happened
+   * once, honouring the key is the safer of the two, so the default stands.
    */
   @Delete()
   @HttpCode(HttpStatus.NO_CONTENT)
-  signOut(
+  async signOut(
     @Req() request: InboundOperatorRequest,
     @Res({ passthrough: true }) response: CookieResponse,
-  ): void {
+  ): Promise<void> {
     const identityAccess = requireIdentityAccess(this.application.app);
+    const ended = await identityAccess.revokeOperatorSession({
+      presentedToken: presentedOperatorToken(identityAccess, request),
+    });
+    if (!ended.ok && ended.error.category !== "unauthenticated") raise(ended.error);
     const directive = identityAccess.clearSessionCookie({ secure: isSecureTransport(request) });
     if (!directive.ok) raise(directive.error);
     response.setHeader("Set-Cookie", serializeSetCookie(this.onlyTheBytes(directive.value)));
