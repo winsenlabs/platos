@@ -15,15 +15,21 @@
 
 import { describe, expect, it } from "vitest";
 
-import type { FieldViolation } from "@platos/kernel";
+import { domainError, err, type DomainError, type FieldViolation } from "@platos/kernel";
+import {
+  IDENTITY_ACCESS_ERROR_CODES,
+  type IdentityAccessContract,
+} from "@platos/context-identity-access";
 
 import {
   createIdentityAccessService,
   testPorts,
 } from "@platos/context-identity-access/application/index.js";
 
-import { serializeSetCookie } from "../bff/session.controller.js";
+import type { AppModule } from "../../app.module.js";
+import { BffSessionController, serializeSetCookie } from "../bff/session.controller.js";
 import { exchangeSessionValidator } from "../bff/session.controller.js";
+import { domainErrorOf } from "./fault.js";
 import { BodyReader, jsonBody } from "./body.js";
 import { encodeCursor, wholeCollection } from "./envelope.js";
 import {
@@ -239,6 +245,71 @@ describe("WIN-267 R1 — the cookie the BFF writes is the contract's", () => {
     expect(readCookie(request, "platos_operator_session")).toBe("tok en");
     expect(readCookie(request, "platos_operator")).toBeNull();
     expect(readCookie({ headers: {} }, "platos_operator_session")).toBeNull();
+  });
+});
+
+describe("WIN-267 W3 — a sign-out that could not end the session says so", () => {
+  /**
+   * A REAL `IdentityAccessContract` with ONE method replaced.
+   *
+   * Everything the handler does apart from the revocation — asking for the cookie
+   * name, minting the clear directive, handing it back to `verifySessionCookie` —
+   * runs against `createIdentityAccessService`, so this measures the handler's
+   * branch and not a contract invented for the occasion.
+   */
+  function signOutAgainst(refusal: DomainError): {
+    readonly run: () => Promise<void>;
+    readonly written: readonly string[];
+  } {
+    const identityAccess: IdentityAccessContract = {
+      ...createIdentityAccessService(testPorts()),
+      revokeOperatorSession: () => Promise.resolve(err(refusal)),
+    };
+    const written: string[] = [];
+    const controller = new BffSessionController({
+      app: { contexts: { identityAccess } } as unknown as AppModule,
+    });
+    return {
+      written,
+      run: () =>
+        controller.signOut({ headers: {} }, { setHeader: (_name, value) => written.push(value) }),
+    };
+  }
+
+  /** A code the CONTRACT publishes, never one invented here. */
+  function published(code: (typeof IDENTITY_ACCESS_ERROR_CODES)[number]): string {
+    if (!IDENTITY_ACCESS_ERROR_CODES.includes(code)) throw new Error(`${code} is not published`);
+    return code;
+  }
+
+  it("RAISES when the store could not be reached, and writes no cookie", async () => {
+    // THE WHOLE POINT OF THE ORDER. If the header went out first, or if every
+    // refusal were swallowed, this caller would be told 204 — "you are signed
+    // out" — over a session that is still live because nothing could end it. The
+    // branch is on the kernel CATEGORY rather than on a list of codes copied into
+    // the transport, so a new way for the store to be unreachable is handled
+    // without a transport edit.
+    const attempt = signOutAgainst(
+      domainError(published("IDENTITY_STORE_UNAVAILABLE"), "unavailable", "Identity store is unavailable", {
+        retryAfterSeconds: 1,
+      }),
+    );
+    const thrown = await attempt.run().catch((error: unknown) => error);
+    expect(domainErrorOf(thrown)?.code).toBe("IDENTITY_STORE_UNAVAILABLE");
+    expect(attempt.written, "a sign-out that did not happen must not clear the browser").toEqual([]);
+  });
+
+  it("CLEARS the browser anyway when there was simply nothing left to end", async () => {
+    // The other side of the same branch, and the property the route had before
+    // W3: a browser holding a dead credential is the one that most needs it
+    // cleared. Every `unauthenticated` refusal — no token, no such session,
+    // already ended — reaches here.
+    for (const code of ["UNAUTHENTICATED", "SESSION_REVOKED"] as const) {
+      const attempt = signOutAgainst(domainError(published(code), "unauthenticated", "refused"));
+      await attempt.run();
+      expect(attempt.written, code).toHaveLength(1);
+      expect(String(attempt.written[0]), code).toContain("Max-Age=0");
+    }
   });
 });
 
