@@ -70,7 +70,7 @@
       "observedRoutes": 3,
       "declaredAllRoutes": 0,
       "observedAllRoutes": 0,
-      "observedNamedAllRoutes": 0,
+      "observedNonWildcardAllRoutes": 0,
       "terminalCatchAll": false,
       "emptyBasePath": true,
       "why": "process-edge liveness/readiness probes (ADR M0.4 §2 keeps them off the versioned surface); no tenant, no scope, no use case."
@@ -82,7 +82,7 @@
       "observedRoutes": 0,
       "declaredAllRoutes": 1,
       "observedAllRoutes": 1,
-      "observedNamedAllRoutes": 0,
+      "observedNonWildcardAllRoutes": 0,
       "terminalCatchAll": true,
       "emptyBasePath": true,
       "why": "the terminal 404: the LAST-registered handler, answering every unmatched path in the process with the M0.4 §2 envelope. No tenant, no scope, no use case, and no operation a client can call — a refusal, not surface."

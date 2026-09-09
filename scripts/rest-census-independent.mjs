@@ -577,7 +577,7 @@ function build() {
       observedRoutes: e.observed?.routes ?? null,
       declaredAllRoutes: e.allRoutes,
       observedAllRoutes: e.observed?.allRoutes ?? null,
-      observedNamedAllRoutes: e.observed?.nonWildcardAllRoutes ?? null,
+      observedNonWildcardAllRoutes: e.observed?.nonWildcardAllRoutes ?? null,
       terminalCatchAll: e.terminalCatchAll,
       emptyBasePath: e.observed?.emptyBasePath ?? null,
       why: e.why,

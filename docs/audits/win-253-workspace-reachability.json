@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "654a2b9a31e4a7c26a8f20de8bac91cc9bdc29249d2eaaaf9e5ea04a6ab20e1c",
+  "evidenceSha256": "4148eaf3c6e6e7db265867eb094344b0056f83b76af6262fc874480eb7d3ef9a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "fa8541390491bd0d12059e433e2a2392b8cf269d28378c1fcd920bd44f204c8e",
+    "aggregateSha256": "0ef0cf385bf17296e691e1d71958945ea18143431e12f5f5c2d55472b7941254",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4207,7 +4207,7 @@
       },
       {
         "path": "docs/audits/M0.9-rest-census-independent.json",
-        "sha256": "9e39f923fb66c54a24179d38b78a4c908b5883301e34e2a622aa645486e1899b"
+        "sha256": "0e4a7489121d19452407b774b9937b44bb2f77f0e6e2089dc7388f99e7b912b0"
       },
       {
         "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -20207,7 +20207,7 @@
       },
       {
         "path": "scripts/rest-census-independent.mjs",
-        "sha256": "c667148e50cd42139d74a6413d91723309c440d7cda7b6a04b15e4137259efe5"
+        "sha256": "364d8bbd01f6fae0dabb4b08d7216d2b61cfb5934aca36c9668e62292e35ba47"
       },
       {
         "path": "scripts/rest-census-independent.test.mjs",
