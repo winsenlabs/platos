@@ -185,7 +185,7 @@ describe("MCPPermissionGatewayService canonical policies", () => {
   // gateway then fails closed or swallows it.
   // -------------------------------------------------------------------------
 
-  it.each([
+  it.each<[ScopeRefusalReason]>([
     [MCP_SCOPE_FOREIGN],
     [MCP_SCOPE_UNKNOWN],
   ])("blocks at tier 2 when the claimed scope is %s, with no agent in play", async (reason) => {
