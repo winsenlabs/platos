@@ -1607,8 +1607,18 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // WIN-267 G2 adds ONE: `scripts/mutations-win267-g2.json`, this tranche's
     // guard ledger, on the same `root-infra.tooling.scripts` rule every earlier
     // tranche's landed on.
-    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 59.
-    "root-infra": 59,
+    // WIN-267 (M4.1, R2) 59 -> 62: THREE files, all `root-infra`, all on the same
+    // `scripts/**` rule (root-infra.tooling.scripts 92 -> 95).
+    // `scripts/arch/webapp-prisma-surface.mjs` is the WIN-257 T8 clause gate,
+    // `scripts/arch/webapp-prisma-surface.test.mjs` its falsification, and
+    // `scripts/mutations-win267-r2.json` its guard ledger — the SEVENTH such
+    // ledger. R2's other four edits are all to tracked files
+    // (`scripts/arch/boundary-rules.mjs`, `scripts/arch/arch-boundaries.mjs`,
+    // `package.json`, `.github/workflows/ci.yml`), and an edited file is not a
+    // new one. `apps-webapp` does NOT move: R2 changes no webapp file, because
+    // the cutover it was sent to perform has no endpoint to route to yet.
+    // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 + 1 + 3 = 62.
+    "root-infra": 62,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1654,7 +1664,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // SUMMED FOR THE INTEGRATION: 1640 + 5 (G1) + 7 (G2) + 1 (G3) = 1653, and the
   // integration's own operator-authentication suite makes it 1654. Every one of
   // the fourteen is additive: no ledger rule changed and no project was adopted.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1654);
+  //
+  // WIN-267 R2 1654 -> 1657. THREE files, all `root-infra`, matching that
+  // area's 59 -> 62 above — which is the whole point of stating the delta
+  // twice: the total and the per-area sum are the same arithmetic reached by
+  // different routes, so a file that lands in one and not the other fails
+  // here. Two sibling branches (R1, R3) move this same total independently, so
+  // the integrator SUMS the three rather than taking any one branch's figure —
+  // the exact mistake the A1+A2 / A3 paragraph above already records once.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1657);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1792,7 +1810,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // one file is `apps/core-api/mutations-win267-g3.json`, in `apps-core-api`,
     // matching that area's 57 -> 58; it ADOPTS NO PROJECT and CHANGES NO LEDGER
     // RULE, so this delta too is purely additive: 1640 + 1 = 1641.
-    rulesDocument.baseline.totalFiles + 1654
+    //
+    // WIN-267 R2 1654 -> 1657, and it caught this branch too — the TENTH and
+    // ELEVENTH time. `--write` regenerated the fingerprint, `audit:v1-ledger`
+    // reported "ok: ledger is complete, consistent, and current", and BOTH of
+    // these assertions were still 1654 on that same tree. The three files are
+    // `scripts/arch/webapp-prisma-surface.mjs`, its suite and
+    // `scripts/mutations-win267-r2.json`, all `root-infra`, matching that
+    // area's 59 -> 62; no project is adopted and no ledger rule changes, so
+    // this delta too is purely additive: 1654 + 3 = 1657.
+    rulesDocument.baseline.totalFiles + 1657
   );
 });
 
