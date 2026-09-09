@@ -1790,7 +1790,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the composition delta from the raw site list, and re-checks the disjointness
     // of the two registers' roots against the sibling module's own export. NO
     // LEDGER RULE CHANGED.
-    "root-infra": 74,
+    // WIN-269 (M4.3) 74 -> 75 with `scripts/mutations-win269-m43.json`, this
+    // tranche's mutation ledger: eleven mutations, eleven killed, zero
+    // survivors and zero declared equivalent. It takes the same blanket
+    // `root-infra.tooling.scripts` rule its ten predecessors took (103 -> 104).
+    // NO LEDGER RULE CHANGED.
+    "root-infra": 75,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1915,7 +1920,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // WIN-268's register four paragraphs above, over the roots that one
   // deliberately excludes. The eight-key re-derivation from the merged
   // `expectedDeltas` is 9 + 0 + 80 + 4 + 10 + 1505 + 23 + 74 = 1705.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1705);
+  //
+  // AND WIN-269's MUTATION LEDGER 1705 -> 1706. ONE file, `root-infra`,
+  // itemised on that area's delta above: 9 + 0 + 80 + 4 + 10 + 1505 + 23 + 75
+  // = 1706.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1706);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2115,7 +2124,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and rendered note in `docs-content`), reached here by summing the per-area
     // counts instead of reading the total, so the two arithmetics can disagree
     // and be caught. 1701 + 4 = 1705.
-    rulesDocument.baseline.totalFiles + 1705
+    //
+    // AND WIN-269's MUTATION LEDGER 1705 -> 1706 -- the NINETEENTH hand move.
+    // The same one `root-infra` file, reached here by summing the per-area
+    // counts. 1705 + 1 = 1706.
+    rulesDocument.baseline.totalFiles + 1706
   );
 });
 

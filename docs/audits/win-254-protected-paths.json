@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "ed9dfb90c40448bd8596eebf9f7285ded111044d14db4616d9a6885153d53f1f"
+      "sha256": "5e5f03b52689ebe7667e4858c1e8a00a44424b44ac6578eb99607abb472d0cc1"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "ab5e26a787370fa8a3facd045f77ad5c3bc3e3408c5dcaf1ba8210c2bfc3bbc5"
+      "sha256": "1895b2ec9d08db51e5b1bc03e56911fe7e751363e4c3ff34a2960da4944992db"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1063,12 +1063,12 @@
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
       "mode": "100644",
-      "sha256": "b45e683fd8412c31e1a8b157ab7094a4f42116bff4967078cd858bfa313fa6d6"
+      "sha256": "42dd9d16ee9f2b89df266e64b1aa40d4cd9d171bd47302742cd6abfe8eb0994f"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.md",
       "mode": "100644",
-      "sha256": "cfa53f43b60b7440e9d943fafecad34133f1466b397b9e2410c4e1eaf887d67d"
+      "sha256": "485d7baeca0c4cc9c779d1ae02a4a686e692a10278696f48713ad2f1c9446903"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1093,7 +1093,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "a30d87dd3311bd02166697f6bac385e379dd0eaa3ff0e5d177d21476ea4d69fe"
+      "sha256": "717d1aade19902c4ed2275845cf1593e1dc5d4fea0545ecc49571cde1454d421"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3513,7 +3513,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "a1347452bbfb7c9a5a385d2b492146e6ccaa59e0570b9aafebc3f5624f0f18d1"
+      "sha256": "10267f18e3873b9621636c2d2aabe620919fb00bcb13298ab8f05e401ac178c2"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3953,7 +3953,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "fdd826e77c3e651f1142e939afb29199ef017b17dc9cbca399c26c45dd58272a"
+      "sha256": "d79e80e2c651562f0a4c0811b48f0cf952b6fd9541b16356e8f1f395f6405824"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",

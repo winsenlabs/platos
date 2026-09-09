@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ea0057579edee0ea635eb332ae50dd2e7dbd5522c8904609878b13663bd12f22",
+  "evidenceSha256": "451e06033db83b4faf27ee323c0f2b8846e1ad75e4418cd8974a30f779c29c71",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b95f2c0ff6651957e0f03fe39985f5d13faebedda174385890aeba8be04b8737",
+    "aggregateSha256": "6fcac06b825870c69f3b423e9430cb51133154d261c34e1772ebb09315e7c593",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2251,7 +2251,7 @@
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-        "sha256": "145806b9e6655cffa769e3f977c5061eb5fdef13a89488adc3f82adfed8ac411"
+        "sha256": "fec42405c62dcd98dbcf5664649492631e05ce0490ea22ac5500d7bbed08d968"
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/entity-signing-credential.test.ts",
@@ -2263,7 +2263,7 @@
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/mcp-connected-entity.acceptance.test.ts",
-        "sha256": "4c977f79260fcc177e8e50ee6114f335be431427670325594f6ed57342cc6d1c"
+        "sha256": "2857d8403aa8dfce27fbd38fc2247f63468c4b6f5d554e79a8ba4c7f4cadf3ba"
       },
       {
         "path": "apps/agent/src/tool-gateway/mcp-transport/mcp-credential.service.test.ts",
@@ -4419,11 +4419,11 @@
       },
       {
         "path": "docs/audits/win-269-tool-lifecycle-reach.json",
-        "sha256": "b45e683fd8412c31e1a8b157ab7094a4f42116bff4967078cd858bfa313fa6d6"
+        "sha256": "42dd9d16ee9f2b89df266e64b1aa40d4cd9d171bd47302742cd6abfe8eb0994f"
       },
       {
         "path": "docs/audits/win-269-tool-lifecycle-reach.md",
-        "sha256": "cfa53f43b60b7440e9d943fafecad34133f1466b397b9e2410c4e1eaf887d67d"
+        "sha256": "485d7baeca0c4cc9c779d1ae02a4a686e692a10278696f48713ad2f1c9446903"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
@@ -6371,7 +6371,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "a1347452bbfb7c9a5a385d2b492146e6ccaa59e0570b9aafebc3f5624f0f18d1"
+        "sha256": "10267f18e3873b9621636c2d2aabe620919fb00bcb13298ab8f05e401ac178c2"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20306,6 +20306,10 @@
         "sha256": "32d61ea9eddb7eef9bd1a9e4749959434c7f4289add79f3f811384969772702b"
       },
       {
+        "path": "scripts/mutations-win269-m43.json",
+        "sha256": "01b22bf522932a76a1a3a94a85b1765662ff9823e8f02b6b35a43fcec420d854"
+      },
+      {
         "path": "scripts/openapi-compat.mjs",
         "sha256": "b90270c0ea3ce9cfaf29ce8996b0fb4500fab4b506c87ddeae59e099cb906bac"
       },
@@ -20395,7 +20399,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "fdd826e77c3e651f1142e939afb29199ef017b17dc9cbca399c26c45dd58272a"
+        "sha256": "d79e80e2c651562f0a4c0811b48f0cf952b6fd9541b16356e8f1f395f6405824"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -39043,7 +39047,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2148
+              "line": 2161
             }
           ],
           "reversePaths": [
@@ -39068,7 +39072,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "356a1cd6a79a653f3e76cfb64309b2c3d80df81b6dc86e65d85fb89b7e5b47eb",
+      "evidenceSha256": "331ad66d043ae881ff0583a68629d163946f51a083f840e78bb604add0a92c04",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -40209,7 +40213,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2147
+              "line": 2160
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -40434,7 +40438,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2182112f61ffe0f8dcb3902ca2694788c26102bff0ef1732a9040abf956efa30",
+      "evidenceSha256": "0fa86043bacb671656d35d65bd25baf5a3da4c74c8ff40f13627572c10e279d1",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {

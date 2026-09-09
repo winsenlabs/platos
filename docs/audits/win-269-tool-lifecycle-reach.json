@@ -20,11 +20,11 @@
   ],
   "files": 13,
   "filesWithSites": 5,
-  "totalSites": 30,
-  "delegateSites": 29,
+  "totalSites": 31,
+  "delegateSites": 30,
   "clientSites": 1,
   "byOwner": {
-    "tools": 14,
+    "tools": 15,
     "tenancy": 10,
     "secrets": 2,
     "identity-access": 1,
@@ -32,10 +32,10 @@
     "<client-level>": 1
   },
   "byVerdict": {
-    "blockedOnContext": 16,
+    "blockedOnContext": 17,
     "blockedOnContract": 14
   },
-  "unblockedByComposingSubject": 14,
+  "unblockedByComposingSubject": 15,
   "dependency": [
     {
       "slot": "repository",
@@ -172,7 +172,7 @@
         ]
       },
       "note": "`ToolsContract.discoverEntityTools` is this file exactly — same fan-out over the project's environments, same convergence on `registerTools`, same stamp onto the client row. `application/discover-entity-tools.ts`'s own header states the `Entity`-is-project-scoped/`EnvironmentEntityTool`-is-environment-scoped rule this service implements by hand. Blocked on composing `tools`.",
-      "sites": 6
+      "sites": 7
     },
     "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts": {
       "contexts": [
@@ -200,7 +200,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 98,
+      "line": 140,
       "shape": "delegate",
       "model": "Entity",
       "operation": "findFirst",
@@ -209,7 +209,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 122,
+      "line": 168,
       "shape": "delegate",
       "model": "Environment",
       "operation": "findMany",
@@ -218,7 +218,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 270,
+      "line": 422,
       "shape": "delegate",
       "model": "EntityMcpClient",
       "operation": "update",
@@ -227,7 +227,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 276,
+      "line": 428,
       "shape": "delegate",
       "model": "Entity",
       "operation": "update",
@@ -236,7 +236,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 286,
+      "line": 455,
       "shape": "delegate",
       "model": "EntityMcpClient",
       "operation": "update",
@@ -245,7 +245,16 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 296,
+      "line": 465,
+      "shape": "delegate",
+      "model": "EntityMcpClient",
+      "operation": "update",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 475,
       "shape": "delegate",
       "model": "Entity",
       "operation": "update",

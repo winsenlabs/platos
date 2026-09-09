@@ -55,18 +55,60 @@ interface McpClientSlice {
   credential?: { name: string } | null;
 }
 
+/**
+ * WHAT ONE ENVIRONMENT'S PASS ACTUALLY DID — three outcomes, not two.
+ *
+ * WIN-269 (M4.3). The two-valued shape this replaces could not tell "the server
+ * answered and offered nothing" from "no server was ever asked", and BOTH ended
+ * at the same place: an empty tool list handed to `registerTools`, which is
+ * idempotent-REPLACE and therefore DELETES every mapping the entity had in that
+ * environment. Two live paths took it —
+ *
+ *   a `hosted-*` transport returned `[]` from the round-trip with the comment
+ *   "so discovery still succeeds (no tools registered yet)", and
+ *
+ *   a project with zero environments stamped a SUCCESSFUL discovery, including
+ *   `Entity.connectionStatus = "connected"` and a fresh `lastConnectedAt`,
+ *   without opening a session to anything
+ *
+ * — and the refresh cron runs the whole thing every five minutes. So the wrong
+ * answer was not merely indistinguishable from the right one; it was durable,
+ * it destroyed the tool matrix, and it reported success while doing it.
+ *
+ * `skipped` is therefore its own outcome and not a flavour of either. It never
+ * reaches `registerTools`, so nothing is pruned by a pass that asked nothing,
+ * and it never reaches `stampSuccess`, so nothing claims a connection it did
+ * not open.
+ */
+export type EnvironmentPassOutcome =
+  | { readonly kind: "contacted"; readonly tools: ToolSchema[] }
+  | { readonly kind: "skipped"; readonly reason: string }
+  | { readonly kind: "failed"; readonly reason: string };
+
 export interface DiscoveryResult {
-  /** Number of project environments enumerated + registered into. */
+  /** Number of project environments enumerated. */
   envs: number;
+  /**
+   * Environments whose MCP server ANSWERED `tools/list`. Zero with `envs > 0`
+   * means nothing was asked; `registered: 0` with `contacted > 0` means the
+   * server was asked and offered nothing. That is the whole distinction this
+   * field exists to make, and it is why a caller never has to read `error` to
+   * find out whether the pass ran.
+   */
+  contacted: number;
+  /** Environments where no session was attempted at all. */
+  skipped: number;
+  /** Environments where a session was attempted and did not produce an answer. */
+  failed: number;
   /** Total tool registrations across all envs (sum of per-env `registered`). */
   registered: number;
   /** Total tool mappings pruned across all envs (sum of per-env `removed`). */
   pruned: number;
   /**
-   * Present when at least one env failed. On a total failure this is the
-   * failure reason (also stamped as `discoveryError`); on a partial failure it
-   * is the first env's error (informational — `connectionStatus` is still
-   * `connected` because some env succeeded).
+   * Present when at least one env failed OR was skipped. On a total failure
+   * this is the failure reason (also stamped as `discoveryError`); on a partial
+   * failure it is the first env's reason (informational — `connectionStatus` is
+   * still `connected` because some env succeeded).
    */
   error?: string;
 }
@@ -111,9 +153,13 @@ export class EntityMcpDiscoveryService {
 
     const client: McpClientSlice | null = entity.mcpClient ?? null;
     if (!client) {
+      // The client row IS the entity's transport: without it there is nothing
+      // to open a session to, so the entity is genuinely undispatchable and the
+      // status write stays. Nothing is pruned — the pass never reached
+      // `registerTools` before this change either, and must not start to.
       const error = "mcp entity has no mcpClient transport config";
       await this.markEntityDisconnected(entityPk);
-      return { envs: 0, registered: 0, pruned: 0, error };
+      return { envs: 0, contacted: 0, skipped: 1, failed: 0, registered: 0, pruned: 0, error };
     }
 
     // §1.5b — the SOLE environmentId supplier. All project envs, mirroring the
@@ -126,12 +172,24 @@ export class EntityMcpDiscoveryService {
       });
 
     if (envs.length === 0) {
-      // Degenerate — nothing to register into. Not an error; record the sweep.
-      await this.stampSuccess(entityPk);
-      return { envs: 0, registered: 0, pruned: 0 };
+      // WIN-269. A PROJECT WITH NO ENVIRONMENTS IS A SKIP, NOT A SUCCESS.
+      //
+      // This branch used to call `stampSuccess`, which writes
+      // `EntityMcpClient.lastDiscoveryAt = now`, clears `discoveryError`, and
+      // sets `Entity.connectionStatus = "connected"` with a fresh
+      // `lastConnectedAt`. No session was opened, no server was asked, and the
+      // upstream may have been unreachable for a week — an operator reading the
+      // entity saw "connected, discovered just now, no error" either way. The
+      // three stamps below are three DISTINGUISHABLE persisted states, which is
+      // the property the two-state version could not have.
+      const error = "the entity's project has no environments to register into";
+      await this.stampSkipped(entityPk, error);
+      return { envs: 0, contacted: 0, skipped: 1, failed: 0, registered: 0, pruned: 0, error };
     }
 
-    let anySuccess = false;
+    let contacted = 0;
+    let skipped = 0;
+    let failed = 0;
     let registered = 0;
     let pruned = 0;
     let firstError: string | null = null;
@@ -143,8 +201,36 @@ export class EntityMcpDiscoveryService {
         projectId: entity.projectId,
         environmentId: envRow.id,
       };
+      const outcome = await this.attemptToolsList(entity.id, client, scope);
+
+      if (outcome.kind === "skipped") {
+        skipped += 1;
+        if (!firstError) firstError = outcome.reason;
+        // NO `setEntityDispatchable(false)`: nothing was tried, so nothing was
+        // learned about whether the backend is reachable. Saying it is not would
+        // be the same lie in the other direction.
+        this.logger.warn(
+          `MCP discovery skipped for entity ${entity.id} env ${envRow.id}: ${outcome.reason}`,
+        );
+        continue;
+      }
+
+      if (outcome.kind === "failed") {
+        failed += 1;
+        if (!firstError) firstError = outcome.reason;
+        this.registry.setEntityDispatchable(entity.id, false, envRow.id);
+        // Redacted — resolveHeaders/pool never echo secret or header values.
+        this.logger.warn(
+          `MCP discovery failed for entity ${entity.id} env ${envRow.id}: ${outcome.reason}`,
+        );
+        continue;
+      }
+
+      // CONTACTED. The server answered, and `outcome.tools` is what it said —
+      // which may be empty, and an empty ANSWER is a real answer: pruning the
+      // environment's mappings is then the correct idempotent-replace outcome.
+      // This is the only branch that may reach `registerTools`.
       try {
-        const tools = await this.fetchToolsList(entity.id, client, scope);
         const res = await this.registry.registerTools(
           {
             organizationId: entity.project.organizationId,
@@ -153,42 +239,59 @@ export class EntityMcpDiscoveryService {
             entityPk: entity.id,
             sourceEntityId: entity.externalId,
           },
-          tools,
+          outcome.tools,
           // mcp is outbound — no callback URL. Persists as NULL; the cache
           // entry gets the "mcp:noop" sentinel (design §1.3 / §4).
           null,
         );
         registered += res.registered;
         pruned += res.removed;
-        anySuccess = true;
+        contacted += 1;
       } catch (err: any) {
+        // The server answered and the WRITE failed — a real failure, and not a
+        // skip: the session was opened and the scope check or the transaction
+        // refused. Reported as such so an operator is not sent looking at a
+        // backend that answered perfectly well.
         const msg = err?.message
           ? String(err.message).slice(0, 500)
-          : "discovery failed";
+          : "registration failed";
+        failed += 1;
         if (!firstError) firstError = msg;
         this.registry.setEntityDispatchable(entity.id, false, envRow.id);
-        // Redacted — resolveHeaders/pool never echo secret or header values.
         this.logger.warn(
-          `MCP discovery failed for entity ${entity.id} env ${envRow.id}: ${msg}`,
+          `MCP registration failed for entity ${entity.id} env ${envRow.id}: ${msg}`,
         );
       }
     }
 
-    if (anySuccess) {
-      // At least one env connected → connected + clear discoveryError. Partial
-      // failures are logged above; `error` is surfaced as an informational hint.
+    if (contacted > 0) {
+      // At least one env's server ANSWERED → connected + clear discoveryError.
+      // Partial failures and skips are logged above; `error` is surfaced as an
+      // informational hint.
       await this.stampSuccess(entityPk);
       return {
         envs: envs.length,
+        contacted,
+        skipped,
+        failed,
         registered,
         pruned,
         ...(firstError ? { error: firstError } : {}),
       };
     }
 
-    const error = firstError ?? "discovery failed in all environments";
-    await this.stampFailure(entityPk, error);
-    return { envs: envs.length, registered: 0, pruned: 0, error };
+    if (failed > 0) {
+      const error = firstError ?? "discovery failed in all environments";
+      await this.stampFailure(entityPk, error);
+      return { envs: envs.length, contacted: 0, skipped, failed, registered: 0, pruned: 0, error };
+    }
+
+    // Every environment was SKIPPED. Not a failure — nothing was asked — so the
+    // entity's connection status is left exactly as it was, and no mapping is
+    // touched. The reason is stamped so the skip is visible rather than silent.
+    const error = firstError ?? "discovery was not attempted in any environment";
+    await this.stampSkipped(entityPk, error);
+    return { envs: envs.length, contacted: 0, skipped, failed: 0, registered: 0, pruned: 0, error };
   }
 
   /**
@@ -196,29 +299,44 @@ export class EntityMcpDiscoveryService {
    * one env. Mirrors the deleted `McpServerRegistryService.fetchToolsList`, with
    * the transport config read off the entity's 1:1 `mcpClient` and per-user
    * templating deferred to dispatch (no `endUserId` here).
+   *
+   * IT NEVER THROWS AND IT NEVER RETURNS A BARE LIST. Both are the same
+   * decision: a caller handed `ToolSchema[]` cannot tell an empty answer from a
+   * transport this process does not speak, and a caller handed an exception
+   * cannot tell "the server refused" from "we declined to ask". Every exit is a
+   * tagged `EnvironmentPassOutcome`, and only `contacted` carries tools.
    */
-  private async fetchToolsList(
+  private async attemptToolsList(
     entityId: string,
     client: McpClientSlice,
     scope: ScopeTuple,
-  ): Promise<ToolSchema[]> {
+  ): Promise<EnvironmentPassOutcome> {
     const transport = client.transport;
 
     if (transport === "remote-http" || transport === "remote-sse") {
       if (!client.url) {
-        throw new Error("mcpClient.url missing for remote transport");
+        return { kind: "failed", reason: "mcpClient.url missing for remote transport" };
       }
       // Discovery is NOT per-user — resolveUrl runs with no endUserId, so a
       // `{{endUserId}}` discovery URL fails closed here (design §3.2).
-      const resolvedUrl = this.credentials.resolveUrl(client.url);
+      let resolvedUrl: string;
+      try {
+        resolvedUrl = this.credentials.resolveUrl(client.url);
+      } catch (err: any) {
+        return {
+          kind: "failed",
+          reason: `url resolution failed: ${err?.message ?? "unknown"}`,
+        };
+      }
 
       // Cheap early SSRF reject; the pool's fetch re-validates + address-pins
       // every hop of every request too (BUG-4 / BUG-15 defense-in-depth).
       const urlCheck = await validatePublicUrl(resolvedUrl);
       if (!urlCheck.ok) {
-        throw new Error(
-          `server url blocked by SSRF guard: ${describeUrlValidationError(urlCheck.error)}`,
-        );
+        return {
+          kind: "failed",
+          reason: `server url blocked by SSRF guard: ${describeUrlValidationError(urlCheck.error)}`,
+        };
       }
 
       let resolvedHeaders: Record<string, string>;
@@ -227,41 +345,75 @@ export class EntityMcpDiscoveryService {
         resolvedHeaders = await this.credentials.resolveHeaders(client, scope);
       } catch (err: any) {
         // resolveHeaders never echoes secret/header values — safe to surface.
-        throw new Error(
-          `credential resolution failed: ${err?.message ?? "unknown"}`,
-        );
+        return {
+          kind: "failed",
+          reason: `credential resolution failed: ${err?.message ?? "unknown"}`,
+        };
       }
 
-      const sdkClient = await this.pool.getClient({
-        server: { id: entityId },
-        resolvedUrl,
-        resolvedHeaders,
-        transportKind: transport,
-      });
-      const listed = await sdkClient.listTools(
-        {},
-        { timeout: env.MCP_DISCOVERY_TIMEOUT_MS ?? 15_000 },
-      );
-      const raw = listed?.tools ?? [];
-      return raw.map((t: any) => ({
-        name: t.name,
-        description: t.description ?? "",
-        paramSchema: (t.inputSchema ?? {}) as Record<string, unknown>,
-      }));
+      try {
+        const sdkClient = await this.pool.getClient({
+          server: { id: entityId },
+          resolvedUrl,
+          resolvedHeaders,
+          transportKind: transport,
+        });
+        const listed = await sdkClient.listTools(
+          {},
+          { timeout: env.MCP_DISCOVERY_TIMEOUT_MS ?? 15_000 },
+        );
+        const raw = listed?.tools ?? [];
+        // CONTACTED, and `tools` may legitimately be empty: a server that
+        // publishes nothing has ANSWERED, and the prune that follows is the
+        // correct idempotent-replace outcome rather than a data loss.
+        return {
+          kind: "contacted",
+          tools: raw.map((t: any) => ({
+            name: t.name,
+            description: t.description ?? "",
+            paramSchema: (t.inputSchema ?? {}) as Record<string, unknown>,
+          })),
+        };
+      } catch (err: any) {
+        return {
+          kind: "failed",
+          reason: err?.message ? String(err.message).slice(0, 500) : "discovery failed",
+        };
+      }
     }
 
     if (transport.startsWith("hosted-")) {
-      // Platos-hosted servers ship a static manifest (K.11 follow-up). Return
-      // an empty list so discovery still succeeds (no tools registered yet).
-      return [];
+      // WIN-269. THIS USED TO `return []`, and the comment beside it said "so
+      // discovery still succeeds (no tools registered yet)". It did not merely
+      // succeed: the empty list went straight into `registerTools`, whose
+      // `deleteMany` drops the `notIn` clause when nothing is active and
+      // therefore DELETED EVERY `EnvironmentEntityTool` row the entity had in
+      // that environment — then stamped the entity `connected` with a fresh
+      // `lastDiscoveryAt`, on a five-minute cron, forever. Platos does not yet
+      // fetch the static manifest these transports ship, so the honest answer
+      // is that nothing was asked.
+      return {
+        kind: "skipped",
+        reason: `Platos does not yet read the static manifest a ${transport} server ships; nothing was asked and nothing was pruned`,
+      };
     }
 
     if (transport === "stdio") {
-      // Dev-only; deferred to K.10 — MVP ships remote-http/sse + hosted-*.
-      throw new Error("stdio transport discovery not yet implemented (K.10)");
+      // Dev-only; deferred to K.10 — MVP ships remote-http/sse + hosted-*. A
+      // SKIP rather than a failure for the same reason as the branch above:
+      // this process cannot speak the transport, which says nothing at all
+      // about whether the backend is healthy, and marking the entity
+      // disconnected on that basis is a claim nobody measured.
+      return {
+        kind: "skipped",
+        reason: "stdio transport discovery not yet implemented (K.10)",
+      };
     }
 
-    throw new Error(`unknown transport: ${transport}`);
+    // An unknown transport is NOT a skip. A `hosted-*` or `stdio` row is a
+    // capability this process has not built yet; a transport nobody recognises
+    // is a misconfigured row, and an operator has to see it and fix it.
+    return { kind: "failed", reason: `unknown transport: ${transport}` };
   }
 
   /** Stamp a successful discovery: connected + fresh timestamp, error cleared. */
@@ -277,6 +429,33 @@ export class EntityMcpDiscoveryService {
       .update({
         where: { id: entityPk },
         data: { connectionStatus: "connected", lastConnectedAt: now },
+      })
+      .catch(() => undefined);
+  }
+
+  /**
+   * Stamp a pass that WAS NOT ATTEMPTED: the reason, and nothing else.
+   *
+   * THE THIRD PERSISTED STATE, and the reason this method exists rather than
+   * either of its neighbours being reused. `stampSuccess` would claim a
+   * connection nobody opened; `stampFailure` would blame a backend nobody
+   * asked, mark the entity disconnected and null out `lastDiscoveryAt` so the
+   * one-minute cron re-skipped it forever. This writes `lastDiscoveryAt` — the
+   * sweep DID run and should back off on its normal cadence — and a
+   * `discoveryError` naming the skip, and it deliberately does not touch
+   * `Entity.connectionStatus`, because a pass that asked nothing learned
+   * nothing about liveness.
+   *
+   * So the three states are distinguishable by a reader of the two rows:
+   *   contacted  lastDiscoveryAt set, discoveryError NULL, status connected
+   *   skipped    lastDiscoveryAt set, discoveryError set,  status unchanged
+   *   failed     lastDiscoveryAt NULL, discoveryError set, status disconnected
+   */
+  private async stampSkipped(entityPk: string, reason: string): Promise<void> {
+    await this.prisma.entityMcpClient
+      .update({
+        where: { entityId: entityPk },
+        data: { lastDiscoveryAt: new Date(), discoveryError: reason.slice(0, 500) },
       })
       .catch(() => undefined);
   }

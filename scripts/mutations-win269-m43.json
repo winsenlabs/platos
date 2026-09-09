@@ -1,0 +1,167 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-269",
+  "tranche": "M4.3 stage 2 — the tool lifecycle's ORM register, the three-valued discovery outcome, and the stale double that was hiding three assertions",
+  "branch": "tejas/m4",
+  "base": "5a2e7bf8 (tejas/m4, after WIN-268 stage 1); mutations run at b5302dc6+",
+  "purpose": [
+    "This tranche has three kinds of claim and each fails in a different way.",
+    "",
+    "THE REGISTER fails by MEASURING LESS THAN IT SAYS, or by measuring the same",
+    "tree its sibling measures. M08 widens the roots until they overlap WIN-268's",
+    "— the failure that would turn two registers into two numbers to keep in",
+    "agreement; M09 removes the directory->property translation on the composed-",
+    "context join, which makes every hyphenated context read as UNCOMPOSED and",
+    "reports `identity-access` blocked on a composition that has already happened;",
+    "M10 names a contract method that does not exist, which is how a disposition",
+    "goes stale after a rename; M11 under-reports the client-level reach, which is",
+    "exactly the shape WIN-268's own M01 caught in the scanner.",
+    "",
+    "THE DISCOVERY OUTCOME fails by COLLAPSING BACK TO TWO VALUES. Every mutation",
+    "below restores a state the tree actually shipped: M01 puts back the",
+    "`return []` for `hosted-*` transports, which fed an empty list into an",
+    "idempotent-REPLACE write and deleted the entity's whole tool matrix every",
+    "five minutes while reporting success; M02 puts back `stampSuccess` for a",
+    "project with no environments, which wrote `connectionStatus: \"connected\"`",
+    "and a fresh `lastConnectedAt` for an entity nobody had contacted; M04 and M05",
+    "erase the two halves of what makes a SKIP distinguishable from a SUCCESS in",
+    "the persisted rows; M06 lets a pass that asked nothing prune anyway.",
+    "",
+    "THE UNTESTED GUARD fails SILENTLY AND IN PRODUCTION. M03 deletes the",
+    "`callRes.isError === true` check in `mcpDispatch`. Before this tranche that",
+    "mutation SURVIVED the entire repository: the flag is checked on exactly one",
+    "production line and was asserted by zero tests, so every failing MCP tool",
+    "would have reported `success` to the model with every suite green.",
+    "",
+    "THE DOUBLE fails by BEING ONE METHOD SHORT. M07 removes",
+    "`resolveEntitySigningCredential` from the shared credentials double — the",
+    "exact state the tree was in, and the reason three cases in this suite were",
+    "red for a reason unrelated to anything they assert."
+  ],
+  "procedure": [
+    "Each mutation is applied to the committed source, the named command is run,",
+    "and the source is restored byte-for-byte before the next one. A mutation is",
+    "KILLED when the command exits non-zero. The anchor for every mutation is",
+    "asserted to occur EXACTLY ONCE before it is applied, so a mutation that",
+    "silently matched nothing is reported as ANCHOR-MISSING rather than as a kill."
+  ],
+  "commands": {
+    "acceptance": "pnpm --filter platos-agent exec vitest run src/tool-gateway/mcp-transport/mcp-connected-entity --reporter=basic",
+    "register-test": "node --test scripts/arch/tool-lifecycle-reach.test.mjs"
+  },
+  "baseline": {
+    "acceptance": "18 passed / 0 failed (10 pre-existing cases, 8 added by this tranche). Before this tranche the same file was 7 passed / 3 failed; the three reds were the stale double, not a production defect.",
+    "register-test": "13 passed / 0 failed",
+    "toolGatewayWhole": "pnpm --filter platos-agent exec vitest run src/tool-gateway/ — 86 passed / 0 failed across 8 files"
+  },
+  "mutations": [
+    {
+      "name": "M01 a hosted-* transport answers with an empty tool list instead of skipping",
+      "guards": "a discovery pass that asked nothing never reaches registerTools, so it can never prune",
+      "why": "This is the state that shipped. `fetchToolsList` returned `[]` for every `hosted-*` transport with the comment 'so discovery still succeeds (no tools registered yet)'. That empty list went into `ToolRegistryService.registerTools`, whose `deleteMany` drops its `notIn` clause when nothing is active — so it deleted EVERY `EnvironmentEntityTool` row the entity had in that environment, then stamped the entity connected, on a one-minute cron with a five-minute staleness threshold.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M02 a project with no environments stamps a successful discovery",
+      "guards": "a pass that opened no session never writes connectionStatus: connected",
+      "why": "Also the state that shipped. `stampSuccess` writes `lastDiscoveryAt = now`, clears `discoveryError`, and sets `Entity.connectionStatus = 'connected'` with a fresh `lastConnectedAt`. An operator reading such an entity saw a healthy, freshly-discovered connection to a server that may have been unreachable for a week.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M03 mcpDispatch ignores the MCP `isError` flag",
+      "guards": "a tool whose backend answers with a tool-level error reports `failed`, not `success`",
+      "why": "THE ONE THAT SURVIVED EVERYTHING BEFORE THIS TRANCHE. The MCP SDK returns a SUCCESSFUL JSON-RPC response carrying `isError: true` for a tool-level failure; only the flag distinguishes it from a result. The check is one line in the whole repository and `grep -rn isError --include='*.test.ts' apps/agent/src` returned nothing. A wrong result here is invisible by construction: the model is told the call succeeded and reads the error text as output.",
+      "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M04 the skip stamp clears the reason instead of recording it",
+      "guards": "a skipped pass is distinguishable from a successful one in the PERSISTED rows, not only in the return value",
+      "why": "The return value is read by one caller; the rows are read by the console, the census and the next sweep. With `discoveryError: null` a skip and a success are byte-identical on `EntityMcpClient`, which is the same collapse M01 and M02 make in the other direction.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M05 the skip stamp also marks the entity connected",
+      "guards": "a pass that asked nothing learned nothing about liveness and writes no connection status",
+      "why": "The subtler half of M02: a skip that records its reason but ALSO claims a connection is still a lie, and the reason column would make it look diagnosed.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M06 a skipped environment registers an empty declaration anyway",
+      "guards": "only the `contacted` branch may reach registerTools",
+      "why": "This is M01's damage reached by a different route — the tag is correct and the prune happens anyway. Without this mutation the three-valued outcome could be right in the type and wrong in the control flow.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M07 the shared credentials double loses resolveEntitySigningCredential",
+      "guards": "every `this.mcpCredentials(?.)X(` in the executor's own source is a method the double provides AND a real method of McpCredentialService",
+      "why": "The exact state of the tree at 5a2e7bf8, reported by the previous stage as a known red and a 'double gap'. It was a double gap and nothing else: the production wiring is correct and `McpCredentialService.resolveEntitySigningCredential` exists. Naming the method would have fixed one instance; the guard joins to the SUBJECT's source so the next method added to the executor fails at the double instead of somewhere unrelated.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/mcp-connected-entity.acceptance.test.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M08 the two ORM registers are given overlapping roots",
+      "guards": "assertDisjointRoots compares this register's roots against WIN-268's OWN export, prefix-wise, in both directions",
+      "why": "Two registers that can both claim a file are two numbers to keep in agreement, and their totals stop being addable. The mutation adds `apps/agent/src/mcp-platform/tools`, which WIN-268 already counts.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M09 the composed-context join loses the directory->property translation",
+      "guards": "a context the composition root HAS composed is never reported blocked on composition",
+      "why": "`table-ownership.mjs` names a context by its directory (`identity-access`) and `ComposedContexts` by its property (`identityAccess`). Comparing them directly silently never matches for the four hyphenated contexts — the register reported the `McpOidcSession` site as blockedOnContext when `identity-access` is composed. This was a REAL defect in the first draft of this file, caught by this case, which is why it is in the ledger rather than only in the source.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M10 a disposition names a contract method the context does not publish",
+      "guards": "every method named in a disposition is checked against the contract read by AST from that context's contracts/index.ts",
+      "why": "A disposition's whole value is the sentence 'this file's published form is <method>'. Without the join it is a memory, and it goes stale silently the first time a contract method is renamed.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M11 the register under-reports the client-level reach",
+      "guards": "delegateSites + clientSites == totalSites, and the sites list itself re-derives every summary count",
+      "why": "The same failure WIN-268's M01 caught in the scanner, reached from the summary end: a register that reports fewer reaches than it found is green on everything it did find. The `$transaction` in `tool-registry.service.ts` is the only client-level reach in this root and is the one that must never survive a move.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    }
+  ],
+  "survivors": [],
+  "declared": {
+    "total": 11,
+    "killed": 11,
+    "survived": 0,
+    "anchorMissing": 0,
+    "equivalent": 0,
+    "note": "Eleven mutations, eleven killed, zero survivors and zero declared equivalent. M03 is the one worth reading twice: it survived the whole repository before this tranche."
+  }
+}
