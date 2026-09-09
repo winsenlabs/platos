@@ -274,6 +274,23 @@ const expectedV1EvidenceCommands = [
   "pnpm test:v1-project-graph",
   "pnpm audit:arch-boundaries",
   "pnpm test:arch-boundaries",
+  // WIN-267 (M4.1, R2). WIN-257 T8's clause — "webapp database credentials can
+  // be removed" — measured from the tree and tied to the two physical facts
+  // that constitute it. It also keeps `webapp-no-prisma` from going silent
+  // again: the M2.2 migration lock fired on 0 of the 10 edges
+  // `tenancy-prisma-only` reports inside `apps/webapp`, and `pnpm
+  // audit:arch-boundaries` could not see that, because `apps/webapp` is outside
+  // DEFAULT_SCAN_ROOTS for the length of the strangler window.
+  //
+  // Invoked directly rather than through a package.json script, for the reason
+  // given on `capability-matrix.test.mjs` and `ambient-time.mjs` above: root
+  // package.json is a webapp image build input and a line there moves the SBOM
+  // receipt buildInputsSha256. Measured rather than assumed — three scripts
+  // were added there first and `node scripts/audit-sbom.mjs check` reported
+  // "DRIFT: webapp receipt buildInputsSha256 does not match the current build
+  // inputs" on a tree where it passes at the base.
+  "node scripts/arch/webapp-prisma-surface.mjs",
+  "node --test scripts/arch/webapp-prisma-surface.test.mjs",
   "pnpm audit:max-file-lines",
   "pnpm test:max-file-lines",
   // WIN-256: the two gates ADR M0.3 specifies that M1 did not build.

@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e016d6d5fc2e6e2541aae0481bd8299247d1586531ad22bf76010ac5c6bd5f63",
+  "evidenceSha256": "c0ec4fd3a1e3e3506e1384bb119e5421dacf56d02298fe2ead85837a3e4fc244",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "bf63ef0d1d34f5e0d8c26230fc196dd1dcc7482c0d2ce270b2ce8b06a4726304",
+    "aggregateSha256": "836f91137e44020ec6c4bf0e8e3cf3f0dc01bb5dfcf42a13f3819206c2980e25",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -267,7 +267,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "55faf6b43b041c07de4acf1679872020a974e40dccc797a25c6500d8a520f56a"
+        "sha256": "6528142bcff4f23a9e4d6c9d7b6f809ad7e8cf20860bbcc81541fa7a54982325"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -11087,7 +11087,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "af4802813a8fcdf00c0dc3bf4cc5b81ae3f2af082006f1dec73f78de2717c573"
+        "sha256": "8e0e59fc0b0840a8398448b71c772ed818206d8efbc25992e457b18ecdcc88e0"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -19987,7 +19987,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "2696f28c3c018954b87b76deff8d1a4e3514d86685cd1d1f257fb49a2fc19144"
+        "sha256": "34b36e14f2186d7343a1ae1f3dff3162c75baa3ef15d8fac4d681c61f608f9e1"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -28075,12 +28075,6 @@
               "script": "audit:webapp-image-inventory"
             },
             {
-              "command": "node scripts/arch/webapp-prisma-surface.mjs",
-              "from": "package.json",
-              "kind": "script-reference",
-              "script": "audit:webapp-prisma-surface"
-            },
-            {
               "command": "pnpm --filter @platos/tenancy-database build && node apps/webapp/scripts/memory-policy.mjs build -- pnpm exec turbo run build --filter='webapp' --concurrency=1",
               "from": "package.json",
               "kind": "script-reference",
@@ -28113,12 +28107,6 @@
               "script": "lint"
             },
             {
-              "command": "node scripts/arch/webapp-prisma-surface.mjs --report",
-              "from": "package.json",
-              "kind": "script-reference",
-              "script": "report:webapp-prisma-surface"
-            },
-            {
               "from": "package.json",
               "kind": "root-turbo-task",
               "script": "start"
@@ -28140,12 +28128,6 @@
               "from": "package.json",
               "kind": "script-reference",
               "script": "test:webapp-inventory-contract"
-            },
-            {
-              "command": "node --test scripts/arch/webapp-prisma-surface.test.mjs",
-              "from": "package.json",
-              "kind": "script-reference",
-              "script": "test:webapp-prisma-surface"
             },
             {
               "command": "turbo run test --filter webapp -- --run",
@@ -29129,7 +29111,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "795f2fdd948cf103226dc107dc1e056df5ccce550b2f0a787bfcd43d3ee0652f",
+      "evidenceSha256": "f6744de9eee3b049388770181d48b97df870eb926935138f1bb6de51bbef2058",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -44886,7 +44868,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2587
+              "line": 2604
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -45053,7 +45035,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "1e22022c7c11d50205376fed577816ec92fb9b24612ed20520d3316d41da6177",
+      "evidenceSha256": "644e5c2119fc3dba1ba51d1d7a384a9bc6016aa6feb5de02c402b7c38a0e9627",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
