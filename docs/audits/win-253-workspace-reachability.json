@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "5016d9d5fdb3719a4481bca28a330bd88a73b7ea1349baff6614689213016714",
+  "evidenceSha256": "e3ed6ba8ca6026caf05d68519c727e34062aece852d83cbca84f8bb143a0efe2",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "6b0a8ea8c7c6d5ab8d7bab1ebb24cae5c386fb27477a90e7bc359f36b2d7ccb1",
+    "aggregateSha256": "b3d2417594af6cd68ab9e30dc8bcd21707a124ad65d61b9cf7824738baf752ac",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11043,7 +11043,7 @@
       },
       {
         "path": "internal-packages/tenancy-database/src/upgrade-rehearsal.integration.test.ts",
-        "sha256": "0807315e9834612c20536673dcb12142cbe55a47c3d47bf7440ef1d0502bd52d"
+        "sha256": "5e21ba327d51234e2397685602152b561bf29590f3283d8d8345a34fe09f35bb"
       },
       {
         "path": "internal-packages/tenancy-database/src/win124.integration.test.ts",
