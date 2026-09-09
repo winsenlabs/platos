@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "16cc04dd10116862074a3e68560e548e125712c40d1364d2e681be16a66a508f"
+      "sha256": "402a42d32a78750b42e4baf17b9ae11fe79ac1ad6fca790da14429f96ce9cafe"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "867cf8d6bc4df2994a8c1365c258927bccbb0351175759da3b73c78d23024a01"
+      "sha256": "8f16f1bbc634d5aa8325182659d8a0a67eda60192623cf8c5d46dfa4020fe4d0"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1093,7 +1093,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "cc52d16bf59dc1c9074a696b3ca0f2cac3232fd63dddc1745f3bf1f62485d346"
+      "sha256": "be53d8c7e8f3f846aca690300695981e55dcfd1bffb8bc1f6d373df5418f2e6d"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -2903,7 +2903,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "ba47834d21f84f741c85d486ca319b0d971da2f55929be24e3f5f9571047f3e3"
+      "sha256": "315c394c755e44c22f57ae245b0dd9d419a2bd5df315981630bcdd987ed426d8"
     },
     {
       "path": "docs/openapi.yml",
