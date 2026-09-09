@@ -171,6 +171,10 @@ export function requiredString(
  * legacy handler defaults `permissions` to `[]` and then throws deep inside the
  * service — a 500 for a request the caller could have been told about. The
  * entity mint has a real default and passes one in.
+ *
+ * THE FALLBACK APPLIES TO AN ABSENT FIELD AND NEVER TO AN EMPTY ARRAY. See the
+ * refusal below: those are two different things a caller can mean, and treating
+ * them alike would silently upgrade "grant nothing" into "grant the default".
  */
 export function stringArray(
   body: Record<string, unknown>,
@@ -193,6 +197,21 @@ export function stringArray(
       field: `body.${field}`,
       code: "invalid",
       message: "Send an array of non-empty strings.",
+    });
+    return [];
+  }
+  // AN EXPLICIT `[]` IS NOT THE DEFAULT, and the difference matters on both
+  // routes. A fallback answers "the caller did not mention this field"; an empty
+  // array is the caller SAYING the credential should grant nothing, which mints
+  // something that can call nothing. The domain refuses it too — it is the
+  // authority — but by then the refusal is `CREDENTIAL_MATERIAL_INVALID` with no
+  // `body.<field>` name on it, so a client learns the request was wrong without
+  // learning WHICH field. Refusing here is what puts the field in `fields[]`.
+  if (value.length === 0) {
+    violations.push({
+      field: `body.${field}`,
+      code: "empty",
+      message: "Send at least one value, or omit the field.",
     });
     return [];
   }
