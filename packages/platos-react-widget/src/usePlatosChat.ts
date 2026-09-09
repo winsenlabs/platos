@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PlatosClient } from "@platosdev/client";
+import { PlatosClient, PlatosRefusal, readWireError } from "@platosdev/client";
 import type { PlatosRatingDirection } from "@platosdev/client";
 import type { PerTurnOptions, VisitorIdentity } from "./types.js";
 
@@ -30,6 +30,14 @@ export interface ChatMessage {
   serverId?: string;
   /** Current local rating: 1 (up), -1 (down), or null/undefined (no vote). */
   rating?: 1 | -1 | null;
+  /**
+   * The canonical `error.code` when this turn ended in a coded refusal.
+   *
+   * Present only on an assistant bubble whose turn REACHED the agent and then
+   * failed. A turn refused before it got there leaves no bubble at all — see
+   * the failure path in `send`.
+   */
+  refusalCode?: string;
 }
 
 export interface UsePlatosChatArgs {
@@ -103,13 +111,47 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
           verified: args.identity?.verified,
         }),
       });
+      // WIN-270 (M4.4) — A REFUSAL FROM THE TOKEN ENDPOINT CARRIES ITS CODE.
+      //
+      // This is the widget's only unauthenticated call, and until this landed it
+      // threw `Error("tokenUrl /x returned 401 Unauthorized")` — a sentence, so
+      // a host page that wanted to tell "this visitor may not chat" apart from
+      // "the mint is down" had to regex HTTP status text. When the endpoint
+      // answers ADR M0.4 section 2's envelope the code is now carried through as
+      // `PlatosRefusal.code`; when it answers something else the throw names the
+      // status and says plainly that there was no code, which is the honest
+      // answer for a customer-owned endpoint this SDK does not define.
+      const raw = await res.text().catch(() => "");
+      let parsed: unknown = null;
+      try {
+        parsed = raw === "" ? null : JSON.parse(raw);
+      } catch {
+        parsed = null;
+      }
       if (!res.ok) {
-        throw new Error(
-          `tokenUrl ${args.tokenUrl} returned ${res.status} ${res.statusText}`,
+        const wire = readWireError(parsed);
+        throw new PlatosRefusal(
+          res.status,
+          wire === null
+            ? `tokenUrl ${args.tokenUrl} refused with ${res.status} and no error code`
+            : wire.title === ""
+              ? wire.code
+              : `${wire.code}: ${wire.title}`,
+          raw,
+          (parsed as Record<string, unknown> | null) ?? undefined,
         );
       }
-      const body = (await res.json()) as { token?: string };
-      if (!body.token) throw new Error("tokenUrl response missing { token }");
+      const body = (parsed ?? {}) as { token?: string };
+      // A 2xx WITH NO TOKEN IS A REFUSAL, NOT A SESSION. Returning `undefined`
+      // here would construct a `PlatosClient` with no credential and the visitor
+      // would see an empty transcript instead of a message.
+      if (typeof body.token !== "string" || body.token === "") {
+        throw new PlatosRefusal(
+          res.status,
+          `tokenUrl ${args.tokenUrl} answered ${res.status} with no { token }`,
+          raw,
+        );
+      }
       return body.token;
     })();
     tokenFetchInFlightRef.current = p;
@@ -170,6 +212,17 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
         { id: assistantId, role: "assistant", content: "", streaming: true },
       ]);
 
+      // WIN-270 (M4.4) — DID THE AGENT EVER GET THE TURN?
+      //
+      // The assistant bubble above is inserted OPTIMISTICALLY, before the token
+      // mint and before the thread exists, so that the visitor sees the typing
+      // state immediately. That is right while the turn is in flight and wrong
+      // once it has been refused: a bubble reading `[error]` is an assistant
+      // message the assistant never wrote, and on a refused mint it is a partial
+      // answer to a visitor the server declined. So the failure path below
+      // distinguishes the two cases, and this flag is the whole distinction.
+      let reachedAgent = false;
+
       try {
         setStatus("connecting");
         const client = await ensureClient();
@@ -184,6 +237,7 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
           setThreadId(tid);
         }
         setStatus("streaming");
+        reachedAgent = true;
         const ac = new AbortController();
         abortRef.current = ac;
 
@@ -239,13 +293,24 @@ export function usePlatosChat(args: UsePlatosChatArgs): UsePlatosChatResult {
         const e = err instanceof Error ? err : new Error(String(err));
         setError(e);
         setStatus("error");
-        setMessages((prev) =>
-          prev.map((m) =>
+        setMessages((prev) => {
+          // NEVER REACHED THE AGENT: the placeholder is withdrawn. The visitor's
+          // own message stays — they did send it — and `error` carries the code.
+          if (!reachedAgent) return prev.filter((m) => m.id !== assistantId);
+          return prev.map((m) =>
             m.id === assistantId
-              ? { ...m, streaming: false, content: m.content || "[error]" }
+              ? {
+                  ...m,
+                  streaming: false,
+                  content: m.content || "[error]",
+                  // The canonical code when the failure was a coded refusal, so
+                  // a host that renders its own error UI can branch on it
+                  // instead of on the placeholder string.
+                  refusalCode: e instanceof PlatosRefusal ? e.code : undefined,
+                }
               : m,
-          ),
-        );
+          );
+        });
         args.onError?.(e);
       }
     },

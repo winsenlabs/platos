@@ -40,11 +40,20 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export interface MintSessionClaims {
-  /** trigger.dev Organization.id — the tenant axis. */
+  // WIN-270 (M4.4) — THE THREE AXES ARE PLATOS'S OWN, AND SO ARE THEIR NAMES.
+  //
+  // These comments used to read `trigger.dev Organization.id`,
+  // `trigger.dev Project.id` and `trigger.dev RuntimeEnvironment.id`. The ids
+  // are minted, owned and validated by Platos; naming a vendor's schema in a
+  // published SDK's type documentation told every integrator that the tenancy
+  // model belonged to somebody else, and it is one of the two places WIN-270
+  // asks for stale Trigger vocabulary to leave the package APIs. Nothing about
+  // the wire format changed with this edit.
+  /** Organization id — the tenant axis. */
   organizationId: string;
-  /** trigger.dev Project.id — within the org. */
+  /** Project id — within the organization. */
   projectId: string;
-  /** trigger.dev RuntimeEnvironment.id — dev/staging/prod axis. */
+  /** Environment id — the dev/staging/prod axis inside the project. */
   environmentId: string;
   /** The acting user id. */
   userId: string;

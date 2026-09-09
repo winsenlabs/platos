@@ -485,6 +485,22 @@ const expectedV1EvidenceCommands = [
   // the same class as the manifest it is built from.
   "pnpm audit:openapi-compat",
   "pnpm test:openapi-compat",
+  // WIN-270 (M4.4) (+2). THE GENERATED SDK, AND THE PROOF IT IS STILL JOINED.
+  //
+  // `scripts/sdk/v1-contract.mjs` emits the TypeScript client, the Python client
+  // and the cross-language fixture from three artifacts nobody hand-edits: the
+  // V1 OpenAPI document the pair above ratchets, the operation manifest, and
+  // `apps/core-api/src/http/idempotency-policy.ts`. `audit:` fails when a
+  // committed client differs from what those inputs emit today, which is what
+  // "a generated client cannot drift" has to mean to be a claim rather than a
+  // hope. `test:` is the half that matters more: it PERTURBS each real input in
+  // memory -- reclassifies a mint, deletes a response field, renames the
+  // idempotency header, drops an operation -- and asserts the emitted artifacts
+  // move, so a generator that had stopped reading an input could not stay green.
+  // It also EXECUTES the Python suite against the same fixture, because a
+  // cross-language fixture only one language ever runs is not one.
+  "pnpm audit:sdk-v1",
+  "pnpm test:sdk-v1",
 ];
 // WIN-284. The two coverage commands inside the V1 evidence step, listed
 // separately so each gets its own removal and concealment control below. A gate

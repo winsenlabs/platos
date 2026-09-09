@@ -84,6 +84,18 @@ class PlatosAgentElement extends HTMLElement {
         <div style="color:#b91c1c;padding:8px;font:14px system-ui;">
           &lt;platos-agent&gt; missing required attribute: base-url and/or agent-id.
         </div>`;
+      // WIN-270 (M4.4) — THE HANDLE IS DROPPED WITH THE FRAME.
+      //
+      // `innerHTML =` above removes the iframe from the shadow root, and until
+      // this line `this.iframe` went on pointing at the detached element. That
+      // is the reference `onMessage` compares an event's `source` against, so a
+      // component that had rendered once and then lost its `agent-id` was
+      // deciding which postMessages to trust by consulting a frame that is no
+      // longer on the page. It refuses everything today only because a detached
+      // iframe's `contentWindow` is null; that is an accident of the DOM and not
+      // a rule this component states, and a public embed's trust check should
+      // not rest on one.
+      this.iframe = null;
       return;
     }
 
