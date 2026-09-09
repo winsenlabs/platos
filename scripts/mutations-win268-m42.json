@@ -1,0 +1,263 @@
+{
+ "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+ "issue": "WIN-268",
+ "tranche": "M4.2 stage 1 \u2014 the MCP surface's ORM register, the transport boundary rule, and three live defects",
+ "branch": "tejas/m4",
+ "base": "7e1243fc (v1, after M4.2 P1); mutations run at fe3bb5f0",
+ "purpose": [
+  "This tranche has three kinds of claim and each fails in a different way.",
+  "",
+  "THE REGISTER fails by MEASURING LESS THAN IT SAYS. A scanner that reported 124",
+  "sites instead of 153 would be green on every assertion about the sites it did",
+  "find, and the whole artifact's value is that the number is complete. So its",
+  "mutations are the four ways to under-measure: key the scan on the identifier",
+  "`prisma` and lose every transaction-scoped write (M01); drop the schema join and",
+  "count `this.byToken.delete(` as a store reach (M02); read every context as",
+  "composed and empty the BLOCKED-ON-CONTEXT verdict that is the register's whole",
+  "finding (M03); and let a file hold sites with nothing naming what it waits on",
+  "(M04, M05). M06 is the artifact itself drifting from the tree.",
+  "",
+  "THE BOUNDARY RULE fails by BEING NARROWER THAN ITS NAME. It is not enough that",
+  "it fires on `@prisma/client`: `tenancy-prisma-only` already did. What it has to",
+  "catch is the import that names no package \u2014 `../shared/database.provider` \u2014 and",
+  "the whole transport tree rather than one subdirectory (M07, M08, M09).",
+  "",
+  "THE DEFECT FIXES fail by BEING GREEN ON A DOUBLE. Every one of them is about",
+  "what PostgreSQL does with a where-clause or a Json value, so each mutation is",
+  "run against a REAL PostgreSQL 17 and each restores the exact shape that shipped:",
+  "the two coalescing operators (M10, M11), the silent `continue` (M12), the JSON",
+  "null (M13), and the five ways the tier-2 chain check can be removed (M14-M19,",
+  "M21, M22)."
+ ],
+ "procedure": [
+  "One mutation, one file, one command, run individually and reverted before the",
+  "next. Never batched: a batch that goes red says only that something did.",
+  "",
+  "THE DATABASE IS REAL AND IT IS NOT DOCKER. Docker may not run on this laptop, so",
+  "the four integration commands run against a throwaway native PostgreSQL 17.10",
+  "cluster (Homebrew `postgresql@17`, initdb into a scratch directory, port 55432,",
+  "dropped afterwards). Every suite migrates the canonical schema into its own",
+  "scratch namespace and drops it, so nothing outlives the run."
+ ],
+ "commands": {
+  "register-test": "node --test scripts/arch/mcp-store-ownership.test.mjs",
+  "register-check": "node scripts/arch/mcp-store-ownership.mjs --check",
+  "arch-test": "node --test scripts/arch/arch-boundaries.test.mjs",
+  "gateway-unit": "pnpm --filter platos-agent exec vitest run src/mcp-platform/permission-gateway.service.test.ts",
+  "gateway-forged": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=... MCP_FORGED_SCOPE_REQUIRED=1 pnpm --filter platos-agent exec vitest run src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+  "macros-postgres": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=... pnpm --filter platos-agent exec vitest run src/mcp-platform/tools/macros-replay-postgres.integration.test.ts"
+ },
+ "baseline": "Every command above is green at fe3bb5f0 before any mutation is applied: register-test 11/11, arch-test 24/24 (1 pre-existing skip), gateway-unit 12/12, gateway-forged 10/10, macros-postgres 12/12.",
+ "mutations": [
+  {
+   "name": "M01 the scanner keys on the identifier `prisma` and misses transaction-scoped writes",
+   "guards": "the register counts `tx.<model>.<op>` inside `$transaction`, which is where 16 of the 141 delegate sites live",
+   "why": "This is the mutation that reproduces the brief's own figure. 124 is what a `prisma.`-keyed scan reports; the tree holds 141 delegate calls and 13 client-level reaches.",
+   "file": "scripts/arch/mcp-store-ownership.mjs",
+   "command": "register-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M02 the schema join is dropped and any delegate-shaped call counts",
+   "guards": "a match is a SCHEMA MODEL paired with a Prisma operation, never a name that looks right",
+   "why": "`this.byToken.delete(`, `this.sseSessionAborts.delete(` and `this.toolAclService.upsert(` are all `<x>.<y>.<delegate-op>(` and none is a store reach.",
+   "file": "scripts/arch/mcp-store-ownership.mjs",
+   "command": "register-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M03 every context is reported composed, so BLOCKED-ON-CONTEXT empties",
+   "guards": "the composed set is read off `app.module.ts`'s ComposedContexts literal",
+   "why": "86 of 154 sites are blocked because their owner is not composed. A register that read seventeen composed contexts would report the surface as nearly movable and be wrong about the only thing it exists to say.",
+   "file": "scripts/arch/mcp-store-ownership.mjs",
+   "command": "register-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M04 a disposition is DELETED, so a file holds ORM sites naming nothing",
+   "guards": "every file with a site must name its owning contexts and what it is waiting on",
+   "why": "The derived verdict says which of four structural states a site is in; only the disposition says WHICH use case is not on a contract, and that sentence is the whole of 'stop at the call site and name it'.",
+   "file": "scripts/arch/mcp-store-ownership.mjs",
+   "command": "register-test",
+   "exit": 1,
+   "outcome": "killed",
+   "note": "An earlier form of this mutation emptied the SCRIPT's `undispositioned` list and survived, because the suite carries the same requirement independently. Deleting the row is the mutation that removes the property rather than one of its two guards."
+  },
+  {
+   "name": "M05 a disposition names a context its sites do not belong to",
+   "guards": "a disposition's context list must equal the owners the scan actually found in that file",
+   "why": "A prose note nobody joins to the tree goes stale silently. This tranche's own tier-2 fix moved `permission-gateway.service.ts` from two owners to three, and this check is what caught it.",
+   "file": "scripts/arch/mcp-store-ownership.mjs",
+   "command": "register-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M06 the register is allowed to drift from the committed evidence",
+   "guards": "`--check` fails when the tree and docs/audits/win-268-mcp-store-ownership.json disagree",
+   "file": "docs/audits/win-268-mcp-store-ownership.json",
+   "command": "register-check",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M07 the transport rule loses its `apps/agent` clause",
+   "guards": "a transport may not import any module of the deployable the surface is moving out of",
+   "file": "scripts/arch/boundary-rules.mjs",
+   "command": "arch-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M08 the transport rule is deleted entirely",
+   "guards": "the indirection `../shared/database.provider`, which names no banned package",
+   "why": "The proof asserts BOTH that the new rule fires on that import and that `tenancy-prisma-only` does not, so deleting the new rule is visible rather than masked by the old one.",
+   "file": "scripts/arch/boundary-rules.mjs",
+   "command": "arch-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M09 the transport rule is narrowed to the mcp subdirectory only",
+   "guards": "the whole of apps/core-api/src/transports/, not one directory of it",
+   "why": "A rule scoped to one subdirectory invites the next surface to be moved one directory sideways.",
+   "file": "scripts/arch/boundary-rules.mjs",
+   "command": "arch-test",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M10 an unreadable recorded step is replayed with no parameters again",
+   "guards": "macros.replay refuses a step with no `params` key instead of dispatching `{}`",
+   "why": "THE CARRIED DEFECT, restored exactly. The suite asserts both that the step is reported failed AND that the tool was never called, so a fix that dispatched and relabelled would not pass either.",
+   "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+   "command": "macros-postgres",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M11 a non-object params is cast rather than refused",
+   "guards": "`row.steps as unknown as MacroStep[]` is a cast over a shape PostgreSQL does not enforce",
+   "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+   "command": "macros-postgres",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M12 a refused step is skipped silently instead of reported",
+   "guards": "a step that cannot be replayed appears in `results` at its own index",
+   "why": "The previous `continue` left `stepCount` at three and `results` at two, so `results.every(r => r.ok)` read as an all-green replay of a macro that ran half of itself.",
+   "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+   "command": "macros-postgres",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M13 record_stop sends JSON null for an absent paramSchema again",
+   "guards": "the `Macro_paramSchema_json_root` check constraint",
+   "why": "Only a real database can report SQLSTATE 23514. The unit suite doubles `prisma.macro.create` with `vi.fn()` and returned the row it was handed.",
+   "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+   "command": "macros-postgres",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M14 tier 2 reads the CLAIMED organization again",
+   "guards": "nothing \u2014 see `declared`",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-forged",
+   "exit": 0,
+   "outcome": "declared-equivalent"
+  },
+  {
+   "name": "M15 a broken chain abstains instead of refusing",
+   "guards": "a forged chain is a tier-2 block, not a null",
+   "why": "THE DEFECT ITSELF. `null` meant both 'no policy matches' and 'I could not verify the tenant', and a tier that can only tighten became one that declined to have an opinion.",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-forged",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M16 the three refusal causes collapse to one code",
+   "guards": "distinct reasons for a missing environment, a wrong project and a wrong organization",
+   "why": "Two guards answering the same code cannot be told apart in an audit line.",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-forged",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M17 the project half of the chain is no longer checked",
+   "guards": "all three members of the triple are checked, not two",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-unit",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M18 upsertOrgPolicy stops resolving the scope and writes for the claimed org",
+   "guards": "the CRUD helpers are not a cross-tenant WRITE",
+   "why": "The suite asserts the refusal AND that no row was created, so a refusal thrown after the write would not pass.",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-forged",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M19 deleteOrgPolicy answers false for a refused scope instead of throwing",
+   "guards": "an empty result may not stand in for a refusal",
+   "why": "`false` already means 'no such row'. The suite pins both answers in one case so they cannot be conflated.",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-forged",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M20 the unit harness loses its chain double entirely",
+   "guards": "the unit suite exercises the chain read at all",
+   "why": "Before this tranche the double had NO `environment` delegate, which is why no case in that file could have observed the missing join. An earlier form of this mutation deleted only the assertion and survived; deleting the double is what removes the coverage.",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.test.ts",
+   "command": "gateway-unit",
+   "exit": 1,
+   "outcome": "killed"
+  },
+  {
+   "name": "M21 the resolved organization is replaced by the claimed one at its source",
+   "guards": "nothing \u2014 see `declared`",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-forged",
+   "exit": 0,
+   "outcome": "declared-equivalent"
+  },
+  {
+   "name": "M22 the environment lookup itself is removed and the chain is assumed real",
+   "guards": "a missing environment is a refusal and not a pass",
+   "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+   "command": "gateway-forged",
+   "exit": 1,
+   "outcome": "killed"
+  }
+ ],
+ "survivors": "None. Twenty-two of twenty-four mutations were killed; the two that were not are declared below with the proof that they cannot be killed by anything.",
+ "declared": [
+  "M14 AND M21 ARE PROVABLY EQUIVALENT TO THE CODE THEY REPLACE, and that is a",
+  "property of the guard rather than a gap in the suite.",
+  "",
+  "`resolveOrganization` returns `{ ok: true, organizationId }` only after",
+  "`environment.project.organizationId === scope.organizationId` has been checked.",
+  "On every line reachable from that `ok`, the two values are EQUAL. So substituting",
+  "one for the other \u2014 at the return (M21) or at the where-clause (M14) \u2014 changes no",
+  "observable behaviour on any input, and no test can distinguish them.",
+  "",
+  "THE CODE STILL READS THE RESOLVED ONE, deliberately. Using the claimed id would",
+  "throw the verification away one statement after earning it, and the equality is",
+  "an invariant of the current control flow rather than of the type: the day a",
+  "fourth branch is added to `resolveOrganization`, the claimed id stops being safe",
+  "and nothing would have said so. M22 is the mutation that DOES break that",
+  "invariant \u2014 it returns `ok` without checking anything \u2014 and it is killed."
+ ]
+}
