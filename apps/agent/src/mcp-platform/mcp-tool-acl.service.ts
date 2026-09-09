@@ -1,9 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { PolicyEffect } from "@platos/tenancy-database";
+
 import {
-  type ControlDatabaseClient,
-  PRISMA_TOKEN,
-} from "../shared/database.provider";
+  EntityToolPolicyStore,
+  type EntityToolPolicyReader,
+  type EntityToolPolicyRow,
+} from "./entity-tool-policy.store";
+import type { ClaimedScope, ScopeRefusalReason } from "./mcp-scope";
 
 const PAT_SCOPE_PREFIX = "platos:pat:";
 const DEFAULT_SCOPE = "mcp:tools";
@@ -36,18 +38,27 @@ export interface ToolAclListRow extends Omit<ToolAclRow, "addedAt"> {
   addedAt: Date | null;
 }
 
-interface PolicyWithTool {
-  id: string;
-  environmentId: string;
-  entityId: string;
-  toolId: string;
-  effect: PolicyEffect;
-  minIdentityMode: string;
-  scopeLabels: string[];
-  addedBy: string;
-  addedAt: Date;
-  lastReviewedAt: Date | null;
-  tool: { name: string };
+/**
+ * A read or write whose claimed scope was not a real chain.
+ *
+ * WHY AN EXCEPTION AND NOT A FALSY RETURN. `bulk()` answers a COUNT and
+ * `list()` answers a page; zero and an empty page are both legitimate answers to
+ * a legitimate question, so a refusal reported through either of them would be
+ * an empty result standing in for a denial — the exact defect WIN-268 P2 removed
+ * from the permission gateway's tier 2. The transport maps this to 403.
+ */
+export class ToolAclScopeRefusedError extends Error {
+  constructor(readonly reason: ScopeRefusalReason) {
+    super(`claimed MCP scope is ${reason}`);
+    this.name = "ToolAclScopeRefusedError";
+  }
+}
+
+function unwrap<Value>(
+  result: { ok: true; value: Value } | { ok: false; reason: ScopeRefusalReason },
+): Value {
+  if (!result.ok) throw new ToolAclScopeRefusedError(result.reason);
+  return result.value;
 }
 
 function decodeLabels(labels: string[]): {
@@ -71,21 +82,48 @@ function encodeLabels(scopeLabels: string[], allowedPatIds: string[]): string[] 
   );
 }
 
-/** PIFSP-25 — clean-schema, default-deny entity tool policy service. */
+/**
+ * PIFSP-25 — clean-schema, default-deny entity tool policy service.
+ *
+ * ---------------------------------------------------------------------------
+ * WIN-268 P2 — THE ORM LEFT THIS FILE, AND THE SCOPE BECAME A CLAIM
+ *
+ * The ten `entityToolPolicy` / `environmentEntityTool` / `entityMcpConfig`
+ * statements are now `entity-tool-policy.store.ts`, whose header records why
+ * they cannot yet be `toolsContract.listEntityToolPolicies(...)` even though
+ * `tools` owns every row and already publishes every use case.
+ *
+ * TWO KINDS OF ENVIRONMENT REACH THIS SERVICE AND THEY ARE NOT THE SAME KIND
+ * OF FACT, which is why the signatures below diverged rather than all taking a
+ * scope:
+ *
+ *   An OPERATOR path arrives from `getOperatorScope(req)`, whose
+ *   organization/project/environment triple is three unrelated request headers
+ *   that nothing joins (`mcp-scope.ts` carries the measurement). It is a CLAIM,
+ *   so `list`, `upsert` and `bulk` take a `ClaimedScope` and the store resolves
+ *   it against the tree before touching a policy row.
+ *
+ *   The INBOUND MCP path arrives as `token.environmentId`, read off the
+ *   `McpBearerToken` / anonymous-session row that authenticated the request.
+ *   Nobody claimed it; the credential carries it. `getExposedPoliciesByName`
+ *   therefore still takes a bare environment id, and saying so here is the
+ *   point: a reader who "tidies" that into a `ClaimedScope` would be inventing
+ *   an organization and a project the credential never named.
+ */
 @Injectable()
 export class McpToolAclService {
   constructor(
-    @Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient,
+    @Inject(EntityToolPolicyStore) private readonly store: EntityToolPolicyReader,
   ) {}
 
-  private projectPolicy(policy: PolicyWithTool): ToolAclRow {
+  private projectPolicy(policy: EntityToolPolicyRow): ToolAclRow {
     const labels = decodeLabels(policy.scopeLabels);
     return {
       id: policy.id,
       entityPk: policy.entityId,
       toolId: policy.toolId,
-      toolName: policy.tool.name,
-      exposed: policy.effect === PolicyEffect.ALLOW,
+      toolName: policy.toolName,
+      exposed: policy.effect === "ALLOW",
       minIdentityMode: policy.minIdentityMode,
       allowedPatIds: labels.allowedPatIds,
       scopeLabels: labels.scopeLabels,
@@ -95,68 +133,32 @@ export class McpToolAclService {
   }
 
   async list(
+    scope: ClaimedScope,
     entityPk: string,
-    environmentId: string,
     options: { exposed?: boolean; search?: string; limit?: number; offset?: number } = {},
   ): Promise<{ tools: ToolAclListRow[]; total: number; limit: number; offset: number }> {
     const offset = boundedInteger(options.offset, 0, 0, Number.MAX_SAFE_INTEGER);
     const limit = boundedInteger(options.limit, 200, 1, 200);
-    const policyScope = { environmentId, entityId: entityPk, effect: PolicyEffect.ALLOW };
-    const toolWhere = {
-      ...(options.search
-        ? { name: { contains: options.search, mode: "insensitive" as const } }
-        : {}),
-      ...(options.exposed === true
-        ? { entityPolicies: { some: policyScope } }
-        : options.exposed === false
-          ? { entityPolicies: { none: policyScope } }
-          : {}),
-    };
-    const where = {
-      entityId: entityPk,
-      environmentId,
-      enabled: true,
-      ...(Object.keys(toolWhere).length > 0 ? { tool: toolWhere } : {}),
-    };
-    const { mappings, policies, total } = await this.prisma.$transaction(async (tx) => {
-      const [count, page] = await Promise.all([
-        tx.environmentEntityTool.count({ where }),
-        tx.environmentEntityTool.findMany({
-          where,
-          select: {
-            id: true,
-            toolId: true,
-            tool: { select: { name: true } },
-          },
-          orderBy: [{ tool: { name: "asc" } }, { id: "asc" }],
-          skip: offset,
-          take: limit,
-        }),
-      ]);
-      const pagePolicies = page.length === 0
-        ? []
-        : await tx.entityToolPolicy.findMany({
-            where: {
-              environmentId,
-              entityId: entityPk,
-              toolId: { in: page.map((mapping) => mapping.toolId) },
-            },
-            include: { tool: { select: { name: true } } },
-          });
-      return { mappings: page, policies: pagePolicies, total: count };
-    });
+    const page = unwrap(
+      await this.store.pageExposures(scope, entityPk, {
+        exposed: options.exposed,
+        search: options.search,
+        limit,
+        offset,
+      }),
+    );
     const policyByToolId = new Map(
-      policies.map((policy) => [policy.toolId, this.projectPolicy(policy)]),
+      page.policies.map((policy) => [policy.toolId, this.projectPolicy(policy)]),
     );
 
-    const tools: ToolAclListRow[] = mappings.map((mapping) => {
+    const tools: ToolAclListRow[] = page.exposures.map((mapping) => {
       const policy = policyByToolId.get(mapping.toolId);
       if (!policy) {
         return {
           id: mapping.id,
           entityPk,
           toolId: mapping.id,
-          toolName: mapping.tool.name,
+          toolName: mapping.toolName,
           exposed: false,
           minIdentityMode: "bearer",
           allowedPatIds: [],
@@ -169,32 +171,31 @@ export class McpToolAclService {
       // resolves it back to the canonical Tool id before mutation.
       return { ...policy, toolId: mapping.id };
     });
-    return { tools, total, limit, offset };
+    return { tools, total: page.total, limit, offset };
   }
 
   async getExposedToolNames(entityPk: string): Promise<string[]> {
-    const rows = await this.prisma.entityToolPolicy.findMany({
-      where: { entityId: entityPk, effect: PolicyEffect.ALLOW },
-      select: { tool: { select: { name: true } } },
-    });
-    return Array.from(new Set(rows.map((row) => row.tool.name)));
+    return [...(await this.store.exposedToolNamesForEntity(entityPk))];
   }
 
-  /** Load every effective allow policy for a name (normally exactly one). */
+  /**
+   * Load every effective allow policy for a name (normally exactly one).
+   *
+   * `verifiedEnvironmentId` COMES OFF A CREDENTIAL ROW, NOT OFF A HEADER — see
+   * the class banner. This is the runtime dispatch authority for the inbound
+   * `/mcp/entity/:id` surface and it stays keyed on the environment the token
+   * was minted in.
+   */
   async getExposedPoliciesByName(
     entityPk: string,
-    environmentId: string,
+    verifiedEnvironmentId: string,
     toolName?: string,
   ): Promise<ToolAclRow[]> {
-    const rows = await this.prisma.entityToolPolicy.findMany({
-      where: {
-        entityId: entityPk,
-        environmentId,
-        effect: PolicyEffect.ALLOW,
-        ...(toolName ? { tool: { name: toolName } } : {}),
-      },
-      include: { tool: { select: { name: true } } },
-    });
+    const rows = await this.store.listAllowedPoliciesForVerifiedEnvironment(
+      verifiedEnvironmentId,
+      entityPk,
+      toolName,
+    );
     return rows.map((row) => this.projectPolicy(row));
   }
 
@@ -224,8 +225,8 @@ export class McpToolAclService {
   }
 
   async upsert(
+    scope: ClaimedScope,
     entityPk: string,
-    environmentId: string,
     toolId: string,
     toolName: string,
     addedBy: string,
@@ -233,116 +234,72 @@ export class McpToolAclService {
       Pick<ToolAclRow, "exposed" | "minIdentityMode" | "allowedPatIds" | "scopeLabels">
     >,
   ): Promise<ToolAclRow> {
-    const existing = await this.prisma.entityToolPolicy.findUnique({
-      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
-      select: { scopeLabels: true },
-    });
-    const current = decodeLabels(existing?.scopeLabels ?? [DEFAULT_SCOPE]);
-    const row = await this.prisma.entityToolPolicy.upsert({
-      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
-      create: {
-        environmentId,
-        entityId: entityPk,
-        toolId,
-        effect: data.exposed ? PolicyEffect.ALLOW : PolicyEffect.DENY,
+    const existing = unwrap(await this.store.readScopeLabels(scope, entityPk, toolId));
+    const current = decodeLabels(existing ?? [DEFAULT_SCOPE]);
+    const row = unwrap(
+      await this.store.savePolicy(scope, entityPk, toolId, addedBy, {
+        effect: data.exposed ? "ALLOW" : "DENY",
         minIdentityMode: data.minIdentityMode ?? "bearer",
         scopeLabels: encodeLabels(
           data.scopeLabels ?? [DEFAULT_SCOPE],
           data.allowedPatIds ?? [],
         ),
-        addedBy,
-      },
-      update: {
-        ...(data.exposed !== undefined && {
-          effect: data.exposed ? PolicyEffect.ALLOW : PolicyEffect.DENY,
-        }),
-        ...(data.minIdentityMode !== undefined && {
-          minIdentityMode: data.minIdentityMode,
-        }),
+      }, {
+        ...(data.exposed !== undefined && { effect: data.exposed ? "ALLOW" as const : "DENY" as const }),
+        ...(data.minIdentityMode !== undefined && { minIdentityMode: data.minIdentityMode }),
         ...((data.scopeLabels !== undefined || data.allowedPatIds !== undefined) && {
           scopeLabels: encodeLabels(
             data.scopeLabels ?? current.scopeLabels,
             data.allowedPatIds ?? current.allowedPatIds,
           ),
         }),
-      },
-    });
+      }),
+    );
     await this.syncAllowlist(entityPk);
-    return this.projectPolicy({ ...row, tool: { name: toolName } });
+    return this.projectPolicy({ ...row, toolName });
   }
 
   async bulk(
+    scope: ClaimedScope,
     entityPk: string,
-    environmentId: string,
     mappingIds: string[],
     action: "expose" | "hide" | "set_identity",
     options: { minIdentityMode?: string; addedBy?: string } = {},
   ): Promise<number> {
     if (mappingIds.length === 0) return 0;
-    const mappings = await this.prisma.environmentEntityTool.findMany({
-      where: { id: { in: mappingIds }, entityId: entityPk, environmentId },
-      select: { toolId: true },
-    });
-    const toolIds = Array.from(new Set(mappings.map((mapping) => mapping.toolId)));
+    const toolIds = unwrap(await this.store.toolIdsForMappings(scope, entityPk, mappingIds));
     if (toolIds.length === 0) return 0;
 
-    await this.prisma.$transaction(
-      toolIds.map((toolId) =>
-        this.prisma.entityToolPolicy.upsert({
-          where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
-          create: {
-            environmentId,
-            entityId: entityPk,
-            toolId,
-            effect:
-              action === "expose" ? PolicyEffect.ALLOW : PolicyEffect.DENY,
-            minIdentityMode:
-              action === "set_identity"
-                ? options.minIdentityMode ?? "bearer"
-                : "bearer",
-            scopeLabels: [DEFAULT_SCOPE],
-            addedBy: options.addedBy ?? "system",
-          },
-          update:
-            action === "set_identity"
-              ? { minIdentityMode: options.minIdentityMode ?? "bearer" }
-              : {
-                  effect:
-                    action === "expose" ? PolicyEffect.ALLOW : PolicyEffect.DENY,
-                },
-        }),
-      ),
+    const written = unwrap(
+      await this.store.savePolicies(scope, entityPk, toolIds, {
+        effect: action === "expose" ? "ALLOW" : "DENY",
+        minIdentityMode: action === "set_identity" ? options.minIdentityMode ?? "bearer" : "bearer",
+        scopeLabels: [DEFAULT_SCOPE],
+        addedBy: options.addedBy ?? "system",
+      }, action === "set_identity"
+        ? { minIdentityMode: options.minIdentityMode ?? "bearer" }
+        : { effect: action === "expose" ? "ALLOW" : "DENY" }),
     );
     await this.syncAllowlist(entityPk);
-    return toolIds.length;
+    return written;
   }
 
   async autoInsert(
+    scope: ClaimedScope,
     entityPk: string,
-    environmentId: string,
     toolId: string,
     _toolName: string,
   ): Promise<void> {
-    await this.prisma.entityToolPolicy.upsert({
-      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
-      create: {
-        environmentId,
-        entityId: entityPk,
-        toolId,
-        effect: PolicyEffect.DENY,
+    unwrap(
+      await this.store.savePolicy(scope, entityPk, toolId, "system", {
+        effect: "DENY",
         minIdentityMode: "bearer",
         scopeLabels: [DEFAULT_SCOPE],
-        addedBy: "system",
-      },
-      update: {},
-    });
+      }, {}),
+    );
   }
 
   private async syncAllowlist(entityPk: string): Promise<void> {
-    const names = await this.getExposedToolNames(entityPk);
-    await this.prisma.entityMcpConfig.updateMany({
-      where: { entityId: entityPk },
-      data: { toolAllowlist: names },
-    });
+    await this.store.syncAllowlist(entityPk, await this.store.exposedToolNamesForEntity(entityPk));
   }
 }

@@ -7,6 +7,11 @@ import { McpEntityController } from "./mcp-entity.controller";
 import { McpBearerTokenService } from "./mcp-bearer-token.service";
 import { McpIdentityResolverService } from "./identity-resolver.service";
 import { McpToolAclService } from "./mcp-tool-acl.service";
+// WIN-268 P2 — the ORM seams. Each is shaped like the `tools` / `identity-access`
+// contract call that replaces it; see each file's header for the three
+// measurements that say why that call cannot be made from this process yet.
+import { McpPolicyStore } from "./mcp-policy.store";
+import { EntityToolPolicyStore } from "./entity-tool-policy.store";
 import { AgentRuntimeModule } from "../agent-runtime/agent-runtime.module";
 import { MemoryModule } from "../memory/memory.module";
 import { EvalsModule } from "../evals/evals.module";
@@ -56,7 +61,7 @@ import { AdminModule } from "../admin/admin.module";
   // both share OAuthModule + ToolGatewayModule (ToolExecutorService +
   // ToolRouterService).
   controllers: [McpPlatformController, McpEntityController],
-  providers: [PlatosMCPTokenService, MCPPermissionGatewayService, McpEventsService, McpBearerTokenService, McpIdentityResolverService, McpToolAclService],
+  providers: [McpPolicyStore, EntityToolPolicyStore, PlatosMCPTokenService, MCPPermissionGatewayService, McpEventsService, McpBearerTokenService, McpIdentityResolverService, McpToolAclService],
   exports: [PlatosMCPTokenService, MCPPermissionGatewayService, McpEventsService, McpBearerTokenService, McpIdentityResolverService, McpToolAclService],
 })
 export class McpPlatformModule {}

@@ -1266,7 +1266,7 @@ export class McpEntityController {
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
-    const result = await this.toolAclService.list(entity.entityPk, scope.environmentId, {
+    const result = await this.toolAclService.list(scope, entity.entityPk, {
       exposed: exposed === "true" ? true : exposed === "false" ? false : undefined,
       search,
       limit: limit ? parseInt(limit, 10) : undefined,
@@ -1298,8 +1298,8 @@ export class McpEntityController {
     });
     if (!toolReg) throw new HttpException("Tool not found", HttpStatus.NOT_FOUND);
     const row = await this.toolAclService.upsert(
+      scope,
       entity.entityPk,
-      scope.environmentId,
       toolReg.toolId,
       toolReg.tool.name,
       scope.userId,
@@ -1319,7 +1319,7 @@ export class McpEntityController {
     const entity = await this.loadEntity(entityId, scope);
     if (!entity) throw new HttpException("Entity not found", HttpStatus.NOT_FOUND);
     if (entity.organizationId !== scope.organizationId) throw new HttpException("Forbidden", HttpStatus.FORBIDDEN);
-    const count = await this.toolAclService.bulk(entity.entityPk, scope.environmentId, body.toolIds, body.action, {
+    const count = await this.toolAclService.bulk(scope, entity.entityPk, body.toolIds, body.action, {
       minIdentityMode: body.minIdentityMode,
       addedBy: scope.userId,
     });

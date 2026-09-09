@@ -1,9 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import {
-  PRISMA_TOKEN,
-  type ControlDatabaseClient,
-} from "../shared/database.provider";
 import type { RequestScope } from "../auth/scope.guard";
+import { McpPolicyStore, type McpPolicyReader } from "./mcp-policy.store";
+import type { ScopeRefusalReason } from "./mcp-scope";
 
 /**
  * Theme K.3 — 4-tier MCP permission gateway.
@@ -370,11 +368,46 @@ export interface ResolvedPermission {
   reason: string;
 }
 
+/**
+ * A read whose scope was refused, as an exception for the CRUD paths.
+ *
+ * WHY AN EXCEPTION HERE AND A UNION IN `resolve`. `resolve` has a return type
+ * that can carry a denial — that is what it is for — so a refusal there is a
+ * value. The three CRUD helpers return rows, and the alternative to throwing
+ * would have been widening all three return types so every caller in
+ * `tools/mcp.ts` had to destructure a result it has no decision to make about.
+ * The transport maps this to a 403 the same way it maps every other
+ * authorization failure.
+ */
+export class McpScopeRefusedError extends Error {
+  constructor(readonly reason: ScopeRefusalReason) {
+    super(`claimed MCP scope is ${reason}`);
+    this.name = "McpScopeRefusedError";
+  }
+}
+
+function unwrapScoped<Value>(result: { ok: true; value: Value } | { ok: false; reason: ScopeRefusalReason }): Value {
+  if (!result.ok) throw new McpScopeRefusedError(result.reason);
+  return result.value;
+}
+
+function isScopeRefusal(value: unknown): value is { refused: ScopeRefusalReason } {
+  return typeof value === "object" && value !== null && "refused" in value;
+}
+
 @Injectable()
 export class MCPPermissionGatewayService {
   private readonly logger = new Logger(MCPPermissionGatewayService.name);
 
-  constructor(@Inject(PRISMA_TOKEN) private readonly prisma: ControlDatabaseClient) {}
+  /**
+   * WIN-268 P2 — the gateway holds a READER, not a client.
+   *
+   * Nest injects `McpPolicyStore`; the field is typed as the narrow
+   * `McpPolicyReader` interface so nothing in this file can reach a Prisma type,
+   * and so the day `apps/agent` can reach `toolsContract` the swap is this one
+   * line rather than a rewrite of the lattice below.
+   */
+  constructor(@Inject(McpPolicyStore) private readonly policies: McpPolicyReader) {}
 
   /** Tier-1 platform baseline. Matches pattern list to get the minimum. */
   private readPlatformMinimum(toolName: string): McpPermissionState {
@@ -384,17 +417,27 @@ export class MCPPermissionGatewayService {
     return "auto_allow";
   }
 
-  /** Tier-2 org policy — DB lookup. Returns null when no matching row. */
+  /**
+   * Tier-2 org policy. Returns null when no matching row — and a REFUSAL when
+   * the claimed scope is not a real chain.
+   *
+   * THE THIRD RETURN VALUE IS THE POINT. This method used to answer
+   * `McpPermissionState | null`, where `null` carried two completely different
+   * facts: "this organization has no policy for this tool" and "the
+   * organization I was told to read is not the one that owns this environment,
+   * so it has no policy for anything". `mcp-scope.ts` records the measurement —
+   * the triple comes from three unrelated headers and nothing joins them — and
+   * the consequence: a forged organization id turned a tier that can only
+   * TIGHTEN into a tier that abstains. The refusal is now its own branch.
+   */
   private async readOrgPolicy(
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     toolName: string,
-  ): Promise<McpPermissionState | null> {
-    const rows = await this.prisma.organizationMcpPolicy.findMany({
-      where: { organizationId: scope.organizationId },
-      select: { pattern: true, effect: true },
-    });
+  ): Promise<McpPermissionState | null | { refused: ScopeRefusalReason }> {
+    const rows = await this.policies.listOrganizationPolicies(scope);
+    if (!rows.ok) return { refused: rows.reason };
     let winner: McpPermissionState | null = null;
-    for (const row of rows) {
+    for (const row of rows.value) {
       if (matchesPattern(row.pattern, toolName)) {
         const normalized = fromPolicyEffect(row.effect);
         if (normalized && (!winner || stateOrder(normalized) > stateOrder(winner))) {
@@ -405,43 +448,29 @@ export class MCPPermissionGatewayService {
     return winner;
   }
 
-  /** Tier-3 per-agent override from the active version's typed tool policy. */
+  /**
+   * Tier-3 per-agent override from the active version's typed tool policy.
+   *
+   * AN AGENT WITH NO BINDING IN THIS SCOPE IS STILL A DENIAL, unchanged: an
+   * agent whose active version cannot be resolved in the environment it is
+   * calling in is not an agent with no restrictions, it is an agent that is not
+   * deployed here. A scope REFUSAL is reported separately, because "you asked
+   * about a scope that does not exist" and "that agent is not deployed in this
+   * scope" are different answers and only one of them is about the agent.
+   */
   private async readAgentOverride(
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     agentId: string,
     toolName: string,
-  ): Promise<McpPermissionState | null> {
-    const binding = await this.prisma.agentBinding.findFirst({
-      where: {
-        agentId,
-        environmentId: scope.environmentId,
-        environment: {
-          projectId: scope.projectId,
-          project: { organizationId: scope.organizationId },
-        },
-        agent: { projectId: scope.projectId },
-      },
-      select: {
-        activeAgentVersion: {
-          select: {
-            toolDefaultPolicy: true,
-            toolPolicies: {
-              where: { tool: { name: toolName } },
-              orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
-              take: 1,
-              select: { effect: true },
-            },
-          },
-        },
-      },
-    });
-    if (!binding) {
+  ): Promise<McpPermissionState | null | { refused: ScopeRefusalReason }> {
+    const binding = await this.policies.findAgentPolicyBinding(scope, agentId, toolName);
+    if (!binding.ok) return { refused: binding.reason };
+    if (binding.value === null) {
       this.logger.warn("MCP permission denied: scoped AgentBinding was not found");
       return "block";
     }
-    const explicit = binding.activeAgentVersion.toolPolicies[0];
-    if (explicit) return fromPolicyEffect(explicit.effect);
-    return binding.activeAgentVersion.toolDefaultPolicy === "ALL" ? "auto_allow" : "block";
+    if (binding.value.explicitEffect) return fromPolicyEffect(binding.value.explicitEffect);
+    return binding.value.defaultPolicy === "ALL" ? "auto_allow" : "block";
   }
 
   /** Tier-4 session override — passed in by the caller; no DB touch. */
@@ -461,12 +490,29 @@ export class MCPPermissionGatewayService {
     const t1 = this.readPlatformMinimum(input.toolName);
     if (t1 === "block") return { state: "block", tier: 1, reason: "platform-tier block" };
 
-    const t2 = await this.readOrgPolicy(input.scope, input.toolName);
+    const tier2 = await this.readOrgPolicy(input.scope, input.toolName);
+    // WIN-268 P2 — A FORGED SCOPE IS A BLOCK, NOT AN ABSTENTION, and it is
+    // reported at the tier that discovered it. `resolve` cannot answer a
+    // question about a scope that is not a real chain: every remaining tier
+    // would be reading rows for a tenant the caller has not named coherently,
+    // and the previous behaviour — read the claimed organization's (usually
+    // empty) policy set and carry on — is precisely the abstention this refusal
+    // replaces. `mcp-scope.ts` carries the measurement.
+    if (isScopeRefusal(tier2)) {
+      this.logger.warn(`MCP permission denied: claimed scope is ${tier2.refused}`);
+      return { state: "block", tier: 2, reason: `scope ${tier2.refused}` };
+    }
+    const t2 = tier2;
     if (t2 === "block") return { state: "block", tier: 2, reason: "org-policy block" };
 
-    const t3 = input.agentId
+    const tier3 = input.agentId
       ? await this.readAgentOverride(input.scope, input.agentId, input.toolName)
       : null;
+    if (isScopeRefusal(tier3)) {
+      this.logger.warn(`MCP permission denied: claimed scope is ${tier3.refused}`);
+      return { state: "block", tier: 3, reason: `scope ${tier3.refused}` };
+    }
+    const t3 = tier3;
     if (t3 === "block") return { state: "block", tier: 3, reason: "agent-policy block" };
 
     const t4 = this.readSessionOverride(input.sessionOverrides, input.toolName);
@@ -524,13 +570,17 @@ export class MCPPermissionGatewayService {
   }
 
   // ── CRUD helpers for tier-2 policy ─────────────────────────────────
+  //
+  // ALL THREE REFUSE A FORGED SCOPE, and the refusal travels as a thrown
+  // `McpScopeRefusedError` rather than as a falsy return. `deleteOrgPolicy` is
+  // why: it already answered `false` for "no such row", so a forged scope
+  // returning `false` would have been indistinguishable from a delete of a row
+  // that was already gone — an empty result standing in for a refusal, which is
+  // the same defect this tranche removed from tier 2.
   async listOrgPolicies(
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
   ) {
-    const rows = await this.prisma.organizationMcpPolicy.findMany({
-      where: { organizationId: scope.organizationId },
-      orderBy: [{ pattern: "asc" }],
-    });
+    const rows = unwrapScoped(await this.policies.listOrganizationPolicies(scope));
     return rows.map(({ effect, ...row }) => ({ ...row, policy: fromPolicyEffect(effect) }));
   }
 
@@ -543,27 +593,9 @@ export class MCPPermissionGatewayService {
       throw new Error("pattern must be 1–200 chars");
     }
     const effect = toPolicyEffect(policy);
-    // Upsert via find + update/create since the unique key is composite.
-    const existing = await this.prisma.organizationMcpPolicy.findFirst({
-      where: { organizationId: scope.organizationId, pattern },
-      select: { id: true },
-    });
-    if (existing) {
-      const updated = await this.prisma.organizationMcpPolicy.update({
-        where: { id: existing.id },
-        data: { effect },
-      });
-      const { effect: savedEffect, ...row } = updated;
-      return { ...row, policy: fromPolicyEffect(savedEffect) };
-    }
-    const created = await this.prisma.organizationMcpPolicy.create({
-      data: {
-        organizationId: scope.organizationId,
-        pattern,
-        effect,
-      },
-    });
-    const { effect: savedEffect, ...row } = created;
+    const { effect: savedEffect, ...row } = unwrapScoped(
+      await this.policies.upsertOrganizationPolicy(scope, pattern, effect),
+    );
     return { ...row, policy: fromPolicyEffect(savedEffect) };
   }
 
@@ -571,13 +603,7 @@ export class MCPPermissionGatewayService {
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     id: string,
   ) {
-    const existing = await this.prisma.organizationMcpPolicy.findFirst({
-      where: { id, organizationId: scope.organizationId },
-      select: { id: true },
-    });
-    if (!existing) return false;
-    await this.prisma.organizationMcpPolicy.delete({ where: { id } });
-    return true;
+    return unwrapScoped(await this.policies.deleteOrganizationPolicy(scope, id));
   }
 
   /** Export for tests and tools that want to know the baseline. */
