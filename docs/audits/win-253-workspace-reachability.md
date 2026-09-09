@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `6295a0134458d52e69f2329f9fc42ecb64ea37cd27f7e0057bdfc8ff5e36b5ad`
+Evidence SHA-256: `5016d9d5fdb3719a4481bca28a330bd88a73b7ea1349baff6614689213016714`
 
 ## Baseline
 
@@ -39,7 +39,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 
 | Workspace | Package | OCI | App/deployable | Union | OCI+dev | Candidate status | Public boundary | Owner decision | Evidence hash |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
-| `apps/agent` | `platos-agent` | yes | yes | yes | yes | retain-oci-image | no | no | `b8c8c4f979229b37…` |
+| `apps/agent` | `platos-agent` | yes | yes | yes | yes | retain-oci-image | no | no | `2a7d2ca2225dca4b…` |
 | `apps/core-api` | `@platos/core-api` | no | yes | yes | no | retain-application-deployable | no | no | `15cc4539e9d92071…` |
 | `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `32beed94186c0b19…` |
 | `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `6d0671f708e83e8a…` |

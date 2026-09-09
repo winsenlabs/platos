@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "6295a0134458d52e69f2329f9fc42ecb64ea37cd27f7e0057bdfc8ff5e36b5ad",
+  "evidenceSha256": "5016d9d5fdb3719a4481bca28a330bd88a73b7ea1349baff6614689213016714",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f218f32160cdabb4a7188f8d612b88f6ca8b1fc7191480e7f49d206c5a66d0b3",
+    "aggregateSha256": "6b0a8ea8c7c6d5ab8d7bab1ebb24cae5c386fb27477a90e7bc359f36b2d7ccb1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -227,7 +227,7 @@
       },
       {
         "path": ".dockerignore",
-        "sha256": "08584005c29050ca5231a1859735716d7e3a7b4c29f6ab456c50a46ade03f55a"
+        "sha256": "ad68b87810acf79666f984252d688a7643d60aa459d0ad83d4846c514ff32248"
       },
       {
         "path": ".env.example",
@@ -21635,7 +21635,7 @@
             {
               "from": ".dockerignore",
               "kind": "reference",
-              "line": 70
+              "line": 61
             },
             {
               "from": "apps/agent/Dockerfile",
@@ -25377,7 +25377,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "b8c8c4f979229b37aa7a39ef187b1c2a5e368b4c973969621b9d7280a23a0094",
+      "evidenceSha256": "2a7d2ca2225dca4bc768ec77908822278bb0627e66c8d376d35ac288b886b08f",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
