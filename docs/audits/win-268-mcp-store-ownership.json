@@ -15,15 +15,15 @@
     "tenancy"
   ],
   "totals": {
-    "sites": 153,
-    "delegateSites": 140,
+    "sites": 154,
+    "delegateSites": 141,
     "clientSites": 13,
     "files": 21
   },
   "byVerdict": {
     "blockedOnAdapter": 2,
     "blockedOnContext": 86,
-    "blockedOnContract": 65
+    "blockedOnContract": 66
   },
   "byOwner": {
     "<kernel-outbox-adapter>": {
@@ -119,8 +119,8 @@
       ]
     },
     "tenancy": {
-      "sites": 16,
-      "delegate": 16,
+      "sites": 17,
+      "delegate": 17,
       "client": 0,
       "models": [
         "Entity",
@@ -427,10 +427,11 @@
     "apps/agent/src/mcp-platform/permission-gateway.service.ts": {
       "contexts": [
         "tools",
-        "agents"
+        "agents",
+        "tenancy"
       ],
       "waitingOn": "context-composition",
-      "note": "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. The `AgentBinding` read is tier 3's, reached through the same context. Blocked on composing `tools`."
+      "note": "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. The `AgentBinding` read is tier 3's, reached through the same context. The `Environment` read is this tranche's tier-2 forged-scope refusal and is `tenancy.resolveEnvironmentScope` — a method that EXISTS and is composed; it stays here only because the service around it cannot move until `tools` is composed. Blocked on composing `tools`."
     },
     "apps/agent/src/mcp-platform/token.service.ts": {
       "contexts": [
@@ -1221,7 +1222,18 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 392,
+      "line": 486,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findUnique",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 511,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1232,7 +1244,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 414,
+      "line": 537,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "agentBinding",
@@ -1243,7 +1255,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 530,
+      "line": 682,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1254,7 +1266,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 547,
+      "line": 700,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1265,7 +1277,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 552,
+      "line": 705,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1276,7 +1288,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 559,
+      "line": 712,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1287,7 +1299,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 574,
+      "line": 728,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1298,7 +1310,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 579,
+      "line": 733,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1991,7 +2003,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 241,
+      "line": 321,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2002,7 +2014,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 268,
+      "line": 348,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2013,7 +2025,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 290,
+      "line": 370,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2024,7 +2036,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 318,
+      "line": 398,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2035,7 +2047,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 335,
+      "line": 415,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2046,7 +2058,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 351,
+      "line": 431,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2057,7 +2069,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 360,
+      "line": 440,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2068,7 +2080,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 380,
+      "line": 460,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2079,7 +2091,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 389,
+      "line": 469,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",
@@ -2090,7 +2102,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/macros.ts",
-      "line": 412,
+      "line": 492,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "macro",

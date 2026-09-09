@@ -348,9 +348,9 @@ export const DISPOSITIONS = Object.freeze({
     note: "Every site is `tools`', and every use case is on `ToolsContract` already: `listEntityToolPolicies` and `setEntityToolPolicy` are exactly this service. The blocker is composition, not design — see `apps/core-api/src/composition/adapter-bindings.ts`, where `postgres-tenancy:ToolsRepository` is a declared, satisfied binding and `ToolDispatch` has no adapter directory at all.",
   },
   "apps/agent/src/mcp-platform/permission-gateway.service.ts": {
-    contexts: ["tools", "agents"],
+    contexts: ["tools", "agents", "tenancy"],
     waitingOn: "context-composition",
-    note: "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. The `AgentBinding` read is tier 3's, reached through the same context. Blocked on composing `tools`.",
+    note: "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. The `AgentBinding` read is tier 3's, reached through the same context. The `Environment` read is this tranche's tier-2 forged-scope refusal and is `tenancy.resolveEnvironmentScope` — a method that EXISTS and is composed; it stays here only because the service around it cannot move until `tools` is composed. Blocked on composing `tools`.",
   },
   "apps/agent/src/mcp-platform/token.service.ts": {
     contexts: ["identity-access", "tenancy", "<client-level>"],
