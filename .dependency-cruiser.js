@@ -312,13 +312,13 @@ module.exports = {
     },
     {
       "name": "webapp-no-prisma",
-      "comment": "apps/webapp must reach data through core-api query ports, never Prisma directly (the M2.2 migration lock).",
+      "comment": "apps/webapp must reach data through core-api query ports, never a Prisma client directly (the M2.2 migration lock).",
       "severity": "error",
       "from": {
         "path": "^apps/webapp/"
       },
       "to": {
-        "path": "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)"
+        "path": "((node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))|internal-packages/tenancy-database(?:/|$))|(node_modules/@platos/database(?:/|$)|internal-packages/database(?:/|$)))"
       }
     },
     {

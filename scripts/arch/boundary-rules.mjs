@@ -156,6 +156,17 @@ const INFERENCE_SDK_SOURCE = "node_modules/(ai(?:/|$)|@ai-sdk/)";
  */
 const TENANCY_DATABASE_HOME_PATH = "internal-packages/tenancy-database/";
 
+/**
+ * The OLDER client package the webapp is also banned from reaching
+ * (`internal-packages/database`, published as `@platos/database`). Both
+ * spellings, for the reason the paragraph above gives: `arch-boundaries.mjs`
+ * resolves a bare specifier to `node_modules/<specifier>` and dependency-cruiser
+ * resolves it to the workspace path, so a rule carrying one of them is half a
+ * rule.
+ */
+const LEGACY_DATABASE_SOURCE =
+  "(node_modules/@platos/database(?:/|$)|internal-packages/database(?:/|$))";
+
 const TENANCY_DATABASE_SOURCE =
   "(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))" +
   `|${TENANCY_DATABASE_HOME_PATH.replace(/\/$/u, "")}(?:/|$))`;
@@ -425,13 +436,37 @@ export const RULES = [
   },
 
   // (k) M2.2 — webapp may not touch Prisma (ADR M0.3 §5.1 rule (k)).
+  //
+  // WIN-257 T8 — THE MIGRATION LOCK COULD NOT SEE THE DOOR IT LOCKS. Its `to`
+  // pattern was written out by hand as
+  //
+  //     ^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)
+  //
+  // which carries the WORKSPACE spelling of the tenancy client and not the
+  // SPECIFIER spelling. `arch-boundaries.mjs` resolves a bare specifier to
+  // `node_modules/<specifier>` (`resolveTargetVirtualPath`), so under the enforcer
+  // that actually runs in CI the eleven `apps/webapp` files importing
+  // `@platos/tenancy-database` resolved to `node_modules/@platos/tenancy-database`
+  // and matched none of the three alternatives. MEASURED at 63388a9f:
+  // `arch-boundaries.mjs --scan-root apps/webapp` reported TEN violations, all
+  // `tenancy-prisma-only`, and ZERO `webapp-no-prisma`.
+  //
+  // T5 fixed exactly this hole in `tenancy-prisma-only` and recorded in its own
+  // ledger that `webapp-no-prisma` still "reports 0, because it cannot see the
+  // specifier form". The rule NAMED FOR THE WEBAPP was left as the inert one, and
+  // the case behind it kept passing because it imports `@prisma/client` — a
+  // spelling no file in `apps/webapp` uses.
+  //
+  // The fix is not a fourth hand-written alternation. It REUSES the two source
+  // constants, so the tenancy client has ONE spelling in this file and a future
+  // move of the package cannot leave this rule behind while fixing the other.
   {
     id: "webapp-no-prisma",
     severity: "error",
-    comment: "apps/webapp must reach data through core-api query ports, never Prisma directly (the M2.2 migration lock).",
+    comment: "apps/webapp must reach data through core-api query ports, never a Prisma client directly (the M2.2 migration lock).",
     from: { path: "^apps/webapp/" },
     to: {
-      path: "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)",
+      path: `(${TENANCY_DATABASE_SOURCE}|${LEGACY_DATABASE_SOURCE})`,
     },
   },
 

@@ -1664,7 +1664,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // inside `apps-core-api`, and every gate, generator and artifact it touches
     // outside the deployable is an EDIT or a REGENERATION of a file that already
     // existed. 59 + 1 = 60.
-    "root-infra": 60,
+    // WIN-257 T8 60 -> 61: `scripts/webapp-cutover-blockers.test.mjs`, on the same
+    // `root-infra.tooling.scripts` rule (92 -> 93) every earlier tranche's ledger
+    // landed on. It is NOT a mutation manifest — T8 adds none — it is the checked
+    // form of the four blockers that keep `apps/webapp` on a database credential,
+    // written as assertions because a sentence rots and this one has been restated
+    // in four briefs. 60 + 1 = 61.
+    "root-infra": 61,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1745,10 +1751,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // its own. Re-derived from the eight keys:
   // 2 + 0 + 76 + 4 + 10 + 1505 + 17 + 60 = 1674.
   //
+  // T8's SECOND FILE, added after the blockers were measured: 1674 -> 1675, the
+  // blocker suite in `root-infra` (60 -> 61). FOUR files in THREE areas now.
+  // 2 + 0 + 76 + 4 + 10 + 1505 + 17 + 61 = 1675.
+  //
   // TWO SIBLING BRANCHES MOVE THIS PIN IN THE SAME WINDOW. The integrator SUMS
-  // the per-area deltas (+1 `apps-core-api`, +2 `packages` from this branch)
-  // rather than taking this total, exactly as the A1+A2/A3 paragraph records.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1674);
+  // the per-area deltas (+1 `apps-core-api`, +2 `packages`, +1 `root-infra` from
+  // this branch) rather than taking this total, exactly as the A1+A2/A3
+  // paragraph records.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1675);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1906,7 +1917,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // assertion above — summed here from the per-area counts rather than read off
     // the total, which is the whole reason this line exists separately. Patching
     // only one of the two would leave the other red, and that is by design.
-    rulesDocument.baseline.totalFiles + 1674
+    // T8's blocker suite makes it 1675.
+    rulesDocument.baseline.totalFiles + 1675
   );
 });
 

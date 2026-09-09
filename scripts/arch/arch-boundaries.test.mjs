@@ -357,6 +357,50 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     );
   });
 
+  // WIN-257 T8 — THE SPELLING THE CASE ABOVE DOES NOT USE, AND THE ONE THE TREE
+  // ACTUALLY WRITES.
+  //
+  // The case above imports `@prisma/client`. NO FILE IN `apps/webapp` DOES: every
+  // one of them writes `@platos/tenancy-database`, which `arch-boundaries.mjs`
+  // resolves to `node_modules/@platos/tenancy-database` — a path the rule's
+  // hand-written `to` pattern did not carry. So (k) passed for a milestone while
+  // reporting zero violations against the tree it exists to lock.
+  it("(k) webapp-no-prisma sees the SPECIFIER the webapp actually writes", () => {
+    for (const specifier of ["@platos/tenancy-database", "@platos/database", "prisma"]) {
+      const bad = fixture({
+        "apps/webapp/app/services/database.server.ts": `import { PrismaClient } from "${specifier}";\nexport const db = new PrismaClient();\n`,
+      });
+      assert.ok(
+        has(check(bad, { scanRoots: ["apps/webapp"] }), "webapp-no-prisma"),
+        `webapp importing ${specifier} must fire`
+      );
+    }
+  });
+
+  // ACCEPTANCE, AGAINST THE LIVE TREE, AND JOINED TO THE OTHER RULE.
+  //
+  // `webapp-no-prisma` and `tenancy-prisma-only` are defined from DIFFERENT
+  // expressions — one is the union of the two source constants, the other is a
+  // containment rule with a home exclusion — so over `apps/webapp`, where no file
+  // is in either home, they must name the SAME files. They did not: until this
+  // tranche the first named none and the second named ten. The sets agreeing is
+  // the assertion; `length > 0` is what stops two empty sets from satisfying it.
+  it("(k) webapp-no-prisma names the same live files as tenancy-prisma-only", () => {
+    const root = new URL("../..", import.meta.url).pathname;
+    const violations = check(root, { scanRoots: ["apps/webapp"] }).violations;
+    const named = (rule) =>
+      [...new Set(violations.filter((v) => v.rule === rule).map((v) => v.from))].sort();
+
+    const locked = named("webapp-no-prisma");
+    assert.ok(locked.length > 0, "a vacuous acceptance case proves nothing");
+    assert.deepEqual(
+      locked,
+      named("tenancy-prisma-only"),
+      "the migration lock and the containment rule disagree about which webapp " +
+        "files import a canonical client; one of them has lost a spelling",
+    );
+  });
+
   it("the real repository scan is clean and non-vacuous", () => {
     const result = check(new URL("../..", import.meta.url).pathname);
     // M2 INTEGRATION DELTA — 104 -> 948. Twelve adopting slices make disjoint
@@ -1250,7 +1294,11 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1637 off a
     // second, independent scan. A branch whose files were double-counted here
     // would disagree with that one.
-    assert.equal(result.fileCount, 1637, "the generated V1 source census must stay exact");
+    // WIN-257 T8: 1637 -> 1640. THREE files, and the re-derivation below adds the
+    // same three as its last term so the flat pin and the sum cannot be moved
+    // independently. Two sibling branches move this pin in the same window; the
+    // integrator SUMS the deltas (+3 from this branch) rather than taking 1640.
+    assert.equal(result.fileCount, 1640, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1287,7 +1335,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // resolver, and `governance-isolation.integration.test.ts` beside it.
       // Both terms are kept and ADDED: this is the re-derivation, so a merge
       // that had dropped either half would disagree with the flat pin above.
-      2);
+      2 +
+      // WIN-257 T8: the workspace slug walk. transports 1
+      // (`rest/workspace.controller.ts`) and packages/contexts/tenancy 2
+      // (`application/resolve-workspace.ts` and its suite). 1 + 2 = 3. Its seven
+      // route cases go into the R1 integration suite counted above, so
+      // `apps/core-api` gains no test file here.
+      1 + 2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

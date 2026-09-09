@@ -46,6 +46,7 @@
     "test:route-parity": "node --test scripts/route-capability-parity.test.mjs",
     "test:route-parity:completion:evidence": "node --test scripts/route-capability-completion-audit.test.mjs",
     "test:ci-policy": "node --test scripts/ci-policy.test.mjs",
+    "test:webapp-cutover-blockers": "node --test scripts/webapp-cutover-blockers.test.mjs",
     "test:workload-identity-package": "node --test scripts/workload-identity-package.test.mjs",
     "test:agent-runtime-smoke": "node --test tests/persisted-state-gate/agent-runtime-health.test.mjs",
     "test:win-290": "pnpm --filter platos-agent exec vitest run src/shared/clickhouse-deadline.test.ts src/monitoring/spans.clickhouse-deadline.test.ts src/monitoring/span-dlq.test.ts src/monitoring/trace-request-abort.test.ts --no-file-parallelism",
