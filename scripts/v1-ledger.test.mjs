@@ -533,7 +533,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // judged by. Both land on the existing `apps-agent.tooling.scripts` rule
     // (11 -> 13); `generate-control-plane.mjs` is edited in place and adds no
     // file.
-    "apps-agent": 4,
+    //
+    // WIN-268 (M4.2) P2 4 -> 11. SEVEN files, all in `apps/agent/src`, all on
+    // rules that already existed — `apps-agent.source.runtime` 277 -> 282 and
+    // `apps-agent.test.suites` 206 -> 208. NO LEDGER RULE CHANGED.
+    //
+    // FIVE SOURCE. `prisma-delegate-census.ts` is the type-checker walk lifted
+    // out of `clean-prisma-delegates.test.ts` so a second gate can consume the
+    // same call sites; `mcp-platform/mcp-scope.ts` is the tenant-ancestry
+    // resolver; and `mcp-platform/mcp-policy.store.ts`,
+    // `mcp-platform/entity-tool-policy.store.ts` and
+    // `mcp-platform/mcp-identity.store.ts` are the three ORM seams the converted
+    // services reach data through.
+    //
+    // TWO TEST. `mcp-platform/orm-ownership-census.test.ts` splits the
+    // directory's remaining ORM surface by owning context and ratchets it;
+    // `mcp-platform/mcp-scope.integration.test.ts` is the two-tenant
+    // forged-triple proof against a real PostgreSQL.
+    //
+    // The three converted services are edited IN PLACE and add no file, which is
+    // why this delta is 7 and not 10.
+    "apps-agent": 11,
     "apps-webapp": 0,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
@@ -1777,7 +1797,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // the eight-key re-derivation from the merged `expectedDeltas` above is
   // 4 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1679. Side-picking either branch's
   // own total (1678 or 1672) is red here AND at the second reconciliation below.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1679);
+  //
+  // WIN-268 (M4.2) P2 1679 -> 1686. SEVEN files, ALL in `apps-agent`, itemised
+  // on that area's delta above — so the two halves of this case are the same
+  // arithmetic once more, and the eight-key re-derivation from the merged
+  // `expectedDeltas` is 11 + 0 + 75 + 4 + 10 + 1503 + 19 + 64 = 1686. No other
+  // key takes a contribution from this tranche, which is what makes an
+  // auto-merge with a sibling's delta safe to CHECK rather than assume.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1686);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1936,7 +1963,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // mutation manifest), reached here by summing the per-area counts instead of
     // reading the total, so the two arithmetics can disagree and be caught.
     // 1671 + 7 + 1 = 1679.
-    rulesDocument.baseline.totalFiles + 1679
+    //
+    // WIN-268 (M4.2) P2 1679 -> 1686 -- the THIRTEENTH hand move of this second
+    // reconciliation, and the same seven files as the first: five sources and
+    // two suites under `apps/agent/src`, on rules that already existed.
+    rulesDocument.baseline.totalFiles + 1686
   );
 });
 
