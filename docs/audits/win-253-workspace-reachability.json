@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "66b0e259d1cfa0823e65599923e1055dc5b4945c86dfd8a76984c014986e6d0b",
+  "evidenceSha256": "21f316230ff9fcfaeddc0d326d1d397bf2147aa59c7411a93c6348d711869766",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9fbd2fff97ff351f33c9cfacc4a5d8f3afd616948a80378c5c613344a47f0b3f",
+    "aggregateSha256": "d9fdcb13892b0e0f0f55fa58d8b31332e227526d43c700d997eba23b1cfcc441",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2495,7 +2495,7 @@
       },
       {
         "path": "apps/core-api/src/composition/identity-rest.integration.test.ts",
-        "sha256": "ab5b328d0597c7d1c1d7e8b80a86ffce0f538b4b00ae6590ddd637db8b6fc29c"
+        "sha256": "f8a68375c23691d18453f1a8a04146d80eab87a4fa697b1c24edc647f3bb695c"
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
@@ -2695,7 +2695,7 @@
       },
       {
         "path": "apps/core-api/src/transports/bff/session.controller.ts",
-        "sha256": "544b4bc9b6f7a992fd2943616a8305ae3617f3be2fa31d3e2c81b6adf876b6a0"
+        "sha256": "6d27f53bbee2fafe9c8b741e519c96ed7052e63fcd06362498b215aa6f017d7b"
       },
       {
         "path": "apps/core-api/src/transports/channels-ingress/index.ts",
@@ -6299,7 +6299,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "c14114f9f195221cc3b5cdee9f75e8b01725dfdcbde1e6a9fb1cf1d6fa1db106"
+        "sha256": "b497d2d7b963db8abd1e94ac19fe9c97bd80a7e0232696788dc2d40bbae4da71"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20154,6 +20154,10 @@
         "sha256": "507cd1f356d20b5e36d2cb597f07c99f7518a26ccc7ddde7add0e9092e923962"
       },
       {
+        "path": "scripts/mutations-win267-r1.json",
+        "sha256": "8beb2314b32fff4e2d7e5a415b3a1314fd1752dc25e95645ecc995c274303760"
+      },
+      {
         "path": "scripts/mutations-win267-t0.json",
         "sha256": "5635b7971fe220607cee25a5433db1401d07edca4a92589066ecf0596bfcb808"
       },
@@ -20247,7 +20251,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "b731176665111e1292922862b4fb6927314464f57bf4c79622e00471f81380f3"
+        "sha256": "4c8ff38820dbc6eb4dbad82e95ad45c093a84d0fc7574b1c115fca78654c3b4f"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -38463,7 +38467,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1858
+              "line": 1867
             }
           ],
           "reversePaths": [
@@ -38488,7 +38492,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0972fa169f367e327afdb8b578411be2e9d995b8b084f201dd8db2b311a778cb",
+      "evidenceSha256": "ae55e5e4e40069a5ca28747b9979c238f1aab98c5c86433cb131469a971adfd0",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -39629,7 +39633,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1857
+              "line": 1866
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -39854,7 +39858,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f842d9a854a0444e673f03fa1795de7fdb43eb1b2577e2036671f251f246ba94",
+      "evidenceSha256": "405fdbf8dcac6d39c22e3e3b8629ae62ac118be097616078ec95253164f537e9",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {

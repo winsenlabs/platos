@@ -1630,7 +1630,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // guard ledger, on the same `root-infra.tooling.scripts` rule every earlier
     // tranche's landed on.
     // root-infra 43 + 2 + 2 + 4 + 2 + 1 + 1 + 1 + 1 + 1 + 1 = 59.
-    "root-infra": 59,
+    //
+    // WIN-267 R1 59 -> 60: `scripts/mutations-win267-r1.json`, the SEVENTH guard
+    // ledger to land beside its siblings, on the same
+    // `root-infra.tooling.scripts` rule (92 -> 93). Every other file R1 adds is
+    // inside `apps-core-api`, and every gate, generator and artifact it touches
+    // outside the deployable is an EDIT or a REGENERATION of a file that already
+    // existed. 59 + 1 = 60.
+    "root-infra": 60,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1680,8 +1687,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // WIN-267 R1 1654 -> 1668. The SAME fourteen files as the `apps-core-api`
   // delta above and not one more, which is the identity this pair of assertions
   // exists to hold: the total and the per-area sums are the same arithmetic, so a
-  // file that arrived in one and not the other cannot pass both. 1654 + 14 = 1668.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1668);
+  // file that arrived in one and not the other cannot pass both. 1654 + 14 = 1668,
+  // and R1's mutation ledger in `root-infra` makes it 1669.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1669);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -1824,8 +1832,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // reconciliation has had to be moved by hand. It is the same fourteen files
     // as the `apps-core-api` delta and the `totalFiles` assertion above, summed
     // here from the per-area counts instead of read off the total, so the three
-    // can disagree and be caught. 1654 + 14 = 1668.
-    rulesDocument.baseline.totalFiles + 1668
+    // can disagree and be caught. 1654 + 14 = 1668, plus R1's guard ledger in
+    // `root-infra` = 1669.
+    rulesDocument.baseline.totalFiles + 1669
   );
 });
 
