@@ -61,7 +61,7 @@ describeWithDatabase("macros.replay parameter round trip through PostgreSQL", ()
   let token: VerifiedToken;
   let foreignToken: VerifiedToken;
 
-  async function seedTenant(label: string): Promise<string> {
+  async function seedTenant(label: string): Promise<{ environmentId: string; operatorUserId: string }> {
     const operator = await prisma.user.create({
       data: { email: `${schemaName}-${label}@test.invalid`, displayName: `${label} operator` },
     });
@@ -77,15 +77,24 @@ describeWithDatabase("macros.replay parameter round trip through PostgreSQL", ()
     const environment = await prisma.environment.create({
       data: { projectId: project.id, slug: "development", name: "Development" },
     });
-    return environment.id;
+    return { environmentId: environment.id, operatorUserId: operator.id };
   }
 
-  function tokenFor(environment: string, organizationId: string, projectId: string): VerifiedToken {
+  // `mintedByUserId` becomes `Macro.createdBy`, which is a real foreign key to
+  // `User`. A fixture that invents the id gets an FK violation reported as
+  // "internal error" from the tool, which is how the first draft of this suite
+  // failed — a reminder that the store is what is being tested here.
+  function tokenFor(
+    environment: string,
+    organizationId: string,
+    projectId: string,
+    operatorUserId: string,
+  ): VerifiedToken {
     return {
       id: `token-${environment}`,
       scope: { organizationId, projectId, environmentId: environment },
       permissions: ["*"],
-      mintedByUserId: `user-${environment}`,
+      mintedByUserId: operatorUserId,
       expiresAt: null,
       tier: "scope",
     } as VerifiedToken;
@@ -115,8 +124,10 @@ describeWithDatabase("macros.replay parameter round trip through PostgreSQL", ()
     url.searchParams.set("schema", schemaName);
     prisma = new PrismaClient({ datasources: { db: { url: url.toString() } } });
 
-    environmentId = await seedTenant("home");
-    foreignEnvironmentId = await seedTenant("foreign");
+    const homeTenant = await seedTenant("home");
+    const foreignTenant = await seedTenant("foreign");
+    environmentId = homeTenant.environmentId;
+    foreignEnvironmentId = foreignTenant.environmentId;
 
     const home = await prisma.environment.findUniqueOrThrow({
       where: { id: environmentId },
@@ -126,8 +137,18 @@ describeWithDatabase("macros.replay parameter round trip through PostgreSQL", ()
       where: { id: foreignEnvironmentId },
       select: { projectId: true, project: { select: { organizationId: true } } },
     });
-    token = tokenFor(environmentId, home.project.organizationId, home.projectId);
-    foreignToken = tokenFor(foreignEnvironmentId, foreign.project.organizationId, foreign.projectId);
+    token = tokenFor(
+      environmentId,
+      home.project.organizationId,
+      home.projectId,
+      homeTenant.operatorUserId,
+    );
+    foreignToken = tokenFor(
+      foreignEnvironmentId,
+      foreign.project.organizationId,
+      foreign.projectId,
+      foreignTenant.operatorUserId,
+    );
 
     received = [];
     state = new MacroRecordingState();
