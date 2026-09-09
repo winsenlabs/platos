@@ -243,9 +243,60 @@ describeWithDatabase("macros.replay parameter round trip through PostgreSQL", ()
   });
 
   it("a macro recorded in one environment is not replayable from another", async () => {
+    // The macroId is REAL here. An earlier draft passed an undefined id and
+    // "passed" on a schema-validation error, which would also have passed
+    // against a tool with no scoping at all.
+    expect(macroId).toBeTruthy();
     received.length = 0;
     const replayed = await call("macros.replay", { macroId, params: {} }, foreignToken);
     expect(replayed.error).toBeDefined();
+    expect(String(replayed.error?.message ?? "")).not.toContain("required property");
     expect(received).toHaveLength(0);
+  });
+
+  it("record_stop persists a recording that supplies NO paramSchema", async () => {
+    // THE LIVE DEFECT THIS SUITE FOUND. `paramSchema` is optional, and the
+    // handler used to send JavaScript `null` for it. Prisma writes that to a
+    // nullable Json column as the JSON VALUE null, and
+    // `Macro_paramSchema_json_root` accepts only SQL NULL or a JSON object — so
+    // every recording without a schema, which is the default, died on SQLSTATE
+    // 23514 and surfaced as "internal error".
+    const started = await call("macros.record_start", {});
+    await call("fixture.send", { to: "nobody@example.invalid" });
+    const stopped = await call("macros.record_stop", {
+      recordingId: started.result.recordingId,
+      name: "no-schema",
+    });
+    expect(stopped.error, "record_stop refused a recording with no paramSchema").toBeUndefined();
+
+    // SQL NULL, not JSON null. `jsonb_typeof` tells the two apart and the check
+    // constraint is the reason it matters.
+    const row: any = await prisma.$queryRawUnsafe(
+      `SELECT "paramSchema" IS NULL AS sqlnull, jsonb_typeof("paramSchema") AS typ
+         FROM "${schemaName}"."Macro" WHERE "id" = $1::uuid`,
+      stopped.result.macro.id,
+    );
+    expect(row[0].sqlnull).toBe(true);
+    expect(row[0].typ).toBeNull();
+  });
+
+  it("record_stop still stores a paramSchema when one IS supplied", async () => {
+    // Without this, the fix above could have been "drop the field entirely".
+    const started = await call("macros.record_start", {});
+    await call("fixture.send", { to: "nobody@example.invalid" });
+    const stopped = await call("macros.record_stop", {
+      recordingId: started.result.recordingId,
+      name: "with-schema",
+      paramSchema: { type: "object", properties: { release: { type: "string" } } },
+    });
+    expect(stopped.error).toBeUndefined();
+    const persisted = await prisma.macro.findUniqueOrThrow({
+      where: { id: stopped.result.macro.id },
+      select: { paramSchema: true },
+    });
+    expect(persisted.paramSchema).toEqual({
+      type: "object",
+      properties: { release: { type: "string" } },
+    });
   });
 });

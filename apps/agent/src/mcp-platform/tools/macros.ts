@@ -232,7 +232,33 @@ export function buildMacroToolHandlers(deps: {
         const name = String(params["name"] ?? "").trim();
         if (!name) throw new Error("`name` is required");
         const description = (params["description"] as string | undefined) ?? null;
-        const paramSchema = (params["paramSchema"] as Record<string, unknown> | undefined) ?? null;
+        // WIN-268 P3. `paramSchema` IS OMITTED WHEN ABSENT, NEVER SENT AS `null`.
+        //
+        // `Macro.paramSchema` is a nullable Json column carrying the check
+        // constraint `Macro_paramSchema_json_root`:
+        //
+        //     "paramSchema" IS NULL OR jsonb_typeof("paramSchema") = 'object'
+        //
+        // Prisma reads a JavaScript `null` on a nullable Json field as the JSON
+        // VALUE null, not as SQL NULL — and `jsonb_typeof('null'::jsonb)` is
+        // `'null'`, which satisfies neither branch. So `paramSchema: null` made
+        // every recording that did not supply a schema fail with SQLSTATE 23514,
+        // reported to the operator as a bare "internal error". That is the
+        // DEFAULT path: `paramSchema` is optional in the input schema above.
+        //
+        // Omitting the key leaves the column at SQL NULL and is the only form
+        // that does, short of the `Prisma.DbNull` sentinel — which would mean
+        // importing the ORM into a module this tranche exists to take off it.
+        //
+        // `mcp-router.test.ts` doubles `prisma.macro.create` with `vi.fn()`, so
+        // it returned the row it was handed and stayed green. The constraint is
+        // in PostgreSQL, so only a real database could report it, and
+        // `macros-replay-postgres.integration.test.ts` is where it now does.
+        const suppliedSchema = params["paramSchema"];
+        const paramSchema =
+          suppliedSchema !== null && typeof suppliedSchema === "object" && !Array.isArray(suppliedSchema)
+            ? (suppliedSchema as Record<string, unknown>)
+            : undefined;
 
         const finalized = state.stop(token, recordingId);
         if (!finalized) {
@@ -244,7 +270,7 @@ export function buildMacroToolHandlers(deps: {
             name,
             description,
             steps: finalized.steps as any,
-            paramSchema: paramSchema as any,
+            ...(paramSchema === undefined ? {} : { paramSchema: paramSchema as any }),
             createdBy: finalized.createdBy,
           },
         });
