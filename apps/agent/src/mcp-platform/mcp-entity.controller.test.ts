@@ -519,9 +519,13 @@ describe("McpEntityController operator management", () => {
 
     await expect(controller.listToolAcl({ scope: operatorScope }, "acme", undefined, undefined, "2", "4"))
       .resolves.toEqual({ tools: [], total: 7, limit: 2, offset: 4 });
+    // WIN-268 P2 — the WHOLE claimed triple goes down, not the leaf alone.
+    // The environment id used to be passed on its own, which is precisely what
+    // let a forged organization id reach the policy rows unchallenged; the
+    // store now resolves the triple against the tree before reading anything.
     expect(controller.toolAclService.list).toHaveBeenCalledWith(
+      operatorScope,
       "entity_1",
-      "env_1",
       expect.objectContaining({ limit: 2, offset: 4 }),
     );
   });
