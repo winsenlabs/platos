@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "5e1406614272f410d98dd5df09c4b448f8967c63e4ae1b9be74bdbac1f86bd26",
+  "evidenceSha256": "c4612083c94b3ee3a801c1dfd0a04b8d37c80f4cbd5218c89909bf1bedbdcc00",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f273df4eac3c8af8e9566f2724fa0d72a1ef634c80923806b274c009a12d47ce",
+    "aggregateSha256": "d6ca8eaee7032d49175ed23c2c6cac8a59102433387e7eb91546262533616ff6",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2519,7 +2519,7 @@
       },
       {
         "path": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
-        "sha256": "c0acb84a02fbfa29d0c7acf87f45dc6eb9d44bfdca0cec22dec812d087520890"
+        "sha256": "a6d9eea58553c16cb0d157115e1e43a24bbfc0eabe1df233b4b78c4460700292"
       },
       {
         "path": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
@@ -6343,7 +6343,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "53b7348d70cb82dc182cd33690e75017c0fdfc8597084921763a77c1dad9e588"
+        "sha256": "6fe61af1e5b72075301024aa86b972c58ee123a742883a37bb358c660726669e"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20246,6 +20246,10 @@
         "sha256": "1e2861996059218682dd16a1e281b7d7f80ade264d6e4e71c915520d24090b51"
       },
       {
+        "path": "scripts/mutations-win268-p1.json",
+        "sha256": "1bb3acdec3b2b2527ca8dd5316d38d794d111f6fcf991d7fa8178e0cedd47029"
+      },
+      {
         "path": "scripts/openapi-compat.mjs",
         "sha256": "b90270c0ea3ce9cfaf29ce8996b0fb4500fab4b506c87ddeae59e099cb906bac"
       },
@@ -20335,7 +20339,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "1740ebf37d05724fa7703af4e25d46fa485cae40811c522aae4dbcbcbd141006"
+        "sha256": "86ddc94f730d7abab0bf8eef957db8b315f4b621be5ac29d0a4397776d014402"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -38731,7 +38735,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2034
+              "line": 2044
             }
           ],
           "reversePaths": [
@@ -38756,7 +38760,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "68f95ab350acace8aa4f1882acc5ba9b642e281c057881cff35f2cad9af5bdbc",
+      "evidenceSha256": "cd371e809981ead9d97f451c0f1c17568805676361ea0f9f943769268012cd29",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -39897,7 +39901,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2033
+              "line": 2043
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -40122,7 +40126,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "0ae424469ef87d30f1547ff7492e798dc1d2988edd3f3f1823863224ca3f172b",
+      "evidenceSha256": "10b8c3c54888a29290e4b9adf59729487965952f2149d26288bc923a6ff2bb48",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -41766,7 +41770,7 @@
             {
               "from": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
               "kind": "reference",
-              "line": 178
+              "line": 191
             },
             {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
@@ -42898,7 +42902,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "fe4171069d81b8b17390be271e209f1df96682e8f7cc6c7518512f7c5bc36167",
+      "evidenceSha256": "0143161e9b6ebc924a86ab44f24b68558a6abd52394d1ed892dfca1648ddfa3d",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
