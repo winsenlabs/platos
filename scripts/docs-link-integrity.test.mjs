@@ -139,7 +139,13 @@ test("the live corpora are enumerated with exact non-vacuous counts", () => {
     //      relativeLinks and anchorReferences below are deliberately unchanged;
     //      its only cross-references are inline code spans naming source paths,
     //      which this corpus does not treat as links. 394 -> 395.
-    docsMarkdownFiles: 395,
+    //   +1 WIN-268 (M4.2) docs/audits/win-268-mcp-store-ownership.md, the
+    //      rendered MCP-surface ORM register. It is GENERATED — `--write` emits
+    //      it and `--check` fails when it drifts — and its only references are
+    //      inline code spans naming source paths and context directories, which
+    //      this corpus does not treat as links, so relativeLinks and
+    //      anchorReferences below are deliberately unchanged. 395 -> 396.
+    docsMarkdownFiles: 396,
     contentMarkdownFiles: 81,
     navigationLeaves: 248,
     navigationUniqueLeaves: 247,
