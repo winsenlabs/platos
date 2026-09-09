@@ -7,10 +7,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 ## Summary
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
-- REST operations: **300** unique method/path pairs from **300** route bindings.
+- REST operations: **308** unique method/path pairs from **308** route bindings.
 - Ambiguous duplicate REST method/path pairs: **0**.
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=144.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=152.
 
 ## REST inventory
 
@@ -224,6 +224,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/agent/tools/matrix` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#toolMatrix` |
 | `GET /api/v1/agent/tools/search` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#searchTools` |
 | `GET /api/v1/agent/tools/stats` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#toolStats` |
+| `DELETE /api/v1/bff/session` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/bff/session.controller.ts#signOut` |
+| `POST /api/v1/bff/session` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/bff/session.controller.ts#exchange` |
 | `POST /api/v1/channels/apps/:appId/events` | PUBLIC_TRANSPORT | — | `channel-webhooks-and-oauth` | `apps/agent/src/channels/channel-app-events.controller.ts#events` |
 | `GET /api/v1/channels/inbound/:connectionId/:webhookSecret` | PUBLIC_TRANSPORT | — | `channel-webhooks-and-oauth` | `apps/agent/src/channels/channels-inbound.controller.ts#inboundGet` |
 | `POST /api/v1/channels/inbound/:connectionId/:webhookSecret` | PUBLIC_TRANSPORT | — | `channel-webhooks-and-oauth` | `apps/agent/src/channels/channels-inbound.controller.ts#inboundPost` |
@@ -232,6 +234,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/channels/oauth/:appId/callback` | PUBLIC_TRANSPORT | — | `channel-webhooks-and-oauth` | `apps/agent/src/channels/channel-app-oauth.controller.ts#callback` |
 | `GET /api/v1/channels/oauth/:appId/install` | PUBLIC_TRANSPORT | — | `channel-webhooks-and-oauth` | `apps/agent/src/channels/channel-app-oauth.controller.ts#install` |
 | `POST /api/v1/entities/:entityId/session-tokens` | PUBLIC_TRANSPORT | — | `public-token-mint` | `apps/agent/src/auth/session-token.controller.ts#mint` |
+| `GET /api/v1/environments/:environmentId/end-users` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/environment-end-users.controller.ts#list` |
+| `GET /api/v1/identity/session` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/identity-session.controller.ts#session` |
 | `GET /api/v1/memory` | MAPPED | `memories.list` | Reviewed behavioral equivalence: the REST adapter and memories.list invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#listMemories` |
 | `POST /api/v1/memory` | MAPPED | `memories.upsert` | Reviewed behavioral equivalence: the REST adapter and memories.upsert invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/memory/:id` | MAPPED | `memories.delete` | Reviewed behavioral equivalence: the REST adapter and memories.delete invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
@@ -247,6 +251,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/memory/import` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#importBundle` |
 | `POST /api/v1/memory/relate` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/memory/memory.controller.ts#relate` |
 | `GET /api/v1/memory/search` | MAPPED | `memories.search` | Reviewed behavioral equivalence: the REST adapter and memories.search invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#searchMemories` |
+| `GET /api/v1/organizations` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organizations.controller.ts#list` |
+| `POST /api/v1/organizations` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organizations.controller.ts#create` |
 | `GET /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#listMemories` |
 | `POST /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
@@ -262,6 +268,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/platos/memory/import` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#importBundle` |
 | `POST /api/v1/platos/memory/relate` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#relate` |
 | `GET /api/v1/platos/memory/search` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#searchMemories` |
+| `GET /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#list` |
+| `POST /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#create` |
 | `POST /api/v1/public/guest-token` | PUBLIC_TRANSPORT | — | `public-token-mint` | `apps/agent/src/auth/public-guest-token.controller.ts#mint` |
 | `POST /internal/batch-turn` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#batchTurn` |
 | `POST /internal/env/invalidate` | INTERNAL | — | `internal-prefix` | `apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts#invalidateEnv` |

@@ -10463,6 +10463,40 @@
         ]
       },
       {
+        "id": "DELETE /api/v1/bff/session",
+        "method": "DELETE",
+        "path": "/api/v1/bff/session",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "BffSessionController",
+            "handler": "signOut",
+            "source": "apps/core-api/src/transports/bff/session.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/bff/session",
+        "method": "POST",
+        "path": "/api/v1/bff/session",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "BffSessionController",
+            "handler": "exchange",
+            "source": "apps/core-api/src/transports/bff/session.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "POST /api/v1/channels/apps/:appId/events",
         "method": "POST",
         "path": "/api/v1/channels/apps/:appId/events",
@@ -10595,6 +10629,40 @@
             "handler": "mint",
             "source": "apps/agent/src/auth/session-token.controller.ts",
             "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "GET /api/v1/environments/:environmentId/end-users",
+        "method": "GET",
+        "path": "/api/v1/environments/:environmentId/end-users",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "EnvironmentEndUsersController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/rest/environment-end-users.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "GET /api/v1/identity/session",
+        "method": "GET",
+        "path": "/api/v1/identity/session",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "IdentitySessionController",
+            "handler": "session",
+            "source": "apps/core-api/src/transports/rest/identity-session.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -10860,6 +10928,40 @@
             "handler": "searchMemories",
             "source": "apps/agent/src/memory/memory.controller.ts",
             "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "GET /api/v1/organizations",
+        "method": "GET",
+        "path": "/api/v1/organizations",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "OrganizationsController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/rest/organizations.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/organizations",
+        "method": "POST",
+        "path": "/api/v1/organizations",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "OrganizationsController",
+            "handler": "create",
+            "source": "apps/core-api/src/transports/rest/organizations.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -11130,6 +11232,40 @@
             "handler": "searchMemories",
             "source": "apps/agent/src/memory/memory.controller.ts",
             "requiresOperator": false
+          }
+        ]
+      },
+      {
+        "id": "GET /api/v1/projects",
+        "method": "GET",
+        "path": "/api/v1/projects",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ProjectsController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/rest/projects.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "POST /api/v1/projects",
+        "method": "POST",
+        "path": "/api/v1/projects",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ProjectsController",
+            "handler": "create",
+            "source": "apps/core-api/src/transports/rest/projects.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12061,15 +12197,15 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 300,
-    "restRouteBindings": 300,
+    "restOperations": 308,
+    "restRouteBindings": 308,
     "ambiguousRestOperations": 0,
     "restClassifications": {
       "DEPRECATED": 15,
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 144
+      "REST_ONLY": 152
     },
     "restScanRoots": [
       {
@@ -12084,9 +12220,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 0,
-        "operations": 0,
-        "routeBindings": 0
+        "registeredControllers": 5,
+        "operations": 8,
+        "routeBindings": 8
       }
     ]
   }

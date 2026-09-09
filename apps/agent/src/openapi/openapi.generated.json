@@ -6693,6 +6693,56 @@
         "x-platos-mcp-tools": []
       }
     },
+    "/api/v1/bff/session": {
+      "delete": {
+        "operationId": "delete__api_v1_bff_session",
+        "summary": "BffSessionController.signOut",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      },
+      "post": {
+        "operationId": "post__api_v1_bff_session",
+        "summary": "BffSessionController.exchange",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
     "/api/v1/channels/apps/{appId}/events": {
       "post": {
         "operationId": "post__api_v1_channels_apps_by_appId_events",
@@ -6958,6 +7008,68 @@
         "x-platos-classification": "PUBLIC_TRANSPORT",
         "x-platos-auth-class": "ENTITY_BEARER",
         "x-platos-policy-rule": "public-token-mint",
+        "x-platos-mcp-tools": []
+      }
+    },
+    "/api/v1/environments/{environmentId}/end-users": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_environmentId_end_users",
+        "summary": "EnvironmentEndUsersController.list",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      }
+    },
+    "/api/v1/identity/session": {
+      "get": {
+        "operationId": "get__api_v1_identity_session",
+        "summary": "IdentitySessionController.session",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
     },
@@ -7405,6 +7517,56 @@
         "x-platos-mcp-tools": [
           "memories.search"
         ]
+      }
+    },
+    "/api/v1/organizations": {
+      "get": {
+        "operationId": "get__api_v1_organizations",
+        "summary": "OrganizationsController.list",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      },
+      "post": {
+        "operationId": "post__api_v1_organizations",
+        "summary": "OrganizationsController.create",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
       }
     },
     "/api/v1/platos/memory": {
@@ -7855,6 +8017,56 @@
         "x-platos-classification": "DEPRECATED",
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
+        "x-platos-mcp-tools": []
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "get__api_v1_projects",
+        "summary": "ProjectsController.list",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": []
+      },
+      "post": {
+        "operationId": "post__api_v1_projects",
+        "summary": "ProjectsController.create",
+        "tags": [
+          "rest_only"
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": []
       }
     },
@@ -9317,6 +9529,6 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 300,
+  "x-platos-rest-operation-count": 308,
   "x-platos-mcp-tool-count": 202
 }

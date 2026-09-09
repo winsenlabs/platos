@@ -74,14 +74,21 @@ const PRODUCTION_MOUNTED_CONTROLLERS = {
  * (capability matrix, differential coverage, route parity) was therefore
  * enumerating a surface that had stopped being the whole surface.
  *
- * WHY IT IS EMPTY AND WHY THAT IS NOT A SILENCE. `apps/core-api/src/transports`
- * holds six 20-line seams whose comments say "M4 OWNS THE SURFACE"; there is no
- * controller there yet. An empty allowlist paired with `assertNoUnregisteredCoreApiControllers`
- * below is the opposite of a placeholder: the agent root SKIPS a controller that
- * is not on its allowlist (there are non-mounted controllers in that tree by
- * design), whereas the core-api root REFUSES generation for one. So the first
- * transport controller to land cannot be silently omitted from the manifest —
- * it either gets registered here or the generator fails by name.
+ * WHAT IS IN IT (WIN-267 R1). The allowlist was EMPTY, paired with
+ * `assertNoUnregisteredCoreApiControllers` below, so that the first transport
+ * controller to land could not be silently omitted: the agent root SKIPS a
+ * controller that is not on its allowlist (there are non-mounted controllers in
+ * that tree by design), whereas the core-api root REFUSES generation for one.
+ * R1 is that first landing — the identity and tenancy REST surface — and every
+ * class it added is registered here.
+ *
+ * ALL FIVE RESOLVE TO ONE MODULE FILE, and that is a routing fact rather than a
+ * filing convenience. Nest reads `[...static decorator metadata, ...dynamic
+ * module metadata]` for a module's controllers and Express matches in
+ * registration order, so a business controller has to be in the DECORATOR's
+ * array on the root module to be registered ahead of `NotFoundController`'s
+ * `@All("{*path}")`. `http/http.module.ts` says the same thing from the other
+ * side.
  *
  * Keys are class names; values are the module file, relative to
  * `apps/core-api/src`, whose `controllers: [...]` array must list the class.
@@ -91,7 +98,13 @@ const PRODUCTION_MOUNTED_CONTROLLERS = {
  * ADR M0.4 §2, and the manifest is the business-surface contract. That exclusion
  * carries its own tripwire in `scripts/rest-census-independent.mjs`.
  */
-const CORE_API_MOUNTED_CONTROLLERS = {};
+const CORE_API_MOUNTED_CONTROLLERS = {
+  IdentitySessionController: "http/http.module.ts",
+  OrganizationsController: "http/http.module.ts",
+  ProjectsController: "http/http.module.ts",
+  EnvironmentEndUsersController: "http/http.module.ts",
+  BffSessionController: "http/http.module.ts",
+};
 
 /**
  * The controller scan roots. `scanDir` is walked for `*.controller.ts`;
@@ -753,18 +766,37 @@ function classifyRest(method, path) {
 }
 
 /**
- * A route enforces operator scope when its body calls requireOperator/
- * getOperatorScope directly, OR when it delegates to a same-class helper method
- * whose own body makes one of those calls (e.g. `this.operatorScope(req)` in
- * providers.controller.ts). `operatorHelpers` is the set of such helper method
- * names collected from the enclosing controller class. The trailing `(` guards
- * against a helper name being a prefix of an unrelated method call.
+ * The call shapes that ARE an operator check, across both scan roots.
+ *
+ * WIN-267 R1 ADDED THE THIRD, AND WITHOUT IT THE MANIFEST WOULD HAVE LIED. The
+ * V1 surface does not call `requireOperator`: `apps/core-api/src/transports/rest/
+ * operator.ts` is its one authentication seam and it is named
+ * `authenticateOperator`, so seven routes that verify an operator session against
+ * a composed `identity-access` would have been recorded `requiresOperator: false`
+ * — and `docs/audits/M0.8-operator-operations.md`, which is generated from that
+ * field and exists to make operator protection "auditable at a glance", would
+ * have under-reported them.
+ *
+ * IT IS NOT A BLANKET. `DELETE /api/v1/bff/session` deliberately authenticates
+ * nobody — a browser holding a dead cookie is the browser that most needs it
+ * cleared — and stays `false`, which is what makes this recognition a
+ * measurement rather than a decoration.
+ *
+ * The name is unambiguous across the agent tree: it appears in NO controller
+ * under `apps/agent/src`, so adding it changes not one V0 row.
+ */
+const OPERATOR_SCOPE_CALLS = ["requireOperator(", "getOperatorScope(", "authenticateOperator("];
+
+/**
+ * A route enforces operator scope when its body makes one of those calls
+ * directly, OR when it delegates to a same-class helper method whose own body
+ * makes one (e.g. `this.operatorScope(req)` in providers.controller.ts).
+ * `operatorHelpers` is the set of such helper method names collected from the
+ * enclosing controller class. The trailing `(` guards against a helper name being
+ * a prefix of an unrelated method call.
  */
 function enforcesOperatorScope(memberText, operatorHelpers) {
-  if (
-    memberText.includes("requireOperator(") ||
-    memberText.includes("getOperatorScope(")
-  ) {
+  if (OPERATOR_SCOPE_CALLS.some((call) => memberText.includes(call))) {
     return true;
   }
   for (const helper of operatorHelpers) {
@@ -808,10 +840,7 @@ function extractRestOperations() {
       for (const candidate of statement.members) {
         if (!ts.isMethodDeclaration(candidate) || !candidate.name) continue;
         const text = candidate.getText(sf);
-        if (
-          text.includes("requireOperator(") ||
-          text.includes("getOperatorScope(")
-        ) {
+        if (OPERATOR_SCOPE_CALLS.some((call) => text.includes(call))) {
           operatorHelpers.add(candidate.name.getText(sf));
         }
       }

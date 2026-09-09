@@ -8,7 +8,7 @@
 // A liveness probe that moved when the API's major moved would be a liveness
 // probe that fails a fleet on a routine release.
 
-import { Controller, Get, HttpException, HttpStatus, Inject, Req } from "@nestjs/common";
+import { Controller, Get, HttpException, HttpStatus, Inject, Req, VERSION_NEUTRAL } from "@nestjs/common";
 
 import type { AppModule } from "../app.module.js";
 import {
@@ -38,7 +38,22 @@ function bearerToken(request: InboundRequest): string | null {
   return match?.[1] ?? null;
 }
 
-@Controller()
+/**
+ * `VERSION_NEUTRAL`, ADDED BY WIN-267 R1 AND NOT A CHANGE OF MIND.
+ *
+ * The banner above already said these probes are pinned OUT of the versioned
+ * surface; until R1 nothing in this process applied a version, so saying it was
+ * enough. `applyApiSurface` now sets `defaultVersion`, and a controller that
+ * declares nothing takes it — `/livez` would have become `/api/v1/livez` and a
+ * fleet would have failed its next rolling restart. This declares the same
+ * decision to the mechanism that now enforces it.
+ *
+ * It states nothing new about the URL. `scripts/rest-census-independent.mjs`
+ * reads `@Controller()` and `@Controller({ version: VERSION_NEUTRAL })` as "the
+ * same statement about the URL", and its process-edge tripwire — which requires
+ * this file to declare an EMPTY base path and exactly three probes — still holds.
+ */
+@Controller({ version: VERSION_NEUTRAL })
 export class HealthController {
   constructor(@Inject(HEALTH_DEPENDENCIES) private readonly dependencies: HealthDependencies) {}
 

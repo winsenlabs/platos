@@ -28,7 +28,7 @@ import type { PipeTransform } from "@nestjs/common";
 import type { Result } from "@platos/kernel";
 
 import { DomainFault } from "../transports/rest/fault.js";
-import { parsePageQuery, type PageRequest } from "../transports/rest/page.js";
+import { parsePageQuery, refuseUnpagedQuery, type PageRequest } from "../transports/rest/page.js";
 import { requestInvalid } from "../transports/rest/transport-errors.js";
 
 /** A rule: unparsed input in, a domain refusal or a decided value out. */
@@ -70,3 +70,24 @@ export const pageQueryValidator: Validator<PageRequest> = (input) => {
  * allocate one object per route for no difference in behaviour.
  */
 export const PAGE_QUERY_PIPE = new DomainValidationPipe(pageQueryValidator);
+
+/**
+ * The query rule for a collection the contract does not page.
+ *
+ * Written as a validator and a pipe for the same reason `pageQueryValidator` is:
+ * the RULE is exercisable with no server, and the pipe is the only thing that
+ * turns its refusal into something the framework routes.
+ */
+export const unpagedQueryValidator: Validator<null> = (input) => {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return {
+      ok: false,
+      error: requestInvalid([
+        { field: "query", code: "malformed", message: "The query string could not be read." },
+      ]),
+    };
+  }
+  return refuseUnpagedQuery(input as Readonly<Record<string, unknown>>);
+};
+
+export const UNPAGED_QUERY_PIPE = new DomainValidationPipe(unpagedQueryValidator);
