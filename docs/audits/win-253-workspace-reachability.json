@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e4d05b9031d0dbc607d3e486c1cc8503dcce64711bbe4a90a6e0a2fa55cd0ce6",
+  "evidenceSha256": "622290754db9c89a037b26fa23faf8ce46bffe1f593b82fea97cc2d029c8dcf0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 26,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "0f55db74023d0ae05774098bf2bfd6216439af024cd69073a53930151b7541cc",
+    "aggregateSha256": "b4a248eaa4323ee8f54360a6b2d18de910f5f0d6d93f60731a1d17cfa7ba927c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -176,6 +176,10 @@
       {
         "path": ".changeset/win-146-sdk-v1.md",
         "sha256": "ecdb90739377239df27c7d9fd0aa4aa811566519cd704d55caa07c49adacb226"
+      },
+      {
+        "path": ".changeset/win-270-generated-v1-sdk.md",
+        "sha256": "5fb3c8420eb1c91e9d933bdb08c0d7f76aac0b40104687dea15be251c42f6f67"
       },
       {
         "path": ".configs/tsconfig.base.json",
@@ -6375,7 +6379,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "8cd9be84015186c1237d826031165379bc0db95f8c440980decaf798adef03a9"
+        "sha256": "1cfea7cfbd991d66f9e0bea651fbfa82c94b5f30ffd9b407bde8eb9573918f33"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20447,7 +20451,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "ccbffe4a8ab6796721f248bdd689c751fa7a2cc5d8944bfb4c1361f68a7fbdf0"
+        "sha256": "26158370dacae70dc13a615b4e8bc28118c4aa73037f8495c264ea415ac7012a"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -21838,6 +21842,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": ".changeset/win-270-generated-v1-sdk.md",
+              "kind": "reference",
+              "line": 33
+            },
+            {
               "from": "ai/references/repo.md",
               "kind": "reference",
               "line": 7
@@ -22225,6 +22234,10 @@
           ],
           "reversePaths": [
             [
+              ".changeset/win-270-generated-v1-sdk.md",
+              ".changeset/win-270-generated-v1-sdk.md"
+            ],
+            [
               "ai/references/repo.md",
               "ai/references/repo.md"
             ],
@@ -22534,6 +22547,7 @@
             ]
           ],
           "roots": [
+            ".changeset/win-270-generated-v1-sdk.md",
             "CONTRIBUTING.md",
             "README.md",
             "SECURITY.md",
@@ -25701,7 +25715,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "9d9d4e4ff0821f501534607c96eed773316023c459b20a8e4bf9c349c13351e9",
+      "evidenceSha256": "72fdc8e34865459396c056cf2b12ed78340ca644dea74b1888cc772d245f1cbd",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -29963,6 +29977,11 @@
               "line": 12
             },
             {
+              "from": ".changeset/win-270-generated-v1-sdk.md",
+              "kind": "reference",
+              "line": 41
+            },
+            {
               "from": "ai/references/repo.md",
               "kind": "reference",
               "line": 31
@@ -32488,6 +32507,10 @@
               ".changeset/win-146-sdk-v1.md"
             ],
             [
+              ".changeset/win-270-generated-v1-sdk.md",
+              ".changeset/win-270-generated-v1-sdk.md"
+            ],
+            [
               "ai/references/repo.md",
               "ai/references/repo.md"
             ],
@@ -34503,6 +34526,7 @@
           "roots": [
             ".changeset/README.md",
             ".changeset/win-146-sdk-v1.md",
+            ".changeset/win-270-generated-v1-sdk.md",
             "CHANGESETS.md",
             "README.md",
             "RELEASE.md",
@@ -35924,7 +35948,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "deebd2b34d9be7299c0ab9eb1e688dddbe509c9cc5484262de97af06935affae",
+      "evidenceSha256": "734abf96ae08eaa608530c74422576e5f840e7d529524feb5f59a40c0ca8194b",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -39179,7 +39203,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2216
+              "line": 2228
             }
           ],
           "reversePaths": [
@@ -39204,7 +39228,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "294b4757a8ae476cbf8ec683b5c7414c8eb2a5cab3415ee217895fb599757a8b",
+      "evidenceSha256": "5b5d82a92c11b0956e83046dd0fad8c4d315fe2045c6686d66c5d50e04db8bab",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -40345,7 +40369,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2215
+              "line": 2227
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -40570,7 +40594,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3cea9545291c930c52612f8a5fb4339f945edb156b8870f59429c8f9149223cf",
+      "evidenceSha256": "e08c4f25d35e20b8753d80b585ea8dab4231f8817c02e93d65330b3613bba1cd",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -91626,6 +91650,11 @@
               "line": 2
             },
             {
+              "from": ".changeset/win-270-generated-v1-sdk.md",
+              "kind": "reference",
+              "line": 2
+            },
+            {
               "from": "ai/references/repo.md",
               "kind": "reference",
               "line": 15
@@ -91806,6 +91835,10 @@
               ".changeset/win-146-sdk-v1.md"
             ],
             [
+              ".changeset/win-270-generated-v1-sdk.md",
+              ".changeset/win-270-generated-v1-sdk.md"
+            ],
+            [
               "ai/references/repo.md",
               "ai/references/repo.md"
             ],
@@ -91945,6 +91978,7 @@
           "roots": [
             ".changeset/platos-client-tools-api.md",
             ".changeset/win-146-sdk-v1.md",
+            ".changeset/win-270-generated-v1-sdk.md",
             "CONTRIBUTING.md",
             "README.md",
             "ai/references/repo.md",
@@ -92391,7 +92425,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5ad7810ee00982ef27831580a2c0f528efdec48a114b3d6a7375c43d784f8e68",
+      "evidenceSha256": "3204c001e322f8f0ff89a4919aaab175a4940f5003f0df40ad35c9401c01eba9",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -92485,6 +92519,11 @@
               "line": 6
             },
             {
+              "from": ".changeset/win-270-generated-v1-sdk.md",
+              "kind": "reference",
+              "line": 4
+            },
+            {
               "from": "content/docs/react-widget.md",
               "kind": "reference",
               "line": 40
@@ -92511,6 +92550,10 @@
               ".changeset/win-146-sdk-v1.md"
             ],
             [
+              ".changeset/win-270-generated-v1-sdk.md",
+              ".changeset/win-270-generated-v1-sdk.md"
+            ],
+            [
               "content/docs/react-widget.md",
               "content/docs/react-widget.md"
             ],
@@ -92529,6 +92572,7 @@
           ],
           "roots": [
             ".changeset/win-146-sdk-v1.md",
+            ".changeset/win-270-generated-v1-sdk.md",
             "content/docs/react-widget.md",
             "content/docs/sdks.md",
             "examples/platos-nextjs-starter/README.md",
@@ -92723,7 +92767,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1bda72bd817ee416e245ba3ba62845fade7bfde7b5e7a309478cf0c79f7a77b2",
+      "evidenceSha256": "564cc3b1862cb67cc6447c5cfed010328b2cc757dd2da5195fb7ef7498acfe3d",
       "manifestSha256": "b892e563338f333035fef02ca96b5d203a438d3adbb15afc3a77106122e98f26",
       "name": "@platosdev/embed",
       "ociImageClosure": {
@@ -92817,6 +92861,11 @@
               "line": 5
             },
             {
+              "from": ".changeset/win-270-generated-v1-sdk.md",
+              "kind": "reference",
+              "line": 3
+            },
+            {
               "from": "content/docs/react-widget.md",
               "kind": "reference",
               "line": 97
@@ -92838,6 +92887,10 @@
               ".changeset/win-146-sdk-v1.md"
             ],
             [
+              ".changeset/win-270-generated-v1-sdk.md",
+              ".changeset/win-270-generated-v1-sdk.md"
+            ],
+            [
               "content/docs/react-widget.md",
               "content/docs/react-widget.md"
             ],
@@ -92852,6 +92905,7 @@
           ],
           "roots": [
             ".changeset/win-146-sdk-v1.md",
+            ".changeset/win-270-generated-v1-sdk.md",
             "content/docs/react-widget.md",
             "content/docs/sdks.md",
             "packages/platos-react-widget/README.md"
@@ -93084,7 +93138,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3e4085a7444146789d568c2ff2d9aa60dd5a9dcd52045d402c6868740c261563",
+      "evidenceSha256": "35abc58f33980a28d683f74eee41bb84335e37c5d8dcebb18db4d1ed33ad9804",
       "manifestSha256": "85f69f0d46b2932f65eb45f41c9714a097ceae7d5a006e1a51656e830d8ac6a8",
       "name": "@platosdev/react-widget",
       "ociImageClosure": {
@@ -93178,6 +93232,11 @@
               "line": 4
             },
             {
+              "from": ".changeset/win-270-generated-v1-sdk.md",
+              "kind": "reference",
+              "line": 5
+            },
+            {
               "from": "content/docs/react-widget.md",
               "kind": "reference",
               "line": 76
@@ -93249,6 +93308,10 @@
               ".changeset/win-146-sdk-v1.md"
             ],
             [
+              ".changeset/win-270-generated-v1-sdk.md",
+              ".changeset/win-270-generated-v1-sdk.md"
+            ],
+            [
               "content/docs/react-widget.md",
               "content/docs/react-widget.md"
             ],
@@ -93303,6 +93366,7 @@
           ],
           "roots": [
             ".changeset/win-146-sdk-v1.md",
+            ".changeset/win-270-generated-v1-sdk.md",
             "content/docs/react-widget.md",
             "content/docs/sdks.md",
             "docs/audits/M0.2-capability-matrix.json",
@@ -93560,7 +93624,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "ed730ed7ebcf2fee71ca719139f12c03262c0155732d735face47342592e6d51",
+      "evidenceSha256": "3e844f6f5383cc9992ce68e7dbaabc0b17d170fb8fd2828c05a73c7284a82983",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {

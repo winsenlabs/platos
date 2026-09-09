@@ -1803,7 +1803,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // survivors and zero declared equivalent. It takes the same blanket
     // `root-infra.tooling.scripts` rule its ten predecessors took (103 -> 104).
     // NO LEDGER RULE CHANGED.
-    "root-infra": 79,
+    "root-infra": 80,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1967,7 +1967,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `docs/v1-ledger-rules.json` beyond its regenerated fingerprint. The
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 10 + 0 + 80 + 4 + 10 + 1513 + 23 + 79 = 1719.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1719);
+  //
+  // AND WIN-270's CHANGESET 1719 -> 1720. ONE file, `root-infra`, itemised on
+  // that area's delta above: `.changeset/win-270-generated-v1-sdk.md`, the
+  // package-version intent CHANGESETS.md requires for a change that moves a
+  // publishable package's version. Four of the five packages this tranche edits
+  // are non-private with `publishConfig.access: public`, so the entry is
+  // mandatory rather than optional, and `pnpm exec changeset status` reads it
+  // without complaint. 10 + 0 + 80 + 4 + 10 + 1513 + 23 + 80 = 1720.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1720);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2183,7 +2191,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // one cross-language fixture), reached here by summing the per-area counts
     // instead of reading the total, so the two arithmetics can disagree and be
     // caught. 1707 + 12 = 1719.
-    rulesDocument.baseline.totalFiles + 1719
+    //
+    // AND WIN-270's CHANGESET 1719 -> 1720 -- the TWENTY-SECOND hand move. The
+    // same one `root-infra` file, reached here by summing the per-area counts.
+    // 1719 + 1 = 1720.
+    rulesDocument.baseline.totalFiles + 1720
   );
 });
 
