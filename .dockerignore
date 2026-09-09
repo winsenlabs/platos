@@ -54,6 +54,10 @@ build
 # which silently broke the docs+guides pipeline at deploy time (Phase 3b).
 /docs/*
 !/docs/control-plane-parity.generated.md
+# generate-control-plane.mjs reads the canonical failure codes off this file, and
+# it runs inside `build:platos:agent` — i.e. inside the image build, where the
+# excluded /docs/* left it absent and the agent image failed at Dockerfile:42.
+!/docs/error-taxonomy.json
 /examples
 out
 
