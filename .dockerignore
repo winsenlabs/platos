@@ -54,10 +54,15 @@ build
 # which silently broke the docs+guides pipeline at deploy time (Phase 3b).
 /docs/*
 !/docs/control-plane-parity.generated.md
-# generate-control-plane.mjs reads the canonical failure codes off this file, and
-# it runs inside `build:platos:agent` — i.e. inside the image build, where the
-# excluded /docs/* left it absent and the agent image failed at Dockerfile:42.
+# The agent image build runs `build:platos:agent`, whose `build:strict` step runs
+# `generate-control-plane.mjs --check`. That script and the module it imports read
+# exactly two repository files out of the otherwise-excluded /docs/*, and without
+# them the image fails at Dockerfile:42 with ENOENT. Enumerated from the path
+# constants of every script in apps/agent/scripts, not from a grep for literals:
+#   generate-control-plane.mjs:36  errorTaxonomyPath
+#   openapi-meta-schema.mjs:59     META_SCHEMA_PATH
 !/docs/error-taxonomy.json
+!/docs/openapi-3.1-meta-schema.json
 /examples
 out
 
