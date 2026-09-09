@@ -56,11 +56,14 @@
 // a REST endpoint, and on THIS base `apps/core-api/src/transports` carries a
 // chassis, a health controller and a not-found controller and no route that
 // reads or writes tenancy state. R1 (`tejas/win-267-r1-identity-rest` @
-// c98b5309) has since landed eight, which cover nine of the seventeen; two more
+// c98b5309) has since landed eight, which cover TEN of the seventeen; two more
 // have a route they cannot reach, because `GET /environments/:environmentId/
-// end-users` takes an id and the webapp has three slugs; and six have no route
+// end-users` takes an id and the webapp has three slugs; and five have no route
 // at all, among them `authorizeEnvironmentOperator` and the environment lookup
 // that together gate every scoped route the dashboard has.
+// `scripts/mutations-win267-r2.json` writes the split out operation by
+// operation, because the aggregate was stated as 9/2/6 first and only the
+// itemised list caught it.
 //
 // Adding `apps/webapp` to `DEFAULT_SCAN_ROOTS` today would simply make `pnpm
 // audit:arch-boundaries` red with no way to make it green, which is a gate
