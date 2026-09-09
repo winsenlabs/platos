@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0a0189bdc692a76f107793b83ef009edb70cc240db6a864224b17b059e25e57f",
+  "evidenceSha256": "5e1406614272f410d98dd5df09c4b448f8967c63e4ae1b9be74bdbac1f86bd26",
   "generatedOwnership": {
     "explicitHeaderFileCount": 24,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "5b0e1b17a74bd71a1f5db714b4f0518f48478b6941e8b2edf549df8cdb7ca067",
+    "aggregateSha256": "f273df4eac3c8af8e9566f2724fa0d72a1ef634c80923806b274c009a12d47ce",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1027,7 +1027,7 @@
       },
       {
         "path": "apps/agent/src/http/api-surface.test.ts",
-        "sha256": "a425575c1239739d9bb140d1227ce234b865252022e6d5a306cf7a184eea2169"
+        "sha256": "34a92f4793f0e7daa5ae413746bbdb68c0615a348e2af8f31665b95d141b9b63"
       },
       {
         "path": "apps/agent/src/http/api-surface.ts",
@@ -26108,6 +26108,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "apps/agent/src/http/api-surface.test.ts",
+              "kind": "reference",
+              "line": 127
+            },
+            {
               "from": "apps/core-api/package.json",
               "kind": "test-script",
               "script": "test"
@@ -26365,6 +26370,10 @@
           ],
           "reversePaths": [
             [
+              "apps/agent/src/http/api-surface.test.ts",
+              "apps/agent/src/http/api-surface.test.ts"
+            ],
+            [
               "apps/core-api/package.json",
               "apps/core-api/package.json"
             ],
@@ -26570,6 +26579,7 @@
             ]
           ],
           "roots": [
+            "apps/agent/src/http/api-surface.test.ts",
             "apps/core-api/package.json",
             "apps/core-api/src/app.module.test.ts",
             "apps/core-api/src/composition/governance-judge.test.ts",
@@ -26657,7 +26667,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "2616c149d872923f6a757a3afc7393117a69b8a4bd52024ad55bd23d02437ee8",
+      "evidenceSha256": "476120075c5430a30636dcf2042a16b06107ec408f658ddd29d80a271ece83bd",
       "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
