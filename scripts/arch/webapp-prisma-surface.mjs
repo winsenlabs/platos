@@ -52,12 +52,22 @@
 // ---------------------------------------------------------------------------
 // WHY A COUNT AND NOT A PROHIBITION
 //
-// The prohibition cannot be turned on yet. All fifteen operations need a REST
-// endpoint that does not exist on this base — `apps/core-api/src/transports`
-// carries a chassis, a health controller and a not-found controller, and no
-// route that reads or writes tenancy state. Adding `apps/webapp` to
-// `DEFAULT_SCAN_ROOTS` today would simply make `pnpm audit:arch-boundaries`
-// red with no way to make it green, which is a gate nobody can keep.
+// The prohibition cannot be turned on yet. Every one of these operations needs
+// a REST endpoint, and on THIS base `apps/core-api/src/transports` carries a
+// chassis, a health controller and a not-found controller and no route that
+// reads or writes tenancy state. R1 (`tejas/win-267-r1-identity-rest` @
+// c98b5309) has since landed eight, which cover nine of the seventeen; two more
+// have a route they cannot reach, because `GET /environments/:environmentId/
+// end-users` takes an id and the webapp has three slugs; and six have no route
+// at all, among them `authorizeEnvironmentOperator` and the environment lookup
+// that together gate every scoped route the dashboard has.
+//
+// Adding `apps/webapp` to `DEFAULT_SCAN_ROOTS` today would simply make `pnpm
+// audit:arch-boundaries` red with no way to make it green, which is a gate
+// nobody can keep. Cutting the nine alone would be worse: it would retire the
+// calls a reviewer can see and leave `database.server.ts`, `DATABASE_URL` and a
+// live client authenticating every request — the clause still false, and the
+// gate reading better.
 //
 // So the property enforced here is the RATCHET, not the endpoint: the surface
 // is measured from the tree, pinned, and the pin is tied to the two physical
@@ -91,6 +101,24 @@
 // inside `projects.new`'s `$transaction` are real writes against a real client
 // and each needs its own endpoint, but they are not spelled `database.`
 // anywhere and a scan for that prefix cannot see them.
+//
+// ---------------------------------------------------------------------------
+// AND A FOURTH FORM, WHICH THE 15 DOES NOT COUNT AND WHICH IS COUNTED HERE.
+//
+// `<callee>(…, database, …)` and `new <Class>(database, …)` — the client HANDED
+// TO SOMETHING ELSE rather than called on. `apps/webapp/app/services/
+// auth.server.ts` does this twice, and both are load-bearing:
+//
+//     new PlatosAuthService(database, { encryptionKey: env.ENCRYPTION_KEY })
+//     authorizeEnvironmentOperator(database, operator.authorization, …)
+//
+// Neither is `database.<model>.<op>(` and neither is a `$transaction`, so the
+// brief's figure of 15 — which is EXACTLY RIGHT about what it counts — does not
+// see them. They matter because they are the escape hatch that would let this
+// gate reach zero operations on a tree where the webapp still holds a live
+// `PrismaClient` and still authenticates every request through it. A count that
+// could be satisfied that way would be measuring a spelling, not a credential.
+// `clientHandOffs` is therefore part of `cutoverComplete`.
 
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
@@ -143,6 +171,11 @@ const SKIP_DIRECTORIES = new Set(["node_modules", "build", "dist", ".cache", "pu
 const PINS = Object.freeze({
   /** `database.<model>.<op>(` + `$transaction` + operations on its callback. */
   operations: 15,
+  /**
+   * The client passed as an ARGUMENT rather than called on — both in
+   * `auth.server.ts`, and both the webapp's authentication path.
+   */
+  clientHandOffs: 2,
   /** Files under `apps/webapp/app` holding at least one of those operations. */
   operationFiles: 11,
   /**
@@ -251,7 +284,25 @@ function operationsIn(sourceFile, bindings) {
 
   const line = (node) => sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 
+  const calleeLabel = (callee) =>
+    ts.isPropertyAccessExpression(callee) ? `${callee.name.text}()` : "(expression)()";
+
   const visit = (node) => {
+    // `new PlatosAuthService(database, …)` is a NewExpression, not a call, and a
+    // walk that only looked at calls would miss the one that CONSTRUCTS the
+    // webapp's authentication service out of the client.
+    if (ts.isNewExpression(node)) {
+      for (const argument of node.arguments ?? []) {
+        if (ts.isIdentifier(argument) && bindings.has(argument.text)) {
+          found.push({
+            kind: "client-hand-off",
+            client: argument.text,
+            member: `new ${ts.isIdentifier(node.expression) ? node.expression.text : "(expression)"}()`,
+            line: line(node),
+          });
+        }
+      }
+    }
     if (ts.isCallExpression(node)) {
       const callee = node.expression;
 
@@ -264,6 +315,20 @@ function operationsIn(sourceFile, bindings) {
             const [parameter] = first.parameters;
             if (parameter && ts.isIdentifier(parameter.name)) transactionClients.add(parameter.name.text);
           }
+        }
+      }
+
+      // <callee>(…, database, …) — the client handed to something else. Judged
+      // on the ARGUMENTS, so it never collides with the two forms above: those
+      // are decided by the callee.
+      for (const argument of node.arguments) {
+        if (ts.isIdentifier(argument) && bindings.has(argument.text)) {
+          found.push({
+            kind: "client-hand-off",
+            client: argument.text,
+            member: ts.isIdentifier(callee) ? `${callee.text}()` : calleeLabel(callee),
+            line: line(node),
+          });
         }
       }
 
@@ -364,6 +429,8 @@ export function measure(root = repositoryRoot) {
     const file = relative(root, absolute).split("\\").join("/");
     for (const operation of operationsIn(sourceFile, bindings)) sites.push({ file, ...operation });
   }
+  const handOffs = sites.filter((s) => s.kind === "client-hand-off");
+  const operations = sites.filter((s) => s.kind !== "client-hand-off");
 
   const moduleImporters = importersOf(webappDirectory, namesDatabaseModule);
   const mockDoubles = mockDoublesOf(webappDirectory);
@@ -388,8 +455,9 @@ export function measure(root = repositoryRoot) {
   return {
     root,
     sites,
-    operations: sites.length,
-    operationFiles: [...new Set(sites.map((s) => s.file))].sort(),
+    operations: operations.length,
+    clientHandOffs: handOffs,
+    operationFiles: [...new Set(operations.map((s) => s.file))].sort(),
     moduleImporters,
     mockDoubles,
     clientImporters,
@@ -425,6 +493,12 @@ export function evaluate(measured) {
 
   // MONOTONE. The pins are a debt. A pin may be lowered as the cutover lands;
   // raising one silently would let the surface grow back under a green gate.
+  if (measured.clientHandOffs.length > PINS.clientHandOffs) {
+    fail(
+      "monotone-hand-offs",
+      `${measured.clientHandOffs.length} file-level hand-off(s) of the client, above the pin of ${PINS.clientHandOffs}`,
+    );
+  }
   if (measured.operations > PINS.operations) {
     fail("monotone-operations", `${measured.operations} database operation(s) in apps/webapp/app, above the pin of ${PINS.operations}`);
   }
@@ -440,6 +514,7 @@ export function evaluate(measured) {
   for (const [key, pinned] of [
     ["operations", PINS.operations],
     ["operationFiles", PINS.operationFiles],
+    ["clientHandOffs", PINS.clientHandOffs],
     ["moduleImporters", PINS.moduleImporters],
     ["mockDoubles", PINS.mockDoubles],
     ["clientImporters", PINS.clientImporters],
@@ -457,7 +532,10 @@ export function evaluate(measured) {
   // work is done. These four cases make each half of the clause fail on the
   // other half's evidence.
   const cutoverComplete =
-    measured.operations === 0 && measured.clientImporters.length === 0 && measured.moduleImporters.length === 0;
+    measured.operations === 0 &&
+    measured.clientHandOffs.length === 0 &&
+    measured.clientImporters.length === 0 &&
+    measured.moduleImporters.length === 0;
 
   if (cutoverComplete && measured.databaseModuleExists) {
     fail("clause-module", `no operation remains, but ${DATABASE_MODULE} is still in the tree; deleting it IS the clause`);
@@ -512,7 +590,8 @@ function main() {
     const tenancy = measured.violations["tenancy-prisma-only"] ?? 0;
     const webapp = measured.violations["webapp-no-prisma"] ?? 0;
     process.stdout.write(
-      `webapp-prisma-surface: ${measured.operations} operation(s) across ${measured.operationFiles.length} file(s); ` +
+      `webapp-prisma-surface: ${measured.operations} operation(s) + ` +
+        `${measured.clientHandOffs.length} client hand-off(s) across ${measured.operationFiles.length} file(s); ` +
         `${measured.moduleImporters.length} import ${DATABASE_MODULE.split("/").pop()} ` +
         `(+${measured.mockDoubles.length} mock it), ` +
         `${measured.clientImporters.length} import ${TENANCY_PACKAGE}\n` +

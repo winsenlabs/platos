@@ -180,6 +180,7 @@ describe("webapp-no-prisma can see the door it names", () => {
 describe("the webapp's database surface is measured, not asserted", () => {
   it("the parser reproduces the surface the pins record", () => {
     assert.equal(measured.operations, PINS.operations);
+    assert.equal(measured.clientHandOffs.length, PINS.clientHandOffs);
     assert.equal(measured.operationFiles.length, PINS.operationFiles);
     assert.equal(measured.moduleImporters.length, PINS.moduleImporters);
     assert.equal(measured.mockDoubles.length, PINS.mockDoubles);
@@ -191,8 +192,9 @@ describe("the webapp's database surface is measured, not asserted", () => {
     // creates inside `projects.new`'s `$transaction` are the difference between
     // the honest 15 and the 12 a `database.` text scan can see.
     const transactions = measured.sites.filter((s) => s.kind === "transaction");
+    assert.equal(measured.sites.filter((s) => s.kind === "client-hand-off").length, PINS.clientHandOffs);
     const onTransactionClient = measured.sites.filter(
-      (s) => s.kind === "model-operation" && !measured.moduleImporters.includes(s.client) && s.client !== "database",
+      (s) => s.kind === "model-operation" && s.client !== "database",
     );
     const onDatabase = measured.sites.filter((s) => s.kind === "model-operation" && s.client === "database");
     assert.equal(transactions.length, 1);
@@ -219,6 +221,42 @@ describe("the webapp's database surface is measured, not asserted", () => {
         `${site.member} is spelled on the module binding after all; the 15 would then be reachable by text scan`,
       );
     }
+  });
+
+  it("the client is also HANDED to two callees, which the 15 does not count", () => {
+    // The fourth form, and the one that would let this gate reach zero while
+    // the webapp still authenticated every request through a live client. Both
+    // are in `auth.server.ts` and both are the authentication path itself.
+    assert.deepEqual(
+      measured.clientHandOffs.map((s) => `${s.file}:${s.member}`).sort(),
+      [
+        "apps/webapp/app/services/auth.server.ts:authorizeEnvironmentOperator()",
+        "apps/webapp/app/services/auth.server.ts:new PlatosAuthService()",
+      ],
+    );
+    // Joined to the bytes, not to the parser: neither is spelled as a member
+    // call on the binding, which is exactly why an operation count misses them.
+    const source = readFileSync(join(repoRoot, "apps/webapp/app/services/auth.server.ts"), "utf8");
+    assert.ok(source.includes("new PlatosAuthService(database,"));
+    assert.equal(source.includes("database.authorizeEnvironmentOperator"), false);
+    assert.equal(source.includes("database.PlatosAuthService"), false);
+  });
+
+  it("MUTATION: a cutover that zeroes the operations but keeps a hand-off is refused", () => {
+    // The escape hatch, closed. A tree with no `database.<model>.<op>(` left and
+    // `new PlatosAuthService(database, …)` still standing has NOT met the
+    // clause, and `cutoverComplete` says so rather than congratulating it.
+    const half = {
+      ...measured,
+      operations: 0,
+      sites: [],
+      operationFiles: [],
+      moduleImporters: [],
+      clientImporters: [],
+      databaseModuleExists: false,
+    };
+    const ids = evaluate(half).map((f) => f.id);
+    assert.ok(ids.includes("clause-module-premature"), JSON.stringify(ids));
   });
 
   it("the ~117 the issue once claimed is a text scan, and most of it is doubles", () => {
@@ -278,6 +316,7 @@ describe("the clause fails from either side", () => {
     operationFiles: [],
     moduleImporters: [],
     mockDoubles: [],
+    clientHandOffs: [],
     clientImporters: [],
     violations: { "tenancy-prisma-only": 0, "webapp-no-prisma": 0 },
     ...overrides,
