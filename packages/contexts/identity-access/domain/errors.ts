@@ -210,3 +210,58 @@ export function rateLimiterUnavailable(reason: string): DomainError {
     details: { reason },
   });
 }
+
+/**
+ * WIN-268 P1 — a mint whose MATERIAL is unusable.
+ *
+ * Distinct from `INVALID_ACCESS_KEY_MATERIAL`, and the distinction is the rule
+ * `error-taxonomy.mjs` exists to enforce: that code is raised by the access-key
+ * rotation path and reusing it here would leave an operator reading a log unable
+ * to tell which of two credential surfaces refused. It carries the offending
+ * FIELD, so a client can point at the input rather than re-reading the request.
+ */
+export function credentialMaterialInvalid(field: string, reason: string): DomainError {
+  return domainError(
+    "CREDENTIAL_MATERIAL_INVALID",
+    "invalid_input",
+    "Credential material is invalid",
+    { fields: [{ field, code: "invalid", message: reason }] },
+  );
+}
+
+/**
+ * WIN-268 P1 — a mint whose SUBJECT does not fit its kind.
+ *
+ * A SEPARATE CODE FROM `CREDENTIAL_MATERIAL_INVALID`, because the two say
+ * different things to whoever reads them. Material-invalid means "fix the value
+ * you sent"; this means "you are minting the wrong KIND of credential" — an
+ * entity token with no entity, or a platform token that named one. A client can
+ * act on the first by editing a field and on the second only by calling a
+ * different route, and one code covering both would send it looking in the wrong
+ * place.
+ */
+export function credentialSubjectMismatch(kind: string, reason: string): DomainError {
+  return domainError(
+    "CREDENTIAL_SUBJECT_MISMATCH",
+    "invalid_input",
+    "Credential subject does not match its kind",
+    { details: { kind, reason } },
+  );
+}
+
+/**
+ * WIN-268 P1 — a mint the store REFUSED, having been asked for something the
+ * schema will not hold.
+ *
+ * The mint's own validation is the domain's; this is the answer when the row
+ * still could not be written — a duplicate digest, a foreign key with nothing
+ * behind it, a kind no table holds. It is a CONFLICT rather than an
+ * `IDENTITY_STORE_UNAVAILABLE` because the store answered: retrying the same
+ * request will fail identically, and telling a caller "unavailable" would send
+ * it into a retry loop against a decision.
+ */
+export function credentialMintRefused(reason: string): DomainError {
+  return domainError("CREDENTIAL_MINT_REFUSED", "conflict", "The credential could not be minted", {
+    details: { reason },
+  });
+}

@@ -43,6 +43,21 @@ export function isRequestSurface(path) {
   return (
     /\.controller\.ts$/u.test(path) ||
     /^apps\/agent\/src\/mcp-platform\/tools\/[^/]+\.ts$/u.test(path) ||
+    // WIN-268 (M4.2) P1 — THE WHOLE V1 TRANSPORT TREE, not just its controllers.
+    //
+    // A GAP FOUND BY BUILDING THE FIRST V1 ROUTE THAT RETURNS A SECRET. The two
+    // MCP token mints answer with `mintedTokenResource(minted.value)`, and the
+    // object literal that names `token` lives in `transports/mcp/token-mint.ts`
+    // — a shared projection, not a `.controller.ts`. So the census reported the
+    // tree as clean while a route in it handed a caller a live credential.
+    //
+    // That is precisely the `indirectSites` failure mode this file already
+    // records for `apps/agent`, and here it is CLOSED rather than declared: ADR
+    // M0.3 §6 budgets a transport at 500 lines, which is why a V1 route's
+    // projection is a sibling file rather than an inline literal, and every file
+    // under `transports/` exists to answer a request. Scanning the directory
+    // rather than the filename suffix is the rule that matches the shape.
+    /^apps\/core-api\/src\/transports\/.+\.ts$/u.test(path) ||
     /^apps\/webapp\/app\/routes\//u.test(path) ||
     /^apps\/webapp\/app\/services\/[^/]+\.server\.ts$/u.test(path)
   );
@@ -77,6 +92,18 @@ export const MATERIAL_RESPONSE_KEYS = [
   "mcpToken",
   "bearerToken",
   "initialSecret",
+  // WIN-268 (M4.2) P1 — the bare name, added because the two V1 MCP token mints
+  // return the raw bearer under it. Both legacy handlers already did (`token`
+  // from `token.service.mint`, `raw` from `mcp-bearer-token.generate` — the two
+  // do not even agree with each other), so this list was silent on the most
+  // direct spelling of the thing it exists to count.
+  //
+  // IT IS SAFE TO ADD BECAUSE THE PREDICATE IS NOT THE NAME ALONE: a match must
+  // be a property in an object literal that a REQUEST SURFACE RETURNS, so a
+  // `token` parameter, a `token` local, a `token` in a request body type and a
+  // `tokenId` in a response are all untouched. Every occurrence it does find is
+  // listed in the manifest with a disposition somebody had to write.
+  "token",
 ];
 
 /**
@@ -100,7 +127,7 @@ export const MATERIAL_RESPONSE_KEYS = [
  */
 
 function listSurfaceFiles(root) {
-  return execFileSync("git", ["ls-files", "apps/agent/src", "apps/webapp/app"], {
+  return execFileSync("git", ["ls-files", "apps/agent/src", "apps/core-api/src", "apps/webapp/app"], {
     cwd: root,
     encoding: "utf8",
   })
@@ -161,6 +188,44 @@ function carriesRouteDecorator(node) {
     const callee = ts.isCallExpression(call) ? call.expression : call;
     return ts.isIdentifier(callee) && ROUTE_DECORATORS.includes(callee.text);
   });
+}
+
+/**
+ * WIN-268 (M4.2) P1 — the V1 transport tree, where a projection IS a handler.
+ *
+ * `enclosingHandler` returns null for a plain function declaration, which is
+ * right everywhere else: a helper in a service file that happens to build an
+ * object with a `clientSecret` in it is not a response. In
+ * `apps/core-api/src/transports/**` it is wrong, and the reason is structural
+ * rather than a judgement call. ADR M0.3 §6 budgets a transport at 500 lines and
+ * 12 routes, so a V1 route's response projection is a sibling FUNCTION
+ * (`endUserResource`, `mintedTokenResource`) rather than an inline literal in the
+ * handler — the layout the budget forces. Requiring the literal to sit inside a
+ * decorated method would therefore report this whole tree as clean no matter
+ * what its routes return, which is what it did until the first V1 route that
+ * hands back a credential was written.
+ *
+ * The rule is about the DIRECTORY, not about whether a particular file is
+ * "really" a transport, for the reason `scripts/arch/composition-root.mjs` gives
+ * for C8: a rule with one carve-out is a rule with a hole.
+ */
+export function isV1TransportSurface(path) {
+  return /^apps\/core-api\/src\/transports\/.+\.ts$/u.test(path);
+}
+
+/** The named function a literal is returned from, or null. */
+function enclosingProjection(node) {
+  let current = node.parent;
+  while (current !== undefined) {
+    if (ts.isFunctionDeclaration(current) || ts.isMethodDeclaration(current)) {
+      return namedIdentifier(current) ?? "function";
+    }
+    if (ts.isVariableDeclaration(current) && ts.isIdentifier(current.name)) {
+      return current.name.text;
+    }
+    current = current.parent;
+  }
+  return null;
 }
 
 function enclosingHandler(node) {
@@ -297,7 +362,7 @@ export function scanFile(path, text) {
   const found = [];
   const visit = (node) => {
     if (ts.isObjectLiteralExpression(node) && reachesAResponse(node)) {
-      const handler = enclosingHandler(node);
+      const handler = enclosingHandler(node) ?? (isV1TransportSurface(path) ? enclosingProjection(node) : null);
       if (handler === null) {
         ts.forEachChild(node, visit);
         return;

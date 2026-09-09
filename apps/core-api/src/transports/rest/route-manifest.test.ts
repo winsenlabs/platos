@@ -38,6 +38,8 @@ import { afterAll, describe, expect, it } from "vitest";
 
 import { loadPlatformConfiguration } from "../../config/platform.js";
 import { API_URI_VERSION_PREFIX, API_VERSION } from "../../http/api-surface.js";
+import { classifyRequest } from "../../http/idempotency-policy.js";
+import { MCP_PATH_PREFIX, MCP_ROOT_SEGMENT, MCP_ROUTE_VERSION } from "../mcp/mcp-surface.js";
 import { CoreApiHttpModule } from "../../http/http.module.js";
 import { HealthController } from "../../http/health.controller.js";
 import { NotFoundController } from "../../http/not-found.controller.js";
@@ -177,9 +179,34 @@ export function mountedRoutes(): readonly MountedRoute[] {
   for (const controller of controllers) {
     const controllerPath = Reflect.getMetadata(PATH_KEY, controller) as string | undefined;
     const version = Reflect.getMetadata(VERSION_KEY, controller) as string | symbol | undefined;
-    // A business controller declares a version. `VERSION_NEUTRAL` is the process
-    // edge opting out, and the edge is not in this module's static array at all.
-    expect(version, `${controller.name} must declare a version`).toBe(API_VERSION);
+    // TWO SURFACES, TWO VERSION EXPRESSIONS, AND EVERY CONTROLLER IS ON EXACTLY
+    // ONE OF THEM.
+    //
+    // WIN-268 (M4.2) P1. Until this tranche every controller in the static array
+    // was REST and declared `API_VERSION`. The two MCP token mints are the first
+    // that do not, and the difference is ADR M0.4 §2's: the REST major is a URL
+    // segment and the MCP major is `serverInfo.version`, negotiated inside the
+    // JSON-RPC handshake. Putting a version in an MCP URL would be a third axis
+    // nobody negotiated.
+    //
+    // The partition is by the VERSION the controller declares, and the PATH is
+    // then required to match — so a REST controller that quietly went
+    // version-neutral, or an MCP controller mounted under `/api/v1`, fails here
+    // rather than in production. `expectedVersion` is read off the surface
+    // constants, never typed: `transports/mcp/mcp-surface.ts` is the one place
+    // `VERSION_NEUTRAL` is chosen for this surface, exactly as `api-surface.ts`
+    // is for the other.
+    const isMcp = version === MCP_ROUTE_VERSION;
+    expect(
+      version,
+      `${controller.name} must declare either ${API_VERSION} (REST) or the MCP surface's version`,
+    ).toBe(isMcp ? MCP_ROUTE_VERSION : API_VERSION);
+    if (isMcp) {
+      expect(
+        controllerPath ?? "",
+        `${controller.name} is version-neutral and must therefore be an MCP route`,
+      ).toMatch(new RegExp(`^${MCP_ROOT_SEGMENT}/`, "u"));
+    }
     const prototype = controller.prototype as Record<string, unknown>;
     for (const name of Object.getOwnPropertyNames(prototype)) {
       if (name === "constructor") continue;
@@ -190,11 +217,13 @@ export function mountedRoutes(): readonly MountedRoute[] {
       const methodPath = Reflect.getMetadata(PATH_KEY, handler) as string | undefined;
       const verb = VERB.get(method);
       expect(verb, `${controller.name}.${name} declares an unknown HTTP method`).toBeDefined();
-      const template = joinSegments(
-        `${API_URI_VERSION_PREFIX}${API_VERSION}`,
-        controllerPath,
-        methodPath,
-      );
+      // The version prefix is applied for a REST route and OMITTED for an MCP
+      // one, which is `RoutePathFactory`'s own behaviour under
+      // `VERSION_NEUTRAL`. Composed from the two surfaces' constants rather than
+      // written out, so a moved segment moves the LEFT side of the join too.
+      const template = isMcp
+        ? joinSegments(controllerPath, methodPath)
+        : joinSegments(`${API_URI_VERSION_PREFIX}${API_VERSION}`, controllerPath, methodPath);
       routes.push({
         id: `${String(verb)} ${template}`,
         controller: controller.name,
@@ -204,6 +233,19 @@ export function mountedRoutes(): readonly MountedRoute[] {
     }
   }
   return routes;
+}
+
+/**
+ * What a route answers to an empty, keyless probe against an uncomposed process.
+ *
+ * READ OUT OF THE POLICY TABLE, not listed here. `classifyRequest` is the very
+ * function the gate calls, so a template moving between classes moves this
+ * expectation with it — the alternative is a second opinion about which routes
+ * the mint contract binds.
+ */
+function expectedRefusal(row: ManifestOperation): string {
+  if (classifyRequest(row.method, row.path) === "required") return "IDEMPOTENCY_KEY_REQUIRED";
+  return row.method === "POST" ? "TRANSPORT_REQUEST_INVALID" : "TRANSPORT_CONTEXT_UNAVAILABLE";
 }
 
 function manifestRoutes(): readonly ManifestOperation[] {
@@ -243,13 +285,28 @@ describe("WIN-267 R1 — the mounted route and the declared route are the same r
     expect(mounted).toEqual(declared);
   });
 
-  it("mounts every route under the ONE canonical prefix, with no hand-written version", () => {
+  it("mounts every route under ONE of the two canonical prefixes, with no hand-written version", () => {
+    const rest = `/${API_URI_VERSION_PREFIX}${API_VERSION}/`;
+    const seen = { rest: 0, mcp: 0 };
     for (const route of mountedRoutes()) {
-      // `/api/v1/` is composed from the surface constants rather than typed here:
-      // the point is that every route inherits the SAME decision, not that it
-      // matches a string this test happens to hold.
-      expect(route.id).toContain(` /${API_URI_VERSION_PREFIX}${API_VERSION}/`);
+      // Both prefixes are composed from their surfaces' constants rather than
+      // typed here: the point is that every route inherits ONE of the two
+      // decisions, not that it matches a string this test happens to hold.
+      if (route.id.includes(` ${MCP_PATH_PREFIX}`)) {
+        seen.mcp += 1;
+        // AND AN MCP ROUTE MUST NOT CARRY THE REST MAJOR. Without this the case
+        // would pass for a route mounted at `/api/v1/mcp/...`, which is the
+        // third version axis ADR M0.4 §2 refuses.
+        expect(route.id).not.toContain(rest);
+        continue;
+      }
+      seen.rest += 1;
+      expect(route.id).toContain(` ${rest}`);
     }
+    // NOT VACUOUS IN EITHER DIRECTION: both surfaces are populated, so a
+    // partition that had swallowed one of them fails here.
+    expect(seen.rest).toBeGreaterThan(0);
+    expect(seen.mcp).toBeGreaterThan(0);
   });
 
   it("keeps the process edge off the versioned surface", () => {
@@ -282,9 +339,18 @@ describe("WIN-267 R1 — the mounted route and the declared route are the same r
         row.implementations.some((implementation) => implementation.requiresOperator),
       ]),
     );
+    // THE TWO SEAM NAMES, and the second is not a synonym. WIN-268 P1: a mint
+    // calls `mintingOperator`, which is `authenticateOperator` PLUS the refusal
+    // that an impersonated session may not mint a durable credential. Reading
+    // only the first name would record a route that authenticates an operator
+    // more strictly as authenticating none. The generator's own
+    // `OPERATOR_SCOPE_CALLS` list carries the same two names for the same
+    // reason, which is what keeps these two readings independent rather than
+    // divergent.
+    const seams = ["authenticateOperator", "mintingOperator"];
     const observed = mountedRoutes().map((route) => ({
       id: route.id,
-      guarded: route.body.includes("authenticateOperator"),
+      guarded: seams.some((seam) => route.body.includes(seam)),
     }));
     expect(observed.filter((route) => route.guarded).length).toBeGreaterThan(0);
     expect(observed.filter((route) => !route.guarded).length).toBeGreaterThan(0);
@@ -356,12 +422,20 @@ describe("WIN-267 R1 — every declared route is REACHABLE in the process, in re
     // the context check. That ordering is itself worth pinning: a malformed
     // request is refused before anything authenticates, and a route that ever
     // authenticated first would show up here as a changed code.
+    //
+    // EXCEPT ON A ONE-TIME-SECRET MINT, WHERE AN EARLIER GATE ANSWERS FIRST, and
+    // that is the strongest evidence in this file that WIN-268 P1 landed what it
+    // set out to. `http/idempotency-policy.ts` classes the two MCP token mints
+    // `required`, and the gate is module MIDDLEWARE — it runs before routing, so
+    // it refuses a keyless request with `IDEMPOTENCY_KEY_REQUIRED` before the
+    // body pipe ever sees it. Before this tranche those two templates were bound
+    // by that gate and served by NOTHING: a caller that sent a key was reserved,
+    // admitted, and handed the terminal 404. The expected code is read out of
+    // the SAME policy table the gate consults, so it cannot drift from it.
     expect(answers).toEqual(
       manifestRoutes().map(
         (row) =>
-          `${row.method} ${row.path} -> ${
-            row.method === "POST" ? "TRANSPORT_REQUEST_INVALID" : "TRANSPORT_CONTEXT_UNAVAILABLE"
-          }`,
+          `${row.method} ${row.path} -> ${expectedRefusal(row)}`,
       ),
     );
     // AND THE PROPERTY THAT MATTERS, STATED SEPARATELY so it survives any future

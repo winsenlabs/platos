@@ -1162,14 +1162,14 @@
       "path": "docs/audits/M0.2-capability-matrix.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "1b13f9648603814d50149e42c3acc6b2de0131e3c9c7570ba2cadce7ff1dfea0",
+      "sha256": "121846930e5414660a6f868102f17f8cdc85407e331be9428b48ddd1c7f1dee6",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "f8b716c929e9b65b3918eb2a246d425ccd72a68bb7611c42749a8777b356a447",
+      "sha256": "e2f87529fd17d49f47bf107bc30dd2d8b1e9ca13b6d5b61a50a78c4d58b2fe2e",
       "binds": "current-repository-truth"
     },
     {
@@ -1217,14 +1217,14 @@
       "path": "docs/audits/M0.8-operator-operations.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "84947a554a7d360c7dcd1f375be5ec9e809c6e9509f51013a9ccdc5a960b6b63",
+      "sha256": "6aee926db9d3f324822945ecd4e98dc7451806e13fdf3f482e2a723153b038a3",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "0e4a7489121d19452407b774b9937b44bb2f77f0e6e2089dc7388f99e7b912b0",
+      "sha256": "39d8f768e3d7c53432d4db827fe4dc77627e81d79620a3396f033fe9316ce1a1",
       "binds": "current-repository-truth"
     },
     {
@@ -1522,35 +1522,35 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "e54ce7a247c89c9257de931f5bde21653aaff5dd4aa6bf100c6fff5ef2ed73b8",
+      "sha256": "80dd75f22128d4d8546ea79691c9ad45e53c6436a472761597b8f14e964a4c88",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c5f1af6a271eedf39ee582b12377b5d146f4ff0cc13b64441b5b9a9bf9d39b5b",
+      "sha256": "e64cdc9f6b0593ca4212d20cca8e80123cf734341bb32a329ff290f5ae898119",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "99f2d1970f404cb8df25270100b6a0928b90254058703fe80eafd6344a7fdec8",
+      "sha256": "6416924763f1172075de88d96f3756017d26ecf0211e1d9788e83d4670b243f1",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "55f2f3a512171627170e1b67021847d27d740d74331f4f31a1368f2d11af121a",
+      "sha256": "662828284afb3327442764e66fa504f3078971a36cdab3c37fe44d696648e5e4",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "977005ec19c28af15dd6d38a053bcfced5210cdce9ae5da0f56497570ef6caac",
+      "sha256": "6943839c187341e74a9719c770898e4f5a0387fc1cbdaf0b73fb1f57d1d0a9ea",
       "binds": "current-repository-truth"
     },
     {
@@ -1571,7 +1571,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "fc9380df1e2be2a3d3cbdf628172cc5d8553525fbf923d11b2e242587ec23926",
+      "sha256": "e0d89e060aca457d529db8ee7a162d692505a4b089af5dcf0decdb974ba74a40",
       "binds": "current-repository-truth"
     },
     {

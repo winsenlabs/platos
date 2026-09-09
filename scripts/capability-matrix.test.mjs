@@ -427,15 +427,26 @@ test("committed matrix: the REST total is split across the declared scan roots a
     roots.map((r) => r.dir),
     SCAN_ROOTS.map((r) => r.dir),
   );
+  // WIN-268 (M4.2) P1 — THE SUM CARRIES A NAMED TERM AND IS STILL AN EQUALITY.
+  // A root sum counts an operation once per root that serves it, and the two MCP
+  // token mints are served by BOTH deployables — `apps/agent` since before V1,
+  // `apps/core-api` now that the `Idempotency-Key` gate has handlers behind the
+  // templates it binds. Relaxing this into `>=` would have hidden a root that
+  // double-counts inside itself, which is what the equality was for.
   assert.equal(
-    roots.reduce((n, r) => n + r.operations, 0),
+    roots.reduce((n, r) => n + r.operations, 0) -
+      MATRIX.totals.restOperationsSharedAcrossScanRoots,
     MATRIX.totals.restOperations,
   );
   // 0 -> 8 (WIN-267 R1). The core-api root held no controller when this scan
   // root was declared; R1 landed the V1 identity and tenancy surface — five
   // controllers, eight routes — and the split moved on its own. 300 + 8 = 308,
   // which is the `restOperations` total the line above sums back to.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 8 });
+  //
+  // WIN-268 P1 8 -> 10, and the total does NOT move to 310: the two routes are
+  // new IMPLEMENTATIONS of operations that already existed. 300 + 10 - 2 = 308.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 10 });
+  assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 2);
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });
 

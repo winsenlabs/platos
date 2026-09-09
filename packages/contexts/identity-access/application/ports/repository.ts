@@ -26,6 +26,7 @@ import type {
   AccessKeyRecord,
   AccessKeyRotationPlan,
   BearerCredentialKind,
+  BearerCredentialMint,
   BearerCredentialRecord,
   EmailAddress,
   EndUserQuery,
@@ -151,6 +152,28 @@ export interface BearerCredentialStore {
     tokenHash: TokenHash,
   ): Promise<BearerCredentialRecord | null>;
   save(credential: BearerCredentialRecord): Promise<void>;
+  /**
+   * WIN-268 (M4.2) P1 — INSERT a credential.
+   *
+   * A SEPARATE METHOD FROM `save`, and the split is the schema's rather than a
+   * preference. `save` UPDATES: its only caller was `authenticate-bearer-token`,
+   * saving a credential it had just READ, and the adapter refuses a `save` with
+   * no row behind it under its own code precisely so it cannot half-create a row
+   * whose required columns — `McpToken.name` and `mintedByUserId`,
+   * `McpBearerToken.label` and `mcpUserId` — the update path has no values for.
+   * `BearerCredentialMint` carries every one of them, which is what makes an
+   * insert expressible at all.
+   *
+   * IT RETURNS THE RECORD IT WROTE rather than void, so the caller reads back
+   * the scope the STORE re-derived from the environment's own ancestry instead
+   * of the one it sent. The two differ exactly when the request named a scope
+   * the leaf does not belong to, which is the forged-triple case.
+   *
+   * A refusal is a THROW rather than a Result, matching `save`: the port's
+   * contract is that a refused write is a fault the use case turns into a
+   * domain error, and `IdentityWriteRefused` is the adapter's own type for it.
+   */
+  mint(credential: BearerCredentialMint): Promise<BearerCredentialRecord>;
 }
 
 /**

@@ -58,6 +58,11 @@ import type {
 } from "../contracts/index.js";
 import { authenticateBearerToken } from "./authenticate-bearer-token.js";
 import { listEndUsers, type EndUserPage } from "./list-end-users.js";
+import {
+  mintBearerCredential,
+  type MintBearerCredentialCommand,
+  type MintedBearerCredentialView,
+} from "./mint-bearer-credential.js";
 import { authenticateOperator, revokeOperatorSession } from "./authenticate-operator.js";
 import { consumeRateLimit } from "./consume-rate-limit.js";
 import type { IdentityAccessPorts } from "./dependencies.js";
@@ -302,6 +307,22 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
         ...(request.offset === undefined ? {} : { offset: request.offset }),
       });
       return page.ok ? ok(endUserPageView(page.value)) : page;
+    },
+
+    /**
+     * WIN-268 P1. Passed through UNTOUCHED, and that is deliberate.
+     *
+     * Every other method on this object narrows a record to a view, because the
+     * record carries internals a consumer has no business with. This one's use
+     * case already returns a view — `MintedBearerCredentialView` holds the
+     * secret, the label and the lifetime and no store record at all — so
+     * re-shaping it here would be a second declaration of the same projection,
+     * and the two would drift the first time a field moved.
+     */
+    async mintBearerCredential(
+      command: MintBearerCredentialCommand,
+    ): Promise<Result<MintedBearerCredentialView>> {
+      return mintBearerCredential(ports, command);
     },
   };
 }

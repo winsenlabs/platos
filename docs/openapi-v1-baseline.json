@@ -269,6 +269,21 @@
         ],
         "type": "object"
       },
+      "ItemEnvelope_MintedTokenResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MintedTokenResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "ItemEnvelope_OperatorSessionResource": {
         "properties": {
           "data": {
@@ -310,6 +325,124 @@
         },
         "required": [
           "contractVersion"
+        ],
+        "type": "object"
+      },
+      "MintEntityTokenBody": {
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "mcpUserId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scopes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ttlSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "environmentId",
+          "label",
+          "mcpUserId",
+          "scopes",
+          "ttlSeconds"
+        ],
+        "type": "object"
+      },
+      "MintPlatformTokenBody": {
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tier": {
+            "enum": [
+              "scope",
+              "admin"
+            ],
+            "type": "string"
+          },
+          "ttlSeconds": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "environmentId",
+          "name",
+          "permissions",
+          "tier",
+          "ttlSeconds"
+        ],
+        "type": "object"
+      },
+      "MintedTokenResource": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "tier": {
+            "enum": [
+              "scope",
+              "admin"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "token": {
+            "type": "string"
+          },
+          "tokenId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "expiresAt",
+          "label",
+          "permissions",
+          "tier",
+          "token",
+          "tokenId"
         ],
         "type": "object"
       },
@@ -614,8 +747,11 @@
               "COST_WINDOW_INVALID",
               "CREDENTIAL_EXPIRED",
               "CREDENTIAL_FORBIDDEN",
+              "CREDENTIAL_MATERIAL_INVALID",
+              "CREDENTIAL_MINT_REFUSED",
               "CREDENTIAL_NAME_TAKEN",
               "CREDENTIAL_REVOKED",
+              "CREDENTIAL_SUBJECT_MISMATCH",
               "CREDENTIAL_UNAVAILABLE",
               "ENVELOPE_FORMAT_UNWRITABLE",
               "ENVIRONMENT_VARIABLE_KEY_INVALID",
@@ -746,6 +882,8 @@
               "JOB_SERVICE_UNAVAILABLE",
               "JOB_TIMEOUT",
               "LEGACY_ENVELOPE_UNREADABLE",
+              "MCP_ENTITY_ENVIRONMENT_MISMATCH",
+              "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
               "MEMORY_AGENT_AMBIGUOUS",
               "MEMORY_AGENT_SCOPE_DENIED",
               "MEMORY_BULK_LIMIT_EXCEEDED",
@@ -1276,6 +1414,110 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ItemEnvelope_CreatedProjectResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/mcp/entity/{entityId}/tokens": {
+      "post": {
+        "operationId": "post__mcp_entity_by_entityId_tokens",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entityId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintEntityTokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MintedTokenResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/mcp/platform/tokens": {
+      "post": {
+        "operationId": "post__mcp_platform_tokens",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MintPlatformTokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MintedTokenResource"
                 }
               }
             },

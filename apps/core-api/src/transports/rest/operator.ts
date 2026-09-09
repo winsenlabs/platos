@@ -57,6 +57,7 @@
 import type { DomainError } from "@platos/kernel";
 import type { IdentityAccessContract, OperatorAuthorizationView } from "@platos/context-identity-access";
 import type {
+  EnvironmentAccess,
   EnvironmentOperatorAuthorization,
   TenancyContract,
   UserId,
@@ -227,12 +228,13 @@ export async function authorizeEnvironment(
   app: AppModule,
   operator: OperatorAuthorizationView,
   environmentId: string,
+  access: EnvironmentAccess = "metadata",
 ): Promise<EnvironmentOperatorAuthorization> {
   const tenancy = requireTenancy(app);
   const authorized = await tenancy.authorizeEnvironmentOperator({
     environmentId: asIdentifier<EnvironmentId>(environmentId),
     operator: operatorPrincipal(operator),
-    access: "metadata",
+    access,
   });
   if (!authorized.ok) raise(authorized.error as DomainError);
   return authorized.value;

@@ -2018,7 +2018,16 @@ test("an element-access member that is not a delegate is still not a write", () 
 // All four are inside `packages/adapters/postgres-tenancy`, which is
 // `governance`'s `CANONICAL_STORE_ADAPTERS` directory, so the violation list
 // stays empty and it is again the COUNT that moved. 312 + 4 = 316.
-const LIVE_TREE_WRITE_COUNT = 316;
+//
+// WIN-268 (M4.2) P1 316 -> 318. TWO writes, both `packages/adapters/postgres-tenancy`
+// and both inside `identity-access`'s canonical store directory:
+// `mcpToken.create` and `mcpBearerToken.create`, the INSERT half of
+// `BearerCredentialStore` that the two MCP one-time-secret mints reach through
+// the published contract. The port's existing `save` deliberately UPDATES and
+// cannot mint, because the four tables carry required columns an update path has
+// no values for; `mint` carries them. The violation list stays empty and it is
+// again the COUNT that moved. 316 + 2 = 318.
+const LIVE_TREE_WRITE_COUNT = 318;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();

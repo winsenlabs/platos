@@ -162,6 +162,30 @@ export function scanRootAccounting(manifest) {
     authority: "scripts/rest-census-independent.mjs SCAN_ROOTS",
     roots: declared.map((r) => ({ id: r.id, dir: r.dir, operations: r.operations, routeBindings: r.routeBindings })),
     unattributed: unattributed.sort(),
+    /**
+     * WIN-268 (M4.2) P1 — the operations counted under MORE THAN ONE root.
+     *
+     * `owning` above is a SET, so an operation served twice inside one root is
+     * counted once for that root — correct. What it cannot avoid is an operation
+     * served by two DIFFERENT roots being counted once for each, so the roots'
+     * operation counts sum to more than the surface has operations. That is not
+     * an error and it is not a rounding: the two MCP token mints really are
+     * served by both deployables, `apps/agent` since before V1 and
+     * `apps/core-api` now that the `Idempotency-Key` gate has a handler behind
+     * the templates it binds.
+     *
+     * Published so the sum stays an EQUALITY with a named term rather than
+     * becoming a tolerance: `sum(roots) - shared === restOperations`.
+     */
+    sharedAcrossRoots: manifest.inventories.restOperations.filter((operation) => {
+      const roots = new Set();
+      for (const implementation of operation.implementations ?? []) {
+        const source = String(implementation.source ?? "").split("\\").join("/");
+        const match = declared.find((r) => source === r.dir || source.startsWith(`${r.dir}/`));
+        if (match) roots.add(match.id);
+      }
+      return roots.size > 1;
+    }).length,
     errors,
   };
 }
@@ -292,6 +316,10 @@ function build() {
       tenancyModels: tenancyModels.length,
       endUserRestrictedModels: endUserModels.length,
       restOperationsByScanRoot: Object.fromEntries(rm.scanRoots.roots.map((r) => [r.id, r.operations])),
+      // WIN-268 P1 — how many of those are the SAME operation under two roots.
+      // `sum(restOperationsByScanRoot) - restOperationsSharedAcrossScanRoots ===
+      // restOperations`, which is what `capability-matrix.test.mjs` asserts.
+      restOperationsSharedAcrossScanRoots: rm.scanRoots.sharedAcrossRoots,
     },
     scanRoots: rm.scanRoots,
     surfaces: {

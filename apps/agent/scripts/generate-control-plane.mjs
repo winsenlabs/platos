@@ -108,6 +108,12 @@ const CORE_API_MOUNTED_CONTROLLERS = {
   ProjectsController: "http/http.module.ts",
   EnvironmentEndUsersController: "http/http.module.ts",
   BffSessionController: "http/http.module.ts",
+  // WIN-268 (M4.2) P1 — the two MCP token mints. Listed here for the same
+  // reason as their five REST siblings: this root is STRICT, so a controller
+  // under `apps/core-api/src/transports` that is not in this allowlist fails
+  // generation by name rather than quietly leaving the census.
+  McpPlatformTokensController: "http/http.module.ts",
+  McpEntityTokensController: "http/http.module.ts",
 };
 
 /**
@@ -430,13 +436,40 @@ function extractMcpSourceProvenance() {
   return sources;
 }
 
+/**
+ * WIN-268 P1 — the Platos MCP contract, read out of the RUNNING servers.
+ *
+ * Set by `extractMcpTools()` from the same helper run that produces the tool
+ * inventory, so the version block and the catalog it digests can never come from
+ * two different reads of the tree.
+ */
+let mcpContract = null;
+
 function extractMcpTools() {
   const helper = join(scriptDir, "runtime-mcp-catalog.ts");
   const tsx = join(repoDir, "node_modules", ".bin", "tsx");
-  const runtimeTools = JSON.parse(
+  const catalog = JSON.parse(
     execFileSync(tsx, [helper], { cwd: repoDir, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] })
   );
-  if (!Array.isArray(runtimeTools)) throw new Error("runtime MCP catalog helper returned non-array");
+  if (catalog === null || typeof catalog !== "object" || Array.isArray(catalog)) {
+    throw new Error("runtime MCP catalog helper returned a non-object");
+  }
+  const runtimeTools = catalog.tools;
+  if (!Array.isArray(runtimeTools)) throw new Error("runtime MCP catalog helper returned non-array tools");
+  if (catalog.contract === null || typeof catalog.contract !== "object") {
+    throw new Error("runtime MCP catalog helper returned no contract block");
+  }
+  // THE TWO DIGESTS MUST AGREE. One is taken by the router over what it actually
+  // registered, the other over the handler list the builder returned. They differ
+  // only if registration dropped or duplicated a handler — a defect that would
+  // otherwise show up as a client seeing fewer tools than the manifest declares.
+  if (catalog.contract.catalogDigest !== catalog.handlerCatalogDigest) {
+    throw new Error(
+      `MCP catalog digest disagrees between the router (${String(catalog.contract.catalogDigest)}) ` +
+        `and the handler list (${String(catalog.handlerCatalogDigest)})`
+    );
+  }
+  mcpContract = catalog.contract;
 
   const sources = extractMcpSourceProvenance();
   const tools = runtimeTools.map((tool) => ({
@@ -486,6 +519,13 @@ function decoratorPaths(call, sf) {
     arg = pathProperty.initializer;
   }
   if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return [arg.text];
+  // WIN-268 P1 — a path declared by the MCP surface constant rather than typed.
+  // Resolved by READING that file, the same way the version is: the alternative
+  // is a controller spelling `mcp/platform` a second time, which is the
+  // divergence the constant exists to prevent.
+  if (ts.isIdentifier(arg) && mcpSurface().paths.has(arg.text)) {
+    return [mcpSurface().paths.get(arg.text)];
+  }
   if (ts.isArrayLiteralExpression(arg)) {
     return arg.elements.map((entry) => {
       if (!ts.isStringLiteral(entry) && !ts.isNoSubstitutionTemplateLiteral(entry)) {
@@ -582,6 +622,79 @@ function apiSurface() {
   return apiSurfaceCache;
 }
 
+// ── THE MCP SURFACE EXPRESSION, READ THE SAME WAY ──────────────────────────
+//
+// WIN-268 (M4.2) P1. `apps/core-api/src/transports/mcp/mcp-surface.ts` is to the
+// MCP transport what `api-surface.ts` is to REST: the one place the root
+// segment, the two sub-paths and the decision NOT to put a version in the URL
+// are written. Its controllers therefore pass CONSTANTS to `@Controller`, and a
+// generator that demanded string literals would force the surface to be spelled
+// a second time in exactly the place the constant exists to prevent.
+//
+// So it is READ, by the same mechanism and with the same refusal: a form this
+// cannot resolve THROWS rather than defaulting, because a path this generator
+// guessed wrong is a route it mounts in the census and nowhere else.
+let mcpSurfaceCache = null;
+
+function mcpSurface() {
+  if (mcpSurfaceCache) return mcpSurfaceCache;
+  const path = join(coreApiTransportsDir, "mcp", "mcp-surface.ts");
+  if (!existsSync(path)) {
+    throw new Error(
+      `the MCP surface expression is declared in ${relative(repoDir, path)} and that file is missing; ` +
+        "this generator refuses to guess an MCP path"
+    );
+  }
+  const sf = sourceFile(path);
+  const initializers = new Map();
+  for (const statement of sf.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name) || !declaration.initializer) continue;
+      initializers.set(declaration.name.text, declaration.initializer);
+    }
+  }
+  // Resolve in declaration order so `MCP_PLATFORM_PATH` can be a template
+  // literal over `MCP_ROOT_SEGMENT`. Only two forms are accepted — a string
+  // literal, and a template whose every substitution is an already-resolved
+  // constant from THIS file — because anything else is an expression whose value
+  // depends on something outside the surface declaration.
+  const values = new Map();
+  for (const [name, node] of initializers) {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+      values.set(name, node.text);
+      continue;
+    }
+    if (ts.isTemplateExpression(node)) {
+      let text = node.head.text;
+      let resolvable = true;
+      for (const span of node.templateSpans) {
+        if (!ts.isIdentifier(span.expression) || !values.has(span.expression.text)) {
+          resolvable = false;
+          break;
+        }
+        text += values.get(span.expression.text) + span.literal.text;
+      }
+      if (resolvable) values.set(name, text);
+    }
+  }
+  const stringConstant = (name) => {
+    const value = values.get(name);
+    if (typeof value !== "string") {
+      throw new Error(`${name} must resolve to a string in ${relative(repoDir, path)}`);
+    }
+    return value;
+  };
+  mcpSurfaceCache = {
+    rootSegment: stringConstant("MCP_ROOT_SEGMENT"),
+    paths: new Map([
+      ["MCP_PLATFORM_PATH", stringConstant("MCP_PLATFORM_PATH")],
+      ["MCP_ENTITY_PATH", stringConstant("MCP_ENTITY_PATH")],
+    ]),
+  };
+  return mcpSurfaceCache;
+}
+
 /**
  * Resolve a version expression to a string version or the neutral sentinel.
  *
@@ -593,9 +706,13 @@ function resolveVersionExpression(arg, sf) {
   if (ts.isStringLiteral(arg) || ts.isNoSubstitutionTemplateLiteral(arg)) return arg.text;
   if (ts.isIdentifier(arg) && arg.text === "VERSION_NEUTRAL") return VERSION_NEUTRAL_SENTINEL;
   if (ts.isIdentifier(arg) && arg.text === "API_VERSION") return apiSurface().version;
+  // WIN-268 P1 — the MCP surface's own opt-out. It is `VERSION_NEUTRAL` behind a
+  // named constant, so that ADR M0.4 §2's "MCP paths stay unversioned" is a
+  // DECISION a reader can find rather than a symbol repeated in two controllers.
+  if (ts.isIdentifier(arg) && arg.text === "MCP_ROUTE_VERSION") return VERSION_NEUTRAL_SENTINEL;
   throw new Error(
     `version expression ${arg.getText(sf)} in ${relative(repoDir, sf.fileName)} is not a form this generator ` +
-      "can resolve; use a string literal, API_VERSION, or VERSION_NEUTRAL"
+      "can resolve; use a string literal, API_VERSION, MCP_ROUTE_VERSION, or VERSION_NEUTRAL"
   );
 }
 
@@ -789,7 +906,25 @@ function classifyRest(method, path) {
  * The name is unambiguous across the agent tree: it appears in NO controller
  * under `apps/agent/src`, so adding it changes not one V0 row.
  */
-const OPERATOR_SCOPE_CALLS = ["requireOperator(", "getOperatorScope(", "authenticateOperator("];
+/*
+ * WIN-268 (M4.2) P1 ADDED THE FOURTH, for the same reason R1 added the third.
+ * The two MCP token mints do not call `authenticateOperator` directly: they call
+ * `mintingOperator`, which IS that seam plus one refusal only a transport can
+ * make — an impersonated session may not mint a durable credential, because the
+ * credential would outlive the impersonation and `McpToken`'s single actor
+ * column cannot record both humans. A route that authenticates an operator
+ * MORE strictly must not be recorded as authenticating none, which is what
+ * omitting the name would have done.
+ *
+ * It is not a blanket either: the name appears in no other controller in either
+ * tree, so adding it changes exactly the two rows it was added for.
+ */
+const OPERATOR_SCOPE_CALLS = [
+  "requireOperator(",
+  "getOperatorScope(",
+  "authenticateOperator(",
+  "mintingOperator(",
+];
 
 /**
  * A route enforces operator scope when its body makes one of those calls
@@ -947,10 +1082,31 @@ function buildManifest() {
     tool.classification = tool.restMappings.length > 0 ? "MAPPED" : "MCP_ONLY";
   }
 
+  if (mcpContract === null) throw new Error("MCP contract block was never extracted");
+
   return {
     manifestVersion: "M0.1",
     canonicalPolicy: "explicit-operation-manifest",
     tenancyAuthority: ["organizationId", "projectId", "environmentId", "userId"],
+    /**
+     * WIN-268 P1 — ADR M0.4 §2's MCP row, as DATA.
+     *
+     * The row fixes two independent axes: a spec-negotiated `protocolVersion`
+     * date and a Platos contract semver whose MAJOR is the break axis. Both are
+     * read out of `apps/agent/src/http/mcp-surface.ts` by the runtime helper, so
+     * this block is what a client is actually told rather than a second
+     * declaration of it. `--check` byte-compares, so moving the const without
+     * regenerating fails, and editing this block without moving the const fails
+     * the same way.
+     *
+     * `catalogDigest` is `sha256` over every registered platform tool's name,
+     * `schemaHash` and admin flag, sorted by name. It moves when a tool is added,
+     * removed, renamed, made admin-only, or given a different input schema —
+     * which is the list of changes ADR M0.4 §2 calls breaking, plus the additive
+     * ones. Entity tools are excluded by §5 because they are discovered
+     * downstream.
+     */
+    mcpContract,
     toolNamePolicy: {
       baseline: "canonical-dotted-202",
       syntax: TOOL_NAME_PATTERN.source,
@@ -973,6 +1129,30 @@ function buildManifest() {
       ambiguousRestOperations: restOperations.filter(
         (operation) => operation.implementations.length > 1
       ).length,
+      /**
+       * WIN-268 (M4.2) P1 — HOW MANY OF THE AMBIGUOUS ONES ARE THE MIGRATION.
+       *
+       * `ambiguousRestOperations` counts every method/path pair with more than
+       * one handler, and until this tranche it was ZERO. It is now two, and the
+       * distinction this figure draws is the one an integrator needs: two
+       * handlers in ONE deployable is a defect — the router picks whichever was
+       * registered first and nobody can tell which — while one handler in EACH
+       * deployable is the state of a route mid-migration, which is what the two
+       * MCP token mints are. `apps/agent` has served them since before V1;
+       * `apps/core-api` now serves them too, because that is the process the
+       * `Idempotency-Key` gate runs in.
+       *
+       * When the two counts are EQUAL, every ambiguity is cross-deployable and
+       * nothing is racing inside one router. A gap between them is the defect.
+       */
+      crossDeployableRestOperations: restOperations.filter((operation) => {
+        const roots = new Set(
+          (operation.implementations ?? []).map((implementation) =>
+            implementation.source.startsWith("apps/core-api/") ? "core-api" : "agent"
+          )
+        );
+        return operation.implementations.length > 1 && roots.size > 1;
+      }).length,
       restClassifications: countBy(restOperations, "classification"),
       // WIN-267 — WHICH TREE EACH OPERATION CAME FROM.
       //
@@ -1027,8 +1207,9 @@ function buildReport(manifest) {
     "## Summary",
     "",
     `- MCP tools: **${manifest.summary.mcpTools}** across **${manifest.summary.mcpNamespaces}** namespaces (${manifest.summary.adminTierTools} admin-tier).`,
+    `- MCP contract: **v${manifest.mcpContract.version}** (major **${manifest.mcpContract.major}**), MCP protocol \`${manifest.mcpContract.protocolVersion}\`, catalog digest \`${manifest.mcpContract.catalogDigest.slice(0, 16)}\`.`,
     `- REST operations: **${manifest.summary.restOperations}** unique method/path pairs from **${manifest.summary.restRouteBindings}** route bindings.`,
-    `- Ambiguous duplicate REST method/path pairs: **${manifest.summary.ambiguousRestOperations}**.`,
+    `- Ambiguous duplicate REST method/path pairs: **${manifest.summary.ambiguousRestOperations}**, of which **${manifest.summary.crossDeployableRestOperations}** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).`,
     `- MCP classifications: ${Object.entries(manifest.summary.mcpClassifications)
       .map(([key, value]) => `${key}=${value}`)
       .join(", ")}.`,
@@ -1260,7 +1441,25 @@ function buildOpenApi(manifest, contract) {
       required: true,
       schema: { type: "string" },
     }));
-    const primary = operation.implementations[0];
+    // WIN-268 (M4.2) P1 — WHICH IMPLEMENTATION THE V1 DOCUMENT DESCRIBES.
+    //
+    // Until this tranche every operation had exactly one, so `[0]` was the only
+    // one. The two MCP token mints are the first operations SERVED BY BOTH
+    // deployables: `apps/agent` has carried them since before V1 and
+    // `apps/core-api` now serves them on the T2 chassis, because that is the
+    // process the `Idempotency-Key` gate runs in and the gate was binding two
+    // operations nothing there answered.
+    //
+    // The V1 OpenAPI document describes the V1 deployable, so when a core-api
+    // implementation exists it is the one described — and it is the only one
+    // whose request and response schemas can be DERIVED, because the derivation
+    // walks `apps/core-api/src/transports`. Taking `[0]` would publish the
+    // legacy handler's signature under a schema block derived from the new one,
+    // or (as it did) leave the derived handler orphaned and fail generation.
+    const primary =
+      operation.implementations.find((implementation) =>
+        implementation.source.startsWith("apps/core-api/"),
+      ) ?? operation.implementations[0];
     const auth = operationAuth(operation);
     const entry = {
       operationId: operationId(operation),
