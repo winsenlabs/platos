@@ -937,6 +937,42 @@ function assertMountedControllerPolicy() {
       }
     }
   }
+  // THE OTHER DIRECTION, AND IT WAS MISSING. Everything above asks "is every
+  // controller in the policy really registered by the module it names". Nothing
+  // asked the reverse, and the agent root is `strict: false` precisely so that it
+  // may hold controllers this policy omits — that skip is what separates
+  // production controllers from the ones that are not mounted. The consequence
+  // nobody had noticed is that a controller registered in a module the policy
+  // ALREADY NAMES, and therefore mounted in production, is skipped in silence:
+  // its routes reach no manifest, no OpenAPI document, no capability matrix and
+  // no census, and every gate downstream stays green while the surface has grown.
+  //
+  // M4 finish hit this for real. `ChatStreamController` was added to
+  // `agent-runtime.module.ts` — a module five other controllers in this policy
+  // already name — and `--check` PASSED with the route invisible. So the reverse
+  // is now an error, scoped to the modules the policy itself names, which is what
+  // makes it a claim about production rather than about the whole tree: a module
+  // this policy does not name is still free to register whatever it likes, and
+  // that is how `TestController` stays out.
+  //
+  // MEASURED before it was enforced: sixteen modules, and every controller
+  // registered by them was already listed. This refuses a new hole; it forgives
+  // no existing one.
+  for (const root of CONTROLLER_SCAN_ROOTS) {
+    const modulePaths = new Set(
+      Object.values(root.mounted).map((relativeModulePath) => join(root.moduleDir, relativeModulePath))
+    );
+    for (const modulePath of modulePaths) {
+      const controllers = byModule.get(modulePath) ?? moduleControllers(modulePath);
+      byModule.set(modulePath, controllers);
+      for (const controller of controllers) {
+        if (Object.hasOwn(root.mounted, controller)) continue;
+        throw new Error(
+          `${controller} is registered by ${relative(repoDir, modulePath).split("\\").join("/")}, a module the ${root.id} mounted-controller policy names, but is absent from that policy; its routes would reach no manifest, no OpenAPI document and no census. Add it, or move it to a module the policy does not name.`
+        );
+      }
+    }
+  }
   if (Object.hasOwn(PRODUCTION_MOUNTED_CONTROLLERS, "TestController")) {
     throw new Error("TestController must not be present in the production mounted-controller policy");
   }
