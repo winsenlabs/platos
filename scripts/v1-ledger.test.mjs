@@ -2099,9 +2099,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // WIN-272 (M4.6) TRANCHE 2 1765 -> 1766. ONE file, itemised on the `apps-webapp`
   // delta above, and the first this programme has added there:
   // `apps/webapp/test/publicGuestBoundary.test.ts`, the public-guest and embed
-  // boundary over two real `node:http` listeners. The four other files this tranche
-  // touches -- `publicGuestSession.server.ts`, the two route modules and
-  // `stream-lane.integration.test.ts` -- are edited IN PLACE and add none. The
+  // boundary over two real `node:http` listeners. The two other product/suite files
+  // this tranche touches -- `publicGuestSession.server.ts` and
+  // `stream-lane.integration.test.ts` -- are edited IN PLACE and add none, and the two
+  // public route modules are mutation TARGETS that are not edited at all. The
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 10 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1766.
   assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1766);
