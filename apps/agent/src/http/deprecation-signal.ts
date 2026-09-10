@@ -190,13 +190,19 @@ export function deprecationHeadersFor(pathname: string): Record<string, string> 
  * is asserted by comparing an alias response to its canonical twin byte for
  * byte.
  */
+type InboundPath = { readonly path?: string; readonly url?: string };
+type HeaderSink = { setHeader(name: string, value: string): void };
+
 export function applyDeprecationSignal(app: INestApplication): void {
-  app.use((request: { path?: string; url?: string }, response: { setHeader: (name: string, value: string) => void }, next: () => void) => {
+  app.use((request: InboundPath, response: HeaderSink, next: () => void) => {
+    // `req.path` on an Express request is the pathname with the query string
+    // already removed. The `url` fallback is for a bare `http.IncomingMessage`,
+    // where it is not, hence the split -- `?after=/api/v1/platos/memory` must not
+    // make a canonical request look like an alias one.
     const pathname = request.path ?? (request.url ?? "").split("?")[0];
     const headers = deprecationHeadersFor(pathname);
-    if (headers !== null) {
-      for (const [name, value] of Object.entries(headers)) response.setHeader(name, value);
-    }
-    next();
+    if (headers === null) return next();
+    for (const [name, value] of Object.entries(headers)) response.setHeader(name, value);
+    return next();
   });
 }

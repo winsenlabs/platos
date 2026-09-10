@@ -28,7 +28,22 @@ concurrency:
 jobs:
   typecheck:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # MEASURED, 2026-09-10. This budget was set when the job was smaller and the
+    # job outgrew it: on `v1` itself it runs 15m07s (run 34383585684, 7e1243fc),
+    # 17m16s and 17m18s against a 20-minute cap, so the headroom was under three
+    # minutes. The M4 integration adds roughly thirty gate commands plus
+    # `build:v1` and the strict agent build to the same job, and the first run of
+    # it was CANCELLED at 20m17s -- on the LAST run step, with all twenty-five
+    # earlier steps green. Nothing failed; the job ran out of wall clock.
+    #
+    # Raised to 35 rather than to 25, because a cap a minute above the measurement
+    # is a cap that goes red on a slow runner and teaches everyone to re-run CI
+    # until it passes. 35 is what `postgres-memory-evidence` already uses, and it
+    # leaves the same margin the 120-second budget in
+    # `clean-prisma-delegates.test.ts` was widened to leave, for the reason
+    # written there: "a gate that goes red on wall-clock is a gate someone
+    # deletes".
+    timeout-minutes: 35
     services:
       win290-redis:
         image: redis:7
@@ -358,7 +373,17 @@ jobs:
     # integration run and a passing one are indistinguishable in a summary, and
     # this job is the whole of this issue's real-store evidence.
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # MEASURED, 2026-09-10, and this one was ALREADY on the edge on `v1`: 24m18s
+    # (run 34383585684, 7e1243fc), 24m18s and 22m54s against a 25-minute cap.
+    # FORTY-TWO SECONDS of headroom on the base commit, before this branch added
+    # anything. The job builds eighteen context closures and then runs three
+    # real-container integration suites, so its cost grows with every context
+    # adopted -- which is the direction the whole programme is going.
+    #
+    # Raised to 40 on the same reasoning as `typecheck` above. This is not a
+    # regression this branch introduced; it is a budget that was one tranche away
+    # from expiring whoever spent it.
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
