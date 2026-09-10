@@ -97,6 +97,16 @@ const allowedProtectedSdkChanges = [
       "WIN-270 (M4.4): `errorFromResponse` looked for `parsed.message` or a STRING `parsed.error`; ADR M0.4 section 2's envelope is neither, so every V1 refusal reached callers with its `error.code` dropped. Adds `readWireError`, `PlatosError.code`, and `PlatosRefusal` as the base of the 4xx family.",
   },
   {
+    path: "packages/platos-client/src/client.ts",
+    reason:
+      "M4 finish: `_fetchWithRetry` retried ANY method, POST included, and the reason nothing had gone wrong was that no namespace on this legacy client happens to reach a mint — a property of which files exist, not a rule. ADR M0.4 section 2 requires `Idempotency-Key` on the one-time-secret mints precisely because of a retry: without a stable key the second try creates a second live credential nobody knows about. The retry bound is now derived from `isRepeatable`, which admits the methods RFC 9110 section 9.2.2 calls idempotent plus any request carrying an `Idempotency-Key`; the header name is imported from the generated module so the guard and the server cannot disagree about which header they mean.",
+  },
+  {
+    path: "packages/platos-client/src/__tests__/retry-idempotency.test.ts",
+    reason:
+      "M4 finish: proves the guard rather than the current accident. Nine cases drive SYNTHETIC requests through the transport and count `fetch` calls — a POST with no key sent once on a 503 and once on a network error, a POST WITH a key retried and carrying the same key on the second try, an empty key refused, PUT and DELETE still retried, and a GET retried to the configured limit as the non-vacuity control. It never asks whether a mint exists today, which is the question that would go green again the moment somebody added one.",
+  },
+  {
     path: "packages/platos-client/src/index.ts",
     reason:
       "WIN-270 (M4.4): exports the generated V1 surface and its transport, so a consumer reaches the V1 routes without importing a path that says `generated`.",
