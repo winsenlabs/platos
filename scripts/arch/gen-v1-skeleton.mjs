@@ -396,7 +396,27 @@ export const ADAPTERS = [
     ],
     note: "one namespaced keyspace behind one Redis client",
   },
-  { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "one namespaced keyspace, one owner" },
+  {
+    dir: "redis-streams",
+    port: "EventBus",
+    owner: "kernel",
+    // WIN-272 (M4.6) ADDS A SECOND, `kernel:StreamJournal`, and the question it
+    // answers is the one §15's amendment is for: does the adapter that already
+    // exists satisfy the port. YES at the level §15 operates on — the same Redis,
+    // the same connection, the same primitive, so a sixteenth directory would
+    // have been a second Redis client for one Redis. And NO at the level of
+    // contract: `EventBus` is documented as the TRANSIENT fan-out seam and its
+    // `subscribe` carries no position, so a reconnecting subscriber joins wherever
+    // the bus happens to be; `StreamJournal` is ordered and addressable and can
+    // REFUSE a cursor whose frames it no longer holds. M0.4 §2 needs the second
+    // one by name — "per-turn event log keyed (turnId, seq) required so
+    // `Last-Event-ID` survives a process restart".
+    //
+    // Its owner is `kernel`, which this directory ALREADY had, so this row moves
+    // `EXPECTED_BINDING_COUNT` and leaves `EXPECTED_EDGE_COUNT` alone.
+    additional: [{ port: "StreamJournal", owner: "kernel" }],
+    note: "one namespaced keyspace behind one Redis client",
+  },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "the model-provider clients" },
   {
     dir: "channel-slack",
@@ -828,7 +848,7 @@ export function adapterOwnerPackages(adapter) {
 // exactly the arrangement §15 exists to refuse. This run is SERIAL, so the pin
 // moves once, to the value this tree produces.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 59;
+export const EXPECTED_BINDING_COUNT = 60;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -1179,6 +1199,7 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
   "packages/adapters/channel-slack", // WIN-271 (M4.5) — the channels ChannelRuntime: Slack's own published request-verification vector, three distinguishable refusals over the exact received octets, and the outbound deadline that separates "did not land" from "do not know"
   "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
+  "packages/adapters/redis-streams", // WIN-272 (M4.6) — the kernel EventBus and StreamJournal over ONE Redis Streams client: the producer's own sequence IS the server-enforced entry id, a trimmed resume position is REFUSED rather than answered with a gap, and a bus that reconnects joins the live end because it is a fan-out seam and not a queue
 ];
 
 // ---------------------------------------------------------------------------

@@ -565,8 +565,26 @@ export const VIOLATION_CODES = Object.freeze({
  * back, not configured.
  *
  * Nineteen files landed and no door was opened.
+ *
+ * WIN-272 (M4.6) 1663 -> 1673, and the same claim a second time. TEN files:
+ * seven under `packages/adapters/redis-streams` as that directory stops being a
+ * generated interface, two under `packages/kernel` (the stream envelope and its
+ * suite), and one is the kernel port. NOT ONE of them reads the ambient
+ * environment, and the reasons are the same shape as `channel-slack`'s.
+ *
+ * The adapter takes its URL, its retention bounds, its poll interval and its
+ * redelivery ceiling as CONSTRUCTION OPTIONS with defaults, and the composition
+ * root fills the URL from `PLATOS_STORE_REDIS_URL` through `config/stores.ts` —
+ * the one place in this deployable entitled to read a variable. `harness.ts`
+ * starts a container and takes the URL back off it rather than from a variable,
+ * which is what `redis-cache`'s harness does and why neither is on the declared
+ * list. And the kernel is held to a STRICTER rule than this one:
+ * `kernel-content` K4 refuses the identifier `process` outright, so the two
+ * kernel files could not have read one.
+ *
+ * Ten files landed and no door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1663;
+export const EXPECTED_FILE_COUNT = 1673;
 
 function listSourceFiles(root) {
   const found = [];

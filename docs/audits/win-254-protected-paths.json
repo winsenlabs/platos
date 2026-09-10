@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "a8dbeb3d6b26413420ddfaa946d092e99ab0a4419f930a3288a6ae54f2a08c71"
+      "sha256": "ccda1b4c6bf727ce8c197bd83fd2e4a4a9bebbb81233bcabdee7ac51c2f9d297"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "89561011c528e9dde4bbfd6717e9e5a4f9e885c5ae0c4bc839d7180c6c984331"
+      "sha256": "138e511557f86d85f9e7d96a72050e54e0cfde8cb7340dcf3a50ffd27776711d"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1093,7 +1093,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "9583f7f2297ad2c56a5e0c6427ba70df00c7e6c55c07fdba91493347137400f4"
+      "sha256": "9221e99897038bae5795bef55ca760f9bbe692d1897f532b2685d27acb876d8e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3693,7 +3693,7 @@
     {
       "path": "pnpm-lock.yaml",
       "mode": "100644",
-      "sha256": "691986fe40ad8bde9dc30b1a7b1e9c0696b49d7efc42989efda55866e2f73b03"
+      "sha256": "b7204381502e38a9e0a2b312366b5583bb0d35bfbae8cb59677a70f44212e850"
     },
     {
       "path": "references/entity-docs-mcp-bridge/.dockerignore",

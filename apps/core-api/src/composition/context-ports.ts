@@ -566,10 +566,16 @@ export const GOVERNANCE_UNCOMPOSABLE =
  * either direction, so INBOUND becomes a job enqueued through the kernel's
  * `DurableRuntime` and OUTBOUND becomes a subscription on the kernel's
  * `EventBus`. Those two ports are exactly the reverse-edge inversion that makes
- * the context extractable — and both of their directories, `durable-runtime` and
- * `redis-streams`, are still generated interfaces on `UNIMPLEMENTED_ADAPTERS`.
- * A `channels` composed without them would be a context that can authenticate a
- * webhook and then has nowhere to send the turn.
+ * the context extractable.
+ *
+ * WIN-272 (M4.6) CLOSED ONE OF THE TWO, AND THIS SENTENCE MOVED BECAUSE OF IT
+ * RATHER THAN QUIETLY BECOMING FALSE — which is the whole reason it is a constant.
+ * `redis-streams` now holds a real `EventBus` over Redis Streams and left
+ * `UNIMPLEMENTED_ADAPTERS`, so `eventBus` is satisfied and published on
+ * `AppModule`. `durable-runtime` is still a generated interface, and it is the
+ * INBOUND half: a `channels` composed today could subscribe to an outbound
+ * message and post it, and could authenticate a webhook and then have nowhere to
+ * send the turn. Half a reverse edge is not a reverse edge.
  *
  * A CONSTANT AND NOT A COMMENT, for the reason `GOVERNANCE_UNCOMPOSABLE` is one:
  * `installation.test.ts` reads it back against `UNIMPLEMENTED_ADAPTERS` and
@@ -578,17 +584,25 @@ export const GOVERNANCE_UNCOMPOSABLE =
  */
 export const CHANNELS_UNCOMPOSABLE =
   "its ChannelRuntime and ChannelAdapter are satisfied by channel-slack from" +
-  " WIN-271, and its ChannelsRepository by postgres-tenancy. What it still" +
-  " cannot get is the pair ADR M0.3 section 3 makes load-bearing: DurableRuntime," +
-  " which inbound enqueues a turn job through, and EventBus, which outbound" +
-  " subscribes to. Both directories -- durable-runtime and redis-streams -- are" +
-  " generated interfaces on UNIMPLEMENTED_ADAPTERS, so a composed channels" +
-  " could verify a webhook and then have nowhere to send the turn";
+  " WIN-271, its ChannelsRepository by postgres-tenancy, and -- since WIN-272 --" +
+  " its EventBus by redis-streams, which now holds a real implementation and has" +
+  " left UNIMPLEMENTED_ADAPTERS. What it still cannot get is the other half of the" +
+  " pair ADR M0.3 section 3 makes load-bearing: DurableRuntime, which inbound" +
+  " enqueues a turn job through. That directory -- durable-runtime -- is still a" +
+  " generated interface on UNIMPLEMENTED_ADAPTERS, so a composed channels could" +
+  " subscribe to an outbound message and post it, and could still verify a webhook" +
+  " and then have nowhere to send the turn";
 
-/** The two adapter directories `CHANNELS_UNCOMPOSABLE` names. Read back. */
+/**
+ * The adapter directories `CHANNELS_UNCOMPOSABLE` still names. Read back.
+ *
+ * TWO UNTIL WIN-272, ONE AFTER IT. `redis-streams` left because it gained a
+ * constructor, and `installation.test.ts` requires every entry here to be on
+ * `UNIMPLEMENTED_ADAPTERS` — so leaving it listed would have failed rather than
+ * gone stale, which is the property this list exists for.
+ */
 export const CHANNELS_UNCOMPOSABLE_CHAIN: readonly string[] = Object.freeze([
   "durable-runtime",
-  "redis-streams",
 ]);
 
 /**

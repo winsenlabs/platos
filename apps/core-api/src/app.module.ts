@@ -92,9 +92,11 @@
 import type {
   Clock,
   CorrelationSource,
+  EventBus,
   IdGenerator,
   Logger,
   RequestIdempotency,
+  StreamJournal,
 } from "@platos/kernel";
 
 import type { IdentityAccessContract } from "@platos/context-identity-access";
@@ -196,6 +198,36 @@ export interface AppModule {
    * it is the only one the EDGE consumes rather than a context.
    */
   readonly requestIdempotency: RequestIdempotency | null;
+  /**
+   * The kernel `StreamJournal` — the ordered, resumable frame log every stream
+   * lane reads and writes. Null when no install supplied one.
+   *
+   * WIN-272 (M4.6). IT IS A PORT HERE, AND FOR EXACTLY THE REASON
+   * `requestIdempotency` IS ONE: the EDGE consumes it rather than a context. A
+   * stream transport reaching for `adapters["redis-streams"].journal` would put an
+   * adapter's NAME in a transport, and rule (C8) refuses a transport that reads
+   * `app.adapters` at all — so the day the journal moved behind a different
+   * directory, every lane would move with it.
+   *
+   * AND IT IS WHY THE STREAM SURFACE CAN LAND BEFORE `conversations` CAN BE
+   * COMPOSED. `UNIMPORTABLE_CONTEXT_FACTORIES` still names `conversations`, so no
+   * route that needs the turn engine can be served here. A stream is fan-out of
+   * frames somebody else produced, and the port it reads is kernel-hosted — which
+   * is what makes this surface reachable now rather than after that list shortens.
+   */
+  readonly streamJournal: StreamJournal | null;
+  /**
+   * The kernel `EventBus` — the transient fan-out seam, published beside the
+   * journal. Null when no install supplied one.
+   *
+   * IT IS PUBLISHED AND NOT YET CONSUMED HERE, AND THAT IS STATED RATHER THAN
+   * LEFT TO BE DISCOVERED. `redis-streams` satisfies both kernel ports, and ADR
+   * M0.3 §3 makes this one half of the reverse-edge inversion `channels` needs —
+   * `CHANNELS_UNCOMPOSABLE` in `composition/context-ports.ts` names it. Handing it
+   * out here is what lets that context be composed the day `durable-runtime` gains
+   * a constructor, without the tranche that does it having to reopen this file.
+   */
+  readonly eventBus: EventBus | null;
   /**
    * The kernel `CorrelationSource` the process edge decided, published where an
    * install can hand it to an adapter.
@@ -387,6 +419,12 @@ export function composeApplication(input: CompositionInput): AppModule {
     // that the port is ABSENT and fail closed, and an undefined property reads
     // the same as one nobody wired.
     requestIdempotency: adapters["redis-cache"]?.requests ?? null,
+    // The SAME `?? null` and the same reason: readiness has to be able to see the
+    // port is ABSENT, and an undefined property reads the same as one nobody
+    // wired. The adapter object IS the `EventBus` and CARRIES the journal, which
+    // is the shape `ADAPTER_BINDINGS` declared before this tranche and after it.
+    streamJournal: adapters["redis-streams"]?.journal ?? null,
+    eventBus: adapters["redis-streams"] ?? null,
     correlation: input.correlation ?? correlationSource,
     // WIN-267 G1. Built from the contract rather than from a bundle, and
     // therefore built HERE: `context-ports.ts` holds no context by design, and

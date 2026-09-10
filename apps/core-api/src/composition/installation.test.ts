@@ -235,11 +235,14 @@ describe("constructing the adapters an install declared", () => {
     // configuration including this one. `redis-cache` and `redis-ratelimit` are
     // both here because ONE variable was declared -- WIN-267 A3 gave the limiter
     // its own keyspace and its own client off `PLATOS_STORE_REDIS_URL`, so that
-    // is one variable, two objects, two lifetimes. And the outbox is absent
+    // is one variable, two objects, two lifetimes. WIN-272 (M4.6) makes it one
+    // variable and THREE: `redis-streams` holds the journal and the bus off the
+    // same URL and its own client, and its subscriptions are why it has a
+    // lifetime of its own to close. And the outbox is absent
     // because its dependency was not declared. The three states are what the
     // case is about.
     expect([...Object.keys(withoutDatabase.adapters)].sort()).toEqual(
-      ["node-crypto-digest", "redis-cache", "redis-ratelimit", "tokenmint-totp"].sort(),
+      ["node-crypto-digest", "redis-cache", "redis-ratelimit", "redis-streams", "tokenmint-totp"].sort(),
     );
     const declined = withoutDatabase.unwired.find((row) => row.adapter === "outbox");
     expect(declined?.cause).toBe("configuration");
@@ -261,6 +264,10 @@ describe("constructing the adapters an install declared", () => {
     // `node-crypto-digest` and `tokenmint-totp`, which read no configuration and
     // are therefore wired even here; asserting their ABSENCE from `unwired` is
     // what makes "built unconditionally" falsifiable rather than a comment.
+    // 13 -> 13: `redis-streams` moved from the implementation half to the
+    // configuration half of the SAME list, because with nothing declared it is
+    // still unwired -- just for a reason an operator can fix. The split below is
+    // what moved, and it is asserted per directory rather than by this total.
     expect(construction.unwired).toHaveLength(13);
     for (const adapter of BUILT_UNCONDITIONALLY) {
       expect(byCause.get(adapter)).toBeUndefined();
@@ -416,6 +423,12 @@ describe("readiness over what was actually constructed", () => {
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
+    // WIN-272 (M4.6): 59 -> 60 declared and 6 -> 5 unimplementable, by the same
+    // subtraction WIN-271 spells out below. `redis-streams` gained a SECOND
+    // binding (`StreamJournal`, the ordered and resumable half `EventBus` has no
+    // position for) and simultaneously left `UNIMPLEMENTED_ADAPTERS`, so the
+    // directory's rows go from 1-unimplementable to 2-satisfiable: 59 + 1 = 60
+    // declared, 6 - 1 = 5 unimplementable, and satisfied moves by THREE to 55.
     // WIN-271 (M4.5): 58 -> 59 declared and 7 -> 6 unimplementable, and the two
     // move in OPPOSITE directions for one reason. `channel-slack` gained a
     // SECOND binding (`ChannelRuntime`, the inbound half no port covered) and
@@ -425,18 +438,19 @@ describe("readiness over what was actually constructed", () => {
     // 51 + 1 (the new row) + 2 (the two rows the directory now serves, minus
     // the one it used to fail) — stated as 59 - 6 = 53 below and derived rather
     // than written, so the two halves cannot drift.
-    expect(ADAPTER_BINDINGS).toHaveLength(59);
-    expect(unimplementable).toHaveLength(6);
+    expect(ADAPTER_BINDINGS).toHaveLength(60);
+    expect(unimplementable).toHaveLength(5);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
     // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
     // WIN-267 G1: 47 -> 48 of 54 -> 55. WIN-267 G2: 48 -> 51 of 55 -> 58.
-    // WIN-271 (M4.5): 51 -> 53 of 58 -> 59. See the subtraction above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(53);
+    // WIN-271 (M4.5): 51 -> 53 of 58 -> 59. WIN-272 (M4.6): 53 -> 55 of 59 -> 60.
+    // See the subtraction above.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(55);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(6);
-    // STILL RED, AND HONESTLY SO. Six ports have no implementation in this
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(5);
+    // STILL RED, AND HONESTLY SO. Five ports have no implementation in this
     // build, so this process cannot serve the routes that need them. Going green
     // on "everything this install could have wired" would be comparing the
     // supply to itself.
@@ -480,7 +494,9 @@ describe("readiness over what was actually constructed", () => {
     // `channels.slack` group this fixture declares. It is a row per DIRECTORY,
     // not per binding, so this number falls by one while the directory's two
     // bindings move to the satisfied side.
-    expect(construction.unwired).toHaveLength(6);
+    // 6 -> 5 (WIN-272, M4.6): `redis-streams` is now built too, off the
+    // `stores.redis` group -- the same subtraction a third time.
+    expect(construction.unwired).toHaveLength(5);
     expect(app.unwired).toEqual(construction.unwired);
     expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });
@@ -676,29 +692,40 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(app.contexts.channels).toBeUndefined();
 
     // THE CHAIN, JOINED TO THE BINDING TABLE AND TO THE UNIMPLEMENTED LIST
-    // rather than to the sentence. Both directories are DECLARED — the ports
-    // exist and are bound — and both are generated interfaces, which is a
-    // different fact from an unbound port and must not be allowed to look like
-    // one. `ChannelsDependencies` names `durableRuntime` and `eventBus` because
-    // ADR M0.3 §3 forbids `channels` from importing `conversations` in either
-    // direction: inbound enqueues a job and outbound subscribes to an event, so
-    // a `channels` composed without them could authenticate a webhook and then
-    // have nowhere to send the turn.
-    expect(CHANNELS_UNCOMPOSABLE_CHAIN).toEqual(["durable-runtime", "redis-streams"]);
+    // rather than to the sentence. The directory left is DECLARED — its port
+    // exists and is bound — and is a generated interface, which is a different
+    // fact from an unbound port and must not be allowed to look like one.
+    //
+    // IT WAS TWO AND IS NOW ONE, WHICH IS WHY THIS IS A CONSTANT READ BACK AND
+    // NOT A COMMENT. WIN-272 (M4.6) gave `redis-streams` a real `EventBus`, so
+    // OUTBOUND — the half ADR M0.3 §3 inverts through a subscription — is
+    // satisfied and published on `AppModule`. INBOUND is not: it enqueues a turn
+    // job through `DurableRuntime`, and that directory is still an interface, so
+    // a composed `channels` could post an outbound message and could still
+    // authenticate a webhook and then have nowhere to send the turn.
+    expect(CHANNELS_UNCOMPOSABLE_CHAIN).toEqual(["durable-runtime"]);
     for (const directory of CHANNELS_UNCOMPOSABLE_CHAIN) {
       expect(ADAPTER_BINDINGS.map((binding) => binding.adapter)).toContain(directory);
       expect(UNIMPLEMENTED_ADAPTERS).toContain(directory);
       expect(construction.adapters[directory as AdapterName]).toBeUndefined();
     }
 
-    // AND THE PORTS THOSE TWO CARRY ARE THE TWO SLOTS THE CONTEXT NAMES, read
-    // off the binding table rather than retyped, so the sentence cannot drift
-    // away from the wiring it describes.
+    // AND THE PORT THAT DIRECTORY CARRIES IS THE SLOT THE CONTEXT STILL CANNOT
+    // FILL, read off the binding table rather than retyped, so the sentence
+    // cannot drift away from the wiring it describes.
     const carried = CHANNELS_UNCOMPOSABLE_CHAIN.flatMap((directory) =>
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === directory).map((binding) => binding.port),
     );
-    expect(carried.sort()).toEqual(["DurableRuntime", "EventBus"]);
+    expect(carried.sort()).toEqual(["DurableRuntime"]);
     for (const port of carried) expect(CHANNELS_UNCOMPOSABLE).toContain(port);
+
+    // THE HALF THAT IS NOW SATISFIED IS ASSERTED TOO, so "one blocker left" is a
+    // measured claim and not the absence of a second one. The bus is a real
+    // object off `stores.redis` and it reaches the transports through `AppModule`,
+    // which is what `ChannelsDependencies.eventBus` would be filled from.
+    expect(construction.adapters["redis-streams"]).toBeDefined();
+    expect(app.eventBus).toBe(construction.adapters["redis-streams"]);
+    expect(app.streamJournal).toBe(construction.adapters["redis-streams"]?.journal);
 
     // The context's factory is not importable either, which is the SECOND
     // blocker and the one `UNIMPORTABLE_CONTEXT_FACTORIES` measures against
