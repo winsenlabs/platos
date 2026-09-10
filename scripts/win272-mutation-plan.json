@@ -287,15 +287,16 @@
       "id": "M20",
       "subject": "THE CREDENTIAL EXPIRY FENCE",
       "file": "apps/core-api/src/transports/ws/streams.controller.ts",
-      "find": "    if (remaining <= 0) return stop(\"credential-expired\");",
-      "replace": "    if (remaining <= -86_400_000) return stop(\"credential-expired\");",
-      "breaks": "a stream outlives the credential that opened it by a day, which is the unbounded case the live lane has",
+      "find": "    const remaining = input.deadlineMs - input.now();",
+      "replace": "    const remaining = input.deadlineMs + 86_400_000 - input.now();",
+      "breaks": "the fence is a day past the credential's expiry, so a stream outlives the credential that opened it -- which is the unbounded case the live lane has",
       "rebuild": [],
       "suites": [
         "core-api-unit",
         "core-api-integration"
       ],
-      "container": true
+      "container": true,
+      "$note": "PUSHES THE DEADLINE FORWARD RATHER THAN WIDENING THE COMPARISON, and the difference is a SPINNING SUITE. The first draft changed `remaining <= 0` to `remaining <= -86_400_000`, which leaves `remaining` NEGATIVE -- and `blockMs = max(1, min(remaining, heartbeatMs))` then collapses to 1, so the pump busy-loops against a real Redis at a thousand reads a second and the suite never returns. Two orphaned vitest processes at 99% CPU for over an hour on the mini were that. A mutation that HANGS a suite is not a mutation that KILLS it, and a driver that counted the eventual timeout as a kill would be reporting coverage it does not have"
     },
     {
       "id": "M21",

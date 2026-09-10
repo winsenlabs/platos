@@ -32,11 +32,21 @@
 //
 // A KILL is a suite the runner reports as FAILED. A row whose suites all pass is a
 // SURVIVOR and is recorded as one — this driver never reasons about whether a
-// survivor "would have" been caught. A row whose mutation does not COMPILE is
-// recorded as `refused-by-compiler` and counted separately from a kill: a type
-// error is evidence the type layer holds, not evidence a case noticed, and
-// collapsing the two would let a driver claim behavioural coverage it does not
-// have.
+// survivor "would have" been caught.
+//
+// TWO OUTCOMES ARE COUNTED APART FROM A KILL, and both separations were forced by a
+// row of this very plan.
+//
+//   `refused-by-compiler` — the mutation does not typecheck. A type error is
+//   evidence the TYPE LAYER holds, not evidence a case noticed, and collapsing the
+//   two would let this driver claim behavioural coverage it does not have. M04's
+//   first draft was one.
+//
+//   `timed-out` — the suite never returned. M20's first draft left the credential
+//   fence's `remaining` NEGATIVE, which collapsed the pump's block window to one
+//   millisecond and busy-looped against a real Redis; two runners sat at 99% CPU for
+//   over an hour. `spawnSync` reports a timeout with a NULL status, and null is not
+//   zero — so a `status !== 0` test alone would have recorded that hang as a kill.
 //
 //   node scripts/run-win272-mutations.mjs                 # every row
 //   node scripts/run-win272-mutations.mjs --no-container  # skip the rows needing Docker
@@ -82,7 +92,21 @@ const SUITES = {
 
 const ANSI = /\[[0-9;]*m/gu;
 
-function run(command, { timeoutMs = 1_800_000 } = {}) {
+/**
+ * How long one suite may take before the driver stops waiting.
+ *
+ * SHORTER THAN A KILL IS PATIENT FOR, AND A DISTINCT VERDICT, because a mutation
+ * that HANGS a suite is not a mutation that KILLS it. The first draft of M20 left
+ * `remaining` negative, which collapsed the pump's block window to one millisecond
+ * and busy-looped against a real Redis; two orphaned runners sat at 99% CPU for over
+ * an hour on the mini. With only a thirty-minute ceiling and a `status !== 0` test,
+ * the eventual timeout would have been recorded as a KILL — coverage the sweep does
+ * not have. Ten minutes is well past the slowest honest row (the trim case writes
+ * 10,010 frames) and well short of an hour.
+ */
+const SUITE_DEADLINE_MS = 600_000;
+
+function run(command, { timeoutMs = SUITE_DEADLINE_MS } = {}) {
   const [program, ...rest] = command;
   const result = spawnSync(program, rest, {
     cwd: repositoryRoot,
@@ -93,7 +117,11 @@ function run(command, { timeoutMs = 1_800_000 } = {}) {
     shell: false,
   });
   const output = `${result.stdout ?? ""}${result.stderr ?? ""}`.replace(ANSI, "");
-  return { status: result.status, output, timedOut: result.error !== undefined };
+  // `spawnSync` reports a timeout by setting `error` and leaving `status` null, and
+  // a null status is not zero — so a driver that only asked `status !== 0` would call
+  // a hang a kill. The two are separated here and stay separated in the ledger.
+  const timedOut = result.error !== undefined && /ETIMEDOUT|timed out/iu.test(String(result.error));
+  return { status: result.status, output, timedOut };
 }
 
 /** The failing case names the runner printed, so a kill can be attributed. */
@@ -161,6 +189,13 @@ function main() {
           const suite = SUITES[suiteName];
           if (suite === undefined) throw new Error(`${mutation.id} names unknown suite ${suiteName}`);
           const ran = run(suite.command);
+          if (ran.timedOut) {
+            // NOT A KILL. See `SUITE_DEADLINE_MS`.
+            verdict = "timed-out";
+            killedBy = suiteName;
+            cases = [];
+            break;
+          }
           if (ran.status !== 0) {
             compileRefusal = looksLikeCompileRefusal(ran.output);
             verdict = compileRefusal ? "refused-by-compiler" : "KILLED";
@@ -193,22 +228,24 @@ function main() {
   const survived = results.filter((row) => row.verdict === "SURVIVED").length;
   const refused = results.filter((row) => row.verdict === "refused-by-compiler").length;
   const skipped = results.filter((row) => row.verdict === "skipped-no-container").length;
+  const timedOut = results.filter((row) => row.verdict === "timed-out").length;
   const ledger = {
     issue: "WIN-272 (M4.6)",
     purpose:
       "One row per broken decision, with the suite that noticed and the case that failed. Re-runnable: " +
       "node scripts/run-win272-mutations.mjs. A SURVIVOR is recorded as one and never explained away, " +
       "and a mutation the compiler refuses is counted apart from a kill because a type error is evidence " +
-      "the type layer holds rather than evidence a case noticed.",
-    totals: { rows: results.length, killed, survived, refusedByCompiler: refused, skipped },
+      "the type layer holds rather than evidence a case noticed. A row whose suite TIMED OUT is counted " +
+      "apart from both, because a mutation that hangs a suite is not one that kills it.",
+    totals: { rows: results.length, killed, survived, refusedByCompiler: refused, timedOut, skipped },
     rows: results,
   };
   writeFileSync(join(repositoryRoot, LEDGER_PATH), `${JSON.stringify(ledger, null, 2)}\n`);
   process.stdout.write(
     `\n${String(killed)} killed, ${String(survived)} survived, ${String(refused)} refused by the compiler, ` +
-      `${String(skipped)} skipped — wrote ${LEDGER_PATH}\n`,
+      `${String(timedOut)} timed out, ${String(skipped)} skipped — wrote ${LEDGER_PATH}\n`,
   );
-  process.exitCode = survived > 0 ? 1 : 0;
+  process.exitCode = survived + timedOut > 0 ? 1 : 0;
 }
 
 main();

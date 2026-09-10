@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "4ecdf1ee7cbd509c952c3ad322f69a1155cb16d504a13fc3269bfc46f1366b34",
+  "evidenceSha256": "16538637b7cc3cc7303e69645f43915cb47fea090e46e2103e273b760f0d1f0c",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "ddffe2e06997485a408efdd27c5adc36f72e61c6fdcf47c3bb10f3ff5a514c97",
+    "aggregateSha256": "5ba2755883502f33ee0c9cff00d81d559df220e72e71ed8594698c022832c79e",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20587,7 +20587,7 @@
       },
       {
         "path": "scripts/run-win272-mutations.mjs",
-        "sha256": "c4974d76aec3f73d19a556921ca89e6ad25a2eb1138a54c0892f75bf527619ae"
+        "sha256": "c13f17b28e737c35020ec6cd30f6f4e431990b12424d3073b008a0f20ca916d9"
       },
       {
         "path": "scripts/sdk/v1-contract.mjs",
@@ -20723,7 +20723,7 @@
       },
       {
         "path": "scripts/win272-mutation-plan.json",
-        "sha256": "b40f4a5f90f65ed256a8c322e5a2bc64eb8c23f322286772df312bd444726fca"
+        "sha256": "6fb1c934870346fbf846c7c564738284ccc69534884230a2c444f9aa8824a670"
       },
       {
         "path": "scripts/workload-identity-keygen.mjs",
