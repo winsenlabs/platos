@@ -1,6 +1,102 @@
 {
   "components": {
     "schemas": {
+      "BearerCredentialResource": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "principalId": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revokedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state": {
+            "enum": [
+              "active",
+              "revoked",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "tier": {
+            "enum": [
+              "scope",
+              "admin"
+            ],
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tokenId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "expiresAt",
+          "label",
+          "lastUsedAt",
+          "permissions",
+          "principalId",
+          "revokedAt",
+          "revokedBy",
+          "state",
+          "tier",
+          "tokenId"
+        ],
+        "type": "object"
+      },
+      "CollectionEnvelope_BearerCredentialResource": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/BearerCredentialResource"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "type": "object"
+      },
       "CollectionEnvelope_EndUserResource": {
         "properties": {
           "data": {
@@ -362,6 +458,21 @@
         ],
         "type": "object"
       },
+      "ItemEnvelope_RevokedTokenResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RevokedTokenResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "ItemMeta": {
         "properties": {
           "contractVersion": {
@@ -705,6 +816,56 @@
           "organizationId",
           "slug",
           "through"
+        ],
+        "type": "object"
+      },
+      "RevokePlatformTokenBody": {
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentId"
+        ],
+        "type": "object"
+      },
+      "RevokedTokenResource": {
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "newlyRevoked": {
+            "type": "boolean"
+          },
+          "previousState": {
+            "enum": [
+              "active",
+              "revoked",
+              "expired"
+            ],
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": "string"
+          },
+          "revokedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tokenId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "newlyRevoked",
+          "previousState",
+          "revokedAt",
+          "revokedBy",
+          "tokenId"
         ],
         "type": "object"
       },
@@ -1623,6 +1784,51 @@
       }
     },
     "/mcp/entity/{entityId}/tokens": {
+      "get": {
+        "operationId": "get__mcp_entity_by_entityId_tokens",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entityId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_BearerCredentialResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "not-derived",
+        "x-platos-schema-source": "typescript-dto"
+      },
       "post": {
         "operationId": "post__mcp_entity_by_entityId_tokens",
         "parameters": [
@@ -1676,6 +1882,61 @@
           }
         ],
         "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/mcp/entity/{entityId}/tokens/{tokenId}": {
+      "delete": {
+        "operationId": "delete__mcp_entity_by_entityId_tokens_by_tokenId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entityId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tokenId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_RevokedTokenResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "not-derived",
         "x-platos-schema-source": "typescript-dto"
       }
     },
@@ -1837,6 +2098,41 @@
       }
     },
     "/mcp/platform/tokens": {
+      "get": {
+        "operationId": "get__mcp_platform_tokens",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_BearerCredentialResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "not-derived",
+        "x-platos-schema-source": "typescript-dto"
+      },
       "post": {
         "operationId": "post__mcp_platform_tokens",
         "requestBody": {
@@ -1855,6 +2151,63 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ItemEnvelope_MintedTokenResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/mcp/platform/tokens/{id}/revoke": {
+      "post": {
+        "operationId": "post__mcp_platform_tokens_by_id_revoke",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokePlatformTokenBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_RevokedTokenResource"
                 }
               }
             },

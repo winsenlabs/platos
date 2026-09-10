@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "c76b2448b3f751c7bf0467867021e28878047c1f3a4c5221eada54a3de02f362"
+      "sha256": "670bdc11e5cbbc86a0e11d65b947a1c19a9eb8f84055c0e8a0d51b1416790719"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "cbaf1770b5c092580e16e431c965939144b6afbf1e42791cf9cd614b876a50f9"
+      "sha256": "86ae6c802e0dec8d7a01abe3e6c0b814a72fbeef5ce0043df4694418f424f480"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1058,12 +1058,12 @@
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
       "mode": "100644",
-      "sha256": "edcad7c2f9cef16650f44e65c9e6dd44322bc70f104259d3071163d90591b760"
+      "sha256": "9d4588e5618cf5f149430fd4b4bed7c7a9ae85961ddc241cd6ce8a0ba01f6cc1"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.md",
       "mode": "100644",
-      "sha256": "656142ca7b0813c3c34da6a0cbc32dcb0727e687f3f66b6c59815edc2ad5224f"
+      "sha256": "3cfe7458f4d2f25d7f6977bb26c5758fc9b249ebb736553b23755475de015b3c"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "14fc47fb0e23e069685ed54e9a8e81c604547e5e9816a925d94f73e6b22b2c61"
+      "sha256": "1ac5aab2c91cf3e19da3c2dbf67a26bf218add45691c1314c7b721d01a13037b"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1308,7 +1308,7 @@
     {
       "path": "docs/control-plane-parity.generated.md",
       "mode": "100644",
-      "sha256": "b8a8a2c25c1aebf4228015097473180bbe38f9a80a64fdb881bb3c9e762bb8f6"
+      "sha256": "f24e21b44a8dc40c5dae083d9913a7e95c7495e6b61c325f0bdb48cf3b896941"
     },
     {
       "path": "docs/deploy-environment-variables.mdx",
@@ -1438,7 +1438,7 @@
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "55e263f632833aec130d35b7e9152dc2b4906b4926cdb2d07cbd31b13e61e9c5"
+      "sha256": "15e5c4eee3ddf9fd816ce14e70433876bffc0b5757477073fa7dae57090a5063"
     },
     {
       "path": "docs/errors-retrying.mdx",

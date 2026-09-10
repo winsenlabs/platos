@@ -472,6 +472,25 @@ export type WireErrorCode = (typeof WIRE_ERROR_CODES)[number];
 /** The header M0.4 section 2 binds one-time-secret mints to. */
 export const IDEMPOTENCY_KEY_HEADER = "idempotency-key";
 
+export interface BearerCredentialResource {
+  readonly "tokenId": string;
+  readonly "label": string;
+  readonly "permissions": readonly string[];
+  readonly "principalId": string;
+  readonly "tier": "scope" | "admin" | null;
+  readonly "state": "active" | "revoked" | "expired";
+  readonly "createdAt": string;
+  readonly "expiresAt": string | null;
+  readonly "lastUsedAt": string | null;
+  readonly "revokedAt": string | null;
+  readonly "revokedBy": string | null;
+}
+
+export interface CollectionEnvelope_BearerCredentialResource {
+  readonly "data": readonly BearerCredentialResource[];
+  readonly "page": PageBlock;
+}
+
 export interface CollectionEnvelope_EndUserResource {
   readonly "data": readonly EndUserResource[];
   readonly "page": PageBlock;
@@ -582,6 +601,11 @@ export interface ItemEnvelope_PolicyDeletionResource {
   readonly "meta": ItemMeta;
 }
 
+export interface ItemEnvelope_RevokedTokenResource {
+  readonly "data": RevokedTokenResource;
+  readonly "meta": ItemMeta;
+}
+
 export interface ItemMeta {
   readonly "contractVersion": string;
   readonly "degraded"?: DegradedNotice;
@@ -671,6 +695,19 @@ export interface ProjectResource {
   readonly "archivedAt": string | null;
   readonly "createdAt": string;
   readonly "through": string;
+}
+
+export interface RevokePlatformTokenBody {
+  readonly "environmentId": string;
+}
+
+export interface RevokedTokenResource {
+  readonly "tokenId": string;
+  readonly "label": string;
+  readonly "revokedAt": string;
+  readonly "newlyRevoked": boolean;
+  readonly "previousState": "active" | "revoked" | "expired";
+  readonly "revokedBy": string | null;
 }
 
 export interface SetOrganizationPolicyBody {
@@ -782,12 +819,28 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     idempotency: "accepted",
   },
   {
+    operationId: "get__mcp_entity_by_entityId_tokens",
+    method: "GET",
+    template: "/mcp/entity/:entityId/tokens",
+    pathParameters: ["entityId"],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
     operationId: "post__mcp_entity_by_entityId_tokens",
     method: "POST",
     template: "/mcp/entity/:entityId/tokens",
     pathParameters: ["entityId"],
     successStatus: 201,
     idempotency: "required",
+  },
+  {
+    operationId: "delete__mcp_entity_by_entityId_tokens_by_tokenId",
+    method: "DELETE",
+    template: "/mcp/entity/:entityId/tokens/:tokenId",
+    pathParameters: ["entityId", "tokenId"],
+    successStatus: 200,
+    idempotency: "exempt",
   },
   {
     operationId: "get__mcp_platform_environments_by_environmentId_policies",
@@ -814,12 +867,28 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     idempotency: "accepted",
   },
   {
+    operationId: "get__mcp_platform_tokens",
+    method: "GET",
+    template: "/mcp/platform/tokens",
+    pathParameters: [],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
     operationId: "post__mcp_platform_tokens",
     method: "POST",
     template: "/mcp/platform/tokens",
     pathParameters: [],
     successStatus: 201,
     idempotency: "required",
+  },
+  {
+    operationId: "post__mcp_platform_tokens_by_id_revoke",
+    method: "POST",
+    template: "/mcp/platform/tokens/:id/revoke",
+    pathParameters: ["id"],
+    successStatus: 200,
+    idempotency: "exempt",
   },
 ];
 
@@ -996,6 +1065,21 @@ export class ProjectsV1Api {
 export class McpEntityTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
+  /**
+   * GET /mcp/entity/:entityId/tokens
+   *
+   * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
+   * The same TokenListQuery post-parse shape as the platform listing, and the same required `environmentId`. Listed separately rather than folded in, so withdrawing one route does not silently withdraw another's declared gap.
+   */
+  async list(entityId: string, query?: Readonly<Record<string, string>>): Promise<CollectionEnvelope_BearerCredentialResource> {
+    return this.transport.send<CollectionEnvelope_BearerCredentialResource>({
+      operation: operation("get__mcp_entity_by_entityId_tokens"),
+      path: fill("/mcp/entity/:entityId/tokens", { entityId }),
+      body: undefined,
+      query: query,
+    });
+  }
+
   /** POST /mcp/entity/:entityId/tokens */
   async mint(entityId: string, body: MintEntityTokenBody): Promise<ItemEnvelope_MintedTokenResource> {
     return this.transport.send<ItemEnvelope_MintedTokenResource>({
@@ -1003,6 +1087,21 @@ export class McpEntityTokensV1Api {
       path: fill("/mcp/entity/:entityId/tokens", { entityId }),
       body: body,
       query: undefined,
+    });
+  }
+
+  /**
+   * DELETE /mcp/entity/:entityId/tokens/:tokenId
+   *
+   * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
+   * The @Query parameter carries only `environmentId`, so unlike the two listings its POST-PARSE shape and its WIRE shape are identical and it could be derived today. It is declared anyway because this derivation has no path that emits a @Query type at all — the branch that would is the one that raises — so exempting it would mean teaching the derivation a wire-DTO rule for one route and leaving three. When that rule lands, THIS is the entry to delete first: it is the only one whose type is already the truth.
+   */
+  async revoke(entityId: string, tokenId: string, query?: Readonly<Record<string, string>>): Promise<ItemEnvelope_RevokedTokenResource> {
+    return this.transport.send<ItemEnvelope_RevokedTokenResource>({
+      operation: operation("delete__mcp_entity_by_entityId_tokens_by_tokenId"),
+      path: fill("/mcp/entity/:entityId/tokens/:tokenId", { entityId, tokenId }),
+      body: undefined,
+      query: query,
     });
   }
 
@@ -1046,11 +1145,36 @@ export class McpOrganizationPoliciesV1Api {
 export class McpPlatformTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
+  /**
+   * GET /mcp/platform/tokens
+   *
+   * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
+   * The @Query parameter is typed TokenListQuery, the shape AFTER tokenListQueryValidator has decoded ?cursor= into an offset — the same post-parse mismatch as the end-user listing: it declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. It ALSO carries `environmentId`, which callers do send and which is REQUIRED, so this route's undocumented parameters include one without which it cannot be called. Publishing TokenListQuery would still describe a query string the route does not accept.
+   */
+  async list(query?: Readonly<Record<string, string>>): Promise<CollectionEnvelope_BearerCredentialResource> {
+    return this.transport.send<CollectionEnvelope_BearerCredentialResource>({
+      operation: operation("get__mcp_platform_tokens"),
+      path: "/mcp/platform/tokens",
+      body: undefined,
+      query: query,
+    });
+  }
+
   /** POST /mcp/platform/tokens */
   async mint(body: MintPlatformTokenBody): Promise<ItemEnvelope_MintedTokenResource> {
     return this.transport.send<ItemEnvelope_MintedTokenResource>({
       operation: operation("post__mcp_platform_tokens"),
       path: "/mcp/platform/tokens",
+      body: body,
+      query: undefined,
+    });
+  }
+
+  /** POST /mcp/platform/tokens/:id/revoke */
+  async revoke(id: string, body: RevokePlatformTokenBody): Promise<ItemEnvelope_RevokedTokenResource> {
+    return this.transport.send<ItemEnvelope_RevokedTokenResource>({
+      operation: operation("post__mcp_platform_tokens_by_id_revoke"),
+      path: fill("/mcp/platform/tokens/:id/revoke", { id }),
       body: body,
       query: undefined,
     });

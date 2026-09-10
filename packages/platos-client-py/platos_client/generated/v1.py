@@ -474,6 +474,25 @@ WIRE_ERROR_CODES: tuple[str, ...] = (
 #: The header M0.4 section 2 binds one-time-secret mints to.
 IDEMPOTENCY_KEY_HEADER = "idempotency-key"
 
+class BearerCredentialResource(TypedDict):
+    tokenId: str
+    label: str
+    permissions: list[str]
+    principalId: str
+    tier: Literal["scope", "admin"] | None
+    state: Literal["active", "revoked", "expired"]
+    createdAt: str
+    expiresAt: str | None
+    lastUsedAt: str | None
+    revokedAt: str | None
+    revokedBy: str | None
+
+
+class CollectionEnvelope_BearerCredentialResource(TypedDict):
+    data: list["BearerCredentialResource"]
+    page: "PageBlock"
+
+
 class CollectionEnvelope_EndUserResource(TypedDict):
     data: list["EndUserResource"]
     page: "PageBlock"
@@ -584,6 +603,11 @@ class ItemEnvelope_PolicyDeletionResource(TypedDict):
     meta: "ItemMeta"
 
 
+class ItemEnvelope_RevokedTokenResource(TypedDict):
+    data: "RevokedTokenResource"
+    meta: "ItemMeta"
+
+
 class ItemMetaOptional(TypedDict, total=False):
     degraded: "DegradedNotice"
 
@@ -679,6 +703,19 @@ class ProjectResource(TypedDict):
     archivedAt: str | None
     createdAt: str
     through: str
+
+
+class RevokePlatformTokenBody(TypedDict):
+    environmentId: str
+
+
+class RevokedTokenResource(TypedDict):
+    tokenId: str
+    label: str
+    revokedAt: str
+    newlyRevoked: bool
+    previousState: Literal["active", "revoked", "expired"]
+    revokedBy: str | None
 
 
 class SetOrganizationPolicyBody(TypedDict):
@@ -792,12 +829,28 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "idempotency": "accepted",
     },
     {
+        "operationId": "get__mcp_entity_by_entityId_tokens",
+        "method": "GET",
+        "template": "/mcp/entity/:entityId/tokens",
+        "pathParameters": ["entityId"],
+        "successStatus": 200,
+        "idempotency": "not-applicable",
+    },
+    {
         "operationId": "post__mcp_entity_by_entityId_tokens",
         "method": "POST",
         "template": "/mcp/entity/:entityId/tokens",
         "pathParameters": ["entityId"],
         "successStatus": 201,
         "idempotency": "required",
+    },
+    {
+        "operationId": "delete__mcp_entity_by_entityId_tokens_by_tokenId",
+        "method": "DELETE",
+        "template": "/mcp/entity/:entityId/tokens/:tokenId",
+        "pathParameters": ["entityId", "tokenId"],
+        "successStatus": 200,
+        "idempotency": "exempt",
     },
     {
         "operationId": "get__mcp_platform_environments_by_environmentId_policies",
@@ -824,12 +877,28 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "idempotency": "accepted",
     },
     {
+        "operationId": "get__mcp_platform_tokens",
+        "method": "GET",
+        "template": "/mcp/platform/tokens",
+        "pathParameters": [],
+        "successStatus": 200,
+        "idempotency": "not-applicable",
+    },
+    {
         "operationId": "post__mcp_platform_tokens",
         "method": "POST",
         "template": "/mcp/platform/tokens",
         "pathParameters": [],
         "successStatus": 201,
         "idempotency": "required",
+    },
+    {
+        "operationId": "post__mcp_platform_tokens_by_id_revoke",
+        "method": "POST",
+        "template": "/mcp/platform/tokens/:id/revoke",
+        "pathParameters": ["id"],
+        "successStatus": 200,
+        "idempotency": "exempt",
     },
 )
 
@@ -1016,6 +1085,21 @@ class McpEntityTokensV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
+    def list(self, entity_id: str, query: dict[str, str] | None = None) -> "CollectionEnvelope_BearerCredentialResource":
+        """GET /mcp/entity/:entityId/tokens
+
+        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
+        The same TokenListQuery post-parse shape as the platform listing, and the same required `environmentId`. Listed separately rather than folded in, so withdrawing one route does not silently withdraw another's declared gap.
+        """
+        return self._transport.send(
+            {
+                "operation": _operation("get__mcp_entity_by_entityId_tokens"),
+                "path": _fill("/mcp/entity/:entityId/tokens", {"entityId": entity_id}),
+                "body": None,
+                "query": query,
+            }
+        )
+
     def mint(self, entity_id: str, body: "MintEntityTokenBody") -> "ItemEnvelope_MintedTokenResource":
         """POST /mcp/entity/:entityId/tokens"""
         return self._transport.send(
@@ -1024,6 +1108,21 @@ class McpEntityTokensV1Api:
                 "path": _fill("/mcp/entity/:entityId/tokens", {"entityId": entity_id}),
                 "body": body,
                 "query": None,
+            }
+        )
+
+    def revoke(self, entity_id: str, token_id: str, query: dict[str, str] | None = None) -> "ItemEnvelope_RevokedTokenResource":
+        """DELETE /mcp/entity/:entityId/tokens/:tokenId
+
+        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
+        The @Query parameter carries only `environmentId`, so unlike the two listings its POST-PARSE shape and its WIRE shape are identical and it could be derived today. It is declared anyway because this derivation has no path that emits a @Query type at all — the branch that would is the one that raises — so exempting it would mean teaching the derivation a wire-DTO rule for one route and leaving three. When that rule lands, THIS is the entry to delete first: it is the only one whose type is already the truth.
+        """
+        return self._transport.send(
+            {
+                "operation": _operation("delete__mcp_entity_by_entityId_tokens_by_tokenId"),
+                "path": _fill("/mcp/entity/:entityId/tokens/:tokenId", {"entityId": entity_id, "tokenId": token_id}),
+                "body": None,
+                "query": query,
             }
         )
 
@@ -1070,12 +1169,38 @@ class McpPlatformTokensV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
+    def list(self, query: dict[str, str] | None = None) -> "CollectionEnvelope_BearerCredentialResource":
+        """GET /mcp/platform/tokens
+
+        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
+        The @Query parameter is typed TokenListQuery, the shape AFTER tokenListQueryValidator has decoded ?cursor= into an offset — the same post-parse mismatch as the end-user listing: it declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. It ALSO carries `environmentId`, which callers do send and which is REQUIRED, so this route's undocumented parameters include one without which it cannot be called. Publishing TokenListQuery would still describe a query string the route does not accept.
+        """
+        return self._transport.send(
+            {
+                "operation": _operation("get__mcp_platform_tokens"),
+                "path": "/mcp/platform/tokens",
+                "body": None,
+                "query": query,
+            }
+        )
+
     def mint(self, body: "MintPlatformTokenBody") -> "ItemEnvelope_MintedTokenResource":
         """POST /mcp/platform/tokens"""
         return self._transport.send(
             {
                 "operation": _operation("post__mcp_platform_tokens"),
                 "path": "/mcp/platform/tokens",
+                "body": body,
+                "query": None,
+            }
+        )
+
+    def revoke(self, id: str, body: "RevokePlatformTokenBody") -> "ItemEnvelope_RevokedTokenResource":
+        """POST /mcp/platform/tokens/:id/revoke"""
+        return self._transport.send(
+            {
+                "operation": _operation("post__mcp_platform_tokens_by_id_revoke"),
+                "path": _fill("/mcp/platform/tokens/:id/revoke", {"id": id}),
                 "body": body,
                 "query": None,
             }
