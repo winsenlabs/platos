@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "963920fac60fb9935c3dece125fa76ca1910acea767fcddc80c206269e992844",
+  "evidenceSha256": "c3f78f7b0798733f7a88eae1b9f4d0ee81f25d0ac71bad5e14a57cbf71bd260b",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "61fcf82b33e796fe89b25b22b5706fa875c6196948729921a4cf08d6030de540",
+    "aggregateSha256": "7217b1a915284cf2118f2422c0c37d8918350ef7e81e07640d7db089da651ffa",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4287,7 +4287,7 @@
       },
       {
         "path": "docs/audits/M0.8-operator-operations.md",
-        "sha256": "6aee926db9d3f324822945ecd4e98dc7451806e13fdf3f482e2a723153b038a3"
+        "sha256": "11021cd2de5dc49eb57d6467a4f96e98a4db45e4491b92114760522534066859"
       },
       {
         "path": "docs/audits/M0.9-rest-census-independent.json",
