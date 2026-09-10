@@ -36,6 +36,7 @@ import type {
 } from "@platos/context-identity-access/application/ports/index.js";
 import type { BearerCredentialStore } from "@platos/context-identity-access/application/ports/index.js";
 
+import { createBearerLifecycleStore } from "./identity-bearer-lifecycle.js";
 import { IdentityWriteRefused, requireDigest } from "./identity-guards.js";
 import type { ScopeAncestry } from "./identity-mapping.js";
 import { readAuthorizationScope, readIdentityTier, writeAuthorizationScope } from "./identity-mapping.js";
@@ -236,7 +237,15 @@ async function readEndUserSession(reader: TenancyReader, tokenHash: string) {
 export function createBearerCredentialStore(
   transactions: TenancyTransactions,
 ): BearerCredentialStore {
+  // WIN-268 (M4.2). LIST, COUNT and REVOKE are composed in from
+  // `identity-bearer-lifecycle.ts` rather than written here, for the ADR M0.3 §6
+  // budget this file is already at and because they address a credential by its
+  // ID inside an environment where everything below addresses one by its DIGEST.
+  // Spread FIRST, so a name collision would be a compile error on the explicit
+  // member below rather than a silent override of it.
   return {
+    ...createBearerLifecycleStore(transactions),
+
     async findByTokenHash(
       kind: BearerCredentialKind,
       tokenHash: TokenHash,

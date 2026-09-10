@@ -265,3 +265,35 @@ export function credentialMintRefused(reason: string): DomainError {
     details: { reason },
   });
 }
+
+/**
+ * WIN-268 (M4.2) — a REVOCATION aimed at a credential that is not there.
+ *
+ * A SEPARATE CODE FROM THE THREE AUTHENTICATION REFUSALS, and the separation is
+ * the whole point of minting it. `CREDENTIAL_REVOKED` and `CREDENTIAL_EXPIRED`
+ * answer "why did the credential you PRESENTED not work"; this answers "the
+ * credential you NAMED does not exist in the environment you are administering".
+ * Three different operator stories:
+ *
+ *   never existed  -> this code. The id is wrong, or belongs elsewhere. Go and
+ *                     read the listing.
+ *   already ended  -> not a refusal at all. See `revoke-bearer-credential.ts`:
+ *                     the operation is idempotent by construction and reports
+ *                     the state it found instead of failing.
+ *   lapsed on its own -> likewise not a refusal, and reported as `expired` so an
+ *                     operator can tell a decision from a clock.
+ *
+ * `not_found` AND NOT `forbidden`. The lookup is already narrowed to the scope
+ * `tenancy` authorized, and an operator who may list an environment's credentials
+ * learns nothing from being told one of its ids is absent. Answering `forbidden`
+ * would send them to check memberships that are correct.
+ *
+ * IT DOES NOT NAME THE SCOPE IT SEARCHED. A caller that received "not found in
+ * environment X" could walk a set of environment ids and read which ones hold a
+ * given credential id out of the difference between two refusals.
+ */
+export function credentialNotFound(credentialId: string): DomainError {
+  return domainError("CREDENTIAL_NOT_FOUND", "not_found", "No such credential", {
+    details: { credentialId },
+  });
+}

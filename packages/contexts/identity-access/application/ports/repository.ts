@@ -27,7 +27,11 @@ import type {
   AccessKeyRotationPlan,
   BearerCredentialKind,
   BearerCredentialMint,
+  BearerCredentialQuery,
   BearerCredentialRecord,
+  BearerCredentialRevocation,
+  BearerCredentialRevocationResult,
+  BearerCredentialSummary,
   EmailAddress,
   EndUserQuery,
   EndUserWithIdentities,
@@ -174,6 +178,39 @@ export interface BearerCredentialStore {
    * domain error, and `IdentityWriteRefused` is the adapter's own type for it.
    */
   mint(credential: BearerCredentialMint): Promise<BearerCredentialRecord>;
+
+  /**
+   * WIN-268 (M4.2) — the LISTING, and the two methods that must share one query.
+   *
+   * `BearerCredentialSummary` HAS NO `tokenHash` FIELD, which is the point of it
+   * being a separate type from `BearerCredentialRecord`: an implementation that
+   * projected the verifier could not compile, so "a listing does not return
+   * credential material" is enforced by the type rather than reviewed on each
+   * store. See the type's own note.
+   *
+   * BOTH METHODS TAKE THE SAME VALIDATED QUERY, for the reason `EndUserStore`
+   * states and for one more: a `total` computed under different filtering from the
+   * page it describes is a pagination control that lies, and here the filtering
+   * includes the TENANT — so a total counted without the environment clause would
+   * tell an operator how many credentials exist in tenants they cannot see.
+   */
+  list(query: BearerCredentialQuery): Promise<readonly BearerCredentialSummary[]>;
+  /** Rows matching the query IGNORING `limit` and `offset`. */
+  count(query: BearerCredentialQuery): Promise<number>;
+
+  /**
+   * WIN-268 (M4.2) — END one credential, idempotently, and read the row back.
+   *
+   * `null` MEANS NO SUCH ROW IN THIS SCOPE — never "already revoked", which is a
+   * successful result carrying `newlyRevoked: false`. Collapsing the two is
+   * exactly what the legacy `revoke(): Promise<boolean>` does (`false` for absent,
+   * `true` for both revoked-now and already-revoked), and it leaves an operator
+   * unable to tell a wrong id from a second click.
+   *
+   * A REFUSED WRITE IS A THROW, matching `save` and `mint`: the port's contract is
+   * that a store fault is a fault the use case turns into a domain error.
+   */
+  revoke(revocation: BearerCredentialRevocation): Promise<BearerCredentialRevocationResult | null>;
 }
 
 /**

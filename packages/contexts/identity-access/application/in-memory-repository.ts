@@ -21,7 +21,11 @@
 import type {
   AccessKeyRecord,
   BearerCredentialKind,
+  BearerCredentialQuery,
   BearerCredentialRecord,
+  BearerCredentialRevocation,
+  BearerCredentialRevocationResult,
+  BearerCredentialSummary,
   EmailAddress,
   EndUserId,
   EndUserIdentityId,
@@ -49,6 +53,13 @@ import type {
 import { compareEndUsers, isActive, matchesEndUserQuery } from "../domain/index.js";
 import type { AccessKeyRotationPlan } from "../domain/index.js";
 import type { IdentityAccessRepository } from "./ports/index.js";
+import {
+  compareBearerListings,
+  matchesBearerQuery,
+  matchingBearerListings,
+  requireListingsFor,
+  type InMemoryBearerListing,
+} from "./in-memory-bearer-listings.js";
 import type { EnvironmentId } from "@platos/kernel";
 
 export interface InMemoryIdentityAccessRepository extends IdentityAccessRepository {
@@ -76,6 +87,20 @@ export interface InMemoryState {
    */
   readonly accessTokens: Map<string, OAuthAccessTokenRecord>;
   readonly bearerCredentials: Map<string, BearerCredentialRecord>;
+  /**
+   * WIN-268 (M4.2) — THE LISTING COLUMNS, KEYED ON CREDENTIAL ID.
+   *
+   * A SECOND MAP AND NOT A WIDER RECORD, because `bearerCredentials` is keyed on
+   * `(kind, tokenHash)` — which is what `findByTokenHash` needs and what every
+   * existing suite seeds directly — while a listing addresses a credential by ID
+   * and needs `label`, `createdAt`, the entity and `revokedBy`, none of which
+   * `BearerCredentialRecord` carries. Widening that record would have changed the
+   * shape four suites already write by hand.
+   *
+   * `mint` populates both. A row seeded straight into `bearerCredentials` has no
+   * entry here, and `list` REFUSES rather than omitting it — see its own note.
+   */
+  readonly bearerCredentialListings: Map<string, InMemoryBearerListing>;
   readonly endUsers: Map<EndUserId, EndUserRecord>;
   readonly endUserIdentities: Map<EndUserIdentityId, EndUserIdentityRecord>;
   readonly impersonationAudit: ImpersonationAuditEntry[];
@@ -95,6 +120,7 @@ function emptyState(): InMemoryState {
     authorizationCodes: new Map(),
     accessTokens: new Map(),
     bearerCredentials: new Map(),
+    bearerCredentialListings: new Map(),
     endUsers: new Map(),
     endUserIdentities: new Map(),
     impersonationAudit: [],
@@ -378,7 +404,104 @@ export function inMemoryIdentityAccessRepository(
           lastUsedAt: null,
         };
         state.bearerCredentials.set(key, record);
+        state.bearerCredentialListings.set(credential.credentialId, {
+          summary: {
+            credentialId: credential.credentialId,
+            kind: credential.kind,
+            label: credential.label,
+            permissions: credential.permissions,
+            principalId: credential.principalId,
+            permissionTier: credential.permissionTier,
+            // THE INSTANT THE ROW WOULD CARRY. `McpToken.createdAt` and
+            // `McpBearerToken.createdAt` are both `@default(now())`, so the real
+            // store stamps them and the plan does not carry one. The double has no
+            // clock of its own, and using `expiresAt` minus the TTL would
+            // reconstruct a number the plan already discarded — so it stamps the
+            // one instant it can defend: `new Date()`, the same thing
+            // `@default(now())` means.
+            createdAt: new Date(),
+            expiresAt: credential.expiresAt,
+            revokedAt: null,
+            lastUsedAt: null,
+            revokedBy: null,
+          },
+          environmentId:
+            credential.scope.kind === "ENVIRONMENT" &&
+            credential.scope.tenant.level === "environment"
+              ? credential.scope.tenant.environmentId
+              : "",
+          subjectId: credential.subjectId,
+          tokenHash: credential.tokenHash,
+        });
         return record;
+      },
+
+      /**
+       * WIN-268 (M4.2) — the listing, and it REFUSES rather than under-reporting.
+       *
+       * A credential seeded straight into `state.bearerCredentials` has no entry
+       * in `state.bearerCredentialListings`, because only `mint` writes both. A
+       * double that quietly skipped such a row would answer a short page and a
+       * short total, and a use-case test asserting "two credentials, one page"
+       * would pass against a store that had lost one. So the mismatch is a loud
+       * throw naming the credential, which is the same reason `save` refuses a
+       * digest no row carries.
+       */
+      async list(query: BearerCredentialQuery): Promise<readonly BearerCredentialSummary[]> {
+        requireListingsFor(state, query);
+        return matchingBearerListings(state, query)
+          .sort(compareBearerListings)
+          .slice(query.offset, query.offset + query.limit)
+          .map((listing: InMemoryBearerListing) => listing.summary);
+      },
+
+      /** The same predicate WITHOUT the window: a total that counted only the
+       * page would make `hasMore` permanently false. */
+      async count(query: BearerCredentialQuery): Promise<number> {
+        requireListingsFor(state, query);
+        return matchingBearerListings(state, query).length;
+      },
+
+      /**
+       * WIN-268 (M4.2) — the CONDITIONAL revocation, implemented faithfully.
+       *
+       * `revokedAt: null` IS THE PRECONDITION, exactly as the SQL's `WHERE ...
+       * revokedAt IS NULL` is. A double that overwrote unconditionally would let a
+       * use case that dropped `newlyRevoked` keep passing, and would report the
+       * second revoker's instant as the moment the credential was ended — which is
+       * the fact an operator reads to find out when a leak was closed.
+       *
+       * EXPIRY IS NOT A PRECONDITION. Both oracles revoke a lapsed credential
+       * without checking, and the use case's own banner says why that is right.
+       */
+      async revoke(
+        revocation: BearerCredentialRevocation,
+      ): Promise<BearerCredentialRevocationResult | null> {
+        const listing = state.bearerCredentialListings.get(revocation.credentialId);
+        if (listing === undefined || !matchesBearerQuery(listing, revocation)) return null;
+        if (listing.summary.revokedAt !== null) {
+          return { credential: listing.summary, newlyRevoked: false };
+        }
+        const summary: BearerCredentialSummary = {
+          ...listing.summary,
+          revokedAt: revocation.revokedAt,
+          // `McpBearerToken` HAS NO `revokedBy` COLUMN. The double drops the value
+          // for that kind because the table would, and reporting it would make the
+          // fake answer something the canonical store cannot.
+          revokedBy:
+            revocation.kind === "mcp-token" ? revocation.revokedByUserId : null,
+        };
+        state.bearerCredentialListings.set(revocation.credentialId, { ...listing, summary });
+        const key = bearerKey(revocation.kind, listing.tokenHash);
+        const record = state.bearerCredentials.get(key);
+        if (record !== undefined) {
+          // THE AUTHENTICATION-SIDE ROW MOVES WITH IT. They are one row in the
+          // real store, and a double that ended only the listing would let a
+          // revoked credential keep authenticating — the exact failure the route
+          // exists to prevent.
+          state.bearerCredentials.set(key, { ...record, revokedAt: revocation.revokedAt });
+        }
+        return { credential: summary, newlyRevoked: true };
       },
     },
 
