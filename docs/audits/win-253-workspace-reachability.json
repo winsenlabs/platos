@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "4a96dbf41fe0bb0f7c75b9582cfc6e9d84f93e7a5ef904db6ddb935ca922224b",
+  "evidenceSha256": "156536c9f3928ba95dd9eb05bc71d3b53e1c3c4dacd616459d6f689c52db8dde",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3657aa3ad352c570aee18e6c514c6b61d98edbd49595b2815749fe3108001332",
+    "aggregateSha256": "6c164474b8f3ad5c3004af5fd52f0dc5905d50dc372761fdc507b473b9a5f71c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20323,7 +20323,7 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "f47dcff1cb6249eba229ba39446b0a28e4b930cae14aca2011c4101a91b2cffd"
+        "sha256": "0c07af41677ec9b0f89532b1a87ecbf067e736901a746e2a8f40813ed0f04a6d"
       },
       {
         "path": "scripts/arch/mcp-store-ownership.mjs",
