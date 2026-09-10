@@ -378,18 +378,24 @@ jobs:
     # integration run and a passing one are indistinguishable in a summary, and
     # this job is the whole of this issue's real-store evidence.
     runs-on: ubuntu-latest
-    # MEASURED, 2026-09-10, and this one was ALREADY on the edge on `v1`: 24m18s
-    # (run 34383585684, 7e1243fc), 24m18s and 22m54s against a 25-minute cap.
-    # FORTY-TWO SECONDS of margin on the base commit, before this branch added
-    # anything -- far less than the run-to-run variance measured on `typecheck`
-    # above, which is the same argument in a sharper form. The job builds eighteen
-    # context closures and then runs three real-container integration suites, so
-    # its cost also grows with every context adopted, which is the direction the
-    # whole programme is going.
+    # MEASURED, 2026-09-10, and unlike `typecheck` above this one is REAL GROWTH
+    # rather than variance -- the distinction matters, so here is the whole series.
     #
-    # Raised to 40 on the same reasoning as `typecheck`. This is not a regression
-    # this branch introduced; it is a budget that was one slow runner away from
-    # expiring whoever spent it next.
+    # On `v1`: 24m18s (run 34383585684, 7e1243fc), 24m18s and 22m54s against a
+    # 25-minute cap. FORTY-TWO SECONDS of margin on the base commit, before this
+    # branch added anything. On this branch the job was cancelled at the 25-minute
+    # cap once, and then completed in 26m20s (run 34443639262) -- so it genuinely
+    # needs more than 25 minutes now, which is the difference from `typecheck`,
+    # where re-running identical work came in comfortably under its old cap.
+    #
+    # The cause is structural and will keep going this way: the job builds
+    # EIGHTEEN context closures and then runs three real-container integration
+    # suites, so its cost grows with every context adopted -- which is the
+    # direction the whole programme is going. A budget set per-context-count is a
+    # budget that expires on a schedule.
+    #
+    # Raised to 40: 26m20s measured, plus room for the same runner variance that
+    # tipped `typecheck`, plus room for the next few adoptions.
     timeout-minutes: 40
     steps:
       - name: Checkout
