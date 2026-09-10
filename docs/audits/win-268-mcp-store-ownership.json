@@ -12,7 +12,8 @@
     "identityAccess",
     "providers",
     "secrets",
-    "tenancy"
+    "tenancy",
+    "tools"
   ],
   "totals": {
     "sites": 154,
@@ -22,8 +23,9 @@
   },
   "byVerdict": {
     "blockedOnAdapter": 2,
-    "blockedOnContext": 86,
-    "blockedOnContract": 66
+    "blockedOnContext": 51,
+    "movable": 36,
+    "blockedOnContract": 65
   },
   "byOwner": {
     "<kernel-outbox-adapter>": {
@@ -34,7 +36,9 @@
         "Event"
       ],
       "composed": false,
-      "contractMethods": null
+      "contractMethods": null,
+      "movable": 0,
+      "unserved": 0
     },
     "eventing": {
       "sites": 6,
@@ -54,7 +58,9 @@
         "routeEvent",
         "testRule",
         "updateRule"
-      ]
+      ],
+      "movable": 0,
+      "unserved": 0
     },
     "tools": {
       "sites": 35,
@@ -68,7 +74,7 @@
         "Tool",
         "ToolHealth"
       ],
-      "composed": false,
+      "composed": true,
       "contractMethods": [
         "configureMcpSurface",
         "deleteOrganizationPolicy",
@@ -87,7 +93,9 @@
         "setEntityToolPolicy",
         "setOrganizationPolicy",
         "setToolEnabled"
-      ]
+      ],
+      "movable": 30,
+      "unserved": 5
     },
     "identity-access": {
       "sites": 35,
@@ -116,7 +124,9 @@
         "revokeOperatorSession",
         "rotateSessionCookie",
         "verifySessionCookie"
-      ]
+      ],
+      "movable": 0,
+      "unserved": 35
     },
     "tenancy": {
       "sites": 17,
@@ -146,7 +156,9 @@
         "revokeAccessKeyGeneration",
         "scopeContains",
         "verifyAuthorization"
-      ]
+      ],
+      "movable": 5,
+      "unserved": 12
     },
     "<client-level>": {
       "sites": 13,
@@ -154,7 +166,9 @@
       "client": 13,
       "models": [],
       "composed": false,
-      "contractMethods": null
+      "contractMethods": null,
+      "movable": 0,
+      "unserved": 13
     },
     "observability": {
       "sites": 3,
@@ -171,7 +185,9 @@
         "projectTurn",
         "readAdminTrail",
         "recordAdminAction"
-      ]
+      ],
+      "movable": 0,
+      "unserved": 0
     },
     "agents": {
       "sites": 15,
@@ -224,7 +240,9 @@
         "updateCluster",
         "updateMacro",
         "updateTemplate"
-      ]
+      ],
+      "movable": 0,
+      "unserved": 0
     },
     "cost-monitoring": {
       "sites": 13,
@@ -262,7 +280,9 @@
         "summariseConsumption",
         "sweepBreaches",
         "updateAlertChannel"
-      ]
+      ],
+      "movable": 0,
+      "unserved": 0
     },
     "conversations": {
       "sites": 2,
@@ -273,7 +293,9 @@
         "Turn"
       ],
       "composed": false,
-      "contractMethods": []
+      "contractMethods": [],
+      "movable": 0,
+      "unserved": 0
     },
     "jobs": {
       "sites": 11,
@@ -298,7 +320,9 @@
         "resolveApproval",
         "sweepAllApprovals",
         "sweepApprovals"
-      ]
+      ],
+      "movable": 0,
+      "unserved": 0
     },
     "providers": {
       "sites": 1,
@@ -331,7 +355,9 @@
         "streamModelGeneration",
         "unlinkProvider",
         "updateProviderKey"
-      ]
+      ],
+      "movable": 1,
+      "unserved": 0
     },
     "governance": {
       "sites": 1,
@@ -370,14 +396,17 @@
         "updateCriterion",
         "updateGoldenSet",
         "withdrawRating"
-      ]
+      ],
+      "movable": 0,
+      "unserved": 0
     }
   },
   "verdicts": {
-    "moved": "MOVED — the site is already inside apps/core-api/src/transports and reaches a contract",
+    "moved": "MOVED — an ORM site INSIDE apps/core-api/src/transports. It is a TRAP DETECTOR and its healthy value is 0; see the note above this constant",
     "blockedOnContext": "BLOCKED-ON-CONTEXT — the owning context publishes a contract that the composition root does not compose, so no transport can reach it",
     "blockedOnContract": "BLOCKED-ON-CONTRACT — the owning context IS composed, and publishes no method for this use case",
-    "blockedOnAdapter": "BLOCKED-ON-ADAPTER — the row is written by the kernel outbox adapter, not by a context"
+    "blockedOnAdapter": "BLOCKED-ON-ADAPTER — the row is written by the kernel outbox adapter, not by a context",
+    "movable": "MOVABLE — the owner IS composed AND its published contract names this file's use case; only the transport move is left"
   },
   "dispositions": {
     "apps/agent/src/mcp-platform/events.service.ts": {
@@ -395,7 +424,12 @@
         "tools"
       ],
       "waitingOn": "contract-method",
-      "note": "`McpAnonymousSession` find/update/create is the anonymous MCP caller's session lifecycle. `identity-access` is composed and publishes `authenticateBearer` for the four BEARER kinds only; an anonymous MCP session is a fifth credential shape with no published mint, no published lookup and no published touch. `EntityMcpConfig` is `tools`' and `Environment.findMany` is `tenancy`'s listing of the environments an entity is exposed in, which `listVisibleProjects`/`listProjectEntities` do not answer."
+      "methods": {
+        "tools": [
+          "describeMcpSurface"
+        ]
+      },
+      "note": "`McpAnonymousSession` find/update/create is the anonymous MCP caller's session lifecycle. `identity-access` is composed and publishes `authenticateBearer` for the four BEARER kinds only; an anonymous MCP session is a fifth credential shape with no published mint, no published lookup and no published touch. The `EntityMcpConfig` read is `tools.describeMcpSurface` and `tools` IS NOW COMPOSED, so that one site is MOVABLE and the file is not: `Environment.findMany` is `tenancy`'s listing of the environments an entity is exposed in, which `listVisibleProjects`/`listProjectEntities` do not answer."
     },
     "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts": {
       "contexts": [
@@ -405,6 +439,11 @@
         "<client-level>"
       ],
       "waitingOn": "contract-method",
+      "methods": {
+        "tenancy": [
+          "findEntity"
+        ]
+      },
       "note": "MINT and VERIFY are already on `identity-access` — `mintBearerCredential` and `authenticateBearer`, both reached by the two moved mint routes. LIST and REVOKE are not: there is no `listBearerCredentials` and no `revokeBearerCredential`, so `GET /mcp/entity/:entityId/tokens` and `DELETE /mcp/entity/:entityId/tokens/:tokenId` cannot be served from a contract. `Entity.findFirst` is `tenancy.findEntity`. The `AdminAudit` writes are `observability`'s and it is not composed."
     },
     "apps/agent/src/mcp-platform/mcp-entity.controller.ts": {
@@ -413,16 +452,31 @@
         "tenancy",
         "tools"
       ],
-      "waitingOn": "context-composition",
-      "note": "The entity MCP gateway's config, tool exposure and ACL surfaces are `tools`' — `describeMcpSurface`, `configureMcpSurface`, `listEntityToolPolicies`, `setEntityToolPolicy` and `listCallableForMcpCaller` are all PUBLISHED and none of them is reachable, because `composeApplication` does not compose `tools`. Its `McpOidcSession` and `McpAnonymousSession` reads share the identity-resolver's missing session lifecycle."
+      "waitingOn": "contract-method",
+      "methods": {
+        "tools": [
+          "describeMcpSurface",
+          "configureMcpSurface",
+          "listCallableForMcpCaller"
+        ]
+      },
+      "note": "The entity MCP gateway's config, tool exposure and ACL surfaces are `tools`' — `describeMcpSurface`, `configureMcpSurface` and `listCallableForMcpCaller` — and `tools` IS NOW COMPOSED, so every one of its ELEVEN `tools` sites is MOVABLE. WHAT NOW HOLDS THE FILE IS `identity-access`: its `McpOidcSession`, `McpAnonymousSession` and `EndUserIdentity` reads share the identity-resolver's missing session lifecycle, so `waitingOn` moved from `context-composition` to `contract-method` when `tools` composed. This is a 1,600-line controller with four owners; the honest next step is a SPLIT along the owner lines rather than one move."
     },
     "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts": {
       "contexts": [
         "tools",
         "<client-level>"
       ],
-      "waitingOn": "context-composition",
-      "note": "Every site is `tools`', and every use case is on `ToolsContract` already: `listEntityToolPolicies` and `setEntityToolPolicy` are exactly this service. The blocker is composition, not design — see `apps/core-api/src/composition/adapter-bindings.ts`, where `postgres-tenancy:ToolsRepository` is a declared, satisfied binding and `ToolDispatch` has no adapter directory at all."
+      "waitingOn": "transport-move",
+      "methods": {
+        "tools": [
+          "listEntityToolPolicies",
+          "setEntityToolPolicy",
+          "listCallableForMcpCaller",
+          "configureMcpSurface"
+        ]
+      },
+      "note": "EVERY DELEGATE SITE IS `tools`' AND EVERY ONE IS NOW MOVABLE. `listEntityToolPolicies` and `setEntityToolPolicy` are exactly this service, `listCallableForMcpCaller` is its exposure count and listing, and `configureMcpSurface` is the `EntityMcpConfig` stamp. The blocker WAS composition — the previous wording said so and named `ToolDispatch`'s missing adapter directory as the reason — and that reason is closed: rule (h) homes the MCP SDK in `packages/contexts/tools/adapters`, the directory exists, and the composition root builds both remaining ports there. WHAT IS LEFT IS THE MOVE, plus the one `$transaction`, which must not survive it in any form: a transport does not open transactions, a use case does."
     },
     "apps/agent/src/mcp-platform/permission-gateway.service.ts": {
       "contexts": [
@@ -431,7 +485,18 @@
         "tenancy"
       ],
       "waitingOn": "context-composition",
-      "note": "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. The `AgentBinding` read is tier 3's, reached through the same context. The `Environment` read is this tranche's tier-2 forged-scope refusal and is `tenancy.resolveEnvironmentScope` — a method that EXISTS and is composed; it stays here only because the service around it cannot move until `tools` is composed. Blocked on composing `tools`."
+      "methods": {
+        "tools": [
+          "resolvePermission",
+          "listOrganizationPolicies",
+          "setOrganizationPolicy",
+          "deleteOrganizationPolicy"
+        ],
+        "tenancy": [
+          "resolveEnvironmentScope"
+        ]
+      },
+      "note": "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. `tools` IS NOW COMPOSED, so those five sites and the `Environment` read — `tenancy.resolveEnvironmentScope`, this tranche's tier-2 forged-scope refusal — are all MOVABLE. WHAT STILL HOLDS THE FILE IS ONE SITE: the tier-3 `AgentBinding` read, whose owner `agents` publishes 41 methods and is not composed. The register computes `agents` as the next composition decision for exactly this kind of reason."
     },
     "apps/agent/src/mcp-platform/token.service.ts": {
       "contexts": [
@@ -440,6 +505,12 @@
         "<client-level>"
       ],
       "waitingOn": "contract-method",
+      "methods": {
+        "tenancy": [
+          "resolveEnvironmentScope",
+          "findOrganizationMembership"
+        ]
+      },
       "note": "Same split as the entity bearer service: `mint` is `mintBearerCredential`, `verify` is `authenticateBearer`, `resolveScope` is `tenancy.resolveEnvironmentScope` and the admin-tier gate is `tenancy.findOrganizationMembership` — all published. `list` and `revoke` are not published by `identity-access` at all, which is what keeps `GET /mcp/platform/tokens` and `POST /mcp/platform/tokens/:id/revoke` in this deployable."
     },
     "apps/agent/src/mcp-platform/tools/admin.ts": {
@@ -485,8 +556,8 @@
         "tools",
         "identity-access"
       ],
-      "waitingOn": "context-composition",
-      "note": "`EntityMcpConfig` and `ToolHealth` are `tools`' and covered by `describeMcpSurface`/`discoverEntityTools`; the `McpBearerToken.count` is `identity-access`' and shares the missing listing. Blocked on composing `tools`."
+      "waitingOn": "contract-method",
+      "note": "`EntityMcpConfig` find/upsert are `tools`' and ARE published — `describeMcpSurface` and `configureMcpSurface` — but this file claims NO methods, and the reason is a real contract gap this stage measured rather than assumed. Its third `tools` site is `ToolHealth.findMany`, the per-tool health the `entities.get` tool renders, and NOTHING on `ToolsContract` returns it: `ToolHealthView` is exported as a TYPE from `contracts/index.ts` and no method's return type mentions it, while `McpSurfaceView` carries config and readiness and no health at all. The `methods` column is per FILE and per OWNER, so claiming the two served sites would have reported the third as movable on a method that cannot answer it. The `McpBearerToken.count` is `identity-access`' and shares the missing bearer LISTING that also keeps the two platform-token routes unserved. TWO gaps, one on each owner: a health read on `tools`, a credential listing on `identity-access`."
     },
     "apps/agent/src/mcp-platform/tools/jobs.ts": {
       "contexts": [
@@ -513,8 +584,14 @@
       "contexts": [
         "tools"
       ],
-      "waitingOn": "context-composition",
-      "note": "`Tool` and `EnvironmentEntityTool` writes performed by the `entities.provision` composite. `ToolsContract.registerTools` and `discoverEntityTools` are the published form; blocked on composing `tools`."
+      "waitingOn": "transport-move",
+      "methods": {
+        "tools": [
+          "registerTools",
+          "discoverEntityTools"
+        ]
+      },
+      "note": "`Tool` and `EnvironmentEntityTool` writes performed by the `entities.provision` composite. `ToolsContract.registerTools` and `discoverEntityTools` are the published form, `tools` is composed, and ALL THREE SITES ARE MOVABLE — this file has ONE owner and no second blocker. What holds it is that `entities.provision` is a COMPOSITE: the same tool call also provisions the entity itself, which is `tenancy`'s, so moving it means deciding where the composite lives before moving anything."
     },
     "apps/agent/src/mcp-platform/tools/platos-control.ts": {
       "contexts": [
@@ -528,6 +605,11 @@
         "providers"
       ],
       "waitingOn": "transport-move",
+      "methods": {
+        "providers": [
+          "listProviderKeys"
+        ]
+      },
       "note": "The ONE site on this surface whose owner is composed and whose method exists: `ProviderKey.findMany` scoped to the environment is `ProvidersContract.listProviderKeys`. Nothing about it is blocked; it is here because `providers.set_routes` also writes `AgentVersion.modelRoutes`, which is `agents`', so moving the read alone would split one tool across two deployables."
     },
     "apps/agent/src/mcp-platform/tools/reflection.ts": {
@@ -538,13 +620,18 @@
         "governance"
       ],
       "waitingOn": "context-composition",
-      "note": "`platos.explain_turn` joins a `Turn` (`conversations`, zero published methods), its `SafetyEvent`s (`governance`, not composed), the `EnvironmentEntityTool` exposures it used (`tools`, not composed) and the `Entity` rows behind them (`tenancy`, composed). Four owners, three uncomposed: this tool cannot move until the turn record itself is on a contract."
+      "note": "`platos.explain_turn` joins a `Turn` (`conversations`, zero published methods), its `SafetyEvent`s (`governance`, not composed), the `EnvironmentEntityTool` exposures it used (`tools`, NOW COMPOSED) and the `Entity` rows behind them (`tenancy`, composed). Four owners and TWO still uncomposed, down from three. The `tools` site is deliberately NOT claimed as movable: what this tool reads is the exposures ONE TURN used, which is a join against that turn's calls rather than a scope listing, and neither `listTools` nor `readToolAudit` is that query — naming one would mint a MOVABLE verdict for a site no published method serves. This tool cannot move until the turn record itself is on a contract."
     },
     "apps/agent/src/mcp-platform/tools/settings.ts": {
       "contexts": [
         "tenancy"
       ],
       "waitingOn": "transport-move",
+      "methods": {
+        "tenancy": [
+          "listVisibleProjects"
+        ]
+      },
       "note": "`projects.list_all` is `TenancyContract.listVisibleProjects(userId)` exactly — same filter, same soft-delete exclusion, same membership join. Owner composed, method published: this is a MOVE with no missing piece, held only by the fact that the MCP tool table it is registered in has not moved."
     }
   },
@@ -646,7 +733,7 @@
       "model": "EntityMcpConfig",
       "operation": "findUnique",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/identity-resolver.service.ts",
@@ -701,7 +788,7 @@
       "model": "Entity",
       "operation": "findFirst",
       "owner": "tenancy",
-      "verdict": "blockedOnContract"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
@@ -965,7 +1052,7 @@
       "model": "EnvironmentEntityTool",
       "operation": "findFirst",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
@@ -987,7 +1074,7 @@
       "model": "EntityMcpConfig",
       "operation": "findUnique",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
@@ -998,7 +1085,7 @@
       "model": "EntityMcpConfig",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
@@ -1009,7 +1096,7 @@
       "model": "EntityMcpConfig",
       "operation": "findUnique",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
@@ -1020,7 +1107,7 @@
       "model": "EntityMcpConfig",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
@@ -1031,7 +1118,7 @@
       "model": "EntityMcpConfig",
       "operation": "updateMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
@@ -1053,7 +1140,7 @@
       "model": "EntityMcpConfig",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
@@ -1075,7 +1162,7 @@
       "model": "EntityMcpConfig",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1097,7 +1184,7 @@
       "model": "EnvironmentEntityTool",
       "operation": "count",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1108,7 +1195,7 @@
       "model": "EnvironmentEntityTool",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1119,7 +1206,7 @@
       "model": "EntityToolPolicy",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1130,7 +1217,7 @@
       "model": "EntityToolPolicy",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1141,7 +1228,7 @@
       "model": "EntityToolPolicy",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1152,7 +1239,7 @@
       "model": "EntityToolPolicy",
       "operation": "findUnique",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1163,7 +1250,7 @@
       "model": "EntityToolPolicy",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1174,7 +1261,7 @@
       "model": "EnvironmentEntityTool",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1196,7 +1283,7 @@
       "model": "EntityToolPolicy",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1207,7 +1294,7 @@
       "model": "EntityToolPolicy",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
@@ -1218,7 +1305,7 @@
       "model": "EntityMcpConfig",
       "operation": "updateMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1229,7 +1316,7 @@
       "model": "Environment",
       "operation": "findUnique",
       "owner": "tenancy",
-      "verdict": "blockedOnContract"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1240,7 +1327,7 @@
       "model": "OrganizationMcpPolicy",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1262,7 +1349,7 @@
       "model": "OrganizationMcpPolicy",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1273,7 +1360,7 @@
       "model": "OrganizationMcpPolicy",
       "operation": "findFirst",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1284,7 +1371,7 @@
       "model": "OrganizationMcpPolicy",
       "operation": "update",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1295,7 +1382,7 @@
       "model": "OrganizationMcpPolicy",
       "operation": "create",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1306,7 +1393,7 @@
       "model": "OrganizationMcpPolicy",
       "operation": "findFirst",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
@@ -1317,7 +1404,7 @@
       "model": "OrganizationMcpPolicy",
       "operation": "delete",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
@@ -1328,7 +1415,7 @@
       "model": "Environment",
       "operation": "findUnique",
       "owner": "tenancy",
-      "verdict": "blockedOnContract"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
@@ -1339,7 +1426,7 @@
       "model": "OrganizationMembership",
       "operation": "findFirst",
       "owner": "tenancy",
-      "verdict": "blockedOnContract"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",
@@ -1834,7 +1921,7 @@
       "model": "ToolHealth",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "blockedOnContract"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/entities.ts",
@@ -1845,7 +1932,7 @@
       "model": "EntityMcpConfig",
       "operation": "findUnique",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "blockedOnContract"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/entities.ts",
@@ -1867,7 +1954,7 @@
       "model": "EntityMcpConfig",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "blockedOnContract"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/entities.ts",
@@ -1878,7 +1965,7 @@
       "model": "EntityMcpConfig",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "blockedOnContract"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
@@ -2142,7 +2229,7 @@
       "model": "Tool",
       "operation": "findFirst",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
@@ -2153,7 +2240,7 @@
       "model": "Tool",
       "operation": "create",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
@@ -2164,7 +2251,7 @@
       "model": "EnvironmentEntityTool",
       "operation": "upsert",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/platos-control.ts",
@@ -2186,7 +2273,7 @@
       "model": "ProviderKey",
       "operation": "findMany",
       "owner": "providers",
-      "verdict": "blockedOnContract"
+      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/reflection.ts",
@@ -2208,7 +2295,7 @@
       "model": "EnvironmentEntityTool",
       "operation": "findMany",
       "owner": "tools",
-      "verdict": "blockedOnContext"
+      "verdict": "blockedOnContract"
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/reflection.ts",
@@ -2241,7 +2328,7 @@
       "model": "Project",
       "operation": "findMany",
       "owner": "tenancy",
-      "verdict": "blockedOnContract"
+      "verdict": "movable"
     }
   ]
 }

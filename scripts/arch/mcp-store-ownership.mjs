@@ -285,21 +285,55 @@ export function sitesIn(path, delegates, root = repositoryRoot) {
 }
 
 /**
- * The four verdicts, in the order a site becomes movable.
+ * The FIVE verdicts, in the order a site becomes movable.
  *
- * `unowned` is not a fifth verdict for "we could not classify it": every model
+ * `unowned` is not a sixth verdict for "we could not classify it": every model
  * in the canonical schema HAS an owner in `table-ownership.mjs` — a model added
  * without one already fails `sole-writer.mjs` — so an unowned model here means
  * the two artifacts have drifted and that is a hard failure, not a category.
+ *
+ * -------------------------------------------------------------------------
+ * `moved` IS A TRAP DETECTOR AND ITS HEALTHY VALUE IS ZERO. READ THIS BEFORE
+ * TREATING IT AS A PROGRESS METRIC.
+ *
+ * A site is `moved` when it is INSIDE `apps/core-api/src/transports/` — that is
+ * the whole of the test, and this file's own header says why the destination is a
+ * scan root at all: "a register that only scanned the origin could not notice the
+ * day a moved module arrived carrying a client".
+ *
+ * `transport-reaches-no-store` (ADR M0.3 §5.1 rule (k2)) forbids exactly that. A
+ * transport may hold no ORM call by any route, which means a NONZERO `moved` is a
+ * boundary violation and not an achievement. The four routes already served from
+ * `transports/mcp/` hold no ORM site and therefore appear in this register at
+ * all — they left it. So the number that rises as this work lands is not `moved`;
+ * it is `movable` below, and the number that falls is the total.
+ *
+ * This is stated at length because it has been read the other way: a stage was
+ * briefed that "the register's `moved` count must rise from 0 — that number is
+ * the headline", and satisfying that brief literally would require putting a
+ * Prisma call inside a transport.
+ * -------------------------------------------------------------------------
+ *
+ * `movable` IS THE FIFTH, ADDED WHEN `tools` COMPOSED. Before it, a site whose
+ * owner was composed had exactly one verdict available — `blockedOnContract`,
+ * "publishes no method for this use case" — and for 35 `tools` sites that
+ * sentence became FALSE the moment the context composed, while the file's own
+ * disposition sat beside it NAMING the published methods. Two states were
+ * collapsed into one code, which is the defect this programme keeps finding, so
+ * they are two codes now. It is not asserted either: a site is `movable` only
+ * when its file's disposition names a method for that owner AND that method is
+ * present in the contract read by AST, so the verdict cannot outlive a rename.
  */
 export const VERDICTS = Object.freeze({
-  moved: "MOVED — the site is already inside apps/core-api/src/transports and reaches a contract",
+  moved: "MOVED — an ORM site INSIDE apps/core-api/src/transports. It is a TRAP DETECTOR and its healthy value is 0; see the note above this constant",
   blockedOnContext:
     "BLOCKED-ON-CONTEXT — the owning context publishes a contract that the composition root does not compose, so no transport can reach it",
   blockedOnContract:
     "BLOCKED-ON-CONTRACT — the owning context IS composed, and publishes no method for this use case",
   blockedOnAdapter:
     "BLOCKED-ON-ADAPTER — the row is written by the kernel outbox adapter, not by a context",
+  movable:
+    "MOVABLE — the owner IS composed AND its published contract names this file's use case; only the transport move is left",
 });
 
 /**
@@ -320,6 +354,25 @@ export const VERDICTS = Object.freeze({
  *                          use case
  *   `outbox-adapter`       the row belongs to the kernel outbox, not a context
  *   `transport-move`       every method it needs exists; only the move is left
+ *
+ * `methods` NAMES THE PUBLISHED FORM OF THE FILE, per owner, and is what turns a
+ * site's verdict into `movable`. It is OPTIONAL — a file with nothing published
+ * for it has nothing to name — and it is CHECKED: every method named must be
+ * present in the contract `contractMethods` reads by AST from
+ * `packages/contexts/<owner>/contracts/index.ts`, so a disposition cannot claim a
+ * method that does not exist and cannot survive a rename. WIN-269's register
+ * (`tool-lifecycle-reach.mjs`) has carried the same column since it was written;
+ * this one gained it when `tools` composed and 35 sites needed a verdict that
+ * said "the method is there, the move is not".
+ *
+ * IT IS LOAD-BEARING, SO ITS MEANING IS NARROW: naming methods for an owner
+ * asserts that EVERY site of that owner in that file is served by them, because
+ * each such site becomes `movable`. A column naming the method for two sites out
+ * of three would report the third as movable when nothing can serve it, which is
+ * the vacuity this register exists to refuse — and the granularity is per FILE and
+ * per OWNER, so a file whose owner has one unserved site among several served ones
+ * claims NOTHING and its whole owner reads `blockedOnContract`. `entities.ts` is
+ * exactly that case; its row says so.
  */
 export const DISPOSITIONS = Object.freeze({
   "apps/agent/src/mcp-platform/events.service.ts": {
@@ -330,31 +383,52 @@ export const DISPOSITIONS = Object.freeze({
   "apps/agent/src/mcp-platform/identity-resolver.service.ts": {
     contexts: ["identity-access", "tenancy", "tools"],
     waitingOn: "contract-method",
-    note: "`McpAnonymousSession` find/update/create is the anonymous MCP caller's session lifecycle. `identity-access` is composed and publishes `authenticateBearer` for the four BEARER kinds only; an anonymous MCP session is a fifth credential shape with no published mint, no published lookup and no published touch. `EntityMcpConfig` is `tools`' and `Environment.findMany` is `tenancy`'s listing of the environments an entity is exposed in, which `listVisibleProjects`/`listProjectEntities` do not answer.",
+    methods: { tools: ["describeMcpSurface"] },
+    note: "`McpAnonymousSession` find/update/create is the anonymous MCP caller's session lifecycle. `identity-access` is composed and publishes `authenticateBearer` for the four BEARER kinds only; an anonymous MCP session is a fifth credential shape with no published mint, no published lookup and no published touch. The `EntityMcpConfig` read is `tools.describeMcpSurface` and `tools` IS NOW COMPOSED, so that one site is MOVABLE and the file is not: `Environment.findMany` is `tenancy`'s listing of the environments an entity is exposed in, which `listVisibleProjects`/`listProjectEntities` do not answer.",
   },
   "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts": {
     contexts: ["identity-access", "tenancy", "observability", "<client-level>"],
     waitingOn: "contract-method",
+    methods: { tenancy: ["findEntity"] },
     note: "MINT and VERIFY are already on `identity-access` — `mintBearerCredential` and `authenticateBearer`, both reached by the two moved mint routes. LIST and REVOKE are not: there is no `listBearerCredentials` and no `revokeBearerCredential`, so `GET /mcp/entity/:entityId/tokens` and `DELETE /mcp/entity/:entityId/tokens/:tokenId` cannot be served from a contract. `Entity.findFirst` is `tenancy.findEntity`. The `AdminAudit` writes are `observability`'s and it is not composed.",
   },
   "apps/agent/src/mcp-platform/mcp-entity.controller.ts": {
     contexts: ["identity-access", "tenancy", "tools"],
-    waitingOn: "context-composition",
-    note: "The entity MCP gateway's config, tool exposure and ACL surfaces are `tools`' — `describeMcpSurface`, `configureMcpSurface`, `listEntityToolPolicies`, `setEntityToolPolicy` and `listCallableForMcpCaller` are all PUBLISHED and none of them is reachable, because `composeApplication` does not compose `tools`. Its `McpOidcSession` and `McpAnonymousSession` reads share the identity-resolver's missing session lifecycle.",
+    waitingOn: "contract-method",
+    methods: { tools: ["describeMcpSurface", "configureMcpSurface", "listCallableForMcpCaller"] },
+    note: "The entity MCP gateway's config, tool exposure and ACL surfaces are `tools`' — `describeMcpSurface`, `configureMcpSurface` and `listCallableForMcpCaller` — and `tools` IS NOW COMPOSED, so every one of its ELEVEN `tools` sites is MOVABLE. WHAT NOW HOLDS THE FILE IS `identity-access`: its `McpOidcSession`, `McpAnonymousSession` and `EndUserIdentity` reads share the identity-resolver's missing session lifecycle, so `waitingOn` moved from `context-composition` to `contract-method` when `tools` composed. This is a 1,600-line controller with four owners; the honest next step is a SPLIT along the owner lines rather than one move.",
   },
   "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts": {
     contexts: ["tools", "<client-level>"],
-    waitingOn: "context-composition",
-    note: "Every site is `tools`', and every use case is on `ToolsContract` already: `listEntityToolPolicies` and `setEntityToolPolicy` are exactly this service. The blocker is composition, not design — see `apps/core-api/src/composition/adapter-bindings.ts`, where `postgres-tenancy:ToolsRepository` is a declared, satisfied binding and `ToolDispatch` has no adapter directory at all.",
+    waitingOn: "transport-move",
+    methods: {
+      tools: [
+        "listEntityToolPolicies",
+        "setEntityToolPolicy",
+        "listCallableForMcpCaller",
+        "configureMcpSurface",
+      ],
+    },
+    note: "EVERY DELEGATE SITE IS `tools`' AND EVERY ONE IS NOW MOVABLE. `listEntityToolPolicies` and `setEntityToolPolicy` are exactly this service, `listCallableForMcpCaller` is its exposure count and listing, and `configureMcpSurface` is the `EntityMcpConfig` stamp. The blocker WAS composition — the previous wording said so and named `ToolDispatch`'s missing adapter directory as the reason — and that reason is closed: rule (h) homes the MCP SDK in `packages/contexts/tools/adapters`, the directory exists, and the composition root builds both remaining ports there. WHAT IS LEFT IS THE MOVE, plus the one `$transaction`, which must not survive it in any form: a transport does not open transactions, a use case does.",
   },
   "apps/agent/src/mcp-platform/permission-gateway.service.ts": {
     contexts: ["tools", "agents", "tenancy"],
     waitingOn: "context-composition",
-    note: "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. The `AgentBinding` read is tier 3's, reached through the same context. The `Environment` read is this tranche's tier-2 forged-scope refusal and is `tenancy.resolveEnvironmentScope` — a method that EXISTS and is composed; it stays here only because the service around it cannot move until `tools` is composed. Blocked on composing `tools`.",
+    methods: {
+      tools: [
+        "resolvePermission",
+        "listOrganizationPolicies",
+        "setOrganizationPolicy",
+        "deleteOrganizationPolicy",
+      ],
+      tenancy: ["resolveEnvironmentScope"],
+    },
+    note: "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. `tools` IS NOW COMPOSED, so those five sites and the `Environment` read — `tenancy.resolveEnvironmentScope`, this tranche's tier-2 forged-scope refusal — are all MOVABLE. WHAT STILL HOLDS THE FILE IS ONE SITE: the tier-3 `AgentBinding` read, whose owner `agents` publishes 41 methods and is not composed. The register computes `agents` as the next composition decision for exactly this kind of reason.",
   },
   "apps/agent/src/mcp-platform/token.service.ts": {
     contexts: ["identity-access", "tenancy", "<client-level>"],
     waitingOn: "contract-method",
+    methods: { tenancy: ["resolveEnvironmentScope", "findOrganizationMembership"] },
     note: "Same split as the entity bearer service: `mint` is `mintBearerCredential`, `verify` is `authenticateBearer`, `resolveScope` is `tenancy.resolveEnvironmentScope` and the admin-tier gate is `tenancy.findOrganizationMembership` — all published. `list` and `revoke` are not published by `identity-access` at all, which is what keeps `GET /mcp/platform/tokens` and `POST /mcp/platform/tokens/:id/revoke` in this deployable.",
   },
   "apps/agent/src/mcp-platform/tools/admin.ts": {
@@ -384,8 +458,8 @@ export const DISPOSITIONS = Object.freeze({
   },
   "apps/agent/src/mcp-platform/tools/entities.ts": {
     contexts: ["tools", "identity-access"],
-    waitingOn: "context-composition",
-    note: "`EntityMcpConfig` and `ToolHealth` are `tools`' and covered by `describeMcpSurface`/`discoverEntityTools`; the `McpBearerToken.count` is `identity-access`' and shares the missing listing. Blocked on composing `tools`.",
+    waitingOn: "contract-method",
+    note: "`EntityMcpConfig` find/upsert are `tools`' and ARE published — `describeMcpSurface` and `configureMcpSurface` — but this file claims NO methods, and the reason is a real contract gap this stage measured rather than assumed. Its third `tools` site is `ToolHealth.findMany`, the per-tool health the `entities.get` tool renders, and NOTHING on `ToolsContract` returns it: `ToolHealthView` is exported as a TYPE from `contracts/index.ts` and no method's return type mentions it, while `McpSurfaceView` carries config and readiness and no health at all. The `methods` column is per FILE and per OWNER, so claiming the two served sites would have reported the third as movable on a method that cannot answer it. The `McpBearerToken.count` is `identity-access`' and shares the missing bearer LISTING that also keeps the two platform-token routes unserved. TWO gaps, one on each owner: a health read on `tools`, a credential listing on `identity-access`.",
   },
   "apps/agent/src/mcp-platform/tools/jobs.ts": {
     contexts: ["jobs"],
@@ -404,8 +478,9 @@ export const DISPOSITIONS = Object.freeze({
   },
   "apps/agent/src/mcp-platform/tools/orchestration.ts": {
     contexts: ["tools"],
-    waitingOn: "context-composition",
-    note: "`Tool` and `EnvironmentEntityTool` writes performed by the `entities.provision` composite. `ToolsContract.registerTools` and `discoverEntityTools` are the published form; blocked on composing `tools`.",
+    waitingOn: "transport-move",
+    methods: { tools: ["registerTools", "discoverEntityTools"] },
+    note: "`Tool` and `EnvironmentEntityTool` writes performed by the `entities.provision` composite. `ToolsContract.registerTools` and `discoverEntityTools` are the published form, `tools` is composed, and ALL THREE SITES ARE MOVABLE — this file has ONE owner and no second blocker. What holds it is that `entities.provision` is a COMPOSITE: the same tool call also provisions the entity itself, which is `tenancy`'s, so moving it means deciding where the composite lives before moving anything.",
   },
   "apps/agent/src/mcp-platform/tools/platos-control.ts": {
     contexts: ["<client-level>"],
@@ -415,16 +490,18 @@ export const DISPOSITIONS = Object.freeze({
   "apps/agent/src/mcp-platform/tools/providers.ts": {
     contexts: ["providers"],
     waitingOn: "transport-move",
+    methods: { providers: ["listProviderKeys"] },
     note: "The ONE site on this surface whose owner is composed and whose method exists: `ProviderKey.findMany` scoped to the environment is `ProvidersContract.listProviderKeys`. Nothing about it is blocked; it is here because `providers.set_routes` also writes `AgentVersion.modelRoutes`, which is `agents`', so moving the read alone would split one tool across two deployables.",
   },
   "apps/agent/src/mcp-platform/tools/reflection.ts": {
     contexts: ["tenancy", "tools", "conversations", "governance"],
     waitingOn: "context-composition",
-    note: "`platos.explain_turn` joins a `Turn` (`conversations`, zero published methods), its `SafetyEvent`s (`governance`, not composed), the `EnvironmentEntityTool` exposures it used (`tools`, not composed) and the `Entity` rows behind them (`tenancy`, composed). Four owners, three uncomposed: this tool cannot move until the turn record itself is on a contract.",
+    note: "`platos.explain_turn` joins a `Turn` (`conversations`, zero published methods), its `SafetyEvent`s (`governance`, not composed), the `EnvironmentEntityTool` exposures it used (`tools`, NOW COMPOSED) and the `Entity` rows behind them (`tenancy`, composed). Four owners and TWO still uncomposed, down from three. The `tools` site is deliberately NOT claimed as movable: what this tool reads is the exposures ONE TURN used, which is a join against that turn's calls rather than a scope listing, and neither `listTools` nor `readToolAudit` is that query — naming one would mint a MOVABLE verdict for a site no published method serves. This tool cannot move until the turn record itself is on a contract.",
   },
   "apps/agent/src/mcp-platform/tools/settings.ts": {
     contexts: ["tenancy"],
     waitingOn: "transport-move",
+    methods: { tenancy: ["listVisibleProjects"] },
     note: "`projects.list_all` is `TenancyContract.listVisibleProjects(userId)` exactly — same filter, same soft-delete exclusion, same membership join. Owner composed, method published: this is a MOVE with no missing piece, held only by the fact that the MCP tool table it is registered in has not moved.",
   },
 });
@@ -443,13 +520,29 @@ export function buildRegister(root = repositoryRoot) {
 
   const sites = [];
   const unowned = [];
+  const unpublished = [];
   for (const file of surfaceFiles(root)) {
+    // THE DISPOSITION'S `methods` COLUMN, JOINED TO THE CONTRACT BEFORE IT IS
+    // BELIEVED. A method named here that the contract does not publish is a hard
+    // failure below, so the `movable` verdict cannot be minted from a claim.
+    const named = DISPOSITIONS[file]?.methods ?? {};
+    for (const [owner, methods] of Object.entries(named)) {
+      const published = contracts.get(owner) ?? contractMethods(owner, root) ?? [];
+      for (const method of methods) {
+        if (!published.includes(method)) unpublished.push(`${file}: ${owner}.${method}`);
+      }
+    }
+
     for (const site of sitesIn(file, delegates, root)) {
       const inDestination = site.file.startsWith("apps/core-api/src/transports/");
       let owner = null;
       let verdict;
       if (site.shape === "client") {
         owner = null;
+        // A CLIENT-LEVEL REACH NAMES NO ROW, so it has no owner and can never be
+        // `movable`: there is no contract to check a method against. Its
+        // disposition says what must happen to it instead — "a transport does not
+        // open transactions, a use case does".
         verdict = inDestination ? "moved" : "blockedOnContract";
       } else {
         owner = OWNER[site.model] ?? null;
@@ -460,6 +553,7 @@ export function buildRegister(root = repositoryRoot) {
         if (owner.startsWith("<")) verdict = "blockedOnAdapter";
         else if (inDestination) verdict = "moved";
         else if (!composed.has(contextKey(owner))) verdict = "blockedOnContext";
+        else if ((named[owner] ?? []).length > 0) verdict = "movable";
         else verdict = "blockedOnContract";
       }
       sites.push({ ...site, owner, verdict });
@@ -469,6 +563,14 @@ export function buildRegister(root = repositoryRoot) {
   const files = [...new Set(sites.map((site) => site.file))].sort();
   const undispositioned = files.filter((file) => DISPOSITIONS[file] === undefined);
   const orphanDispositions = Object.keys(DISPOSITIONS).filter((file) => !files.includes(file));
+
+  if (unpublished.length > 0) {
+    throw new Error(
+      `a disposition names a contract method that is not published; the register would report a site as MOVABLE that no transport can serve: ${unpublished.join(
+        ", ",
+      )}`,
+    );
+  }
 
   if (unowned.length > 0) {
     throw new Error(
@@ -492,9 +594,25 @@ export function buildRegister(root = repositoryRoot) {
   const byOwner = {};
   for (const site of sites) {
     const key = site.owner ?? "<client-level>";
-    byOwner[key] ??= { sites: 0, delegate: 0, client: 0, models: [], composed: false, contractMethods: null };
+    byOwner[key] ??= {
+      sites: 0,
+      delegate: 0,
+      client: 0,
+      models: [],
+      composed: false,
+      contractMethods: null,
+      // WIN-268 stage 2. A COMPOSED owner's sites split two ways and the split is
+      // the whole recommendation: `movable` sites need a MOVE and `unserved` ones
+      // need a contract METHOD, and before this the table below counted `sites`
+      // and told the reader to publish 35 methods for a context whose contract
+      // already served every one of them.
+      movable: 0,
+      unserved: 0,
+    };
     byOwner[key].sites += 1;
     byOwner[key][site.shape] += 1;
+    if (site.verdict === "movable") byOwner[key].movable += 1;
+    if (site.verdict === "blockedOnContract") byOwner[key].unserved += 1;
     if (site.model !== null && !byOwner[key].models.includes(site.model)) {
       byOwner[key].models.push(site.model);
     }
@@ -558,9 +676,17 @@ function renderReport(register) {
   const uncomposed = Object.entries(register.byOwner)
     .filter(([owner, row]) => !owner.startsWith("<") && !row.composed)
     .sort((a, b) => b[1].sites - a[1].sites);
+  // A COMPOSED OWNER APPEARS UNDER WHICHEVER OF ITS TWO NUMBERS IS LARGER, and it
+  // is sorted on that number rather than on its total. Sorting on the total is
+  // what made this table recommend "publish the missing methods on `tools`" for a
+  // context whose contract serves all 35 — `row.sites` cannot tell a site waiting
+  // for a method from one waiting for a move, and `movable`/`unserved` can.
   const composedBlocked = Object.entries(register.byOwner)
-    .filter(([owner, row]) => !owner.startsWith("<") && row.composed)
-    .sort((a, b) => b[1].sites - a[1].sites);
+    .filter(([owner, row]) => !owner.startsWith("<") && row.composed && row.unserved > 0)
+    .sort((a, b) => b[1].unserved - a[1].unserved);
+  const composedMovable = Object.entries(register.byOwner)
+    .filter(([owner, row]) => !owner.startsWith("<") && row.composed && row.movable > 0)
+    .sort((a, b) => b[1].movable - a[1].movable);
   lines.push("| decision | frees | why it is the next one |");
   lines.push("| --- | ---: | --- |");
   for (const [owner, row] of uncomposed.slice(0, 3)) {
@@ -572,22 +698,31 @@ function renderReport(register) {
   }
   for (const [owner, row] of composedBlocked.slice(0, 2)) {
     lines.push(
-      `| publish the missing methods on \`${owner}\` | up to ${String(row.sites)} | the context IS composed; ${String(
+      `| publish the missing methods on \`${owner}\` | up to ${String(row.unserved)} | the context IS composed and ${String(
         (row.contractMethods ?? []).length,
-      )} methods are published and none serves these use cases |`,
+      )} methods are published; these sites are the use cases none of them serves |`,
+    );
+  }
+  for (const [owner, row] of composedMovable.slice(0, 2)) {
+    lines.push(
+      `| MOVE the modules that own \`${owner}\`'s sites | ${String(row.movable)} | the context is composed AND its contract names every one of these use cases; nothing is missing but the move |`,
     );
   }
   lines.push("");
   lines.push("## Ownership split");
   lines.push("");
-  lines.push("| owning context | sites | composed | contract methods published | rows touched |");
-  lines.push("| --- | ---: | --- | ---: | --- |");
+  lines.push(
+    "| owning context | sites | movable | unserved | composed | contract methods published | rows touched |",
+  );
+  lines.push("| --- | ---: | ---: | ---: | --- | ---: | --- |");
   const owners = Object.entries(register.byOwner).sort((a, b) => b[1].sites - a[1].sites);
   for (const [owner, row] of owners) {
     lines.push(
-      `| \`${owner}\` | ${String(row.sites)} | ${owner.startsWith("<") ? "n/a" : row.composed ? "yes" : "**no**"} | ${
-        row.contractMethods === null ? "n/a" : String(row.contractMethods.length)
-      } | ${row.models.map((model) => `\`${model}\``).join(", ") || "—"} |`,
+      `| \`${owner}\` | ${String(row.sites)} | ${String(row.movable)} | ${String(row.unserved)} | ${
+        owner.startsWith("<") ? "n/a" : row.composed ? "yes" : "**no**"
+      } | ${row.contractMethods === null ? "n/a" : String(row.contractMethods.length)} | ${
+        row.models.map((model) => `\`${model}\``).join(", ") || "—"
+      } |`,
     );
   }
   lines.push("");

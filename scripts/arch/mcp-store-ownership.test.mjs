@@ -164,6 +164,77 @@ test("a disposition naming a context must name one the register actually found t
   }
 });
 
+test("MOVABLE is minted from the contract, never from the disposition's word", () => {
+  // THE VERDICT THAT COULD BE ASSERTED INTO EXISTENCE, so this is the case that
+  // stops it. `movable` means "the owner is composed AND its published contract
+  // names this file's use case", and the second half is a claim a human typed —
+  // the exact shape this programme keeps finding, where a gate compares two things
+  // one tranche controls. Every name in every `methods` column is joined to the
+  // contract read by AST from the owning context's own `contracts/index.ts`.
+  const withMethods = Object.entries(DISPOSITIONS).filter(
+    ([, disposition]) => disposition.methods !== undefined,
+  );
+  // NOT VACUOUS. A register in which no disposition named a method would pass the
+  // loop below and prove nothing.
+  assert.ok(withMethods.length >= 8, `at least eight dispositions must name methods, found ${withMethods.length}`);
+
+  const composed = new Set(composedContexts(root));
+  for (const [file, disposition] of withMethods) {
+    for (const [owner, methods] of Object.entries(disposition.methods)) {
+      assert.ok(
+        disposition.contexts.includes(owner),
+        `${file} names methods for ${owner}, which is not one of its owners`,
+      );
+      // AN UNCOMPOSED OWNER CANNOT MAKE A SITE MOVABLE, whatever its contract
+      // publishes: nothing in `apps/core-api` can reach a context the root does not
+      // build. A `methods` column on one would be a verdict about an unreachable
+      // call.
+      assert.ok(
+        composed.has(contextKey(owner)),
+        `${file} names methods for ${owner}, which composeApplication does not compose`,
+      );
+      assert.ok(methods.length > 0, `${file}'s ${owner} entry must name at least one method`);
+      const published = contractMethods(owner, root) ?? [];
+      for (const method of methods) {
+        assert.ok(
+          published.includes(method),
+          `${file} claims ${owner}.${method}, which ${owner}'s contract does not publish`,
+        );
+      }
+    }
+  }
+
+  // AND EVERY MOVABLE SITE TRACES BACK TO ONE OF THOSE COLUMNS, in the other
+  // direction, so a verdict cannot appear from anywhere else.
+  for (const site of register.sites.filter((candidate) => candidate.verdict === "movable")) {
+    const named = DISPOSITIONS[site.file]?.methods?.[site.owner] ?? [];
+    assert.ok(
+      named.length > 0,
+      `${site.file}:${site.line} is MOVABLE and its disposition names no ${site.owner} method`,
+    );
+  }
+  assert.ok(register.byVerdict.movable > 0, "the register must find movable sites or the verdict is dead");
+});
+
+test("moved stays ZERO, because a moved site would be a boundary violation", () => {
+  // `moved` IS A TRAP DETECTOR AND THIS IS THE ASSERTION THAT SAYS SO. A site is
+  // `moved` when it sits inside `apps/core-api/src/transports/`, and
+  // `transport-reaches-no-store` (ADR M0.3 §5.1 rule (k2)) forbids an ORM reach
+  // there by ANY route — so a nonzero count here is not progress, it is the rule
+  // this register's destination scan root exists to catch.
+  //
+  // IT IS NOT A TAUTOLOGY: the destination IS scanned. `SURFACE_ROOTS` names
+  // `apps/core-api/src/transports/mcp`, files under it are read, and the four
+  // routes already served from there hold no ORM site — which is why they are
+  // absent from this register rather than counted in it.
+  assert.equal(register.byVerdict.moved ?? 0, 0);
+  assert.ok(SURFACE_ROOTS.includes("apps/core-api/src/transports/mcp"));
+  assert.equal(
+    register.sites.filter((site) => site.file.startsWith("apps/core-api/src/transports/")).length,
+    0,
+  );
+});
+
 test("the operation sets are closed and disjoint", () => {
   for (const operation of DELEGATE_OPERATIONS) {
     assert.ok(!CLIENT_OPERATIONS.includes(operation));
