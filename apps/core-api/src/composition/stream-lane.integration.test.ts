@@ -274,9 +274,18 @@ async function refusal(
   return { status: response.status, code };
 }
 
-/** The frames only — the leading `stream_meta` is not one. */
+/**
+ * The frames only — the leading `stream_meta` is not one.
+ *
+ * ITS FIRST VERSION CALLED ITSELF. A bulk rewrite of `read.events.filter(` into
+ * `framesOf(read).filter(` across this file caught this function's own body, and
+ * every case that read a frame died with "Maximum call stack size exceeded" — twelve
+ * at once, on the mini, with the same message and no case-specific detail. The
+ * lesson is not about recursion: a mechanical rewrite over a whole file will rewrite
+ * the definition of the thing it is introducing.
+ */
 function framesOf(read: StreamRead): readonly SseEvent[] {
-  return framesOf(read).filter((event) => event.name === null);
+  return read.events.filter((event) => event.name === null);
 }
 
 /** The leading `stream_meta`, or null when the lane did not send one. */

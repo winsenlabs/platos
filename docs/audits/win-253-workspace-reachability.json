@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d61265fee4ec4375287a1d8a97c81e8320df5cb4aea64dd9bc704406030ba9b9",
+  "evidenceSha256": "4ecdf1ee7cbd509c952c3ad322f69a1155cb16d504a13fc3269bfc46f1366b34",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b4f95fe77e95e8059d974264a60495628512a7a7e44a59c8d19907446f68a929",
+    "aggregateSha256": "ddffe2e06997485a408efdd27c5adc36f72e61c6fdcf47c3bb10f3ff5a514c97",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2551,7 +2551,7 @@
       },
       {
         "path": "apps/core-api/src/composition/stream-lane.integration.test.ts",
-        "sha256": "0b6d2aa0fc5c694de88f987fa7fbffd573827ac311c5d304994fee287625c65f"
+        "sha256": "dc96a60c4c3b8bde1f623d395134393b0f9726385e8077882a60f4b0acecffe6"
       },
       {
         "path": "apps/core-api/src/config/channels.ts",
@@ -24247,7 +24247,7 @@
             {
               "from": "apps/core-api/src/composition/stream-lane.integration.test.ts",
               "kind": "reference",
-              "line": 762
+              "line": 771
             },
             {
               "from": "apps/core-api/src/http/api-surface.test.ts",
@@ -25935,7 +25935,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "79b7afb99cb4cf3ca6298604fb17de25419d17502f659c2124f875add274d92a",
+      "evidenceSha256": "26d23ec47d6549a8e9c76a516881554da1d07aef7031bbcf5bad8790082eb7c4",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -42608,7 +42608,7 @@
             {
               "from": "apps/core-api/src/composition/stream-lane.integration.test.ts",
               "kind": "reference",
-              "line": 310
+              "line": 319
             },
             {
               "from": "apps/core-api/src/runtime/log-redaction.test.ts",
@@ -43760,7 +43760,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "f356c38259e047d35d40202f20cf29acd843ab7d80ee33127fbc5aa343eeabcb",
+      "evidenceSha256": "c574af5f58c36824f0f0d30fca3664d1da549e95624e88964343ea2bfd3bed6b",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
