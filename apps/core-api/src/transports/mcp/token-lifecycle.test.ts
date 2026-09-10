@@ -22,25 +22,43 @@
 //   * THAT THE LIST DTO NAMES NO CREDENTIAL MATERIAL, checked against the census's
 //     own key list rather than against a list retyped here.
 
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 /**
- * The secret-response census's OWN key list, imported rather than retyped.
+ * The secret-response census's OWN key list, READ AS TEXT rather than imported.
  *
  * `scripts/arch/secret-response-census.mjs` is the gate that counts a response
  * property whose NAME says the value is material, and it covers every file under
  * `apps/core-api/src/transports/**`. Asserting against a copy of its list here
- * would be an assertion between two things this tree controls; importing the array
- * means a key added to the census is checked against these DTOs with no edit.
+ * would be an assertion between two things this tree controls, so the list has to
+ * come from that file.
  *
- * IT IS READ AS DATA FROM A SCRIPT, the same way `rest-chassis.test.ts` reads
- * `docs/error-taxonomy.json` and `route-manifest.test.ts` reads the generated
- * operation manifest — `apps/core-api` does not and must not depend on `scripts/`
- * at build time, and this is a test-only await of a path.
+ * A `readFileSync` AND NOT AN `await import`, which is what this was first written
+ * as. `scripts/arch/composition-root.mjs` refuses a run-time import specifier
+ * anywhere but `apps/mcp-stdio/src/runtime.ts` — "resolves an import specifier at
+ * run time, which no boundary rule can see" — and it is right to: a dynamic import
+ * is an edge no static boundary scan can follow, and a test is not an exemption.
+ * Reading the source is the same join without the edge, and it is how
+ * `route-manifest.test.ts` reads the generated operation manifest and
+ * `rest-chassis.test.ts` reads `docs/error-taxonomy.json`.
+ *
+ * THE PARSE FAILS LOUDLY. A regex that matched nothing would yield an empty list
+ * and make every assertion below vacuous, so the extraction throws and the case
+ * additionally pins what the list must contain.
  */
-const { MATERIAL_RESPONSE_KEYS: MATERIAL_KEYS } = (await import(
-  new URL("../../../../../scripts/arch/secret-response-census.mjs", import.meta.url).href
-)) as { readonly MATERIAL_RESPONSE_KEYS: readonly string[] };
+const MATERIAL_KEYS: readonly string[] = ((): readonly string[] => {
+  const source = readFileSync(
+    new URL("../../../../../scripts/arch/secret-response-census.mjs", import.meta.url),
+    "utf8",
+  );
+  const start = source.indexOf("export const MATERIAL_RESPONSE_KEYS = [");
+  if (start < 0) throw new Error("MATERIAL_RESPONSE_KEYS is not declared in the census");
+  const end = source.indexOf("];", start);
+  if (end < 0) throw new Error("MATERIAL_RESPONSE_KEYS has no closing bracket");
+  return [...source.slice(start, end).matchAll(/"([^"]+)"/gu)].map((match) => match[1] as string);
+})();
 
 import { asIdentifier, err, ok, type DomainError, type Result } from "@platos/kernel";
 import type {

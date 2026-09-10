@@ -2578,7 +2578,31 @@ export const EXPECTED = Object.freeze({
   // ancestry it asserts and to no more. `governance-statements.integration.test.ts`
   // is widened rather than added to — fifteen pins move by the one resolve and
   // not one case is new, so this row gains a file and not two.
-  "packages/adapters/postgres-tenancy": { files: 140, cases: 1558 },
+  // WIN-268 (M4.2) stage 3: 140 -> 141 files, 1558 -> 1568 cases. ONE new suite,
+  // `identity-bearer-lifecycle.integration.test.ts`, and it is the evidence the
+  // four MCP token lifecycle routes turn on — the CONTRACT exercised over a real
+  // PostgreSQL rather than the store exercised directly, which is what the routes
+  // themselves do. Ten cases, grouped by the claim only a database can settle:
+  // FOUR on revocation (the same raw secret authenticating and then refused as
+  // `CREDENTIAL_REVOKED`, with the row read back to show `revokedAt` and
+  // `revokedBy` are SET rather than the row being gone; revoked/expired/never-existed
+  // as three distinct codes over three real rows; a SECOND revoke reporting the
+  // first one's instant under a moved clock and a different actor; sixteen
+  // CONCURRENT revocations producing exactly one winner, which is the
+  // `WHERE revokedAt IS NULL` precondition and nothing a Map can express), and SIX
+  // on the listing (a SIBLING entity's credentials excluded inside the SAME
+  // environment — the coherent-scope case a two-tenant test passes either way; the
+  // total counted under the same tenancy clause as the page, measured across two
+  // organizations; newest-first paging with no overlap across the boundary; an
+  // over-large limit refused rather than clamped; both halves of the kind/subject
+  // pairing; and the one-year cap accepted at the boundary and refused one past it,
+  // read back off the row's own `expiresAt`).
+  //
+  // IT FOUND TWO THINGS THE DOUBLE CANNOT AND THE COUNT INCLUDES NEITHER AS A CASE:
+  // `fakeSecretHasher` prepends a string where the migrations require
+  // `^[0-9a-f]{64}$`, and `sequentialIdGenerator` returns `id-1` where both id
+  // columns are `@db.Uuid`. Both are substituted in the suite's own ports.
+  "packages/adapters/postgres-tenancy": { files: 141, cases: 1568 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -2683,7 +2707,30 @@ export const EXPECTED = Object.freeze({
   // `mcp:pat:<id>` principal the entity oracle defaults to), and TWO on the
   // record the caller is shown being the STORE's rather than the request's.
   // The other +1 file is that suite; no existing suite gained a case.
-  "packages/contexts/identity-access": { files: 24, cases: 339 },
+  //
+  // WIN-268 (M4.2) stage 3: 24 -> 25 files, 339 -> 353 cases. ONE new suite,
+  // `application/bearer-credential-lifecycle.test.ts`, carrying FOURTEEN cases for
+  // the LISTING and the REVOCATION the four MCP token lifecycle routes reach. They
+  // are the half that needs no database, and they are grouped by what breaks
+  // without them: THREE on the page grammar (the fifty-row default and the
+  // hundred-row cap, both extracted from `boundedInteger(limit, 50, 1, 100)` in the
+  // two oracles and both REFUSED rather than clamped, at the inclusive boundary in
+  // each direction; the environment LEAF derived from the scope and a GLOBAL grant
+  // refused; a revocation naming no credential), FIVE on the listing (a sibling
+  // ENVIRONMENT excluded with the excluded row proved listable under its own scope
+  // so the case cannot pass by returning nothing; a sibling ENTITY excluded inside
+  // one environment; both halves of the kind/subject pairing; no material in the
+  // view, asserted against the digest the store actually holds; and the double
+  // REFUSING a credential seeded past `mint` rather than answering a short page),
+  // and SIX on the revocation (`active` -> revoked then `revoked` on the second
+  // call with the first instant kept under a moved clock; `expired` for a
+  // credential the CLOCK ended, still ended; `CREDENTIAL_NOT_FOUND` for a REAL id
+  // in another environment, with the refusal proved not to name the scope it
+  // searched; another entity's credential refused through the same environment,
+  // with the owning entity proved able to revoke it; `revokedBy` reported NULL for
+  // an entity token because `McpBearerToken` has no such column; and the row ENDED
+  // rather than deleted, so the credential still resolves as revoked).
+  "packages/contexts/identity-access": { files: 25, cases: 353 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -3636,7 +3683,26 @@ export const EXPECTED = Object.freeze({
 // homes `@modelcontextprotocol/*` in `^packages/contexts/tools/(adapters|transport)/`
 // and in no `packages/adapters/` directory, so the MCP client could not have landed
 // on the adapters term.
-export const EXPECTED_RUNTIME_TOTAL = 8331;
+//
+// WIN-268 (M4.2) stage 3: 8331 + 24 = 8355 over 562 + 2 = 564 files. The
+// arithmetic, both halves named: `packages/adapters/postgres-tenancy` 1558 -> 1568
+// across 1 NEW file and `packages/contexts/identity-access` 339 -> 353 across 1 NEW
+// file, both itemised on their own rows above. 10 + 14 = 24; 1 + 1 = 2.
+//
+// THE THREE-WAY IDENTITY MOVES ON THE ADAPTERS TERM AND THE CONTEXTS TERM, and the
+// split is the tranche's own shape rather than an accident: the rules live in a
+// context and are provable with no database, and the claims that turn on
+// concurrency, on a `@db.Uuid` column and on a digest CHECK constraint can only be
+// made where the real client is. `packages/kernel` is unmoved.
+//
+// AND THE ASYMMETRY THE TWO PARAGRAPHS ABOVE RECORD APPLIES A THIRD TIME. The
+// tranche also added 13 cases in
+// `apps/core-api/src/transports/mcp/token-lifecycle.test.ts` — which access level
+// each route asks tenancy for, which SCOPE reaches the contract, where a
+// `fields[]` path points — and `apps/core-api` is outside `PACKAGE_ROOTS`, so this
+// census moves not one number for them. A reader taking this file as the measure of
+// what stage 3 proved would be reading two thirds of it.
+export const EXPECTED_RUNTIME_TOTAL = 8355;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
