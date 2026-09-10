@@ -1038,12 +1038,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "ccda1b4c6bf727ce8c197bd83fd2e4a4a9bebbb81233bcabdee7ac51c2f9d297"
+      "sha256": "70a63a7fb78cb5c00a8dc3db422ac6f16a5edb20987b4f69516c4f57f129b0cb"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "138e511557f86d85f9e7d96a72050e54e0cfde8cb7340dcf3a50ffd27776711d"
+      "sha256": "f65edf35cdfd01b79c36041bcba3dd2cc35a4f11fa4146cd2dd62646c2c6582a"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1083,7 +1083,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "4621f7162d5bcee6538045f2ce40434376b3a5cf9bfcbb658f83c630d7da16a0"
+      "sha256": "478e8f82203ed804db784c47ad77531678063d5c8e7bf31a0e739317ead5cfc6"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1093,7 +1093,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "9221e99897038bae5795bef55ca760f9bbe692d1897f532b2685d27acb876d8e"
+      "sha256": "d8d0df94802f54f83cea2a8c5d69cc53cbfa74c0c6aa5902281fd0fe7e1c6af2"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3513,7 +3513,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "cfa177c7b95e01a1b0e9b416d0e97b8a6a6e6d2e69d121c799184c26b993b1ad"
+      "sha256": "3943aa83f5dcce7c078a75bce100c034de4129360d9ef1b011c72017a59a0c9e"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3538,7 +3538,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "1d9390b28583d40b5eeb4206812048e9500e5ff64a5d10b7a9c7ab3e0fbfee79"
+      "sha256": "ef03d53e0542000b26cca4c02bb099296e738e9e2ed239e786d3e4ca78f6e755"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3953,7 +3953,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "0864c95ad409f28ab5691b64037d2f94217e9bc5a0cdd3467d1d6e61200ac341"
+      "sha256": "9ac6b6d9b0df226094fe18ab00bd9be28cbd69d37d79d9e2f0a0363181b67413"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3988,7 +3988,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "8fce9be5eecf947ca2b32c8f08d08a34b8bca08981cb412aa1d3ffa8349d98ac"
+      "sha256": "ad91f71a3dc6bf59eb8f2fbecf446b33e8294259e3a99fff43bf6c89a4c1f18f"
     },
     {
       "path": "scripts/workspace-reachability.mjs",

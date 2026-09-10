@@ -702,7 +702,26 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         reported as three new unreviewed occurrences IN THIS FILE — a
   //         reminder that the rule reads bytes and does not care that the
   //         sentence around them is about the rule.
-  assert.equal(manifest.exceptions.length, 19447);
+  //
+  // WIN-272 (M4.6) ADDS ONE, and it is the first exception ever taken in
+  //         `packages/kernel` — a package that until now carried none.
+  //         `packages/kernel/src/vo/stream-frame.ts` holds the FIVE stream
+  //         envelope families ADR M0.4 section 1.2 names, and the fifth of them
+  //         is the name of the boundary at which a payload crosses into the
+  //         external durable-work vendor. It could not be rewritten for the
+  //         reason the Slack vector could not: the ADR pins one schema-version
+  //         axis per family and section 1.3 classifies a rename as a MAJOR
+  //         change, so renaming the string here would break the axis while
+  //         leaving the accepted document naming the old family. Classified
+  //         `boundary-spec` rather than `vendor` — the kernel holds no vendor
+  //         client and imports nothing; what it holds is a transcription of a
+  //         frozen specification, which is what that classification is for --> 19448.
+  //
+  //         THE OTHER FOUR FAMILIES CARRY NO REFUSED WORD, so this is one row
+  //         and not five. And the rest of that file's prose was written to avoid
+  //         the refused vocabulary entirely rather than to be excepted, which is
+  //         the rule working as intended a second time.
+  assert.equal(manifest.exceptions.length, 19448);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

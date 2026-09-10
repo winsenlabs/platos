@@ -1365,8 +1365,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   WIDENED rather than added, and `docs/error-taxonomy.json` — which gains
     //   the five new codes — is tracked already.
     //
-    // NO LEDGER RULE CHANGED. 1513 + 14 + 5 = 1532.
-    packages: 1532,
+    // WIN-272 (M4.6) 1532 -> 1542. TEN files across TWO package trees, each
+    // itemised where it lands.
+    //
+    //   SEVEN NET in `packages/adapters/redis-streams`. The directory held TWO
+    //   generated placeholders and now holds NINE real files, and adoption
+    //   replaces the placeholders in place rather than adding beside them — so
+    //   this term is a NET, exactly as `channel-slack`'s fourteen was. Four are
+    //   production (`client`, `journal`, `event-bus`, and `adapter`/`index`
+    //   replacing the placeholders), one is test support (`harness`, which starts
+    //   a real Redis container and takes the URL off it) and three are suites, two
+    //   of them integration. They land on `packages.adapters.source` and `.test`,
+    //   rules that already matched this directory's placeholders.
+    //
+    //   THREE in `packages/kernel`: `vo/stream-frame.ts` (the one stream
+    //   envelope), its suite, and `ports/stream-journal.ts` (the twelfth kernel
+    //   port). `vo/index.ts` and `ports/index.ts` are WIDENED rather than added,
+    //   and the kernel term is the one that has moved least often in this whole
+    //   table.
+    //
+    // NO LEDGER RULE CHANGED. 1532 + 7 + 3 = 1542.
+    packages: 1542,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2017,7 +2036,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `root-infra` +3 (the mutation ledger, its plan and its driver). The
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 10 + 0 + 80 + 4 + 10 + 1532 + 23 + 83 = 1742.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1742);
+  //
+  // WIN-272 (M4.6) 1742 -> 1752. TEN files, ALL IN ONE AREA — `packages` +10,
+  // itemised on that area's delta above: seven NET in the newly adopted
+  // `redis-streams` and three in `packages/kernel`. It is the first tranche since
+  // WIN-268 to move exactly one area, and NOTHING lands in `root-infra`: the
+  // mutation ledger this tranche drives is `apps/core-api/mutations-win272-m46.json`,
+  // beside the four ledgers that directory already carries. The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 10 + 0 + 80 + 4 + 10 + 1542 + 23 + 83 = 1752.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1752);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2245,7 +2273,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // its driver), reached here by summing the per-area counts instead of reading
     // the total, so the two arithmetics can disagree and be caught.
     // 1720 + 22 = 1742.
-    rulesDocument.baseline.totalFiles + 1742
+    //
+    // AND WIN-272 (M4.6) 1742 -> 1752 -- the TWENTY-FOURTH hand move. The same
+    // ten files as the `totalFiles` assertion above (all ten in `packages` --
+    // seven NET in the newly adopted `redis-streams` and three in
+    // `packages/kernel`), reached here by summing the per-area counts instead of
+    // reading the total, so the two arithmetics can disagree and be caught.
+    // 1742 + 10 = 1752.
+    rulesDocument.baseline.totalFiles + 1752
   );
 });
 
