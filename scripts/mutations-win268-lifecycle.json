@@ -1,0 +1,319 @@
+{
+  "$schema-note": "Hand-written record of a mutation sweep. It is EVIDENCE, not a gate: no script reads it, and its value is that every row names a real edit, the command that judged it, and the outcome. A survivor is listed as a survivor.",
+  "issue": "WIN-268",
+  "tranche": "M4.2 — the four MCP token lifecycle routes, and identity-access's credential LIST and REVOKE",
+  "branch": "tejas/m4-finish",
+  "base": "59f86b3f (the previous tranche's head); mutations run at 3fbd9025 and after",
+  "purpose": "Every claim this tranche makes about the credential lifecycle is a claim about behaviour a test either does or does not hold. Each row below is ONE edit to production code that would break one of those claims, applied alone, judged by a named command, and reverted. A row that says `survived` says so.",
+  "procedure": "One mutation at a time, via a harness that refuses an ambiguous anchor, runs one command, and reverts with `git checkout --`. THE HARNESS ITSELF HAD A DEFECT WORTH RECORDING: it did not rebuild `dist/` before running, and `@platos/context-*` resolves through package exports to `dist/`, so the FIRST run of P04 reported a FALSE SURVIVOR. It was caught by applying that mutation by hand, and the harness now builds before judging any mutation under `packages/contexts/`. Every context-package row below was judged after that fix.",
+  "commands": {
+    "db": "PLATOS_TENANCY_HARNESS_DATABASE_URL=postgresql://postgres@127.0.0.1:54341/<fresh>?schema=public pnpm --filter @platos/adapter-postgres-tenancy exec vitest run src/identity-bearer-lifecycle.integration.test.ts --no-file-parallelism  (native Homebrew postgresql@17 on a non-default port, canonical migrations in `public`; NOT Docker, which is prohibited on this machine)",
+    "identity-unit": "pnpm --filter @platos/context-identity-access exec vitest run application/bearer-credential-lifecycle.test.ts",
+    "transport-unit": "pnpm --filter @platos/core-api exec vitest run src/transports/mcp/token-lifecycle.test.ts",
+    "route-manifest": "pnpm --filter @platos/core-api exec vitest run src/transports/rest/route-manifest.test.ts",
+    "taxonomy": "node scripts/error-taxonomy.mjs --check",
+    "census": "node scripts/arch/secret-response-census.mjs",
+    "build": "pnpm run build:v1"
+  },
+  "baseline": "Green before any mutation: db 12/12, identity-unit 16/16 (within 355 for the package), transport-unit 13/13, route-manifest 7/7, taxonomy ok, census ok, build:v1 clean.",
+  "survivors": "NONE REMAIN, and four DID survive on first application. P02, P14, P15 and P19 each survived a first pass, each named a property no case held, and each is killed by a case added because of it — the four cases are itemised in `scripts/arch/test-case-census.mjs`'s two row comments. Four of this tranche's twenty-eight new cases exist for that reason and no other.",
+  "mutations": [
+    {
+      "name": "P01 the platform revocation drops its `revokedAt IS NULL` precondition",
+      "guards": "a second revoke is a no-op rather than a rewrite of the first one's instant",
+      "why": "Sixteen concurrent revocations must produce exactly ONE `newlyRevoked`. Unconditional, all sixteen win and the last writer's clock becomes the recorded moment the credential was ended.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P02 the ENTITY revocation drops its `revokedAt IS NULL` precondition",
+      "guards": "the same precondition on the second table",
+      "why": "SURVIVED THE FIRST PASS. The two revocations are two SQL statements over two tables, and every case in the suite reached only the platform one, so the entity predicate was unproved. An entity-precondition case (eight concurrent revocations plus a sequential second call under a later clock) is why it is now killed.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed",
+      "firstOutcome": "survived",
+      "closedBy": "the ENTITY revocation carries the SAME precondition, proved separately"
+    },
+    {
+      "name": "P03 the platform revocation always reports `newlyRevoked: true`",
+      "guards": "an operator can tell a revocation from a second click",
+      "why": "The whole point of the view over the legacy boolean. Reported true always, the second call claims to have ended a credential somebody else ended.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P04 `previousState` asks the lifecycle rule about the row WITHOUT lifting the revocation",
+      "guards": "the three operator stories stay three",
+      "why": "The row's `revokedAt` is set by the time it is read back, so `credentialStateAt` would answer `revoked` for every case and an operator could never tell a live credential from a lapsed one. THIS IS THE ROW THAT EXPOSED THE HARNESS DEFECT: it was reported a survivor against a stale `dist/`, and a by-hand application failed two named cases.",
+      "file": "packages/contexts/identity-access/application/revoke-bearer-credential.ts",
+      "command": "db",
+      "outcome": "killed",
+      "note": "first judged against a stale build; see `procedure`"
+    },
+    {
+      "name": "P05 the entity listing widens its WHERE to the whole environment",
+      "guards": "one entity's operator never sees another entity's credentials",
+      "why": "The cross-entity leak. `McpBearerToken` carries both `entityId` and `environmentId`, and the coherent-scope case a two-tenant test passes either way is exactly this one.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P06 the entity COUNT drops the entity clause while the page keeps it",
+      "guards": "the total is counted under the same clause as the page it describes",
+      "why": "A pagination control that lies: the operator is told there are more credentials than any page can reach, and the extra ones belong to another entity.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P07 an over-large `limit` is clamped instead of refused",
+      "guards": "a caller who asked for 5000 rows is not told it received everything",
+      "why": "Both oracles clamp with `boundedInteger(limit, 50, 1, 100)`. This is the one deliberate divergence from them, so it needs a case.",
+      "file": "packages/contexts/identity-access/domain/bearer-token.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P08 a null entity subject widens the WHERE instead of refusing",
+      "guards": "the adapter cannot be talked into the cross-entity leak from below",
+      "why": "The fallback a reader writes by reflex. The planners refuse this shape, so the guard is defence in depth — and it is reachable, because a caller that bypassed the planner would hit it.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P09 a PLATFORM address that names an entity is accepted",
+      "guards": "a subject supplied for `McpToken` is refused, not silently dropped",
+      "why": "`McpToken` has no subject column. Accepted, the caller believes it scoped a listing to an entity when it scoped it to an environment.",
+      "file": "packages/contexts/identity-access/domain/bearer-token.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P10 an ENTITY address with no entity is accepted by the planner",
+      "guards": "the other half of the same pairing rule",
+      "why": "Two halves, two mutations, because one guard removed is a different tree from both removed.",
+      "file": "packages/contexts/identity-access/domain/bearer-token.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P11 the entity summary invents a `revokedBy` the table cannot hold",
+      "guards": "a caller is never told an attribution was stored that `McpBearerToken` has no column for",
+      "why": "The legacy service records the actor in an `AdminAudit` row, which is `observability`'s and is not composed. Reporting a value here would be reporting something no row says.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P12 a revocation of an absent credential reports SUCCESS",
+      "guards": "`CREDENTIAL_NOT_FOUND` separates a wrong id from a second click",
+      "why": "The worst failure this route can have: an operator told a credential is dead while it still authenticates.",
+      "file": "packages/contexts/identity-access/application/revoke-bearer-credential.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P13 the store-defect branch reuses `CREDENTIAL_NOT_FOUND`",
+      "guards": "two guards in one function do not answer under one code",
+      "why": "This is the mutation that PRODUCED `CREDENTIAL_REVOCATION_NOT_APPLIED`: `audit:error-taxonomy` rule E6 refused the shared code, and the two branches say different things — the row is absent, versus the row is there and the write did not take.",
+      "file": "packages/contexts/identity-access/application/revoke-bearer-credential.ts",
+      "command": "taxonomy",
+      "outcome": "killed"
+    },
+    {
+      "name": "P14 the view decides `state` from `revokedAt` alone instead of asking the lifecycle rule",
+      "guards": "a lapsed credential is listed as `expired`, and a revocation beats an expiry",
+      "why": "SURVIVED THE FIRST PASS. Nothing listed a credential the CLOCK had ended, so an operator would have been shown a dead token as live. A lapsed-listing case (which also asserts revoked-beats-expired) is why it is now killed.",
+      "file": "packages/contexts/identity-access/application/identity-access-service.ts",
+      "command": "identity-unit",
+      "outcome": "killed",
+      "firstOutcome": "survived",
+      "closedBy": "reports a LAPSED credential as `expired`, not as active"
+    },
+    {
+      "name": "P15 a junk `McpToken.tier` is normalised to `scope` instead of refused",
+      "guards": "an operator auditing which credentials hold ADMIN is not shown a junk row as the weaker tier",
+      "why": "SURVIVED THE FIRST PASS. There is no CHECK constraint on that column, and nothing in the suite wrote a bad value — so the adapter's whole validate-rather-than-normalise argument was unproved. A real row seeded with `\"adminn\"` through the harness is why it is now killed, and that case also proves the PRICE: the whole page fails.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed",
+      "firstOutcome": "survived",
+      "closedBy": "a junk `McpToken.tier` makes the row UNREADABLE rather than reading as the weaker tier"
+    },
+    {
+      "name": "P16 `hasMore` is always false",
+      "guards": "the envelope's next cursor is derived from the store's own total",
+      "why": "A client stops after page one and believes it has read the directory.",
+      "file": "packages/contexts/identity-access/application/list-bearer-credentials.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P17 the listing drops its ORDER BY",
+      "guards": "two consecutive pages neither overlap nor skip",
+      "why": "Without a total order the database picks, and a page boundary becomes a place rows hide.",
+      "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P18 the double silently omits a credential seeded past `mint`",
+      "guards": "the fake refuses rather than answering a short page",
+      "why": "A use-case test asserting `total: 1` for two rows would pass against a store that had lost one. This is the property that makes the double a fake and not a flatterer.",
+      "file": "packages/contexts/identity-access/application/in-memory-bearer-listings.ts",
+      "command": "identity-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "P19 the double's comparator returns 0",
+      "guards": "the fake reproduces the ORDER the SQL has",
+      "why": "SURVIVED THE FIRST PASS. Nothing listed more than one credential in an order-sensitive way, so the fake could have contradicted the adapter it stands in for. A four-credential paging case, with the id tiebreak exercised, is why it is now killed.",
+      "file": "packages/contexts/identity-access/application/in-memory-bearer-listings.ts",
+      "command": "identity-unit",
+      "outcome": "killed",
+      "firstOutcome": "survived",
+      "closedBy": "pages NEWEST-FIRST with no overlap, which the double must reproduce"
+    },
+    {
+      "name": "P20 the double ends only the listing row, not the authentication row",
+      "guards": "a revoked credential stops authenticating in the fake too",
+      "why": "They are ONE row in the real store. A double that split them would let a use case that forgot the transition keep passing.",
+      "file": "packages/contexts/identity-access/application/in-memory-bearer-listings.ts",
+      "command": "identity-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "P21 the planner derives the ORGANIZATION instead of the environment leaf",
+      "guards": "a credential listing is bounded by one environment",
+      "why": "The leaf IS the tenancy clause for both tables. Widened to the organization, one project's operator lists another's credentials.",
+      "file": "packages/contexts/identity-access/domain/bearer-token.ts",
+      "command": "identity-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "P22 `BearerCredentialSummary` grows a `tokenHash` field",
+      "guards": "no listing can carry the verifier, at any layer",
+      "why": "KILLED BY THE TYPE CHECKER, which is the strongest kill available and the exact claim the type was chosen for: `in-memory-repository.ts(417,11): Property 'tokenHash' is missing ... but required in type 'BearerCredentialSummary'`. Every producer has to be edited before the field can exist, so the omission is not a thing a reviewer has to remember.",
+      "file": "packages/contexts/identity-access/domain/bearer-token.ts",
+      "command": "build",
+      "outcome": "killed"
+    },
+    {
+      "name": "P23 `BearerCredentialView` grows a `token` field",
+      "guards": "the same property one layer up, at the contract",
+      "why": "Also refused by the type checker. Had it compiled, `secret-response-census` would have caught the transport DTO — which T10 proves separately — so this property is guarded twice, by two mechanisms.",
+      "file": "packages/contexts/identity-access/contracts/index.ts",
+      "command": "build",
+      "outcome": "killed"
+    },
+    {
+      "name": "P24 the total is the page length instead of the store count",
+      "guards": "`total` describes the whole result set, not the window",
+      "why": "The most plausible accident in a listing, and the one that makes `hasMore` permanently false.",
+      "file": "packages/contexts/identity-access/application/list-bearer-credentials.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "P25 the service drops the caller's entity on the way to the use case",
+      "guards": "the entity survives the contract boundary",
+      "why": "Every guard below this line is correct and the leak happens above them, which is why the seam needs its own case.",
+      "file": "packages/contexts/identity-access/application/identity-access-service.ts",
+      "command": "db",
+      "outcome": "killed"
+    },
+    {
+      "name": "T01 the platform LISTING asks tenancy for `secret:mutate`",
+      "guards": "a viewer-shaped role can audit an environment's credentials",
+      "why": "Asking for more than a route needs is how a viewer stops being able to read anything. An integration suite run as an owner passes either way, which is why this is a unit case.",
+      "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T02 the platform revocation passes a scope assembled from the request",
+      "guards": "the authorization's re-derived scope is what reaches the contract",
+      "why": "`EnvironmentOperatorAuthorization` is branded so a caller cannot forge one; using the id from the request throws that away one line after earning it. A suite whose request and authorization name the same environment cannot tell the two apart, which is why the stub deliberately makes them differ.",
+      "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T03 the entity REVOCATION asks tenancy for `metadata`",
+      "guards": "ending a credential needs `secret:mutate`",
+      "why": "The other direction from T01, and the dangerous one: a viewer able to revoke.",
+      "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T04 the entity/environment pair check is removed",
+      "guards": "an entity from one project cannot be addressed through another project's environment",
+      "why": "Every individual answer is `ok` and the PAIR is wrong. The check raises rather than returning a boolean precisely so a route cannot forget to branch on it.",
+      "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T05 the listing points `fields[]` at `body.environmentId`",
+      "guards": "a 400 names a request part the route actually has",
+      "why": "A `GET` has no body. One hard-coded path would have stayed correct for the mint and sent every listing client to look in the wrong place.",
+      "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T06 `nextTokenCursor` recomputes `hasMore` by arithmetic",
+      "guards": "one fact has one source",
+      "why": "The contract already answers it from the store's own total; a second computation is free to disagree, and the envelope would then report whichever the transport trusted.",
+      "file": "apps/core-api/src/transports/mcp/token-lifecycle.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T07 a missing required query parameter is not reported by name",
+      "guards": "`fields[]` names `query.environmentId`",
+      "why": "Without it the caller gets a 403 about an environment called `undefined`.",
+      "file": "apps/core-api/src/transports/mcp/token-lifecycle.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T08 a repeated query parameter is resolved instead of refused",
+      "guards": "two instructions are not silently reduced to one",
+      "why": "Every rule for picking one is a rule the caller did not agree to — the same reasoning `page.ts` records for a repeated `limit`.",
+      "file": "apps/core-api/src/transports/mcp/token-lifecycle.ts",
+      "command": "transport-unit",
+      "outcome": "killed"
+    },
+    {
+      "name": "T09 the route-manifest expectation goes back to predicting from the VERB",
+      "guards": "the probe's expected refusal is derived by asking each route's own pipes",
+      "why": "This is the mutation that reproduces the defect the tranche found: the old predicate expected three routes to reach the context check when their query pipe refuses first. Restoring it fails the case, which is what makes the new derivation load-bearing rather than decorative.",
+      "file": "apps/core-api/src/transports/rest/route-manifest.test.ts",
+      "command": "route-manifest",
+      "outcome": "killed"
+    },
+    {
+      "name": "T10 the list DTO grows a property named `token`",
+      "guards": "the secret-response census covers this route",
+      "why": "The census counts a material-named property in an object literal a request surface returns, and `token` is on its list. The DTO has nothing to redact, so this proves the census would SEE it if it did.",
+      "file": "apps/core-api/src/transports/mcp/token-lifecycle.ts",
+      "command": "census",
+      "outcome": "killed"
+    }
+  ],
+  "declared": [
+    "NOTHING IS DECLARED EQUIVALENT IN THIS SWEEP. Every row above is judged by a",
+    "command and every one is killed. Where a first pass survived, the row records",
+    "that fact, names the case that closes it, and the case is itemised in the",
+    "test-case census's own row comment — because a survivor that becomes a kill by",
+    "adding a test is the sweep working, and a survivor quietly reclassified as",
+    "'equivalent' is the sweep being defeated."
+  ]
+}

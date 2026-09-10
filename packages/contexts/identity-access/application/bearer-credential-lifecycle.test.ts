@@ -198,6 +198,57 @@ describe("WIN-268 — the listing answers for ONE environment and ONE entity", (
     expect(page.ok && page.value.total).toBe(1);
   });
 
+  it("pages NEWEST-FIRST with no overlap, which the double must reproduce", async () => {
+    // A MUTATION SURVIVED WITHOUT THIS CASE: returning 0 from the double's
+    // comparator left every other case green, because nothing here listed more than
+    // one credential in an order-sensitive way.
+    //
+    // WHY IT MATTERS FOR A FAKE. Both oracles order `[{ createdAt: "desc" }, { id:
+    // "desc" }]` and the SQL adapter reproduces it; a double that ordered
+    // arbitrarily would let a use-case test about paging pass against a store the
+    // real one contradicts, and the id tiebreak is what makes two consecutive pages
+    // total rather than merely usually disjoint.
+    const { ports, identity } = service();
+    const ids: string[] = [];
+    for (const label of ["first", "second", "third", "fourth"]) {
+      ids.push(await mintPlatform(identity, label));
+      // The double stamps `createdAt` from the wall clock, so distinct instants need
+      // distinct milliseconds; without this the tiebreak is the only ordering left
+      // and the case would be proving half of the rule.
+      ports.clock.advance(1000);
+      await new Promise((resolve) => setTimeout(resolve, 2));
+    }
+    const first = await identity.listBearerCredentials({
+      kind: "mcp-token",
+      scope: scope(),
+      limit: 2,
+      offset: 0,
+    });
+    const second = await identity.listBearerCredentials({
+      kind: "mcp-token",
+      scope: scope(),
+      limit: 2,
+      offset: 2,
+    });
+    expect(first.ok && second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+    expect(first.value.total).toBe(4);
+    expect(first.value.hasMore).toBe(true);
+    expect(second.value.hasMore).toBe(false);
+    // NEWEST FIRST: the last minted leads the first page.
+    expect(first.value.credentials[0]?.credentialId).toBe(ids[3]);
+    expect(second.value.credentials.at(-1)?.credentialId).toBe(ids[0]);
+    // AND THE TWO PAGES ARE DISJOINT AND COMPLETE — four distinct ids over two pages.
+    const seen = [...first.value.credentials, ...second.value.credentials].map(
+      (row) => row.credentialId,
+    );
+    expect(new Set(seen).size).toBe(4);
+    const instants = [...first.value.credentials, ...second.value.credentials].map((row) =>
+      row.createdAt.getTime(),
+    );
+    expect(instants).toEqual([...instants].sort((left, right) => right - left));
+  });
+
   it("refuses a platform listing that names an entity, and an entity listing that omits one", async () => {
     const { identity } = service();
     for (const request of [
@@ -238,6 +289,42 @@ describe("WIN-268 — the listing answers for ONE environment and ONE entity", (
     expect(rendered).not.toContain(String(stored?.tokenHash));
     expect(rendered).not.toContain(minted.value.token);
     expect(Object.keys(page.value.credentials[0] ?? {})).not.toContain("tokenHash");
+  });
+
+  it("reports a LAPSED credential as `expired`, not as active", async () => {
+    // A MUTATION SURVIVED WITHOUT THIS CASE. Replacing `credentialStateAt` with
+    // `revokedAt === null ? "active" : "revoked"` left every other case green,
+    // because nothing listed a credential the CLOCK had ended — and an operator
+    // reading that table would have been shown a dead token as live.
+    //
+    // THE STATE IS THE ONE LIFECYCLE RULE'S, and it is the reason the view asks
+    // rather than compares: `domain/credential.ts` decides once, for every
+    // credential in this context, that a revocation beats an expiry.
+    const { ports, identity } = service();
+    await mintPlatform(identity, "lapsing");
+    const live = await identity.listBearerCredentials({ kind: "mcp-token", scope: scope() });
+    expect(live.ok && live.value.credentials[0]?.state).toBe("active");
+
+    // Past the ninety-day default, with nothing revoked.
+    ports.clock.advance(91 * 24 * 60 * 60 * 1000);
+    const lapsed = await identity.listBearerCredentials({ kind: "mcp-token", scope: scope() });
+    expect(lapsed.ok, JSON.stringify(lapsed)).toBe(true);
+    if (!lapsed.ok) return;
+    expect(lapsed.value.credentials[0]?.revokedAt).toBeNull();
+    expect(lapsed.value.credentials[0]?.state).toBe("expired");
+
+    // AND REVOKED BEATS EXPIRED when both are true, which is the ordering the rule
+    // exists to fix once. A view that reported the clock here would invite a caller
+    // to wait out a decision somebody made.
+    const credentialId = lapsed.value.credentials[0]?.credentialId ?? "";
+    await identity.revokeBearerCredential({
+      kind: "mcp-token",
+      credentialId,
+      scope: scope(),
+      revokedByUserId: OPERATOR,
+    });
+    const ended = await identity.listBearerCredentials({ kind: "mcp-token", scope: scope() });
+    expect(ended.ok && ended.value.credentials[0]?.state).toBe("revoked");
   });
 
   it("REFUSES a credential seeded past `mint` rather than answering a short page", async () => {

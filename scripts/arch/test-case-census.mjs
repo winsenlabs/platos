@@ -2602,7 +2602,15 @@ export const EXPECTED = Object.freeze({
   // `fakeSecretHasher` prepends a string where the migrations require
   // `^[0-9a-f]{64}$`, and `sequentialIdGenerator` returns `id-1` where both id
   // columns are `@db.Uuid`. Both are substituted in the suite's own ports.
-  "packages/adapters/postgres-tenancy": { files: 141, cases: 1568 },
+  //
+  // 1568 -> 1570: TWO of the twelve exist because a MUTATION SURVIVED without them,
+  // which is the only reason that number is not ten. P02 dropped `revokedAt IS NULL`
+  // from the ENTITY revocation and every case stayed green — the two revocations are
+  // two statements over two tables and the platform cases cannot reach the entity
+  // one — and P15 normalised a junk `McpToken.tier` instead of refusing it, which
+  // nothing noticed because nothing wrote one. Both are recorded in
+  // `scripts/mutations-win268-lifecycle.json`.
+  "packages/adapters/postgres-tenancy": { files: 141, cases: 1570 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -2730,7 +2738,15 @@ export const EXPECTED = Object.freeze({
   // with the owning entity proved able to revoke it; `revokedBy` reported NULL for
   // an entity token because `McpBearerToken` has no such column; and the row ENDED
   // rather than deleted, so the credential still resolves as revoked).
-  "packages/contexts/identity-access": { files: 25, cases: 353 },
+  //
+  // 353 -> 355: TWO of the sixteen exist because a MUTATION SURVIVED without them.
+  // P14 decided `state` from `revokedAt` alone and every case stayed green, because
+  // nothing listed a credential the CLOCK had ended — an operator would have been
+  // shown a lapsed token as live. P19 returned 0 from the double's comparator and
+  // every case stayed green, because nothing listed more than one credential in an
+  // order-sensitive way — so the fake could have contradicted the SQL it exists to
+  // stand in for. Both are recorded in `scripts/mutations-win268-lifecycle.json`.
+  "packages/contexts/identity-access": { files: 25, cases: 355 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -3684,10 +3700,15 @@ export const EXPECTED = Object.freeze({
 // and in no `packages/adapters/` directory, so the MCP client could not have landed
 // on the adapters term.
 //
-// WIN-268 (M4.2) stage 3: 8331 + 24 = 8355 over 562 + 2 = 564 files. The
+// WIN-268 (M4.2) stage 3: 8331 + 28 = 8359 over 562 + 2 = 564 files. The
 // arithmetic, both halves named: `packages/adapters/postgres-tenancy` 1558 -> 1568
-// across 1 NEW file and `packages/contexts/identity-access` 339 -> 353 across 1 NEW
-// file, both itemised on their own rows above. 10 + 14 = 24; 1 + 1 = 2.
+// across 1 NEW file and `packages/contexts/identity-access` 339 -> 355 across 1 NEW
+// file, both itemised on their own rows above. 12 + 16 = 28; 1 + 1 = 2.
+//
+// FOUR OF THE TWENTY-EIGHT EXIST BECAUSE A MUTATION SURVIVED — two on each row, each
+// row's own comment names which — so the honest reading of this delta is that the
+// sweep found four properties the suites did not hold and the count moved because of
+// it, not that the suites were written larger.
 //
 // THE THREE-WAY IDENTITY MOVES ON THE ADAPTERS TERM AND THE CONTEXTS TERM, and the
 // split is the tranche's own shape rather than an accident: the rules live in a
@@ -3702,7 +3723,7 @@ export const EXPECTED = Object.freeze({
 // `fields[]` path points — and `apps/core-api` is outside `PACKAGE_ROOTS`, so this
 // census moves not one number for them. A reader taking this file as the measure of
 // what stage 3 proved would be reading two thirds of it.
-export const EXPECTED_RUNTIME_TOTAL = 8355;
+export const EXPECTED_RUNTIME_TOTAL = 8359;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

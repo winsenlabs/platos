@@ -318,6 +318,55 @@ describe("WIN-268 — a revoked credential stops authenticating, and the row say
     expect(second.value.revokedBy).toBe(userId);
   }, 180_000);
 
+  test("the ENTITY revocation carries the SAME precondition, proved separately", async () => {
+    // A MUTATION SURVIVED WITHOUT THIS CASE. Dropping `revokedAt: null` from the
+    // entity `updateMany` left every case in this file green, because the two
+    // revocations are two SQL statements over two tables and the platform cases
+    // above cannot reach the entity one. `identity-bearer-lifecycle.ts` writes the
+    // predicate twice; this is the second half of the proof that it does.
+    const minted = await mintEntity("entity precondition", entityId);
+    const outcomes = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        identity.revokeBearerCredential({
+          kind: "entity-bearer-token",
+          credentialId: minted.credentialId,
+          scope: scopeOf(tenant),
+          subjectId: entityId,
+          revokedByUserId: userId,
+        }),
+      ),
+    );
+    for (const outcome of outcomes) expect(outcome.ok, JSON.stringify(outcome)).toBe(true);
+    expect(outcomes.filter((outcome) => outcome.ok && outcome.value.newlyRevoked)).toHaveLength(1);
+    for (const outcome of outcomes) {
+      if (outcome.ok) expect(outcome.value.revokedAt).toEqual(NOW);
+    }
+
+    // AND A SEQUENTIAL SECOND CALL UNDER A LATER CLOCK, which is the shape an
+    // operator's second click actually takes: the instant must still be the first
+    // one's, so the row records when the credential was really ended.
+    const ports = testPorts();
+    ports.clock.set(new Date(NOW.getTime() + 7_200_000));
+    const later = createIdentityAccessService({
+      ...ports,
+      repository: harness.repository,
+      hasher: sha256Hasher(ports.hasher),
+      ids: uuidIds(ports.ids),
+    });
+    const second = await later.revokeBearerCredential({
+      kind: "entity-bearer-token",
+      credentialId: minted.credentialId,
+      scope: scopeOf(tenant),
+      subjectId: entityId,
+      revokedByUserId: userId,
+    });
+    expect(second.ok, JSON.stringify(second)).toBe(true);
+    if (!second.ok) return;
+    expect(second.value.newlyRevoked).toBe(false);
+    expect(second.value.previousState).toBe("revoked");
+    expect(second.value.revokedAt).toEqual(NOW);
+  }, 180_000);
+
   test("SIXTEEN CONCURRENT revokes produce exactly one winner", async () => {
     const minted = await mintPlatform("concurrent revoke subject");
     const outcomes = await Promise.all(
@@ -431,6 +480,50 @@ describe("WIN-268 — the listing's tenancy clause, and what it never returns", 
       row.createdAt.getTime(),
     );
     expect(created).toEqual([...created].sort((left, right) => right - left));
+  }, 180_000);
+
+  test("a junk `McpToken.tier` makes the row UNREADABLE rather than reading as the weaker tier", async () => {
+    // A MUTATION SURVIVED WITHOUT THIS CASE, and the decision it left unproved is
+    // the one `readMcpPermissionTier`'s note argues for at length. There is NO CHECK
+    // CONSTRAINT on `McpToken.tier` — `EndUserSession.tier` has one and this column
+    // does not — so nothing in the database stops a row holding `"adminn"`, and the
+    // two available answers differ observably:
+    //
+    //   NORMALISE (what `token.service.ts` does)  the row reads as `scope`, and an
+    //     operator auditing which credentials hold ADMIN is shown a junk row as the
+    //     weaker tier and misses it.
+    //   REFUSE (what this adapter does)  the row is unreadable and the page it
+    //     appears on fails, loudly, under its own code.
+    //
+    // THE PRICE IS PROVED HERE TOO, not just the property: the whole page fails, so
+    // an operator with one such row cannot list ANY credential in that environment
+    // from this surface. That is recorded in the adapter's note and it is why this
+    // case asserts the throw rather than a per-row fallback — a future stage that
+    // decides the price is too high has to change this case, on purpose.
+    const junkTenant = await harness.seedTenant("junk-tier");
+    const junkUser = await harness.seedUser("junk-tier@example.test");
+    await harness.seedMembership(junkTenant.organizationId, junkUser);
+    await harness.seedMcpToken({
+      environmentId: junkTenant.environmentId,
+      mintedByUserId: junkUser,
+      tokenHash: createHash("sha256").update("junk-tier-row").digest("hex"),
+      permissions: ["tools.*"],
+      // NEITHER of the two the domain enumerates. A typo an operator could really
+      // make, and the exact one the legacy handler silently weakens.
+      tier: "adminn",
+    });
+    await expect(
+      identity.listBearerCredentials({ kind: "mcp-token", scope: scopeOf(junkTenant) }),
+    ).rejects.toThrow(/unknown_mcp_permission_tier|McpToken\.tier/u);
+
+    // NOT VACUOUS: the same listing over a tenant whose rows are all readable
+    // answers normally, so the throw is about the VALUE and not about the query.
+    const healthy = await identity.listBearerCredentials({
+      kind: "mcp-token",
+      scope: scopeOf(tenant),
+      limit: 1,
+    });
+    expect(healthy.ok, JSON.stringify(healthy)).toBe(true);
   }, 180_000);
 
   test("an over-large limit is REFUSED rather than clamped", async () => {
