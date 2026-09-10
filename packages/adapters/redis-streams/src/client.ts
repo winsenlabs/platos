@@ -53,6 +53,11 @@ export interface RedisStreamConnectionOptions {
    * generated them, so an append that hangs is a turn that hangs.
    */
   readonly commandTimeoutMs?: number;
+  /**
+   * Milliseconds to wait for the HANDSHAKE, which is a different wait. See the
+   * note on `ready()` for why it is not the same number as `commandTimeoutMs`.
+   */
+  readonly readyTimeoutMs?: number;
 }
 
 /** One entry as the server holds it: the id it was written under, and its fields. */
@@ -208,17 +213,52 @@ export function createRedisStreamConnection(
   // report it as a value.
   client.on("error", () => undefined);
 
-  const ready: Promise<void> =
-    client.status === "ready"
-      ? Promise.resolve()
-      : new Promise<void>((resolve, reject) => {
-          client.once("ready", () => resolve());
-          client.once("error", (error: Error) => reject(error));
-        });
-  // Marking the rejection handled settles nothing — an `await ready` inside a verb
-  // still rejects. It stops Node killing the process on a rejection the design
-  // defers, which is the hazard `redis-cache` hit at WIN-267 T3.
-  void ready.catch(() => undefined);
+  /**
+   * Wait for the handshake, FRESHLY, on every command.
+   *
+   * NOT A ONE-SHOT PROMISE, AND THE DIFFERENCE IS A REAL FAILURE THIS SUITE HIT.
+   * The obvious shape — one `ready` promise built at construction that rejects on
+   * the first `error` — is POISONED FOREVER by a single transient error: a server
+   * that was not yet accepting connections when the process started rejects it,
+   * the client reconnects a moment later and is perfectly healthy, and every
+   * command for the life of the process still fails on the settled rejection.
+   * That is exactly what happened the first time this directory's integration
+   * suite ran against a cold container: twenty-three of twenty-four cases reported
+   * `unavailable`, and the server was fine.
+   *
+   * `enableOfflineQueue: false` is what makes this necessary rather than
+   * decorative — with no queue, a command issued before the handshake fails with
+   * "Stream isn't writeable", which is not a fact about the server. So each verb
+   * waits on a promise built NOW: it resolves when the client is ready, and gives
+   * up on a bounded deadline or when the client has ended. After a later
+   * disconnect the wait is short and the command still fails fast, which is the
+   * fail-closed behaviour the flag exists for.
+   *
+   * THE DEADLINE IS NOT `commandTimeout`. That one bounds a command the server is
+   * already working on; this one bounds a wait for a server that is not there yet,
+   * and collapsing them would make a slow handshake indistinguishable from a slow
+   * query in every report an operator reads.
+   */
+  const readyTimeoutMs = options.readyTimeoutMs ?? 10_000;
+  function ready(): Promise<void> {
+    if (client.status === "ready") return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      const finish = (settle: () => void) => {
+        clearTimeout(timer);
+        client.off("ready", onReady);
+        client.off("end", onEnd);
+        settle();
+      };
+      const onReady = () => finish(resolve);
+      const onEnd = () => finish(() => reject(new Error("RedisConnectionEnded")));
+      const timer = setTimeout(() => finish(() => reject(new Error("RedisReadyTimeout"))), readyTimeoutMs);
+      // `unref` so a pending handshake cannot hold a process open past its own
+      // shutdown. Node's timer type carries it; the DOM's does not, hence the guard.
+      (timer as unknown as { unref?: () => void }).unref?.();
+      client.on("ready", onReady);
+      client.on("end", onEnd);
+    });
+  }
 
   function toEntry(row: [string, string[]]): StreamEntry | null {
     const [id, fields] = row;
@@ -233,7 +273,7 @@ export function createRedisStreamConnection(
   return {
     async append(key, entries, maxLength, ttlSeconds) {
       if (entries.length === 0) return { lastSeq: 0, trimmed: 0 };
-      await ready;
+      await ready();
       const before = await client.xlen(key);
       let lastSeq = 0;
       for (const entry of entries) {
@@ -262,7 +302,7 @@ export function createRedisStreamConnection(
     },
 
     async readAfter(key, afterSeq, count) {
-      await ready;
+      await ready();
       // `(` is Redis's exclusive-range prefix: strictly after, so a reader never
       // receives the frame it already holds. Doing it with `afterSeq + 1` instead
       // would be a second place that has to know sequences are whole numbers.
@@ -277,14 +317,14 @@ export function createRedisStreamConnection(
     },
 
     async publishAssigned(key, body, maxLength, ttlSeconds) {
-      await ready;
+      await ready();
       const id = await client.xadd(key, "MAXLEN", maxLength, "*", ENTRY_FIELD, body);
       await client.expire(key, ttlSeconds);
       return id ?? "";
     },
 
     async tip(key) {
-      await ready;
+      await ready();
       // `XREVRANGE + - COUNT 1` is the newest entry. `$` is only meaningful
       // inside `XREAD`, so a subscriber that wants to start at the live end has
       // to learn the id first — which is what this verb is for.
@@ -293,7 +333,7 @@ export function createRedisStreamConnection(
     },
 
     async readAfterId(key, afterId, count) {
-      await ready;
+      await ready();
       const from = afterId === null ? "-" : `(${afterId}`;
       const rows = (await client.xrange(key, from, "+", "COUNT", count)) as [string, string[]][];
       const entries: { id: string; body: string }[] = [];
@@ -306,30 +346,30 @@ export function createRedisStreamConnection(
     },
 
     async oldest(key) {
-      await ready;
+      await ready();
       const rows = (await client.xrange(key, "-", "+", "COUNT", 1)) as [string, string[]][];
       const row = rows[0];
       return row === undefined ? null : toEntry(row);
     },
 
     async length(key) {
-      await ready;
+      await ready();
       return await client.xlen(key);
     },
 
     async readMeta(key, field) {
-      await ready;
+      await ready();
       return await client.hget(key, field);
     },
 
     async readAllMeta(key) {
-      await ready;
+      await ready();
       const all = await client.hgetall(key);
       return Object.keys(all).length === 0 ? null : all;
     },
 
     async claimMeta(key, field, value, ttlSeconds) {
-      await ready;
+      await ready();
       const set = await client.hsetnx(key, field, value);
       // The window is refreshed whether or not this call won, because a loser is
       // still evidence the stream is live and the winner's window should not
@@ -339,14 +379,14 @@ export function createRedisStreamConnection(
     },
 
     async writeMeta(key, field, value, ttlSeconds) {
-      await ready;
+      await ready();
       await client.hset(key, field, value);
       await client.expire(key, ttlSeconds);
     },
 
     async remove(keys) {
       if (keys.length === 0) return 0;
-      await ready;
+      await ready();
       return await client.del(...keys);
     },
 

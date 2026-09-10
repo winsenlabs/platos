@@ -27,11 +27,14 @@
 // written here — which is the difference between proving a property and proving
 // that this file remembered to check for it.
 
+import { createConnection, createServer, type Server, type Socket } from "node:net";
+
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { encodeStreamCursor, unwrap, type StreamCursor, type StreamFrame } from "@platos/kernel";
 
 import type { RedisStreamConnection } from "./client.js";
+import { createRedisStreamConnection } from "./client.js";
 import { startRedisStreamsHarness, type RedisStreamsHarness } from "./harness.js";
 import { createRedisStreamJournal, DEFAULT_JOURNAL_OPTIONS, type RedisStreamJournal } from "./journal.js";
 
@@ -470,4 +473,82 @@ describe("a reconnect", () => {
     expect(applied).toEqual(Array.from({ length: total }, (_, index) => index + 1));
     expect(new Set(applied).size).toBe(total);
   });
+});
+
+describe("a server that is not there yet", () => {
+  /**
+   * A TCP forwarder this suite starts and stops, so the "server" behind a port can
+   * appear AFTER a client has already failed to reach it.
+   *
+   * WHY THIS IS WORTH A SERVER OF ITS OWN. The defect it proves absent is not
+   * hypothetical: the FIRST run of this suite against a cold container reported
+   * `unavailable` on twenty-three of twenty-four cases while the server was
+   * healthy. The handshake promise was built ONCE at construction and rejected on
+   * the first `error`, so every command for the life of that connection failed on
+   * a settled rejection. Nothing else in this file could catch it, because every
+   * other case reaches a server that is already up — which is precisely why a
+   * cold-start defect survives a green suite.
+   */
+  function forward(port: number, upstream: URL): Server {
+    const server = createServer((inbound: Socket) => {
+      const outbound = createConnection({ port: Number(upstream.port), host: upstream.hostname });
+      inbound.pipe(outbound);
+      outbound.pipe(inbound);
+      const drop = () => {
+        inbound.destroy();
+        outbound.destroy();
+      };
+      inbound.on("error", drop);
+      outbound.on("error", drop);
+    });
+    server.listen(port, "127.0.0.1");
+    return server;
+  }
+
+  /** A port nothing is listening on: claimed, read, and released. */
+  async function freePort(): Promise<number> {
+    const probe = createServer();
+    const port = await new Promise<number>((resolve) => {
+      probe.listen(0, "127.0.0.1", () => {
+        const address = probe.address();
+        resolve(typeof address === "object" && address !== null ? address.port : 0);
+      });
+    });
+    await new Promise<void>((resolve) => probe.close(() => resolve()));
+    return port;
+  }
+
+  it("recovers once the server appears, rather than failing forever on one early error", async () => {
+    const upstream = new URL(harness.url);
+    const port = await freePort();
+
+    const connection = createRedisStreamConnection({
+      url: `redis://127.0.0.1:${port}`,
+      readyTimeoutMs: 2_000,
+    });
+    let serving: Server | null = null;
+    try {
+      const cold = createRedisStreamJournal(connection, { ...DEFAULT_JOURNAL_OPTIONS, ttlSeconds: TTL });
+      // The first command FAILS rather than hanging — the fail-closed half.
+      expect((await cold.read("cold_start", null, { limit: 1, blockMs: 0 })).kind).toBe("unavailable");
+
+      serving = forward(port, upstream);
+      await new Promise<void>((resolve) => {
+        serving?.once("listening", () => resolve());
+        if (serving?.listening === true) resolve();
+      });
+
+      // THE ASSERTION THE ONE-SHOT SHAPE COULD NOT PASS. Same connection object,
+      // same client; only the server changed.
+      const warm = createRedisStreamJournal(connection, { ...DEFAULT_JOURNAL_OPTIONS, ttlSeconds: TTL });
+      const stream = nextStream();
+      const appended = await warm.append(stream, [frame(1)]);
+      expect(appended.kind).toBe("appended");
+      const page = await warm.read(stream, null, { limit: 10, blockMs: 0 });
+      expect(page.kind === "page" && page.frames.map((read) => read.seq)).toEqual([1]);
+    } finally {
+      await connection.close();
+      if (serving !== null) await new Promise<void>((resolve) => serving?.close(() => resolve()));
+    }
+  }, 60_000);
 });
