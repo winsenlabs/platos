@@ -326,15 +326,6 @@ export class EnvironmentStreamsController {
   ): Promise<void> {
     const app = this.application.app;
     const options = DEFAULT_SSE_OPTIONS;
-    // THE VERSION IS IN THE PATH, AND `?sv=` IS AN OPTIONAL FLOOR ASSERTION.
-    // M0.4 §2's SSE row derives the lane's `sv` from the `/api/v1/` prefix, so an
-    // absent parameter is NOT an absent version — which is why `legacyIngress` is
-    // false here and yet nothing is refused for omitting it. What a client CAN do
-    // is name the major it was written against, and then a build that speaks a
-    // different one refuses BEFORE the first byte rather than streaming frames the
-    // client will misread. That is the same thing `X-Platos-Contract-Min` does for
-    // the REST envelope, spelled for a lane whose caller is an `EventSource` and
-    // cannot set a header.
     // THE MAJOR THIS LANE CARRIES. The URL prefix is where M0.4 §2 puts it for the
     // SSE lane, so it is the build's constant rather than a negotiated value — and
     // the leading `stream_meta` frame is where a client is told which one it got.
