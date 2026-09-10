@@ -157,6 +157,19 @@ export interface StreamPumpOutcome {
   readonly lastSeq: number;
 }
 
+/**
+ * Yield to the event loop.
+ *
+ * A MACROTASK AND NOT A MICROTASK. `await Promise.resolve()` drains to the microtask
+ * queue and never lets a timer fire, which is exactly the starvation this exists to
+ * prevent; `setTimeout(…, 0)` is the shortest wait that gives the loop a turn.
+ */
+function pause(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 /** A terminal `stream.error` frame. Its `code` is what `classifyStreamEnd` reads. */
 export function terminalErrorFrame(seq: number, at: number, code: string): StreamFrame {
   return {
@@ -237,6 +250,21 @@ export async function pumpStream(input: StreamPumpInput): Promise<StreamPumpOutc
         if (!wrote) return stop(input.hasDisconnected() ? "disconnected" : "consumer-too-slow");
         lastHeartbeat = input.now();
       }
+      // THE LOOP PACES ITSELF AND DOES NOT TRUST THE JOURNAL TO PACE IT, and this
+      // one line is the difference between a bounded wait and a spinning process.
+      //
+      // A CONFORMING JOURNAL COSTS NOTHING FOR IT. `StreamReadRequest.blockMs` is
+      // "how long to wait for a frame that does not exist yet", so a conforming
+      // implementation has already waited most of a heartbeat before it answers with
+      // an empty page — and an empty page arrives at most once per window.
+      //
+      // A JOURNAL THAT ANSWERS INSTANTLY MADE THIS LOOP SPIN, and a mutation found
+      // it: with the credential fence pushed forward, the pump read a scripted
+      // journal that returns immediately, never reached a macrotask, and starved the
+      // event loop so completely that the test runner's own timeout could not fire.
+      // The process sat at 99% CPU. A transport whose liveness depends on a port
+      // behaving well is a transport that hangs when the port does not.
+      await pause(0);
       continue;
     }
     // FRAMES WERE WRITTEN, so the seal is only acted on once the reader has caught

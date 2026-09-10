@@ -331,3 +331,35 @@ describe("the pump", () => {
     });
   });
 });
+
+describe("the loop paces itself", () => {
+  it("YIELDS on an empty page, so a journal that answers instantly cannot starve the loop", async () => {
+    // FOUND BY A MUTATION AND FIXED BY ONE LINE. With the credential fence pushed
+    // forward, the pump read a scripted journal that returns immediately, never
+    // reached a macrotask, and starved the event loop so completely that the test
+    // runner's own timeout could not fire — 99% CPU, forever. A transport whose
+    // liveness depends on a port behaving well is one that hangs when it does not.
+    //
+    // THE ASSERTION IS THAT A TIMER FIRES, which is the only thing that separates a
+    // yielding loop from a spinning one. `stop` is flipped by a `setTimeout`, so it
+    // can only be observed if the loop gave the event loop a turn.
+    let stopping = false;
+    setTimeout(() => {
+      stopping = true;
+    }, 25);
+    const outcome = await pumpStream({
+      journal: scriptedJournal([page([])]),
+      streamId: STREAM,
+      response: recordingResponse(),
+      after: null,
+      // A deadline far enough out that the FENCE cannot be what ends this.
+      deadlineMs: Date.now() + 3_600_000,
+      hasDisconnected: () => stopping,
+      now: () => Date.now(),
+      // A heartbeat far enough out that a WRITE cannot be what ends this either.
+      options: { ...DEFAULT_SSE_OPTIONS, heartbeatMs: 3_600_000, drainDeadlineMs: 200 },
+      pageLimit: 64,
+    });
+    expect(outcome.kind).toBe("disconnected");
+  });
+});
