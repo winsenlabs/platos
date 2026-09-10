@@ -55,7 +55,13 @@ test("the denominator matches the M0 censuses exactly", () => {
   // request line and the only streaming handler read it from a query parameter.
   // It is UNCOVERED by the differential harness for the reason the nine before it
   // are: the harness twin-runs STORES, and this route runs a turn.
-  assert.equal(summary.bySurface.rest.total, 310, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more, M4 finish one more");
+  // WIN-268 (M4.2) 310 -> 313: the tier-2 MCP policy surface's three routes. Every
+  // one is UNCOVERED by the differential harness, and the reason is the same one the
+  // ten before them give rather than an omission — the harness twin-runs STORES
+  // against the oracle, and these three routes have no oracle counterpart to twin
+  // against: the code they replace answered no route at all. A denominator that grew
+  // and a numerator that did not is the honest record of that.
+  assert.equal(summary.bySurface.rest.total, 313, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more, M4 finish one more, WIN-268 M4.2 three more");
   assert.equal(summary.bySurface.mcp.total, 202, "WIN-247 counted 202 MCP tools");
   // WIN-267 G1: 93 -> 94. `EvalRun` is the canonical row `governance`'s
   // `EvalRunQueue` port enqueues into — ADR M0.3 §1 row 14's "eval runs enqueue
@@ -442,8 +448,12 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   //
   // WIN-268 (M4.2) P1 8 -> 10: the two MCP one-time-secret token mints.
   // WIN-272 (M4.6) 10 -> 11: the stream lane's one route.
-  assert.equal(core.enumeratedOperations, 11);
-  assert.equal(core.independentOperations, 11);
+  // WIN-268 (M4.2) 11 -> 14: the tier-2 policy surface's three, and this is the first
+  // entry here where ONE controller carries THREE decorators. Both enumerators moved
+  // to 14 on their own again — the generator's AST walk and the independent census's
+  // glob — and `row.agrees` above is what says so.
+  assert.equal(core.enumeratedOperations, 14);
+  assert.equal(core.independentOperations, 14);
   // AND THE PER-ROOT SUM CARRIES THE SURPLUS TERM. A root sum counts an
   // operation once per root that serves it, and the two mints are served by
   // both, so the sum exceeds the unique denominator by exactly the surplus the
