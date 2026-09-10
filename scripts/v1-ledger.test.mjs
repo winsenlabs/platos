@@ -1442,7 +1442,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // non-idempotent unless it carries an `Idempotency-Key`. `client.ts` is edited
     // IN PLACE. It lands on `packages.test.suites`, a rule that already existed; NO
     // LEDGER RULE CHANGED.
-    packages: 1543,
+    //
+    // WIN-268 (M4.2) STAGE 2 1543 -> 1550. SEVEN files, ALL SEVEN in
+    // `packages/contexts/tools/adapters` — a directory that did not exist:
+    // `index.ts`, `content-digest.ts`, `wire-dispatch.ts`, `mcp-dispatch.ts`,
+    // `dispatch.ts`, `content-digest.test.ts` and `dispatch.integration.test.ts`.
+    // FIVE land on `packages.contexts.source` (722 -> 727) and TWO on
+    // `packages.contexts.test` (360 -> 362), both rules that already existed; NO
+    // LEDGER RULE CHANGED.
+    //
+    // THEY ARE `packages` AND NOT `packages/adapters` BECAUSE ADR M0.3 §5.1 RULE
+    // (h) PUT THEM THERE. `SDK_CONTAINMENT.mcp-sdk-only-in-tools` homes
+    // `@modelcontextprotocol/*` in `^packages/contexts/tools/(adapters|transport)/`
+    // and in no `packages/adapters/` directory, so `ToolDispatch` — an MCP client —
+    // could not be one. Everything else this stage touches is an EDIT:
+    // `app.module.ts`, `context-ports.ts`, `main.ts`, both registers, the skeleton
+    // generator, the project graph, the boundary census and the env-access pin add
+    // no file.
+    packages: 1550,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2163,7 +2180,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `root-infra` +1 (the agent tenancy PostgreSQL walker). The eight-key
   // re-derivation from the merged `expectedDeltas` is
   // 15 + 1 + 87 + 4 + 10 + 1543 + 24 + 89 = 1773.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1773);
+  //
+  // WIN-268 (M4.2) STAGE 2 1773 -> 1780. SEVEN files, ALL in `packages` and all
+  // itemised on that area's delta above: the whole of
+  // `packages/contexts/tools/adapters`. Nothing else this stage adds a file —
+  // `app.module.ts`, `context-ports.ts`, `main.ts`, `process.test.ts`,
+  // `installation.test.ts`, `idempotency-policy.test.ts`, both ORM registers and
+  // their suites, `gen-v1-skeleton.mjs`, `v1-project-graph.mjs`,
+  // `arch-boundaries.test.mjs` and `env-access.mjs` are edited IN PLACE. The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 87 + 4 + 10 + 1550 + 24 + 89 = 1780.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1780);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2422,7 +2449,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // PostgreSQL walker) -- reached here by summing the per-area counts instead of
     // reading the total. Moved in the SAME edit as the assertion above rather than
     // after it went red. 1768 + 5 = 1773.
-    rulesDocument.baseline.totalFiles + 1773
+    //
+    // AND WIN-268 (M4.2) STAGE 2 1773 -> 1780 -- the TWENTY-EIGHTH hand move. The
+    // same SEVEN files as the `totalFiles` assertion above -- `packages` +7, the
+    // whole of `packages/contexts/tools/adapters` -- reached here by summing the
+    // per-area counts instead of reading the total. MOVED IN THE SAME EDIT as the
+    // assertion above and as `expectedDeltas.packages`, which is the discipline the
+    // six prior catches earned: the previous stage moved the total to 1773 and left
+    // this one at 1768, and this reconciliation is what found it. 1773 + 7 = 1780.
+    rulesDocument.baseline.totalFiles + 1780
   );
 });
 
