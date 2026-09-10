@@ -1371,7 +1371,20 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // repository directly. Nothing under `packages/` moves — the contract methods it
     // calls were already published, which is the whole reason the register called
     // those six ORM sites movable. 1687 + 2 = 1689.
-    assert.equal(result.fileCount, 1689, "the generated V1 source census must stay exact");
+    //
+    // WIN-268 (M4.2) THE TOKEN LIFECYCLE, 1689 -> 1697. EIGHT files. `apps/core-api`
+    // 2 — `transports/mcp/token-lifecycle.ts`, the projection and query grammar the
+    // four routes share, and its suite; the four ROUTES themselves land in the two
+    // mint controllers that already existed. `packages/contexts/identity-access` 4 —
+    // the two use cases, the double's listing half (split out on the ADR M0.3 §6
+    // budget) and its suite. `packages/adapters/postgres-tenancy` 2 — the lifecycle
+    // store composed into the bearer store, which was already at its budget, and the
+    // real-database proof. THIS IS THE FIRST TRANCHE IN THIS LIST TO MOVE ALL THREE
+    // TREES, and the split is its own shape rather than an accident: the rules are
+    // provable with no database and the claims about concurrency, a `@db.Uuid` column
+    // and a digest CHECK constraint can only be made where the real client is.
+    // 1689 + 8 = 1697.
+    assert.equal(result.fileCount, 1697, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1416,6 +1429,14 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // `packages/adapters` — the store's INSERT half lands inside the existing
       // `identity-bearer.ts`.
       4 + 1 + 2 +
+      // WIN-268 (M4.2) THE TOKEN LIFECYCLE: transports 2 (the shared projection and
+      // its suite; the four routes land in the two existing mint controllers),
+      // identity-access 4 (two use cases, the double's listing half, its suite),
+      // postgres-tenancy 2 (the lifecycle store and its real-database proof).
+      // 2 + 4 + 2 = 8, and the three terms are written separately for the reason the
+      // WIN-303 note gives: this is the re-derivation, so a merge that dropped any
+      // one of them would disagree with the flat pin above.
+      2 + 4 + 2 +
       // WIN-271 (M4.5): channel-slack 14 NET (16 real files less the 2 generated
       // placeholders they replace) and channels 5 -- the ChannelRuntime port,
       // the admitSignedDelivery use case, the inbound conformance harness, the

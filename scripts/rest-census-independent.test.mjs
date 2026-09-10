@@ -290,10 +290,25 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // three are served by this one only, because the three legacy methods they
   // replace answered no route at all. That is what makes the surplus stay at 2
   // while both sides grow.
+  //
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE: 9 -> 9 controllers and 14 -> 18 decorators.
+  // FOUR new decorators and NOT ONE new controller, which is the opposite shape from
+  // the entry above and is the arithmetic worth stating: the four MCP token lifecycle
+  // routes land in the two mint controllers that already existed, because the
+  // entity/environment pair check is the same check for a listing and a revocation as
+  // for a mint and a second controller would have had to spell it again. A reader who
+  // assumed a new route means a new class would have expected 13.
+  //
+  // AND IT IS THE FIRST ENTRY THAT DOES WIDEN `crossRootBindings`, from 2 to 6. All
+  // four are served by `apps/agent` TOO — they always were, which is why they sat in
+  // the generated manifest with an implementation and no V1 handler — so each is
+  // counted under both roots, exactly as the two mints are. That is the difference
+  // from the policy surface above, whose three legacy methods answered no route at
+  // all.
   assert.equal(core.sourceControllers, 9);
-  assert.equal(core.sourceDecorators, 14);
-  assert.equal(core.expandedOperations, 14);
-  assert.equal(core.manifestOperations, 14);
+  assert.equal(core.sourceDecorators, 18);
+  assert.equal(core.expandedOperations, 18);
+  assert.equal(core.manifestOperations, 18);
   // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
@@ -301,9 +316,15 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // than an approximation. The stream route adds to BOTH sides — it is served by
   // one deployable only, so it is not a third shared operation, and neither are
   // the three policy routes.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 315);
+  //
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE: 315 -> 319 bindings and the surplus 2 -> 6,
+  // so the UNIQUE total is unmoved at 313. That is the whole point of writing the
+  // identity with a surplus term rather than as a tolerance: four routes gained a
+  // second implementation and NO new operation entered the surface, and the two
+  // enumerations still reconcile exactly. 319 - 6 = 313.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 319);
   const totals = manifestCensus();
-  assert.equal(totals.crossRootBindings, 2);
+  assert.equal(totals.crossRootBindings, 6);
   assert.equal(totals.totalOps - totals.crossRootBindings, 313);
 });
 

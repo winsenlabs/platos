@@ -171,6 +171,13 @@ export const ALLOWED = Object.freeze([
     "eventing-harness",
     "files-harness",
     "governance-harness",
+    // WIN-268 (M4.2) — `identity-harness` joins its thirteen siblings. It gained
+    // `applyPeerRows` so the credential-lifecycle suite can seed an `Entity`, a row
+    // `tenancy` owns and `sole-writer.mjs` gives the tenancy repository as sole
+    // writer of — so no port this harness holds can create one. Declared HERE rather
+    // than on the suite for the reason `governance-harness`'s note gives: the door
+    // stays in one file.
+    "identity-harness",
     "jobs-harness",
     "memory-harness",
     "privacy-harness",
@@ -191,7 +198,12 @@ export const ALLOWED = Object.freeze([
       // only way "the transaction rolled back" is a fact about the DATABASE
       // rather than the store's opinion of itself, and it is declared here
       // rather than spawned from the suite so the door stays in one file.
-      reads: name === "harness" || name === "governance-harness" ? 2 : 1,
+      // WIN-268 (M4.2) — `harness.ts` carries a THIRD read: the one opt-in
+      // `PLATOS_TENANCY_HARNESS_DATABASE_URL`, which points the harness at a server
+      // that is already running instead of starting a container. It changes WHERE the
+      // database comes from and nothing else, and unset — which is how CI runs — the
+      // container path is unchanged.
+      reads: name === "harness" ? 3 : name === "governance-harness" ? 2 : 1,
       why: "Real-PostgreSQL integration harness. It applies the repository's OWN migrations by spawning the ORM's CLI, which reads DATABASE_URL from the environment it is given, so the container's URL is layered over the inherited one.",
     }),
   ),
@@ -671,7 +683,7 @@ export const VIOLATION_CODES = Object.freeze({
  * than four because the suite copies and freezes the ambient environment once, the
  * way the deployable's own reader does.
  */
-export const EXPECTED_FILE_COUNT = 1689;
+export const EXPECTED_FILE_COUNT = 1697;
 
 function listSourceFiles(root) {
   const found = [];

@@ -452,15 +452,29 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // entry here where ONE controller carries THREE decorators. Both enumerators moved
   // to 14 on their own again — the generator's AST walk and the independent census's
   // glob — and `row.agrees` above is what says so.
-  assert.equal(core.enumeratedOperations, 14);
-  assert.equal(core.independentOperations, 14);
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE 14 -> 18: the four MCP token lifecycle routes,
+  // and this is the first entry here where the operation count moves and the
+  // CONTROLLER count does not — all four land in the two mint controllers, because
+  // the entity/environment pair check is the same check for a listing and a
+  // revocation as for a mint. Both enumerators moved to 18 on their own again, and
+  // `row.agrees` above is what says so.
+  assert.equal(core.enumeratedOperations, 18);
+  assert.equal(core.independentOperations, 18);
   // AND THE PER-ROOT SUM CARRIES THE SURPLUS TERM. A root sum counts an
   // operation once per root that serves it, and the two mints are served by
   // both, so the sum exceeds the unique denominator by exactly the surplus the
   // census publishes. Stated as an equality with the term rather than relaxed.
+  //
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE moves the surplus 2 -> 6 and the UNIQUE
+  // denominator NOT AT ALL, which is the clearest demonstration this file has that
+  // the term was the right shape. The four token lifecycle routes were already
+  // served by `apps/agent` — that is precisely why they sat in the generated
+  // manifest with an implementation and no V1 handler — so each gained a SECOND
+  // implementation and no new operation entered the surface. A tolerance would have
+  // absorbed this silently; an equality with a published term reports it.
   assert.equal(
     document.restScanRoots.total - document.reconciledAgainst.independentCrossRootBindings,
     document.reconciledAgainst.enumeratedRestCells,
   );
-  assert.equal(document.reconciledAgainst.independentCrossRootBindings, 2);
+  assert.equal(document.reconciledAgainst.independentCrossRootBindings, 6);
 });

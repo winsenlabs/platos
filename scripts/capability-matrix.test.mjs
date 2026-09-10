@@ -491,8 +491,15 @@ test("committed matrix: the REST total is split across the declared scan roots a
   // because the three methods they replace answered no route in either deployable:
   // they were reachable from nothing. So both sides grow and the surplus does not.
   // 301 + 14 - 2 = 313.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 14 });
-  assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 2);
+  //
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE 14 -> 18, THE SHARED COUNT 2 -> 6, AND THE
+  // TOTAL UNMOVED AT 313 — which is the P1 shape again and the exact opposite of the
+  // policy surface above. The four MCP token lifecycle routes are new
+  // IMPLEMENTATIONS of operations `apps/agent` already served: that is why they sat
+  // in the generated manifest with an implementation and no V1 handler, and it is why
+  // they widen the surplus rather than the surface. 301 + 18 - 6 = 313.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 18 });
+  assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 6);
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });
 

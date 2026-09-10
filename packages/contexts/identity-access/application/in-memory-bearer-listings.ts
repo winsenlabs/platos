@@ -12,8 +12,11 @@
 // rather than a double that flatters the use case.
 
 import type {
+  BearerCredentialKind,
   BearerCredentialQuery,
   BearerCredentialRecord,
+  BearerCredentialRevocation,
+  BearerCredentialRevocationResult,
   BearerCredentialSummary,
 } from "../domain/index.js";
 
@@ -105,4 +108,94 @@ export function matchesBearerQuery(
   // entity listing would show one entity's operator another entity's credentials.
   if (query.subjectId !== null && listing.subjectId !== query.subjectId) return false;
   return true;
+}
+
+/**
+ * The three store methods, over the two maps above.
+ *
+ * A FACTORY SPREAD INTO THE STORE rather than three loose functions, which is the
+ * shape `packages/adapters/postgres-tenancy/src/identity-bearer.ts` uses for the
+ * canonical store's identical split. Keeping the fake and the real implementation
+ * the same shape is what lets a reader hold them side by side, and it is why the
+ * differential run between them compares like with like.
+ *
+ * `bearerKey` ARRIVES rather than being redefined. It is the `(kind, tokenHash)`
+ * key `findByTokenHash` and `save` use, and a second spelling of it here would be a
+ * second answer to "which row is this" — the revocation below has to reach the
+ * authentication-side record through exactly the key those two methods wrote it
+ * under, or a revoked credential keeps authenticating.
+ */
+export function createInMemoryBearerLifecycle(
+  state: BearerListingState,
+  bearerKey: (kind: BearerCredentialKind, tokenHash: string) => string,
+) {
+  return {
+  /**
+   * WIN-268 (M4.2) — the listing, and it REFUSES rather than under-reporting.
+   *
+   * A credential seeded straight into `state.bearerCredentials` has no entry
+   * in `state.bearerCredentialListings`, because only `mint` writes both. A
+   * double that quietly skipped such a row would answer a short page and a
+   * short total, and a use-case test asserting "two credentials, one page"
+   * would pass against a store that had lost one. So the mismatch is a loud
+   * throw naming the credential, which is the same reason `save` refuses a
+   * digest no row carries.
+   */
+  async list(query: BearerCredentialQuery): Promise<readonly BearerCredentialSummary[]> {
+    requireListingsFor(state, query);
+    return matchingBearerListings(state, query)
+      .sort(compareBearerListings)
+      .slice(query.offset, query.offset + query.limit)
+      .map((listing: InMemoryBearerListing) => listing.summary);
+  },
+
+  /** The same predicate WITHOUT the window: a total that counted only the
+   * page would make `hasMore` permanently false. */
+  async count(query: BearerCredentialQuery): Promise<number> {
+    requireListingsFor(state, query);
+    return matchingBearerListings(state, query).length;
+  },
+
+  /**
+   * WIN-268 (M4.2) — the CONDITIONAL revocation, implemented faithfully.
+   *
+   * `revokedAt: null` IS THE PRECONDITION, exactly as the SQL's `WHERE ...
+   * revokedAt IS NULL` is. A double that overwrote unconditionally would let a
+   * use case that dropped `newlyRevoked` keep passing, and would report the
+   * second revoker's instant as the moment the credential was ended — which is
+   * the fact an operator reads to find out when a leak was closed.
+   *
+   * EXPIRY IS NOT A PRECONDITION. Both oracles revoke a lapsed credential
+   * without checking, and the use case's own banner says why that is right.
+   */
+  async revoke(
+    revocation: BearerCredentialRevocation,
+  ): Promise<BearerCredentialRevocationResult | null> {
+    const listing = state.bearerCredentialListings.get(revocation.credentialId);
+    if (listing === undefined || !matchesBearerQuery(listing, revocation)) return null;
+    if (listing.summary.revokedAt !== null) {
+      return { credential: listing.summary, newlyRevoked: false };
+    }
+    const summary: BearerCredentialSummary = {
+      ...listing.summary,
+      revokedAt: revocation.revokedAt,
+      // `McpBearerToken` HAS NO `revokedBy` COLUMN. The double drops the value
+      // for that kind because the table would, and reporting it would make the
+      // fake answer something the canonical store cannot.
+      revokedBy:
+        revocation.kind === "mcp-token" ? revocation.revokedByUserId : null,
+    };
+    state.bearerCredentialListings.set(revocation.credentialId, { ...listing, summary });
+    const key = bearerKey(revocation.kind, listing.tokenHash);
+    const record = state.bearerCredentials.get(key);
+    if (record !== undefined) {
+      // THE AUTHENTICATION-SIDE ROW MOVES WITH IT. They are one row in the
+      // real store, and a double that ended only the listing would let a
+      // revoked credential keep authenticating — the exact failure the route
+      // exists to prevent.
+      state.bearerCredentials.set(key, { ...record, revokedAt: revocation.revokedAt });
+    }
+    return { credential: summary, newlyRevoked: true };
+  },
+  };
 }

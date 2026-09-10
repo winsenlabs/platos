@@ -75,13 +75,23 @@ test("the committed artifacts are what the contract emits", () => {
 
 test("the idempotency policy is READ, not restated: reclassifying a mint moves all three artifacts", () => {
   const policy = readIdempotencyPolicy(sourceText(KEYS.policy));
-  const mint = policy.rows.find((row) => row.template === "/mcp/platform/tokens");
+  // The policy table's own rows carry a method too, and the mint is the POST.
+  const mint = policy.rows.find(
+    (row) => row.template === "/mcp/platform/tokens" && row.method === "POST",
+  );
   assert.ok(mint !== undefined, "the platform token mint is no longer in the policy table");
   assert.equal(mint.class, "required");
 
+  // MATCHED ON THE METHOD AS WELL AS THE TEMPLATE, and WIN-268 (M4.2)'s token
+  // lifecycle is why. `GET /mcp/platform/tokens` is now a V1 operation too, so a
+  // template-only `find` returns whichever of the two the fixture happens to list
+  // first — and it returned the GET, whose idempotency class is `not-applicable`
+  // because a read mints nothing. The case then failed while asserting something
+  // true of a route it was not looking at, which is the worst shape of green.
   const before = fixtureOf(baseline).operations.find(
-    (entry) => entry.template === "/mcp/platform/tokens",
+    (entry) => entry.template === "/mcp/platform/tokens" && entry.method === "POST",
   );
+  assert.ok(before !== undefined, "the platform token mint is no longer in the fixture");
   assert.equal(before.idempotency, "required");
   assert.equal(before.expected.sendsIdempotencyKey, true);
 
@@ -94,7 +104,7 @@ test("the idempotency policy is READ, not restated: reclassifying a mint moves a
 
   const artifacts = emit(new Map([[KEYS.policy, mutated]]));
   const after = fixtureOf(artifacts).operations.find(
-    (entry) => entry.template === "/mcp/platform/tokens",
+    (entry) => entry.template === "/mcp/platform/tokens" && entry.method === "POST",
   );
   assert.equal(after.idempotency, "exempt");
   assert.equal(after.expected.sendsIdempotencyKey, false);

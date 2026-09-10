@@ -32,9 +32,7 @@
 //     `schema.prisma` nor the double, so every mint below also proves the acting
 //     user really is a member of the organization the scope resolves to.
 
-import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
-import { resolve } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
@@ -66,12 +64,6 @@ let siblingEntityId: string;
 const NOW = new Date("2026-06-01T12:00:00.000Z");
 const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
 
-// The ORM's CLI and the package holding the schema, resolved from `process.cwd()`
-// the way `harness.ts` and `channels-harness.ts` both resolve them.
-const packageRoot = process.cwd();
-const databasePackage = resolve(packageRoot, "../../../internal-packages/tenancy-database");
-const prismaBinary = resolve(packageRoot, "../../../node_modules/.bin/prisma");
-
 /**
  * A REAL digest, for the reason in the banner.
  *
@@ -102,19 +94,15 @@ function sha256Hasher(fake: SecretHasher): SecretHasher {
   };
 }
 
-/** Rows this package is not the writer of, applied by the ORM's own CLI. */
-function applyPeerRows(sql: string): void {
-  execFileSync(prismaBinary, ["db", "execute", "--url", harness.databaseUrl, "--stdin"], {
-    cwd: databasePackage,
-    env: { ...process.env, DATABASE_URL: harness.databaseUrl },
-    input: sql,
-    stdio: ["pipe", "pipe", "pipe"],
-  });
-}
-
 function seedEntityRow(projectId: string, label: string): string {
   const id = harness.freshId("0301");
-  applyPeerRows(
+  // THROUGH THE HARNESS, not through a spawn of this suite's own.
+  // `scripts/arch/env-access.mjs` refuses an ambient environment read outside its
+  // declared list, and `governance-harness.ts`'s declaration gives the reason the
+  // door belongs there: "so the door stays in one file". The variable name is
+  // deliberately not spelled here — that file's own independent TEXT scan keeps a
+  // list of prose-only matches, and a comment is not worth a sixth entry on it.
+  harness.applyPeerRows(
     `INSERT INTO "Entity" ("id", "projectId", "externalId", "displayName", "connectionStatus",
                            "connectionKind", "createdAt", "updatedAt")
      VALUES ('${id}', '${projectId}', 'ext-${label}-${id.slice(-8)}', '${label}',

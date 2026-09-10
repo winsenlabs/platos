@@ -902,7 +902,47 @@ test("the live selectors scan an exact nonzero source census", () => {
   // no context was widened and the chassis was not touched. The integration suite
   // is in `src/composition/`, which NO selector scans, so it is deliberately
   // absent from every term. 1620 + 7 + 3 + 6 = 1636.
-  assert.equal(result.fileCount, 1636);
+  //
+  // ---------------------------------------------------------------------------
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE 1636 -> 1652, AND EIGHT OF THE SIXTEEN ARE
+  // NOT THIS TRANCHE'S. That split is measured rather than assumed, and it is
+  // recorded here because absorbing it silently is how a pin stops meaning anything.
+  //
+  // WHAT WAS MEASURED. This case was RED BEFORE this tranche touched the tree. In a
+  // detached worktree the live scan reads:
+  //
+  //   c290082  (this repository's ROOT commit)   1643   pin 1636  -> 7 behind
+  //   87a27e5                                    1643   pin 1636  -> 7 behind
+  //   89874568^ (before the previous tranche)    1643   pin 1636  -> 7 behind
+  //   59f86b3f (the previous tranche's head)     1644   pin 1636  -> 8 behind
+  //
+  // So the arithmetic is 1636 + 7 + 1 + 8 = 1652, in three parts:
+  //
+  //   +7  INHERITED AND UNATTRIBUTABLE WITHIN THIS REPOSITORY. The gap is already
+  //       present at the root commit, where the pin and the tree arrived together
+  //       and already disagreed. There is no commit here that introduced it, so
+  //       naming files would be inventing an attribution; the measurement above is
+  //       what is actually known.
+  //   +1  THE PREVIOUS TRANCHE'S, and this one IS attributable:
+  //       `apps/core-api/src/transports/mcp/organization-policies.controller.ts`,
+  //       the only file it added under any selector — `git diff --name-status
+  //       89874568^ 59f86b3f` filtered to the selectors returns exactly that path.
+  //       It moved `arch-boundaries.test.mjs`'s census and left this one, which is
+  //       the drift this note exists to stop repeating.
+  //   +8  THIS TRANCHE'S, itemised: `APPS-TRANSPORTS` +2
+  //       (`transports/mcp/token-lifecycle.ts` and its suite; the four routes land
+  //       in the two mint controllers that already existed, so no controller file
+  //       is added), `CONTEXTS` +4 (identity-access's two use cases, the double's
+  //       listing half — split out on THIS FILE'S OWN budget rather than at a line
+  //       number — and its suite), `ADAPTERS` +2 (postgres-tenancy's lifecycle store
+  //       and its real-database proof). 2 + 4 + 2 = 8. `KERNEL` and `APPS-HTTP` are
+  //       byte-for-byte the same scan.
+  //
+  // NO WARNING ROW WAS ADDED to the pinned list below for any of the eight, and one
+  // was AVOIDED on purpose: `in-memory-bearer-listings.ts` exists because
+  // `in-memory-repository.ts` reached 449 effective lines, and splitting on the seam
+  // it already had is the difference between honouring a budget and naming a number.
+  assert.equal(result.fileCount, 1652);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -976,7 +1016,24 @@ test("the live selectors scan an exact nonzero source census", () => {
       // `apps/core-api/src/transports/ws/` (`stream-errors.ts`, `sse.ts`,
       // `streams.controller.ts` and their THREE suites). The integration suite is
       // under `src/composition/`, outside every selector, so it is absent here.
-      7 + 3 + 6
+      7 + 3 + 6 +
+      // WIN-268 (M4.2) THE TOKEN LIFECYCLE: TWO under `apps/core-api/src/transports/mcp/`
+      // (`token-lifecycle.ts` and its suite — the four routes land in the two mint
+      // controllers, so no controller file joins the term), FOUR under
+      // `packages/contexts/identity-access/application/` (two use cases, the double's
+      // listing half, its suite) and TWO under
+      // `packages/adapters/postgres-tenancy/src/` (the lifecycle store and its
+      // real-database proof). 2 + 4 + 2 = 8, and `KERNEL` and `APPS-HTTP` are flat.
+      2 + 4 + 2 +
+      // AND THE INHERITED GAP, WRITTEN AS A TERM RATHER THAN FOLDED INTO ONE OF THE
+      // OTHERS. The flat pin above records the measurement: this scan already read
+      // 1643 at this repository's ROOT commit against a pin of 1636, so seven files
+      // are accounted for by nothing in this history, and the previous tranche's ONE
+      // (`transports/mcp/organization-policies.controller.ts`) is the eighth. Keeping
+      // them here, named for what they are, is what stops the next reader deriving a
+      // false attribution from the sum — and what stops the eight being quietly
+      // absorbed into this tranche's own count.
+      7 + 1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1164,7 +1221,39 @@ test("the live selectors scan an exact nonzero source census", () => {
   // claim worth making: this tranche builds a kernel port, its adapter AND a
   // route, and it widened no context and did not touch the REST chassis. It is
   // the first tranche to move the KERNEL term since WIN-260.
-  assert.equal(result.fileCount, 30 + 1082 + 472 + 15 + 37);
+  //
+  // ---------------------------------------------------------------------------
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE, AND A CORRECTION THE TOTAL WAS HIDING.
+  //
+  // The five terms are KERNEL, CONTEXTS, ADAPTERS, APPS-HTTP, APPS-TRANSPORTS in
+  // that order. Measured against the tree at the previous tranche's head
+  // (59f86b3f), in a detached worktree, they were:
+  //
+  //   term              pinned    tree     drift
+  //   KERNEL                30      30         0
+  //   CONTEXTS            1082    1089        +7
+  //   ADAPTERS             472     472         0
+  //   APPS-HTTP             15      18        +3
+  //   APPS-TRANSPORTS       37      35        -2
+  //                     ------  ------    ------
+  //                       1636    1644        +8
+  //
+  // THE `-2` IS THE FINDING. The note above this sum says it is written out "so a
+  // DELETION CANNOT HIDE INSIDE AN ADDITION" — and one had: `APPS-TRANSPORTS` was
+  // pinned TWO ABOVE the tree while `CONTEXTS` and `APPS-HTTP` sat below it, and the
+  // three drifts summed to a total nobody had to reconcile because both the total and
+  // the split were stale together. The protection only works while at least one side
+  // is current, which is the argument for correcting the split here rather than
+  // adding this tranche's delta on top of it.
+  //
+  // THIS TRANCHE'S OWN DELTA IS +8 AND LANDS IN THREE TERMS: CONTEXTS 1089 -> 1093,
+  // ADAPTERS 472 -> 474, APPS-TRANSPORTS 35 -> 37. `KERNEL` and `APPS-HTTP` are flat.
+  // Note that `APPS-TRANSPORTS` arrives at 37 — the number it was already pinned at —
+  // so a reader must not conclude that term did not move: it moved by two, from a
+  // tree value of 35 the old pin did not describe.
+  //
+  // 30 + 1093 + 474 + 18 + 37 = 1652.
+  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 37);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

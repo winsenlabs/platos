@@ -20,6 +20,9 @@
 
 import type { IdentityAccessRepository } from "@platos/context-identity-access/application/ports/index.js";
 
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+
 import type { TenancyDatabaseClient } from "./client.js";
 import type { PostgresTenancyAdapter } from "./adapter.js";
 import {
@@ -83,6 +86,8 @@ export interface IdentityHarness {
     readonly environmentId: string | null;
     readonly expiresAt: Date;
   }): Promise<void>;
+  /** Rows this package may not write, applied by the ORM's own CLI. */
+  applyPeerRows(sql: string): void;
   seedMcpToken(input: {
     readonly environmentId: string;
     readonly mintedByUserId: string;
@@ -94,6 +99,12 @@ export interface IdentityHarness {
 }
 
 const AT = new Date("2026-05-01T09:00:00.000Z");
+
+// The ORM's CLI and the package holding the schema, resolved from `process.cwd()`
+// the way `harness.ts` and `channels-harness.ts` both resolve them.
+const packageRoot = process.cwd();
+const databasePackage = resolve(packageRoot, "../../../internal-packages/tenancy-database");
+const prismaBinary = resolve(packageRoot, "../../../node_modules/.bin/prisma");
 
 export async function startIdentityHarness(): Promise<IdentityHarness> {
   const base: TenancyHarness = await startTenancyHarness();
@@ -225,6 +236,33 @@ export async function startIdentityHarness(): Promise<IdentityHarness> {
         AT,
       );
       return id;
+    },
+
+    /**
+     * WIN-268 (M4.2) — rows this PACKAGE is not the writer of, applied by the
+     * ORM's own CLI.
+     *
+     * IT LIVES ON THE HARNESS AND NOT IN THE SUITE, and that placement is a rule
+     * rather than a habit. `scripts/arch/env-access.mjs` refuses an ambient
+     * `process.env` read outside its declared list — ENV-001, "feature code must
+     * take configuration as an argument" — and `governance-harness.ts`'s own
+     * declaration states the reason it is declared on the harness: "so the door
+     * stays in one file". A suite that spawned the CLI itself would be a second
+     * door, in a file the allowance list would then have to name.
+     *
+     * `Entity` IS THE ROW THIS EXISTS FOR. It belongs to `tenancy`, and
+     * `scripts/arch/sole-writer.mjs` makes the tenancy repository its only writer,
+     * so an identity-access suite that needs an entity to hang a bearer credential
+     * on cannot create one through any port this harness holds. Its sibling
+     * `channels-harness.ts` carries the identical method for the identical reason.
+     */
+    applyPeerRows(sql: string): void {
+      execFileSync(prismaBinary, ["db", "execute", "--url", base.databaseUrl, "--stdin"], {
+        cwd: databasePackage,
+        env: { ...process.env, DATABASE_URL: base.databaseUrl },
+        input: sql,
+        stdio: ["pipe", "pipe", "pipe"],
+      });
     },
 
     stop: base.stop,
