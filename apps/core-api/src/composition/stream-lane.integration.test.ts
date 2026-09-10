@@ -1180,35 +1180,60 @@ describe("two instances sharing one Redis journal", () => {
     return { status: 200, contentType: response.headers.get("content-type"), events, comments: 0, closedByServer, body };
   }
 
+  /**
+   * THE SPLIT IS MADE BY THE PRODUCER, NOT BY THE READER, AND THE FIRST DRAFT OF THIS
+   * CASE IS WHY.
+   *
+   * It produced all 40 frames up front and asked the first reader to stop after 15.
+   * `stopAfter` is checked once per TCP CHUNK, and 40 small frames arrive in one — so
+   * the first reader took the WHOLE RUN, the resume asked for `40 - 40 = 0` more, and
+   * the conservation assertion passed over instance A alone. It would have passed with
+   * the second instance deleted. What caught it was the last line of the case, which
+   * asserts the resumed reader's FIRST frame is the one after the split; a case that
+   * had only checked conservation would have shipped green and proved nothing.
+   *
+   * So the producer writes 15, the reader takes exactly those 15 because there are no
+   * others, and the remaining 25 are written while the SECOND instance is attached.
+   * That is both deterministic and the stronger claim: instance B delivers frames that
+   * did not exist when instance A minted the cursor it is resuming from.
+   */
   it("HANDS A RECONNECT TO THE OTHER INSTANCE and conserves every frame exactly once", async () => {
+    const before = 15;
     const total = 40;
     await produce(
       ENVIRONMENT,
       "multi-instance",
-      Array.from({ length: total }, (_, index) => frame(index + 1)),
+      Array.from({ length: before }, (_, index) => frame(index + 1)),
     );
 
-    // The client reads part of the run from instance A and is then cut off.
+    // The client reads what exists from instance A and is then cut off.
     const first = await readStream(streamPath(ENVIRONMENT, "multi-instance"), {
       token: ADMIN_TOKEN,
-      stopAfter: 15,
+      stopAfter: before,
       budgetMs: 20_000,
     });
     const firstFrames = framesOf(first);
-    expect(firstFrames.length).toBeGreaterThanOrEqual(15);
+    // EXACTLY the frames written so far. A reader that had taken more would have made
+    // the resume below vacuous, which is precisely what happened once.
+    expect(firstFrames.map((event) => event.frame["seq"])).toEqual(
+      Array.from({ length: before }, (_, index) => index + 1),
+    );
     const carried = firstFrames[firstFrames.length - 1]?.id ?? null;
-    // NOT VACUOUS, AND NOT A NULL PASSED DOWN AS "no resume": a case that carried
-    // nothing would read the whole run again from instance B and would still see 40
-    // frames applied once, so it would pass with the cursor mechanism removed.
     expect(carried, "the reader must have a cursor to carry").not.toBeNull();
     if (carried === null) throw new Error("unreachable: asserted above");
 
     // AND COMES BACK ON INSTANCE B, which has never seen this reader.
-    const resumed = await readSecond(streamPath(ENVIRONMENT, "multi-instance"), {
+    const resuming = readSecond(streamPath(ENVIRONMENT, "multi-instance"), {
       token: ADMIN_TOKEN,
       resumeFrom: carried,
-      stopAfter: total - firstFrames.length,
+      stopAfter: total - before,
     });
+    // The rest of the run is written while instance B is attached, so what it
+    // delivers is live rather than history.
+    for (let seq = before + 1; seq <= total; seq += 1) {
+      await produce(ENVIRONMENT, "multi-instance", [frame(seq)]);
+    }
+    const resumed = await resuming;
     const resumedFrames = framesOf(resumed);
 
     // CONSERVATION, THROUGH THE CLIENT'S OWN ADMISSION RULE. Every frame of the run
@@ -1234,7 +1259,10 @@ describe("two instances sharing one Redis journal", () => {
     // THE SECOND INSTANCE READ THE CURSOR THE FIRST ONE MINTED, which is the whole
     // claim: the position is in the CURSOR and in the journal, not in a process.
     expect(metaOf(resumed)?.["replayFrom"]).toBe(carried);
-    expect(Number(resumedFrames[0]?.frame["seq"])).toBe(firstFrames.length + 1);
+    // AND THE SPLIT WAS REAL: the resumed reader's first frame is the one after the
+    // cursor, so both halves of the run were genuinely served by different instances.
+    expect(Number(resumedFrames[0]?.frame["seq"])).toBe(before + 1);
+    expect(resumedFrames).toHaveLength(total - before);
   }, 180_000);
 
   it("gives both instances the identical ordering of a stream written while they watch", async () => {
