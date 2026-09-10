@@ -724,7 +724,25 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two identical requests against a real PostgreSQL and a real Redis and
     // reads the row count back with `psql`. Every one lands on a rule that
     // already existed; NO LEDGER RULE CHANGED.
-    "apps-core-api": 80,
+    //
+    // WIN-272 (M4.6) 80 -> 87. SEVEN files, all in `apps/core-api/src`:
+    //
+    //   THREE under `apps-core-api.source.transports` — `transports/ws/
+    //   stream-errors.ts` (the six refusals this lane owns), `transports/ws/sse.ts`
+    //   (the bytes, the keep-alive and the socket's flow control) and
+    //   `transports/ws/streams.controller.ts` (the route, the read loop and the
+    //   credential fence);
+    //
+    //   FOUR under `apps-core-api.test.suites` — `sse.test.ts`,
+    //   `stream-pump.test.ts` and `stream-errors.test.ts` (one suite split in three
+    //   under the §6 file-size budget) plus `composition/
+    //   stream-lane.integration.test.ts`, the one that drives the lane over a real
+    //   socket against a real PostgreSQL and a real Redis.
+    //
+    // 3 + 4 = 7, and 80 + 7 = 87. `http/http.module.ts` and `http/api-surface.ts`
+    // are EDITS. Every one of the seven lands on a rule that already existed; NO
+    // LEDGER RULE CHANGED.
+    "apps-core-api": 87,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2037,15 +2055,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 10 + 0 + 80 + 4 + 10 + 1532 + 23 + 83 = 1742.
   //
-  // WIN-272 (M4.6) 1742 -> 1752. TEN files, ALL IN ONE AREA — `packages` +10,
-  // itemised on that area's delta above: seven NET in the newly adopted
-  // `redis-streams` and three in `packages/kernel`. It is the first tranche since
-  // WIN-268 to move exactly one area, and NOTHING lands in `root-infra`: the
-  // mutation ledger this tranche drives is `apps/core-api/mutations-win272-m46.json`,
-  // beside the four ledgers that directory already carries. The eight-key
-  // re-derivation from the merged `expectedDeltas` is
-  // 10 + 0 + 80 + 4 + 10 + 1542 + 23 + 83 = 1752.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1752);
+  // WIN-272 (M4.6) 1742 -> 1759. SEVENTEEN files across TWO areas, each itemised
+  // on its own delta above: `packages` +10 (seven NET in the newly adopted
+  // `redis-streams`, three in `packages/kernel`) and `apps-core-api` +7 (the stream
+  // lane's three modules and its four suites). NOTHING lands in `root-infra`, which
+  // every M4 tranche before this one moved: this one adds no script and no
+  // repository-level fixture. The eight-key re-derivation from the merged
+  // `expectedDeltas` is
+  // 10 + 0 + 87 + 4 + 10 + 1542 + 23 + 83 = 1759.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1759);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2274,13 +2292,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the total, so the two arithmetics can disagree and be caught.
     // 1720 + 22 = 1742.
     //
-    // AND WIN-272 (M4.6) 1742 -> 1752 -- the TWENTY-FOURTH hand move. The same
-    // ten files as the `totalFiles` assertion above (all ten in `packages` --
+    // AND WIN-272 (M4.6) 1742 -> 1759 -- the TWENTY-FOURTH hand move. The same
+    // seventeen files as the `totalFiles` assertion above (ten in `packages` --
     // seven NET in the newly adopted `redis-streams` and three in
-    // `packages/kernel`), reached here by summing the per-area counts instead of
-    // reading the total, so the two arithmetics can disagree and be caught.
-    // 1742 + 10 = 1752.
-    rulesDocument.baseline.totalFiles + 1752
+    // `packages/kernel` -- and seven in `apps-core-api`, the stream lane's three
+    // modules and its four suites), reached here by summing the per-area counts
+    // instead of reading the total, so the two arithmetics can disagree and be
+    // caught. 1742 + 17 = 1759.
+    rulesDocument.baseline.totalFiles + 1759
   );
 });
 

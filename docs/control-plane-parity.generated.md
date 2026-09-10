@@ -8,10 +8,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
 - MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
-- REST operations: **308** unique method/path pairs from **310** route bindings.
+- REST operations: **309** unique method/path pairs from **311** route bindings.
 - Ambiguous duplicate REST method/path pairs: **2**, of which **2** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=152.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=153.
 
 ## REST inventory
 
@@ -236,6 +236,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/channels/oauth/:appId/install` | PUBLIC_TRANSPORT | — | `channel-webhooks-and-oauth` | `apps/agent/src/channels/channel-app-oauth.controller.ts#install` |
 | `POST /api/v1/entities/:entityId/session-tokens` | PUBLIC_TRANSPORT | — | `public-token-mint` | `apps/agent/src/auth/session-token.controller.ts#mint` |
 | `GET /api/v1/environments/:environmentId/end-users` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/environment-end-users.controller.ts#list` |
+| `GET /api/v1/environments/:environmentId/streams/:streamId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/ws/streams.controller.ts#read` |
 | `GET /api/v1/identity/session` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/identity-session.controller.ts#session` |
 | `GET /api/v1/memory` | MAPPED | `memories.list` | Reviewed behavioral equivalence: the REST adapter and memories.list invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#listMemories` |
 | `POST /api/v1/memory` | MAPPED | `memories.upsert` | Reviewed behavioral equivalence: the REST adapter and memories.upsert invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#createMemory` |

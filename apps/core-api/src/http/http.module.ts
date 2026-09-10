@@ -33,6 +33,7 @@ import { EnvironmentEndUsersController } from "../transports/rest/environment-en
 import { IdentitySessionController } from "../transports/rest/identity-session.controller.js";
 import { OrganizationsController } from "../transports/rest/organizations.controller.js";
 import { ProjectsController } from "../transports/rest/projects.controller.js";
+import { EnvironmentStreamsController } from "../transports/ws/streams.controller.js";
 import { DomainExceptionFilter } from "./domain-exception.filter.js";
 import { HEALTH_DEPENDENCIES, HealthController, type HealthDependencies } from "./health.controller.js";
 import { createIdempotencyGate } from "./idempotency-middleware.js";
@@ -80,6 +81,18 @@ import { NotFoundController } from "./not-found.controller.js";
     // controller under `/mcp` — and joins BOTH halves to the manifest.
     McpPlatformTokensController,
     McpEntityTokensController,
+    // WIN-272 (M4.6) — the stream lane. It is in this SAME array for the reason
+    // the banner above gives and for one more that is specific to it: a stream
+    // route that lost the race with `NotFoundController`'s `@All("{*path}")`
+    // would answer a JSON 404 to an `EventSource`, which retries forever by
+    // design — so the failure would be an invisible reconnect loop rather than a
+    // visible error.
+    //
+    // IT IS VERSIONED UNDER `/api/v1` LIKE EVERY REST ENTRY AND UNLIKE THE TWO MCP
+    // ONES. M0.4 §1.2 gives the stream lane its own `sv` axis inside the FRAME,
+    // not in the URL, so the path still carries the REST major: `sv` and the URL
+    // version are two axes over one surface, which is the whole of that section.
+    EnvironmentStreamsController,
   ],
 })
 export class CoreApiHttpModule implements NestModule {

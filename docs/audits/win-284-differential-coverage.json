@@ -16,18 +16,18 @@
   ],
   "reconciledAgainst": {
     "source": "docs/audits/M0.9-rest-census-independent.json",
-    "enumeratedRestCells": 308,
-    "enumeratedOperatorCells": 127,
-    "independentUniqueRoutes": 291,
+    "enumeratedRestCells": 309,
+    "enumeratedOperatorCells": 128,
+    "independentUniqueRoutes": 292,
     "dualMountAliasOps": 19,
-    "independentManifestOps": 310,
+    "independentManifestOps": 311,
     "independentCrossRootBindings": 2,
-    "independentUniqueOperations": 308,
+    "independentUniqueOperations": 309,
     "independentCrossRootOperatorBindings": 2,
-    "independentUniqueOperatorOperations": 127,
+    "independentUniqueOperatorOperations": 128,
     "independentOperatorFloor": 103,
-    "independentManifestOperator": 129,
-    "controllers": 34,
+    "independentManifestOperator": 130,
+    "controllers": 35,
     "agrees": true
   },
   "restScanRoots": {
@@ -44,21 +44,21 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "enumeratedOperations": 10,
-        "independentOperations": 10,
-        "independentSourceControllers": 7,
-        "independentSourceDecorators": 10,
+        "enumeratedOperations": 11,
+        "independentOperations": 11,
+        "independentSourceControllers": 8,
+        "independentSourceDecorators": 11,
         "agrees": true
       }
     ],
-    "total": 310
+    "total": 311
   },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {
-    "cells": 782,
+    "cells": 783,
     "covered": 2,
-    "uncovered": 780,
+    "uncovered": 781,
     "bySurface": {
       "bff": {
         "total": 117,
@@ -71,9 +71,9 @@
         "uncovered": 202
       },
       "rest": {
-        "total": 308,
+        "total": 309,
         "covered": 0,
-        "uncovered": 308
+        "uncovered": 309
       },
       "screen": {
         "total": 47,
@@ -97,7 +97,7 @@
       }
     }
   },
-  "digest": "78b97708e33f43b0a55d3d2a14f862fdd26ed568dfcfb6d9c20581cc86e38880",
+  "digest": "dfbaed348c6fff82114e704b9147efe4b5963b75facb3c2837a71e087406f283",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -1487,6 +1487,17 @@
     },
     {
       "id": "GET /api/v1/environments/:environmentId/end-users",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "GET /api/v1/environments/:environmentId/streams/:streamId",
       "surface": "rest",
       "owner": "tenancy",
       "requiresOperator": true,

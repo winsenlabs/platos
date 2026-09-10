@@ -221,8 +221,14 @@ describe("the declared binding table", () => {
     // rows are one implementation. A second directory for the inbound half would
     // have been a second chat SDK install for one provider, which is the
     // arrangement §15 exists to refuse. Directories unmoved at 15.
-    expect(ADAPTER_BINDINGS).toHaveLength(59);
-    expect(DECLARED_BINDING_COUNT).toBe(59);
+    //
+    // WIN-272 (M4.6) ADDS ONE ROW AND NO DIRECTORY, 59 -> 60, the same property a
+    // second time. `kernel:StreamJournal` is the SECOND port on `redis-streams`
+    // and it is satisfied by the SAME object holding the SAME Redis client. A
+    // sixteenth directory for the resumable half would have been a second Redis
+    // client for one Redis. Directories unmoved at 15.
+    expect(ADAPTER_BINDINGS).toHaveLength(60);
+    expect(DECLARED_BINDING_COUNT).toBe(60);
     expect(ADAPTER_NAMES).toHaveLength(15);
     expect(
       ADAPTER_BINDINGS.filter((binding) => binding.adapter === "tokenmint-totp").map(
@@ -284,11 +290,18 @@ describe("the declared binding table", () => {
     // owned by `channels`. The list is NAMED rather than counted, so a sixth
     // directory quietly gaining a second port fails this case instead of
     // widening a number.
+    //
+    // FIVE -> SIX (WIN-272, M4.6). `redis-streams` joins, and it is the SIXTH
+    // this case's own comment predicted — it failed on the addition rather than
+    // absorbing it, which is what naming the list rather than counting it buys.
+    // Its shape is `tokenmint-totp`'s: multi-PORT without being multi-OWNER, both
+    // rows owned by `kernel`.
     expect(multiPort.sort()).toEqual([
       "channel-slack",
       "keyring-envelope",
       "postgres-tenancy",
       "redis-cache",
+      "redis-streams",
       "tokenmint-totp",
     ]);
     const sharedDirectory = ADAPTER_BINDINGS.filter(
@@ -423,9 +436,9 @@ describe("adapter supply validation", () => {
   it("reports every binding unsatisfied when a caller supplies nothing at all", () => {
     const report = reportAdapterSupply({});
     expect(report.satisfied).toEqual([]);
-    expect(report.unsatisfied).toHaveLength(59);
+    expect(report.unsatisfied).toHaveLength(60);
     expect(report.faults).toEqual([]);
-    expect(describeAdapterSupply(report)).toBe("0/59 adapter bindings satisfied");
+    expect(describeAdapterSupply(report)).toBe("0/60 adapter bindings satisfied");
     // Reported per BINDING, not per directory. A directory-named report would
     // list `postgres-tenancy` once and say 12/12 while TWENTY of the ports it
     // carries were unserved, which is a readiness endpoint that lies about what
@@ -452,7 +465,7 @@ describe("adapter supply validation", () => {
   it("accepts an adapter that identifies its own slot", () => {
     const report = reportAdapterSupply({ outbox: adapterDouble("outbox") } as SuppliedAdapters);
     expect(report.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(report.unsatisfied).toHaveLength(58);
+    expect(report.unsatisfied).toHaveLength(59);
 
     expect(report.faults).toEqual([]);
   });
@@ -482,7 +495,7 @@ describe("adapter supply validation", () => {
 describe("composing the application", () => {
   it("composes with nothing wired and reports the gap rather than pretending", () => {
     const app = composeApplication(inputs());
-    expect(app.bindings.unsatisfied).toHaveLength(59);
+    expect(app.bindings.unsatisfied).toHaveLength(60);
 
     expect(app.contexts).toEqual({});
     expect(app.inFlight.count).toBe(0);
@@ -523,7 +536,7 @@ describe("composing the application", () => {
   it("records a satisfied binding and leaves the rest unsatisfied", () => {
     const app = composeApplication(inputs({ outbox: adapterDouble("outbox") } as SuppliedAdapters));
     expect(app.bindings.satisfied).toEqual(["outbox:OutboxWriter"]);
-    expect(app.bindings.unsatisfied).toHaveLength(58);
+    expect(app.bindings.unsatisfied).toHaveLength(59);
 
   });
 

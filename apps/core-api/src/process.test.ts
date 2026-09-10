@@ -335,8 +335,8 @@ describe("the built binary starts, serves and stops", () => {
         unwiredAdapters: { adapter: string; cause: string }[];
       };
     };
-    expect(body.detail.declaredBindings).toBe(59);
-    expect(body.detail.satisfiedBindings).toHaveLength(53);
+    expect(body.detail.declaredBindings).toBe(60);
+    expect(body.detail.satisfiedBindings).toHaveLength(55);
     // WIN-267 A1 + A2: 41 -> 45 of 49 -> 53. Both new directories need no
     // configuration, so all four of their bindings are satisfied in every
     // install and the EIGHT that remain are the same eight generated interfaces.
@@ -358,7 +358,14 @@ describe("the built binary starts, serves and stops", () => {
     // was generated. So declared moves by one and satisfied by two, and the
     // unsatisfied remainder falls from seven to SIX: `channel-slack` is the
     // SECOND directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
-    expect(body.reason).toBe("53 of 59 adapter bindings are satisfied; 6 are not");
+    // WIN-272 (M4.6): 53/59 -> 55/60, the same shape a THIRD time.
+    // `redis-streams` DECLARES one new binding (`StreamJournal`, the resumable
+    // half `EventBus` has no position for) and simultaneously IMPLEMENTS the
+    // directory, whose `EventBus` binding has been unsatisfiable since the
+    // skeleton was generated. Declared moves by one and satisfied by two, and the
+    // unsatisfied remainder falls from six to FIVE: `redis-streams` is the THIRD
+    // directory ever to leave `UNIMPLEMENTED_ADAPTERS`.
+    expect(body.reason).toBe("55 of 60 adapter bindings are satisfied; 5 are not");
     // THE CONTEXTS THIS PROCESS ACTUALLY BUILT, read back OFF THE RUNNING
     // BINARY rather than computed. `tenancy` was the first composed over a REAL
     // PostgreSQL adapter rather than over a bundle an install had to hand in;
@@ -386,12 +393,12 @@ describe("the built binary starts, serves and stops", () => {
     ]);
     expect(body.detail.composedContexts).not.toContain("governance");
     // And every remaining directory says which kind of gap it is.
-    expect(body.detail.unwiredAdapters).toHaveLength(6);
+    expect(body.detail.unwiredAdapters).toHaveLength(5);
     expect(new Set(body.detail.unwiredAdapters.map((row) => row.cause))).toEqual(new Set(["implementation"]));
 
     // The startup log carries the same figure, so an operator with no token can
     // still read it off stdout.
-    expect(spawned.stdout()).toContain("53/59 adapter bindings satisfied");
+    expect(spawned.stdout()).toContain("55/60 adapter bindings satisfied");
 
     spawned.child.kill("SIGTERM");
     const { code, signal } = await spawned.exited;

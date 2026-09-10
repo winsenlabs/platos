@@ -889,7 +889,20 @@ test("the live selectors scan an exact nonzero source census", () => {
   // selector moves at all — this tranche lands not one file under
   // `apps/core-api/src/transports/**` or `src/http/**`; its core-api delta is
   // edits to `composition/adapter-bindings.ts` and to suites. 1601 + 19 = 1620.
-  assert.equal(result.fileCount, 1620);
+  //
+  // WIN-272 (M4.6) 1620 -> 1635, across THREE selectors, which is what a tranche
+  // that lands a port, an adapter AND a route looks like. `ADAPTERS` +7 (a NET:
+  // `redis-streams` held two generated placeholders and now holds nine real
+  // files), `KERNEL` +3 (the stream envelope, its suite and the twelfth kernel
+  // port), and `APPS-TRANSPORTS` +5 (the stream lane's three modules and its two
+  // suites, which became THREE when the mechanics suite reached 495 effective
+  // lines and was split on the two seams it already had — no warning row was added
+  // to the pinned list below, which is the difference between splitting a file and
+  // naming a number). `CONTEXTS` and `APPS-HTTP` are byte-for-byte the same scan —
+  // no context was widened and the chassis was not touched. The integration suite
+  // is in `src/composition/`, which NO selector scans, so it is deliberately
+  // absent from every term. 1620 + 7 + 3 + 6 = 1636.
+  assert.equal(result.fileCount, 1636);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -954,7 +967,16 @@ test("the live selectors scan an exact nonzero source census", () => {
       // the `ChannelRuntime` port, the `admitSignedDelivery` use case, the
       // inbound conformance harness, the delivery-disposition rule and its
       // suite. Both selectors already existed; neither app selector moves.
-      14 + 5
+      14 + 5 +
+      // WIN-272 (M4.6): SEVEN NET under `packages/adapters/redis-streams/src/`
+      // (nine real files less the two generated placeholders they replace — the
+      // second NET term in this sum, and the reason it is one number rather than
+      // 9 - 2), THREE under `packages/kernel/src/` (`vo/stream-frame.ts`, its
+      // suite and `ports/stream-journal.ts`) and FIVE under
+      // `apps/core-api/src/transports/ws/` (`stream-errors.ts`, `sse.ts`,
+      // `streams.controller.ts` and their THREE suites). The integration suite is
+      // under `src/composition/`, outside every selector, so it is absent here.
+      7 + 3 + 6
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1136,7 +1158,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // and that is the claim worth making about this tranche: it lands not one file
   // under `apps/core-api/src/transports/**`, because the surface it builds is a
   // PORT and an ADAPTER rather than a route.
-  assert.equal(result.fileCount, 27 + 1082 + 465 + 15 + 31);
+  // WIN-272 (M4.6): KERNEL 27 -> 30, ADAPTERS 465 -> 472 (seven NET in
+  // `redis-streams`, whose two generated placeholders are replaced in place) and
+  // APPS-TRANSPORTS 31 -> 37. CONTEXTS and APPS-HTTP are UNMOVED, and that is the
+  // claim worth making: this tranche builds a kernel port, its adapter AND a
+  // route, and it widened no context and did not touch the REST chassis. It is
+  // the first tranche to move the KERNEL term since WIN-260.
+  assert.equal(result.fileCount, 30 + 1082 + 472 + 15 + 37);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -1399,6 +1427,26 @@ test("the live selectors scan an exact nonzero source census", () => {
       // 500 and the split is that block, moved whole.
       path: "packages/adapters/postgres-tenancy/src/skills-constraints.integration.test.ts",
       effectiveLines: 435,
+      severity: "warning",
+    },
+    {
+      // WIN-272 (M4.6). THE ONE ROW THIS TRANCHE ADDS, and it is the one file it
+      // deliberately did NOT split. Twenty-five cases against a real Redis, and
+      // the length is the case COUNT rather than any case's size: ordering under
+      // two connections, the server refusing a repeated sequence, two racing
+      // producers, two racing seals, the trim boundary served and the frame past
+      // it refused, a 200-frame run conserved across a mid-run reconnect, and the
+      // cold-start recovery that needs a TCP forwarder.
+      //
+      // SPLITTING IT WOULD COST A SECOND CONTAINER. Every integration suite in
+      // this repository starts its own Redis in `beforeAll`, so a split doubles
+      // the container count and the CI minutes to move a number, and it would
+      // separate cases that are only meaningful as one transcript against one
+      // server. The tranche's other two suites were split — `sse.test.ts` went
+      // from 495 lines to three files — so this is a judgement about THIS file
+      // and not a general shrug. It is 82 lines inside the hard error.
+      path: "packages/adapters/redis-streams/src/journal.integration.test.ts",
+      effectiveLines: 418,
       severity: "warning",
     },
     {

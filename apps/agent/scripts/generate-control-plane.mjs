@@ -114,6 +114,12 @@ const CORE_API_MOUNTED_CONTROLLERS = {
   // generation by name rather than quietly leaving the census.
   McpPlatformTokensController: "http/http.module.ts",
   McpEntityTokensController: "http/http.module.ts",
+  // WIN-272 (M4.6) — the stream lane, and the first entry here that lives outside
+  // `transports/rest` and `transports/mcp`. It is listed for the same reason as its
+  // seven siblings: this root is STRICT, so a controller under
+  // `apps/core-api/src/transports` that is not in this allowlist fails generation
+  // by name rather than quietly leaving the census.
+  EnvironmentStreamsController: "http/http.module.ts",
 };
 
 /**

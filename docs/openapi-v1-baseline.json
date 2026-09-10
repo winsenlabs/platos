@@ -1014,6 +1014,12 @@
               "SKILLS_SOURCE_PROTOCOL_UNSUPPORTED",
               "SKILLS_SOURCE_TOO_LARGE",
               "SKILLS_SOURCE_URL_INVALID",
+              "STREAM_CREDENTIAL_EXPIRED",
+              "STREAM_CURSOR_EXPIRED",
+              "STREAM_CURSOR_UNREADABLE",
+              "STREAM_FRAME_TOO_LARGE",
+              "STREAM_JOURNAL_UNAVAILABLE",
+              "STREAM_NOT_FOUND",
               "TENANCY_ACCESS_KEY_GENERATION_SUPERSEDED",
               "TENANCY_ARCHIVED",
               "TENANCY_AUTHORIZATION_FORGED",
@@ -1243,6 +1249,54 @@
           }
         ],
         "x-platos-query-parameters": "not-derived",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/environments/{environmentId}/streams/{streamId}": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_environmentId_streams_by_streamId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "streamId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No content."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
         "x-platos-schema-source": "typescript-dto"
       }
     },

@@ -99,15 +99,24 @@ test("committed matrix: row counts are pinned exactly", () => {
   // the first through `/organizations`, which R1 added because `/orgs` is not a
   // substring of it. The oracle-derived count is therefore UNCHANGED at 42, which
   // is what `ORACLE_DERIVED_ROW_COUNT` pins.
-  assert.equal(REST.length, 308);
+  //
+  // 308 -> 309 and 266 -> 267 (WIN-272, M4.6): the stream lane's ONE route,
+  // `GET /api/v1/environments/{environmentId}/streams/{streamId}`. It resolves by
+  // URL PREFIX like the eight before it and through a prefix that was ALREADY in
+  // the table — `/environments/...` reaches `tenancy`, which is the honest owner
+  // here for a reason worth stating: the route's authorization decision IS
+  // tenancy's four-gate one, and the frames it serves belong to no context at all
+  // (the journal is a kernel port). The oracle-derived count stays at 42 for the
+  // reason R1 gives: this handler does not exist in the frozen oracle.
+  assert.equal(REST.length, 309);
   assert.equal(REST.filter((r) => r.ownerSource === "oracle-derived").length, 42);
-  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 266);
-  assert.equal(42 + 266, REST.length);
+  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 267);
+  assert.equal(42 + 267, REST.length);
   assert.equal(MCP.length, 202);
-  assert.equal(MATRIX.totals.restOperations, 308);
-  assert.equal(MATRIX.ownership.restRows, 308);
+  assert.equal(MATRIX.totals.restOperations, 309);
+  assert.equal(MATRIX.ownership.restRows, 309);
   assert.equal(MATRIX.ownership.oracleDerivedRestRows, 42);
-  assert.equal(MATRIX.ownership.pathPrefixRestRows, 266);
+  assert.equal(MATRIX.ownership.pathPrefixRestRows, 267);
 });
 
 test("committed matrix: exactly 5 rows carry the non-context value, and they are the pinned 5", () => {
@@ -445,7 +454,11 @@ test("committed matrix: the REST total is split across the declared scan roots a
   //
   // WIN-268 P1 8 -> 10, and the total does NOT move to 310: the two routes are
   // new IMPLEMENTATIONS of operations that already existed. 300 + 10 - 2 = 308.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 10 });
+  //
+  // WIN-272 (M4.6) 10 -> 11, and the total DOES move, to 309: the stream route is
+  // an operation that exists NOWHERE ELSE, so it is not a second implementation of
+  // an agent one and the shared count stays at 2. 300 + 11 - 2 = 309.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 11 });
   assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 2);
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });

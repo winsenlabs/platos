@@ -261,19 +261,26 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // one-time-secret token mints, `POST /mcp/platform/tokens` and
   // `POST /mcp/entity/:entityId/tokens`, each in its own controller under
   // `transports/mcp/`. Both enumerators moved to the same numbers on their own.
-  assert.equal(core.sourceControllers, 7);
-  assert.equal(core.sourceDecorators, 10);
-  assert.equal(core.expandedOperations, 10);
-  assert.equal(core.manifestOperations, 10);
-  // 300 + 10 = 310 BINDINGS, and the manifest's `summary.restOperations` is 308
+  //
+  // WIN-272 (M4.6) 7 -> 8 controllers and 10 -> 11 decorators: the stream lane's
+  // `GET /api/v1/environments/:environmentId/streams/:streamId`, in its own
+  // controller under `transports/ws/`. Both enumerators moved to the same numbers
+  // on their own again — the generator's AST walk and this file's independent
+  // glob — which is the whole reason two mechanisms exist.
+  assert.equal(core.sourceControllers, 8);
+  assert.equal(core.sourceDecorators, 11);
+  assert.equal(core.expandedOperations, 11);
+  assert.equal(core.manifestOperations, 11);
+  // 300 + 11 = 311 BINDINGS, and the manifest's `summary.restOperations` is 309
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
   // it reconciles to, which is what keeps the per-root sum an equality rather
-  // than an approximation.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 310);
+  // than an approximation. The stream route adds to BOTH sides — it is served by
+  // one deployable only, so it is not a third shared operation.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 311);
   const totals = manifestCensus();
   assert.equal(totals.crossRootBindings, 2);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 308);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 309);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

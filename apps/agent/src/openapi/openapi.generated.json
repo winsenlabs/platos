@@ -1023,6 +1023,12 @@
               "SKILLS_SOURCE_PROTOCOL_UNSUPPORTED",
               "SKILLS_SOURCE_TOO_LARGE",
               "SKILLS_SOURCE_URL_INVALID",
+              "STREAM_CREDENTIAL_EXPIRED",
+              "STREAM_CURSOR_EXPIRED",
+              "STREAM_CURSOR_UNREADABLE",
+              "STREAM_FRAME_TOO_LARGE",
+              "STREAM_JOURNAL_UNAVAILABLE",
+              "STREAM_NOT_FOUND",
               "TENANCY_ACCESS_KEY_GENERATION_SUPERSEDED",
               "TENANCY_ARCHIVED",
               "TENANCY_AUTHORIZATION_FORGED",
@@ -8657,6 +8663,62 @@
         "x-platos-query-not-derived-detail": "The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. Deriving the real one needs a declared wire-query DTO that the validator consumes; until then this route's query parameters are undocumented, not guessed."
       }
     },
+    "/api/v1/environments/{environmentId}/streams/{streamId}": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_environmentId_streams_by_streamId",
+        "summary": "EnvironmentStreamsController.read",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "streamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "No content."
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
     "/api/v1/identity/session": {
       "get": {
         "operationId": "get__api_v1_identity_session",
@@ -11476,15 +11538,15 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 308,
+  "x-platos-rest-operation-count": 309,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 10,
+    "derivedOperations": 11,
     "undeclaredOperations": 298,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
     "componentSchemas": 24,
-    "canonicalErrorCodes": 439,
+    "canonicalErrorCodes": 445,
     "queryParametersNotDerived": [
       {
         "operation": "GET /api/v1/environments/:environmentId/end-users",

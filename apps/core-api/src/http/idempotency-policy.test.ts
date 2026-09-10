@@ -66,7 +66,10 @@ describe("the policy table against the frozen operation manifest", () => {
     // honoured if sent and not demanded). The credential-path case below is what
     // proves that is a classification rather than an oversight — it would fail if
     // any of the eight looked like a credential route.
-    expect(OPERATIONS.length).toBe(308);
+    // 308 -> 309 (WIN-272, M4.6): the stream lane's one route. It is a GET, so
+    // `classifyRequest` puts it in the `none` bucket — an `Idempotency-Key` on a
+    // read is meaningless and this table says so by omission rather than by a row.
+    expect(OPERATIONS.length).toBe(309);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {
