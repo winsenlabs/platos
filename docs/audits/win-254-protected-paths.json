@@ -808,12 +808,12 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "16bc313971dfaeeb187c64a38ecb770d000ba1ddcaf05ae109a2423f62cef017"
+      "sha256": "b728f0e2b4a199894946c356b57b137ab8f2a8be5602c754129f47dd8e05c5cc"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "b23e904f486127e8d2d2702e975a59b77e59b41e0c5c5b77ce09da09f6eef012"
+      "sha256": "d4d7d453017c6f1094b28d46c34fa58ba5783757a0c0a0adfa2ae7393e20d0e9"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "7441387a585e7567d739b5d007e3c9ad03197065ee92f1102ddf5d6523886c78"
+      "sha256": "771e495a05bbcb8f64727ed34af327d2326e3efd702256f62b29a0b63f805e80"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -1043,27 +1043,27 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "6e55b71892c3f640bf97ba3ba7645e286cfe1e9478e4530aa0ef8ac36b006e13"
+      "sha256": "16d4700e593861ce0e2115abb32d409e21e0ee5491a2463315a26fb775738c5d"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "abcc3274dd502e5e50788da8e19916602e1774996f6996f8d230bd0dd3571da5"
+      "sha256": "943a2d1b1d54b83bdbdc186ac78dc92a5651b0030aa0a0b1cdb63fd72055eee4"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "mode": "100644",
-      "sha256": "a8a6580440a2fd150fd0e6ba3351e0e9f9d43183d6fa1012802d89fe113f054f"
+      "sha256": "289ee5d60b12f035cf53f339ab6bf4d45a384cf9843e3b582a4e5cb0474a9d26"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
       "mode": "100644",
-      "sha256": "a4616166750be99a67b912cc24b3b643c9e1c1aecd4b84a8a41778c5de3d83f5"
+      "sha256": "edcad7c2f9cef16650f44e65c9e6dd44322bc70f104259d3071163d90591b760"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.md",
       "mode": "100644",
-      "sha256": "96eeaad06dc941cce47b185667cfb4e7bd10e1b09db5f951d64e28966816cae7"
+      "sha256": "656142ca7b0813c3c34da6a0cbc32dcb0727e687f3f66b6c59815edc2ad5224f"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
@@ -1078,12 +1078,12 @@
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "f85ffff4a376e9e12e09eda7506c6591910e1c5e42bdff4fef5aee6d9c62dfdc"
+      "sha256": "606989ae6fa797a63d0a37570a8886ec1af5c13cec67d129e7d67328e877b0ee"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "b35171f893aa71dcce2ebf6747da0978682427196641c813c6e2768836ea1a4f"
+      "sha256": "935b623b84207c84a5f72307ac5e8ec5356cdce403a615b95a8e23a4578902ae"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "28b9547391c3a0ecf94f4efea29026b002ac2e760f6cf95451ad24e0d6148155"
+      "sha256": "9dbf5bfe227d7ab35d4de010dd7823e7d3f449c39532c5a1d2915e21f65a4bd1"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1308,7 +1308,7 @@
     {
       "path": "docs/control-plane-parity.generated.md",
       "mode": "100644",
-      "sha256": "0efd35741a4a89cd4dd37cf49b9fa2ba0365017212de4ab635c2b2b54935afa4"
+      "sha256": "b8a8a2c25c1aebf4228015097473180bbe38f9a80a64fdb881bb3c9e762bb8f6"
     },
     {
       "path": "docs/deploy-environment-variables.mdx",
@@ -2908,7 +2908,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "d62ef48fd8e45ca983dea6e12b0c2792c036d808a8ae147fef85fc6d10da1542"
+      "sha256": "3b40f68c965cf9b4853606d2cebc7c2a50250a579f5f3f789075c0786b08e86d"
     },
     {
       "path": "docs/openapi.yml",
