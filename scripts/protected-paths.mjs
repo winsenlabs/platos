@@ -118,10 +118,25 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // NOT added to SCRIPT_PREFIXES, for the reason its sibling register was not:
 // the selection protects the EVIDENCE a gate reads, not the gate.
 //
+// WIN-272 (M4.6) adds ONE, no removals and no content substitutions, taking the
+// set from 798 to 799:
+//   docs/audits/M4.6-stream-vocabulary.json  (the stream vocabulary census — every
+//                                             socket event name and frame type the
+//                                             V1 stream lanes put on a wire, with
+//                                             the lane and the M0.4 §1.2 envelope
+//                                             family each belongs to)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the base at bbab66ea: the 799 paths at
+// this head are exactly the 798-path base plus that one, with nothing removed and
+// nothing substituted — `comm -13` names one addition and `comm -23` names none.
+// `scripts/arch/stream-contracts.mjs` is NOT added to SCRIPT_PREFIXES, for the
+// reason its three predecessors were not: the selection protects the EVIDENCE a
+// gate reads, not the gate.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "9b6d64c45c230c89c857251eb8877d85f2898c667cf3acd503968a359285e389";
+export const EXPECTED_PATH_SET_SHA256 = "df52e403740aba88a43f783dc415d344264681d0cf08d47e93de95000258dff1";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

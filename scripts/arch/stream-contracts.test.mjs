@@ -1,0 +1,364 @@
+// THE SECOND RECONCILIATION FOR `stream-contracts`, AND ITS NON-VACUITY CONTROLS.
+//
+// `audit:v1-ledger` was green through every commit of a tranche while
+// `scripts/v1-ledger.test.mjs` was red, and that is the lesson this file is built
+// on: a gate whose only evidence is its own green run has not been shown to be
+// able to fail. Every rule below is exercised twice — once against the live tree,
+// and once against a copy with ONE thing changed — so a rule that had stopped
+// biting would fail here rather than pass quietly.
+//
+// THE MUTATIONS ARE APPLIED TO A COPY OF THE REAL TREE. A fixture tree would prove
+// the rules can fail against a fixture; these prove they can fail against THIS
+// repository, which is the claim that matters. The copy is made with `cp -R` of
+// only the paths each rule reads, because copying the whole tree per case would
+// cost minutes.
+
+import assert from "node:assert/strict";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+import {
+  auditStreamContracts,
+  buildInventory,
+  canonicalTerminals,
+  CONTRACT_ADR,
+  declaredFamilies,
+  emissionsIn,
+  INVENTORY_PATH,
+  RULES,
+  SCANNED_ROOTS,
+  scanEmissions,
+  SV_LITERAL_ROOTS,
+  TERMINAL_TYPES_WITHOUT_A_PRODUCER,
+  vocabularyFamilies,
+  vocabularyTerminals,
+  VOCABULARY_MODULE,
+} from "./stream-contracts.mjs";
+
+const repositoryRoot = fileURLToPath(new URL("../..", import.meta.url));
+
+/** The paths every rule reads. A copy of these is a copy of the gate's world. */
+const COPIED = [
+  CONTRACT_ADR,
+  VOCABULARY_MODULE,
+  INVENTORY_PATH,
+  "apps/agent/src",
+  "apps/core-api/src/transports",
+];
+
+function copyPaths(paths) {
+  const root = mkdtempSync(join(tmpdir(), "stream-contracts-"));
+  for (const path of paths) {
+    const destination = join(root, path);
+    mkdirSync(dirname(destination), { recursive: true });
+    cpSync(join(repositoryRoot, path), destination, { recursive: true });
+  }
+  return root;
+}
+
+function realTreeCopy() {
+  return copyPaths(COPIED);
+}
+
+/** The same copy plus the whole kernel source, for the two S2 sweep cases. */
+function realTreeCopyWithKernel() {
+  return copyPaths([...COPIED, "packages/kernel/src"]);
+}
+
+function edit(root, path, mutate) {
+  const absolute = join(root, path);
+  writeFileSync(absolute, mutate(readFileSync(absolute, "utf8")));
+}
+
+function problemsFor(root) {
+  return auditStreamContracts(root).problems;
+}
+
+// ---------------------------------------------------------------------------
+// The live tree, and the shape of what the gate reads.
+// ---------------------------------------------------------------------------
+
+test("the live tree passes, and the gate reads a NONZERO vocabulary", () => {
+  const result = auditStreamContracts(repositoryRoot);
+  assert.deepEqual(result.problems, []);
+  // NON-VACUITY. A scan that matched nothing would satisfy every rule below by
+  // finding no counterexample, which is precisely how a gate stops meaning
+  // anything. Both kinds must be present and the families must be the five.
+  const socketEvents = result.rows.filter((row) => row.kind === "socket-event");
+  const frameTypes = result.rows.filter((row) => row.kind === "frame-type");
+  assert.ok(socketEvents.length >= 10, `only ${String(socketEvents.length)} socket event name(s)`);
+  assert.ok(frameTypes.length >= 4, `only ${String(frameTypes.length)} frame type(s)`);
+  assert.equal(result.families.length, 5);
+  assert.equal(RULES.length, 5);
+});
+
+test("both lanes are represented, so neither half of the surface is invisible", () => {
+  // The whole point of a SECOND scan root: a gate that only reached `apps/agent`
+  // would have said nothing about the canonical lane, and one that only reached
+  // `apps/core-api` would have left the live vocabulary unenumerated.
+  const { rows } = scanEmissions(repositoryRoot);
+  const lanes = new Set(rows.map((row) => row.lane));
+  assert.deepEqual([...lanes].sort(), SCANNED_ROOTS.map((root) => root.id).sort());
+});
+
+test("the inventory on disk is byte-identical to a fresh build", () => {
+  const committed = readFileSync(join(repositoryRoot, INVENTORY_PATH), "utf8");
+  assert.equal(committed, `${JSON.stringify(buildInventory(repositoryRoot), null, 2)}\n`);
+});
+
+test("the ADR and the vocabulary agree, and the ADR is the authority", () => {
+  const adr = declaredFamilies(repositoryRoot);
+  assert.deepEqual(adr, vocabularyFamilies(repositoryRoot));
+  // NAMED rather than counted, so a family renamed in both places at once — which
+  // S1 could not see — fails here.
+  assert.deepEqual(adr, [
+    "ws.agent_event",
+    "sse.turn",
+    "webhook.ingest",
+    "internal.callback",
+    "trigger.payload",
+  ]);
+});
+
+// ---------------------------------------------------------------------------
+// S1 — the families
+// ---------------------------------------------------------------------------
+
+test("S1 fails when the vocabulary gains a family the ADR does not name", () => {
+  const root = realTreeCopy();
+  edit(root, VOCABULARY_MODULE, (source) =>
+    source.replace('  "trigger.payload",\n] as const)', '  "trigger.payload",\n  "grpc.stream",\n] as const)'),
+  );
+  assert.ok(problemsFor(root).some((problem) => problem.startsWith("S1 ")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S1 fails when the ADR names a family the vocabulary drops", () => {
+  const root = realTreeCopy();
+  edit(root, VOCABULARY_MODULE, (source) => source.replace('  "internal.callback",\n', ""));
+  assert.ok(problemsFor(root).some((problem) => problem.startsWith("S1 ")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S1 fails when the ADR stops stating the families inline", () => {
+  // The gate's own input can go away. A rule that parsed nothing and reported
+  // nothing would be the silent failure this case exists to prevent.
+  const root = realTreeCopy();
+  edit(root, CONTRACT_ADR, (source) => source.replace("per envelope family**", "per envelope grouping**"));
+  assert.ok(problemsFor(root).some((problem) => problem.includes("no longer states the envelope families")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------------------
+// S2 — one place for the major
+// ---------------------------------------------------------------------------
+
+test("S2 fails on a second `sv` literal anywhere in the scanned roots", () => {
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/ws/sse.ts", (source) =>
+    `${source}\nexport const SNEAKY_FRAME = { sv: 1, t: "x", seq: 1, ts: 0, fields: {} };\n`,
+  );
+  const problems = problemsFor(root);
+  assert.ok(problems.some((problem) => problem.startsWith("S2 ") && problem.includes("sse.ts")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S2's sweep REACHES the kernel, which its exemption would otherwise make vacuous", () => {
+  // THE HOLE THE FIRST DRAFT OF THIS GATE HAD. The exemption for the declaring
+  // module was dead code, because the module lived in no scanned root — so the case
+  // asserting the exemption passed for the wrong reason and a second `sv` literal
+  // beside the constant would have been invisible. Both halves are asserted now:
+  // the sweep root list CONTAINS the kernel, and a literal added to a kernel file
+  // that is NOT the declaring module fails.
+  assert.ok(SV_LITERAL_ROOTS.some((directory) => VOCABULARY_MODULE.startsWith(directory)));
+  const root = realTreeCopyWithKernel();
+  edit(root, "packages/kernel/src/vo/retry.ts", (source) => `${source}\nexport const FRAME = { sv: 1 };\n`);
+  assert.ok(problemsFor(root).some((problem) => problem.startsWith("S2 ") && problem.includes("retry.ts")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S2 does NOT fire on the module that declares the constant", () => {
+  // The exemption is one FILE and not a directory, and this is what says it is
+  // narrow rather than a hole: the file beside it in the same package IS held, by
+  // the case above.
+  const root = realTreeCopyWithKernel();
+  edit(root, VOCABULARY_MODULE, (source) => `${source}\nconst UNRELATED = { sv: 1 };\nvoid UNRELATED;\n`);
+  assert.ok(!problemsFor(root).some((problem) => problem.startsWith("S2 ")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------------------
+// S3 — terminal frames
+// ---------------------------------------------------------------------------
+
+test("S3 fails when the canonical lane emits a terminal type the kernel does not declare", () => {
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/ws/streams.controller.ts", (source) =>
+    source.replace('t: "stream.error"', 't: "stream.exploded"'),
+  );
+  assert.ok(problemsFor(root).some((problem) => problem.startsWith("S3 ")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S3 fails when the transport's fault table is removed, so no ending carries a code", () => {
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/ws/streams.controller.ts", (source) =>
+    source.replace("export const TERMINAL_FAULTS", "const REMOVED_TERMINAL_FAULTS"),
+  );
+  assert.ok(problemsFor(root).some((problem) => problem.includes("declares no TERMINAL_FAULTS table")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S3 fails when a terminal type gains a producer while still declared unreachable", () => {
+  // THE HALF THAT MAKES THE EXCEPTION SELF-INVALIDATING. `turn.done` is excused
+  // because no composed producer can write it in this build; the day one does,
+  // the reason recorded beside it has expired and the gate says so.
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/ws/streams.controller.ts", (source) =>
+    `${source}\nexport const FUTURE_DONE = { t: "turn.done" };\n`,
+  );
+  const problems = problemsFor(root);
+  assert.ok(problems.some((problem) => problem.includes("IS emitted now")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S3's excused list names only real terminal types", () => {
+  const terminals = vocabularyTerminals(repositoryRoot);
+  for (const excused of TERMINAL_TYPES_WITHOUT_A_PRODUCER) assert.ok(terminals.includes(excused), excused);
+  // AND IT IS NOT THE WHOLE LIST. If every terminal type were excused, S3's
+  // reachability half would be vacuous.
+  assert.ok(TERMINAL_TYPES_WITHOUT_A_PRODUCER.length < terminals.length);
+  assert.equal(canonicalTerminals(repositoryRoot).frameType, "stream.error");
+});
+
+// ---------------------------------------------------------------------------
+// S4 — the orphan check, in both directions
+// ---------------------------------------------------------------------------
+
+test("S4 fails on a NEW socket event with no inventory row", () => {
+  const root = realTreeCopy();
+  edit(root, "apps/agent/src/connections/connections.gateway.ts", (source) =>
+    source.replace(
+      'emit("joined_thread"',
+      'emit("undeclared_frame", { type: "surprise" });\n      client.emit("joined_thread"',
+    ),
+  );
+  const problems = problemsFor(root);
+  assert.ok(problems.some((problem) => problem.includes('socket-event "undeclared_frame"')));
+  // AND THE FRAME TYPE INSIDE IT IS CAUGHT SEPARATELY, which is what makes the
+  // two kinds two rows rather than one.
+  assert.ok(problems.some((problem) => problem.includes('frame-type "surprise"')));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S4 fails on an inventory row whose emitter was DELETED", () => {
+  // The direction a one-way gate misses, and the one the ADR names explicitly:
+  // "every emitted `t` has a contract entry & vice-versa".
+  const root = realTreeCopy();
+  edit(root, INVENTORY_PATH, (source) => {
+    const inventory = JSON.parse(source);
+    inventory.rows.push({
+      lane: "agent",
+      kind: "socket-event",
+      name: "retired_event",
+      family: "ws.agent_event",
+      sites: ["apps/agent/src/connections/connections.gateway.ts:1"],
+    });
+    return `${JSON.stringify(inventory, null, 2)}\n`;
+  });
+  assert.ok(problemsFor(root).some((problem) => problem.includes("retired_event")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S4 fails when an emitter is deleted and the row is left behind", () => {
+  const root = realTreeCopy();
+  edit(root, "apps/agent/src/connections/connections.gateway.ts", (source) =>
+    source.replace('emit("joined_thread", { threadId: data.threadId })', "emit(\"error\", {})"),
+  );
+  assert.ok(problemsFor(root).some((problem) => problem.includes("joined_thread")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S4 counts SITES and not only names, so a lost emitter of a kept name fails", () => {
+  // `error` is emitted from sixteen places. A gate that compared only the SET of
+  // names would not notice fifteen of them going away.
+  const root = realTreeCopy();
+  edit(root, "apps/agent/src/connections/connections.gateway.ts", (source) =>
+    source.replace('emit("error", { message: "Not authenticated" })', "emit(\"connected\", {})"),
+  );
+  assert.ok(problemsFor(root).some((problem) => problem.includes("is emitted at")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S4 fails when the inventory is missing entirely", () => {
+  const root = realTreeCopy();
+  rmSync(join(root, INVENTORY_PATH));
+  assert.ok(problemsFor(root).some((problem) => problem.includes("absent or unreadable")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------------------
+// S5 — lanes and families on every row
+// ---------------------------------------------------------------------------
+
+test("S5 fails on a row whose family is not one of the five", () => {
+  const root = realTreeCopy();
+  edit(root, INVENTORY_PATH, (source) => source.replace('"family": "ws.agent_event"', '"family": "ws.legacy"'));
+  assert.ok(problemsFor(root).some((problem) => problem.startsWith("S5 ")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S5 fails on a row whose lane is not scanned", () => {
+  const root = realTreeCopy();
+  edit(root, INVENTORY_PATH, (source) => source.replace('"lane": "core-api"', '"lane": "webapp"'));
+  assert.ok(problemsFor(root).some((problem) => problem.startsWith("S5 ")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("S5 fails when the inventory's family list drifts from the vocabulary's", () => {
+  const root = realTreeCopy();
+  edit(root, INVENTORY_PATH, (source) => {
+    const inventory = JSON.parse(source);
+    inventory.families = inventory.families.slice(0, 4);
+    return `${JSON.stringify(inventory, null, 2)}\n`;
+  });
+  assert.ok(problemsFor(root).some((problem) => problem.includes("family list that is not the vocabulary's")));
+  rmSync(root, { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------------------
+// The scan's own judgements
+// ---------------------------------------------------------------------------
+
+test("a `type` OUTSIDE an emit is not a frame, and a `t` anywhere is", () => {
+  // THE ONE JUDGEMENT IN THE SCAN, asserted rather than described. `type` is one
+  // of the most common property names in any TypeScript tree, so collecting it
+  // outside an `emit` payload registered an alert channel's probe body as a stream
+  // frame on the first run of this gate. `t` is the canonical envelope's own field
+  // and is collected wherever it appears, because the canonical lane builds frames
+  // in factories that RETURN them.
+  const emitted = emissionsIn(repositoryRoot, "apps/core-api/src/transports/ws/streams.controller.ts");
+  assert.ok(emitted.some((row) => row.kind === "frame-type" && row.name === "stream.error"));
+  const alerts = emissionsIn(repositoryRoot, "apps/agent/src/mcp-platform/tools/alert_channels.ts");
+  assert.deepEqual(alerts, []);
+});
+
+test("a COMPUTED event name is recorded rather than skipped", () => {
+  // The gateway relays `payload.event`, so the set of names it can emit is decided
+  // elsewhere. A scan that dropped the site would report a smaller vocabulary than
+  // the lane has, which is the opposite of what this gate is for.
+  const { rows } = scanEmissions(repositoryRoot);
+  assert.ok(rows.some((row) => row.kind === "socket-event" && row.name === "<computed>"));
+});
+
+test("a suite is not a producer", () => {
+  // Every stream vocabulary here has a suite that names its own fixtures, and
+  // holding those to the inventory would register frame types nothing serves.
+  const { rows } = scanEmissions(repositoryRoot);
+  for (const row of rows) {
+    for (const site of row.sites) assert.ok(!site.includes(".test."), site);
+  }
+});

@@ -111,6 +111,14 @@ const v1ReleaseGateCommands = [
   // the canonical-row ownership map non-regressable.
   "pnpm audit:kernel-content",
   "pnpm test:kernel-content",
+  // WIN-272 (M4.6). The drift-check M0.4 §2 NAMES in its own WS and SSE rows —
+  // "`check:stream-contracts`: AST-walk all `.emit(` sites -> every emitted `t`
+  // has a contract entry & vice-versa (orphan = fail)" — and which did not exist.
+  // It sits beside `kernel-content` because it is the other half of the same
+  // claim: that one keeps the kernel from holding what it should not, and this one
+  // keeps the stream vocabulary from being whatever the last `.emit(` decided.
+  "pnpm audit:stream-contracts",
+  "pnpm test:stream-contracts",
   "pnpm audit:sole-writer",
   "pnpm test:sole-writer",
   // WIN-297: rule (j) narrowed from a package to the one file, plus the
@@ -323,6 +331,14 @@ const expectedV1EvidenceCommands = [
   // the canonical-row ownership map non-regressable.
   "pnpm audit:kernel-content",
   "pnpm test:kernel-content",
+  // WIN-272 (M4.6). The drift-check M0.4 §2 NAMES in its own WS and SSE rows —
+  // "`check:stream-contracts`: AST-walk all `.emit(` sites -> every emitted `t`
+  // has a contract entry & vice-versa (orphan = fail)" — and which did not exist.
+  // It sits beside `kernel-content` because it is the other half of the same
+  // claim: that one keeps the kernel from holding what it should not, and this one
+  // keeps the stream vocabulary from being whatever the last `.emit(` decided.
+  "pnpm audit:stream-contracts",
+  "pnpm test:stream-contracts",
   // WIN-260 (M2.5). §5.3's clock discipline, which four context headers state in
   // PROSE and nothing checked: `Date.now()`, a no-argument `new Date()`,
   // `performance.now()`, `Math.random()` and `setTimeout` in a context's domain
@@ -2452,10 +2468,15 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      `ToolsDependencies` against the composition root. Its generator asserts
   //      the two registers' roots are disjoint, so this gate is also what stops
   //      either root list being widened into a superset of the other.
-  // 26 + 2 + 4 + 2 + 2 + 2 = 38.
+  //   +2 WIN-272 (M4.6): stream-contracts (audit + test). The drift-check M0.4 §2
+  //      names in its own WS and SSE rows and which did not exist — the AST walk
+  //      over every `.emit(` site, joined to a committed vocabulary inventory in
+  //      BOTH directions, plus the ADR's own five envelope families and the rule
+  //      that the stream major is a literal in exactly one module.
+  // 26 + 2 + 4 + 2 + 2 + 2 + 2 = 40.
   assert.equal(
     v1ReleaseGateCommands.length,
-    38,
+    40,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
@@ -4667,12 +4688,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   release gate list, so each gains the same `|| true` control -- the same
   //   shape as WIN-268's two pairs immediately above, and for the same reason.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 = 373. The count is pinned
+  //   WIN-272 (M4.6), +2. audit/test:stream-contracts join the same V1 release
+  //   gate list, so each gains the same `|| true` control -- the same shape as
+  //   WIN-268's and WIN-269's pairs above, and for the same reason.
+  //
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 = 375. The count is pinned
   // rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    373,
+    375,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

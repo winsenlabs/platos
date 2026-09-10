@@ -147,6 +147,8 @@ jobs:
           pnpm test:max-file-lines
           pnpm audit:kernel-content
           pnpm test:kernel-content
+          pnpm audit:stream-contracts
+          pnpm test:stream-contracts
           node scripts/arch/ambient-time.mjs
           node --test scripts/arch/ambient-time.test.mjs
           pnpm audit:sole-writer
@@ -646,10 +648,20 @@ jobs:
         # same class of defect as the tenancy Prisma delegate census A4 lit after
         # 1,064 commits: a gate is a gate only while a job names it.
         #
+        # WIN-272 (M4.6) ADDS A THIRD REDIS DIRECTORY AND A FIFTH CORE-API SUITE,
+        # and neither line was written from memory: `pnpm test:ci-policy` refused
+        # the commit that added `packages/adapters/redis-streams/src/*.integration
+        # .test.ts` until the script and this line existed. `redis-streams` brings
+        # the journal's conservation and ordering (25 cases) and the bus's
+        # at-least-once redelivery across separate connections (8), and
+        # `core-api:integration` picks up `stream-lane.integration.test.ts` — the
+        # whole stream lane over a real socket — with no new line needed, because
+        # that script selects the package rather than the file.
+        #
         # `scripts/ci-policy.test.mjs` now joins this step to the FILESYSTEM: it
         # enumerates every V1 integration suite on disk and fails if any package
-        # holding one is not selected by some job here. Deleting either line
-        # below turns `pnpm test:ci-policy` red, so this cannot go dark again by
+        # holding one is not selected by some job here. Deleting any line below
+        # turns `pnpm test:ci-policy` red, so this cannot go dark again by
         # omission.
         #
         # They FAIL when Docker is absent rather than skipping, exactly as the
@@ -658,6 +670,7 @@ jobs:
         run: |
           pnpm test:redis-ratelimit:integration
           pnpm test:redis-cache:integration
+          pnpm test:redis-streams:integration
           pnpm test:core-api:integration
 
   differential-state-conservation:

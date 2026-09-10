@@ -1743,7 +1743,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `docs-content.evidence.audit-receipts` (20 -> 21) and its rendered `.md`
     // on `docs-content.evidence.audit-notes` (13 -> 14). Both are `retain`,
     // both are under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
-    "docs-content": 23,
+    // WIN-272 (M4.6) 23 -> 24. ONE file, and it is a RECEIPT rather than a pair:
+    // `docs/audits/M4.6-stream-vocabulary.json`, the first complete census of what
+    // the V1 stream lanes put on a wire — sixteen rows across forty-six emit sites.
+    // There is no rendered `.md` beside it, unlike its two predecessors, because
+    // its whole content is a machine-compared list and a prose rendering would be a
+    // second copy nothing joins. It lands on the existing
+    // `docs-content.evidence.audit-receipts` rule (21 -> 22), is `retain`, is under
+    // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 24,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1875,7 +1883,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // times and whose three wrong versions are recorded as a control). All three
     // take the same blanket `root-infra.tooling.scripts` rule its predecessors
     // took (104 -> 107). NO LEDGER RULE CHANGED.
-    "root-infra": 83,
+    // WIN-272 (M4.6) 83 -> 85. TWO files, and NEITHER is a mutation ledger:
+    // `scripts/arch/stream-contracts.mjs` — the drift-check M0.4 §2 NAMES in its
+    // own WS and SSE rows and which did not exist — and
+    // `scripts/arch/stream-contracts.test.mjs`, its second reconciliation, which
+    // exercises each of the five rules against a copy of the REAL tree with one
+    // thing changed. Both take the same blanket `root-infra.tooling.scripts` rule
+    // every script above them took (107 -> 109). NO LEDGER RULE CHANGED.
+    "root-infra": 85,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2055,15 +2070,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 10 + 0 + 80 + 4 + 10 + 1532 + 23 + 83 = 1742.
   //
-  // WIN-272 (M4.6) 1742 -> 1759. SEVENTEEN files across TWO areas, each itemised
-  // on its own delta above: `packages` +10 (seven NET in the newly adopted
-  // `redis-streams`, three in `packages/kernel`) and `apps-core-api` +7 (the stream
-  // lane's three modules and its four suites). NOTHING lands in `root-infra`, which
-  // every M4 tranche before this one moved: this one adds no script and no
-  // repository-level fixture. The eight-key re-derivation from the merged
-  // `expectedDeltas` is
-  // 10 + 0 + 87 + 4 + 10 + 1542 + 23 + 83 = 1759.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1759);
+  // WIN-272 (M4.6) 1742 -> 1762. TWENTY files across FOUR areas, each itemised on
+  // its own delta above: `packages` +10 (seven NET in the newly adopted
+  // `redis-streams`, three in `packages/kernel`), `apps-core-api` +7 (the stream
+  // lane's three modules and its four suites), `root-infra` +2 (the stream-contract
+  // drift-check and its second reconciliation) and `docs-content` +1 (the stream
+  // vocabulary census that drift-check joins the tree to). The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 10 + 0 + 87 + 4 + 10 + 1542 + 24 + 85 = 1762.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1762);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2292,14 +2307,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the total, so the two arithmetics can disagree and be caught.
     // 1720 + 22 = 1742.
     //
-    // AND WIN-272 (M4.6) 1742 -> 1759 -- the TWENTY-FOURTH hand move. The same
-    // seventeen files as the `totalFiles` assertion above (ten in `packages` --
-    // seven NET in the newly adopted `redis-streams` and three in
-    // `packages/kernel` -- and seven in `apps-core-api`, the stream lane's three
-    // modules and its four suites), reached here by summing the per-area counts
-    // instead of reading the total, so the two arithmetics can disagree and be
-    // caught. 1742 + 17 = 1759.
-    rulesDocument.baseline.totalFiles + 1759
+    // AND WIN-272 (M4.6) 1742 -> 1762 -- the TWENTY-FOURTH hand move. The same
+    // twenty files as the `totalFiles` assertion above (ten in `packages`, seven in
+    // `apps-core-api`, two in `root-infra` and one in `docs-content`), reached here
+    // by summing the per-area counts instead of reading the total, so the two
+    // arithmetics can disagree and be caught. 1742 + 20 = 1762.
+    rulesDocument.baseline.totalFiles + 1762
   );
 });
 

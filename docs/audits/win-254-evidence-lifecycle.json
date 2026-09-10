@@ -66,6 +66,7 @@
         "docs/audits/M0.4-design-contract-map.json",
         "docs/audits/M0.4-design-contract-map.md",
         "docs/audits/M0.8-operator-operations.md",
+        "docs/audits/M4.6-stream-vocabulary.json",
         "docs/audits/M0.9-rest-census-independent.json",
         "docs/audits/M0.9-webapp-bff-matrix.json",
         "docs/audits/sbom/NON-VACUITY-PROOF.md",
@@ -129,7 +130,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "9b6d64c45c230c89c857251eb8877d85f2898c667cf3acd503968a359285e389",
+  "protectedPathSetSha256": "df52e403740aba88a43f783dc415d344264681d0cf08d47e93de95000258dff1",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -139,9 +140,9 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 256,
+  "entryCount": 257,
   "counts": {
-    "ACCEPTED": 230,
+    "ACCEPTED": 231,
     "SUPERSEDED-BY": 4,
     "POINT-IN-TIME": 21,
     "DRAFT": 1
@@ -1248,6 +1249,13 @@
       "date": "2026-08-30"
     },
     {
+      "path": "docs/audits/M4.6-stream-vocabulary.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "7907d5fbbcdead5d4d956074853f77dc4ca51a4e01b768ea9152f7cf5d3ed1ef",
+      "binds": "current-repository-truth"
+    },
+    {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",
       "status": "POINT-IN-TIME",
       "mode": "100644",
@@ -1526,14 +1534,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "2904074f8db2a271b9e746ff82b0802044b08c409cf2c2057d9ddc85e1701894",
+      "sha256": "af195b9ae71980eb2b07d77e16946bb3f5b237c3ecd61e357c31932b79fb06af",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "4367712fcc4d01bfe1d5ba9455e925f76379ae020840de72b61df6026882e9d6",
+      "sha256": "eca70667912f3f1fc4bb6b4c13e0068974fed4778f208edc9bd04369e74f1690",
       "binds": "current-repository-truth"
     },
     {
@@ -1603,7 +1611,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "35bb27b9ebf063c1d07ee0abd5c226d1c063648e83f8e1056c1f37f3ac0fe617",
+      "sha256": "83ae3aa0808b634060f92d31eb4089b55cfd517ad2d6eddb29004c512685d739",
       "binds": "current-repository-truth"
     },
     {

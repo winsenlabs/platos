@@ -95,8 +95,16 @@ test("committed lifecycle manifest classifies every approved evidence path exact
   // so the claim "composing `tools` takes these things" is re-measured rather
   // than recorded on a date. POINT-IN-TIME, SUPERSEDED-BY and DRAFT are
   // unchanged.
-  assert.equal(manifest.entryCount, 256, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, and the WIN-269 tool-lifecycle register");
-  assert.deepEqual(manifest.counts, { ACCEPTED: 230, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
+  // WIN-272 (M4.6): 256 -> 257 and ACCEPTED 230 -> 231. ONE addition and it is a
+  // RECEIPT WITHOUT A RENDERED NOTE, unlike its two predecessors — the stream
+  // vocabulary census is a machine-compared list and a prose rendering beside it
+  // would be a second copy nothing joins. ACCEPTED for the reason both registers
+  // above are: `audit:stream-contracts` re-derives every row from the two lanes'
+  // own source on each run and fails when the tree and the file disagree in EITHER
+  // direction, so a dated snapshot is precisely what it must not be.
+  // POINT-IN-TIME, SUPERSEDED-BY and DRAFT are unchanged.
+  assert.equal(manifest.entryCount, 257, "exact protected evidence corpus includes the design and licence provenance receipts, vendored source artifacts, the WIN-299 advisory disposition register, the WIN-284 differential coverage matrix, the WIN-259 secret-response census, the WIN-260 M2.5 milestone note, the WIN-268 MCP store-ownership register, the WIN-269 tool-lifecycle register, and the WIN-272 stream vocabulary census");
+  assert.deepEqual(manifest.counts, { ACCEPTED: 231, "SUPERSEDED-BY": 4, "POINT-IN-TIME": 21, DRAFT: 1 });
   assert.equal(POINT_IN_TIME_PATHS.length, 21);
   assert.equal(Object.keys(SUPERSESSIONS).length, 4);
   assert.deepEqual(Object.keys(manifest.counts), STATUSES);

@@ -75,6 +75,12 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   "docs/audits/M0.4-design-contract-map.json",
   "docs/audits/M0.4-design-contract-map.md",
   "docs/audits/M0.8-operator-operations.md",
+  // WIN-272 (M4.6). ACCEPTED rather than POINT-IN-TIME, and for the reason the
+  // capability matrix above is: it binds CURRENT repository truth rather than a
+  // dated scan. `audit:stream-contracts` fails unless every socket event name and
+  // frame type the live lanes emit has a row here AND every row is still emitted,
+  // so a snapshot classification would be false the moment an `.emit(` moved.
+  "docs/audits/M4.6-stream-vocabulary.json",
   "docs/audits/M0.9-rest-census-independent.json",
   "docs/audits/M0.9-webapp-bff-matrix.json",
   "docs/audits/sbom/NON-VACUITY-PROOF.md",
