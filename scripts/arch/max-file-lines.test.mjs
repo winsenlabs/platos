@@ -1440,6 +1440,7 @@ test("the live selectors scan an exact nonzero source census", () => {
       effectiveLines: 420,
       severity: "warning",
     },
+
     {
       // WIN-267 G1. THE NINETEENTH, and it is in the band on purpose rather than
       // queued for the hard error. Its length is thirteen cases that each need
@@ -1465,6 +1466,26 @@ test("the live selectors scan an exact nonzero source census", () => {
       // assertion in that case stayed green. No new case, so the test-case
       // census does not move for it.
       effectiveLines: 426,
+      severity: "warning",
+    },
+    {
+      // WIN-268 (M4.2) THE TOKEN LIFECYCLE. In the band ON PURPOSE and not queued for
+      // the hard error, and the reason is the same one `governance-eval-runs`'s note
+      // gives directly below: its length is TWELVE cases that need the SAME database.
+      // Splitting it along any seam would put a second `startIdentityHarness`, a
+      // second migration run and a second seeded tenant into the CI job for a file
+      // that is 417 against a 500 error.
+      //
+      // FOUR OF THE TWELVE EXIST BECAUSE A MUTATION SURVIVED, and two of those four
+      // are why this row exists at all: the suite was 386 effective lines before the
+      // sweep. `scripts/mutations-win268-lifecycle.json` P02 (the entity revocation's
+      // `revokedAt IS NULL` predicate, unproved because the platform cases cannot
+      // reach the second table) and P15 (a junk `McpToken.tier` normalised rather than
+      // refused, unproved because nothing wrote one) are the rows. A warning earned
+      // by closing two survivors is the shape this list's own note calls "a warning
+      // that is a shape" rather than a debt.
+      path: "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+      effectiveLines: 417,
       severity: "warning",
     },
     {
