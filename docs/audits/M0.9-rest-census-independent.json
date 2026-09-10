@@ -25,15 +25,15 @@
   },
   "totals": {
     "controllers": 37,
-    "independentUniqueRoutes": 296,
+    "independentUniqueRoutes": 300,
     "dualMountAliasOps": 19,
-    "manifestOps": 315,
-    "crossRootBindings": 2,
+    "manifestOps": 319,
+    "crossRootBindings": 6,
     "uniqueOperations": 313,
-    "crossRootOperatorBindings": 2,
+    "crossRootOperatorBindings": 6,
     "uniqueOperatorOperations": 131,
     "independentOperatorFloor": 103,
-    "manifestOperator": 133,
+    "manifestOperator": 137,
     "scanRoots": [
       {
         "id": "agent",
@@ -53,9 +53,9 @@
         "why": "WIN-267 (M4.1) publishes the canonical V1 REST surface here. It carries no controller yet; the root is declared NOW so the FIRST route to land is counted by this census rather than discovered by a reader months later.",
         "present": true,
         "sourceControllers": 9,
-        "sourceDecorators": 14,
-        "expandedOperations": 14,
-        "manifestOperations": 14,
+        "sourceDecorators": 18,
+        "expandedOperations": 18,
+        "manifestOperations": 18,
         "manifestControllers": 9,
         "ok": true
       }
@@ -349,11 +349,11 @@
       "controller": "McpEntityTokensController",
       "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
       "scanRoot": "core-api-transports",
-      "independentDecorators": 1,
+      "independentDecorators": 3,
       "mountMultiplier": 1,
-      "manifestOps": 1,
+      "manifestOps": 3,
       "independentOperatorFloor": 0,
-      "manifestOperator": 1,
+      "manifestOperator": 3,
       "routeOk": true,
       "operatorOk": true
     },
@@ -385,11 +385,11 @@
       "controller": "McpPlatformTokensController",
       "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
       "scanRoot": "core-api-transports",
-      "independentDecorators": 1,
+      "independentDecorators": 3,
       "mountMultiplier": 1,
-      "manifestOps": 1,
+      "manifestOps": 3,
       "independentOperatorFloor": 0,
-      "manifestOperator": 1,
+      "manifestOperator": 3,
       "routeOk": true,
       "operatorOk": true
     },
@@ -540,5 +540,5 @@
   ],
   "ok": true,
   "failures": [],
-  "sourceDigest": "a994e8489bd9c80d9f0de48677a718ce58ff9a5fe21c95646e41ab25923be678"
+  "sourceDigest": "fd3dc7025594562b40ad48be45e738da47688fc1daa81865123ce498e6af6f99"
 }

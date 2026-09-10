@@ -2108,15 +2108,15 @@
     ]
   },
   "expected": {
-    "totalFiles": 5252,
+    "totalFiles": 5260,
     "areaCounts": {
       "apps-agent": 529,
-      "apps-core-api": 101,
+      "apps-core-api": 103,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
       "docs-content": 744,
       "internal-packages": 1174,
-      "packages": 2187,
+      "packages": 2193,
       "root-infra": 325
     },
     "kindCounts": {
@@ -2128,14 +2128,14 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2133,
-      "test": 1070
+      "source": 2138,
+      "test": 1073
     },
     "dispositionCounts": {
       "archive": 7,
       "move-refactor": 1684,
       "regenerate": 42,
-      "retain": 3517,
+      "retain": 3525,
       "unresolved": 2
     },
     "protectedCount": 1640,
@@ -2154,8 +2154,8 @@
       "apps-core-api.doc.package": 1,
       "apps-core-api.entry.composition-root": 2,
       "apps-core-api.source.process": 32,
-      "apps-core-api.source.transports": 28,
-      "apps-core-api.test.suites": 31,
+      "apps-core-api.source.transports": 29,
+      "apps-core-api.test.suites": 32,
       "apps-mcp-stdio.config.package": 2,
       "apps-mcp-stdio.doc.package": 1,
       "apps-mcp-stdio.entry.bin": 1,
@@ -2231,13 +2231,13 @@
       "packages.adapters.config": 58,
       "packages.adapters.doc": 15,
       "packages.adapters.fixture": 3,
-      "packages.adapters.source": 279,
-      "packages.adapters.test": 193,
+      "packages.adapters.source": 280,
+      "packages.adapters.test": 194,
       "packages.config.build": 29,
       "packages.contexts.config": 37,
       "packages.contexts.doc": 17,
-      "packages.contexts.source": 727,
-      "packages.contexts.test": 362,
+      "packages.contexts.source": 730,
+      "packages.contexts.test": 363,
       "packages.doc.package": 9,
       "packages.generated.release-history": 5,
       "packages.kernel.config": 3,
@@ -2278,6 +2278,6 @@
       "root-infra.tooling.scripts": 118,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "f2058a4f60530556cff383f6e835c34e151b50a721dd3c41ef5da97257be0a8e"
+    "classificationSha256": "6beada1b05f185d47e6b0a4c87376d7b9748d2dc00d884e4bb2e3353eedcf1aa"
   }
 }

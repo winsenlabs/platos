@@ -799,7 +799,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `http/idempotency-policy.test.ts` and `transports/rest/route-manifest.test.ts`
     // are EDITS; the six regenerated artifacts already existed. NO LEDGER RULE
     // CHANGED.
-    "apps-core-api": 90,
+    //
+    // WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 90 -> 92. TWO files, both under
+    // `src/transports/mcp/`: `token-lifecycle.ts`, the projection and query grammar
+    // the four routes share, and its suite. The ROUTES add no file: all four land in
+    // the two mint controllers, which is why no `CORE_API_MOUNTED_CONTROLLERS` entry
+    // moved either. 90 + 2 = 92, and NO LEDGER RULE CHANGED — `source.transports` and
+    // `test.suites` matched both new files without one.
+    "apps-core-api": 92,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1484,7 +1491,22 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `app.module.ts`, `context-ports.ts`, `main.ts`, both registers, the skeleton
     // generator, the project graph, the boundary census and the env-access pin add
     // no file.
-    packages: 1550,
+    //
+    // WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 1550 -> 1556. SIX files, split
+    // the way the tranche's evidence is split. FOUR under
+    // `packages/contexts/identity-access/application/`: the two use cases the four
+    // routes reach (`list-bearer-credentials.ts`, `revoke-bearer-credential.ts`),
+    // `in-memory-bearer-listings.ts` — the double's listing half, split out on the
+    // ADR M0.3 §6 budget `max-file-lines.mjs` enforces rather than at a line number —
+    // and `bearer-credential-lifecycle.test.ts`. TWO under
+    // `packages/adapters/postgres-tenancy/src/`: `identity-bearer-lifecycle.ts`,
+    // which is LIST/COUNT/REVOKE composed into the bearer store because that file was
+    // already at its budget, and `identity-bearer-lifecycle.integration.test.ts`.
+    // Everything else is an EDIT: the contract barrel, the ports barrel, the domain's
+    // two planners and its new refusals, the service, the double, the bearer store and
+    // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
+    // RULE CHANGED.
+    packages: 1556,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2227,7 +2249,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `rest-census-independent.test.mjs`, the tools contract barrel and every
   // regenerated artifact are edited IN PLACE. The eight-key re-derivation from the
   // merged `expectedDeltas` is 15 + 1 + 90 + 4 + 10 + 1550 + 24 + 89 = 1783.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1783);
+  //
+  // AND WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 1783 -> 1791. EIGHT files, in
+  // the two areas their own deltas above itemise: 2 in `apps-core-api` (the shared
+  // transport projection `transports/mcp/token-lifecycle.ts` and its suite) and 6 in
+  // `packages` (two use cases, the double's listing half, the adapter's lifecycle
+  // store, and the two suites). Nothing else this stage adds a file — the four
+  // ROUTES land in the two mint controllers that already existed, because the entity
+  // pair check is the same check for a listing and a revocation as for a mint — and
+  // the contract, the ports, the domain, the service, the double, the bearer store,
+  // `harness.ts`, `generate-control-plane.mjs`, `rest-schema-derivation.mjs`, both
+  // registers, the test-case census and every regenerated artifact are edited IN
+  // PLACE. The eight-key re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 92 + 4 + 10 + 1556 + 24 + 89 = 1791.
+  //
+  // A NOTE ON THE NUMBERING, because it is already inconsistent and silence would
+  // make it worse: `scripts/arch/test-case-census.mjs` calls the tranche BEFORE this
+  // one "stage 2" while this file calls it "STAGE 3". Both are internally
+  // consistent and they disagree with each other, so this stage is "STAGE 4" HERE
+  // and "stage 3" THERE, and each file's own sequence is what a reader of that file
+  // should follow.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1791);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2503,7 +2545,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `expectedDeltas["apps-core-api"]`, for the reason the note above gives: this
     // reconciliation exists because the two figures are derived differently, and it
     // has caught the omission SIX times. 1780 + 3 = 1783.
-    rulesDocument.baseline.totalFiles + 1783
+    //
+    // AND WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 1783 -> 1791, the THIRTIETH
+    // hand move. The same EIGHT files as the `totalFiles` assertion above --
+    // `apps-core-api` +2 and `packages` +6 -- reached here by summing the per-area
+    // counts instead of reading the total. MOVED IN THE SAME EDIT as that assertion
+    // and as both `expectedDeltas` keys, for the reason the note above gives: the two
+    // figures are derived differently and this reconciliation has caught the omission
+    // SIX times. 1783 + 8 = 1791.
+    rulesDocument.baseline.totalFiles + 1791
   );
 });
 

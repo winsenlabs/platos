@@ -11,8 +11,8 @@ mechanisms — a generated manifest against controller sources globbed and parse
 Both counts must agree or the denominator is not established and this gate fails.
 
 - operations enumerated here: **313**
-- operations counted independently: **313** (315 route bindings = 296 unique routes + 19 dual-mount aliases, less 2 served by both deployables, across 37 controllers)
-- operator-protected, enumerated here: **131**; counted independently: **131** (133 bindings less 2 served by both), at or above the source-derived floor of 103
+- operations counted independently: **313** (319 route bindings = 300 unique routes + 19 dual-mount aliases, less 6 served by both deployables, across 37 controllers)
+- operator-protected, enumerated here: **131**; counted independently: **131** (137 bindings less 6 served by both), at or above the source-derived floor of 103
 
 ### Split by scan root
 
@@ -24,7 +24,7 @@ reading zero is an assertion, not an omission — the first route to land there 
 | scan root | directory | enumerated here | counted independently | source controllers | agrees |
 | --- | --- | ---: | ---: | ---: | :-: |
 | agent | `apps/agent/src` | 301 | 301 | 28 | yes |
-| core-api-transports | `apps/core-api/src/transports` | 14 | 14 | 9 | yes |
+| core-api-transports | `apps/core-api/src/transports` | 18 | 18 | 9 | yes |
 
 ## Why the covered count is small, and why that is the honest answer
 
