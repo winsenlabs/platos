@@ -171,6 +171,7 @@ jobs:
           pnpm test:end-user-presence-ancestry
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
+          pnpm test:public-guest-boundary
           pnpm test:advisory
           pnpm audit:advisory:check
           pnpm audit:advisory:nonvacuity

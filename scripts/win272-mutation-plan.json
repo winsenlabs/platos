@@ -379,6 +379,116 @@
       ],
       "container": true,
       "$note": "THE ROW M23 COULD NOT BE. M23 asks whether the key is built from the authorization's scope or the path's, and those are equal by construction; this asks whether the authorization HAPPENED, which is the property that actually keeps one tenant's frames away from another"
+    },
+    {
+      "id": "M27",
+      "subject": "the guest session's server-side expiry fence",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "    if (Number(parsed[1]) * 1_000 <= now()) return \"\";\n",
+      "replace": "",
+      "breaks": "a captured Cookie header is admitted for as long as the platform token behind it lives, so the lifetime is enforced only by the browser that chooses to send it -- which is the defect this tranche closed",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M28",
+      "subject": "the same-origin gate on a SameSite=None credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "  return origin === new URL(request.url).origin && contentType === \"application/json\";",
+      "replace": "  return contentType === \"application/json\";",
+      "breaks": "any site can POST a guest turn with the visitor's own partitioned cookie: the Origin comparison IS the CSRF defence here, and dropping it leaves only a content type an attacker sets themselves",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M29",
+      "subject": "the cookie scope hash binding a session to one agent AND one environment",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "    .update(`${agentId}:${environmentId}`)",
+      "replace": "    .update(agentId)",
+      "breaks": "one agent's guest session is accepted against every environment it exists in, so a session minted in staging reads production",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M30",
+      "subject": "CHIPS partitioning on the embed credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "  return `${serialized}; Partitioned`;",
+      "replace": "  return serialized;",
+      "breaks": "the guest cookie joins the unpartitioned jar, so every embedding site shares one visitor's session instead of each getting its own",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M31",
+      "subject": "the legacy value shape, which is the only thing an old browser still holds",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "    if (parsed === null) return \"\";",
+      "replace": "    if (parsed === null) return value;",
+      "breaks": "a value with no expiry prefix is admitted unbounded, which re-opens exactly the hole the prefix closed -- and does it for every cookie already in a browser",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M32",
+      "subject": "the rate-limit key on an UNAUTHENTICATED mint",
+      "file": "apps/webapp/app/services/platosAgent.server.ts",
+      "find": "      \"X-Forwarded-For\": options.forwardedFor,\n",
+      "replace": "",
+      "breaks": "every guest-token mint arrives at the agent from the BFF's own address, so the per-IP bucket -- the only defence an unauthenticated mint has -- counts the whole internet as one caller",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M33",
+      "subject": "the visitor's disconnect reaching the agent",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "find": "      sessionToken,\n      { signal: request.signal },\n    );",
+      "replace": "      sessionToken,\n      {},\n    );",
+      "breaks": "a visitor closing the tab leaves the agent's turn running to completion against a socket nobody is reading, which is the leak a public guest surface can be pointed at",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M34",
+      "subject": "the refusal that must not reflect the agent's own bytes",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "find": "      return json({ error: \"Streaming failed\" }, { status: upstream.status || 502 });",
+      "replace": "      return json({ error: `Streaming failed: ${await upstream.text()}` }, { status: upstream.status || 502 });",
+      "breaks": "an upstream failure's detail -- provider error codes, and in the case this suite scripts a provider key -- is handed to an anonymous visitor",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M35",
+      "subject": "the anti-buffering directive that makes a proxied stream a stream",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "find": "        \"Cache-Control\": \"no-cache, no-transform\",",
+      "replace": "        \"Cache-Control\": \"no-cache\",",
+      "breaks": "an intermediary is free to gzip the event stream, which buffers it: the visitor gets the whole turn at the end, indistinguishable from a stream that never streamed",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M36",
+      "subject": "the mint's refusal to hand a browser a half-minted session",
+      "file": "apps/webapp/app/routes/api.v1.public.guest-token.ts",
+      "find": "      typeof record.token !== \"string\" || !record.token ||\n",
+      "replace": "",
+      "breaks": "an agent answering without a token still produces a Set-Cookie, so the browser holds a guest session whose value is the literal text undefined and every later turn 401s with no way to recover",
+      "suites": [
+        "webapp-guest"
+      ]
     }
   ]
 }

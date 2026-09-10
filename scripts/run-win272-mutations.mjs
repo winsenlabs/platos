@@ -94,6 +94,17 @@ const SUITES = {
     command: ["pnpm", "test:redis-streams:integration"],
     container: true,
   },
+  // WIN-272 (M4.6) tranche 2. The public-guest and embed boundary, over two real
+  // `node:http` listeners with `fetch` UNSTUBBED. NO CONTAINER: the refusals this
+  // surface owns are HTTP-level, so the whole suite is a laptop suite -- which is
+  // also why every row that names it is swept on every run rather than skipped.
+  "webapp-guest": {
+    command: [
+      "pnpm", "--filter", "webapp", "exec", "vitest", "run",
+      "test/publicGuestBoundary.test.ts", "--no-file-parallelism",
+    ],
+    container: false,
+  },
   "core-api-integration": {
     command: [
       "pnpm", "--filter", "@platos/core-api", "exec", "vitest", "run",

@@ -1,24 +1,127 @@
 {
   "issue": "WIN-272 (M4.6)",
-  "purpose": "One row per broken decision, with the suite that noticed and the case that failed. Re-runnable: node scripts/run-win272-mutations.mjs. A SURVIVOR is recorded as one and never explained away, and a mutation the compiler refuses is counted apart from a kill because a type error is evidence the type layer holds rather than evidence a case noticed.",
+  "baseline": [
+    "webapp-guest"
+  ],
+  "purpose": "One row per broken decision, with the suite that noticed and the case that failed. Every suite named here was run UNMUTATED and green before the first mutation was applied -- a kill is only evidence if the suite passes on a clean tree. Re-runnable: node scripts/run-win272-mutations.mjs. A SURVIVOR is recorded as one and never explained away, and a mutation the compiler refuses is counted apart from a kill because a type error is evidence the type layer holds rather than evidence a case noticed. A row whose suite TIMED OUT is counted apart from both, because a mutation that hangs a suite is not one that kills it.",
   "totals": {
-    "rows": 1,
-    "killed": 1,
+    "rows": 10,
+    "killed": 10,
     "survived": 0,
     "refusedByCompiler": 0,
+    "timedOut": 0,
     "skipped": 0
   },
   "rows": [
     {
-      "id": "M04",
-      "subject": "why a stream stopped",
-      "file": "packages/kernel/src/vo/stream-frame.ts",
-      "breaks": "a `stream.offline` frame with no cursor of its own classifies as `severed` rather than `interrupted`, so the reader loses the fact that the SERVER let it go on purpose -- the one distinction an operator needs to tell a policy decision from a crash",
+      "id": "M27",
+      "subject": "the guest session's server-side expiry fence",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "a captured Cookie header is admitted for as long as the platform token behind it lives, so the lifetime is enforced only by the browser that chooses to send it -- which is the defect this tranche closed",
       "verdict": "KILLED",
-      "killedBy": "kernel",
+      "killedBy": "webapp-guest",
       "cases": [
-        "why a stream stopped > falls back to the reader's position when the offline frame carries none",
-        "why a stream stopped > gives every terminal frame type a classification that is not `severed`"
+        "the guest session's LIFETIME is now enforced by the server and not only by the browser > REFUSES A REPLAYED COOKIE PAST ITS OWN EXPIRY, without contacting the agent"
+      ]
+    },
+    {
+      "id": "M28",
+      "subject": "the same-origin gate on a SameSite=None credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "any site can POST a guest turn with the visitor's own partitioned cookie: the Origin comparison IS the CSRF defence here, and dropping it leaves only a content type an attacker sets themselves",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the stream's refusals are the security boundary, and every one is reached first > refuses a CROSS-ORIGIN mutation with 403 and never contacts the agent",
+        "the stream's refusals are the security boundary, and every one is reached first > refuses a mutation with NO Origin header at all"
+      ]
+    },
+    {
+      "id": "M29",
+      "subject": "the cookie scope hash binding a session to one agent AND one environment",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "one agent's guest session is accepted against every environment it exists in, so a session minted in staging reads production",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the stream's refusals are the security boundary, and every one is reached first > REFUSES A COOKIE MINTED FOR ANOTHER ENVIRONMENT on the same agent"
+      ]
+    },
+    {
+      "id": "M30",
+      "subject": "CHIPS partitioning on the embed credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "the guest cookie joins the unpartitioned jar, so every embedding site shares one visitor's session instead of each getting its own",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the unauthenticated mint refuses before it spends an upstream round trip > writes a cookie a browser will keep out of script, off plaintext and out of a third party's jar"
+      ]
+    },
+    {
+      "id": "M31",
+      "subject": "the legacy value shape, which is the only thing an old browser still holds",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "a value with no expiry prefix is admitted unbounded, which re-opens exactly the hole the prefix closed -- and does it for every cookie already in a browser",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the guest session's LIFETIME is now enforced by the server and not only by the browser > refuses a value with no expiry prefix — the shape minted before this fence existed"
+      ]
+    },
+    {
+      "id": "M32",
+      "subject": "the rate-limit key on an UNAUTHENTICATED mint",
+      "file": "apps/webapp/app/services/platosAgent.server.ts",
+      "breaks": "every guest-token mint arrives at the agent from the BFF's own address, so the per-IP bucket -- the only defence an unauthenticated mint has -- counts the whole internet as one caller",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the unauthenticated mint refuses before it spends an upstream round trip > forwards the rate-limit key and NOT the visitor's own cookie jar"
+      ]
+    },
+    {
+      "id": "M33",
+      "subject": "the visitor's disconnect reaching the agent",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "breaks": "a visitor closing the tab leaves the agent's turn running to completion against a socket nobody is reading, which is the leak a public guest surface can be pointed at",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "a guest that closes the tab mid-stream > TEARS THE AGENT'S TURN DOWN rather than leaving it streaming into nothing"
+      ]
+    },
+    {
+      "id": "M34",
+      "subject": "the refusal that must not reflect the agent's own bytes",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "breaks": "an upstream failure's detail -- provider error codes, and in the case this suite scripts a provider key -- is handed to an anonymous visitor",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "a stream that ends because the turn finished is distinguishable from one that died > reports an upstream refusal WITHOUT reflecting the agent's own bytes"
+      ]
+    },
+    {
+      "id": "M35",
+      "subject": "the anti-buffering directive that makes a proxied stream a stream",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "breaks": "an intermediary is free to gzip the event stream, which buffers it: the visitor gets the whole turn at the end, indistinguishable from a stream that never streamed",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "a stream that ends because the turn finished is distinguishable from one that died > ends cleanly on the agent's own terminal frame, with the anti-buffering headers a proxy needs"
+      ]
+    },
+    {
+      "id": "M36",
+      "subject": "the mint's refusal to hand a browser a half-minted session",
+      "file": "apps/webapp/app/routes/api.v1.public.guest-token.ts",
+      "breaks": "an agent answering without a token still produces a Set-Cookie, so the browser holds a guest session whose value is the literal text undefined and every later turn 401s with no way to recover",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the unauthenticated mint refuses before it spends an upstream round trip > writes NO cookie when the agent answers with a half-minted session"
       ]
     }
   ]

@@ -49,7 +49,9 @@
 // and a passing one look identical in a CI summary.
 
 import { execFileSync } from "node:child_process";
+import { once } from "node:events";
 import { readFileSync } from "node:fs";
+import { connect } from "node:net";
 import { resolve } from "node:path";
 
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
@@ -846,4 +848,201 @@ describe("two readers on one stream", () => {
     expect(framesOf(first).map((event) => event.frame["seq"])).toEqual(expected);
     expect(framesOf(second).map((event) => event.frame["seq"])).toEqual(expected);
   }, 60_000);
+});
+
+describe("a consumer slower than the producer cannot hold the process hostage", () => {
+  /**
+   * THE LOAD HALF OF THE ACCEPTANCE, AND THE ONLY CASE IN THIS FILE THAT CANNOT USE
+   * `fetch`.
+   *
+   * `fetch` reads a response body into its own queue whether the test asks for it or
+   * not, so a client built on it is never actually slow — the buffering happens
+   * inside the client and the server's socket drains normally. A slow consumer is a
+   * socket that is NOT being read, which means a raw one: the request goes out by
+   * hand and nothing ever consumes the answer, so the bytes back up in the client's
+   * receive buffer, then the server's send buffer, then the process's own write
+   * queue, and `write()` starts returning false.
+   *
+   * WHAT MUST THEN HAPPEN is what `drainDeadlineMs` exists for: the pump waits for a
+   * `drain` that is not coming, gives up, and lets the reader go. What must NOT
+   * happen is the shape this case would catch — a lane that waits forever holds one
+   * turn's frames in this process's heap for every abandoned tab, which is a denial
+   * of service anyone with a browser can perform.
+   *
+   * IT IS ALSO WHY `consumer-too-slow` WRITES NO TERMINAL FRAME: the reason we are
+   * here is that writing does not work, so a lane that tried would block again on
+   * the frame explaining that it cannot block. The client is left with no terminal
+   * frame, which `classifyStreamEnd` reports as `severed` and `isResumable` says to
+   * resume — the correct answer, because the stream really is still growing.
+   */
+  it("STOPS WRITING to a socket nobody is reading, writes no terminal frame, and keeps the stream resumable", async () => {
+    // Frames big enough that a few hundred of them cannot fit in any buffer between
+    // here and there: ~40 KiB each, which is under the 64 KiB wire ceiling.
+    const bulk = "y".repeat(40_000);
+    const total = 400;
+    for (let batch = 0; batch < total; batch += 50) {
+      await produce(
+        ENVIRONMENT,
+        "slow-consumer",
+        Array.from({ length: 50 }, (_, index) =>
+          frame(batch + index + 1, { fields: { text: bulk } }),
+        ),
+      );
+    }
+
+    const socket = connect({ host: running.host, port: running.port });
+    await once(socket, "connect");
+    // NOTHING IS EVER READ FROM THIS SOCKET UNTIL THE ASSERTIONS BELOW. `pause()`
+    // and the absence of a `data` listener are what make the consumer slow; a single
+    // `on("data")` anywhere here would drain it and the case would prove nothing.
+    socket.pause();
+    let received = 0;
+    socket.write(
+      `GET ${streamPath(ENVIRONMENT, "slow-consumer")} HTTP/1.1\r\n` +
+        `Host: ${running.host}:${String(running.port)}\r\n` +
+        `Authorization: Bearer ${ADMIN_TOKEN}\r\n` +
+        "Accept: text/event-stream\r\n" +
+        "Connection: close\r\n\r\n",
+    );
+
+    // Longer than `DEFAULT_SSE_OPTIONS.drainDeadlineMs` (10s), so the deadline has
+    // certainly passed by the time anything is read.
+    await new Promise((resolve) => setTimeout(resolve, 13_000));
+
+    // NOW drain, and see how far the server got before it let go.
+    const chunks: Buffer[] = [];
+    socket.on("data", (chunk: Buffer) => {
+      received += chunk.length;
+      chunks.push(chunk);
+    });
+    socket.resume();
+    const ended = await Promise.race([
+      once(socket, "close").then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 20_000)),
+    ]);
+    socket.destroy();
+
+    const body = Buffer.concat(chunks).toString("utf8");
+    // THE SERVER LET GO. A lane with no drain deadline would still be holding this
+    // request, and the socket would not have closed.
+    expect(ended).toBe(true);
+    // IT ANSWERED — this is a real 200 event stream and not a refusal.
+    expect(body.startsWith("HTTP/1.1 200")).toBe(true);
+    expect(body).toContain("text/event-stream");
+    // AND IT DID NOT DELIVER THE WHOLE RUN. 400 frames of 40 KiB is ~16 MB; the
+    // server gave up part way, which is the entire point. The bound is generous on
+    // purpose: what matters is that it is a BOUND, not its exact value.
+    expect(received).toBeLessThan(16_000_000);
+    // NO TERMINAL FRAME. `consumer-too-slow` is absent from `TERMINAL_FAULTS`
+    // because the socket that would carry the explanation is the broken thing.
+    expect(body).not.toContain("stream.error");
+    expect(body).not.toContain("STREAM_");
+
+    // THE STREAM IS UNTOUCHED AND STILL UNSEALED: one slow tab must not end a turn.
+    const state = await journal.read(journalStreamId(ENVIRONMENT, "slow-consumer"), null, {
+      limit: 1,
+      blockMs: 0,
+    });
+    expect(state.kind === "page" && state.seal).toBeNull();
+
+    // AND THE PROCESS IS STILL SERVING EVERYONE ELSE — a reader that reads is served
+    // normally while the slow one was being held and after it was let go.
+    const alive = await fetch(`${base}/livez`);
+    expect(alive.status).toBe(200);
+    const healthy = await readStream(streamPath(ENVIRONMENT, "slow-consumer"), {
+      token: ADMIN_TOKEN,
+      stopAfter: 3,
+      budgetMs: 20_000,
+    });
+    expect(framesOf(healthy).map((event) => event.frame["seq"])).toEqual([1, 2, 3]);
+  }, 180_000);
+});
+
+describe("a frame the wire cannot carry", () => {
+  /**
+   * THE OTHER HALF OF "security and load tests cover slow consumers and oversized
+   * payloads", and the interesting part is not the refusal — it is the POSITION.
+   *
+   * The pump's order is encode, then write, then advance, so a frame the encoder
+   * refuses stops the stream at the position BEFORE it. That is what makes the
+   * refusal safe: a resuming client is handed the same bad frame again rather than
+   * the one after it, so a producer defect can never become a silent gap in a
+   * conversation. Advancing first would have turned one oversized frame into a
+   * missing one, and nothing downstream could tell.
+   */
+  it("ends the stream at the frame BEFORE it, and a resume is handed the same frame rather than a gap", async () => {
+    // Past `STREAM_MAX_FRAME_BYTES` (65_536) once the envelope is around it.
+    const huge = "z".repeat(70_000);
+    await produce(ENVIRONMENT, "oversized", [
+      frame(1),
+      frame(2),
+      frame(3, { fields: { text: huge } }),
+      frame(4),
+    ]);
+
+    const read = await readStream(streamPath(ENVIRONMENT, "oversized"), {
+      token: ADMIN_TOKEN,
+      budgetMs: 30_000,
+    });
+    expect(read.status).toBe(200);
+    expect(read.closedByServer).toBe(true);
+    const frames = framesOf(read);
+    // THE TWO GOOD FRAMES ARRIVED, THE BAD ONE DID NOT, AND NEITHER DID THE ONE
+    // AFTER IT. Delivering frame 4 would be the silent gap.
+    const content = frames.filter((event) => event.frame["t"] === "assistant.delta");
+    expect(content.map((event) => event.frame["seq"])).toEqual([1, 2]);
+    const last = frames[frames.length - 1];
+    expect(last?.frame["t"]).toBe("stream.error");
+    expect(last?.frame["code"]).toBe("STREAM_FRAME_TOO_LARGE");
+    // NUMBERED FROM THE LAST FRAME DELIVERED, so a correct client applies it.
+    expect(Number(last?.frame["seq"])).toBe(3);
+    // AND CARRYING NO `id:`, so the client's resume position stays at frame 2.
+    expect(last?.id).toBeNull();
+    // NOTHING BEYOND THE TERMINAL FRAME. A trailing frame after the end is the
+    // "trailing invalid frames" the acceptance forbids.
+    expect(frames.filter((event) => event.frame["t"] === "stream.error")).toHaveLength(1);
+
+    // THE CLIENT'S OWN ADMISSION RULE SEES NO GAP in what it received: 1 then 2 then
+    // the terminal frame at 3, each applied exactly once.
+    let lastApplied = 0;
+    for (const event of frames) {
+      const seq = Number(event.frame["seq"]);
+      const admitted = admitFrame(lastApplied, {
+        sv: STREAM_SCHEMA_VERSION,
+        family: "sse.turn",
+        t: String(event.frame["t"]),
+        seq,
+        ts: 0,
+        fields: {},
+      });
+      expect(admitted.kind).toBe("apply");
+      lastApplied = seq;
+    }
+
+    // AND THE RESUME IS HANDED THE SAME BAD FRAME, NOT THE ONE AFTER IT. This is the
+    // assertion the whole case exists for: the position did not advance past a frame
+    // that was never delivered.
+    const resumed = await readStream(streamPath(ENVIRONMENT, "oversized"), {
+      token: ADMIN_TOKEN,
+      resumeFrom: frames[1]?.id ?? cursor(ENVIRONMENT, "oversized", 2),
+      budgetMs: 30_000,
+    });
+    const resumedFrames = framesOf(resumed);
+    expect(resumedFrames.map((event) => event.frame["seq"])).toEqual([3]);
+    expect(resumedFrames[0]?.frame["t"]).toBe("stream.error");
+    expect(resumedFrames[0]?.frame["code"]).toBe("STREAM_FRAME_TOO_LARGE");
+    // The leading meta says where it resumed from, so the client can check the
+    // server agreed with it.
+    expect(metaOf(resumed)?.["replayFrom"]).toBe(frames[1]?.id);
+
+    // A CLIENT THAT SKIPS THE BAD FRAME MAKES PROGRESS: resuming from seq 3 delivers
+    // frame 4, so the refusal is recoverable rather than a permanently stuck stream.
+    const past = await readStream(streamPath(ENVIRONMENT, "oversized"), {
+      token: ADMIN_TOKEN,
+      resumeFrom: cursor(ENVIRONMENT, "oversized", 3),
+      stopAfter: 1,
+      budgetMs: 20_000,
+    });
+    expect(framesOf(past).map((event) => event.frame["seq"])).toEqual([4]);
+  }, 180_000);
 });

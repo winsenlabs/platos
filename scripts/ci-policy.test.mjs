@@ -179,6 +179,18 @@ const v1ReleaseGateCommands = [
   "pnpm test:end-user-presence-ancestry",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
+  // WIN-272 (M4.6), +1. The PUBLIC-GUEST AND EMBED BOUNDARY, over two real
+  // `node:http` listeners with `fetch` unstubbed. Named here rather than left to
+  // `pnpm test:webapp`, for two reasons, and the second is the load-bearing one.
+  // `pnpm test:webapp` is NOT a CI gate and is RED on `v1` itself -- six test files
+  // fail there, and `git log v1..HEAD -- apps/webapp` is empty, so a suite added to
+  // that runner would have been a suite nothing ran. And the filesystem enumeration
+  // further down cannot reach this one: it walks the V1 packages for
+  // `*.integration.test.ts`, and this surface is neither a V1 package nor named that
+  // way. Without this line the unauthenticated guest mint, the same-origin gate on a
+  // `SameSite=None` credential, the per-agent cookie scope and the guest session
+  // expiry could every one of them be broken with a green CI.
+  "pnpm test:public-guest-boundary",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   // WIN-299 (M2.6). audit:advisory:check now fails on any un-dispositioned
@@ -428,6 +440,7 @@ const expectedV1EvidenceCommands = [
   "pnpm test:end-user-presence-ancestry",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
+  "pnpm test:public-guest-boundary",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm audit:advisory:nonvacuity",
@@ -597,6 +610,12 @@ const expectedV1PackageScripts = new Map([
   ["test:max-file-lines", "node --test scripts/arch/max-file-lines.test.mjs"],
   ["test:webapp-image-inventory", "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs"],
   ["test:webapp-inventory-contract", "node --test scripts/webapp-inventory-contract.test.mjs"],
+  // WIN-272 (M4.6). The command is `--filter webapp exec vitest run <file>` and not
+  // `pnpm test:webapp`, which would drag in six suites that are red on `v1`.
+  [
+    "test:public-guest-boundary",
+    "pnpm --filter webapp exec vitest run test/publicGuestBoundary.test.ts --no-file-parallelism",
+  ],
   // WIN-299 (M2.6): test:advisory now covers the disposition gate's unit suite
   // alongside the receipt suite, the same two-file shape test:webapp-image-inventory
   // already uses above.
@@ -2473,10 +2492,12 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      over every `.emit(` site, joined to a committed vocabulary inventory in
   //      BOTH directions, plus the ADR's own five envelope families and the rule
   //      that the stream major is a literal in exactly one module.
-  // 26 + 2 + 4 + 2 + 2 + 2 + 2 = 40.
+  //   +1 WIN-272 (M4.6): the public-guest and embed boundary suite. See its own note
+  //      in the list above for why it cannot be left to `pnpm test:webapp`.
+  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 = 41.
   assert.equal(
     v1ReleaseGateCommands.length,
-    40,
+    41,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
@@ -4692,12 +4713,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   gate list, so each gains the same `|| true` control -- the same shape as
   //   WIN-268's and WIN-269's pairs above, and for the same reason.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 = 375. The count is pinned
+  //   WIN-272 (M4.6), +2. test:public-guest-boundary joins the V1 release gate
+  //   selector AND the exact-script table, so both the CI line and the command it
+  //   resolves to are falsifiable — the same two-checkpoint shape every named
+  //   script above has.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 = 377. The count is pinned
   // rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    375,
+    377,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
