@@ -104,9 +104,17 @@ const ADMIN_TOKEN = "win272-admin-session-token";
 const OUTSIDER_TOKEN = "win272-outsider-session-token";
 const EXPIRED_TOKEN = "win272-expired-session-token";
 const REVOKED_TOKEN = "win272-revoked-session-token";
-/** A session whose window closes DURING a stream. Its expiry is set at seed time. */
-const SHORT_TOKEN = "win272-short-window-session-token";
-const SHORT_WINDOW_MS = 2_500;
+/**
+ * How long a short-window session lives.
+ *
+ * MINTED INSIDE THE CASE THAT USES IT, NOT IN `beforeAll`, and the first run on
+ * real hardware is why. Seeding it with the rest of the fixture made its expiry a
+ * race against every case in between: the trimmed-cursor case writes 10,010 frames
+ * and takes 2.4 seconds, so by the time the fence case ran the window had closed
+ * 599 milliseconds earlier and the case REFUSED TO RUN rather than passing
+ * vacuously. The guard was right and the fixture was wrong.
+ */
+const SHORT_WINDOW_MS = 3_000;
 
 let postgres: StartedPostgreSqlContainer;
 let redis: StartedRedisContainer;
@@ -114,7 +122,9 @@ let construction: AdapterConstruction;
 let running: RunningCoreApi;
 let journal: StreamJournal;
 let base: string;
-let shortWindowEndsAt: number;
+/** Held so a case can mint a session of its own. See `SHORT_WINDOW_MS`. */
+let mintSession: (token: string, expiresAt: Date) => Promise<void>;
+let shortSessions = 0;
 
 function packageRootRelative(...parts: string[]): string {
   return resolve(process.cwd(), ...parts);
@@ -369,16 +379,18 @@ beforeAll(async () => {
   await store.operatorSessions.save(
     session("dddddddd-1004-4000-8000-000000000004", REVOKED_TOKEN, { revokedAt: AT }),
   );
-  // THE SHORT WINDOW, computed from the WALL CLOCK at seed time rather than from a
-  // fixed instant. The case it serves is "the credential expires DURING the
-  // stream", which is only reachable if the window closes while the process is
-  // running — a frozen fixture instant would be either long past or far future.
-  shortWindowEndsAt = Date.now() + SHORT_WINDOW_MS;
-  await store.operatorSessions.save(
-    session("dddddddd-1005-4000-8000-000000000005", SHORT_TOKEN, {
-      expiresAt: new Date(shortWindowEndsAt),
-    }),
-  );
+  // THE SHORT-WINDOW SESSION IS NOT SEEDED HERE. See `SHORT_WINDOW_MS`: its expiry
+  // has to be measured from the instant its own case starts, or every case that
+  // runs in between is a race against it. What is seeded is the ABILITY to mint
+  // one, so the case that needs it can.
+  mintSession = async (token: string, expiresAt: Date): Promise<void> => {
+    shortSessions += 1;
+    await store.operatorSessions.save(
+      session(`dddddddd-2${String(shortSessions).padStart(3, "0")}-4000-8000-000000000005`, token, {
+        expiresAt,
+      }),
+    );
+  };
 
   running = await startCoreApi({
     configuration: platform.value.core,
@@ -695,13 +707,18 @@ describe("the credential expiry fence", () => {
     // THE DEFECT THIS LANE WAS BUILT AGAINST, proven with a REAL session whose
     // window closes while the socket is open. `agentChatStream` in `apps/agent`
     // authenticates once and then streams unbounded; this one does not.
+    await produce(ENVIRONMENT, "fenced", [frame(1)]);
+    // MINTED NOW, so the window is measured from this instant and no earlier case
+    // can spend it.
+    const token = "win272-short-window-session-token";
+    const shortWindowEndsAt = Date.now() + SHORT_WINDOW_MS;
+    await mintSession(token, new Date(shortWindowEndsAt));
     const remaining = shortWindowEndsAt - Date.now();
     expect(remaining, "the short session's window closed before this case ran").toBeGreaterThan(200);
 
-    await produce(ENVIRONMENT, "fenced", [frame(1)]);
     const started = Date.now();
     const read = await readStream(streamPath(ENVIRONMENT, "fenced"), {
-      token: SHORT_TOKEN,
+      token,
       // No `stopAfter`: the SERVER must be the party that ends this.
       budgetMs: 30_000,
     });
@@ -738,16 +755,17 @@ describe("the credential expiry fence", () => {
     // one reader's expired token end a turn for everybody.
     const state = await journal.read(journalStreamId(ENVIRONMENT, "fenced"), null, { limit: 1, blockMs: 0 });
     expect(state.kind === "page" && state.seal).toBeNull();
-  }, 120_000);
 
-  it("refuses BEFORE the first byte once the window has closed", async () => {
-    // The same credential, now spent. It is a JSON envelope and not a frame,
-    // because no 200 has gone out yet — which is why admission happens before the
-    // headers.
-    const answer = await refusal(streamPath(ENVIRONMENT, "fenced"), { token: SHORT_TOKEN });
-    expect(answer.code).toBe("SESSION_EXPIRED");
-    expect(answer.status).toBe(committedStatus("SESSION_EXPIRED"));
-  }, 60_000);
+    // AND THE SAME CREDENTIAL, NOW SPENT, IS REFUSED BEFORE THE FIRST BYTE — a
+    // JSON envelope and not a frame, because no 200 has gone out yet. That is the
+    // whole reason admission happens before `openEventStream`, and asserting it
+    // HERE rather than in a case of its own is what keeps the two halves bound to
+    // ONE credential: a separate case would have needed its own session and would
+    // then be proving something about a different token.
+    const spent = await refusal(streamPath(ENVIRONMENT, "fenced"), { token });
+    expect(spent.code).toBe("SESSION_EXPIRED");
+    expect(spent.status).toBe(committedStatus("SESSION_EXPIRED"));
+  }, 120_000);
 });
 
 describe("two readers on one stream", () => {
