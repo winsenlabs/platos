@@ -4829,7 +4829,7 @@
     "lockfileSha256": "b7204381502e38a9e0a2b312366b5583bb0d35bfbae8cb59677a70f44212e850",
     "vocabularySha256": "ef03d53e0542000b26cca4c02bb099296e738e9e2ed239e786d3e4ca78f6e755",
     "ledgerRulesSha256": "67cb99962cfb14e6fdf149bb10d7d21caae8a63619aed385046b036441124baf",
-    "reachabilitySha256": "af195b9ae71980eb2b07d77e16946bb3f5b237c3ecd61e357c31932b79fb06af",
+    "reachabilitySha256": "5413e107f1521d4507d291ef005bac7fd833d65817b84aaad94176f3aa94ad28",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0
