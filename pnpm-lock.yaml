@@ -1208,6 +1208,13 @@ importers:
       '@platos/kernel':
         specifier: workspace:*
         version: link:../../kernel
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
+    devDependencies:
+      '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
 
   packages/adapters/tokenmint-totp:
     dependencies:

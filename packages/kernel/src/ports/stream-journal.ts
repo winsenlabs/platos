@@ -87,8 +87,16 @@ export interface StreamSeal {
 export type StreamAppendOutcome =
   | {
       readonly kind: "appended";
-      /** The position of the LAST frame in the batch. */
-      readonly cursor: StreamCursor;
+      /**
+       * The position of the LAST frame in the batch, or null when the batch was
+       * empty.
+       *
+       * AN EMPTY BATCH IS NOT AN ERROR AND MUST NOT INVENT A POSITION. A producer
+       * flushing on a timer legitimately has nothing to write, and answering it
+       * with a cursor pointing at a frame nobody appended would put a position in
+       * a client's hands that names nothing.
+       */
+      readonly cursor: StreamCursor | null;
       readonly trimmed: number;
     }
   | { readonly kind: "sealed"; readonly seal: StreamSeal }
