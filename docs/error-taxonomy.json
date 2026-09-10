@@ -2585,6 +2585,41 @@
         "identity-access"
       ]
     },
+    "RETRY_POLICY_BASE_DELAY_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
+    "RETRY_POLICY_CEILING_BELOW_BASE": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
+    "RETRY_POLICY_JITTER_FRACTION_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
+    "RETRY_POLICY_MAX_SENDS_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
+    "RETRY_POLICY_MULTIPLIER_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
     "SECRET_INPUT_NOT_WRITE_ONLY": {
       "category": "invalid_input",
       "status": 400,
@@ -2753,18 +2788,48 @@
         "core-api"
       ]
     },
+    "STREAM_CURSOR_SEQUENCE_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
+    "STREAM_CURSOR_STREAM_ID_INVALID": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
     "STREAM_CURSOR_UNREADABLE": {
       "category": "invalid_input",
       "status": 400,
       "contexts": [
-        "core-api"
+        "core-api",
+        "kernel"
+      ]
+    },
+    "STREAM_CURSOR_VERSION_UNKNOWN": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
+    "STREAM_FRAME_FIELD_RESERVED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
       ]
     },
     "STREAM_FRAME_TOO_LARGE": {
       "category": "invalid_input",
       "status": 400,
       "contexts": [
-        "core-api"
+        "core-api",
+        "kernel"
       ]
     },
     "STREAM_JOURNAL_UNAVAILABLE": {
@@ -2779,6 +2844,20 @@
       "status": 404,
       "contexts": [
         "core-api"
+      ]
+    },
+    "STREAM_VERSION_ABSENT": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
+      ]
+    },
+    "STREAM_VERSION_UNSUPPORTED": {
+      "category": "invalid_input",
+      "status": 400,
+      "contexts": [
+        "kernel"
       ]
     },
     "TENANCY_ACCESS_KEY_GENERATION_SUPERSEDED": {
@@ -3428,6 +3507,14 @@
       "sites": 2,
       "shapes": 1,
       "reason": "REQUIRED to be uniform. The invitation is for another address, or the account signing in has no address that matches. Separating them would say which of the two the caller got wrong about an invitation it does not own."
+    },
+    {
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "function": "decodeStreamCursor",
+      "code": "STREAM_CURSOR_UNREADABLE",
+      "sites": 4,
+      "shapes": 1,
+      "reason": "Four guards, ONE fact for the caller: the value it sent is not a stream cursor. They refuse a string with no delimiter, one with no second delimiter, one whose length prefix is not decimal digits, and one whose length prefix reaches past the body -- and they MUST be indistinguishable, because this value arrives in `Last-Event-ID` on lanes a browser can reach and telling a caller WHICH branch fired would hand a prober the shape of the encoding one request at a time. Every one of the four is a fact about the BYTES the caller supplied and none is a fact about the server, so the operator repair after all four is the same and is nothing: the client starts the stream without a resume position. The two malformations that are NOT in this class carry their own codes -- STREAM_CURSOR_VERSION_UNKNOWN, which is a client from a future build and is survivable by starting over, and STREAM_CURSOR_SEQUENCE_INVALID, which is a well-formed cursor with an impossible position."
     }
   ]
 }

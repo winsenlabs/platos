@@ -192,6 +192,33 @@ export function encodeSseEvent(
   return { ok: true, bytes: `data: ${data}\n\n` };
 }
 
+/**
+ * The LEADING FRAME M0.4 §2 gives the SSE lane, as a NAMED SSE event.
+ *
+ * The ADR's SSE row asks for "`sv` from `/api/v1/` prefix + leading
+ * `stream_meta{sv,replayFrom}` frame; reconnect replay via native
+ * `Last-Event-ID`". This is that frame, and the one design decision in it is that
+ * it rides on SSE's own `event:` field rather than on the default one.
+ *
+ * WHY A NAMED EVENT AND NOT A FRAME WITH A `t`. Every frame on the default event
+ * type goes through the client's `admitFrame`, which needs a `seq` — and there is
+ * no honest sequence for this one. Zero is refused as a duplicate by every correct
+ * client; the resumed position is refused for the same reason; and a number above
+ * the resumed position would occupy a sequence the JOURNAL will later assign to a
+ * real frame. `event: stream_meta` puts it on a channel a client subscribes to
+ * separately, so it never enters the sequence at all — which is what it is: a
+ * statement ABOUT the stream rather than a member of it.
+ *
+ * `replayFrom` IS THE POSITION THIS READER ASKED TO CONTINUE FROM, echoed back, and
+ * null when it asked for the whole stream. It is not a promise about what the
+ * journal holds — that answer is the first page, or the `STREAM_CURSOR_EXPIRED`
+ * refusal the reader gets instead of one.
+ */
+export function encodeStreamMeta(sv: number, replayFrom: StreamCursor | null): string {
+  const payload = JSON.stringify({ sv, replayFrom });
+  return `event: stream_meta\ndata: ${payload}\n\n`;
+}
+
 /** A keep-alive. An SSE comment: no id, no data, no sequence. */
 export function encodeHeartbeat(): string {
   return ": keep-alive\n\n";

@@ -83,6 +83,7 @@ import {
   encodeHeartbeat,
   encodeSseEvent,
   encodeSseFrame,
+  encodeStreamMeta,
   openEventStream,
   presentedResumeId,
   watchForDisconnect,
@@ -275,6 +276,32 @@ function frameCursor(streamId: string, frame: StreamFrame): StreamCursor | null 
   return isOk(encoded) ? encoded.value : null;
 }
 
+/**
+ * WHY THIS ROUTE TAKES NO `?sv=` PARAMETER, WHICH IT DID FOR ONE COMMIT.
+ *
+ * M0.4 §2's SSE row derives this lane's `sv` from the `/api/v1/` prefix and reports
+ * it in the leading `stream_meta` frame. It asks for nothing else, and the extra
+ * parameter — a floor assertion for a client that cannot set a header — was mine
+ * rather than the ADR's.
+ *
+ * IT COST MORE THAN IT WAS WORTH, AND THE OPENAPI RATCHET IS WHAT PRICED IT.
+ * `rest-schema-derivation.mjs` refuses a `@Query` typed `string | undefined`, and it
+ * refuses a POST-PARSE DTO too: `StreamQuery { sv: number }` declares a number the
+ * caller never sends and omits the string it does, so publishing it "would describe
+ * a query string this route does not accept". The register's own note names the
+ * remedy — "a declared wire-query DTO that the validator itself consumes" — and
+ * says it "is a change to `apps/core-api/src/transports/rest`, it is not this
+ * tranche's". It is not this one's either. The alternatives were a second entry in
+ * `UNDERIVABLE_QUERY_HANDLERS`, which documents a gap rather than closing one, or
+ * inventing a repository-wide wire-DTO convention for another tranche's generator.
+ *
+ * So the parameter is gone and the route has no query string at all.
+ * `negotiateStreamVersion` is still the one place a version is agreed and is still
+ * proven by cases; what no surface in this deployable does yet is carry `sv` ON THE
+ * WIRE, because the lane that would — the WebSocket handshake — is in `apps/agent`,
+ * which imports no V1 package at all.
+ */
+
 /** The composed journal, or a 503 naming what is missing. */
 export function requireStreamJournal(app: AppModule): StreamJournal {
   const journal = app.streamJournal;
@@ -299,6 +326,19 @@ export class EnvironmentStreamsController {
   ): Promise<void> {
     const app = this.application.app;
     const options = DEFAULT_SSE_OPTIONS;
+    // THE VERSION IS IN THE PATH, AND `?sv=` IS AN OPTIONAL FLOOR ASSERTION.
+    // M0.4 §2's SSE row derives the lane's `sv` from the `/api/v1/` prefix, so an
+    // absent parameter is NOT an absent version — which is why `legacyIngress` is
+    // false here and yet nothing is refused for omitting it. What a client CAN do
+    // is name the major it was written against, and then a build that speaks a
+    // different one refuses BEFORE the first byte rather than streaming frames the
+    // client will misread. That is the same thing `X-Platos-Contract-Min` does for
+    // the REST envelope, spelled for a lane whose caller is an `EventSource` and
+    // cannot set a header.
+    // THE MAJOR THIS LANE CARRIES. The URL prefix is where M0.4 §2 puts it for the
+    // SSE lane, so it is the build's constant rather than a negotiated value — and
+    // the leading `stream_meta` frame is where a client is told which one it got.
+    const sv = STREAM_SCHEMA_VERSION;
     // EVERY REFUSAL BEFORE THE FIRST BYTE IS A JSON ENVELOPE, and every one after
     // it is a terminal FRAME. That split is the whole reason admission happens
     // before `openEventStream`: a 401 cannot be sent once a 200 has gone out, so a
@@ -336,6 +376,11 @@ export class EnvironmentStreamsController {
     if (deadlineMs <= Date.now()) raise(streamCredentialExpired());
 
     openEventStream(response);
+    // THE LEADING FRAME, BEFORE ANY CONTENT. A client that receives frames before
+    // it has been told the `sv` and the position it is resuming from would have to
+    // infer both, and inferring a version is how a reader ends up applying a frame
+    // it does not understand.
+    await writeWithBackpressure(response, encodeStreamMeta(sv, after), options.drainDeadlineMs);
     const hasDisconnected = watchForDisconnect(request, response);
     const outcome = await pumpStream({
       journal,

@@ -38,6 +38,7 @@ import {
   encodeHeartbeat,
   encodeSseEvent,
   encodeSseFrame,
+  encodeStreamMeta,
   openEventStream,
   presentedResumeId,
   watchForDisconnect,
@@ -175,6 +176,24 @@ describe("the wire bytes", () => {
     if (!encoded.ok) return;
     expect(encoded.bytes.startsWith("data: ")).toBe(true);
     expect(encoded.bytes).not.toContain("id:");
+  });
+
+  it("writes the LEADING `stream_meta` on SSE's own `event:` channel", () => {
+    // M0.4 §2's SSE row asks for it, and the ONE design decision in it is asserted
+    // here: it rides on `event:` rather than on the default type, so it never
+    // enters the sequence a client's `admitFrame` tracks. There is no honest `seq`
+    // for a statement ABOUT a stream.
+    const meta = encodeStreamMeta(STREAM_SCHEMA_VERSION, cursor(41));
+    expect(meta.startsWith("event: stream_meta\n")).toBe(true);
+    expect(meta).not.toContain("id:");
+    const data = meta.split("\n").find((line) => line.startsWith("data: "));
+    expect(JSON.parse(data!.slice("data: ".length))).toEqual({ sv: 1, replayFrom: cursor(41) });
+  });
+
+  it("says `replayFrom: null` when the reader asked for the whole stream", () => {
+    const meta = encodeStreamMeta(STREAM_SCHEMA_VERSION, null);
+    const data = meta.split("\n").find((line) => line.startsWith("data: "));
+    expect(JSON.parse(data!.slice("data: ".length))).toEqual({ sv: 1, replayFrom: null });
   });
 
   it("makes a heartbeat an SSE COMMENT, with no id and no data", () => {

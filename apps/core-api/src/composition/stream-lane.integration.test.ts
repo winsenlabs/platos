@@ -142,8 +142,10 @@ function frame(seq: number, overrides: Partial<StreamFrame> = {}): StreamFrame {
   };
 }
 
-/** One SSE event as a reader sees it: the `id:` line, if any, and the parsed body. */
+/** One SSE event as a reader sees it: the `event:` name, the `id:` line and the body. */
 interface SseEvent {
+  /** SSE's own event type. Null for the default one, which is where frames ride. */
+  readonly name: string | null;
   readonly id: string | null;
   readonly frame: Record<string, unknown>;
 }
@@ -217,13 +219,20 @@ async function readStream(
           comments += 1;
         } else {
           const lines = block.split("\n");
+          const name = lines.find((line) => line.startsWith("event: "))?.slice("event: ".length) ?? null;
           const id = lines.find((line) => line.startsWith("id: "))?.slice("id: ".length) ?? null;
           const data = lines.find((line) => line.startsWith("data: "))?.slice("data: ".length);
-          if (data !== undefined) events.push({ id, frame: JSON.parse(data) as Record<string, unknown> });
+          if (data !== undefined) {
+            events.push({ name, id, frame: JSON.parse(data) as Record<string, unknown> });
+          }
         }
         boundary = buffered.indexOf("\n\n");
       }
-      if (options.stopAfter !== undefined && events.length >= options.stopAfter) {
+      // COUNTS FRAMES AND NOT EVENTS. The leading `stream_meta` rides on SSE's own
+      // `event:` channel and is not a member of the sequence, so a reader that
+      // counted it would stop one frame early on every case in this file.
+      const frames = events.filter((event) => event.name === null).length;
+      if (options.stopAfter !== undefined && frames >= options.stopAfter) {
         closedByServer = false;
         // THE CLIENT GOING AWAY MID-STREAM, for real: the socket is cancelled with
         // the server still holding an open response.
@@ -263,6 +272,16 @@ async function refusal(
     /* left as the raw prefix, which is what a non-JSON answer should report */
   }
   return { status: response.status, code };
+}
+
+/** The frames only — the leading `stream_meta` is not one. */
+function framesOf(read: StreamRead): readonly SseEvent[] {
+  return framesOf(read).filter((event) => event.name === null);
+}
+
+/** The leading `stream_meta`, or null when the lane did not send one. */
+function metaOf(read: StreamRead): Record<string, unknown> | null {
+  return read.events.find((event) => event.name === "stream_meta")?.frame ?? null;
 }
 
 function streamPath(environmentId: string, streamId: string): string {
@@ -476,7 +495,7 @@ describe("the refusals BEFORE the first byte are the security boundary", () => {
       budgetMs: 8_000,
       stopAfter: 1,
     });
-    expect(own.events.map((event) => event.frame["text"])).toEqual(["secret"]);
+    expect(framesOf(own).map((event) => event.frame["text"])).toEqual(["secret"]);
   });
 
   it("refuses a resume position it cannot read, and one that belongs to another stream", async () => {
@@ -509,10 +528,45 @@ describe("frames reach a browser in order", () => {
     });
     expect(read.status).toBe(200);
     expect(read.contentType).toBe("text/event-stream; charset=utf-8");
-    expect(read.events.map((event) => event.frame["seq"])).toEqual([1, 2, 3]);
-    expect(read.events.map((event) => event.frame["text"])).toEqual(["chunk-1", "chunk-2", "chunk-3"]);
+    expect(framesOf(read).map((event) => event.frame["seq"])).toEqual([1, 2, 3]);
+    expect(framesOf(read).map((event) => event.frame["text"])).toEqual(["chunk-1", "chunk-2", "chunk-3"]);
     // EVERY FRAME CARRIES `sv`, which is the whole of M0.4 §1.2 on the wire.
-    for (const event of read.events) expect(event.frame["sv"]).toBe(STREAM_SCHEMA_VERSION);
+    for (const event of framesOf(read)) expect(event.frame["sv"]).toBe(STREAM_SCHEMA_VERSION);
+  });
+
+  it("sends the LEADING `stream_meta` FIRST, on SSE's own event channel", async () => {
+    // M0.4 §2's SSE row asks for it. Over a real socket the assertion that matters
+    // is the ORDER: a client that received frames before it was told the `sv` and
+    // the position it is resuming from would have to infer both.
+    await produce(ENVIRONMENT, "meta-first", [frame(1), frame(2)]);
+    const read = await readStream(streamPath(ENVIRONMENT, "meta-first"), {
+      token: ADMIN_TOKEN,
+      resumeFrom: cursor(ENVIRONMENT, "meta-first", 1),
+      stopAfter: 1,
+      budgetMs: 10_000,
+    });
+    expect(read.events[0]?.name).toBe("stream_meta");
+    expect(read.events[0]?.frame).toEqual({
+      sv: STREAM_SCHEMA_VERSION,
+      replayFrom: cursor(ENVIRONMENT, "meta-first", 1),
+    });
+    // AND IT IS NOT A MEMBER OF THE SEQUENCE: it carries no `id:`, so a reconnect
+    // still resumes from the last real frame, and it has no `seq` for a client's
+    // `admitFrame` to trip over.
+    expect(read.events[0]?.id).toBeNull();
+    expect(read.events[0]?.frame["seq"]).toBeUndefined();
+    expect(framesOf(read).map((event) => event.frame["seq"])).toEqual([2]);
+    expect(metaOf(read)).not.toBeNull();
+  });
+
+  it("says `replayFrom: null` when the reader asked for the whole stream", async () => {
+    await produce(ENVIRONMENT, "meta-null", [frame(1)]);
+    const read = await readStream(streamPath(ENVIRONMENT, "meta-null"), {
+      token: ADMIN_TOKEN,
+      stopAfter: 1,
+      budgetMs: 10_000,
+    });
+    expect(metaOf(read)).toEqual({ sv: STREAM_SCHEMA_VERSION, replayFrom: null });
   });
 
   it("writes an `id:` that DECODES to this stream and this position", async () => {
@@ -522,7 +576,7 @@ describe("frames reach a browser in order", () => {
       stopAfter: 2,
       budgetMs: 10_000,
     });
-    const positions = read.events.map((event) => {
+    const positions = framesOf(read).map((event) => {
       const decoded = decodeStreamCursor(event.id ?? "");
       return isOk(decoded) ? decoded.value : null;
     });
@@ -542,7 +596,7 @@ describe("frames reach a browser in order", () => {
     await new Promise((settle) => setTimeout(settle, 300));
     await produce(ENVIRONMENT, "live", [frame(2), frame(3)]);
     const read = await reading;
-    expect(read.events.map((event) => event.frame["seq"])).toEqual([1, 2, 3]);
+    expect(framesOf(read).map((event) => event.frame["seq"])).toEqual([1, 2, 3]);
   });
 
   it("ends on the producer's own terminal frame and writes NO SECOND ONE", async () => {
@@ -555,13 +609,13 @@ describe("frames reach a browser in order", () => {
     const read = await readStream(streamPath(ENVIRONMENT, "sealed"), { token: ADMIN_TOKEN, budgetMs: 15_000 });
     // The SERVER closed the body — the reader did not stop early.
     expect(read.closedByServer).toBe(true);
-    expect(read.events.map((event) => event.frame["t"])).toEqual(["assistant.delta", "turn.done"]);
-    const terminal = read.events.filter((event) =>
+    expect(framesOf(read).map((event) => event.frame["t"])).toEqual(["assistant.delta", "turn.done"]);
+    const terminal = framesOf(read).filter((event) =>
       ["turn.done", "stream.error", "stream.offline"].includes(String(event.frame["t"])),
     );
     expect(terminal.length).toBe(1);
     // AND THE CLIENT'S OWN CLASSIFICATION SAYS `completed`, so it does not reconnect.
-    const last = read.events[read.events.length - 1];
+    const last = framesOf(read)[framesOf(read).length - 1];
     const end = classifyStreamEnd(
       { sv: 1, family: "sse.turn", t: String(last?.frame["t"]), seq: 2, ts: 0, fields: {} },
       null,
@@ -597,8 +651,8 @@ describe("resume across a reconnect conserves every frame", () => {
         stopAfter: 11,
         budgetMs: 15_000,
       });
-      if (read.events.length === 0) break;
-      for (const event of read.events) {
+      if (framesOf(read).length === 0) break;
+      for (const event of framesOf(read)) {
         const seq = Number(event.frame["seq"]);
         const admission = admitFrame(lastApplied, {
           sv: 1,
@@ -633,7 +687,7 @@ describe("resume across a reconnect conserves every frame", () => {
       stopAfter: 2,
       budgetMs: 10_000,
     });
-    expect(resumed.events.map((event) => event.frame["seq"])).toEqual([3, 4]);
+    expect(framesOf(resumed).map((event) => event.frame["seq"])).toEqual([3, 4]);
   });
 
   it("REFUSES a resume position whose frames have been trimmed away", async () => {
@@ -661,7 +715,7 @@ describe("resume across a reconnect conserves every frame", () => {
       stopAfter: 1,
       budgetMs: 15_000,
     });
-    expect(inside.events.map((event) => event.frame["seq"])).toEqual([10_013]);
+    expect(framesOf(inside).map((event) => event.frame["seq"])).toEqual([10_013]);
   }, 180_000);
 });
 
@@ -674,7 +728,7 @@ describe("a client that goes away mid-stream", () => {
       budgetMs: 10_000,
     });
     expect(abandoned.closedByServer).toBe(false);
-    expect(abandoned.events.length).toBeGreaterThanOrEqual(2);
+    expect(framesOf(abandoned).length).toBeGreaterThanOrEqual(2);
 
     // THE STREAM IS NOT SEALED. A lane that ended the stream because a READER left
     // would have converted one browser closing a tab into every other reader
@@ -689,11 +743,11 @@ describe("a client that goes away mid-stream", () => {
     // AND A SECOND READER PICKS UP WHERE THE FIRST STOPPED, on a new socket.
     const resumed = await readStream(streamPath(ENVIRONMENT, "abandoned"), {
       token: ADMIN_TOKEN,
-      resumeFrom: abandoned.events[1]?.id ?? cursor(ENVIRONMENT, "abandoned", 2),
+      resumeFrom: framesOf(abandoned)[1]?.id ?? cursor(ENVIRONMENT, "abandoned", 2),
       stopAfter: 2,
       budgetMs: 10_000,
     });
-    expect(resumed.events.map((event) => event.frame["seq"])).toEqual([3, 4]);
+    expect(framesOf(resumed).map((event) => event.frame["seq"])).toEqual([3, 4]);
 
     // AND THE PROCESS IS STILL SERVING. A pump that leaked on disconnect would
     // hold a reader forever and the next request would eventually stall.
@@ -732,7 +786,7 @@ describe("the credential expiry fence", () => {
     // timeout that happens to fire. One heartbeat interval of slack.
     expect(elapsed).toBeLessThan(remaining + 20_000);
 
-    const last = read.events[read.events.length - 1];
+    const last = framesOf(read)[framesOf(read).length - 1];
     expect(last?.frame["t"]).toBe("stream.error");
     expect(last?.frame["code"]).toBe("STREAM_CREDENTIAL_EXPIRED");
     // THE TERMINAL FRAME CARRIES NO `id:`, so the client's `Last-Event-ID` still
@@ -740,7 +794,7 @@ describe("the credential expiry fence", () => {
     expect(last?.id).toBeNull();
     // AND ITS SEQUENCE IS ABOVE THE LAST CONTENT FRAME'S, so a correct client
     // APPLIES it rather than dropping it as a duplicate.
-    const content = read.events.filter((event) => event.frame["t"] === "assistant.delta");
+    const content = framesOf(read).filter((event) => event.frame["t"] === "assistant.delta");
     expect(Number(last?.frame["seq"])).toBe(Number(content[content.length - 1]?.frame["seq"]) + 1);
     // THE CLIENT'S OWN CLASSIFICATION IS `failed`, WHICH IS NOT RESUMABLE, so it
     // gets a new credential rather than reconnecting with the old one.
@@ -780,7 +834,7 @@ describe("two readers on one stream", () => {
       readStream(streamPath(ENVIRONMENT, "two-readers"), { token: ADMIN_TOKEN, stopAfter: 25, budgetMs: 15_000 }),
     ]);
     const expected = Array.from({ length: 25 }, (_, index) => index + 1);
-    expect(first.events.map((event) => event.frame["seq"])).toEqual(expected);
-    expect(second.events.map((event) => event.frame["seq"])).toEqual(expected);
+    expect(framesOf(first).map((event) => event.frame["seq"])).toEqual(expected);
+    expect(framesOf(second).map((event) => event.frame["seq"])).toEqual(expected);
   }, 60_000);
 });
