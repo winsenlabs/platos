@@ -926,6 +926,20 @@
         "secrets"
       ]
     },
+    "CREDENTIAL_NOT_FOUND": {
+      "category": "not_found",
+      "status": 404,
+      "contexts": [
+        "identity-access"
+      ]
+    },
+    "CREDENTIAL_REVOCATION_NOT_APPLIED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "identity-access"
+      ]
+    },
     "CREDENTIAL_REVOKED": {
       "category": "unauthenticated",
       "status": 401,
@@ -3094,6 +3108,13 @@
     "TOOLS_MCP_TRANSPORT_INVALID": {
       "category": "invalid_input",
       "status": 400,
+      "contexts": [
+        "tools"
+      ]
+    },
+    "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED": {
+      "category": "unavailable",
+      "status": 503,
       "contexts": [
         "tools"
       ]

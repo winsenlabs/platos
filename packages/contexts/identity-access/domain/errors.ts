@@ -297,3 +297,39 @@ export function credentialNotFound(credentialId: string): DomainError {
     details: { credentialId },
   });
 }
+
+/**
+ * WIN-268 (M4.2) — the store reported a credential it did not END.
+ *
+ * A SEPARATE CODE FROM `CREDENTIAL_NOT_FOUND`, and `scripts/error-taxonomy.mjs`
+ * rule E6 is the reason it exists at all: `revokeBearerCredential` reached this
+ * state and the not-found refusal in one function with identical arguments, and
+ * "two guards returning the same code cannot be told apart" is exactly what that
+ * rule refuses. They are also two different facts. Not-found means the caller named
+ * something that is not there; this means the store answered with a row whose
+ * `revokedAt` is still null AFTER a write it reported success for.
+ *
+ * `unavailable` AND NOT `conflict`. A conflict says "retrying will fail
+ * identically", which is what `credentialMintRefused` can say because the store
+ * REFUSED there. Here it did not refuse — it accepted and did not apply — so
+ * nothing known at this point rules out a retry succeeding, and telling a caller
+ * "conflict" would stop them retrying a revocation that has not happened.
+ *
+ * IT IS NOT REPORTED AS SUCCESS UNDER ANY CIRCUMSTANCES. That is the whole point:
+ * an operator told a credential is dead while it still authenticates is the one
+ * outcome this route exists to prevent.
+ */
+export function credentialRevocationNotApplied(credentialId: string): DomainError {
+  return domainError(
+    "CREDENTIAL_REVOCATION_NOT_APPLIED",
+    "unavailable",
+    "The credential was not revoked",
+    {
+      details: {
+        credentialId,
+        reason:
+          "The store answered with this credential and its revocation is not recorded. It is still usable; do not report it as ended.",
+      },
+    },
+  );
+}

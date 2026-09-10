@@ -11,6 +11,102 @@
   },
   "components": {
     "schemas": {
+      "BearerCredentialResource": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "principalId": {
+            "type": "string"
+          },
+          "tier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "scope",
+              "admin"
+            ]
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked",
+              "expired"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revokedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "revokedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "createdAt",
+          "expiresAt",
+          "label",
+          "lastUsedAt",
+          "permissions",
+          "principalId",
+          "revokedAt",
+          "revokedBy",
+          "state",
+          "tier",
+          "tokenId"
+        ]
+      },
+      "CollectionEnvelope_BearerCredentialResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BearerCredentialResource"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
       "CollectionEnvelope_EndUserResource": {
         "type": "object",
         "properties": {
@@ -372,6 +468,21 @@
           "meta"
         ]
       },
+      "ItemEnvelope_RevokedTokenResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/RevokedTokenResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemMeta": {
         "type": "object",
         "properties": {
@@ -716,6 +827,56 @@
           "organizationId",
           "slug",
           "through"
+        ]
+      },
+      "RevokePlatformTokenBody": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentId"
+        ]
+      },
+      "RevokedTokenResource": {
+        "type": "object",
+        "properties": {
+          "tokenId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "revokedAt": {
+            "type": "string"
+          },
+          "newlyRevoked": {
+            "type": "boolean"
+          },
+          "previousState": {
+            "type": "string",
+            "enum": [
+              "active",
+              "revoked",
+              "expired"
+            ]
+          },
+          "revokedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "label",
+          "newlyRevoked",
+          "previousState",
+          "revokedAt",
+          "revokedBy",
+          "tokenId"
         ]
       },
       "SetOrganizationPolicyBody": {
@@ -10744,7 +10905,7 @@
     "/mcp/entity/{entityId}/tokens": {
       "get": {
         "operationId": "get__mcp_entity_by_entityId_tokens",
-        "summary": "McpEntityController.listBearerTokens",
+        "summary": "McpEntityTokensController.list",
         "tags": [
           "rest_only"
         ],
@@ -10760,7 +10921,24 @@
         ],
         "responses": {
           "200": {
-            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_BearerCredentialResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10775,8 +10953,10 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
-        "x-platos-schema-source": "undeclared",
-        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "not-derived",
+        "x-platos-query-not-derived-reason": "post-parse-dto",
+        "x-platos-query-not-derived-detail": "The same TokenListQuery post-parse shape as the platform listing, and the same required `environmentId`. Listed separately rather than folded in, so withdrawing one route does not silently withdraw another's declared gap."
       },
       "post": {
         "operationId": "post__mcp_entity_by_entityId_tokens",
@@ -10845,7 +11025,7 @@
     "/mcp/entity/{entityId}/tokens/{tokenId}": {
       "delete": {
         "operationId": "delete__mcp_entity_by_entityId_tokens_by_tokenId",
-        "summary": "McpEntityController.revokeBearerToken",
+        "summary": "McpEntityTokensController.revoke",
         "tags": [
           "rest_only"
         ],
@@ -10869,7 +11049,24 @@
         ],
         "responses": {
           "200": {
-            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_RevokedTokenResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -10884,8 +11081,10 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
-        "x-platos-schema-source": "undeclared",
-        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "not-derived",
+        "x-platos-query-not-derived-reason": "post-parse-dto",
+        "x-platos-query-not-derived-detail": "The @Query parameter carries only `environmentId`, so unlike the two listings its POST-PARSE shape and its WIRE shape are identical and it could be derived today. It is declared anyway because this derivation has no path that emits a @Query type at all — the branch that would is the one that raises — so exempting it would mean teaching the derivation a wire-DTO rule for one route and leaving three. When that rule lands, THIS is the entry to delete first: it is the only one whose type is already the truth."
       }
     },
     "/mcp/entity/{entityId}/tool-acl": {
@@ -11350,13 +11549,30 @@
     "/mcp/platform/tokens": {
       "get": {
         "operationId": "get__mcp_platform_tokens",
-        "summary": "McpPlatformController.listTokens",
+        "summary": "McpPlatformTokensController.list",
         "tags": [
           "rest_only"
         ],
         "responses": {
           "200": {
-            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_BearerCredentialResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -11371,8 +11587,10 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
-        "x-platos-schema-source": "undeclared",
-        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "not-derived",
+        "x-platos-query-not-derived-reason": "post-parse-dto",
+        "x-platos-query-not-derived-detail": "The @Query parameter is typed TokenListQuery, the shape AFTER tokenListQueryValidator has decoded ?cursor= into an offset — the same post-parse mismatch as the end-user listing: it declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. It ALSO carries `environmentId`, which callers do send and which is REQUIRED, so this route's undocumented parameters include one without which it cannot be called. Publishing TokenListQuery would still describe a query string the route does not accept."
       },
       "post": {
         "operationId": "post__mcp_platform_tokens",
@@ -11431,7 +11649,7 @@
     "/mcp/platform/tokens/{id}/revoke": {
       "post": {
         "operationId": "post__mcp_platform_tokens_by_id_revoke",
-        "summary": "McpPlatformController.revokeToken",
+        "summary": "McpPlatformTokensController.revoke",
         "tags": [
           "rest_only"
         ],
@@ -11447,7 +11665,24 @@
         ],
         "responses": {
           "200": {
-            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_RevokedTokenResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -11462,8 +11697,18 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
-        "x-platos-schema-source": "undeclared",
-        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokePlatformTokenBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
       }
     },
     "/mcp/sse": {
@@ -11909,16 +12154,31 @@
   "x-platos-rest-operation-count": 313,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 14,
-    "undeclaredOperations": 299,
+    "derivedOperations": 18,
+    "undeclaredOperations": 295,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 30,
+    "componentSchemas": 35,
     "canonicalErrorCodes": 456,
     "queryParametersNotDerived": [
       {
         "operation": "GET /api/v1/environments/:environmentId/end-users",
         "handler": "EnvironmentEndUsersController.list",
+        "reason": "post-parse-dto"
+      },
+      {
+        "operation": "GET /mcp/entity/:entityId/tokens",
+        "handler": "McpEntityTokensController.list",
+        "reason": "post-parse-dto"
+      },
+      {
+        "operation": "DELETE /mcp/entity/:entityId/tokens/:tokenId",
+        "handler": "McpEntityTokensController.revoke",
+        "reason": "post-parse-dto"
+      },
+      {
+        "operation": "GET /mcp/platform/tokens",
+        "handler": "McpPlatformTokensController.list",
         "reason": "post-parse-dto"
       }
     ]

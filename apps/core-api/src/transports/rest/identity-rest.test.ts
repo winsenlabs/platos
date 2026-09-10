@@ -338,6 +338,17 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
     // name is added. A mint is rate-limited, if at all, on a different axis
     // (how many credentials one environment may hold), which no contract in
     // this repository publishes.
+    //
+    // AND A THIRD TIME, FOR WIN-268 (M4.2)'s `listBearerCredentials` and
+    // `revokeBearerCredential`. REVISITED AND THE ANSWER IS AGAIN NO, for a reason
+    // worth stating rather than assuming: both are reached only AFTER
+    // `authenticateOperator` and `authorizeEnvironment` have already succeeded, so
+    // a caller who can spend anything on them has finished authenticating — and the
+    // limiter's three actions are, by name and by enum, the pre-authentication ones.
+    // A revocation is the operation an attacker would most like to guess ids
+    // against, and the defence against that is that guessing requires a live
+    // operator session in an authorized environment, not an authentication budget.
+    // So the finding below stands unchanged and the two names are added.
     expect(methods).toEqual([
       "authenticateBearer",
       "authenticateOperator",
@@ -345,8 +356,10 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
       "consumeRateLimit",
       "describeSessionCookie",
       "issueSessionCookie",
+      "listBearerCredentials",
       "listEndUsers",
       "mintBearerCredential",
+      "revokeBearerCredential",
       "revokeOperatorSession",
       "rotateSessionCookie",
       "verifySessionCookie",

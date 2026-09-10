@@ -33,7 +33,16 @@
 
 import { readFileSync } from "node:fs";
 
-import { Controller, Get, Module, RequestMethod, VERSION_NEUTRAL } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Module,
+  Query,
+  RequestMethod,
+  VERSION_NEUTRAL,
+  type PipeTransform,
+} from "@nestjs/common";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { loadPlatformConfiguration } from "../../config/platform.js";
@@ -86,13 +95,42 @@ const PROBE_CONTROLLER_PATH = "win267-r1-probe-controller-path";
 const PROBE_METHOD_PATH = "win267-r1-probe-method-path";
 const PROBE_VERSION = "win267-r1-probe-version";
 
+/**
+ * WIN-268 (M4.2) — two pipes nothing else in the process holds.
+ *
+ * They are IDENTIFIABLE BY VALUE, which is what lets the paramtype numbers below
+ * be measured rather than written. `@Query` is `RouteParamtypes.QUERY` and `@Body`
+ * is `RouteParamtypes.BODY`; both are integers in an enum this project cannot
+ * import (`@nestjs/common/enums`, an untyped subpath, the same problem the four
+ * metadata keys above have), and hard-coding `4` would read `undefined` the day
+ * Nest reordered the enum — leaving every route looking as though it had no pipes,
+ * which is silently the permissive answer.
+ */
+const QUERY_PROBE_PIPE: PipeTransform = { transform: (value: unknown) => value };
+const BODY_PROBE_PIPE: PipeTransform = { transform: (value: unknown) => value };
+
 @Controller({ path: PROBE_CONTROLLER_PATH, version: PROBE_VERSION })
 class MetadataProbeController {
   @Get(PROBE_METHOD_PATH)
   probe(): void {
     // Never called. Its decorators are the measurement.
   }
+
+  @Get(`${PROBE_METHOD_PATH}-args`)
+  probeArguments(
+    @Query(QUERY_PROBE_PIPE) _query: unknown,
+    @Body(BODY_PROBE_PIPE) _body: unknown,
+  ): void {
+    // Never called either. The two pipes above are the measurement.
+  }
 }
+
+/** One `__routeArguments__` entry as Nest's `assignMetadata` writes it. */
+interface RouteArgument {
+  readonly index: number;
+  readonly pipes?: readonly PipeTransform[];
+}
+type RouteArguments = Readonly<Record<string, RouteArgument>>;
 
 @Module({ controllers: [MetadataProbeController] })
 class MetadataProbeModule {}
@@ -133,6 +171,57 @@ const CONTROLLERS_KEY = metadataKey(
   "a module's controller list",
 );
 
+/**
+ * `__routeArguments__` — MEASURED, like the four keys above and for the same
+ * reason.
+ *
+ * It is the one Nest metadata key written against a PROPERTY of the constructor
+ * rather than against the class or the method, so `metadataKey` cannot find it:
+ * `Reflect.getMetadataKeys(C)` does not list keyed metadata. Hence the direct
+ * search over `getMetadataKeys(controller, handlerName)`.
+ */
+const ROUTE_ARGS_KEY = ((): string => {
+  const keys = Reflect.getMetadataKeys(MetadataProbeController, "probeArguments") as readonly (
+    | string
+    | symbol
+  )[];
+  const found = keys.filter(
+    (key): key is string =>
+      typeof key === "string" &&
+      Object.values(
+        (Reflect.getMetadata(key, MetadataProbeController, "probeArguments") ?? {}) as RouteArguments,
+      ).some((argument) => (argument.pipes ?? []).includes(QUERY_PROBE_PIPE)),
+  );
+  if (found.length !== 1) {
+    throw new Error(
+      `expected exactly one Nest metadata key to carry a handler's parameter pipes; found ${String(found.length)}`,
+    );
+  }
+  return found[0] as string;
+})();
+
+/**
+ * The two `RouteParamtypes` values, read off the probe by WHICH PIPE they carry.
+ *
+ * `entry.split(":")[0]` is the paramtype and the rest is the parameter index —
+ * `assignMetadata`'s own key shape. Identifying each by its probe pipe is what
+ * makes this a measurement of Nest's enum rather than a copy of it.
+ */
+function probeParamtype(pipe: PipeTransform, what: string): string {
+  const declared = (Reflect.getMetadata(ROUTE_ARGS_KEY, MetadataProbeController, "probeArguments") ??
+    {}) as RouteArguments;
+  const found = Object.entries(declared).filter(([, argument]) =>
+    (argument.pipes ?? []).includes(pipe),
+  );
+  if (found.length !== 1) {
+    throw new Error(`expected exactly one probe parameter to carry the ${what} pipe`);
+  }
+  return (found[0] as [string, RouteArgument])[0].split(":")[0] as string;
+}
+
+const QUERY_PARAMTYPE = probeParamtype(QUERY_PROBE_PIPE, "query");
+const BODY_PARAMTYPE = probeParamtype(BODY_PROBE_PIPE, "body");
+
 const VERB = new Map<number, string>([
   [RequestMethod.GET, "GET"],
   [RequestMethod.POST, "POST"],
@@ -148,6 +237,30 @@ interface MountedRoute {
   readonly handler: string;
   /** The handler's compiled body, read at run time. See `operator protection`. */
   readonly body: string;
+  /**
+   * The pipes this handler declares on its `@Query` and `@Body` parameters.
+   *
+   * WIN-268 (M4.2). Carried so `expectedRefusal` can ASK them what an empty probe
+   * does instead of predicting it from the verb — see that function's note.
+   */
+  readonly queryPipes: readonly PipeTransform[];
+  readonly bodyPipes: readonly PipeTransform[];
+}
+
+/** The pipes one handler declares on one parameter kind. */
+function declaredPipes(
+  controller: new (...args: never[]) => object,
+  handlerName: string,
+  paramtype: string,
+): readonly PipeTransform[] {
+  const declared = (Reflect.getMetadata(ROUTE_ARGS_KEY, controller, handlerName) ??
+    {}) as RouteArguments;
+  const pipes: PipeTransform[] = [];
+  for (const [entry, argument] of Object.entries(declared)) {
+    if (entry.split(":")[0] !== paramtype) continue;
+    pipes.push(...(argument.pipes ?? []));
+  }
+  return pipes;
 }
 
 /** Join path fragments the way `RoutePathFactory.appendToAllIfDefined` does. */
@@ -229,6 +342,8 @@ export function mountedRoutes(): readonly MountedRoute[] {
         controller: controller.name,
         handler: name,
         body: Function.prototype.toString.call(handler),
+        queryPipes: declaredPipes(controller, name, QUERY_PARAMTYPE),
+        bodyPipes: declaredPipes(controller, name, BODY_PARAMTYPE),
       });
     }
   }
@@ -258,16 +373,67 @@ function probeSendsBody(method: string): boolean {
  * expectation with it — the alternative is a second opinion about which routes
  * the mint contract binds.
  *
- * THE SECOND BRANCH IS ABOUT THE BODY AND NOT ABOUT THE VERB. A body pipe runs
- * BEFORE the handler, so any route the probe sends `{}` to is refused with
- * `TRANSPORT_REQUEST_INVALID` and never reaches the context check — which is the
- * ordering the case below exists to pin. A route with no body to validate gets as
- * far as `requireTools`/`requireTenancy` and answers
- * `TRANSPORT_CONTEXT_UNAVAILABLE` instead.
+ * THE SECOND BRANCH IS DERIVED BY ASKING THE ROUTE'S OWN PIPES, and WIN-268 (M4.2)
+ * is why it had to become that.
+ *
+ * It used to read `probeSendsBody(row.method) ? INVALID : CONTEXT_UNAVAILABLE`,
+ * whose stated premise was "a route with no body to validate gets as far as
+ * `requireTenancy`". That premise held only while every validating pipe in the
+ * tree sat on a `@Body`. The four MCP token lifecycle routes carry their tenancy
+ * in the QUERY — two are `GET` and one is `DELETE`, and their templates are fixed
+ * by `http/idempotency-policy.ts` — so `environmentId` is a required query
+ * parameter and its pipe refuses the empty probe before the handler runs. The
+ * prediction was wrong for three routes, and it was wrong in the DIRECTION that
+ * matters: it expected a route to reach the context check when in fact nothing
+ * about the context had been consulted.
+ *
+ * SO THE PIPES ARE EXECUTED RATHER THAN CLASSIFIED. Every pipe the handler
+ * declares on a parameter the probe actually populates is handed `{}` — the exact
+ * value Express gives a `@Query()` with no query string, and the parsed value of
+ * the probe's `"{}"` body — and a pipe that throws is a route refused before the
+ * handler. Nothing here decides which pipes those are: they come off Nest's own
+ * `__routeArguments__`, measured above, so adding a query pipe to a route moves
+ * this expectation with it and a route that ever authenticated before validating
+ * would show up as a changed code.
+ *
+ * A `@Query` PIPE ON A ROUTE THAT ACCEPTS AN EMPTY QUERY IS UNAFFECTED, which is
+ * the case a "does it have a query pipe" test would have got wrong:
+ * `UNPAGED_QUERY_PIPE` refuses `?limit=` and passes `{}`, so `GET /api/v1/projects`
+ * still reaches `requireTenancy` and still answers
+ * `TRANSPORT_CONTEXT_UNAVAILABLE`. Asking the pipe is what tells the two apart.
  */
-function expectedRefusal(row: ManifestOperation): string {
+function refusesEmptyProbe(route: MountedRoute): boolean {
+  const applicable = [
+    ...route.queryPipes,
+    ...(probeSendsBody(route.id.split(" ")[0] ?? "") ? route.bodyPipes : []),
+  ];
+  for (const pipe of applicable) {
+    try {
+      pipe.transform({}, { type: "custom" });
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+function expectedRefusal(row: ManifestOperation, mounted: MountedRoute): string {
   if (classifyRequest(row.method, row.path) === "required") return "IDEMPOTENCY_KEY_REQUIRED";
-  return probeSendsBody(row.method) ? "TRANSPORT_REQUEST_INVALID" : "TRANSPORT_CONTEXT_UNAVAILABLE";
+  return refusesEmptyProbe(mounted) ? "TRANSPORT_REQUEST_INVALID" : "TRANSPORT_CONTEXT_UNAVAILABLE";
+}
+
+/**
+ * The mounted route each manifest row names.
+ *
+ * A THROW AND NOT A FALLBACK: the case above has already asserted the two sides
+ * are the same set, so a miss here means that assertion was weakened and the
+ * expectation would otherwise quietly fall back to a default.
+ */
+function mountedFor(row: ManifestOperation): MountedRoute {
+  const id = `${row.method} ${row.path}`;
+  const found = mountedRoutes().find((route) => route.id === id);
+  if (found === undefined) throw new Error(`${id} is declared in the manifest and is not mounted`);
+  return found;
 }
 
 function manifestRoutes(): readonly ManifestOperation[] {
@@ -457,7 +623,7 @@ describe("WIN-267 R1 — every declared route is REACHABLE in the process, in re
     expect(answers).toEqual(
       manifestRoutes().map(
         (row) =>
-          `${row.method} ${row.path} -> ${expectedRefusal(row)}`,
+          `${row.method} ${row.path} -> ${expectedRefusal(row, mountedFor(row))}`,
       ),
     );
     // AND THE PROPERTY THAT MATTERS, STATED SEPARATELY so it survives any future

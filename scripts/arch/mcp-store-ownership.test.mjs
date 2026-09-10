@@ -115,12 +115,59 @@ test("the composed set is read off the composition root and identity-access is i
   assert.equal(contractInterfaceName("identity-access"), "IdentityAccessContract");
 });
 
-test("contract methods are read from the contract file, and the two the mints use are there", () => {
+/**
+ * The body of one exported interface, by brace matching.
+ *
+ * `contractMethods` reads METHOD signatures and the case below needs the fields of
+ * a VIEW, which is why this exists rather than being asked of the register. It is
+ * still a join to a file this test does not control, and it is non-vacuous by
+ * construction: the case asserts the fields the view DOES publish as well as the
+ * two it does not, so an extraction that found the wrong block fails.
+ */
+function interfaceBody(directory, name) {
+  const source = readFileSync(`${root}packages/contexts/${directory}/contracts/index.ts`, "utf8");
+  const start = source.indexOf(`export interface ${name} {`);
+  assert.ok(start >= 0, `${name} is declared in ${directory}'s contract`);
+  const open = source.indexOf("{", start);
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === "{") depth += 1;
+    if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return source.slice(open + 1, index);
+    }
+  }
+  throw new Error(`${name} has no closing brace`);
+}
+
+test("contract methods are read from the contract file, and WIN-268's four routes have theirs", () => {
   const methods = contractMethods("identity-access");
   assert.ok(methods.includes("mintBearerCredential"), "the mint routes reach this method");
   assert.ok(methods.includes("authenticateBearer"));
-  assert.ok(!methods.includes("listBearerCredentials"), "listing is NOT published — that is the finding");
-  assert.ok(!methods.includes("revokeBearerCredential"));
+  // THE FINDING THIS CASE USED TO PIN IS CLOSED, and it is replaced rather than
+  // deleted. It asserted `!methods.includes("listBearerCredentials")` — "listing is
+  // NOT published — that is the finding" — which was true while the four MCP token
+  // lifecycle operations had an `apps/agent` implementation and none in
+  // `apps/core-api`. WIN-268 (M4.2) published both and served all four, so the
+  // assertion inverts. Left as it was it would have gone red on the tranche that
+  // fixed it, which is the correct behaviour for a pin and the reason to revisit it
+  // here rather than relax it.
+  assert.ok(methods.includes("listBearerCredentials"), "GET /mcp/**/tokens reaches this method");
+  assert.ok(methods.includes("revokeBearerCredential"), "the two revocations reach this method");
+
+  // AND THE GAP THAT IS STILL OPEN, PINNED IN ITS PLACE. Both token services keep
+  // their `identity-access` sites because `authenticateBearer`'s published view
+  // drops two fields their verify paths return: the MCP PERMISSION tier, which
+  // `apps/agent/src/mcp-platform/mcp-router.ts` branches on
+  // (`token.tier !== "admin"`), and the credential's SUBJECT, which
+  // `identity-resolver.service.ts` exists to resolve. Both dispositions say so; this
+  // is the join that stops either sentence going stale.
+  const view = interfaceBody("identity-access", "PrincipalAuthorizationView");
+  assert.ok(view.includes("principalId"), "the view does publish the principal");
+  assert.ok(view.includes("permissions"), "and the permission list");
+  assert.ok(!view.includes("permissionTier"), "the MCP permission tier is NOT on the view");
+  assert.ok(!view.includes("subjectId"), "and neither is the credential's subject");
+
   // The largest uncomposed owner publishes the very methods its MCP sites need.
   const tools = contractMethods("tools");
   for (const name of ["resolvePermission", "listOrganizationPolicies", "listEntityToolPolicies"]) {

@@ -9,6 +9,28 @@
 // It FAILS when Docker is absent rather than skipping. A skipped integration
 // suite and a passing one look identical in a CI summary, and this is the whole
 // evidence WIN-258's acceptance asks for.
+//
+// -----------------------------------------------------------------------------
+// ONE OPT-IN ESCAPE, AND IT IS NOT A WAY TO SKIP
+//
+// WIN-268 (M4.2). `PLATOS_TENANCY_HARNESS_DATABASE_URL` points the harness at a
+// PostgreSQL server that is already running instead of starting a container. It
+// changes WHERE the database comes from and NOTHING else: the repository's own
+// migrations are still applied to it, the fixture is still executed against it,
+// every suite still runs, and a failure is still a failure. Unset — which is how
+// CI runs — the container path above is taken unchanged.
+//
+// IT EXISTS BECAUSE A DEVELOPMENT MACHINE MAY HAVE NO CONTAINER RUNTIME AT ALL,
+// and the alternative that was actually being practised is worse than this
+// variable: real-database proofs were being written, not run locally, and left for
+// CI to discover. A suite that runs against native `postgresql@17` on a laptop and
+// against `pgvector/pgvector:pg16` in CI is being checked twice; one that runs
+// only in CI is being written blind.
+//
+// THE DATABASE IT IS POINTED AT MUST BE EXPENDABLE. `migrate deploy` is idempotent
+// but the fixture is a bare `INSERT` with no `ON CONFLICT`, so a second run against
+// the same database fails on a duplicate key — loudly, which is the right
+// direction. Point it at a fresh database per run.
 
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -130,11 +152,22 @@ function readBoundValues(params: unknown): readonly unknown[] {
   }
 }
 
+/** See the banner: a URL the operator supplied, or null for the container path. */
+export const HARNESS_DATABASE_URL_VARIABLE = "PLATOS_TENANCY_HARNESS_DATABASE_URL";
+
+function suppliedDatabaseUrl(): string | null {
+  const value = process.env[HARNESS_DATABASE_URL_VARIABLE];
+  return value === undefined || value.trim() === "" ? null : value;
+}
+
 export async function startTenancyHarness(): Promise<TenancyHarness> {
-  const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
-    "pgvector/pgvector:pg16",
-  ).start();
-  const databaseUrl = container.getConnectionUri();
+  // THE CONTAINER IS NOT STARTED WHEN A URL WAS SUPPLIED, which is the only
+  // difference the variable makes. `container` stays null and `stop()` below has
+  // nothing to stop — the supplied server is not this harness's to shut down.
+  const supplied = suppliedDatabaseUrl();
+  const container: StartedPostgreSqlContainer | null =
+    supplied === null ? await new PostgreSqlContainer("pgvector/pgvector:pg16").start() : null;
+  const databaseUrl = container === null ? (supplied as string) : container.getConnectionUri();
 
   execFileSync(
     prismaBinary,
@@ -221,7 +254,10 @@ export async function startTenancyHarness(): Promise<TenancyHarness> {
     },
     async stop(): Promise<void> {
       await adapter.close();
-      await container.stop();
+      // A SUPPLIED SERVER IS NOT THIS HARNESS'S TO STOP. It was running before the
+      // suite and whoever started it owns its lifetime; stopping it would take down
+      // a database the next suite in the same run is about to connect to.
+      await container?.stop();
     },
   };
   return harness;

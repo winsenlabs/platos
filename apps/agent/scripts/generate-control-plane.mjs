@@ -1093,18 +1093,33 @@ function implementationKeys(operation) {
  *   * a declared alias row that matches no operation (dead policy), and a
  *     DEPRECATED operation matched by no row (undeclared alias).
  *
- * WHAT IT CANNOT ENFORCE, NAMED RATHER THAN SILENTLY EXCLUDED. Two operations in
- * this tree are served by BOTH deployables — the MCP platform and entity token
- * mints — and their two implementations are genuinely independent classes in two
- * processes, so they cannot satisfy fan-in and are not aliases: they are one
- * route mid-migration. They are listed below with that reason, and a THIRD such
- * operation fails generation rather than joining a list nobody re-reads.
+ * WHAT IT CANNOT ENFORCE, NAMED RATHER THAN SILENTLY EXCLUDED. Six operations in
+ * this tree are served by BOTH deployables — the whole MCP credential lifecycle,
+ * mint/list/revoke on each of the two surfaces — and their two implementations are
+ * genuinely independent classes in two processes, so they cannot satisfy fan-in and
+ * are not aliases: they are one route mid-migration. They are listed below with
+ * that reason, and a SEVENTH such operation fails generation rather than joining a
+ * list nobody re-reads.
  */
 const FORKED_OPERATIONS_WITHOUT_ONE_HANDLER = Object.freeze({
   "POST /mcp/platform/tokens":
     "mid-migration: apps/agent has served this mint since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in. Two independent classes, one wire path — not an alias, and it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn.",
   "POST /mcp/entity/:entityId/tokens":
     "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape.",
+  // WIN-268 (M4.2) — the four LIFECYCLE operations beside the two mints. Each was
+  // in this manifest with an apps/agent implementation and none in apps/core-api,
+  // for the reason the mints had before P1: a V1 route may only reach a contract
+  // method, and identity-access published no listing and no revocation. It does
+  // now, so each of the four is a second, independent V1 class on the same wire
+  // path — the identical mid-migration shape, and NOT an alias.
+  "GET /mcp/platform/tokens":
+    "mid-migration: the platform credential listing, now also served by apps/core-api on the V1 chassis over IdentityAccessContract.listBearerCredentials. Two independent classes, one wire path; it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn.",
+  "POST /mcp/platform/tokens/:id/revoke":
+    "mid-migration: the platform revocation, now also served by apps/core-api over IdentityAccessContract.revokeBearerCredential. The V1 handler distinguishes never-existed from already-revoked from expired, which the legacy boolean cannot — so the two are not interchangeable and this is a migration rather than an alias.",
+  "GET /mcp/entity/:entityId/tokens":
+    "mid-migration: the entity credential listing, for the reason given for the platform listing above; it moved on the same tranche and has the same two-implementation shape.",
+  "DELETE /mcp/entity/:entityId/tokens/:tokenId":
+    "mid-migration: the entity revocation, for the reason given for the platform revocation above; it moved on the same tranche and has the same two-implementation shape.",
 });
 
 function validateAliasContract(restOperations) {
