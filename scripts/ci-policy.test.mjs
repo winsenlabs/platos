@@ -610,11 +610,28 @@ const expectedV1PackageScripts = new Map([
   ["test:max-file-lines", "node --test scripts/arch/max-file-lines.test.mjs"],
   ["test:webapp-image-inventory", "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs"],
   ["test:webapp-inventory-contract", "node --test scripts/webapp-inventory-contract.test.mjs"],
-  // WIN-272 (M4.6). The command is `--filter webapp exec vitest run <file>` and not
-  // `pnpm test:webapp`, which would drag in six suites that are red on `v1`.
+  // WIN-272 (M4.6). Two halves, both load-bearing.
+  //
+  // It selects the ONE FILE rather than running `pnpm test:webapp`, which would drag
+  // in six suites that are red on `v1` itself.
+  //
+  // AND IT BUILDS `webapp^...` FIRST -- webapp's dependencies, not webapp -- because
+  // the suite does not resolve without them. `platosAgent.server.ts` reaches
+  // `@internal/workload-identity`, and vite fails at IMPORT ANALYSIS on a workspace
+  // package with no `dist`: "Failed to resolve entry for package". That is not a
+  // hypothetical. This gate's own mutation driver refused to sweep on a fresh mini
+  // worktree with "BASELINE webapp-guest is RED on an unmutated tree", which is the
+  // driver working correctly and the script being under-specified. A gate whose
+  // greenness depends on some earlier job having happened to build a package is a
+  // gate that goes red on the first clean checkout that reorders CI.
   [
     "test:public-guest-boundary",
-    "pnpm --filter webapp exec vitest run test/publicGuestBoundary.test.ts --no-file-parallelism",
+    // UNQUOTED `webapp^...`, and the reason is this file rather than the shell. The
+    // no-op control below mutates the RAW package.json text by searching for this
+    // exact string, and a value carrying `\"` in JSON never matches the source it is
+    // searching -- the control failed with "mutation source is missing occurrence 1".
+    // `^` and `...` need no quoting in the `sh` a pnpm script runs under.
+    "pnpm --filter webapp^... build && pnpm --filter webapp exec vitest run test/publicGuestBoundary.test.ts --no-file-parallelism",
   ],
   // WIN-299 (M2.6): test:advisory now covers the disposition gate's unit suite
   // alongside the receipt suite, the same two-file shape test:webapp-image-inventory

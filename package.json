@@ -93,7 +93,7 @@
     "audit:webapp-image-inventory": "bash scripts/audit-webapp-image-inventory.sh",
     "test:webapp-image-inventory": "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs",
     "test:webapp-inventory-contract": "node --test scripts/webapp-inventory-contract.test.mjs",
-    "test:public-guest-boundary": "pnpm --filter webapp exec vitest run test/publicGuestBoundary.test.ts --no-file-parallelism",
+    "test:public-guest-boundary": "pnpm --filter webapp^... build && pnpm --filter webapp exec vitest run test/publicGuestBoundary.test.ts --no-file-parallelism",
     "audit:sbom:nonvacuity": "node scripts/verify-sbom-nonvacuity.mjs",
     "test:sbom": "node --test scripts/audit-sbom.test.mjs",
     "audit:arch-boundaries": "node scripts/arch/arch-boundaries.mjs && node scripts/arch/gen-dependency-cruiser.mjs --check",
