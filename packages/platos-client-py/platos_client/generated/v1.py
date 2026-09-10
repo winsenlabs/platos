@@ -479,6 +479,11 @@ class CollectionEnvelope_EndUserResource(TypedDict):
     page: "PageBlock"
 
 
+class CollectionEnvelope_OrganizationPolicyResource(TypedDict):
+    data: list["OrganizationPolicyResource"]
+    page: "PageBlock"
+
+
 class CollectionEnvelope_OrganizationResource(TypedDict):
     data: list["OrganizationResource"]
     page: "PageBlock"
@@ -564,8 +569,18 @@ class ItemEnvelope_OperatorSessionResource(TypedDict):
     meta: "ItemMeta"
 
 
+class ItemEnvelope_OrganizationPolicyResource(TypedDict):
+    data: "OrganizationPolicyResource"
+    meta: "ItemMeta"
+
+
 class ItemEnvelope_OrganizationResource(TypedDict):
     data: "OrganizationResource"
+    meta: "ItemMeta"
+
+
+class ItemEnvelope_PolicyDeletionResource(TypedDict):
+    data: "PolicyDeletionResource"
     meta: "ItemMeta"
 
 
@@ -617,6 +632,14 @@ class OperatorSessionResource(TypedDict):
     impersonating: "OperatorSessionResource_impersonating"
 
 
+class OrganizationPolicyResource(TypedDict):
+    policyId: str
+    pattern: str
+    state: str
+    createdAt: str
+    updatedAt: str
+
+
 class OrganizationResource_membership(TypedDict):
     id: str
     role: str
@@ -643,6 +666,11 @@ class PageBlock(PageBlockOptional):
     hasMore: bool
 
 
+class PolicyDeletionResource(TypedDict):
+    policyId: str
+    deleted: bool
+
+
 class ProjectResource(TypedDict):
     id: str
     organizationId: str
@@ -651,6 +679,11 @@ class ProjectResource(TypedDict):
     archivedAt: str | None
     createdAt: str
     through: str
+
+
+class SetOrganizationPolicyBody(TypedDict):
+    pattern: str
+    state: Literal["auto_allow", "require_approval", "block"]
 
 
 class WireError_fields_item(TypedDict):
@@ -765,6 +798,30 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["entityId"],
         "successStatus": 201,
         "idempotency": "required",
+    },
+    {
+        "operationId": "get__mcp_platform_environments_by_environmentId_policies",
+        "method": "GET",
+        "template": "/mcp/platform/environments/:environmentId/policies",
+        "pathParameters": ["environmentId"],
+        "successStatus": 200,
+        "idempotency": "not-applicable",
+    },
+    {
+        "operationId": "put__mcp_platform_environments_by_environmentId_policies",
+        "method": "PUT",
+        "template": "/mcp/platform/environments/:environmentId/policies",
+        "pathParameters": ["environmentId"],
+        "successStatus": 200,
+        "idempotency": "accepted",
+    },
+    {
+        "operationId": "delete__mcp_platform_environments_by_environmentId_policies_by_policyId",
+        "method": "DELETE",
+        "template": "/mcp/platform/environments/:environmentId/policies/:policyId",
+        "pathParameters": ["environmentId", "policyId"],
+        "successStatus": 200,
+        "idempotency": "accepted",
     },
     {
         "operationId": "post__mcp_platform_tokens",
@@ -971,6 +1028,44 @@ class McpEntityTokensV1Api:
         )
 
 
+class McpOrganizationPoliciesV1Api:
+    def __init__(self, transport: V1Transport) -> None:
+        self._transport = transport
+
+    def list(self, environment_id: str) -> "CollectionEnvelope_OrganizationPolicyResource":
+        """GET /mcp/platform/environments/:environmentId/policies"""
+        return self._transport.send(
+            {
+                "operation": _operation("get__mcp_platform_environments_by_environmentId_policies"),
+                "path": _fill("/mcp/platform/environments/:environmentId/policies", {"environmentId": environment_id}),
+                "body": None,
+                "query": None,
+            }
+        )
+
+    def set(self, environment_id: str, body: "SetOrganizationPolicyBody") -> "ItemEnvelope_OrganizationPolicyResource":
+        """PUT /mcp/platform/environments/:environmentId/policies"""
+        return self._transport.send(
+            {
+                "operation": _operation("put__mcp_platform_environments_by_environmentId_policies"),
+                "path": _fill("/mcp/platform/environments/:environmentId/policies", {"environmentId": environment_id}),
+                "body": body,
+                "query": None,
+            }
+        )
+
+    def remove(self, environment_id: str, policy_id: str) -> "ItemEnvelope_PolicyDeletionResource":
+        """DELETE /mcp/platform/environments/:environmentId/policies/:policyId"""
+        return self._transport.send(
+            {
+                "operation": _operation("delete__mcp_platform_environments_by_environmentId_policies_by_policyId"),
+                "path": _fill("/mcp/platform/environments/:environmentId/policies/:policyId", {"environmentId": environment_id, "policyId": policy_id}),
+                "body": None,
+                "query": None,
+            }
+        )
+
+
 class McpPlatformTokensV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
@@ -998,4 +1093,5 @@ class V1Api:
         self.organizations = OrganizationsV1Api(transport)
         self.projects = ProjectsV1Api(transport)
         self.mcp_entity_tokens = McpEntityTokensV1Api(transport)
+        self.mcp_organization_policies = McpOrganizationPoliciesV1Api(transport)
         self.mcp_platform_tokens = McpPlatformTokensV1Api(transport)

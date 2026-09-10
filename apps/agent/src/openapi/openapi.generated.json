@@ -29,6 +29,24 @@
           "page"
         ]
       },
+      "CollectionEnvelope_OrganizationPolicyResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrganizationPolicyResource"
+            }
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ]
+      },
       "CollectionEnvelope_OrganizationResource": {
         "type": "object",
         "properties": {
@@ -309,11 +327,41 @@
           "meta"
         ]
       },
+      "ItemEnvelope_OrganizationPolicyResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OrganizationPolicyResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemEnvelope_OrganizationResource": {
         "type": "object",
         "properties": {
           "data": {
             "$ref": "#/components/schemas/OrganizationResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "ItemEnvelope_PolicyDeletionResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PolicyDeletionResource"
           },
           "meta": {
             "$ref": "#/components/schemas/ItemMeta"
@@ -505,6 +553,33 @@
           "sessionId"
         ]
       },
+      "OrganizationPolicyResource": {
+        "type": "object",
+        "properties": {
+          "policyId": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "pattern",
+          "policyId",
+          "state",
+          "updatedAt"
+        ]
+      },
       "OrganizationResource": {
         "type": "object",
         "properties": {
@@ -590,6 +665,21 @@
           "nextCursor"
         ]
       },
+      "PolicyDeletionResource": {
+        "type": "object",
+        "properties": {
+          "policyId": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deleted",
+          "policyId"
+        ]
+      },
       "ProjectResource": {
         "type": "object",
         "properties": {
@@ -626,6 +716,26 @@
           "organizationId",
           "slug",
           "through"
+        ]
+      },
+      "SetOrganizationPolicyBody": {
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "auto_allow",
+              "require_approval",
+              "block"
+            ]
+          }
+        },
+        "required": [
+          "pattern",
+          "state"
         ]
       },
       "WireError": {
@@ -10981,6 +11091,187 @@
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
     },
+    "/mcp/platform/environments/{environmentId}/policies": {
+      "get": {
+        "operationId": "get__mcp_platform_environments_by_environmentId_policies",
+        "summary": "McpOrganizationPoliciesController.list",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_OrganizationPolicyResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "refused"
+      },
+      "put": {
+        "operationId": "put__mcp_platform_environments_by_environmentId_policies",
+        "summary": "McpOrganizationPoliciesController.set",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_OrganizationPolicyResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetOrganizationPolicyBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
+    "/mcp/platform/environments/{environmentId}/policies/{policyId}": {
+      "delete": {
+        "operationId": "delete__mcp_platform_environments_by_environmentId_policies_by_policyId",
+        "summary": "McpOrganizationPoliciesController.remove",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_PolicyDeletionResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "OPERATOR",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
+      }
+    },
     "/mcp/platform/events/subscribe": {
       "get": {
         "operationId": "get__mcp_platform_events_subscribe",
@@ -11615,14 +11906,14 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 310,
+  "x-platos-rest-operation-count": 313,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 11,
+    "derivedOperations": 14,
     "undeclaredOperations": 299,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 24,
+    "componentSchemas": 30,
     "canonicalErrorCodes": 456,
     "queryParametersNotDerived": [
       {

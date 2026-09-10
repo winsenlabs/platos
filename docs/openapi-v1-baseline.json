@@ -19,6 +19,24 @@
         ],
         "type": "object"
       },
+      "CollectionEnvelope_OrganizationPolicyResource": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationPolicyResource"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "type": "object"
+      },
       "CollectionEnvelope_OrganizationResource": {
         "properties": {
           "data": {
@@ -299,10 +317,40 @@
         ],
         "type": "object"
       },
+      "ItemEnvelope_OrganizationPolicyResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/OrganizationPolicyResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "ItemEnvelope_OrganizationResource": {
         "properties": {
           "data": {
             "$ref": "#/components/schemas/OrganizationResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_PolicyDeletionResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PolicyDeletionResource"
           },
           "meta": {
             "$ref": "#/components/schemas/ItemMeta"
@@ -495,6 +543,33 @@
         ],
         "type": "object"
       },
+      "OrganizationPolicyResource": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "pattern": {
+            "type": "string"
+          },
+          "policyId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "pattern",
+          "policyId",
+          "state",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "OrganizationResource": {
         "properties": {
           "archivedAt": {
@@ -580,6 +655,21 @@
         ],
         "type": "object"
       },
+      "PolicyDeletionResource": {
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          },
+          "policyId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deleted",
+          "policyId"
+        ],
+        "type": "object"
+      },
       "ProjectResource": {
         "properties": {
           "archivedAt": {
@@ -615,6 +705,26 @@
           "organizationId",
           "slug",
           "through"
+        ],
+        "type": "object"
+      },
+      "SetOrganizationPolicyBody": {
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "auto_allow",
+              "require_approval",
+              "block"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "pattern",
+          "state"
         ],
         "type": "object"
       },
@@ -1541,6 +1651,163 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ItemEnvelope_MintedTokenResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/mcp/platform/environments/{environmentId}/policies": {
+      "get": {
+        "operationId": "get__mcp_platform_environments_by_environmentId_policies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_OrganizationPolicyResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "refused",
+        "x-platos-schema-source": "typescript-dto"
+      },
+      "put": {
+        "operationId": "put__mcp_platform_environments_by_environmentId_policies",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetOrganizationPolicyBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_OrganizationPolicyResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/mcp/platform/environments/{environmentId}/policies/{policyId}": {
+      "delete": {
+        "operationId": "delete__mcp_platform_environments_by_environmentId_policies_by_policyId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "policyId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_PolicyDeletionResource"
                 }
               }
             },

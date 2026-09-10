@@ -276,20 +276,35 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // controller under `transports/ws/`. Both enumerators moved to the same numbers
   // on their own again — the generator's AST walk and this file's independent
   // glob — which is the whole reason two mechanisms exist.
-  assert.equal(core.sourceControllers, 8);
-  assert.equal(core.sourceDecorators, 11);
-  assert.equal(core.expandedOperations, 11);
-  assert.equal(core.manifestOperations, 11);
-  // 301 + 11 = 312 BINDINGS, and the manifest's `summary.restOperations` is 310
+  //
+  // WIN-268 (M4.2) 8 -> 9 controllers and 11 -> 14 decorators: the tier-2 MCP
+  // policy surface — `GET`, `PUT` and `DELETE` under
+  // `/mcp/platform/environments/:environmentId/policies` — in
+  // `transports/mcp/organization-policies.controller.ts`. THREE decorators on ONE
+  // controller, which is the first entry here that is not one route per class, and
+  // the arithmetic below is the reason it is worth saying: a reader who assumed
+  // the two counts move together would have expected 12.
+  //
+  // IT IS ALSO THE FIRST ENTRY THAT DOES NOT WIDEN `crossRootBindings`. The two
+  // mints are served by BOTH deployables and are therefore counted twice; these
+  // three are served by this one only, because the three legacy methods they
+  // replace answered no route at all. That is what makes the surplus stay at 2
+  // while both sides grow.
+  assert.equal(core.sourceControllers, 9);
+  assert.equal(core.sourceDecorators, 14);
+  assert.equal(core.expandedOperations, 14);
+  assert.equal(core.manifestOperations, 14);
+  // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
   // it reconciles to, which is what keeps the per-root sum an equality rather
   // than an approximation. The stream route adds to BOTH sides — it is served by
-  // one deployable only, so it is not a third shared operation.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 312);
+  // one deployable only, so it is not a third shared operation, and neither are
+  // the three policy routes.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 315);
   const totals = manifestCensus();
   assert.equal(totals.crossRootBindings, 2);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 310);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 313);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

@@ -83,7 +83,18 @@ describe("the policy table against the frozen operation manifest", () => {
     // omission: the route mints no credential, so it takes the unlisted default
     // (`accepted` — a key is honoured if sent and not demanded), and the
     // credential-path case below would fail if its path looked like a secret's.
-    expect(OPERATIONS.length).toBe(310);
+    //
+    // 310 -> 313 (WIN-268, M4.2): the tier-2 MCP policy surface's three routes at
+    // `/mcp/platform/environments/:environmentId/policies`. THE `PUT` IS THE ONE
+    // WORTH READING TWICE. It is a mutating operation that mints no credential, so
+    // it takes the unlisted default `accepted` rather than a `required` row — and
+    // that is the classification the two token mints beside it do NOT take. The
+    // difference is not "how dangerous": it is that a replayed policy upsert
+    // converges on the same single row keyed `@@unique([organizationId, pattern])`,
+    // while a replayed mint would leave a second live credential behind. Demanding
+    // a key here would refuse three hundred operations' worth of callers for a
+    // property the operation already has by construction.
+    expect(OPERATIONS.length).toBe(313);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {

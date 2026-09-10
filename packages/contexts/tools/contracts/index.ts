@@ -39,11 +39,21 @@ import type { EnvironmentScope, EntityId, Result } from "@platos/kernel";
 // The identifier and vocabulary a caller needs to build a command. Branded
 // types, so a `toolId` cannot reach an `exposureId` parameter across the
 // boundary any more than it can inside it.
+// `OrganizationMcpPolicyId` IS HERE BECAUSE `deleteOrganizationPolicy` WAS
+// PUBLISHED AND UNCALLABLE WITHOUT IT. WIN-268 (M4.2) found the asymmetry when the
+// first transport tried to reach that method: `OrganizationPolicyView` hands the id
+// OUT as a plain `string`, and `DeleteOrganizationPolicyCommand` demands the BRAND
+// back — a brand declared in `domain/identifiers.ts` and re-exported only from
+// `application/ports/`, which ADR M0.3 §2 forbids a consumer to import. A caller
+// outside this package could therefore hold the value and not the type, and its
+// only recourse was `as never`, which is how a branded parameter stops being one.
+// Publishing the type is additive and changes no method.
 export type {
   AgentId,
   EndUserId,
   ExposureId,
   ExternalEntityId,
+  OrganizationMcpPolicyId,
   ThreadId,
   ToolCallAuditId,
   ToolId,

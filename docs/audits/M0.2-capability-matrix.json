@@ -5,14 +5,14 @@
   "baseline": "89c12b8 (frozen main oracle); re-enumerated from operation-manifest.generated.json + tenancy Prisma schemas",
   "generatedBy": "scripts/capability-matrix.mjs",
   "totals": {
-    "restOperations": 310,
-    "operatorProtectedRest": 128,
+    "restOperations": 313,
+    "operatorProtectedRest": 131,
     "mcpTools": 202,
     "tenancyModels": 94,
     "endUserRestrictedModels": 14,
     "restOperationsByScanRoot": {
       "agent": 301,
-      "core-api-transports": 11
+      "core-api-transports": 14
     },
     "restOperationsSharedAcrossScanRoots": 2
   },
@@ -28,8 +28,8 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "operations": 11,
-        "routeBindings": 11
+        "operations": 14,
+        "routeBindings": 14
       }
     ],
     "unattributed": [],
@@ -3763,6 +3763,42 @@
         "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
       },
       {
+        "id": "GET /mcp/platform/environments/:environmentId/policies",
+        "surface": "rest",
+        "method": "GET",
+        "path": "/mcp/platform/environments/:environmentId/policies",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "PUT /mcp/platform/environments/:environmentId/policies",
+        "surface": "rest",
+        "method": "PUT",
+        "path": "/mcp/platform/environments/:environmentId/policies",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
+        "id": "DELETE /mcp/platform/environments/:environmentId/policies/:policyId",
+        "surface": "rest",
+        "method": "DELETE",
+        "path": "/mcp/platform/environments/:environmentId/policies/:policyId",
+        "classification": "REST_ONLY",
+        "requiresOperator": true,
+        "owner": "tenancy",
+        "ownerSource": "path-prefix",
+        "persistence": "see owner context (M0.3 ADR)",
+        "compatibility": "V1 canonical /api/v1; versioned per WIN-249"
+      },
+      {
         "id": "GET /mcp/platform/events/subscribe",
         "surface": "rest",
         "method": "GET",
@@ -6037,15 +6073,15 @@
       "tenancy",
       "tools"
     ],
-    "restRows": 310,
+    "restRows": 313,
     "mcpRows": 202,
     "oracleDerivedRestRows": 42,
-    "pathPrefixRestRows": 268,
+    "pathPrefixRestRows": 271,
     "platformTransportRows": 5,
     "byOwner": {
       "tools": 229,
+      "tenancy": 42,
       "agents": 39,
-      "tenancy": 39,
       "conversations": 31,
       "cost-monitoring": 30,
       "memory": 28,
@@ -6061,7 +6097,7 @@
       "files": 1,
       "secrets": 1
     },
-    "note": "Every row names one of the 19 permitted values. 42 REST rows carry per-row evidence (the handler at the oracle and the canonical rows it writes) and are checked against table-ownership.mjs; the remaining 268 are derived from the URL prefix and are marked ownerSource \"path-prefix\" so the weaker claim is visible."
+    "note": "Every row names one of the 19 permitted values. 42 REST rows carry per-row evidence (the handler at the oracle and the canonical rows it writes) and are checked against table-ownership.mjs; the remaining 271 are derived from the URL prefix and are marked ownerSource \"path-prefix\" so the weaker claim is visible."
   },
   "persistedStateGaps": [
     {
@@ -6080,5 +6116,5 @@
     }
   ],
   "acceptanceCriterion": "Every REST binding in operation-manifest.generated.json and every tenancy Prisma model appears here; counts are read from source, never hardcoded; --check fails on any drift. Every row names an ADR M0.3 §1 context, or the one non-context value `<platform-transport>` under the admission rule in scripts/arch/route-ownership.mjs; the retired unresolved-owner placeholder is neither producible nor accepted, and is refused by its own named rule.",
-  "sourceDigest": "4093c60309a9c657e33e74ea84f6ee640d517b6f66bdb40ec52d3d748f0801e6"
+  "sourceDigest": "694d085329b707b43c5ec86b7920f9a2b671b80464b5f8ce5a65cc1eb4303f8f"
 }

@@ -28,6 +28,7 @@ import type { LifecycleState } from "../health/readiness.js";
 import { BffSessionController } from "../transports/bff/session.controller.js";
 import { McpEntityTokensController } from "../transports/mcp/entity-tokens.controller.js";
 import { McpPlatformTokensController } from "../transports/mcp/platform-tokens.controller.js";
+import { McpOrganizationPoliciesController } from "../transports/mcp/organization-policies.controller.js";
 import { REST_APPLICATION, type RestApplication } from "../transports/rest/dependencies.js";
 import { EnvironmentEndUsersController } from "../transports/rest/environment-end-users.controller.js";
 import { IdentitySessionController } from "../transports/rest/identity-session.controller.js";
@@ -81,6 +82,13 @@ import { NotFoundController } from "./not-found.controller.js";
     // controller under `/mcp` — and joins BOTH halves to the manifest.
     McpPlatformTokensController,
     McpEntityTokensController,
+    // WIN-268 (M4.2) — the tier-2 MCP policy surface, and the first controller in
+    // this array that TOOK a capability out of `apps/agent` rather than adding one
+    // beside what that deployable still serves. Its three ORM-bearing predecessors
+    // in `permission-gateway.service.ts` were reachable from nothing at all, which
+    // is what made them the honest first move: no route to break, no client to
+    // repoint. Version-neutral, for the reason the two mints above are.
+    McpOrganizationPoliciesController,
     // WIN-272 (M4.6) — the stream lane. It is in this SAME array for the reason
     // the banner above gives and for one more that is specific to it: a stream
     // route that lost the race with `NotFoundController`'s `@All("{*path}")`

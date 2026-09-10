@@ -12168,6 +12168,57 @@
         ]
       },
       {
+        "id": "GET /mcp/platform/environments/:environmentId/policies",
+        "method": "GET",
+        "path": "/mcp/platform/environments/:environmentId/policies",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "McpOrganizationPoliciesController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "PUT /mcp/platform/environments/:environmentId/policies",
+        "method": "PUT",
+        "path": "/mcp/platform/environments/:environmentId/policies",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "McpOrganizationPoliciesController",
+            "handler": "set",
+            "source": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "DELETE /mcp/platform/environments/:environmentId/policies/:policyId",
+        "method": "DELETE",
+        "path": "/mcp/platform/environments/:environmentId/policies/:policyId",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "McpOrganizationPoliciesController",
+            "handler": "remove",
+            "source": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "GET /mcp/platform/events/subscribe",
         "method": "GET",
         "path": "/mcp/platform/events/subscribe",
@@ -12574,8 +12625,8 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 310,
-    "restRouteBindings": 312,
+    "restOperations": 313,
+    "restRouteBindings": 315,
     "ambiguousRestOperations": 2,
     "crossDeployableRestOperations": 2,
     "restClassifications": {
@@ -12583,7 +12634,7 @@
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 154
+      "REST_ONLY": 157
     },
     "restScanRoots": [
       {
@@ -12598,9 +12649,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 8,
-        "operations": 11,
-        "routeBindings": 11
+        "registeredControllers": 9,
+        "operations": 14,
+        "routeBindings": 14
       }
     ]
   }

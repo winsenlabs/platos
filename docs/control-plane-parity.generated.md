@@ -8,10 +8,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
 - MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
-- REST operations: **310** unique method/path pairs from **312** route bindings.
+- REST operations: **313** unique method/path pairs from **315** route bindings.
 - Ambiguous duplicate REST method/path pairs: **2**, of which **2** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=154.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=157.
 
 ## REST inventory
 
@@ -304,6 +304,9 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /mcp/messages` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-docs/docs-mcp.controller.ts#messages` |
 | `POST /mcp/platform` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#jsonRpc` |
 | `GET /mcp/platform/catalog` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#toolCatalog` |
+| `GET /mcp/platform/environments/:environmentId/policies` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/mcp/organization-policies.controller.ts#list` |
+| `PUT /mcp/platform/environments/:environmentId/policies` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/mcp/organization-policies.controller.ts#set` |
+| `DELETE /mcp/platform/environments/:environmentId/policies/:policyId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/mcp/organization-policies.controller.ts#remove` |
 | `GET /mcp/platform/events/subscribe` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#eventsSubscribe` |
 | `POST /mcp/platform/messages` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#messages` |
 | `GET /mcp/platform/sse` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#sse` |

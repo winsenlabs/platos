@@ -16,15 +16,15 @@
     "tools"
   ],
   "totals": {
-    "sites": 154,
-    "delegateSites": 141,
+    "sites": 147,
+    "delegateSites": 134,
     "clientSites": 13,
     "files": 21
   },
   "byVerdict": {
     "blockedOnAdapter": 2,
     "blockedOnContext": 51,
-    "movable": 36,
+    "movable": 29,
     "blockedOnContract": 65
   },
   "byOwner": {
@@ -63,8 +63,8 @@
       "unserved": 0
     },
     "tools": {
-      "sites": 35,
-      "delegate": 35,
+      "sites": 28,
+      "delegate": 28,
       "client": 0,
       "models": [
         "EntityMcpConfig",
@@ -94,7 +94,7 @@
         "setOrganizationPolicy",
         "setToolEnabled"
       ],
-      "movable": 30,
+      "movable": 23,
       "unserved": 5
     },
     "identity-access": {
@@ -1287,18 +1287,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
-      "line": 326,
-      "shape": "delegate",
-      "receiver": "this.prisma",
-      "delegate": "entityToolPolicy",
-      "model": "EntityToolPolicy",
-      "operation": "upsert",
-      "owner": "tools",
-      "verdict": "movable"
-    },
-    {
-      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
-      "line": 343,
+      "line": 338,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "entityMcpConfig",
@@ -1309,7 +1298,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 486,
+      "line": 495,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "environment",
@@ -1320,7 +1309,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 511,
+      "line": 520,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "organizationMcpPolicy",
@@ -1331,7 +1320,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 537,
+      "line": 546,
       "shape": "delegate",
       "receiver": "this.prisma",
       "delegate": "agentBinding",
@@ -1339,72 +1328,6 @@
       "operation": "findFirst",
       "owner": "agents",
       "verdict": "blockedOnContext"
-    },
-    {
-      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 682,
-      "shape": "delegate",
-      "receiver": "this.prisma",
-      "delegate": "organizationMcpPolicy",
-      "model": "OrganizationMcpPolicy",
-      "operation": "findMany",
-      "owner": "tools",
-      "verdict": "movable"
-    },
-    {
-      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 700,
-      "shape": "delegate",
-      "receiver": "this.prisma",
-      "delegate": "organizationMcpPolicy",
-      "model": "OrganizationMcpPolicy",
-      "operation": "findFirst",
-      "owner": "tools",
-      "verdict": "movable"
-    },
-    {
-      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 705,
-      "shape": "delegate",
-      "receiver": "this.prisma",
-      "delegate": "organizationMcpPolicy",
-      "model": "OrganizationMcpPolicy",
-      "operation": "update",
-      "owner": "tools",
-      "verdict": "movable"
-    },
-    {
-      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 712,
-      "shape": "delegate",
-      "receiver": "this.prisma",
-      "delegate": "organizationMcpPolicy",
-      "model": "OrganizationMcpPolicy",
-      "operation": "create",
-      "owner": "tools",
-      "verdict": "movable"
-    },
-    {
-      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 728,
-      "shape": "delegate",
-      "receiver": "this.prisma",
-      "delegate": "organizationMcpPolicy",
-      "model": "OrganizationMcpPolicy",
-      "operation": "findFirst",
-      "owner": "tools",
-      "verdict": "movable"
-    },
-    {
-      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-      "line": 733,
-      "shape": "delegate",
-      "receiver": "this.prisma",
-      "delegate": "organizationMcpPolicy",
-      "model": "OrganizationMcpPolicy",
-      "operation": "delete",
-      "owner": "tools",
-      "verdict": "movable"
     },
     {
       "file": "apps/agent/src/mcp-platform/token.service.ts",

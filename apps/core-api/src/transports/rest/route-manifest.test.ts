@@ -236,16 +236,38 @@ export function mountedRoutes(): readonly MountedRoute[] {
 }
 
 /**
+ * Whether the probe below sends a request body on this method.
+ *
+ * ONE PREDICATE, READ TWICE. The probe loop and `expectedRefusal` used to decide
+ * this separately — the loop on `GET || DELETE`, the expectation on `=== "POST"` —
+ * and the two agreed only for as long as `POST` was the only verb in this tree
+ * that carried a body. WIN-268 (M4.2) added a `PUT`, and the disagreement showed
+ * up as the expectation predicting `TRANSPORT_CONTEXT_UNAVAILABLE` for a route the
+ * probe was in fact sending `{}` to. Deriving both from this function is what
+ * makes the next verb cost nothing.
+ */
+function probeSendsBody(method: string): boolean {
+  return method !== "GET" && method !== "DELETE";
+}
+
+/**
  * What a route answers to an empty, keyless probe against an uncomposed process.
  *
  * READ OUT OF THE POLICY TABLE, not listed here. `classifyRequest` is the very
  * function the gate calls, so a template moving between classes moves this
  * expectation with it — the alternative is a second opinion about which routes
  * the mint contract binds.
+ *
+ * THE SECOND BRANCH IS ABOUT THE BODY AND NOT ABOUT THE VERB. A body pipe runs
+ * BEFORE the handler, so any route the probe sends `{}` to is refused with
+ * `TRANSPORT_REQUEST_INVALID` and never reaches the context check — which is the
+ * ordering the case below exists to pin. A route with no body to validate gets as
+ * far as `requireTools`/`requireTenancy` and answers
+ * `TRANSPORT_CONTEXT_UNAVAILABLE` instead.
  */
 function expectedRefusal(row: ManifestOperation): string {
   if (classifyRequest(row.method, row.path) === "required") return "IDEMPOTENCY_KEY_REQUIRED";
-  return row.method === "POST" ? "TRANSPORT_REQUEST_INVALID" : "TRANSPORT_CONTEXT_UNAVAILABLE";
+  return probeSendsBody(row.method) ? "TRANSPORT_REQUEST_INVALID" : "TRANSPORT_CONTEXT_UNAVAILABLE";
 }
 
 function manifestRoutes(): readonly ManifestOperation[] {
@@ -411,7 +433,7 @@ describe("WIN-267 R1 — every declared route is REACHABLE in the process, in re
       const response = await fetch(`${base}${path}`, {
         method: row.method,
         headers: { "content-type": "application/json" },
-        ...(row.method === "GET" || row.method === "DELETE" ? {} : { body: "{}" }),
+        ...(probeSendsBody(row.method) ? { body: "{}" } : {}),
       });
       const body = (await response.json()) as { readonly error?: { readonly code?: string } };
       answers.push(`${row.method} ${row.path} -> ${String(body.error?.code)}`);

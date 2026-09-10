@@ -477,6 +477,11 @@ export interface CollectionEnvelope_EndUserResource {
   readonly "page": PageBlock;
 }
 
+export interface CollectionEnvelope_OrganizationPolicyResource {
+  readonly "data": readonly OrganizationPolicyResource[];
+  readonly "page": PageBlock;
+}
+
 export interface CollectionEnvelope_OrganizationResource {
   readonly "data": readonly OrganizationResource[];
   readonly "page": PageBlock;
@@ -562,8 +567,18 @@ export interface ItemEnvelope_OperatorSessionResource {
   readonly "meta": ItemMeta;
 }
 
+export interface ItemEnvelope_OrganizationPolicyResource {
+  readonly "data": OrganizationPolicyResource;
+  readonly "meta": ItemMeta;
+}
+
 export interface ItemEnvelope_OrganizationResource {
   readonly "data": OrganizationResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_PolicyDeletionResource {
+  readonly "data": PolicyDeletionResource;
   readonly "meta": ItemMeta;
 }
 
@@ -612,6 +627,14 @@ export interface OperatorSessionResource {
   readonly "impersonating": OperatorSessionResource_impersonating;
 }
 
+export interface OrganizationPolicyResource {
+  readonly "policyId": string;
+  readonly "pattern": string;
+  readonly "state": string;
+  readonly "createdAt": string;
+  readonly "updatedAt": string;
+}
+
 export interface OrganizationResource_membership {
   readonly "id": string;
   readonly "role": string;
@@ -635,6 +658,11 @@ export interface PageBlock {
   readonly "total"?: number;
 }
 
+export interface PolicyDeletionResource {
+  readonly "policyId": string;
+  readonly "deleted": boolean;
+}
+
 export interface ProjectResource {
   readonly "id": string;
   readonly "organizationId": string;
@@ -643,6 +671,11 @@ export interface ProjectResource {
   readonly "archivedAt": string | null;
   readonly "createdAt": string;
   readonly "through": string;
+}
+
+export interface SetOrganizationPolicyBody {
+  readonly "pattern": string;
+  readonly "state": "auto_allow" | "require_approval" | "block";
 }
 
 export interface WireError_fields_item {
@@ -755,6 +788,30 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["entityId"],
     successStatus: 201,
     idempotency: "required",
+  },
+  {
+    operationId: "get__mcp_platform_environments_by_environmentId_policies",
+    method: "GET",
+    template: "/mcp/platform/environments/:environmentId/policies",
+    pathParameters: ["environmentId"],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
+    operationId: "put__mcp_platform_environments_by_environmentId_policies",
+    method: "PUT",
+    template: "/mcp/platform/environments/:environmentId/policies",
+    pathParameters: ["environmentId"],
+    successStatus: 200,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "delete__mcp_platform_environments_by_environmentId_policies_by_policyId",
+    method: "DELETE",
+    template: "/mcp/platform/environments/:environmentId/policies/:policyId",
+    pathParameters: ["environmentId", "policyId"],
+    successStatus: 200,
+    idempotency: "accepted",
   },
   {
     operationId: "post__mcp_platform_tokens",
@@ -951,6 +1008,41 @@ export class McpEntityTokensV1Api {
 
 }
 
+export class McpOrganizationPoliciesV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** GET /mcp/platform/environments/:environmentId/policies */
+  async list(environmentId: string): Promise<CollectionEnvelope_OrganizationPolicyResource> {
+    return this.transport.send<CollectionEnvelope_OrganizationPolicyResource>({
+      operation: operation("get__mcp_platform_environments_by_environmentId_policies"),
+      path: fill("/mcp/platform/environments/:environmentId/policies", { environmentId }),
+      body: undefined,
+      query: undefined,
+    });
+  }
+
+  /** PUT /mcp/platform/environments/:environmentId/policies */
+  async set(environmentId: string, body: SetOrganizationPolicyBody): Promise<ItemEnvelope_OrganizationPolicyResource> {
+    return this.transport.send<ItemEnvelope_OrganizationPolicyResource>({
+      operation: operation("put__mcp_platform_environments_by_environmentId_policies"),
+      path: fill("/mcp/platform/environments/:environmentId/policies", { environmentId }),
+      body: body,
+      query: undefined,
+    });
+  }
+
+  /** DELETE /mcp/platform/environments/:environmentId/policies/:policyId */
+  async remove(environmentId: string, policyId: string): Promise<ItemEnvelope_PolicyDeletionResource> {
+    return this.transport.send<ItemEnvelope_PolicyDeletionResource>({
+      operation: operation("delete__mcp_platform_environments_by_environmentId_policies_by_policyId"),
+      path: fill("/mcp/platform/environments/:environmentId/policies/:policyId", { environmentId, policyId }),
+      body: undefined,
+      query: undefined,
+    });
+  }
+
+}
+
 export class McpPlatformTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
@@ -975,6 +1067,7 @@ export class V1Api {
   readonly organizations: OrganizationsV1Api;
   readonly projects: ProjectsV1Api;
   readonly mcpEntityTokens: McpEntityTokensV1Api;
+  readonly mcpOrganizationPolicies: McpOrganizationPoliciesV1Api;
   readonly mcpPlatformTokens: McpPlatformTokensV1Api;
 
   constructor(transport: V1Transport) {
@@ -985,6 +1078,7 @@ export class V1Api {
     this.organizations = new OrganizationsV1Api(transport);
     this.projects = new ProjectsV1Api(transport);
     this.mcpEntityTokens = new McpEntityTokensV1Api(transport);
+    this.mcpOrganizationPolicies = new McpOrganizationPoliciesV1Api(transport);
     this.mcpPlatformTokens = new McpPlatformTokensV1Api(transport);
   }
 }
