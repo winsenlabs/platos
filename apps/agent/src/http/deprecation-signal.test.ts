@@ -8,6 +8,7 @@ import manifest from "../control-plane/operation-manifest.generated.json";
 import { API_VERSION, applyApiSurface } from "./api-surface";
 import {
   DEPRECATED_ROUTE_PREFIXES,
+  DEPRECATION_HEADERS,
   DEPRECATION_MINIMUM_WINDOW_DAYS,
   canonicalPathFor,
   deprecationHeadersFor,
@@ -242,8 +243,14 @@ describe("a canonical response carries none of it", () => {
 });
 
 describe("an alias preserves the old client", () => {
-  it("differs from its canonical twin in exactly the three added headers", async () => {
-    const volatile = new Set(["date", "etag", "content-length", "link", "deprecation", "sunset"]);
+  it("differs from its canonical twin in exactly the added headers the module declares", async () => {
+    // The expected set comes from `DEPRECATION_HEADERS`, not from a literal here:
+    // a fourth header added to the module has to appear in this assertion or the
+    // case fails, which is what stops "preserves the old client" from quietly
+    // becoming "preserves the old client except for the bit added last week".
+    const declared = DEPRECATION_HEADERS.map((name) => name.toLowerCase()).sort();
+    expect(declared).toEqual(["deprecation", "link", "sunset"]);
+    const volatile = new Set(["date", "etag", "content-length", ...declared]);
     for (const operation of DEPRECATED_OPERATIONS) {
       const prefix = matchDeprecatedRoutePrefix(operation.path)!;
       const aliasPath = concrete(operation.path);
@@ -259,7 +266,7 @@ describe("an alias preserves the old client", () => {
       expect(aliasRest, `${operation.id} headers moved`).toEqual(canonicalRest);
 
       const added = [...alias.headers.keys()].filter((name) => !canonical.headers.has(name)).sort();
-      expect(added).toEqual(["deprecation", "link", "sunset"]);
+      expect(added).toEqual(declared);
     }
   });
 });

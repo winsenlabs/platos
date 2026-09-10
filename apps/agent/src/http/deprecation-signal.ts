@@ -54,7 +54,15 @@ import type { INestApplication } from "@nestjs/common";
  */
 export const DEPRECATION_MINIMUM_WINDOW_DAYS = 90;
 
-/** The response headers this module is allowed to add, named for the gate. */
+/**
+ * The complete set of response headers this module is allowed to add.
+ *
+ * Declared once and READ BY THE SUITE, which asserts that an alias response
+ * differs from its canonical twin in exactly these three names and no others.
+ * Written as a literal in both places it would be two spellings of one closed
+ * set, and a fourth header could then be added here and go unobserved -- which is
+ * the whole failure mode a "preserves old clients" claim has to exclude.
+ */
 export const DEPRECATION_HEADERS = Object.freeze([
   "Deprecation",
   "Sunset",
