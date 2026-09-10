@@ -138,7 +138,16 @@ function run(command, { timeoutMs = SUITE_DEADLINE_MS } = {}) {
   return { status: result.status, output, timedOut };
 }
 
-/** The failing case names the runner printed, so a kill can be attributed. */
+/**
+ * The failing case names the runner printed, so a kill can be attributed.
+ *
+ * THREE SHAPES, AND THE THIRD IS THE ONE THAT LEFT M20 UNATTRIBUTED. A vitest case
+ * that FAILS an assertion is listed with a `×` bullet; a case that TIMES OUT is not —
+ * it appears only under the `FAIL <file> > <describe> > <case>` header, because there
+ * is no per-case summary line for a test the runner had to abandon. A kill with no
+ * case name reads exactly like a kill for the wrong reason, which is the whole thing
+ * this extractor exists to rule out.
+ */
 function failedCaseNames(output) {
   const names = [];
   for (const line of output.split("\n")) {
@@ -146,6 +155,10 @@ function failedCaseNames(output) {
     if (failure !== null && failure[1] !== undefined) names.push(failure[1].trim());
     const nodeTest = /^✖\s+(.*?)\s+\(/u.exec(line.trim());
     if (nodeTest !== null && nodeTest[1] !== undefined) names.push(nodeTest[1].trim());
+    // vitest's `FAIL <file> > <describe> > <case>` header, which is the only place a
+    // TIMED-OUT case is named.
+    const header = /^\s*FAIL\s+\S+\s+>\s+(.*)$/u.exec(line);
+    if (header !== null && header[1] !== undefined) names.push(header[1].trim());
   }
   return [...new Set(names)].slice(0, 6);
 }
