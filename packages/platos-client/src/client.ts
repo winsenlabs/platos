@@ -270,18 +270,18 @@ export class PlatosClient {
 
     // DECIDED ONCE, BEFORE THE FIRST TRY, from the headers the request will
     // actually carry — `_buildHeaders` first so a caller's own `init.headers`
-    // wins, exactly as the `fetch` call below merges them. Deciding per attempt
-    // would let a header mutated between tries change the answer halfway
-    // through, and "may this be repeated" is a property of the logical call.
+    // wins, exactly as the `fetch` call below merges them. Deciding per try would
+    // let a header mutated between sends change the answer halfway through, and
+    // "may this be repeated" is a property of the logical call, not of one send.
     const effectiveHeaders = {
       ...this._buildHeaders(scope),
       ...(init.headers as Record<string, string> | undefined),
     };
     const repeatable = isRepeatable(init.method ?? "GET", effectiveHeaders);
-    const attempts = repeatable ? this.retryCfg.maxRetries : 0;
+    const repeatBudget = repeatable ? this.retryCfg.maxRetries : 0;
 
     let lastError: unknown;
-    for (let retryCount = 0; retryCount <= attempts; retryCount++) {
+    for (let retryCount = 0; retryCount <= repeatBudget; retryCount++) {
       // Per-retry timeout signal combined with caller's signal.
       const retryController = new AbortController();
       const timeoutId = setTimeout(() => retryController.abort(), this.timeoutMs);
@@ -305,7 +305,7 @@ export class PlatosClient {
         // A NETWORK ERROR IS THE DANGEROUS ONE: the request may have been
         // delivered and the response lost, so a retry of a non-repeatable call
         // is exactly the double effect the guard exists to prevent.
-        if (retryCount < attempts && !externalSignal?.aborted) {
+        if (retryCount < repeatBudget && !externalSignal?.aborted) {
           await sleep(this._backoffMs(retryCount), externalSignal);
           continue;
         }
@@ -321,7 +321,7 @@ export class PlatosClient {
 
       const parsed = await errorFromResponse(res);
       lastError = parsed;
-      if (retryCount < attempts && isRetryableError(parsed) && !externalSignal?.aborted) {
+      if (retryCount < repeatBudget && isRetryableError(parsed) && !externalSignal?.aborted) {
         // Honor Retry-After for 429s.
         const delay =
           parsed instanceof PlatosRateLimitError && parsed.retryAfterMs

@@ -347,9 +347,13 @@ describe("the suite is not vacuous: the transport and the agent are two real ser
       'data: {"t":"assistant.delta","text":"hi"}\n\ndata: {"t":"turn.done"}\n\n',
     );
     expect(received).toHaveLength(1);
-    expect(received[0].url).toBe(
-      `/api/v1/agent/agents/${AGENT}/chat/stream?message=Hello`,
-    );
+    // THE MESSAGE IS IN THE BODY, NOT THE REQUEST LINE. This used to read
+    // `…/chat/stream?message=Hello`, which is the defect the case further down
+    // pins the fix for: a request line is a header and cannot carry the 20,000
+    // characters this transport advertises.
+    expect(received[0].method).toBe("POST");
+    expect(received[0].url).toBe(`/api/v1/agent/agents/${AGENT}/chat/stream`);
+    expect(JSON.parse(received[0].body)).toEqual({ message: "Hello" });
     // THE HANDLER DID NOT THROW. A 599 anywhere in this suite is a defect in the
     // route, not a refusal, and the bridge marks it so it cannot be mistaken.
     expect(response.headers.get("x-handler-threw")).toBeNull();
@@ -563,40 +567,66 @@ describe("the stream's refusals are the security boundary, and every one is reac
   });
 
   /**
-   * THE PAYLOAD CEILING THIS TRANSPORT ADVERTISES IS LARGER THAN THE ONE ITS
-   * TRANSPORT CAN CARRY, AND THAT IS A DEFECT THIS TRANCHE PINS RATHER THAN FIXES.
+   * THE ADVERTISED CEILING IS NOW DELIVERABLE, AND THE PROOF IS THAT THE MESSAGE
+   * IS NOWHERE IN THE UPSTREAM REQUEST LINE.
    *
-   * The route validates `message.length <= 20_000` and then puts the whole thing in
-   * the UPSTREAM REQUEST LINE: `new URLSearchParams({ message })` appended to
-   * `/api/v1/agent/agents/:id/chat/stream?…`. A request line is a header, and
-   * Node's default `maxHeaderSize` is 16 KiB, so a message an unauthenticated guest
-   * is told is acceptable is refused by the agent's own HTTP parser — before any
-   * handler on the far side runs. The visitor sees a failure with no explanation
-   * and the turn never existed.
+   * WHAT WAS WRONG. The route validated `message.length <= 20_000` and then put
+   * the whole thing in the UPSTREAM REQUEST LINE — `new URLSearchParams({
+   * message })` appended to `/api/v1/agent/agents/:id/chat/stream?…`. A request
+   * line is a header, Node's default `maxHeaderSize` is 16 KiB, and URL-encoding
+   * inflates the value further, so a length this transport ADMITTED was refused
+   * by the agent's own HTTP parser with a 431 before any handler ran. The visitor
+   * saw a failure with no explanation and the turn never existed. The previous
+   * tranche PINNED that: it asserted the 431 and asserted `received` stayed
+   * empty.
    *
-   * WHY IT IS NOT FIXED HERE. The fix is to stop carrying a user-supplied body in a
-   * URL, which means `agentChatStream` accepting the message in a request body —
-   * and `apps/agent/src/agent-runtime/agent.controller.ts` is M3.1 (WIN-261)'s,
-   * explicitly out of this tranche's roots. Lowering the BFF's own ceiling instead
-   * would narrow a validation on a published surface, which M0.4 §1.3 lists under
-   * "forces a new major". So the boundary is named and the behaviour is pinned:
-   * whoever owns that controller inherits a test that already says what is wrong.
+   * WHAT CHANGED. `apps/agent` gained `ChatStreamController` — a POST twin of the
+   * same operation on the same path, reading the message from a JSON body. ADR
+   * M0.4 §1.3 calls "add routes/ops" additive-in-major and lists "tighten
+   * validation" under forces-major, which is why the fix is a new route rather
+   * than a smaller ceiling, and why `AgentController` — M3.1's — is untouched.
    *
-   * THE ASSERTION IS THE MECHANISM, NOT THE STATUS. `431` is what Node's default
-   * limit produces and the real agent's limit is its own configuration; what cannot
-   * vary is that the request DID NOT REACH A HANDLER — `received` stays empty even
-   * though this transport admitted the message and really sent it.
+   * THE ASSERTION IS STILL THE MECHANISM, NOT THE STATUS. A 200 alone would be
+   * satisfied by a route that had quietly started truncating. What cannot vary is
+   * that the full 20,000 characters ARRIVED, that they arrived in the BODY, and
+   * that the request line carries no `message` at all — so the length that
+   * survives the hop is bounded by the body, which has no 16 KiB header limit.
    */
-  it("ADMITS a message its own upstream call cannot carry: the ceiling and the request line disagree", async () => {
+  it("DELIVERS a 20,000-character message: it travels in the body and the request line carries none of it", async () => {
     script = streamScript(['{"t":"turn.done"}']);
-    const response = await postMessage({
-      cookie: await guestCookieHeader(),
-      message: "x".repeat(20_000),
-    });
-    expect(response.status).not.toBe(200);
-    expect(response.status).toBe(431);
-    // The agent's HTTP parser refused the request line, so nothing was received:
-    // this transport spent a guest's turn on a request that could not be delivered.
+    const message = "x".repeat(20_000);
+    const response = await postMessage({ cookie: await guestCookieHeader(), message });
+    expect(response.status).toBe(200);
+    // It REACHED A HANDLER. This is the assertion the pinned defect made
+    // impossible: `received` used to stay empty because the parser refused first.
+    expect(received).toHaveLength(1);
+    expect(received[0].method).toBe("POST");
+    // NOT IN THE REQUEST LINE, and not merely "short enough" — absent.
+    expect(received[0].url).toBe(`/api/v1/agent/agents/${AGENT}/chat/stream`);
+    expect(received[0].url).not.toContain("message");
+    // AND ALL OF IT ARRIVED. A truncating route would pass every assertion above.
+    expect(JSON.parse(received[0].body)).toEqual({ message });
+    expect(received[0].headers["content-type"]).toContain("application/json");
+    expect(response.headers.get("x-handler-threw")).toBeNull();
+  });
+
+  it("NON-VACUITY: the same request line WOULD have been refused, so the body is what saved it", async () => {
+    // The control for the case above. It sends the retired shape — the message in
+    // the request line — to the same stand-in agent over the same socket, and
+    // requires the parser to refuse it. Without this, "the message is in the body"
+    // is a fact about the route with no consequence attached: the reader cannot
+    // tell whether the request line was ever the problem.
+    const url = new URL(
+      `${upstreamBase}/api/v1/agent/agents/${AGENT}/chat/stream?${new URLSearchParams({
+        message: "x".repeat(20_000),
+      }).toString()}`,
+    );
+    script = streamScript(['{"t":"turn.done"}']);
+    const refused = await fetch(url, { method: "GET" }).catch(() => null);
+    // 431 is what Node's default limit produces; a real server's limit is its own
+    // configuration. What cannot vary is that it did not reach a handler.
+    expect(refused === null || refused.status === 431).toBe(true);
+    if (refused) await refused.text().catch(() => undefined);
     expect(received).toHaveLength(0);
   });
 

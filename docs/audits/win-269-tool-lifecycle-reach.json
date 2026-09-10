@@ -20,11 +20,11 @@
   ],
   "files": 13,
   "filesWithSites": 5,
-  "totalSites": 31,
-  "delegateSites": 30,
+  "totalSites": 29,
+  "delegateSites": 28,
   "clientSites": 1,
   "byOwner": {
-    "tools": 15,
+    "tools": 13,
     "tenancy": 10,
     "secrets": 2,
     "identity-access": 1,
@@ -32,10 +32,10 @@
     "<client-level>": 1
   },
   "byVerdict": {
-    "blockedOnContext": 17,
+    "blockedOnContext": 15,
     "blockedOnContract": 14
   },
-  "unblockedByComposingSubject": 15,
+  "unblockedByComposingSubject": 13,
   "dependency": [
     {
       "slot": "repository",
@@ -126,7 +126,7 @@
         ]
       },
       "note": "The registry IS `ToolsContract.registerTools` plus its readers. `packages/contexts/tools/application/register-tools.ts` is the published form of the idempotent-replace write, including the prune, and `read-tools.ts` of the two listings. Its `Entity`/`Environment` scope reads are `tenancy.findEntity` and the environment half of the same pair check; the `AgentBinding` fan-out that decides which agents see a tool is `agents`', which is not composed. Blocked on composing `tools`.",
-      "sites": 14
+      "sites": 12
     },
     "apps/agent/src/tool-gateway/tool-executor.service.ts": {
       "contexts": [
@@ -407,25 +407,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
-      "line": 538,
-      "shape": "delegate",
-      "model": "EnvironmentEntityTool",
-      "operation": "findMany",
-      "owner": "tools",
-      "verdict": "blockedOnContext"
-    },
-    {
-      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
-      "line": 545,
-      "shape": "delegate",
-      "model": "EnvironmentEntityTool",
-      "operation": "deleteMany",
-      "owner": "tools",
-      "verdict": "blockedOnContext"
-    },
-    {
-      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
-      "line": 631,
+      "line": 644,
       "shape": "delegate",
       "model": "AgentBinding",
       "operation": "findMany",

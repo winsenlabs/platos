@@ -16,18 +16,18 @@
   ],
   "reconciledAgainst": {
     "source": "docs/audits/M0.9-rest-census-independent.json",
-    "enumeratedRestCells": 309,
+    "enumeratedRestCells": 310,
     "enumeratedOperatorCells": 128,
-    "independentUniqueRoutes": 292,
+    "independentUniqueRoutes": 293,
     "dualMountAliasOps": 19,
-    "independentManifestOps": 311,
+    "independentManifestOps": 312,
     "independentCrossRootBindings": 2,
-    "independentUniqueOperations": 309,
+    "independentUniqueOperations": 310,
     "independentCrossRootOperatorBindings": 2,
     "independentUniqueOperatorOperations": 128,
     "independentOperatorFloor": 103,
     "independentManifestOperator": 130,
-    "controllers": 35,
+    "controllers": 36,
     "agrees": true
   },
   "restScanRoots": {
@@ -35,10 +35,10 @@
       {
         "id": "agent",
         "dir": "apps/agent/src",
-        "enumeratedOperations": 300,
-        "independentOperations": 300,
-        "independentSourceControllers": 27,
-        "independentSourceDecorators": 281,
+        "enumeratedOperations": 301,
+        "independentOperations": 301,
+        "independentSourceControllers": 28,
+        "independentSourceDecorators": 282,
         "agrees": true
       },
       {
@@ -51,14 +51,14 @@
         "agrees": true
       }
     ],
-    "total": 311
+    "total": 312
   },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {
-    "cells": 783,
+    "cells": 784,
     "covered": 2,
-    "uncovered": 781,
+    "uncovered": 782,
     "bySurface": {
       "bff": {
         "total": 117,
@@ -71,9 +71,9 @@
         "uncovered": 202
       },
       "rest": {
-        "total": 309,
+        "total": 310,
         "covered": 0,
-        "uncovered": 309
+        "uncovered": 310
       },
       "screen": {
         "total": 47,
@@ -97,7 +97,7 @@
       }
     }
   },
-  "digest": "dfbaed348c6fff82114e704b9147efe4b5963b75facb3c2837a71e087406f283",
+  "digest": "9d49c774585eb9dc74bca8163696577f9046f0a9f0d2571c1f5d6f71de8c36b5",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -2249,6 +2249,17 @@
       "surface": "rest",
       "owner": "agents",
       "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "POST /api/v1/agent/agents/:agentId/chat/stream",
+      "surface": "rest",
+      "owner": "agents",
+      "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",

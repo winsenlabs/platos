@@ -2065,6 +2065,42 @@
         "x-platos-mcp-tools": [],
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+      },
+      "post": {
+        "operationId": "post__api_v1_agent_agents_by_agentId_chat_stream",
+        "summary": "ChatStreamController.chatStream",
+        "tags": [
+          "rest_only"
+        ],
+        "parameters": [
+          {
+            "name": "agentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-classification": "REST_ONLY",
+        "x-platos-auth-class": "SCOPED_USER",
+        "x-platos-policy-rule": "explicit-default-rest-only",
+        "x-platos-mcp-tools": [],
+        "x-platos-schema-source": "undeclared",
+        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
     },
     "/api/v1/agent/agents/{agentId}/evals/aggregate": {
@@ -11579,11 +11615,11 @@
     }
   },
   "x-platos-manifest-version": "M0.1",
-  "x-platos-rest-operation-count": 309,
+  "x-platos-rest-operation-count": 310,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
     "derivedOperations": 11,
-    "undeclaredOperations": 298,
+    "undeclaredOperations": 299,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
     "componentSchemas": 24,

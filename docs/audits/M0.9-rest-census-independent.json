@@ -24,12 +24,12 @@
     "unscannedControllers": "the exclusion list is joined to the tree in BOTH directions. Every *.controller.ts inside a scanned application's src/ must be under a declared scan root or named in PROCESS_EDGE_EXCLUSIONS; anything else fails as UNSCANNED ROUTE-BEARING CONTROLLER. Without this half a controller can be accounted for by nothing at all, which is what apps/core-api/src/http/not-found.controller.ts was until WIN-267 W3."
   },
   "totals": {
-    "controllers": 35,
-    "independentUniqueRoutes": 292,
+    "controllers": 36,
+    "independentUniqueRoutes": 293,
     "dualMountAliasOps": 19,
-    "manifestOps": 311,
+    "manifestOps": 312,
     "crossRootBindings": 2,
-    "uniqueOperations": 309,
+    "uniqueOperations": 310,
     "crossRootOperatorBindings": 2,
     "uniqueOperatorOperations": 128,
     "independentOperatorFloor": 103,
@@ -40,11 +40,11 @@
         "dir": "apps/agent/src",
         "why": "the V0 Nest application — every production controller the frozen surface serves today.",
         "present": true,
-        "sourceControllers": 27,
-        "sourceDecorators": 281,
-        "expandedOperations": 300,
-        "manifestOperations": 300,
-        "manifestControllers": 27,
+        "sourceControllers": 28,
+        "sourceDecorators": 282,
+        "expandedOperations": 301,
+        "manifestOperations": 301,
+        "manifestControllers": 28,
         "ok": true
       },
       {
@@ -196,6 +196,18 @@
       "independentDecorators": 2,
       "mountMultiplier": 1,
       "manifestOps": 2,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 0,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
+      "controller": "ChatStreamController",
+      "file": "apps/agent/src/agent-runtime/chat-stream.controller.ts",
+      "scanRoot": "agent",
+      "independentDecorators": 1,
+      "mountMultiplier": 1,
+      "manifestOps": 1,
       "independentOperatorFloor": 0,
       "manifestOperator": 0,
       "routeOk": true,
@@ -516,5 +528,5 @@
   ],
   "ok": true,
   "failures": [],
-  "sourceDigest": "ae68aea68115a72cee2b200826ae8a420fd056f83d8a62c97e10b8470ae3bc43"
+  "sourceDigest": "e056a024f872466654462bd957899f71d7b1d77eeb8a6e8a40f2fc4005c52c7c"
 }

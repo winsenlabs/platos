@@ -194,7 +194,8 @@ describe("the legacy transport's retry guard", () => {
   it("EVERY mutating call the shipped namespaces make is either idempotent or unretried", async () => {
     // THE JOIN TO THE REST OF THE PACKAGE. The cases above prove the rule on
     // synthetic requests; this one drives the real namespaces and asserts that
-    // none of them gets a second attempt it has not earned. It is not the guard —
+    // none of them is sent a second time without having earned it. It is not the
+    // guard —
     // it is the check that no namespace bypasses `_fetch` and reintroduces the
     // defect underneath it.
     const cases: Array<{ label: string; run: (client: PlatosClient) => Promise<unknown> }> = [

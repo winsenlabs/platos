@@ -8,10 +8,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
 - MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
-- REST operations: **309** unique method/path pairs from **311** route bindings.
+- REST operations: **310** unique method/path pairs from **312** route bindings.
 - Ambiguous duplicate REST method/path pairs: **2**, of which **2** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=153.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=154.
 
 ## REST inventory
 
@@ -44,6 +44,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/agents/:agentId/canary/promote` | MAPPED | `agents.canary.promote` | Reviewed behavioral equivalence: the REST adapter and agents.canary.promote invoke the same scope-pinned AgentCrudService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#promoteAgentCanary` |
 | `GET /api/v1/agent/agents/:agentId/categories` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentCategories` |
 | `GET /api/v1/agent/agents/:agentId/chat/stream` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#agentChatStream` |
+| `POST /api/v1/agent/agents/:agentId/chat/stream` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/chat-stream.controller.ts#chatStream` |
 | `GET /api/v1/agent/agents/:agentId/evals/aggregate` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#aggregateEvals` |
 | `PATCH /api/v1/agent/agents/:agentId/feature-flags` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setAgentFeatureFlags` |
 | `POST /api/v1/agent/agents/:agentId/messages` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#agentMessages` |

@@ -108,15 +108,24 @@ test("committed matrix: row counts are pinned exactly", () => {
   // tenancy's four-gate one, and the frames it serves belong to no context at all
   // (the journal is a kernel port). The oracle-derived count stays at 42 for the
   // reason R1 gives: this handler does not exist in the frozen oracle.
-  assert.equal(REST.length, 309);
+  //
+  // 309 -> 310 and 267 -> 268 (M4 finish): the chat-stream POST,
+  // `POST /api/v1/agent/agents/{agentId}/chat/stream`. It exists so a user message
+  // stops travelling in the upstream REQUEST LINE, where a validated 20,000
+  // characters cannot fit under Node's 16 KiB header limit; the GET it twins is
+  // unchanged. It resolves by URL PREFIX through a prefix ALREADY in the table —
+  // the same `/agent/agents/...` its own GET resolves through — so the
+  // oracle-derived count stays at 42 for the reason R1 gives: this handler does
+  // not exist in the frozen oracle.
+  assert.equal(REST.length, 310);
   assert.equal(REST.filter((r) => r.ownerSource === "oracle-derived").length, 42);
-  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 267);
-  assert.equal(42 + 267, REST.length);
+  assert.equal(REST.filter((r) => r.ownerSource === "path-prefix").length, 268);
+  assert.equal(42 + 268, REST.length);
   assert.equal(MCP.length, 202);
-  assert.equal(MATRIX.totals.restOperations, 309);
-  assert.equal(MATRIX.ownership.restRows, 309);
+  assert.equal(MATRIX.totals.restOperations, 310);
+  assert.equal(MATRIX.ownership.restRows, 310);
   assert.equal(MATRIX.ownership.oracleDerivedRestRows, 42);
-  assert.equal(MATRIX.ownership.pathPrefixRestRows, 267);
+  assert.equal(MATRIX.ownership.pathPrefixRestRows, 268);
 });
 
 test("committed matrix: exactly 5 rows carry the non-context value, and they are the pinned 5", () => {
@@ -458,7 +467,11 @@ test("committed matrix: the REST total is split across the declared scan roots a
   // WIN-272 (M4.6) 10 -> 11, and the total DOES move, to 309: the stream route is
   // an operation that exists NOWHERE ELSE, so it is not a second implementation of
   // an agent one and the shared count stays at 2. 300 + 11 - 2 = 309.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 300, "core-api-transports": 11 });
+  //
+  // M4 FINISH: the AGENT side moves 300 -> 301 for the first time, and the total
+  // to 310. The chat-stream POST is served by one deployable, so the shared count
+  // stays at 2. 301 + 11 - 2 = 310.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 11 });
   assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 2);
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });

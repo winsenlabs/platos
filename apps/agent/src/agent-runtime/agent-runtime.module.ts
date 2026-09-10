@@ -24,6 +24,7 @@ import { SkillsModule } from "../skills/skills.module";
 import { EvalsModule } from "../evals/evals.module";
 import { GovernanceModule } from "../governance/governance.module";
 import { PromptCacheService } from "./prompt-cache.service";
+import { ChatStreamController } from "./chat-stream.controller";
 
 @Module({
   imports: [
@@ -50,7 +51,12 @@ import { PromptCacheService } from "./prompt-cache.service";
     // forwardRef on module scan. No need to import TriggerBridgeModule
     // here.
   ],
-  controllers: [AgentController, AttachmentUploadController, JobsController, JobExecutionController, ChannelsController, ChannelAppsController],
+  // ChatStreamController — the POST twin of `AgentController`'s
+  // `@Get("agents/:agentId/chat/stream")`, added because a user message cannot
+  // travel in a request line (ADR M0.4 §1.3: "add routes/ops" is additive,
+  // "tighten validation" is not). Same dispatch chokepoint, same SSE writer; the
+  // only difference is where the message is read from.
+  controllers: [AgentController, ChatStreamController, AttachmentUploadController, JobsController, JobExecutionController, ChannelsController, ChannelAppsController],
   // TurnDispatchService — the durable-vs-direct chokepoint. Exported so the WS
   // gateway (ConnectionsModule), the SSE/REST controller (this module), and the
   // Slack channel (ChannelsModule) all route dispatch through the ONE service

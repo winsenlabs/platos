@@ -50,7 +50,12 @@ test("the denominator matches the M0 censuses exactly", () => {
   // the differential harness and says so with an owning issue, for the reason all
   // eight before it are: the harness twin-runs STORES, and a stream lane whose
   // journal is a Redis log has no second implementation to be run against.
-  assert.equal(summary.bySurface.rest.total, 309, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more");
+  // M4 FINISH: 309 -> 310, the chat-stream POST. The AGENT root's own count moves
+  // for the first time — 300 -> 301 — because a user message cannot travel in a
+  // request line and the only streaming handler read it from a query parameter.
+  // It is UNCOVERED by the differential harness for the reason the nine before it
+  // are: the harness twin-runs STORES, and this route runs a turn.
+  assert.equal(summary.bySurface.rest.total, 310, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more, M4 finish one more");
   assert.equal(summary.bySurface.mcp.total, 202, "WIN-247 counted 202 MCP tools");
   // WIN-267 G1: 93 -> 94. `EvalRun` is the canonical row `governance`'s
   // `EvalRunQueue` port enqueues into — ADR M0.3 §1 row 14's "eval runs enqueue

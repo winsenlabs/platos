@@ -7502,6 +7502,23 @@
         ]
       },
       {
+        "id": "POST /api/v1/agent/agents/:agentId/chat/stream",
+        "method": "POST",
+        "path": "/api/v1/agent/agents/:agentId/chat/stream",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ChatStreamController",
+            "handler": "chatStream",
+            "source": "apps/agent/src/agent-runtime/chat-stream.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/agent/agents/:agentId/evals/aggregate",
         "method": "GET",
         "path": "/api/v1/agent/agents/:agentId/evals/aggregate",
@@ -12557,8 +12574,8 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 309,
-    "restRouteBindings": 311,
+    "restOperations": 310,
+    "restRouteBindings": 312,
     "ambiguousRestOperations": 2,
     "crossDeployableRestOperations": 2,
     "restClassifications": {
@@ -12566,16 +12583,16 @@
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 153
+      "REST_ONLY": 154
     },
     "restScanRoots": [
       {
         "id": "agent",
         "dir": "apps/agent/src",
         "strict": false,
-        "registeredControllers": 27,
-        "operations": 300,
-        "routeBindings": 300
+        "registeredControllers": 28,
+        "operations": 301,
+        "routeBindings": 301
       },
       {
         "id": "core-api-transports",

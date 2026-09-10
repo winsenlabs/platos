@@ -538,7 +538,7 @@ export class ToolRegistryService implements OnModuleInit, OnModuleDestroy {
    * the parameter list, no organization, no project, and no join to either. The
    * pair is the WHOLE key of `EnvironmentEntityTool`, so any caller holding two
    * ids it had not earned could delete another tenant's exposures, and the
-   * `EnvironmentEntityTool_ancestry` trigger cannot help: a DELETE of a
+   * `EnvironmentEntityTool_ancestry` enforcement cannot help: a DELETE of a
    * coherent row belonging to somebody else violates no ancestry rule.
    *
    * WHY DELETED RATHER THAN GUARDED — the disposition four stages deferred, on

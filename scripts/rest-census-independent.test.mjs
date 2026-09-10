@@ -247,15 +247,24 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // THE ARITHMETIC. Five controllers under `apps/core-api/src/transports` carry
   // EIGHT route decorators, none of them multi-mounted, so 8 decorators x 1 base
   // path = 8 expanded operations, and the committed manifest attributes 8 to that
-  // root. The agent root is untouched at 300. 300 + 8 = 308, which is the
+  // root. The agent root was untouched at 300. 300 + 8 = 308, which was the
   // manifest's own `summary.restOperations`.
+  //
+  // M4 FINISH: the AGENT root moves 300 -> 301, and it is the first time it has.
+  // `ChatStreamController` adds `POST /api/v1/agent/agents/:agentId/chat/stream`,
+  // the POST twin of the GET on that path, so a user message stops travelling in
+  // the upstream REQUEST LINE — where a validated 20,000 characters could not fit
+  // under Node's 16 KiB header limit. ADR M0.4 §1.3 calls adding a route
+  // additive-in-major and narrowing a validation a major, which is why the fix is
+  // this shape. BOTH enumerators moved to 301 on their own: the generator's AST
+  // walk and this file's independent glob.
   const roots = scanRootReport();
   const r = reconcileScanRoots(roots, processEdgeReport(), manifestCensus(), independentCensus(roots));
   assert.equal(r.ok, true, r.failures.join("\n"));
   const agent = r.table.find((t) => t.id === "agent");
   const core = r.table.find((t) => t.id === "core-api-transports");
-  assert.equal(agent.manifestOperations, 300);
-  assert.equal(agent.expandedOperations, 300);
+  assert.equal(agent.manifestOperations, 301);
+  assert.equal(agent.expandedOperations, 301);
   assert.equal(core.present, true, "the declared core-api transport root must exist on disk");
   // WIN-268 (M4.2) P1 5 -> 7 controllers and 8 -> 10 decorators: the two MCP
   // one-time-secret token mints, `POST /mcp/platform/tokens` and
@@ -271,16 +280,16 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   assert.equal(core.sourceDecorators, 11);
   assert.equal(core.expandedOperations, 11);
   assert.equal(core.manifestOperations, 11);
-  // 300 + 11 = 311 BINDINGS, and the manifest's `summary.restOperations` is 309
+  // 301 + 11 = 312 BINDINGS, and the manifest's `summary.restOperations` is 310
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
   // it reconciles to, which is what keeps the per-root sum an equality rather
   // than an approximation. The stream route adds to BOTH sides — it is served by
   // one deployable only, so it is not a third shared operation.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 311);
+  assert.equal(agent.manifestOperations + core.manifestOperations, 312);
   const totals = manifestCensus();
   assert.equal(totals.crossRootBindings, 2);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 309);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 310);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

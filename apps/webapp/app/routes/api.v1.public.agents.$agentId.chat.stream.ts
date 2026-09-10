@@ -96,12 +96,26 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return json({ error: "Message is required and must be at most 20,000 characters" }, { status: 400 });
   }
 
-  const search = new URLSearchParams({ message });
+  // THE MESSAGE TRAVELS IN THE BODY, AND THAT IS THE WHOLE FIX.
+  //
+  // This route validated `message.length <= 20_000` and then put the message in
+  // the UPSTREAM REQUEST LINE via `new URLSearchParams({ message })`. A request
+  // line is a header: Node's default `maxHeaderSize` is 16 KiB and URL-encoding
+  // inflates a message further, so a length this route ADMITTED was refused by
+  // the agent's own HTTP parser with a 431 before any handler ran. The guard
+  // passed and the request died upstream — the visitor saw a failure with no
+  // explanation and the turn never existed.
+  //
+  // The upstream now has a POST twin of the same operation
+  // (`ChatStreamController` in apps/agent) reading the message from a JSON body,
+  // which is what ADR M0.4 §1.3 calls additive — "add routes/ops" — where
+  // lowering this route's own ceiling would be "tighten validation", a major.
+  // Nothing about the 20,000 ceiling moved; it is now deliverable.
   try {
     const upstream = await sessionAgentResponse(
-      `/api/v1/agent/agents/${encodeURIComponent(agentId)}/chat/stream?${search}`,
+      `/api/v1/agent/agents/${encodeURIComponent(agentId)}/chat/stream`,
       sessionToken,
-      { signal: request.signal },
+      { method: "POST", body: { message }, signal: request.signal },
     );
     if (!upstream.ok || !upstream.body) {
       return json({ error: "Streaming failed" }, { status: upstream.status || 502 });

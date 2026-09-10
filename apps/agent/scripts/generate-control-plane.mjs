@@ -41,6 +41,7 @@ const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
 const PRODUCTION_MOUNTED_CONTROLLERS = {
   AgentController: "agent-runtime/agent-runtime.module.ts",
   AttachmentUploadController: "agent-runtime/agent-runtime.module.ts",
+  ChatStreamController: "agent-runtime/agent-runtime.module.ts",
   ChannelAppsController: "agent-runtime/agent-runtime.module.ts",
   ChannelsController: "agent-runtime/agent-runtime.module.ts",
   JobExecutionController: "agent-runtime/agent-runtime.module.ts",

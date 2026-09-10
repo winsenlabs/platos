@@ -159,7 +159,7 @@ describeWithDatabase("the surviving prune path against a forged scope triple", (
     adminConnected = true;
 
     // EVERY migration, in order, from the canonical directory — the same schema
-    // production runs, including the ancestry trigger the later migration
+    // production runs, including the ancestry enforcement the later migration
     // redefines. A fixture built from the initial migration alone would be
     // proving enforcement production no longer has.
     const migrationsRoot = resolve(
