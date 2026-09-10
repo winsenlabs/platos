@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "853316ab447d9847524d22a1bc6fe94156b97ee0b96f44c87e28c8b00689ec24"
+      "sha256": "99ec5e055bd9b864937e770b29de60d6eb321cdc3790e3d8b0d650db57a41c3a"
     },
     {
       "path": "LICENSE",
@@ -808,12 +808,12 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "c0b5810f842bf540b712d86584915895d4ed60b06d2664fda2c312785003a851"
+      "sha256": "16bc313971dfaeeb187c64a38ecb770d000ba1ddcaf05ae109a2423f62cef017"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "8ea242fc0bc59b0b6ce12fcf7118ea9075c7a3a7fff27c6c0bcd1fd4437266e0"
+      "sha256": "b23e904f486127e8d2d2702e975a59b77e59b41e0c5c5b77ce09da09f6eef012"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "8eed21b50a332684847594c05a71d3b1d096f6a32b2e3738ff6d473c83a2828b"
+      "sha256": "7441387a585e7567d739b5d007e3c9ad03197065ee92f1102ddf5d6523886c78"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -963,7 +963,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "495eea8793a326b67fb77d1141551df8eb69983ff934a8e400fccc684948dcba"
+      "sha256": "71cfd3e67ebaf12e012e2659fba69b2154c59728f72851ba0b4a795ba3e94e72"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "f87c2f95592f6fc5fd69774bfd5c5fd9092e1f31372296cf8e7760b3c1d11601"
+      "sha256": "4123eeb0234b4befcf49e1d071c2d67cc0093710ee1e62dd46332c48c2b4f39d"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "4aadaa3417362553af30c206ab703485b9514a2114c638be91581acec3499b22"
+      "sha256": "3ffca2a7165fd1ebfc3bb85feabb4eb58754a82159d3db866c4cfe7f9322719a"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1068,22 +1068,22 @@
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
       "mode": "100644",
-      "sha256": "39ea8303c0566f570704b31b5fb47f50b0809cb5d4684a8c7ddf543a02ac3c92"
+      "sha256": "476d8c28b7ba789c9e59779e580f8896496bea2096100f2ca2419828b45bd8eb"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.md",
       "mode": "100644",
-      "sha256": "cb30550086d3cfb325fa6ef315e0b122e683dea0bfd8ef56770fbdbae33ba2eb"
+      "sha256": "efd6edb142a465bd05e2fc1e96b7e5609898b2e547355c2a80466a26e1afa572"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "ad9413203156fe1b250feaa3350e6d92da0a5527b6dbf98d28721cb2965e2da8"
+      "sha256": "f85ffff4a376e9e12e09eda7506c6591910e1c5e42bdff4fef5aee6d9c62dfdc"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "2059536360d87e6894b5afed0b8e2cbdd6983af213b9d2d4a505676ebddf2fe9"
+      "sha256": "b35171f893aa71dcce2ebf6747da0978682427196641c813c6e2768836ea1a4f"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1098,12 +1098,12 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "a906c684d3446e695a1c567f138077c83c6b936ec80af09a441bb7e53c399b2b"
+      "sha256": "4626bcc5fb67c1ecdc6398c4d5a27274c8c4867703652a45b8ba3b991f88a568"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
       "mode": "100644",
-      "sha256": "11a704c7b5a3abf3d8fac9c5303948eccf20cfb09c095c7619cf02485bcaff09"
+      "sha256": "5497dc2db453828f74037cc90d3fc5254b5737858547b026da31f9982f336f31"
     },
     {
       "path": "docs/authentication.md",
@@ -1308,7 +1308,7 @@
     {
       "path": "docs/control-plane-parity.generated.md",
       "mode": "100644",
-      "sha256": "d033af72c93527d6d006eee1c88c5c4ebc50afe1d8ed3bd274a8d6fa18e4be4f"
+      "sha256": "0efd35741a4a89cd4dd37cf49b9fa2ba0365017212de4ab635c2b2b54935afa4"
     },
     {
       "path": "docs/deploy-environment-variables.mdx",
@@ -2828,7 +2828,7 @@
     {
       "path": "docs/mcp-connected-entity-design.md",
       "mode": "100644",
-      "sha256": "50f46f726b8c394d1b32cb03b1972631236399390eb7a56fe68f527dff3e1c98"
+      "sha256": "878fa4ee9a73bcd96e177492f706f23d9fcdf42a9ba89cd16468ffcfc2249c1b"
     },
     {
       "path": "docs/mcp-introduction.mdx",
@@ -3543,7 +3543,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "ab5511ca29ef1b5d857fe6f8f7c465b225d0792d0dc1f7b8fb430c7bd315601d"
+      "sha256": "9ea5c2dff2c4f95c163aded7e8c56af2c66ebd824569bcdbb2b0770d2b313d23"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3693,7 +3693,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "fb90990bf4b5a0c866da71d7d78406abfd834a6811462a20e599f7aa6d82733d"
+      "sha256": "679d19eb65d4910cef6110dce203d1dbe54793212f3ab36c641bc9bf8e0ca3a1"
     },
     {
       "path": "pnpm-lock.yaml",
