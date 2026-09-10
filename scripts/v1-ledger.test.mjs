@@ -568,7 +568,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `EnvironmentEntityTool_ancestry` trigger, which `schema.prisma` does not
     // model and which a doubled client would have accepted. NO LEDGER RULE
     // CHANGED.
-    "apps-agent": 10,
+    // WIN-267 (M4.1, this tranche) 10 -> 12 with the compatibility-alias
+    // deprecation signal: `src/http/deprecation-signal.ts`, the ONE declaration
+    // of the alias set and the module that stamps `Deprecation`/`Sunset`/`Link`
+    // from `applyApiSurface`, and `src/http/deprecation-signal.test.ts`, which
+    // reads those headers back off a real socket and joins the table to the
+    // generated manifest in both directions. They land on
+    // `apps-agent.source.runtime` and `apps-agent.test.suites` -- the same two
+    // rules T1's own pair landed on at the top of this comment -- so NO LEDGER
+    // RULE CHANGED. `api-surface.ts`, `generate-control-plane.mjs` and the
+    // manifest/document/report artifacts are edited IN PLACE and add no file.
+    "apps-agent": 12,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -2105,7 +2115,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // public route modules are mutation TARGETS that are not edited at all. The
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 10 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1766.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1766);
+  //
+  // WIN-267 (M4.1) 1766 -> 1768. TWO files, both itemised on the `apps-agent`
+  // delta above and both in `src/http`: `deprecation-signal.ts` and
+  // `deprecation-signal.test.ts`. Nothing else this tranche adds a file --
+  // `api-surface.ts`, `generate-control-plane.mjs`, `contract-map.mjs` and its
+  // suite, `route-capability-parity.mjs` and its suite, `ci-policy.test.mjs`,
+  // `ci.yml`, the capability matrix and every generated artifact are edited IN
+  // PLACE. The eight-key re-derivation from the merged `expectedDeltas` is
+  // 12 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1768.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1768);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2348,7 +2367,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // times and it caught this tranche too: `audit:v1-ledger` was green, the
     // `totalFiles` arithmetic above had already been moved to 1766, and this one was
     // still 1765. 1765 + 1 = 1766.
-    rulesDocument.baseline.totalFiles + 1766
+    //
+    // AND WIN-267 (M4.1) 1766 -> 1768 -- the TWENTY-SIXTH hand move. The same TWO
+    // files as the `totalFiles` assertion above (`src/http/deprecation-signal.ts`
+    // and its suite, both under `apps-agent`), reached here by summing the per-area
+    // counts instead of reading the total. Moved in the SAME edit as the assertion
+    // above rather than after it went red, which is the discipline the five prior
+    // catches earned: this reconciliation exists precisely because the two
+    // arithmetics can disagree. 1766 + 2 = 1768.
+    rulesDocument.baseline.totalFiles + 1768
   );
 });
 
