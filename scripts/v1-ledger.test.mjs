@@ -569,7 +569,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // model and which a doubled client would have accepted. NO LEDGER RULE
     // CHANGED.
     "apps-agent": 10,
-    "apps-webapp": 0,
+    // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
+    // and embed boundary over two real `node:http` listeners with `fetch`
+    // unstubbed. It is the FIRST file this programme has added under
+    // `apps/webapp`, which is why this row moves off zero for the first time --
+    // and it lands on the `apps-webapp.test.suites` rule that already existed, so
+    // NO LEDGER RULE CHANGED.
+    "apps-webapp": 1,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
     // health/readiness, http/{health.controller,http.module,token},
@@ -2089,7 +2095,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // joins the tree to). The eight-key
   // re-derivation from the merged `expectedDeltas` is
   // 10 + 0 + 87 + 4 + 10 + 1542 + 24 + 88 = 1765.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1765);
+  //
+  // WIN-272 (M4.6) TRANCHE 2 1765 -> 1766. ONE file, itemised on the `apps-webapp`
+  // delta above, and the first this programme has added there:
+  // `apps/webapp/test/publicGuestBoundary.test.ts`, the public-guest and embed
+  // boundary over two real `node:http` listeners. The four other files this tranche
+  // touches -- `publicGuestSession.server.ts`, the two route modules and
+  // `stream-lane.integration.test.ts` -- are edited IN PLACE and add none. The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 10 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1766.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1766);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2323,7 +2338,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // seven in `apps-core-api`, five in `root-infra` and one in `docs-content`),
     // reached here by summing the per-area counts instead of reading the total, so
     // the two arithmetics can disagree and be caught. 1742 + 23 = 1765.
-    rulesDocument.baseline.totalFiles + 1765
+    //
+    // AND WIN-272 (M4.6) TRANCHE 2 1765 -> 1766 -- the TWENTY-FIFTH hand move. The
+    // same ONE file as the `totalFiles` assertion above
+    // (`apps/webapp/test/publicGuestBoundary.test.ts`, the first this programme has
+    // added under `apps/webapp`), reached here by summing the per-area counts instead
+    // of reading the total. This is the reconciliation that has caught drift five
+    // times and it caught this tranche too: `audit:v1-ledger` was green, the
+    // `totalFiles` arithmetic above had already been moved to 1766, and this one was
+    // still 1765. 1765 + 1 = 1766.
+    rulesDocument.baseline.totalFiles + 1766
   );
 });
 
