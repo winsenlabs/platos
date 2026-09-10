@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d07cf745a1264f0f17891a018030106cf132afa1414f0711348718875130e415",
+  "evidenceSha256": "8e848262ae90b1129c567b810bfc362e6227b5ab7af5364ea407c88bee5399e0",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b343d3cb0c7088b4161b4b0349f2d4243d7902e8c91b21c57c995f2cbc641060",
+    "aggregateSha256": "88724b5064a7f87f0d34286f194eb2d88027ccd2bf2597f119206cf9d5f5bdcd",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20419,7 +20419,7 @@
       },
       {
         "path": "scripts/capability-matrix.test.mjs",
-        "sha256": "e803308b17eb8e371c71d2b20f81cdd66b265c0ba4fd19ba8b559acf3879b855"
+        "sha256": "4fb0692c2ef73a078ed704aceb7fe541a9a49f7f4d7c81de042c37e4295917ba"
       },
       {
         "path": "scripts/ci-policy.test.mjs",
@@ -20455,7 +20455,7 @@
       },
       {
         "path": "scripts/differential-coverage.test.mjs",
-        "sha256": "e9c541b0775e0f4939048bfd25a8fd21677b0337062f0b18720859b075135a8f"
+        "sha256": "f61819ba898aed3150d839b1826be24a0eca8864634d4f4adb4d3024a13949c4"
       },
       {
         "path": "scripts/docs-examples.mjs",
@@ -24508,7 +24508,7 @@
             {
               "from": "scripts/capability-matrix.test.mjs",
               "kind": "reference",
-              "line": 439
+              "line": 451
             },
             {
               "from": "scripts/ci-policy.test.mjs",
@@ -24523,7 +24523,7 @@
             {
               "from": "scripts/differential-coverage.test.mjs",
               "kind": "reference",
-              "line": 375
+              "line": 381
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -26096,7 +26096,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "97f208f5485f4c002bf76e2739cc3e60e6a3729638469c40c846562048a39c1c",
+      "evidenceSha256": "b4d301eb8b0e902955fae5304b97654c9b44694dd53210ebc8a55cff487ea5cd",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -29671,7 +29671,7 @@
             {
               "from": "scripts/capability-matrix.test.mjs",
               "kind": "reference",
-              "line": 519
+              "line": 539
             },
             {
               "from": "scripts/ci-policy.test.mjs",
@@ -30307,7 +30307,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "3a103a184348563a4e35303a8fe55bb1c9bd3634fe10ddd1aba7fdb82257b6c0",
+      "evidenceSha256": "8d9e466a43d5b4b37083acb60b1c7a6bd4ec7f38066f6a5d9f95c394d4376639",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -43190,7 +43190,7 @@
             {
               "from": "scripts/differential-coverage.test.mjs",
               "kind": "reference",
-              "line": 63
+              "line": 69
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -44022,7 +44022,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "7a224f5a0eec7d2b5bdfe05fd2d8bd458d42bb8cc5dd9d7cbf734ea625afd04f",
+      "evidenceSha256": "7288078ecee65b8ad4522435b8223c369ae4a5405f97e4a69f79b9e50f2acb85",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
