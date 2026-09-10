@@ -2012,7 +2012,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // (117 -> 118). `ci.yml`, `ci-policy.test.mjs`, `package.json`,
     // `vendored-build-audit.mjs` and the four test files whose pins moved are edited
     // IN PLACE. NO LEDGER RULE CHANGED.
-    "root-infra": 89,
+    // WIN-268 (M4.2) THE TOKEN LIFECYCLE 89 -> 90. ONE file,
+    // `scripts/mutations-win268-lifecycle.json`, the tranche's mutation ledger — the
+    // SIXTH tranche to use that convention. It is evidence rather than a gate: no
+    // script reads it, and its whole value is that four of its thirty-five rows say
+    // `survived` on a first pass and name the case that closes each one.
+    "root-infra": 90,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2261,7 +2266,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `harness.ts`, `generate-control-plane.mjs`, `rest-schema-derivation.mjs`, both
   // registers, the test-case census and every regenerated artifact are edited IN
   // PLACE. The eight-key re-derivation from the merged `expectedDeltas` is
-  // 15 + 1 + 92 + 4 + 10 + 1556 + 24 + 89 = 1791.
+  // 15 + 1 + 92 + 4 + 10 + 1556 + 24 + 89 = 1791, and the mutation ledger appended in
+  // the same tranche takes `root-infra` to 90 for a total of 1792.
   //
   // A NOTE ON THE NUMBERING, because it is already inconsistent and silence would
   // make it worse: `scripts/arch/test-case-census.mjs` calls the tranche BEFORE this
@@ -2269,7 +2275,7 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // consistent and they disagree with each other, so this stage is "STAGE 4" HERE
   // and "stage 3" THERE, and each file's own sequence is what a reader of that file
   // should follow.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1791);
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1792);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2552,8 +2558,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // counts instead of reading the total. MOVED IN THE SAME EDIT as that assertion
     // and as both `expectedDeltas` keys, for the reason the note above gives: the two
     // figures are derived differently and this reconciliation has caught the omission
-    // SIX times. 1783 + 8 = 1791.
-    rulesDocument.baseline.totalFiles + 1791
+    // SIX times. 1783 + 8 = 1791, and +1 for the mutation ledger under `root-infra`
+    // takes it to 1792 — NINE files in this tranche, not eight, and the ledger is the
+    // ninth. It is listed here because this reconciliation sums per-area counts and
+    // would otherwise disagree with the total above by exactly one.
+    rulesDocument.baseline.totalFiles + 1792
   );
 });
 
