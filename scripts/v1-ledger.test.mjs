@@ -774,7 +774,32 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 3 + 4 = 7, and 80 + 7 = 87. `http/http.module.ts` and `http/api-surface.ts`
     // are EDITS. Every one of the seven lands on a rule that already existed; NO
     // LEDGER RULE CHANGED.
-    "apps-core-api": 87,
+    //
+    // WIN-268 (M4.2) 87 -> 90. THREE files, one on each of the three rules this
+    // deployable already had, for the tier-2 MCP policy surface that replaced
+    // `apps/agent`'s three unreachable `OrganizationMcpPolicy` helpers:
+    //
+    //   ONE under `apps-core-api.source.transports` (27 -> 28) —
+    //   `transports/mcp/organization-policies.controller.ts`, the three routes at
+    //   `/mcp/platform/environments/:environmentId/policies`;
+    //
+    //   ONE under `apps-core-api.test.suites` (30 -> 31) —
+    //   `composition/mcp-organization-policy.integration.test.ts`, which proves the
+    //   forged triple refused at BOTH the authorization mint register and the
+    //   store, against a real PostgreSQL, and which is the first suite in this
+    //   directory that runs against an EXTERNAL database when one is named instead
+    //   of insisting on a container;
+    //
+    //   ONE under `apps-core-api.config.package` (6 -> 7) —
+    //   `mutations-win268-policy.json`, the FOURTH mutation manifest to land beside
+    //   `mutations.json`, `mutations-win267-t3.json` and `mutations-win267-g3.json`
+    //   and the FIFTH tranche to use the convention.
+    //
+    // 1 + 1 + 1 = 3, and 87 + 3 = 90. `http/http.module.ts`,
+    // `http/idempotency-policy.test.ts` and `transports/rest/route-manifest.test.ts`
+    // are EDITS; the six regenerated artifacts already existed. NO LEDGER RULE
+    // CHANGED.
+    "apps-core-api": 90,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2190,7 +2215,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `arch-boundaries.test.mjs` and `env-access.mjs` are edited IN PLACE. The
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 15 + 1 + 87 + 4 + 10 + 1550 + 24 + 89 = 1780.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1780);
+  //
+  // WIN-268 (M4.2) STAGE 3 1780 -> 1783. THREE files, ALL in `apps-core-api` and all
+  // itemised on that area's delta above: the tier-2 MCP policy controller, its
+  // real-database proof, and its mutation ledger. Nothing else this stage adds a
+  // file — the three helpers it DELETED from
+  // `apps/agent/src/mcp-platform/permission-gateway.service.ts` and the `autoInsert`
+  // it deleted from `mcp-tool-acl.service.ts` shrink files that stay, and
+  // `http/http.module.ts`, `generate-control-plane.mjs`,
+  // `idempotency-policy.test.ts`, `route-manifest.test.ts`,
+  // `rest-census-independent.test.mjs`, the tools contract barrel and every
+  // regenerated artifact are edited IN PLACE. The eight-key re-derivation from the
+  // merged `expectedDeltas` is 15 + 1 + 90 + 4 + 10 + 1550 + 24 + 89 = 1783.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1783);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2457,7 +2494,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // assertion above and as `expectedDeltas.packages`, which is the discipline the
     // six prior catches earned: the previous stage moved the total to 1773 and left
     // this one at 1768, and this reconciliation is what found it. 1773 + 7 = 1780.
-    rulesDocument.baseline.totalFiles + 1780
+    //
+    // AND WIN-268 (M4.2) STAGE 3 1780 -> 1783 -- the TWENTY-NINTH hand move. The same
+    // THREE files as the `totalFiles` assertion above -- `apps-core-api` +3, the
+    // tier-2 MCP policy controller, its real-database proof and its mutation ledger
+    // -- reached here by summing the per-area counts instead of reading the total.
+    // MOVED IN THE SAME EDIT as the assertion above and as
+    // `expectedDeltas["apps-core-api"]`, for the reason the note above gives: this
+    // reconciliation exists because the two figures are derived differently, and it
+    // has caught the omission SIX times. 1780 + 3 = 1783.
+    rulesDocument.baseline.totalFiles + 1783
   );
 });
 
