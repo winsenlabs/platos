@@ -1088,18 +1088,42 @@ function implementationKeys(operation) {
  *   * a declared alias row that matches no operation (dead policy), and a
  *     DEPRECATED operation matched by no row (undeclared alias).
  *
- * WHAT IT CANNOT ENFORCE, NAMED RATHER THAN SILENTLY EXCLUDED. Two operations in
- * this tree are served by BOTH deployables — the MCP platform and entity token
- * mints — and their two implementations are genuinely independent classes in two
- * processes, so they cannot satisfy fan-in and are not aliases: they are one
- * route mid-migration. They are listed below with that reason, and a THIRD such
- * operation fails generation rather than joining a list nobody re-reads.
+ * WHAT IT CANNOT ENFORCE, NAMED RATHER THAN SILENTLY EXCLUDED. Some operations in
+ * this tree are served by BOTH deployables, and their two implementations are
+ * genuinely independent classes in two processes, so they cannot satisfy fan-in and
+ * are not aliases: they are one route mid-migration. Every one is listed below with
+ * the reason it is one, and an UNDECLARED one fails generation.
+ *
+ * WIN-268 (M4.2) STAGE 2 TOOK THIS LIST FROM TWO ENTRIES TO SIX, AND THE EARLIER
+ * WORDING SAID "a THIRD such operation fails generation rather than joining a list
+ * nobody re-reads". That sentence was written when the list held the two token
+ * MINTS and it was making the right point about the wrong thing: what must not
+ * happen is a fork appearing SILENTLY, and that is what the throw below prevents. A
+ * fork appearing with a reason is the intended way to migrate a route, and refusing
+ * the fourth on principle would have meant either leaving four V1 operations
+ * unserved or withdrawing four legacy handlers in the same tranche that first served
+ * them — with no soak, and with `apps/webapp` still calling the legacy paths.
+ *
+ * SO THE RULE THAT REPLACES IT IS ABOUT THE LIST SHRINKING. Each entry names the
+ * legacy handler that has to be withdrawn, and this list is the withdrawal
+ * worklist: six entries means six handlers in `apps/agent/src/mcp-platform` whose
+ * V1 replacement exists. It is the count that must go DOWN, and it cannot go down
+ * until `apps/webapp/app/services/platosAgent.server.ts` stops proxying these
+ * paths to `agent.internal`.
  */
 const FORKED_OPERATIONS_WITHOUT_ONE_HANDLER = Object.freeze({
   "POST /mcp/platform/tokens":
     "mid-migration: apps/agent has served this mint since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in. Two independent classes, one wire path — not an alias, and it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn.",
   "POST /mcp/entity/:entityId/tokens":
     "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape.",
+  "GET /mcp/platform/tokens":
+    "mid-migration (WIN-268 M4.2 stage 2). McpPlatformController.listTokens has served it since before V1; McpPlatformTokensController.list now serves it on the V1 chassis over IdentityAccessContract.listBearerCredentials, which did not exist until this tranche. The two are not equivalent and must not be treated as an alias: the V1 route REFUSES a limit above 100 where the legacy one clamps it, and takes its tenant as ?environmentId= where the legacy one reads X-Platos-* headers. Withdraw McpPlatformController.listTokens once apps/webapp stops proxying the path.",
+  "POST /mcp/platform/tokens/:id/revoke":
+    "mid-migration (WIN-268 M4.2 stage 2). McpPlatformController.revokeToken versus McpPlatformTokensController.revoke over IdentityAccessContract.revokeBearerCredential. Not an alias for a second reason beyond the two processes: the legacy handler answers `{ok:true}` for a revocation it performed AND for one it found already revoked, and the V1 route distinguishes them with `alreadyRevoked`. Withdraw the legacy handler once apps/webapp stops proxying the path.",
+  "GET /mcp/entity/:entityId/tokens":
+    "mid-migration (WIN-268 M4.2 stage 2). McpEntityController's listing versus McpEntityTokensController.list. Same shape as the platform listing above, plus the (entity, environment) pair check the V1 route makes explicitly and refuses under MCP_ENTITY_ENVIRONMENT_MISMATCH.",
+  "DELETE /mcp/entity/:entityId/tokens/:tokenId":
+    "mid-migration (WIN-268 M4.2 stage 2). McpEntityController's revocation versus McpEntityTokensController.revoke. Same shape as the platform revocation above; the method is DELETE and its platform sibling is POST :id/revoke because the manifest already named both spellings and both have live callers.",
 });
 
 function validateAliasContract(restOperations) {

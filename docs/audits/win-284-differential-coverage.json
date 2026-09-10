@@ -18,15 +18,15 @@
     "source": "docs/audits/M0.9-rest-census-independent.json",
     "enumeratedRestCells": 310,
     "enumeratedOperatorCells": 128,
-    "independentUniqueRoutes": 293,
+    "independentUniqueRoutes": 297,
     "dualMountAliasOps": 19,
-    "independentManifestOps": 312,
-    "independentCrossRootBindings": 2,
+    "independentManifestOps": 316,
+    "independentCrossRootBindings": 6,
     "independentUniqueOperations": 310,
-    "independentCrossRootOperatorBindings": 2,
+    "independentCrossRootOperatorBindings": 6,
     "independentUniqueOperatorOperations": 128,
     "independentOperatorFloor": 103,
-    "independentManifestOperator": 130,
+    "independentManifestOperator": 134,
     "controllers": 36,
     "agrees": true
   },
@@ -44,14 +44,14 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "enumeratedOperations": 11,
-        "independentOperations": 11,
+        "enumeratedOperations": 15,
+        "independentOperations": 15,
         "independentSourceControllers": 8,
-        "independentSourceDecorators": 11,
+        "independentSourceDecorators": 15,
         "agrees": true
       }
     ],
-    "total": 312
+    "total": 316
   },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",

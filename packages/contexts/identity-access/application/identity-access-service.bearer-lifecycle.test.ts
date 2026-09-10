@@ -48,9 +48,17 @@ const OPERATOR = "user-1";
 function seedCredential(
   ports: TestPorts,
   id: string,
-  overrides: Partial<BearerCredentialSummary> & { readonly scope?: TenantScope } = {},
+  // `scope` IS OMITTED FROM THE PARTIAL AND RE-ADDED AS A `TenantScope`. The
+  // summary's own `scope` is an `AuthorizationScope` — the LIFTED grant — and an
+  // intersection of the two would be a type nothing satisfies. Seeds name the
+  // tenant node and this helper lifts it, exactly as the façade does.
+  overrides: Omit<Partial<BearerCredentialSummary>, "scope"> & { readonly scope?: TenantScope } = {},
 ): BearerCredentialSummary {
-  const scope = tenantAuthorizationScope(overrides.scope ?? ENVIRONMENT);
+  // THE TENANT IS PULLED OUT OF THE OVERRIDES BEFORE THEY ARE SPREAD, so the
+  // literal's `scope` is only ever the lifted grant. Spreading a `TenantScope`
+  // over an `AuthorizationScope` field widens the property to the union of both
+  // and the summary type then rejects it.
+  const { scope: tenant, ...rest } = overrides;
   const summary: BearerCredentialSummary = {
     credentialId: id,
     kind: "mcp-token",
@@ -59,15 +67,12 @@ function seedCredential(
     permissions: ["agents.*"],
     permissionTier: "scope",
     subjectId: null,
-    scope,
     createdAt: at(0),
     expiresAt: at(86_400_000),
     lastUsedAt: null,
     revokedAt: null,
-    ...overrides,
-    // AFTER the spread: an override may supply a `scope` as a `TenantScope`, and
-    // the stored value is always the lifted grant.
-    ...(overrides.scope === undefined ? {} : { scope }),
+    ...rest,
+    scope: tenantAuthorizationScope(tenant ?? ENVIRONMENT),
   };
   ports.repository.state.bearerCredentialSummaries.set(`${summary.kind}:${id}`, summary);
   return summary;

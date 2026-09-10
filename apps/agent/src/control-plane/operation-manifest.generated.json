@@ -30,12 +30,28 @@
     ],
     "forksWithoutOneHandler": [
       {
+        "id": "DELETE /mcp/entity/:entityId/tokens/:tokenId",
+        "reason": "mid-migration (WIN-268 M4.2 stage 2). McpEntityController's revocation versus McpEntityTokensController.revoke. Same shape as the platform revocation above; the method is DELETE and its platform sibling is POST :id/revoke because the manifest already named both spellings and both have live callers."
+      },
+      {
+        "id": "GET /mcp/entity/:entityId/tokens",
+        "reason": "mid-migration (WIN-268 M4.2 stage 2). McpEntityController's listing versus McpEntityTokensController.list. Same shape as the platform listing above, plus the (entity, environment) pair check the V1 route makes explicitly and refuses under MCP_ENTITY_ENVIRONMENT_MISMATCH."
+      },
+      {
+        "id": "GET /mcp/platform/tokens",
+        "reason": "mid-migration (WIN-268 M4.2 stage 2). McpPlatformController.listTokens has served it since before V1; McpPlatformTokensController.list now serves it on the V1 chassis over IdentityAccessContract.listBearerCredentials, which did not exist until this tranche. The two are not equivalent and must not be treated as an alias: the V1 route REFUSES a limit above 100 where the legacy one clamps it, and takes its tenant as ?environmentId= where the legacy one reads X-Platos-* headers. Withdraw McpPlatformController.listTokens once apps/webapp stops proxying the path."
+      },
+      {
         "id": "POST /mcp/entity/:entityId/tokens",
         "reason": "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape."
       },
       {
         "id": "POST /mcp/platform/tokens",
         "reason": "mid-migration: apps/agent has served this mint since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in. Two independent classes, one wire path — not an alias, and it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn."
+      },
+      {
+        "id": "POST /mcp/platform/tokens/:id/revoke",
+        "reason": "mid-migration (WIN-268 M4.2 stage 2). McpPlatformController.revokeToken versus McpPlatformTokensController.revoke over IdentityAccessContract.revokeBearerCredential. Not an alias for a second reason beyond the two processes: the legacy handler answers `{ok:true}` for a revocation it performed AND for one it found already revoked, and the V1 route distinguishes them with `alreadyRevoked`. Withdraw the legacy handler once apps/webapp stops proxying the path."
       }
     ]
   },
@@ -12022,6 +12038,12 @@
             "handler": "listBearerTokens",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
             "requiresOperator": true
+          },
+          {
+            "controller": "McpEntityTokensController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12061,6 +12083,12 @@
             "controller": "McpEntityController",
             "handler": "revokeBearerToken",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+            "requiresOperator": true
+          },
+          {
+            "controller": "McpEntityTokensController",
+            "handler": "revoke",
+            "source": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
             "requiresOperator": true
           }
         ]
@@ -12232,6 +12260,12 @@
             "handler": "listTokens",
             "source": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
             "requiresOperator": true
+          },
+          {
+            "controller": "McpPlatformTokensController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12271,6 +12305,12 @@
             "controller": "McpPlatformController",
             "handler": "revokeToken",
             "source": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
+            "requiresOperator": true
+          },
+          {
+            "controller": "McpPlatformTokensController",
+            "handler": "revoke",
+            "source": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
             "requiresOperator": true
           }
         ]
@@ -12575,9 +12615,9 @@
       "MCP_ONLY": 120
     },
     "restOperations": 310,
-    "restRouteBindings": 312,
-    "ambiguousRestOperations": 2,
-    "crossDeployableRestOperations": 2,
+    "restRouteBindings": 316,
+    "ambiguousRestOperations": 6,
+    "crossDeployableRestOperations": 6,
     "restClassifications": {
       "DEPRECATED": 15,
       "INTERNAL": 14,
@@ -12599,8 +12639,8 @@
         "dir": "apps/core-api/src/transports",
         "strict": true,
         "registeredControllers": 8,
-        "operations": 11,
-        "routeBindings": 11
+        "operations": 15,
+        "routeBindings": 15
       }
     ]
   }

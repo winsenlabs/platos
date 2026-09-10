@@ -74,7 +74,7 @@ import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, Req } from
 import { err, ok, type FieldViolation, type Result } from "@platos/kernel";
 import type { McpPermissionTier } from "@platos/context-identity-access";
 
-import { DomainValidationPipe } from "../../http/validation.pipe.js";
+import { DomainValidationPipe, UNPAGED_QUERY_PIPE } from "../../http/validation.pipe.js";
 import { REST_APPLICATION, type RestApplication } from "../rest/dependencies.js";
 import {
   collectionEnvelope,
@@ -96,7 +96,6 @@ import {
   revokedTokenResource,
   tokenListQueryValidator,
   tokenResource,
-  tokenScopeQueryValidator,
   type RevokedTokenResource,
   type TokenListQuery,
   type TokenResource,
@@ -147,7 +146,6 @@ export const mintPlatformTokenValidator = (input: unknown): Result<MintPlatformT
 
 const MINT_BODY_PIPE = new DomainValidationPipe(mintPlatformTokenValidator);
 const LIST_QUERY_PIPE = new DomainValidationPipe(tokenListQueryValidator);
-const REVOKE_QUERY_PIPE = new DomainValidationPipe(tokenScopeQueryValidator);
 
 /**
  * The revocation's request, after the chassis has read it.
@@ -290,7 +288,13 @@ export class McpPlatformTokensController {
   async revoke(
     @Req() request: InboundOperatorRequest,
     @Param("id") id: string,
-    @Query(REVOKE_QUERY_PIPE) _query: unknown,
+    // THE QUERY STRING IS REFUSED, NOT IGNORED. This operation's tenant is in the
+    // BODY — it has one, unlike its two listings and the entity revocation — so a
+    // `?environmentId=` here would be a second place to say the same thing and a
+    // caller could make the two disagree. `UNPAGED_QUERY_PIPE` refuses the paging
+    // parameters and the `null` type is what says so; the OpenAPI derivation reads
+    // it as `refused` rather than as an undeclared shape.
+    @Query(UNPAGED_QUERY_PIPE) _page: null,
     @Body(REVOKE_BODY_PIPE) body: RevokePlatformTokenBody,
   ): Promise<ItemEnvelope<RevokedTokenResource>> {
     const app = this.application.app;

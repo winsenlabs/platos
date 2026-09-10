@@ -91,6 +91,44 @@ const HTTP_STATUS_FALLBACK = {
  * naming it here is the difference between a known gap and a silent one.
  */
 export const UNDERIVABLE_QUERY_HANDLERS = {
+  // WIN-268 (M4.2) stage 2 TOOK THIS LIST FROM ONE ENTRY TO FOUR, and that is a
+  // gap widened rather than closed. The three MCP token routes below have the
+  // IDENTICAL defect to the end-user listing under it and for the identical
+  // reason, so the remedy is also the identical one — a declared wire-query DTO
+  // the validator consumes — and it is STILL not built. Four routes now have
+  // undocumented query parameters where one did.
+  //
+  // WHAT IS NOT ON THIS LIST IS THE MEASURE OF WHETHER THAT REMEDY IS WORTH
+  // BUILDING: `McpPlatformTokensController.revoke` takes its tenant in the BODY
+  // and refuses the query string outright, so its `@Query(UNPAGED_QUERY_PIPE)
+  // _page: null` derives as `refused` and it needed no entry. A route whose
+  // tenant can live in a body does not have this problem at all; the three below
+  // are a GET, a GET and a DELETE, none of which has one.
+  "McpPlatformTokensController.list": {
+    reason: "post-parse-dto",
+    detail:
+      "The @Query parameter is typed TokenListQuery, the shape AFTER " +
+      "tokenListQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which " +
+      "no caller sends, and omits `cursor`, which a caller paging does send. `environmentId` and " +
+      "`limit` ARE real parameters and are undocumented along with them, because the shape is " +
+      "published whole or not at all. Same remedy as EnvironmentEndUsersController.list below.",
+  },
+  "McpEntityTokensController.list": {
+    reason: "post-parse-dto",
+    detail:
+      "The same TokenListQuery post-parse shape as its platform sibling above, on the entity " +
+      "listing. `entityId` is a PATH parameter and is derived normally; it is the query string " +
+      "that is undocumented.",
+  },
+  "McpEntityTokensController.revoke": {
+    reason: "post-parse-dto",
+    detail:
+      "The @Query parameter is typed TokenScopeQuery, which carries exactly the one parameter a " +
+      "caller sends — `environmentId` — and would be derivable if this derivation had a branch " +
+      "for a wire-shaped query DTO. It does not: the three cases are declared-underivable, the " +
+      "`null` refusal, and failure. So the closest honest answer today is this entry. It is a " +
+      "DELETE and has no body to carry the tenant in, which is why it has a query string at all.",
+  },
   "EnvironmentEndUsersController.list": {
     reason: "post-parse-dto",
     detail:
