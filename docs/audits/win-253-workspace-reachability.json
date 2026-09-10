@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "a1608927f7e2201136ce2d55179cf1b719e127e1a03e6ad517f9626d1678965a",
+  "evidenceSha256": "a5177b77b03a774245fb8ed531929fa571fa1b17e56b66425d1c5479ec028b85",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "062f2037d3cea3ffec97a055a080a99df6d7f58554f2ccf24fd2f5bfa0fcce83",
+    "aggregateSha256": "d6c3da5b006dd24a71b9c77f9d100d798d982266360555feb3bcd15674815780",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -419,7 +419,7 @@
       },
       {
         "path": "apps/agent/scripts/generate-control-plane.mjs",
-        "sha256": "99aa416cfc0712f0275e784daedd8bf17206f09222b8a88a5a57be7db0268fa0"
+        "sha256": "92db95fbbee49895a6957f36df64d057ba3143c97bdd23b9e3cf5ab1b856f044"
       },
       {
         "path": "apps/agent/scripts/openapi-meta-schema.mjs",
