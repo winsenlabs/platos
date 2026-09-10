@@ -1359,7 +1359,19 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // AND `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1687 off a
     // second, independent scan, which is what makes this pin worth having: a branch
     // whose files were double-counted here would disagree with that one.
-    assert.equal(result.fileCount, 1687, "the generated V1 source census must stay exact");
+    //
+    // WIN-268 (M4.2) stage 3, 1687 -> 1689. TWO files, both under
+    // `apps/core-api/src`: `transports/mcp/organization-policies.controller.ts` — the
+    // tier-2 MCP policy surface, which is where `apps/agent`'s three unreachable
+    // `OrganizationMcpPolicy` helpers went — and
+    // `composition/mcp-organization-policy.integration.test.ts` beside it. The suite
+    // is in `composition/` and not next to the controller for the reason the stream
+    // lane's is: rule (C8) forbids a `transports/**` file from reading
+    // `app.adapters` at all, and this one seeds through the store and asks the
+    // repository directly. Nothing under `packages/` moves — the contract methods it
+    // calls were already published, which is the whole reason the register called
+    // those six ORM sites movable. 1687 + 2 = 1689.
+    assert.equal(result.fileCount, 1689, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1422,7 +1434,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // wire-dispatch, mcp-dispatch, dispatch, and the two suites. ALL SEVEN in one
       // term under `packages/contexts/`, and NOTHING under `packages/adapters/` or
       // `apps/`, because rule (h) homes the MCP SDK in this context.
-      7);
+      7 +
+      // WIN-268 (M4.2) stage 3: transports 1 (the tier-2 policy controller) and
+      // composition 1 (its real-database suite). 1 + 1 = 2, and NOTHING under
+      // `packages/` at all — the contract methods were already published and the
+      // adapter already carried the store half, which is exactly what made the six
+      // ORM sites this stage deleted `movable` rather than blocked.
+      1 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

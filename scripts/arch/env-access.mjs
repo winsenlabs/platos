@@ -262,6 +262,39 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL and real-Redis integration suite for the two MCP one-time-secret mints, including two identical requests racing. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
   }),
   Object.freeze({
+    // WIN-268 (M4.2) — the tier-2 MCP policy surface's real-database suite. The
+    // FOURTH entry of this shape under `apps/core-api/src/composition`, and the
+    // FIRST that reads the environment for something other than PATH.
+    //
+    // IT IS ONE READ AND THAT IS THE WHOLE POINT OF THE ENTRY. The suite needs FOUR
+    // values off the machine it runs on — the external database url, an override for
+    // `psql`'s path, an optional real Redis, and the inherited environment
+    // `prisma migrate deploy` is spawned with — and it takes them the way
+    // `apps/core-api/src/config/environment.ts` takes the deployable's: ONE
+    // `{ ...process.env }`, frozen at module load, indexed as an ordinary value
+    // afterwards. Four inline reads would have been a four-panel door in the gate
+    // whose entire argument is that there should be one, and this gate is what made
+    // that difference visible rather than a matter of taste.
+    //
+    // WHY IT READS THE ENVIRONMENT FOR MORE THAN PATH, when its three siblings do
+    // not: WHICH DATABASE TO USE IS THE RUNNER'S DECISION AND NOT A FIXTURE'S. Those
+    // three start a container and fail when Docker is absent — right, and it makes
+    // them unrunnable where Docker may not run at all. This one takes an external
+    // url when a runner names one and starts a container when it does not, so the
+    // same cases execute on a laptop against a native `postgresql@17` and in CI
+    // against `pgvector/pgvector:pg16`. Neither path skips.
+    //
+    // THE SIX CONFIGURATION VARIABLES IT SETS ARE STILL NOT READS. They are
+    // properties of a plain object handed to `loadPlatformConfiguration`, so the
+    // process under test takes nothing from the machine except the two urls named
+    // above — and a suite that had reached past `AMBIENT` for any of them would show
+    // up here as a SECOND read.
+    path: "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL integration suite for the tier-2 MCP policy surface. It copies and freezes the ambient environment once, at module load, and reads four values out of the copy: the external database url that lets it run without Docker, a psql binary override for the second reader, an optional real Redis, and the inherited environment it spawns the ORM's migration CLI with.",
+  }),
+  Object.freeze({
     path: "packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts",
     role: "test-support",
     reads: 1,
@@ -629,8 +662,16 @@ export const VIOLATION_CODES = Object.freeze({
  * is the one place in this deployable entitled to read a variable.
  *
  * Seven more files landed and NO door was opened.
+ *
+ * WIN-268 (M4.2) STAGE 3: 1687 + 2 = 1689. The tier-2 MCP policy controller and its
+ * real-database suite. THE CONTROLLER OPENS NO DOOR — it reads its tenancy off a
+ * path parameter and its authorization off the one authentication seam, which is
+ * what a transport is for — and THE SUITE OPENS EXACTLY ONE, declared above. It is
+ * the first door in this table that is not about PATH, and it is one read rather
+ * than four because the suite copies and freezes the ambient environment once, the
+ * way the deployable's own reader does.
  */
-export const EXPECTED_FILE_COUNT = 1687;
+export const EXPECTED_FILE_COUNT = 1689;
 
 function listSourceFiles(root) {
   const found = [];

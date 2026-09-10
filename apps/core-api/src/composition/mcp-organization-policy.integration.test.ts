@@ -196,8 +196,24 @@ let repository: {
 /** How a second reader talks to the database. See `observe`. */
 let observeWith: (sql: string) => Promise<readonly string[]>;
 
+/**
+ * The ambient environment, copied and frozen ONCE. `scripts/arch/env-access.mjs`
+ * counts READS, and this suite legitimately needs four values from the machine it
+ * runs on — so it takes the same shape `apps/core-api/src/config/environment.ts`
+ * takes for the whole deployable: one read at module load, frozen, and every
+ * consumer below indexes an ordinary value. Four reads would be a four-panel door
+ * in a gate whose entire argument is that there should be one.
+ *
+ * WHY THIS SUITE READS THE ENVIRONMENT AT ALL, when its four siblings read it only
+ * to hand PATH to a spawned CLI: WHICH DATABASE TO USE IS THE RUNNER'S DECISION
+ * AND NOT A FIXTURE'S. A suite that could only start a container could not run on a
+ * machine where Docker may not run, and one that hard-coded a url would be a
+ * fixture asserting where somebody else's PostgreSQL lives.
+ */
+const AMBIENT: Readonly<Record<string, string | undefined>> = Object.freeze({ ...process.env });
+
 /** The external database this run was pointed at, or null when it started one. */
-const externalDatabaseUrl = process.env["PLATOS_POSTGRES_INTEGRATION_DATABASE_URL"] ?? null;
+const externalDatabaseUrl = AMBIENT["PLATOS_POSTGRES_INTEGRATION_DATABASE_URL"] ?? null;
 
 /**
  * A redis url for a port this suite deliberately leaves closed. See the banner.
@@ -305,7 +321,7 @@ beforeAll(async () => {
     // default and a bare `psql` would fail with ENOENT — which reads as "the row
     // is missing" if the caller is not careful. Named, so the failure is about the
     // binary.
-    const psql = process.env["PLATOS_PSQL_BINARY"] ?? "psql";
+    const psql = AMBIENT["PLATOS_PSQL_BINARY"] ?? "psql";
     observeWith = async (sql) =>
       execFileSync(psql, ["-d", databaseUrl, "-t", "-A", "-F", "|", "-c", sql], {
         encoding: "utf8",
@@ -320,14 +336,14 @@ beforeAll(async () => {
   execFileSync(
     packageRootRelative("../../node_modules/.bin/prisma"),
     ["migrate", "deploy", "--schema", resolve(databasePackage, "prisma/schema.prisma")],
-    { cwd: databasePackage, env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" },
+    { cwd: databasePackage, env: { ...AMBIENT, DATABASE_URL: databaseUrl }, stdio: "pipe" },
   );
 
   const platform = loadPlatformConfiguration({
     PLATOS_ENVIRONMENT: "test",
     PLATOS_CORE_API_PORT: "0",
     PLATOS_STORE_POSTGRES_URL: databaseUrl,
-    PLATOS_STORE_REDIS_URL: process.env["PLATOS_REDIS_INTEGRATION_URL"] ?? REDIS_DEAD_URL,
+    PLATOS_STORE_REDIS_URL: AMBIENT["PLATOS_REDIS_INTEGRATION_URL"] ?? REDIS_DEAD_URL,
     PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
     PLATOS_SECURITY_ENCRYPTION_KEY: "e".repeat(64),
     PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "4",
