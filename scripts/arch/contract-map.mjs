@@ -399,8 +399,14 @@ export function aliasContractErrors(recorded, measured) {
 function aliasContract(measured) {
   return {
     rule: "ADR M0.4 §4.1: an alias is an explicit generator row classified DEPRECATED with a non-null replacement, it delegates 1:1 to the canonical handler, and it carries the deprecation on the wire.",
+    // NO RAW ANGLE BRACKETS IN THIS STRING. It is rendered into a Markdown
+    // BULLET (not a table cell, so `renderTableText` does not touch it) and
+    // `docs/` is validated as MDX by `pnpm audit:docs-build` -> `mintlify
+    // validate`. The first spelling of this line contained `Link <successor>;`
+    // and failed with "Expected a closing tag for `<successor>`", because MDX
+    // read it as JSX. The link target is named in prose instead.
     wireSignal:
-      'Deprecation: true + Sunset (RFC 8594 HTTP-date) + Link <successor>; rel="successor-version", installed by applyApiSurface via apps/agent/src/http/deprecation-signal.ts.',
+      'Deprecation: true + Sunset (RFC 8594 HTTP-date) + a Link header whose rel="successor-version" target is the canonical path, installed by applyApiSurface via apps/agent/src/http/deprecation-signal.ts.',
     catalogSignal:
       "OpenAPI deprecated:true + x-platos-classification:DEPRECATED + x-platos-superseded-by + x-platos-sunset, emitted by apps/agent/scripts/generate-control-plane.mjs from the same runtime table.",
     fanIn:

@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0377a841c8649e6a253b14c71cb0fd4d259df057da669394e242be9465b5fdfa",
+  "evidenceSha256": "4d90cb56005d372ddb09e65650fe0b6d14b68fe23c9853e3c534c4cf4e542045",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b3973afc5843153f51b380dc5c730d65afafcc3fab347ca47584e4afc7609f3b",
+    "aggregateSha256": "051308993cddfc8997e716864cb981a803960a650559f1905216f9edb36f8060",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4279,11 +4279,11 @@
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.json",
-        "sha256": "f8cc6ae4ba2a7c6412cdd1e9cc07dd3ee68eac2b364e215f8d35be11111d8cc4"
+        "sha256": "0f631eb161b9320bbc522eec98d98c847437d9fb53306201d4f776664cad30e6"
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.md",
-        "sha256": "d8484407b81194a763e031ef5e17cc08da9a691f169aa021b4b6233116c05baa"
+        "sha256": "12e3e992a76f8219356f5adf8876040f8f07cbfbe505999d9bf185ab7e43e13d"
       },
       {
         "path": "docs/audits/M0.5-dependency-sbom.md",
@@ -20183,7 +20183,7 @@
       },
       {
         "path": "scripts/arch/contract-map.mjs",
-        "sha256": "8c424cfdc157f0c056448df024f0d28ec65672cc75abcf45287c96c07ae8a66d"
+        "sha256": "3e8a07c7afb71868470c05b85f8fa736c5fe2d6da2c30d65138cb41cc45eeaf4"
       },
       {
         "path": "scripts/arch/contract-map.test.mjs",
