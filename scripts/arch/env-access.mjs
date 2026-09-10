@@ -612,8 +612,25 @@ export const VIOLATION_CODES = Object.freeze({
  * place in this deployable entitled to read a variable.
  *
  * Seven more files landed and ONE declared door was opened.
+ *
+ * AND SEVEN MORE, 1680 -> 1687 (WIN-268 M4.2 stage 2): the whole of
+ * `packages/contexts/tools/adapters` — the barrel, the SHA-256 `ContentDigest`, the
+ * wire POST, the MCP session pool, the router over the two, and two suites.
+ *
+ * NOT ONE OF THE SEVEN READS A VARIABLE, and that is a claim about the port rather
+ * than about restraint. The legacy MCP pool this replaces reads `env.PLATOS_VERSION`
+ * for the `initialize` handshake and reads its pool ceiling and its discovery
+ * timeout from the environment; NONE of those survives. The client identity is a
+ * constant because the version this tree publishes lives once in
+ * `apps/agent/src/http/mcp-surface.ts` and an AST lint refuses a second spelling of
+ * it, and every budget arrives on `DispatchTarget.timeoutMs`, which the DOMAIN
+ * resolved from `ToolsPolicy` — a published default the composition root may
+ * override. So the tuning an operator would reach for goes through `config/`, which
+ * is the one place in this deployable entitled to read a variable.
+ *
+ * Seven more files landed and NO door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1680;
+export const EXPECTED_FILE_COUNT = 1687;
 
 function listSourceFiles(root) {
   const found = [];

@@ -230,6 +230,18 @@ import type { Clock, IdGenerator, Logger, SafetyEventSink } from "@platos/kernel
 import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/context-providers";
 import { DEFAULT_GOVERNANCE_POLICY } from "@platos/context-governance";
 import { createGovernanceSafetyEventSink } from "@platos/context-governance/application/index.js";
+// WIN-268 (M4.2) stage 2. `tools`' TWO root-satisfied ports, from the barrel its
+// OWN package publishes — see `TOOLS_ROOT_SATISFIED_PORTS` below for why they
+// cannot be a `packages/adapters/` directory and therefore cannot be a binding
+// row. This is a CONTEXT package subpath, not an adapter package, so rule (C1) in
+// `scripts/arch/composition-root.mjs` — which permits only
+// `adapter-bindings.ts` to name `@platos/adapter-*` — is untouched.
+import { DEFAULT_TOOLS_POLICY } from "@platos/context-tools";
+import {
+  createContentDigest,
+  createToolDispatchAdapter,
+  type ToolDispatchAdapter,
+} from "@platos/context-tools/adapters/index.js";
 
 import type { SuppliedContextPorts } from "../app.module.js";
 import type { SuppliedAdapters } from "./adapter-bindings.js";
@@ -260,6 +272,29 @@ export interface ContextPortAssembly {
    * same one. `installation.test.ts` asserts exactly that.
    */
   readonly safetyEventSink: SafetyEventSink | null;
+  /**
+   * WIN-268 (M4.2) stage 2. The `ToolDispatch` this assembly built, or null when
+   * `tools` could not be assembled.
+   *
+   * PUBLISHED BECAUSE IT HOLDS SOCKETS, which nothing else this file builds does.
+   * A `SafetyEventSink` is a function over a store somebody else opened; an MCP
+   * session pool opens its own connections and keeps them between calls, so the
+   * process has to be able to close them. `release()` below is what the shutdown
+   * path calls, and this handle is published beside it for the reason the sink is:
+   * a caller that cannot SEE the object cannot check that one object went into the
+   * bundle.
+   */
+  readonly toolDispatch: ToolDispatchAdapter | null;
+  /**
+   * Close whatever this assembly opened. Idempotent, and safe when nothing was.
+   *
+   * IT IS SEPARATE FROM `construction.release()` and both are called, because the
+   * two own different things: `constructAdapters` owns the PostgreSQL pool and the
+   * Redis socket, and this owns the MCP sessions the dispatch adapter opened.
+   * Folding one into the other would put a context's port inside the adapter
+   * table, which is the distinction this whole file exists to keep.
+   */
+  release(): Promise<void>;
 }
 
 /**
@@ -445,6 +480,44 @@ export const GOVERNANCE_BOUND_READ_SEAMS: readonly string[] = Object.freeze([
  * against the context that owns the keys, the routes and the rate cards.
  */
 export const GOVERNANCE_ROOT_SATISFIED_PORTS: readonly string[] = Object.freeze(["Judge"]);
+
+/**
+ * `tools`' ports satisfied by THIS DEPLOYABLE rather than by an adapter directory.
+ *
+ * WIN-268 (M4.2) stage 2, and the SECOND context to need this shape after
+ * `governance`. `installation.test.ts` reads it back in both directions for
+ * exactly the reason the governance list is read back both ways: a name here must
+ * appear on NO row of `ADAPTER_BINDINGS`, so a port that later gains a directory
+ * cannot sit here unnoticed, and `composeApplication` must publish a composed
+ * `tools` once its bundle is assembled, so a name here without an implementation
+ * fails the other half.
+ *
+ * WHY NEITHER WILL EVER BE A BINDING ROW, measured rather than asserted:
+ *
+ *   `ToolDispatch` IS AN MCP CLIENT, and ADR M0.3 §5.1 rule (h)
+ *   (`SDK_CONTAINMENT.mcp-sdk-only-in-tools` in `scripts/arch/boundary-rules.mjs`)
+ *   binds `@modelcontextprotocol/*` to `^packages/contexts/tools/(adapters|transport)/`
+ *   and to nowhere else. A `packages/adapters/mcp-dispatch` directory would break
+ *   the containment rule the ADR wrote for this SDK, so the implementation lives in
+ *   the context's own `adapters/` — published through `./adapters/index.js`, which
+ *   `ADAPTER_ENTRY_PROJECTS` in `gen-v1-skeleton.mjs` emits with a check that joins
+ *   to `SDK_CONTAINMENT` in both directions.
+ *
+ *   `ContentDigest` HAS NO ROW AND NO FAILURE CHANNEL, which
+ *   `composition/adapter-bindings.ts` already states in its own words about
+ *   `memory`'s identically-named port: "a synchronous host hash with no failure
+ *   channel and no row". It shares this barrel because the root imports ONE module
+ *   per context, not because a digest needs containment.
+ *
+ * THE CONSEQUENCE FOR `/readyz`, STATED SO NOBODY READS THE NUMBER WRONG.
+ * Composing `tools` does NOT move `satisfiedBindings`, because neither port is a
+ * binding. What moves is `detail.composedContexts`, which gains `tools` — and that
+ * is the figure `process.test.ts` reads back off a real socket.
+ */
+export const TOOLS_ROOT_SATISFIED_PORTS: readonly string[] = Object.freeze([
+  "ToolDispatch",
+  "ContentDigest",
+]);
 
 /**
  * The two `agents` ports that keep the peer BEHIND that sink out of reach.
@@ -721,6 +794,32 @@ export function assembleContextPorts(
   // parameter, so an installation can extend the provider list without a code
   // change" — so taking the shipped ones here is the documented default and not
   // an invention of this file's.
+  // WIN-268 (M4.2) stage 2. `tools` — ELEVEN slots, and this is the first bundle
+  // in this file whose UNSATISFIED count is zero for a reason other than an
+  // adapter directory existing. Seven come from adapters, kernel ports and a
+  // published domain default; TWO are built right here from the barrel the
+  // context itself publishes (see `TOOLS_ROOT_SATISFIED_PORTS`); and FOUR are
+  // composed PEERS that `app.module.ts` fills, exactly as `providers`' two are.
+  //
+  // It declines on the FIRST directory missing, and names WHICH, for the reason
+  // `secrets` does: an operator with no `PLATOS_STORE_POSTGRES_URL` must be told
+  // about the store rather than about "tools".
+  const toolsMissing: string[] = [];
+  if (postgres === undefined) {
+    toolsMissing.push("postgres-tenancy (ToolsRepository, UnitOfWork)");
+  }
+  if (toolsMissing.length > 0) {
+    unassembled.push(
+      Object.freeze({
+        context: "tools",
+        reason:
+          `its ToolDispatch and ContentDigest are satisfied in this deployable — ADR M0.3 §5.1 rule (h) homes the MCP SDK in the context's own adapters/ so neither can be a binding row — and ${toolsMissing.join(
+            ", ",
+          )} ${toolsMissing.length === 1 ? "is" : "are"} not constructed`,
+      }),
+    );
+  }
+
   const providersMissing: string[] = [];
   if (postgres === undefined) providersMissing.push("postgres-tenancy (ProvidersRepository, UnitOfWork)");
   if (router === undefined) providersMissing.push("model-router-providers (ModelRouter)");
@@ -819,9 +918,50 @@ export function assembleContextPorts(
     };
   }
 
+  // WIN-268 (M4.2) stage 2. `tools`' bundle MINUS its four peers, for the reason
+  // `providers`' is minus its two: `ToolsDependencies` names `tenancy`,
+  // `identityAccess`, `secrets` and `providers` as CONTEXTS, and building a
+  // context is `app.module.ts`'s job while this file deliberately holds none.
+  //
+  // EVERY SLOT IS ASSIGNED BY NAME, and the convention earns its keep here more
+  // than anywhere else in this file: `repository` and `dispatch` are both
+  // interfaces with async methods, `clock` and `ids` are two kernel ports of
+  // similar shape, and `digest` is a one-method object — a bundle assembled by
+  // spreading one source over another would type-check with several of those
+  // transposed, and the first symptom would be a `Tool.schemaHash` computed over
+  // the wrong bytes, which reminds every tool row in the installation.
+  //
+  // THE DISPATCH ADAPTER IS BUILT ONCE PER ASSEMBLY, not once per call. It holds a
+  // session pool keyed on `DispatchTarget.sessionKey`, and a fresh adapter per
+  // bundle would be a fresh pool — every call paying an `initialize` handshake and
+  // no session ever reused, which is the defect a pool exists to prevent. The
+  // identity is pinned by `installation.test.ts` for the same reason the
+  // `SafetyEventSink`'s is.
+  const toolDispatch: ToolDispatchAdapter | null =
+    postgres === undefined ? null : createToolDispatchAdapter();
+
+  if (postgres !== undefined && toolDispatch !== null) {
+    ports.tools = {
+      repository: postgres,
+      dispatch: toolDispatch,
+      digest: createContentDigest(),
+      clock: dependencies.clock,
+      ids: dependencies.ids,
+      unitOfWork: postgres.unitOfWork,
+      policy: DEFAULT_TOOLS_POLICY,
+    };
+  }
+
   return Object.freeze({
     ports: Object.freeze({ ...ports }),
     unassembled: Object.freeze([...unassembled]),
     safetyEventSink,
+    toolDispatch,
+    // `?? Promise.resolve()` rather than a branch: a caller must be able to call
+    // this unconditionally, and an assembly that opened nothing has nothing to
+    // close. Idempotent because `close()` on the pool clears its own map first.
+    release: async () => {
+      await toolDispatch?.close();
+    },
   });
 }

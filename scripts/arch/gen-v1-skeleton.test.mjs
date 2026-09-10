@@ -271,17 +271,19 @@ test("un-adopting a project that still holds real files fails closed (monotonici
 
 test("selfCheck rejects an adoption entry that is not a V1 project, and a duplicate entry", () => {
   assert.deepEqual(selfCheck(), [], "the live registry is valid");
-  // WIN-258 T5. All THREE registries are supplied empty. `selfCheck` judges the
+  // WIN-258 T5. All FOUR registries are supplied empty (it said THREE until
+  // WIN-268 M4.2 added the adapter-barrel list, whose live entry names `tools`).
+  // `selfCheck` judges the
   // testing-entry list against the SAME adoption argument, so leaving it to
   // default would import the live list into a case about an empty one and
   // report `tools` and `cost-monitoring` unadopted — a true statement about a
   // registry this case is not describing.
-  assert.deepEqual(selfCheck([], [], []), [], "an empty registry is valid");
+  assert.deepEqual(selfCheck([], [], [], []), [], "an empty registry is valid");
 
-  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], [], []), [
+  assert.deepEqual(selfCheck(["packages/contexts/not-a-context"], [], [], []), [
     "ADOPTED_PROJECTS names packages/contexts/not-a-context, which is not a V1 project",
   ]);
-  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], [], []), [
+  assert.deepEqual(selfCheck(["apps/core-api", "apps/core-api"], [], [], []), [
     "ADOPTED_PROJECTS names apps/core-api more than once",
   ]);
 });
@@ -294,19 +296,19 @@ test("selfCheck rejects an application entry that is not an adopted context", ()
   const adopted = ["packages/contexts/identity-access"];
 
   assert.deepEqual(
-    selfCheck(adopted, ["packages/contexts/agents"], []),
+    selfCheck(adopted, ["packages/contexts/agents"], [], []),
     ["APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
     "an unadopted context's application/index.ts is a generated placeholder",
   );
   assert.deepEqual(
-    selfCheck(adopted, ["apps/core-api"], []),
+    selfCheck(adopted, ["apps/core-api"], [], []),
     [
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not a context",
       "APPLICATION_ENTRY_PROJECTS names apps/core-api, which is not adopted",
     ],
     "apps/core-api is adopted but is not a context; both clauses fire",
   );
-  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted], []), [
+  assert.deepEqual(selfCheck(adopted, [...adopted, ...adopted], [], []), [
     "APPLICATION_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
   ]);
 });
@@ -316,30 +318,102 @@ test("selfCheck rejects an application entry that is not an adopted context", ()
 // measured against them can actually import them.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// WIN-268 (M4.2) stage 2: a context may publish an `adapters/` barrel only when
+// ADR M0.3 §5.1 rule (h) actually homes a vendor SDK there.
+// ---------------------------------------------------------------------------
+
+test("selfCheck rejects an adapter-barrel entry that no SDK_CONTAINMENT rule homes an SDK in", () => {
+  const adopted = ["packages/contexts/identity-access", "packages/contexts/tools"];
+
+  // THE JOIN THAT MAKES THE LIST MEAN SOMETHING. `memory` is a real, adopted
+  // context that declares a `ContentDigest` of its own — so if an `adapters/`
+  // barrel were simply a thing any context could ask for, this would pass. Rule
+  // (h) sends no SDK there, so the right home for an implementation is
+  // `packages/adapters/`, and the entry is refused.
+  assert.deepEqual(
+    selfCheck([...adopted, "packages/contexts/memory"], [], [], [
+      "packages/contexts/tools",
+      "packages/contexts/memory",
+    ]),
+    [
+      "ADAPTER_ENTRY_PROJECTS names packages/contexts/memory, which no SDK_CONTAINMENT rule homes an SDK in; an adapter with no contained SDK belongs under packages/adapters/",
+    ],
+    "an adapters/ barrel is earned from the containment table, not asked for",
+  );
+
+  // The same three rules the other two registries are held to, over the same
+  // argument, so a mistake in this list is reported under this list's name.
+  assert.deepEqual(
+    selfCheck(["packages/contexts/identity-access"], [], [], ["packages/contexts/tools"]),
+    ["ADAPTER_ENTRY_PROJECTS names packages/contexts/tools, which is not adopted"],
+    "an unadopted context's adapters/ tree would be generated placeholders",
+  );
+  assert.deepEqual(
+    selfCheck(adopted, [], [], ["apps/core-api", "packages/contexts/tools"]),
+    [
+      "ADAPTER_ENTRY_PROJECTS names apps/core-api, which is not a context",
+      "ADAPTER_ENTRY_PROJECTS names apps/core-api, which is not adopted",
+      "ADAPTER_ENTRY_PROJECTS names apps/core-api, which no SDK_CONTAINMENT rule homes an SDK in; an adapter with no contained SDK belongs under packages/adapters/",
+    ],
+    "apps/core-api is not a context, is not in this case's adoption set, and is homed no SDK: all three clauses fire",
+  );
+  assert.deepEqual(
+    selfCheck(adopted, [], [], ["packages/contexts/tools", "packages/contexts/tools"]),
+    ["ADAPTER_ENTRY_PROJECTS names packages/contexts/tools more than once"],
+  );
+
+  // AND THE MANIFEST AND TSCONFIG MOVE WITH THE LIST, which is what the entry is
+  // FOR: a published subpath aimed at a `dist/` path no `include` emits would
+  // resolve in the type layer and fail at import.
+  const withBarrel = renderSkeleton(adopted, [], [], ["packages/contexts/tools"]);
+  const manifest = JSON.parse(withBarrel.get("packages/contexts/tools/package.json"));
+  assert.deepEqual(manifest.exports["./adapters/index.js"], {
+    types: "./dist/adapters/index.d.ts",
+    import: "./dist/adapters/index.js",
+  });
+  assert.equal(manifest.dependencies["@modelcontextprotocol/sdk"], "1.26.0");
+  assert.ok(
+    JSON.parse(withBarrel.get("packages/contexts/tools/tsconfig.json")).include.includes("adapters/**/*.ts"),
+    "the barrel must be inside the project's own include",
+  );
+
+  // AND WITHOUT THE ENTRY, NEITHER APPEARS. The pair above would otherwise be a
+  // statement about `tools`' manifest rather than about the list.
+  const withoutBarrel = renderSkeleton(adopted, [], [], []);
+  const bare = JSON.parse(withoutBarrel.get("packages/contexts/tools/package.json"));
+  assert.equal(bare.exports["./adapters/index.js"], undefined);
+  assert.equal(bare.dependencies["@modelcontextprotocol/sdk"], undefined);
+  assert.equal(bare.dependencies["zod"], undefined);
+  assert.ok(
+    !JSON.parse(withoutBarrel.get("packages/contexts/tools/tsconfig.json")).include.includes("adapters/**/*.ts"),
+  );
+});
+
 test("selfCheck rejects a testing entry that is not an adopted context", () => {
   const adopted = ["packages/contexts/identity-access"];
 
   assert.deepEqual(
-    selfCheck(adopted, [], ["packages/contexts/agents"]),
+    selfCheck(adopted, [], ["packages/contexts/agents"], []),
     ["TESTING_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted"],
     "an unadopted context's application/testing/ tree is generated placeholders",
   );
   assert.deepEqual(
-    selfCheck(adopted, [], ["apps/core-api"]),
+    selfCheck(adopted, [], ["apps/core-api"], []),
     [
       "TESTING_ENTRY_PROJECTS names apps/core-api, which is not a context",
       "TESTING_ENTRY_PROJECTS names apps/core-api, which is not adopted",
     ],
     "apps/core-api is adopted but is not a context; both clauses fire",
   );
-  assert.deepEqual(selfCheck(adopted, [], [...adopted, ...adopted]), [
+  assert.deepEqual(selfCheck(adopted, [], [...adopted, ...adopted], []), [
     "TESTING_ENTRY_PROJECTS names packages/contexts/identity-access more than once",
   ]);
   // And the two lists are judged SEPARATELY: naming a project on one says
   // nothing about the other, which is the property that keeps a mistake in
   // either from being reported under the other's name.
   assert.deepEqual(
-    selfCheck(adopted, ["packages/contexts/agents"], ["packages/contexts/skills"]),
+    selfCheck(adopted, ["packages/contexts/agents"], ["packages/contexts/skills"], []),
     [
       "APPLICATION_ENTRY_PROJECTS names packages/contexts/agents, which is not adopted",
       "TESTING_ENTRY_PROJECTS names packages/contexts/skills, which is not adopted",

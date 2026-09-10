@@ -10,7 +10,7 @@
 // operator hits when a store is down at boot — which is the path that used to
 // kill the process, and which two of the cases below now pin.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -64,6 +64,7 @@ import {
   IDENTITY_ACCESS_SLOT_SOURCES,
   GOVERNANCE_UNBOUND_PORTS,
   IDENTITY_ACCESS_UNASSEMBLED,
+  TOOLS_ROOT_SATISFIED_PORTS,
   UNIMPORTABLE_CONTEXT_FACTORIES,
   assembleContextPorts,
 } from "./context-ports.js";
@@ -1180,5 +1181,178 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(reasons.get("providers")).toContain("model-router-providers");
     expect(reasons.get("providers")).toContain("redis-cache");
     expect(reasons.get("secrets")).not.toContain("postgres-tenancy");
+  });
+});
+
+describe("composing tools, whose two remaining ports no adapter directory may hold", () => {
+  /**
+   * The eleven slots `ToolsDependencies` names, and where each one comes from.
+   *
+   * SPELLED OUT HERE RATHER THAN READ OFF THE THING UNDER TEST, for the reason
+   * `GROUP_BUILDS` gives: deriving the expectation from the bundle the assembler
+   * built would compare `assembleContextPorts` to itself and could not fail. The
+   * right-hand side is either an adapter DIRECTORY that ADR M0.3 §4 assigns, a
+   * kernel port the process holds, a published domain default, this deployable, or
+   * a composed PEER that ADR M0.3 §1 row 7 permits.
+   */
+  const TOOLS_SLOT_SOURCES: Readonly<Record<string, string>> = Object.freeze({
+    repository: "postgres-tenancy",
+    dispatch: "this deployable (tools/adapters)",
+    digest: "this deployable (tools/adapters)",
+    clock: "kernel",
+    ids: "kernel",
+    unitOfWork: "postgres-tenancy",
+    policy: "tools:DEFAULT_TOOLS_POLICY",
+  });
+
+  /** The four peers only `composeApplication` can supply. ADR M0.3 §1 row 7. */
+  const TOOLS_PEERS = Object.freeze(["tenancy", "identityAccess", "secrets", "providers"]);
+
+  it("composes it in a fully declared install, over a REAL construction", () => {
+    const { app, assembly } = readiness(FULLY_DECLARED);
+
+    expect(app.contexts.tools, "a fully declared install must compose tools").toBeDefined();
+    expect(app.contexts.tools?.name).toBe("tools");
+    // AND ITS FOUR PEERS ARE COMPOSED TOO, which is not decoration: the context
+    // is ABSENT rather than half-built the moment any of them is, so a composed
+    // `tools` beside an absent peer would mean the guard had been weakened.
+    for (const peer of TOOLS_PEERS) {
+      expect(app.contexts, `${peer} is a peer tools cannot be built without`).toHaveProperty(peer);
+    }
+  });
+
+  it("fills exactly the seven slots the assembler owns, and pins the two that could be transposed", () => {
+    const { assembly, construction } = readiness(FULLY_DECLARED);
+    const bundle = assembly.ports.tools;
+
+    // A PARTITION, not a list beside the bundle. A slot added to
+    // `ToolsDependencies` that nobody wires fails here, and a slot wired but never
+    // named in the map fails here too.
+    expect(bundle, "the assembler must have produced the bundle").toBeDefined();
+    expect(Object.keys(bundle ?? {}).sort()).toEqual(Object.keys(TOOLS_SLOT_SOURCES).sort());
+    // Eleven declared slots minus the four peers `composeApplication` fills.
+    expect(Object.keys(TOOLS_SLOT_SOURCES)).toHaveLength(7);
+
+    // `repository` AND `unitOfWork` BOTH COME OFF THE ORM DIRECTORY and are
+    // structurally different, so the compiler catches a swap of those two. What it
+    // cannot catch is `repository` holding some OTHER object that satisfies the
+    // interface, so the identity is asserted.
+    expect(bundle?.repository).toBe(construction.adapters["postgres-tenancy"]);
+    expect(bundle?.unitOfWork).toBe(construction.adapters["postgres-tenancy"]?.unitOfWork);
+
+    // THE DISPATCH IS THE OBJECT THE ASSEMBLY PUBLISHED, minted ONCE. It holds a
+    // session pool keyed on `DispatchTarget.sessionKey`; a fresh adapter per bundle
+    // would be a fresh pool, so every call would pay an `initialize` handshake and
+    // no session would ever be reused. This is the same identity pin the
+    // `SafetyEventSink` gets, for the same class of reason.
+    expect(assembly.toolDispatch, "a declared install must build the dispatch").not.toBeNull();
+    expect(bundle?.dispatch).toBe(assembly.toolDispatch);
+
+    // AND THE DIGEST SLOT HOLDS A REAL SHA-256, checked against FIPS 180-4's own
+    // published example rather than against another digest this tree computed. A
+    // slot filled with any one-method object would satisfy the type; only a known
+    // answer says the right one is in it, and `Tool.schemaHash` is PERSISTED, so a
+    // wrong digest here remints every tool row in the installation.
+    expect(bundle?.digest.sha256Hex("abc")).toBe(
+      "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    );
+  });
+
+  it("declines tools by NAMING the directory that is missing, and says the two ports are not the blocker", () => {
+    // FALSIFIABILITY. An install with no store composes nothing, and the reason
+    // must point at `postgres-tenancy` — not at the MCP client, which is satisfied
+    // in every configuration because it reads no configuration at all.
+    const { app, assembly } = readiness(NOTHING_DECLARED);
+
+    expect(app.contexts.tools).toBeUndefined();
+    const reason = new Map(assembly.unassembled.map((row) => [row.context, row.reason])).get("tools");
+    expect(reason).toContain("postgres-tenancy");
+    expect(reason).toContain("ToolDispatch");
+    expect(reason).toContain("ContentDigest");
+    // AND NOTHING WAS OPENED. A dispatch adapter built for a context that cannot be
+    // assembled would be a session pool with no owner and no `release()` caller.
+    expect(assembly.toolDispatch).toBeNull();
+  });
+
+  it("closes what it opened, so release() is not a promise nobody keeps", async () => {
+    const { assembly } = readiness(FULLY_DECLARED);
+    const dispatch = assembly.toolDispatch;
+
+    expect(dispatch).not.toBeNull();
+    // Nothing has dispatched, so the pool is empty — the claim being checked is
+    // that the call REACHES the pool and is safe, which is what `main.ts` relies on
+    // when it calls this unconditionally after the drain.
+    expect(dispatch?.liveMcpSessions).toBe(0);
+    await assembly.release();
+    expect(dispatch?.liveMcpSessions).toBe(0);
+    // Idempotent: `main.ts` calls it on the fault path AND on the clean path, and
+    // one process can reach both.
+    await assembly.release();
+  });
+
+  it("keeps both root-satisfied ports off the binding table, in both directions", () => {
+    const ports = new Set(ADAPTER_BINDINGS.map((binding) => binding.port));
+
+    // DIRECTION ONE. A name on this list must be bound to no adapter, so the day a
+    // directory appears for one of them this case goes red and the list has to move
+    // — which is what stops a port sitting here unnoticed after gaining a home.
+    for (const port of TOOLS_ROOT_SATISFIED_PORTS) {
+      expect(ports, `${port} must be bound to no adapter`).not.toContain(port);
+    }
+    expect(TOOLS_ROOT_SATISFIED_PORTS).toEqual(["ToolDispatch", "ContentDigest"]);
+
+    // DIRECTION TWO, and it is the half that makes the list mean something: each
+    // name must have an IMPLEMENTATION reachable from here, proven by the composed
+    // context existing in a declared install. A list naming a port nobody
+    // implemented would pass direction one and fail this.
+    const { app } = readiness(FULLY_DECLARED);
+    expect(app.contexts.tools).toBeDefined();
+
+    // AND THE BINDING COUNT DID NOT MOVE. This is the sentence `process.test.ts`
+    // reads off a real socket, asserted here against the table instead: composing
+    // `tools` adds a CONTEXT and no BINDING, so `declaredBindings` is untouched.
+    expect(ADAPTER_BINDINGS).toHaveLength(60);
+  });
+
+  it("publishes the adapters barrel from EXACTLY ONE of the seventeen, and it is the SDK's home", () => {
+    // THE MANIFESTS ARE READ AND THE SUBPATHS ARE NOT IMPORTED, which is the trap
+    // the `UNIMPORTABLE_CONTEXT_FACTORIES` case above already documents and paid
+    // for: a LITERAL dynamic import of a subpath that does not exist fails in
+    // Vite's TRANSFORM, so the whole file fails to load and no case runs at all — a
+    // vacuous red rather than an assertion. Measured here after reproducing it.
+    const root = fileURLToPath(new URL("../../../../", import.meta.url));
+    const contexts = [
+      "identity-access", "tenancy", "secrets", "providers", "agents", "skills",
+      "tools", "memory", "channels", "files", "observability", "cost-monitoring",
+      "governance", "jobs", "conversations", "eventing", "privacy",
+    ] as const;
+    expect(contexts).toHaveLength(17);
+
+    const publishing = contexts.filter((context) => {
+      const manifest = JSON.parse(
+        readFileSync(`${root}packages/contexts/${context}/package.json`, "utf8"),
+      ) as { readonly exports?: Record<string, unknown> };
+      return manifest.exports?.["./adapters/index.js"] !== undefined;
+    });
+
+    // A PARTITION OVER ALL SEVENTEEN, so the day a second context grows a barrel
+    // this fails and somebody has to say which SDK the ADR homed there. If an
+    // `adapters/` directory were simply a thing any context could publish,
+    // `ADAPTER_ENTRY_PROJECTS`' join to `SDK_CONTAINMENT` would be decoration.
+    // `memory` declares a `ContentDigest` of its own and is deliberately NOT here.
+    expect(publishing).toEqual(["tools"]);
+
+    // AND THE FILE THE ENTRY POINTS AT EXISTS, which is the run-time claim the type
+    // layer cannot make: a manifest subpath aimed at a `dist/` path no tsconfig
+    // `include` emits type-checks and then fails at import — the dead-surface shape
+    // WIN-297 named, one layer down. The barrel is imported STATICALLY by
+    // `context-ports.ts`, so the positive half is proven by this file loading; what
+    // is checked here is the emitted artifact.
+    expect(existsSync(`${root}packages/contexts/tools/dist/adapters/index.js`)).toBe(true);
+    expect(
+      JSON.parse(readFileSync(`${root}packages/contexts/tools/tsconfig.json`, "utf8")) as {
+        readonly include?: string[];
+      },
+    ).toMatchObject({ include: expect.arrayContaining(["adapters/**/*.ts"]) });
   });
 });

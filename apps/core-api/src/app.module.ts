@@ -112,6 +112,8 @@ import { providersContract } from "@platos/context-providers";
 import type { AgentsContract } from "@platos/context-agents";
 import type { SkillsContract } from "@platos/context-skills";
 import type { ToolsContract } from "@platos/context-tools";
+import { toolsContract } from "@platos/context-tools";
+import type { ToolsDependencies } from "@platos/context-tools";
 import type { MemoryContract } from "@platos/context-memory";
 import type { ChannelsContract } from "@platos/context-channels";
 import type { FilesContract } from "@platos/context-files";
@@ -315,10 +317,37 @@ export interface SuppliedContextPorts {
    * about relaxing the convention.
    */
   readonly providers?: ProvidersAdapterPorts;
+  /**
+   * WIN-268 (M4.2) stage 2. `tools`' bundle MINUS its four peers.
+   *
+   * TWO OF ITS SEVEN SLOTS ARE SATISFIED BY NO ADAPTER DIRECTORY AND NEVER WILL BE.
+   * `ToolDispatch` is an MCP client and ADR M0.3 §5.1 rule (h) homes
+   * `@modelcontextprotocol/*` in `packages/contexts/tools/(adapters|transport)/`
+   * alone, so it cannot be a `packages/adapters/` directory and cannot be a row of
+   * `ADAPTER_BINDINGS`; `ContentDigest` is a synchronous host hash with no row.
+   * `TOOLS_ROOT_SATISFIED_PORTS` in `composition/context-ports.ts` names both and
+   * `installation.test.ts` reads the list back in both directions.
+   */
+  readonly tools?: ToolsAdapterPorts;
 }
 
 /** `ProvidersDependencies` without the two peers only this file can supply. */
 export type ProvidersAdapterPorts = Omit<ProvidersDependencies, "tenancy" | "secrets">;
+
+/**
+ * `ToolsDependencies` without the FOUR peers only this file can supply.
+ *
+ * WIN-268 (M4.2) stage 2. The same subtraction `ProvidersAdapterPorts` makes and
+ * the same reason for it, twice as wide: ADR M0.3 §1 row 7 permits `tools`
+ * exactly `tenancy`, `identity-access`, `secrets` and `providers` plus the kernel,
+ * and it genuinely calls all four. `composition/context-ports.ts` hands over the
+ * seven slots it can name and `composeApplication` fills these four from the
+ * contracts it has just built.
+ */
+export type ToolsAdapterPorts = Omit<
+  ToolsDependencies,
+  "tenancy" | "identityAccess" | "secrets" | "providers"
+>;
 
 export interface CompositionInput {
   readonly configuration: CoreApiConfiguration;
@@ -398,11 +427,55 @@ export function composeApplication(input: CompositionInput): AppModule {
           secrets,
           tenancy,
         });
+  // WIN-268 (M4.2) stage 2. `tools` — THE FIRST CONTEXT COMPOSED OVER FOUR PEERS,
+  // and the last link in the chain the ORM register has been pointing at for five
+  // tranches: `scripts/arch/mcp-store-ownership.mjs` computes that composing this
+  // one context frees 35 sites, the largest single owner on the MCP surface.
+  //
+  // IT COMES AFTER `providers` AND THE ORDER IS LOAD-BEARING, more so than
+  // `providers`' was. All four of its peers must already be objects, and one of
+  // them — `providers` — is itself built from two of the others, so this is the
+  // second rank of a two-rank composition rather than the first. It is ABSENT the
+  // moment any peer is, rather than built over a half-filled bundle, for the
+  // reason every context above it is: a `ToolsContract` whose `secrets` handle was
+  // undefined would refuse every credential read at the first dispatch instead of
+  // at readiness.
+  //
+  // EVERY SLOT IS ASSIGNED BY NAME. `repository` and `dispatch` are both async
+  // interfaces, `clock` and `ids` are two kernel ports of similar shape, and the
+  // four peers are four objects with a `name` property apiece — a spread would
+  // type-check with `identityAccess` and `tenancy` transposed, and the sign of it
+  // would be an MCP caller authenticated against the tenant tree.
+  const tools =
+    input.ports?.tools === undefined ||
+    tenancy === undefined ||
+    identityAccess === undefined ||
+    secrets === undefined ||
+    providers === undefined
+      ? undefined
+      : toolsContract({
+          repository: input.ports.tools.repository,
+          dispatch: input.ports.tools.dispatch,
+          digest: input.ports.tools.digest,
+          clock: input.ports.tools.clock,
+          ids: input.ports.tools.ids,
+          unitOfWork: input.ports.tools.unitOfWork,
+          policy: input.ports.tools.policy,
+          tenancy,
+          identityAccess,
+          secrets,
+          providers,
+        });
   const contexts: ComposedContexts = Object.freeze({
     ...(identityAccess === undefined ? {} : { identityAccess }),
     ...(tenancy === undefined ? {} : { tenancy }),
     ...(secrets === undefined ? {} : { secrets }),
     ...(providers === undefined ? {} : { providers }),
+    // AFTER `providers` in the literal as well as in the code, because
+    // `mcp-store-ownership.mjs` reads THIS OBJECT by AST to decide which contexts
+    // are composed, and `ContextContracts`' own declaration order is what
+    // `process.test.ts` asserts `detail.composedContexts` against.
+    ...(tools === undefined ? {} : { tools }),
   });
 
   return Object.freeze({

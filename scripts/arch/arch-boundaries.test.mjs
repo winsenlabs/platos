@@ -1338,10 +1338,28 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // in `composition/` and not beside the controller it drives. The violation list
     // below stays empty while the census moves. 1663 + 17 = 1680.
     //
-    // AND `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1680 off a
+    // WIN-268 (M4.2) stage 2, 1680 -> 1687. SEVEN files, ALL SEVEN under
+    // `packages/contexts/tools/adapters` — a directory that did not exist: the
+    // barrel, the `ContentDigest` over `node:crypto`, the wire POST, the MCP session
+    // pool, the router over the two, and two suites (the digest's known-answer
+    // vectors and the real-socket dispatch integration suite).
+    //
+    // THE MCP CLIENT IS THE INTERESTING FILE AND IT IS THE REASON THIS TERM IS NOT
+    // UNDER `packages/adapters/`. `mcp-dispatch.ts` is the ONLY file in the V1 tree
+    // permitted to import `@modelcontextprotocol/*`, and `mcp-sdk-only-in-tools` —
+    // which has been in `SDK_CONTAINMENT` since the skeleton and had nothing to
+    // protect until now — homes that scope in
+    // `^packages/contexts/tools/(adapters|transport)/` and in no adapter directory
+    // at all. So this is the first tranche whose census moves a CONTEXT term for an
+    // adapter, and the violation list below stays empty while it does: rule (b)
+    // `no-core-to-adapter` bans `domain/` and `application/` from reaching this
+    // directory and says nothing about the reverse, which is the onion pointing
+    // inward exactly as it should. 1680 + 7 = 1687.
+    //
+    // AND `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1687 off a
     // second, independent scan, which is what makes this pin worth having: a branch
     // whose files were double-counted here would disagree with that one.
-    assert.equal(result.fileCount, 1680, "the generated V1 source census must stay exact");
+    assert.equal(result.fileCount, 1687, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1399,7 +1417,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // produced) and composition 1 (the real-socket integration suite).
       // 7 + 3 + 3 + 3 + 1 = 17, and this is the first tranche to move BOTH the
       // adapters term and the two app terms in one sum.
-      7 + 3 + 3 + 3 + 1);
+      7 + 3 + 3 + 3 + 1 +
+      // WIN-268 (M4.2) stage 2: tools/adapters 7 — index, content-digest,
+      // wire-dispatch, mcp-dispatch, dispatch, and the two suites. ALL SEVEN in one
+      // term under `packages/contexts/`, and NOTHING under `packages/adapters/` or
+      // `apps/`, because rule (h) homes the MCP SDK in this context.
+      7);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

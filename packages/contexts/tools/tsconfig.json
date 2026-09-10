@@ -11,7 +11,8 @@
   "include": [
     "domain/**/*.ts",
     "application/**/*.ts",
-    "contracts/**/*.ts"
+    "contracts/**/*.ts",
+    "adapters/**/*.ts"
   ],
   "exclude": [
     "dist",

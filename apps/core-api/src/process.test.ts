@@ -385,11 +385,32 @@ describe("the built binary starts, serves and stops", () => {
     // `governance` ITSELF IS STILL ABSENT and must stay absent here -- its
     // `AgentsContract` slot is four contexts and six unbound ports away -- which
     // is why this list is asserted with `toEqual` rather than by membership.
+    //
+    // WIN-268 (M4.2) stage 2 ADDS `tools`, AND IT IS THE FIRST CONTEXT IN THIS TREE
+    // COMPOSED OVER FOUR PEERS. ADR M0.3 §1 row 7 permits it exactly `tenancy`,
+    // `identity-access`, `secrets` and `providers`, it genuinely calls all four, and
+    // `providers` is itself built from two of the others — so this is the second
+    // RANK of a two-rank composition rather than another entry on the first. It is
+    // last in the list because `ContextContracts` declares it after `providers`.
+    //
+    // THE BINDING COUNT ABOVE DID NOT MOVE, AND THAT IS THE CLAIM RATHER THAN AN
+    // OVERSIGHT. Its two remaining driven ports are satisfied in this deployable
+    // and can never be binding rows: `ToolDispatch` is an MCP client and ADR M0.3
+    // §5.1 rule (h) homes `@modelcontextprotocol/*` in
+    // `packages/contexts/tools/(adapters|transport)/` alone, so a
+    // `packages/adapters/` directory for it would break the containment rule the
+    // ADR wrote for that SDK; `ContentDigest` is a synchronous host hash with no
+    // failure channel and no row, which `adapter-bindings.ts` already says in those
+    // words. `TOOLS_ROOT_SATISFIED_PORTS` names both and `installation.test.ts`
+    // reads it back in both directions. So this tranche moves `composedContexts`
+    // and leaves `satisfiedBindings` alone — the FIRST tranche to move one and not
+    // the other, and the two figures are read off the same socket in the same call.
     expect(body.detail.composedContexts).toEqual([
       "identityAccess",
       "tenancy",
       "secrets",
       "providers",
+      "tools",
     ]);
     expect(body.detail.composedContexts).not.toContain("governance");
     // And every remaining directory says which kind of gap it is.
