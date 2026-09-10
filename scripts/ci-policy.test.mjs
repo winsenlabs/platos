@@ -4,6 +4,15 @@ import path from "node:path";
 import test from "node:test";
 import { parseDocument } from "yaml";
 
+// THE ROOTS ARE IMPORTED, NOT RESTATED. `agent-tenancy-postgres-integration.mjs`
+// is the thing that walks them, so a case that spelled them again here could
+// disagree with the walk the job actually performs.
+import {
+  SUITE_ROOTS as AGENT_TENANCY_SUITE_ROOTS,
+  SUITE_SUFFIX as AGENT_TENANCY_SUITE_SUFFIX,
+  discoverSuites as discoverAgentTenancySuites,
+} from "./agent-tenancy-postgres-integration.mjs";
+
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 const expectedCandidates = [
   {
@@ -80,8 +89,10 @@ const expectedPnpmRunInstructions = new Map([
 // The count is pinned rather than derived so that adding a job stays a reviewed
 // decision: a silently appearing runner is how unreviewed steps enter a
 // pipeline.
+// SIX, not five: M4 finish adds `agent-tenancy-postgres`, the job that runs the
+// MCP-surface and tool-lifecycle real-PostgreSQL suites that ran in NO job at all.
 const expectedSetupNodeCounts = new Map([
-  ["ci", 5],
+  ["ci", 6],
   ["buildImages", 1],
 ]);
 const relocatedCommands = [
@@ -599,6 +610,19 @@ const expectedDifferentialHarnessCommands = [
 ];
 const expectedDifferentialConservationJob = "differential-state-conservation";
 const expectedDifferentialConservationCommand = "pnpm test:differential-harness:store";
+
+// M4 finish — THE FOURTH GATE-DARKNESS INSTANCE. The MCP-surface and
+// tool-lifecycle real-PostgreSQL suites ran in NO job at all; this job runs them,
+// and it selects them by WALKING two roots rather than by naming files, so a new
+// suite under either joins with no line to add.
+const agentTenancyPostgresJob = "agent-tenancy-postgres";
+const agentTenancyPostgresCommand = "pnpm test:agent-tenancy-postgres:integration";
+const expectedAgentTenancyPostgresScripts = new Map([
+  [
+    "test:agent-tenancy-postgres:integration",
+    "node scripts/agent-tenancy-postgres-integration.mjs",
+  ],
+]);
 
 const expectedRepositoryGovernanceScripts = new Map([
   ["generate:root-manifest", "node scripts/root-entry-manifest.mjs --write"],
@@ -1753,6 +1777,17 @@ function policyViolations(input) {
     violations.push("WIN-284 twin-store conservation job must run the store gate exactly once");
   }
 
+  // M4 finish — the MCP-surface and tool-lifecycle real-PostgreSQL job. A
+  // separate job because it needs a pgvector server, which the typecheck job's
+  // services do not provide, and because `pnpm test:v1-packages` must stay
+  // runnable with no database at all.
+  const agentTenancyJob = ciJobs.get(agentTenancyPostgresJob);
+  if (agentTenancyJob === undefined) {
+    violations.push("CI must retain the agent tenancy real-PostgreSQL job");
+  } else if (countExact(normalizedRunCommands(agentTenancyJob), agentTenancyPostgresCommand) !== 1) {
+    violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+  }
+
   const v1Lines = reviewedEvidence.commands;
   const allCiLines = [...ciJobs.values()]
     .flatMap((job) => executableRunValues(job))
@@ -1838,6 +1873,10 @@ function policyViolations(input) {
       violations.push(
         `package.json must wire exact workspace reachability script ${name}: ${target}`
       );
+  }
+  for (const [name, target] of expectedAgentTenancyPostgresScripts) {
+    if (packageScripts[name] !== target)
+      violations.push(`package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`);
   }
   for (const [name, target] of expectedWin254Scripts) {
     if (packageScripts[name] !== target)
@@ -3360,6 +3399,25 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      // THE CONTROL FOR THE FOURTH GATE-DARKNESS INSTANCE. Deleting the step is
+      // exactly how the three suites this job runs came to run nowhere, so the
+      // deletion has to be the thing that fails.
+      name: "agent tenancy PostgreSQL job cannot stop running its suite walker",
+      expected: "agent tenancy PostgreSQL job must run its suite walker exactly once",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `        run: ${agentTenancyPostgresCommand}`,
+          "        run: echo skipped"
+        ),
+    },
+    ...[...expectedAgentTenancyPostgresScripts].map(([name, target]) => ({
+      name: `agent tenancy PostgreSQL script ${name} cannot be repointed`,
+      expected: `package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`,
+      mutate: (input) => mutateFixture(input, "packageJson", `"${name}": "${target}"`, `"${name}": "true"`),
+    })),
+    {
       name: "root package workspace graph cannot reappear",
       expected: "package.json must not declare workspaces; pnpm-workspace.yaml is authoritative",
       mutate: (input) =>
@@ -4785,12 +4843,20 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   package.json is a webapp image build input, so a script there moves the SBOM
   //   receipt's buildInputsSha256 — so it contributes to the release-gate loop
   //   only. The number was MEASURED at 378 before this arithmetic was written.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 = 378. The count is pinned
+  //
+  //   M4 FINISH, +3. The `agent-tenancy-postgres` job — the fourth gate-darkness
+  //   instance. ONE for the new `setup-node` step it brings (the loop over
+  //   `expectedSetupNodeCounts` derives one control per occurrence, so raising
+  //   ci.yml's count from 5 to 6 raises this table by one), ONE for the step that
+  //   runs the suite walker, and ONE for the root script that step resolves to.
+  //   Deleting either the step or the script is precisely how the three suites it
+  //   runs came to run nowhere, so each is separately falsifiable.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 = 381. The count is pinned
   // rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    378,
+    381,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
@@ -5059,5 +5125,181 @@ test("the integration-suite selector fails when a job stops naming a package", (
   assert.ok(
     !/test:redis-ratelimit:integration/u.test(withoutRedisStep),
     "removing that line must remove the only reference to the limiter's integration script"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// M4 FINISH — THE FOURTH GATE-DARKNESS INSTANCE, AND THE CENSUS THAT KEEPS IT
+// FROM BEING A FIFTH.
+//
+// `permission-gateway-forged-scope`, `macros-replay-postgres` and
+// `end-users-tenancy-postgres` were real-PostgreSQL tenancy proofs named by
+// NOTHING in `.github/workflows/ci.yml`. So was
+// `registry-incoherent-pair-postgres`. The enumeration above could not see any of
+// them: its roots are the V1 packages plus `apps/core-api` and `apps/mcp-stdio`,
+// and `apps/agent` is none of those.
+//
+// The case below closes that hole in the only way that survives the next suite
+// somebody writes. It walks `apps/agent/src` for `*.integration.test.ts` and
+// partitions the result into three, none of which is a list this file wrote:
+//
+//   GATED BY THE WALKER — `discoverSuites()` imported from
+//   `scripts/agent-tenancy-postgres-integration.mjs`, which is the SAME function
+//   the CI job runs, so the two cannot disagree about what the job covers.
+//
+//   GATED BY THE EVIDENCE RUNNER — `SUITE_CONTRACT` imported from
+//   `tests/postgres-memory-evidence/verify-artifacts.mjs`, which is what
+//   `postgres-memory-evidence` executes.
+//
+//   UNGATED — everything left, which must equal `UNGATED_AGENT_INTEGRATION_SUITES`
+//   EXACTLY. That map is the honest part: seven suites under `apps/agent/src` are
+//   executed by no CI job today, this tranche did not wire them, and each entry
+//   says why. A new suite added anywhere under `apps/agent/src` lands in neither
+//   gated set and is not in that map, so it turns THIS gate red until somebody
+//   either wires it or writes down why not. Darkness becomes a decision instead
+//   of an accident.
+// ---------------------------------------------------------------------------
+
+const AGENT_INTEGRATION_ROOT = "apps/agent/src";
+
+/**
+ * The three suites this tranche found dark and wired. Named here so a later
+ * change to the walker's roots that dropped one turns this case red rather than
+ * silently reopening the hole it was written to close.
+ */
+const NEWLY_GATED_AGENT_SUITES = [
+  "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+  "apps/agent/src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts",
+  "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+];
+
+/**
+ * MEASURED, not intended: every `*.integration.test.ts` under `apps/agent/src`
+ * that no CI job executes, with the reason each was left alone.
+ *
+ * Wiring these is not free — three need services this repository does not stand
+ * up in CI today, and two are driven by evidence runners whose CONTRACT tests run
+ * while the runners themselves do not. Recording them is what makes the next
+ * tranche's decision informed instead of archaeological.
+ */
+const UNGATED_AGENT_INTEGRATION_SUITES = new Map([
+  [
+    "apps/agent/src/agent-runtime/direct-provider-runtime.integration.test.ts",
+    "needs live provider credentials, which CI does not hold",
+  ],
+  [
+    "apps/agent/src/agent-runtime/postman-execution-postgres.integration.test.ts",
+    "real-PostgreSQL, outside the two roots the new job walks; unmeasured runtime",
+  ],
+  [
+    "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts",
+    "driven by tests/persisted-state-gate/run-non-browser-evidence.mjs; CI runs only its :contract sibling",
+  ],
+  [
+    "apps/agent/src/memory/conversation-postgres.integration.test.ts",
+    "real-PostgreSQL memory suite absent from SUITE_CONTRACT, so postgres-memory-evidence does not run it",
+  ],
+  [
+    "apps/agent/src/memory/memory-feedback-postgres.integration.test.ts",
+    "real-PostgreSQL memory suite absent from SUITE_CONTRACT, so postgres-memory-evidence does not run it",
+  ],
+  [
+    "apps/agent/src/monitoring/model-pricing-bootstrap-postgres.integration.test.ts",
+    "real-PostgreSQL, outside the two roots the new job walks; unmeasured runtime",
+  ],
+  [
+    "apps/agent/src/performance-evidence/performance-evidence.prisma.integration.test.ts",
+    "driven by the persisted-state performance runner; CI runs only its -contract sibling",
+  ],
+]);
+
+function agentIntegrationSuites() {
+  const found = [];
+  const walk = (directory) => {
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(AGENT_TENANCY_SUITE_SUFFIX)) {
+        found.push(path.relative(repositoryRoot, full));
+      }
+    }
+  };
+  walk(path.join(repositoryRoot, AGENT_INTEGRATION_ROOT));
+  return found.sort();
+}
+
+test("the agent tenancy job's walker covers the suites that were dark, read from the walker itself", () => {
+  const gated = discoverAgentTenancySuites();
+  // NON-VACUITY: the walk has to find something, or every claim below is empty.
+  assert.ok(gated.length > 0, "the agent tenancy walker found no suite at all");
+  for (const root of AGENT_TENANCY_SUITE_ROOTS) {
+    assert.ok(
+      root.startsWith(`${AGENT_INTEGRATION_ROOT}/`),
+      `${root} is not under ${AGENT_INTEGRATION_ROOT}; the census below cannot see it`
+    );
+  }
+  for (const suite of NEWLY_GATED_AGENT_SUITES) {
+    assert.ok(
+      gated.includes(suite),
+      `${suite} ran in NO CI job before this job existed and must still be covered by it`
+    );
+  }
+});
+
+test("every apps/agent integration suite is gated or recorded as ungated, with a reason", async () => {
+  const { SUITE_CONTRACT } = await import("../tests/postgres-memory-evidence/verify-artifacts.mjs");
+  const gatedByWalker = new Set(discoverAgentTenancySuites());
+  const gatedByEvidenceRunner = new Set(
+    SUITE_CONTRACT.map((contract) => path.posix.join("apps/agent", contract.file))
+  );
+  assert.ok(gatedByEvidenceRunner.size > 0, "SUITE_CONTRACT is empty; the import is wrong");
+
+  const all = agentIntegrationSuites();
+  assert.ok(all.length > 0, `no ${AGENT_TENANCY_SUITE_SUFFIX} found under ${AGENT_INTEGRATION_ROOT}`);
+  const ungated = all.filter(
+    (suite) => !gatedByWalker.has(suite) && !gatedByEvidenceRunner.has(suite)
+  );
+
+  assert.deepEqual(
+    ungated,
+    [...UNGATED_AGENT_INTEGRATION_SUITES.keys()].sort(),
+    "an apps/agent integration suite is executed by no CI job and is not recorded as ungated. " +
+      "Either add it to a job — putting it under one of " +
+      `${AGENT_TENANCY_SUITE_ROOTS.join(" or ")} is enough, the job walks those — or add it to ` +
+      "UNGATED_AGENT_INTEGRATION_SUITES with the reason it cannot run."
+  );
+  for (const [suite, reason] of UNGATED_AGENT_INTEGRATION_SUITES) {
+    assert.ok(all.includes(suite), `${suite} is recorded as ungated but no longer exists`);
+    assert.ok(reason.length > 20, `${suite} needs a real reason, not a placeholder`);
+  }
+});
+
+test("the agent census fails when a suite is neither gated nor recorded", () => {
+  // THE NEGATIVE CONTROL. The case above compares a filesystem walk to two
+  // imported gate definitions and one committed map; if the partition were wrong
+  // in the permissive direction it would pass on any tree. This asks the same
+  // question of a tree with one extra suite in a directory no job walks, and
+  // requires the answer to change.
+  const invented = "apps/agent/src/nowhere/invented-suite.integration.test.ts";
+  const gated = new Set(discoverAgentTenancySuites());
+  assert.ok(!gated.has(invented), "the control file must not be one the walker covers");
+  assert.ok(
+    !UNGATED_AGENT_INTEGRATION_SUITES.has(invented),
+    "the control file must not be recorded as ungated"
+  );
+  const ungatedWithControl = [...agentIntegrationSuites(), invented]
+    .filter((suite) => !gated.has(suite))
+    .sort();
+  assert.notDeepEqual(
+    ungatedWithControl,
+    [...UNGATED_AGENT_INTEGRATION_SUITES.keys()].sort(),
+    "adding an unreachable suite must break the census"
   );
 });

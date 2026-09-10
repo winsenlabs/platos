@@ -98,6 +98,7 @@
     "test:sbom": "node --test scripts/audit-sbom.test.mjs",
     "audit:arch-boundaries": "node scripts/arch/arch-boundaries.mjs && node scripts/arch/gen-dependency-cruiser.mjs --check",
     "test:arch-boundaries": "node --test scripts/arch/arch-boundaries.test.mjs",
+    "test:agent-tenancy-postgres:integration": "node scripts/agent-tenancy-postgres-integration.mjs",
     "test:postgres-tenancy:integration": "pnpm --filter @platos/adapter-postgres-tenancy exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
     "test:redis-cache:integration": "pnpm --filter @platos/adapter-redis-cache exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",
   "test:redis-streams:integration": "pnpm --filter @platos/adapter-redis-streams exec vitest run integration --no-file-parallelism --testTimeout=120000 --hookTimeout=300000",

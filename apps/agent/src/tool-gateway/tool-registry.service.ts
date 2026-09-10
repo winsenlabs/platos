@@ -528,37 +528,50 @@ export class ToolRegistryService implements OnModuleInit, OnModuleDestroy {
     return true;
   }
 
-  /** Idempotent compatibility entry point; registration already replaces. */
-  async reconcileEntityTools(
-    entityPk: string,
-    environmentId: string,
-    freshToolNames: string[],
-  ): Promise<{ removed: number }> {
-    const fresh = new Set(freshToolNames);
-    const mappings = await this.prisma.environmentEntityTool.findMany({
-      where: { entityId: entityPk, environmentId },
-      include: { tool: { select: { name: true } } },
-    });
-    const stale = mappings.filter((mapping) => !fresh.has(mapping.tool.name));
-    if (stale.length === 0) return { removed: 0 };
-
-    await this.prisma.environmentEntityTool.deleteMany({
-      where: { id: { in: stale.map((mapping) => mapping.id) } },
-    });
-    for (const [key, bucket] of this.scopedToolCache) {
-      let changed = false;
-      for (const mapping of stale) {
-        const entry = bucket.get(mapping.tool.name);
-        if (entry?.entityPk === entityPk) {
-          bucket.delete(mapping.tool.name);
-          changed = true;
-        }
-      }
-      if (changed && bucket.size === 0) this.scopedToolCache.delete(key);
-    }
-    this.rebuildSearchIndex();
-    return { removed: stale.length };
-  }
+  /*
+   * `reconcileEntityTools` WAS HERE AND IS GONE. IT WAS AN UNGUARDED
+   * CROSS-TENANT DELETE THAT NOTHING CALLED, AND BOTH HALVES OF THAT SENTENCE
+   * WERE MEASURED BEFORE IT WAS REMOVED.
+   *
+   * WHAT IT DID. `deleteMany({ where: { id: { in: staleIds } } })` over rows
+   * selected by `{ entityId, environmentId }` alone — two raw identifiers off
+   * the parameter list, no organization, no project, and no join to either. The
+   * pair is the WHOLE key of `EnvironmentEntityTool`, so any caller holding two
+   * ids it had not earned could delete another tenant's exposures, and the
+   * `EnvironmentEntityTool_ancestry` trigger cannot help: a DELETE of a
+   * coherent row belonging to somebody else violates no ancestry rule.
+   *
+   * WHY DELETED RATHER THAN GUARDED — the disposition four stages deferred, on
+   * evidence rather than on the "dead code" label it carried. Nothing in
+   * `apps/agent`, `apps/webapp`, `apps/core-api`, `packages/`,
+   * `internal-packages/` or `scripts/` invoked it. Its only reference outside
+   * this file was a stub on the fake registry in `tool-sync-ws.test.ts`, which
+   * the subject never called either, and three DESIGN paragraphs in
+   * `docs/mcp-connected-entity-design.md` that describe a prune step
+   * `entity-mcp-discovery.service.ts` never took: that service calls
+   * `registerTools` and nothing else, because registration is
+   * idempotent-REPLACE and prunes inside its own transaction (line ~363).
+   *
+   * So the prune the design asked for already happens, in the ONE path that
+   * verifies the tenant first: `registerTools` resolves the entity through
+   * `projectId` + `project.organizationId` and the environment through the same
+   * two before it writes, and refuses with `entity_not_found_in_scope` /
+   * `environment_not_found_in_scope` otherwise. A second prune with none of
+   * that was not a fallback, it was a hole — and an unwatched hole is worse
+   * than a watched one, which is the argument for deleting rather than
+   * guarding: a guard on a method nobody calls is a guard nobody exercises.
+   *
+   * WHAT PROVES IT AND WHERE. `tool-registry-forged-scope-postgres.integration
+   * .test.ts`, beside this file, against a real PostgreSQL with the canonical
+   * migrations applied: two tenants, and the FORGED triple — beta's
+   * organization and project with alpha's entity and environment, which is the
+   * shape `scope.guard.ts` accepts because it reads its three ids from three
+   * independent headers. It asserts that the surviving prune path REFUSES that
+   * triple and that alpha's rows are byte-identical afterwards, and it asserts
+   * by AST that no `environmentEntityTool` delete survives in this file outside
+   * a function that resolves both ancestors first. A coherent foreign scope
+   * would pass either way and prove nothing, which is why the scope is forged.
+   */
 
   /**
    * Build and validate an entity-free cache/index replacement without mutating

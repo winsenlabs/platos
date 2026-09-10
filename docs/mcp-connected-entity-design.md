@@ -8,6 +8,20 @@
 > Tejas, verbatim: *"let Composio and any other MCP service be a CONNECTED ENTITY — that's all."*
 > This document takes that literally and structurally: an external MCP server **is** a `PlatosConnectedEntity` of a new **connection kind**. It does not get a parallel registry, a parallel matrix, a parallel executor, a parallel approval path, or a parallel audit convention. Phase 1 (`apps/agent/src/mcp-agent/`) does not survive as dead parallel code — its two genuinely-reusable primitives (connection pool, credential/header resolver) are relocated onto the entity dispatch path; everything else is deleted.
 
+> **CORRECTION (M4 finish) — `reconcileEntityTools` DOES NOT EXIST AND WILL NOT.**
+> Three paragraphs below (§1.5b, §5 "Replace semantics + prune", §7) specify a
+> `ToolRegistryService.reconcileEntityTools(entityPk, environmentId, freshNames)`
+> called per environment after `registerTools`. It was written, it was never wired,
+> and it has now been deleted. `EntityMcpDiscoveryService` calls `registerTools`
+> and nothing else, and the prune those paragraphs ask for happens INSIDE that
+> call's own transaction — which is the only path that resolves the entity and the
+> environment through `projectId` and `project.organizationId` before it writes.
+> The deleted method took `entityPk` and `environmentId` raw and deleted by that
+> pair alone, so it was a cross-tenant delete with no caller. Read the three
+> paragraphs as describing the prune, not the method: the behaviour they specify is
+> implemented, the second entry point is not, and the reason is in the banner where
+> it used to live in `apps/agent/src/tool-gateway/tool-registry.service.ts`.
+
 ---
 
 ## 0. TL;DR

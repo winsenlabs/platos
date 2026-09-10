@@ -816,3 +816,92 @@ jobs:
           path: artifacts/win236-win237-postgres
           if-no-files-found: error
           retention-days: 14
+
+  agent-tenancy-postgres:
+    name: agent-tenancy-postgres
+    # THE FOURTH INSTANCE OF THE GATE-DARKNESS PATTERN, CLOSED.
+    #
+    # `permission-gateway-forged-scope.integration.test.ts`,
+    # `macros-replay-postgres.integration.test.ts` and
+    # `end-users-tenancy-postgres.integration.test.ts` were named by NOTHING in
+    # this file. They are real-PostgreSQL tenancy proofs — a FORGED scope triple
+    # refused by the tier-2 MCP policy, a macro replay's parameters round-tripped
+    # through the store, an end user's rows held inside one organization — they
+    # passed review, and they had never executed. So had
+    # `registry-incoherent-pair-postgres.integration.test.ts`, which is the same
+    # class of suite one directory over, so it is in this job too.
+    #
+    # A GATE IS A GATE ONLY WHILE A JOB NAMES IT. `clean-prisma-delegates` sat red
+    # for 1,064 commits for exactly this reason, and WIN-267 built the filesystem
+    # enumeration in `scripts/ci-policy.test.mjs` after the third instance — but
+    # its roots are the V1 packages plus `apps/core-api` and `apps/mcp-stdio`, and
+    # these suites live under `apps/agent/src`, which no enumeration reached.
+    #
+    # A NEW SUITE JOINS THIS JOB BY EXISTING, not by being listed. The step below
+    # runs `scripts/agent-tenancy-postgres-integration.mjs`, which WALKS
+    # `apps/agent/src/mcp-platform` and `apps/agent/src/tool-gateway` for
+    # `*.integration.test.ts` — the same "select by filename" shape the Redis
+    # integration step above uses, one level up — and `pnpm test:ci-policy` joins
+    # that walk to this job, so neither side can go quiet.
+    #
+    # A SKIP IS A FAILURE HERE. Every one of these suites gates itself on its own
+    # `*_REQUIRED` environment variable so a laptop with no PostgreSQL skips
+    # instead of erroring; the runner reads those variable NAMES out of the suite
+    # sources and sets them, and then refuses any report containing a pending test
+    # or a pending suite. A tranche once reported 218/218 with the suites that
+    # mattered silently skipped and merged two regressions.
+    #
+    # pgvector, not plain postgres: `00000000000000_initial/migration.sql` opens
+    # with `CREATE EXTENSION IF NOT EXISTS "vector"`, and these suites apply EVERY
+    # canonical migration into a private schema. The same digest-pinned image
+    # `postgres-memory-evidence` uses, so the two jobs cannot drift onto different
+    # servers.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+        env:
+          POSTGRES_USER: platos_agent_tenancy_ci
+          POSTGRES_PASSWORD: postgres-agent-tenancy
+          POSTGRES_DB: platos_agent_tenancy_ci
+        ports:
+          - 55434:5432
+        options: >-
+          --health-cmd "pg_isready -U platos_agent_tenancy_ci -d platos_agent_tenancy_ci"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      PLATOS_POSTGRES_INTEGRATION_DATABASE_URL: postgresql://platos_agent_tenancy_ci:postgres-agent-tenancy@127.0.0.1:55434/platos_agent_tenancy_ci?schema=public
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build the canonical tenancy client
+        # Every suite in this job constructs a `PrismaClient` from
+        # `@platos/tenancy-database`, whose package `main` is dist/, and applies
+        # the migrations that live beside it — so the client and the schema come
+        # from one build. Without this step the suites fail to LOAD rather than
+        # fail an assertion, which reads as a broken job rather than a broken
+        # tenancy rule.
+        run: pnpm --filter @platos/tenancy-database build
+
+      - name: MCP-surface and tool-lifecycle real-PostgreSQL suites
+        run: pnpm test:agent-tenancy-postgres:integration

@@ -73,9 +73,10 @@ function makeRegistry() {
       registered.push(...tools);
       return { registered: tools.length, updated: 0, newTools: tools.length, removed: 0 };
     },
-    async reconcileEntityTools() {
-      return { removed: 0 };
-    },
+    // `reconcileEntityTools` is DELIBERATELY ABSENT. It was the only reference
+    // to that method left in the tree — a stub on a double for a call the
+    // subject never made — and a double that answers a method the real service
+    // does not have is how a deleted method looks alive to a reader.
     setEntityDispatchable(entityPk: string, value: boolean) {
       this.dispatchability.push({ entityPk, value });
       return 0;
