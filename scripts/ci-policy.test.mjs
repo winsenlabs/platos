@@ -191,6 +191,23 @@ const v1ReleaseGateCommands = [
   // `SameSite=None` credential, the per-agent cookie scope and the guest session
   // expiry could every one of them be broken with a green CI.
   "pnpm test:public-guest-boundary",
+  // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
+  // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
+  // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
+  // exactly: `Deprecation: true` + `Sunset` + a successor `Link`. Nothing in the
+  // repository emitted any of the three, so the clause had no producer and no
+  // observation behind it.
+  //
+  // Named here rather than left to a whole-app agent run for the reason every line
+  // above is named: there IS no whole-app agent run in CI. Every agent suite this
+  // pipeline executes is an explicitly listed file, so a suite not on a list is a
+  // suite nothing runs -- which is the state `src/http/api-surface.test.ts` was
+  // already in, and it is WIN-267 T1's own proof that none of the 300 REST
+  // operations moved. This command needs no prerequisite build: the suite imports
+  // only `src/http/*` and the generated manifest, so it runs on a checkout that has
+  // only ever seen `pnpm install`, which is the property the stream-contracts gate
+  // learned to require the hard way.
+  "pnpm --filter platos-agent exec vitest run src/http/deprecation-signal.test.ts",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   // WIN-299 (M2.6). audit:advisory:check now fails on any un-dispositioned
@@ -441,6 +458,23 @@ const expectedV1EvidenceCommands = [
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
   "pnpm test:public-guest-boundary",
+  // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
+  // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
+  // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
+  // exactly: `Deprecation: true` + `Sunset` + a successor `Link`. Nothing in the
+  // repository emitted any of the three, so the clause had no producer and no
+  // observation behind it.
+  //
+  // Named here rather than left to a whole-app agent run for the reason every line
+  // above is named: there IS no whole-app agent run in CI. Every agent suite this
+  // pipeline executes is an explicitly listed file, so a suite not on a list is a
+  // suite nothing runs -- which is the state `src/http/api-surface.test.ts` was
+  // already in, and it is WIN-267 T1's own proof that none of the 300 REST
+  // operations moved. This command needs no prerequisite build: the suite imports
+  // only `src/http/*` and the generated manifest, so it runs on a checkout that has
+  // only ever seen `pnpm install`, which is the property the stream-contracts gate
+  // learned to require the hard way.
+  "pnpm --filter platos-agent exec vitest run src/http/deprecation-signal.test.ts",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm audit:advisory:nonvacuity",
@@ -2511,10 +2545,17 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      that the stream major is a literal in exactly one module.
   //   +1 WIN-272 (M4.6): the public-guest and embed boundary suite. See its own note
   //      in the list above for why it cannot be left to `pnpm test:webapp`.
-  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 = 41.
+  //   +1 WIN-267 (M4.1): the compatibility-alias deprecation signal, read back off
+  //      a real socket. See its own note in the list above; it is one command
+  //      rather than an audit/test pair because the STATIC half of the same ADR
+  //      §4 claim — the published document's `x-platos-superseded-by` and
+  //      `x-platos-sunset` against the manifest's own rows — was folded into
+  //      `scripts/arch/contract-map.mjs`, which is already a gate here, rather
+  //      than minting a second script for a sibling clause of the same section.
+  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 = 42.
   assert.equal(
     v1ReleaseGateCommands.length,
-    41,
+    42,
     "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
@@ -4734,12 +4775,22 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   selector AND the exact-script table, so both the CI line and the command it
   //   resolves to are falsifiable — the same two-checkpoint shape every named
   //   script above has.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 = 377. The count is pinned
+  //   WIN-267 (M4.1), +1. The compatibility-alias deprecation signal joins the V1
+  //   release gate selector, so it gains the same `|| true` control every gate
+  //   above gains. ONE and not two, and the difference is worth recording because
+  //   the note on WIN-272's pair immediately above says two: that pair added a
+  //   package.json SCRIPT as well as a CI line, and `expectedV1PackageScripts`
+  //   derives its own control per entry. This gate is invoked directly, for the
+  //   reason `node --test scripts/capability-matrix.test.mjs` is — root
+  //   package.json is a webapp image build input, so a script there moves the SBOM
+  //   receipt's buildInputsSha256 — so it contributes to the release-gate loop
+  //   only. The number was MEASURED at 378 before this arithmetic was written.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 = 378. The count is pinned
   // rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    377,
+    378,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

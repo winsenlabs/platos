@@ -285,13 +285,114 @@ function mappingRationale(route, tools) {
   )} invoke ${evidence.join(" and ")}; only transport parameters/envelopes differ.`;
 }
 
-const DEPRECATED_RULES = [
-  {
-    id: "legacy-platos-memory-prefix",
-    test: (path) => path.startsWith("/api/v1/platos/memory"),
-    replacement: "/api/v1/memory",
-  },
-];
+// ── THE ALIAS CONTRACT, READ FROM THE FILE THE RUNTIME EMITS FROM ───────────
+//
+// WIN-267 (M4.1). This table used to be four lines here: one id, one
+// `startsWith` and one replacement PREFIX. Three things were wrong with it and
+// all three are ADR M0.4 §4 requirements.
+//
+//   The replacement was a PREFIX, so the manifest said "this operation is
+//   superseded by /api/v1/memory" for all fifteen of them and named the
+//   canonical OPERATION for none. §4.1 wants a non-null replacement that
+//   resolves; a prefix does not resolve to an operation.
+//
+//   There was no sunset and no window, so §4.3's ">= 90 days, and an operation
+//   cannot vanish inside v1" was policy nobody could check.
+//
+//   And the wire carried nothing at all — see `apps/agent/src/http/
+//   deprecation-signal.ts`, which is now the ONE declaration of the alias set
+//   and the module that stamps `Deprecation`/`Sunset`/`Link` on a response.
+//
+// This generator reads that file the same way `apiSurface()` reads the version
+// out of `api-surface.ts`, and for the same reason: a second copy of the sunset
+// date here would be a second opinion about what a client has been told. The
+// runtime declares; the manifest and the OpenAPI document derive.
+const DEPRECATION_SIGNAL_MODULE = ["http", "deprecation-signal.ts"];
+
+let deprecatedRulesCache = null;
+
+function deprecatedRules() {
+  if (deprecatedRulesCache) return deprecatedRulesCache;
+  const path = join(srcDir, ...DEPRECATION_SIGNAL_MODULE);
+  if (!existsSync(path)) {
+    throw new Error(
+      `the compatibility-alias table is declared in ${relative(repoDir, path)} and that file is missing; ` +
+        "this generator refuses to invent a deprecation window"
+    );
+  }
+  const sf = sourceFile(path);
+  let node = null;
+  for (const statement of sf.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === "DEPRECATED_ROUTE_PREFIXES") {
+        node = declaration.initializer ?? null;
+      }
+    }
+  }
+  if (node === null) {
+    throw new Error("DEPRECATED_ROUTE_PREFIXES must be declared in deprecation-signal.ts");
+  }
+  const arrayNode = unwrapToArrayLiteral(node);
+  if (arrayNode === null) {
+    throw new Error("DEPRECATED_ROUTE_PREFIXES must be an array literal in deprecation-signal.ts");
+  }
+  const required = ["id", "aliasPrefix", "canonicalPrefix", "announcedOn", "sunsetOn"];
+  deprecatedRulesCache = arrayNode.elements.map((element) => {
+    const object = unwrapToObjectLiteral(element);
+    if (object === null) {
+      throw new Error("every DEPRECATED_ROUTE_PREFIXES entry must be an object literal");
+    }
+    const row = {};
+    for (const property of object.properties) {
+      if (!ts.isPropertyAssignment(property)) continue;
+      const name = propertyName(property);
+      if (
+        !ts.isStringLiteral(property.initializer) &&
+        !ts.isNoSubstitutionTemplateLiteral(property.initializer)
+      ) {
+        throw new Error(`DEPRECATED_ROUTE_PREFIXES.${name} must be a string literal`);
+      }
+      row[name] = property.initializer.text;
+    }
+    for (const key of required) {
+      if (typeof row[key] !== "string" || row[key].length === 0) {
+        throw new Error(`a DEPRECATED_ROUTE_PREFIXES entry is missing ${key}`);
+      }
+    }
+    return {
+      ...row,
+      // Segment-bounded, exactly like the runtime's `isUnderPathPrefix`. The old
+      // bare `startsWith` classified `/api/v1/platos/memoryboard` as an alias of
+      // a route that does not exist; no such path is mounted today, so this is a
+      // narrowing of the CLASSIFIER with no effect on the operation set, and the
+      // unchanged DEPRECATED count is what says so.
+      test: (candidate) =>
+        candidate === row.aliasPrefix || candidate.startsWith(`${row.aliasPrefix}/`),
+    };
+  });
+  return deprecatedRulesCache;
+}
+
+/** ADR M0.4 §4.3's floor, read from the runtime module rather than repeated. */
+function deprecationMinimumWindowDays() {
+  const path = join(srcDir, ...DEPRECATION_SIGNAL_MODULE);
+  const sf = sourceFile(path);
+  for (const statement of sf.statements) {
+    if (!ts.isVariableStatement(statement)) continue;
+    for (const declaration of statement.declarationList.declarations) {
+      if (
+        ts.isIdentifier(declaration.name) &&
+        declaration.name.text === "DEPRECATION_MINIMUM_WINDOW_DAYS" &&
+        declaration.initializer &&
+        ts.isNumericLiteral(declaration.initializer)
+      ) {
+        return Number(declaration.initializer.text);
+      }
+    }
+  }
+  throw new Error("DEPRECATION_MINIMUM_WINDOW_DAYS must be a numeric literal in deprecation-signal.ts");
+}
 
 const INTERNAL_RULES = [
   { id: "internal-prefix", test: (path) => path === "/internal" || path.startsWith("/internal/") },
@@ -363,6 +464,37 @@ function propertyName(node) {
     return node.name.text;
   }
   return null;
+}
+
+/**
+ * Strip the wrappers a frozen `as const` table is written with — `Object.freeze(
+ * ... )`, `as const`, parentheses — until the literal underneath is reached.
+ *
+ * Written once because two constants in `src/http` are declared that way and a
+ * second private unwrapper is how one of them ends up accepting a shape the
+ * other refuses.
+ */
+function unwrapWrappers(node) {
+  let current = node;
+  while (
+    current &&
+    (ts.isAsExpression(current) ||
+      ts.isParenthesizedExpression(current) ||
+      (ts.isCallExpression(current) && current.arguments.length === 1))
+  ) {
+    current = ts.isCallExpression(current) ? current.arguments[0] : current.expression;
+  }
+  return current ?? null;
+}
+
+function unwrapToArrayLiteral(node) {
+  const inner = unwrapWrappers(node);
+  return inner && ts.isArrayLiteralExpression(inner) ? inner : null;
+}
+
+function unwrapToObjectLiteral(node) {
+  const inner = unwrapWrappers(node);
+  return inner && ts.isObjectLiteralExpression(inner) ? inner : null;
 }
 
 function literal(node, sf) {
@@ -600,17 +732,8 @@ function apiSurface() {
   };
   // `UNVERSIONED_ROOT_SEGMENTS` is written as `Object.freeze([...] as const)`;
   // unwrap to the array literal and require every element to be a plain string.
-  const segmentsNode = values.get("UNVERSIONED_ROOT_SEGMENTS");
-  let arrayNode = segmentsNode;
-  while (
-    arrayNode &&
-    (ts.isAsExpression(arrayNode) ||
-      ts.isParenthesizedExpression(arrayNode) ||
-      (ts.isCallExpression(arrayNode) && arrayNode.arguments.length === 1))
-  ) {
-    arrayNode = ts.isCallExpression(arrayNode) ? arrayNode.arguments[0] : arrayNode.expression;
-  }
-  if (!arrayNode || !ts.isArrayLiteralExpression(arrayNode)) {
+  const arrayNode = unwrapToArrayLiteral(values.get("UNVERSIONED_ROOT_SEGMENTS"));
+  if (arrayNode === null) {
     throw new Error("UNVERSIONED_ROOT_SEGMENTS must be an array literal in api-surface.ts");
   }
   const unversionedRoots = arrayNode.elements.map((element) => {
@@ -855,14 +978,23 @@ function classifyRest(method, path) {
       mappingRationale: mappingRationale(key, REST_TO_MCP[key]),
     };
   }
-  for (const rule of DEPRECATED_RULES) {
+  for (const rule of deprecatedRules()) {
     if (rule.test(path)) {
       return {
         classification: "DEPRECATED",
         policyRule: rule.id,
         mcpTools: [],
         mappingRationale: null,
-        replacement: rule.replacement,
+        // ADR M0.4 §4.1's "non-null replacement/supersededBy — never inferred",
+        // as the canonical OPERATION rather than the prefix it lives under. The
+        // id is the manifest's own join key, so `validateAliasContract` below can
+        // resolve it and refuse an alias whose canonical does not exist.
+        replacement: `${method} ${rule.canonicalPrefix}${path.slice(rule.aliasPrefix.length)}`,
+        deprecation: {
+          announcedOn: rule.announcedOn,
+          sunsetOn: rule.sunsetOn,
+          wireSignal: "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version",
+        },
       };
     }
   }
@@ -889,6 +1021,156 @@ function classifyRest(method, path) {
     policyRule: "explicit-default-rest-only",
     mcpTools: [],
     mappingRationale: null,
+  };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function implementationKeys(operation) {
+  return (operation.implementations ?? [])
+    .map(({ controller, handler, source }) => `${source}#${controller}.${handler}`)
+    .sort();
+}
+
+/**
+ * ADR M0.4 §4.1 AND §5.3, ENFORCED AT GENERATION TIME.
+ *
+ * §5.3 asks for an "alias fan-in" check: "every DEPRECATED/alias op has non-null
+ * replacement AND resolves to the same `controller.handler` as its canonical".
+ * Nothing in the repository did that. Generation now refuses:
+ *
+ *   * a DEPRECATED operation whose replacement names an operation that is not in
+ *     this manifest — the failure mode a prefix-shaped replacement HID, because
+ *     a prefix can never be looked up and so can never be found missing;
+ *   * an alias whose implementation set differs from its canonical's, which is
+ *     the "no independent implementation" half and the case a second controller
+ *     serving the old path would land in;
+ *   * a canonical operation sitting under an alias prefix, which would mean the
+ *     prefix swap resolves an alias onto another alias;
+ *   * a window shorter than §4.3's ninety days;
+ *   * a declared alias row that matches no operation (dead policy), and a
+ *     DEPRECATED operation matched by no row (undeclared alias).
+ *
+ * WHAT IT CANNOT ENFORCE, NAMED RATHER THAN SILENTLY EXCLUDED. Two operations in
+ * this tree are served by BOTH deployables — the MCP platform and entity token
+ * mints — and their two implementations are genuinely independent classes in two
+ * processes, so they cannot satisfy fan-in and are not aliases: they are one
+ * route mid-migration. They are listed below with that reason, and a THIRD such
+ * operation fails generation rather than joining a list nobody re-reads.
+ */
+const FORKED_OPERATIONS_WITHOUT_ONE_HANDLER = Object.freeze({
+  "POST /mcp/platform/tokens":
+    "mid-migration: apps/agent has served this mint since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in. Two independent classes, one wire path — not an alias, and it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn.",
+  "POST /mcp/entity/:entityId/tokens":
+    "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape.",
+});
+
+function validateAliasContract(restOperations) {
+  const rules = deprecatedRules();
+  const minimumWindowDays = deprecationMinimumWindowDays();
+  const byId = new Map(restOperations.map((operation) => [operation.id, operation]));
+  const deprecated = restOperations.filter((operation) => operation.classification === "DEPRECATED");
+
+  for (const rule of rules) {
+    const announced = Date.parse(`${rule.announcedOn}T00:00:00.000Z`);
+    const sunset = Date.parse(`${rule.sunsetOn}T00:00:00.000Z`);
+    if (Number.isNaN(announced) || Number.isNaN(sunset)) {
+      throw new Error(`alias ${rule.id} carries a date that is not an ISO calendar date`);
+    }
+    const windowDays = Math.round((sunset - announced) / DAY_MS);
+    if (windowDays < minimumWindowDays) {
+      throw new Error(
+        `alias ${rule.id} declares a ${windowDays}-day window; ADR M0.4 §4.3 requires at least ${minimumWindowDays}`
+      );
+    }
+    if (!deprecated.some((operation) => rule.test(operation.path))) {
+      throw new Error(`alias ${rule.id} matches no DEPRECATED operation`);
+    }
+  }
+
+  for (const operation of restOperations) {
+    const rule = rules.find((candidate) => candidate.test(operation.path));
+    if (rule && operation.classification !== "DEPRECATED") {
+      throw new Error(
+        `${operation.id} sits under alias prefix ${rule.aliasPrefix} but classifies ${operation.classification}`
+      );
+    }
+    if (!rule && operation.classification === "DEPRECATED") {
+      throw new Error(`${operation.id} is DEPRECATED but no alias row declares it`);
+    }
+    if (!rule) continue;
+
+    const canonical = byId.get(operation.replacement);
+    if (!canonical) {
+      throw new Error(
+        `${operation.id} names replacement ${operation.replacement}, which is not an operation in this manifest`
+      );
+    }
+    if (canonical.classification === "DEPRECATED") {
+      throw new Error(`${operation.id} names a replacement that is itself DEPRECATED`);
+    }
+    const aliasHandlers = implementationKeys(operation);
+    const canonicalHandlers = implementationKeys(canonical);
+    if (JSON.stringify(aliasHandlers) !== JSON.stringify(canonicalHandlers)) {
+      throw new Error(
+        `alias fan-in broken: ${operation.id} is served by ${aliasHandlers.join(", ")} and its canonical ${canonical.id} by ${canonicalHandlers.join(", ")}`
+      );
+    }
+  }
+
+  const forked = restOperations.filter((operation) => {
+    const roots = new Set(
+      (operation.implementations ?? []).map((implementation) =>
+        implementation.source.startsWith("apps/core-api/") ? "core-api" : "agent"
+      )
+    );
+    return operation.implementations.length > 1 && roots.size > 1;
+  });
+  for (const operation of forked) {
+    if (!FORKED_OPERATIONS_WITHOUT_ONE_HANDLER[operation.id]) {
+      throw new Error(
+        `${operation.id} is served by two deployables and is not declared in FORKED_OPERATIONS_WITHOUT_ONE_HANDLER with a reason`
+      );
+    }
+  }
+  for (const id of Object.keys(FORKED_OPERATIONS_WITHOUT_ONE_HANDLER)) {
+    if (!forked.some((operation) => operation.id === id)) {
+      throw new Error(`${id} is declared as a cross-deployable fork but is no longer one`);
+    }
+  }
+}
+
+/** The alias contract AS DATA, so a consumer can read the window off the manifest. */
+function deprecationPolicy(restOperations) {
+  const rules = deprecatedRules();
+  return {
+    source: "docs/adr/M0.4-contract-versioning.md §4",
+    declaredIn: `apps/agent/src/${DEPRECATION_SIGNAL_MODULE.join("/")}`,
+    minimumWindowDays: deprecationMinimumWindowDays(),
+    wireSignal: ["Deprecation", "Sunset", "Link"],
+    catalogSignal: [
+      "deprecated",
+      "x-platos-classification",
+      "x-platos-superseded-by",
+      "x-platos-sunset",
+    ],
+    aliases: rules.map((rule) => ({
+      id: rule.id,
+      aliasPrefix: rule.aliasPrefix,
+      canonicalPrefix: rule.canonicalPrefix,
+      announcedOn: rule.announcedOn,
+      sunsetOn: rule.sunsetOn,
+      windowDays: Math.round(
+        (Date.parse(`${rule.sunsetOn}T00:00:00.000Z`) -
+          Date.parse(`${rule.announcedOn}T00:00:00.000Z`)) /
+          DAY_MS
+      ),
+      operations: restOperations.filter((operation) => rule.test(operation.path)).length,
+      fanIn: "same-controller-multi-path",
+    })),
+    forksWithoutOneHandler: Object.entries(FORKED_OPERATIONS_WITHOUT_ONE_HANDLER)
+      .map(([id, reason]) => ({ id, reason }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
   };
 }
 
@@ -1090,9 +1372,16 @@ function buildManifest() {
 
   if (mcpContract === null) throw new Error("MCP contract block was never extracted");
 
+  // WIN-267 (M4.1) — refuse to EMIT a manifest whose aliases do not satisfy the
+  // ADR, rather than emit one and check it downstream. A generator that can only
+  // produce a valid artifact is a stronger guarantee than a gate that notices an
+  // invalid one, and the operation set is already assembled at this point.
+  validateAliasContract(restOperations);
+
   return {
     manifestVersion: "M0.1",
     canonicalPolicy: "explicit-operation-manifest",
+    deprecationPolicy: deprecationPolicy(restOperations),
     tenancyAuthority: ["organizationId", "projectId", "environmentId", "userId"],
     /**
      * WIN-268 P1 — ADR M0.4 §2's MCP row, as DATA.
@@ -1253,7 +1542,11 @@ function buildReport(manifest) {
       } | ${
         operation.mappingRationale
           ? escapeCell(operation.mappingRationale)
-          : `\`${operation.policyRule}\``
+          : operation.deprecation
+            ? `\`${operation.policyRule}\` — superseded by \`${escapeCell(
+                operation.replacement
+              )}\`, sunset ${operation.deprecation.sunsetOn}`
+            : `\`${operation.policyRule}\``
       } | ${operation.implementations
         .map((implementation) => `\`${implementation.source}#${implementation.handler}\``)
         .join(CELL_BREAK)} |`
@@ -1502,6 +1795,22 @@ function buildOpenApi(manifest, contract) {
       "x-platos-auth-class": auth.authClass,
       "x-platos-policy-rule": operation.policyRule,
       "x-platos-mcp-tools": operation.mcpTools,
+      // WIN-267 (M4.1) — ADR M0.4 §4.2's STATIC channel. The row asks for
+      // "OpenAPI `deprecated:true` + `x-platos-classification:DEPRECATED` +
+      // `x-platos-superseded-by` + `x-platos-sunset`"; the first two were already
+      // emitted and the last two were not, so a client reading the published
+      // document could see THAT an operation was deprecated and never what
+      // replaced it or when it goes away. Both are taken from the manifest row,
+      // which took them from the runtime table, so the document and the wire
+      // cannot disagree. Adding a response header and two specification
+      // extensions is additive-in-major under §1.3, which is what the OpenAPI
+      // ratchet is asked to confirm rather than asked to allow.
+      ...(operation.deprecation
+        ? {
+            "x-platos-superseded-by": operation.replacement,
+            "x-platos-sunset": operation.deprecation.sunsetOn,
+          }
+        : {}),
     };
     // THE JOIN KEY IS THE MANIFEST'S OWN `controller`.`handler`, not a route
     // path recomputed here. Two computations of one path are two answers that

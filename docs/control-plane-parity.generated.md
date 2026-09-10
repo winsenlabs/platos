@@ -255,21 +255,21 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/memory/search` | MAPPED | `memories.search` | Reviewed behavioral equivalence: the REST adapter and memories.search invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#searchMemories` |
 | `GET /api/v1/organizations` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organizations.controller.ts#list` |
 | `POST /api/v1/organizations` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organizations.controller.ts#create` |
-| `GET /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#listMemories` |
-| `POST /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#createMemory` |
-| `DELETE /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
-| `POST /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#updateMemory` |
-| `POST /api/v1/platos/memory/:id/archive` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#archiveMemory` |
-| `POST /api/v1/platos/memory/:id/restore` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#restoreMemory` |
-| `POST /api/v1/platos/memory/admin/extraction-sweep` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#adminExtractionSweep` |
-| `GET /api/v1/platos/memory/export` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#exportBundle` |
-| `POST /api/v1/platos/memory/extract` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#manualExtract` |
-| `GET /api/v1/platos/memory/graph/entities` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#listEntities` |
-| `GET /api/v1/platos/memory/graph/entities/:id/relationships` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#getRelationships` |
-| `GET /api/v1/platos/memory/graph/path` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#getShortestPath` |
-| `POST /api/v1/platos/memory/import` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#importBundle` |
-| `POST /api/v1/platos/memory/relate` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#relate` |
-| `GET /api/v1/platos/memory/search` | DEPRECATED | — | `legacy-platos-memory-prefix` | `apps/agent/src/memory/memory.controller.ts#searchMemories` |
+| `GET /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `GET /api/v1/memory`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#listMemories` |
+| `POST /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#createMemory` |
+| `DELETE /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `DELETE /api/v1/memory/:id`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
+| `POST /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory/:id`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#updateMemory` |
+| `POST /api/v1/platos/memory/:id/archive` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory/:id/archive`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#archiveMemory` |
+| `POST /api/v1/platos/memory/:id/restore` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory/:id/restore`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#restoreMemory` |
+| `POST /api/v1/platos/memory/admin/extraction-sweep` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory/admin/extraction-sweep`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#adminExtractionSweep` |
+| `GET /api/v1/platos/memory/export` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `GET /api/v1/memory/export`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#exportBundle` |
+| `POST /api/v1/platos/memory/extract` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory/extract`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#manualExtract` |
+| `GET /api/v1/platos/memory/graph/entities` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `GET /api/v1/memory/graph/entities`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#listEntities` |
+| `GET /api/v1/platos/memory/graph/entities/:id/relationships` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `GET /api/v1/memory/graph/entities/:id/relationships`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#getRelationships` |
+| `GET /api/v1/platos/memory/graph/path` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `GET /api/v1/memory/graph/path`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#getShortestPath` |
+| `POST /api/v1/platos/memory/import` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory/import`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#importBundle` |
+| `POST /api/v1/platos/memory/relate` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory/relate`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#relate` |
+| `GET /api/v1/platos/memory/search` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `GET /api/v1/memory/search`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#searchMemories` |
 | `GET /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#list` |
 | `POST /api/v1/projects` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/projects.controller.ts#create` |
 | `POST /api/v1/public/guest-token` | PUBLIC_TRANSPORT | — | `public-token-mint` | `apps/agent/src/auth/public-guest-token.controller.ts#mint` |

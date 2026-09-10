@@ -9374,6 +9374,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "GET /api/v1/memory",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       },
@@ -9401,6 +9403,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9440,6 +9444,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "DELETE /api/v1/memory/:id",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       },
@@ -9477,6 +9483,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory/:id",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9516,6 +9524,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory/:id/archive",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9555,6 +9565,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory/:id/restore",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9584,6 +9596,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory/admin/extraction-sweep",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9613,6 +9627,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "GET /api/v1/memory/export",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9642,6 +9658,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory/extract",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9671,6 +9689,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "GET /api/v1/memory/graph/entities",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9710,6 +9730,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "GET /api/v1/memory/graph/entities/:id/relationships",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9739,6 +9761,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "GET /api/v1/memory/graph/path",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9768,6 +9792,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory/import",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9797,6 +9823,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "POST /api/v1/memory/relate",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
@@ -9826,6 +9854,8 @@
         "x-platos-auth-class": "SCOPED_USER",
         "x-platos-policy-rule": "legacy-platos-memory-prefix",
         "x-platos-mcp-tools": [],
+        "x-platos-superseded-by": "GET /api/v1/memory/search",
+        "x-platos-sunset": "2027-03-31",
         "x-platos-schema-source": "undeclared",
         "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
       }
