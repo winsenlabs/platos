@@ -259,16 +259,17 @@
     },
     {
       "id": "M18",
-      "subject": "the handshake wait, per command",
+      "subject": "the handshake wait is BOUNDED",
       "file": "packages/adapters/redis-streams/src/client.ts",
-      "find": "    if (client.status === \"ready\") return Promise.resolve();",
-      "replace": "    if (client.status === \"ready\" || client.status === \"end\") return Promise.resolve();",
-      "breaks": "a command issued on an ENDED client no longer waits and no longer fails closed, so a dead connection reports success paths it cannot serve",
+      "find": "      const timer = setTimeout(() => finish(() => reject(new Error(\"RedisReadyTimeout\"))), readyTimeoutMs);",
+      "replace": "      const timer = setTimeout(() => finish(() => reject(new Error(\"RedisReadyTimeout\"))), 86_400_000);",
+      "breaks": "the wait for a server that is not there yet is a day rather than a bounded window, so the FIRST command against a cold connection HANGS instead of failing closed -- and the caller that was written to report `unavailable` reports nothing at all",
       "rebuild": [],
       "suites": [
         "redis-streams-integration"
       ],
-      "container": true
+      "container": true,
+      "$note": "REPLACES A ROW THAT SURVIVED. The first draft made `ready()` resolve for a client whose status is `end`, and it survived because it is BEHAVIOURALLY EQUIVALENT on this port's contract: the command that follows still rejects (`enableOfflineQueue: false`) and the journal still answers `unavailable`, so no observation could separate the two. The deadline is the half that IS observable, and the cold-start case is what observes it"
     },
     {
       "id": "M19",
@@ -336,7 +337,7 @@
         "core-api-integration"
       ],
       "container": true,
-      "$note": "the two are equal on a well-formed request, so ONLY a forged-scope case can tell them apart; that is the point of the row"
+      "$note": "SURVIVES, AND IT IS RECORDED AS A SURVIVOR RATHER THAN EXPLAINED AWAY -- with the reason, because the reason is a finding. `authorizeEnvironment` RE-DERIVES its scope FROM the path id it was handed, so `authorization.scope.environmentId` and `environmentId` are EQUAL BY CONSTRUCTION on every request that gets past authorization, and no observation can separate them. The rule the controller follows is real and worth keeping -- it makes the ordering visible and it would matter the day tenancy resolved a slug, an alias or a default -- but it is NOT a separate behavioural property in this build, and a suite that claimed to prove it would be claiming coverage it does not have. What IS proven, by M26 below, is the property that actually protects the frames: authorization happens BEFORE the journal is touched at all"
     },
     {
       "id": "M24",
@@ -363,6 +364,20 @@
         "core-api-integration"
       ],
       "container": true
+    },
+    {
+      "id": "M26",
+      "subject": "authorization happens BEFORE the journal is touched",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    const authorization = await authorizeEnvironment(app, operator, environmentId);",
+      "replace": "    const authorization = { scope: { environmentId } } as unknown as Awaited<ReturnType<typeof authorizeEnvironment>>;",
+      "breaks": "the four-gate RBAC decision is skipped entirely, so an authenticated operator with NO membership in the organization reads another tenant's frames -- and the refusal that would have named which gate closed never happens",
+      "rebuild": [],
+      "suites": [
+        "core-api-integration"
+      ],
+      "container": true,
+      "$note": "THE ROW M23 COULD NOT BE. M23 asks whether the key is built from the authorization's scope or the path's, and those are equal by construction; this asks whether the authorization HAPPENED, which is the property that actually keeps one tenant's frames away from another"
     }
   ]
 }
