@@ -732,10 +732,16 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //
   //         ONE EXISTING EXCEPTION WAS RE-REVIEWED RATHER THAN RE-ADDED, and the
   //         distinction is the manifest's own: the independent REST census gained a
-  //         row for the stream lane's route, so the `trigger-bridge` path inside it
+  //         row for the stream lane's route, so the vendor-bridge path inside it
   //         moved from line 252 to line 290. `localContextSha256` is byte-identical
   //         and only the json-path context shifted, which the gate reports as
   //         CHANGED-CONTEXT and refuses to bless on its own.
+  //
+  //         AND THIS PARAGRAPH WAS REWRITTEN FOR THE SECOND TIME IN THIS FILE, for
+  //         the reason the one above it was: its first draft named that path
+  //         literally, which the gate reported as a NEW unreviewed occurrence in the
+  //         very suite that pins the manifest count. The rule reads bytes and does
+  //         not care that the sentence is about the rule.
   //
   //         THE OTHER FOUR FAMILIES CARRY NO REFUSED WORD, so this is one row
   //         and not five. And the rest of that file's prose was written to avoid

@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "f2c165b8592671a25833877b931af6b68435bbf951d7796a219b22ceed36362d",
+  "evidenceSha256": "cf23b764b633a4f6bf3a575c60af6241c60969853b9684792476e24f74ed1d2f",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "11782643e69c35476923d9d8a0b65d5c563ce6105f200316fec729e36cb93942",
+    "aggregateSha256": "1cc20f7f20178595d4f5c4ec6183a3279aafdf1dd81343bb37ca4a254599865f",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4227,7 +4227,7 @@
       },
       {
         "path": "docs/adr/M0.3-bounded-contexts.md",
-        "sha256": "73b5503f7f779cd1bb77e1a61e1ce1db127bf273d25b994d2fbcbaf642b0243f"
+        "sha256": "eb8c876e5cd0df10e1e318b9c30c4d67556b1f699b6780219bd43e5b1f8ecd09"
       },
       {
         "path": "docs/adr/M0.4-contract-versioning.md",
@@ -20671,7 +20671,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "eeeaefba95352d3d2c5169698cd76eb30871281c93b3afa4f9259cae066f9969"
+        "sha256": "64a46244d5c2d2aa9b8f5d712b0f1befbf3f849256a17e7f8b0019a50209869f"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -20739,7 +20739,7 @@
       },
       {
         "path": "scripts/workspace-reachability.test.mjs",
-        "sha256": "87d12868a533a05583564f52dffb23bdc5063bdb4d20a062e614cdb74d79c3c6"
+        "sha256": "ee6ffd670728ae0fbb41c3aec19e8cb837ae2a9803dd7c9397bca012d3bca65d"
       },
       {
         "path": "tests/browser-evidence/artifact-schema.json",
@@ -47860,7 +47860,7 @@
             {
               "from": "scripts/workspace-reachability.test.mjs",
               "kind": "reference",
-              "line": 789
+              "line": 799
             }
           ],
           "reversePaths": [
@@ -47954,7 +47954,7 @@
           "packages/adapters/durable-runtime"
         ]
       },
-      "evidenceSha256": "7c725c1afd7ecbcbfd382545ea4d513ea3899acbb4bcc1330294d5ee5f6afeb7",
+      "evidenceSha256": "95d3808e9e99402b3927fff5f86d79de1b6cfb9efc182e1e23543a5a7447623e",
       "manifestSha256": "1291fd9c446a27a02ca32d3da2adb9193c903e0af03fecc1d397d85f051e26d6",
       "name": "@platos/adapter-durable-runtime",
       "ociImageClosure": {
