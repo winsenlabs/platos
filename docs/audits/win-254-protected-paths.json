@@ -963,7 +963,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "ce0d3fbbf9dd01458d28ce2ed964ce9f6b4e7c0143ae21e7ed3e09ac8a51327c"
+      "sha256": "495eea8793a326b67fb77d1141551df8eb69983ff934a8e400fccc684948dcba"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "3b2a4b3bfec962513cab299de8a6a4a83512245c296ce6d334a6e80d879db700"
+      "sha256": "3a003ef24744ca5c1480ed772ef5f020fee917faaac1e89801b86a1e240f92bc"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "cbcc58a2cd150517c13e4eb4c30b5acf99e47a32ebdce288ecbdf511c02a6fbb"
+      "sha256": "18103ad83af6ed9f578ef5ce936a1ad55fdd637c225ae1cf861727cf1122d636"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "d1da02628ed5481472303342ff16401aa100b5b4d967c4db6a18a8231d393d45"
+      "sha256": "6096e9a16a448cbd88c4a52944f248fd429a6666e5f15650380b04377494f135"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3518,7 +3518,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "b7dd9daf9c5eea8f3b9894674fc6ff2ce66724cdab86d5f71a1ae621f5998c7e"
+      "sha256": "894de86c9681881a6b514fc61405025afc72eaf4f30227122acf34404f84a052"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3693,7 +3693,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "3a20c3e8fddfa338e4b0ea787ba78551796b3f4c67c1a6c67603595c73ac3ddb"
+      "sha256": "fb90990bf4b5a0c866da71d7d78406abfd834a6811462a20e599f7aa6d82733d"
     },
     {
       "path": "pnpm-lock.yaml",
@@ -3958,7 +3958,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "7575b2ea1a8172487287bdc18af8e306cf8f5a05ae05ac96ffa5b4b47b9751b3"
+      "sha256": "04daf2e80c90e70703628593087331a56b7a8b0cf1f83671dc1f728f55cb47be"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
