@@ -204,8 +204,8 @@ describe("the pump", () => {
       pageLimit: 64,
     });
     expect(outcome).toEqual({ kind: "consumer-too-slow", lastSeq: 0 });
-    // ONE attempted write and no more. A pump that kept going would hold every
-    // later frame in this process's heap for a consumer that is not reading.
+    // ONE write tried and no more. A pump that kept going would hold every later
+    // frame in this process's heap for a consumer that is not reading.
     expect(response.chunks.length).toBe(1);
   });
 

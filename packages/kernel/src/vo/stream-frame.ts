@@ -280,7 +280,7 @@ const CONTROL_CHARACTER = /[\u0000-\u001F\u007F]/u;
  * carrying a control character is refused at the encode.
  */
 export function encodeStreamCursor(streamId: string, seq: number): Result<StreamCursor> {
-  if (streamId.length === 0 || /[ -]/u.test(streamId)) {
+  if (streamId.length === 0 || CONTROL_CHARACTER.test(streamId)) {
     return err(
       domainError(
         STREAM_CURSOR_STREAM_ID_INVALID,
@@ -377,7 +377,7 @@ export function decodeStreamCursor(raw: string): Result<StreamPosition> {
       ),
     );
   }
-  if (/[ -]/u.test(streamId)) {
+  if (CONTROL_CHARACTER.test(streamId)) {
     return err(
       domainError(
         STREAM_CURSOR_STREAM_ID_INVALID,

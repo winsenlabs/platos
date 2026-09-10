@@ -717,11 +717,31 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         client and imports nothing; what it holds is a transcription of a
   //         frozen specification, which is what that classification is for --> 19448.
   //
+  //         AND TWO MORE FROM THE SAME TRANCHE, both `boundary-spec`, taking it to
+  //         19450. `scripts/arch/stream-contracts.test.mjs` asserts the five family
+  //         names BY NAME so a rename in the ADR and the kernel at once — which
+  //         rule S1 compares only to each other — fails; it is ONE occurrence and
+  //         not three because the mutation beside it is anchored on the FOURTH
+  //         family on purpose. And `docs/audits/M4.6-stream-vocabulary.json` carries
+  //         a FILE PATH, not prose: one of the eleven emit sites of `agent_event` is
+  //         under the external bridge's own directory, and a census that omitted the
+  //         site would report a smaller vocabulary than the lane has. Nothing there
+  //         can be reworded — the artifact is written by `--write` from the
+  //         filesystem, which is also why its line anchor will move whenever the
+  //         census grows.
+  //
+  //         ONE EXISTING EXCEPTION WAS RE-REVIEWED RATHER THAN RE-ADDED, and the
+  //         distinction is the manifest's own: the independent REST census gained a
+  //         row for the stream lane's route, so the `trigger-bridge` path inside it
+  //         moved from line 252 to line 290. `localContextSha256` is byte-identical
+  //         and only the json-path context shifted, which the gate reports as
+  //         CHANGED-CONTEXT and refuses to bless on its own.
+  //
   //         THE OTHER FOUR FAMILIES CARRY NO REFUSED WORD, so this is one row
   //         and not five. And the rest of that file's prose was written to avoid
   //         the refused vocabulary entirely rather than to be excepted, which is
   //         the rule working as intended a second time.
-  assert.equal(manifest.exceptions.length, 19448);
+  assert.equal(manifest.exceptions.length, 19450);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

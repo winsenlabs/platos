@@ -190,7 +190,11 @@ describe("the resume cursor", () => {
   });
 
   it("refuses a stream id carrying a control character", () => {
-    for (const control of ["\n", "\r", " ", ""]) {
+    // WRITTEN AS ESCAPES, NOT AS RAW BYTES. The first draft of this case put
+    // literal NUL and DEL octets in this file, which compiled, passed and left two
+    // control characters in shipped source that no gate in this repository looks
+    // for. `\u0000` says the same thing and survives every tool that reads bytes.
+    for (const control of ["\n", "\r", "\u0000", "\u007F"]) {
       expect(errorCode(encodeStreamCursor(`turn${control}1`, 1))).toBe(
         "STREAM_CURSOR_STREAM_ID_INVALID",
       );

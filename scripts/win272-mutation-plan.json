@@ -1,0 +1,368 @@
+{
+  "$comment": [
+    "WIN-272 (M4.6) mutation plan. Each row breaks ONE decision and names the suites that must",
+    "notice. The driver is scripts/run-win272-mutations.mjs and the ledger it writes is",
+    "scripts/mutations-win272-m46.json.",
+    "",
+    "THREE HAZARDS FROM THE PREVIOUS TRANCHE'S SWEEP ARE DESIGNED AROUND HERE, and all three are",
+    "in that tranche's own ledger as a control:",
+    "",
+    "  (1) `execSync('cmd | tail')` reports TAIL's exit status, so every mutation looked KILLED.",
+    "      The driver runs the suite with no pipe and reads the child's own status.",
+    "  (2) a source mutation of a package consumed through `dist/` mutates a file nothing reads.",
+    "      `@platos/kernel` resolves to dist for `redis-streams` and `apps/core-api`, so every row",
+    "      that mutates the kernel declares `rebuild` and the driver refuses to run without it.",
+    "  (3) pnpm does not hand a child's output back on execSync's error object, so a failing-case",
+    "      pattern written against ANSI bytes records a kill with no case name. The driver captures",
+    "      stdio itself and matches on the runner's own plain text.",
+    "",
+    "WHICH ROWS NEED A CONTAINER is declared per row, because a sweep that ran every row against",
+    "Docker would take an hour and one that ran none of them would leave the conservation refusal,",
+    "the trim boundary and the whole socket lane unmutated."
+  ],
+  "mutations": [
+    {
+      "id": "M01",
+      "subject": "the client's own duplicate suppression",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (frame.seq <= lastApplied) return { kind: \"duplicate\" };",
+      "replace": "  if (frame.seq < lastApplied) return { kind: \"duplicate\" };",
+      "breaks": "a redelivery of the frame at exactly the last applied position is APPLIED again, which is the double-apply the acceptance forbids",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M02",
+      "subject": "gap detection",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (frame.seq > expected) return { kind: \"gap\", missing: frame.seq - expected };",
+      "replace": "  if (false) return { kind: \"gap\", missing: frame.seq - expected };",
+      "breaks": "a frame that skips ahead is applied, so a client renders a partial answer it believes is whole",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M03",
+      "subject": "the reserved-field refusal",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "    if (Object.prototype.hasOwnProperty.call(frame.fields, reserved)) {",
+      "replace": "    if (false && Object.prototype.hasOwnProperty.call(frame.fields, reserved)) {",
+      "breaks": "a payload field named `seq` overwrites the sequence ON THE WIRE, so the producer chooses the client's gap detection",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel",
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M04",
+      "subject": "why a stream stopped",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "    if (resumeFrom !== null) return { kind: \"interrupted\", resumeFrom };",
+      "replace": "    if (resumeFrom !== null) return { kind: \"severed\", resumeFrom };",
+      "breaks": "a `stream.offline` frame with no cursor of its own classifies as `severed` rather than `interrupted`, so the reader loses the fact that the SERVER let it go on purpose -- the one distinction an operator needs to tell a policy decision from a crash",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ],
+      "$note": "the first draft of this row replaced the whole `stream.offline` branch with `if (false)`, which the COMPILER refused rather than a case noticing. A type error is evidence the type layer holds, not evidence a case is watching, so the row was rewritten to a mutation that compiles and changes behaviour"
+    },
+    {
+      "id": "M05",
+      "subject": "the cursor's control-character refusal",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (streamId.length === 0 || CONTROL_CHARACTER.test(streamId)) {",
+      "replace": "  if (streamId.length === 0) {",
+      "breaks": "a stream id carrying a newline is encoded into an SSE `id:` line, which injects a field into every reader's byte stream",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M06",
+      "subject": "the length-prefixed cursor",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  const encoded = `${CURSOR_ENCODING}${CURSOR_DELIMITER}${streamId.length}${CURSOR_DELIMITER}${streamId}${seq}`;",
+      "replace": "  const encoded = `${CURSOR_ENCODING}${CURSOR_DELIMITER}${String(streamId.length)}${CURSOR_DELIMITER}${streamId}${CURSOR_DELIMITER}${seq}`;",
+      "breaks": "the delimiter reappears between the id and the sequence, so an id holding the delimiter decodes to the wrong position",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M07",
+      "subject": "M0.4 decision D4 AS CORRECTED",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "    if (options.legacyIngress) return ok(STREAM_SCHEMA_VERSION_MIN);",
+      "replace": "    return ok(STREAM_SCHEMA_VERSION_MIN);",
+      "breaks": "an absent `sv` defaults to 1 on a NEW surface too, which is the uncorrected proposal and makes the version field optional everywhere",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M08",
+      "subject": "the per-frame byte ceiling",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (byteLength <= limit) return ok(byteLength);",
+      "replace": "  if (true) return ok(byteLength);",
+      "breaks": "a frame of any size is admitted, so one tool result becomes a memory incident in every connected browser",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel",
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M09",
+      "subject": "whether a client reconnects",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  return end.kind === \"interrupted\" || end.kind === \"severed\";",
+      "replace": "  return end.kind === \"interrupted\" || end.kind === \"severed\" || end.kind === \"completed\";",
+      "breaks": "a client polls a finished stream forever, because a completed turn is reported as resumable",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel",
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M10",
+      "subject": "THE CONSERVATION REFUSAL",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "find": "        if (oldest.seq > afterSeq + 1) {",
+      "replace": "        if (false) {",
+      "breaks": "a cursor whose frames were trimmed is answered with a PAGE, so the client receives a gap dressed as a sequence and renders state that is silently missing the middle",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M11",
+      "subject": "the trim boundary, off by one",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "find": "        if (oldest.seq > afterSeq + 1) {",
+      "replace": "        if (oldest.seq > afterSeq) {",
+      "breaks": "a reader that is exactly caught up is REFUSED, so every reader at the boundary is disconnected instead of served",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M12",
+      "subject": "no frames after a terminal frame",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "find": "        if (seal !== null) return { kind: \"sealed\", seal };",
+      "replace": "        if (seal !== null && false) return { kind: \"sealed\", seal };",
+      "breaks": "a producer can append after the seal, which is the trailing-invalid-frames case the acceptance forbids",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M13",
+      "subject": "the first seal wins",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "      const set = await client.hsetnx(key, field, value);",
+      "replace": "      const set = await client.hset(key, field, value);",
+      "breaks": "HSET OVERWRITES where HSETNX claims: a second seal replaces the first and still reports `already-sealed`, so a retry turns a completed turn into a failed one AND tells the caller it did not",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M14",
+      "subject": "the length bound",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "          await client.xadd(key, \"MAXLEN\", maxLength, entryId(entry.seq), ENTRY_FIELD, entry.body);",
+      "replace": "          await client.xadd(key, entryId(entry.seq), ENTRY_FIELD, entry.body);",
+      "breaks": "one runaway stream is unbounded, so a single turn can evict every other stream's frames from the server",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M15",
+      "subject": "reads are STRICTLY after the cursor",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "      const from = afterSeq <= 0 ? \"-\" : `(${entryId(afterSeq)}`;",
+      "replace": "      const from = afterSeq <= 0 ? \"-\" : `${entryId(afterSeq)}`;",
+      "breaks": "a resuming reader is handed the frame it already holds, which is a duplicate on every reconnect",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M16",
+      "subject": "at-least-once delivery",
+      "file": "packages/adapters/redis-streams/src/event-bus.ts",
+      "find": "              // THE POSITION IS NOT ADVANCED, which IS the redelivery. Break so",
+      "replace": "              position = entry.id;\n              // THE POSITION IS NOT ADVANCED, which IS the redelivery. Break so",
+      "breaks": "a handler that rejects never sees the event again, so a partial failure silently loses it",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M17",
+      "subject": "a fan-out seam is not a queue",
+      "file": "packages/adapters/redis-streams/src/event-bus.ts",
+      "find": "          position = await connection.tip(key);",
+      "replace": "          position = null;",
+      "breaks": "a subscriber catches up on events published before it existed, which makes the bus a second canonical store beside the outbox",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M18",
+      "subject": "the handshake wait, per command",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "    if (client.status === \"ready\") return Promise.resolve();",
+      "replace": "    if (client.status === \"ready\" || client.status === \"end\") return Promise.resolve();",
+      "breaks": "a command issued on an ENDED client no longer waits and no longer fails closed, so a dead connection reports success paths it cannot serve",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M19",
+      "subject": "backpressure",
+      "file": "apps/core-api/src/transports/ws/sse.ts",
+      "find": "  if (response.write(chunk)) return true;",
+      "replace": "  response.write(chunk);\n  return true;",
+      "breaks": "a full socket is written to without bound, so a slow browser becomes unbounded heap in this process",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M20",
+      "subject": "THE CREDENTIAL EXPIRY FENCE",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    if (remaining <= 0) return stop(\"credential-expired\");",
+      "replace": "    if (remaining <= -86_400_000) return stop(\"credential-expired\");",
+      "breaks": "a stream outlives the credential that opened it by a day, which is the unbounded case the live lane has",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M21",
+      "subject": "at most ONE terminal frame",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    \"cursor-expired\": streamCursorExpired,\n  });",
+      "replace": "    \"cursor-expired\": streamCursorExpired,\n    sealed: streamJournalUnavailable,\n  });",
+      "breaks": "a completed stream gets a SECOND terminal frame after the producer's own, which is the duplicate the acceptance forbids and the exact defect in `streaming.service.ts`",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M22",
+      "subject": "the tenancy boundary IS the journal key",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "  return `${environmentId}/${streamId}`;",
+      "replace": "  return `${streamId}`;",
+      "breaks": "a stream id becomes a bearer capability across environments, so naming one environment reaches another's frames",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M23",
+      "subject": "the scope is the AUTHORIZATION's, never the path's",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    const key = journalStreamId(authorization.scope.environmentId, streamId);",
+      "replace": "    const key = journalStreamId(environmentId, streamId);",
+      "breaks": "a forged scope is honoured, because the key is built from the caller's own path segment rather than from the scope tenancy re-derived",
+      "rebuild": [],
+      "suites": [
+        "core-api-integration"
+      ],
+      "container": true,
+      "$note": "the two are equal on a well-formed request, so ONLY a forged-scope case can tell them apart; that is the point of the row"
+    },
+    {
+      "id": "M24",
+      "subject": "encode, then write, then advance",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "      if (!wrote) return stop(input.hasDisconnected() ? \"disconnected\" : \"consumer-too-slow\");\n      position = cursorForFrame;\n      lastSeq = frame.seq;",
+      "replace": "      position = cursorForFrame;\n      lastSeq = frame.seq;\n      if (!wrote) return stop(input.hasDisconnected() ? \"disconnected\" : \"consumer-too-slow\");",
+      "breaks": "a frame that was not written advances the position, so a resuming client is handed the frame AFTER the one it never received",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M25",
+      "subject": "a terminal frame a client will APPLY",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "      const frame = terminalErrorFrame(outcome.lastSeq + 1, Date.now(), fault().code);",
+      "replace": "      const frame = terminalErrorFrame(0, Date.now(), fault().code);",
+      "breaks": "the terminal frame is numbered 0, which every correct client's `admitFrame` calls a DUPLICATE and drops \u2014 leaving it with no explanation for a stream that stopped",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true
+    }
+  ]
+}

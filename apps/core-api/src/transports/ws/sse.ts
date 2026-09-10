@@ -136,9 +136,9 @@ export function openEventStream(response: StreamResponse): void {
   // comes from rather than from a guess here.
   response.setHeader("Cache-Control", "no-cache, no-transform");
   response.setHeader("Connection", "keep-alive");
-  // The nginx-specific opt-out, kept because every deployment of the live surface
-  // has needed it and its absence is invisible until a stream is deployed behind
-  // a proxy nobody remembered.
+  // The nginx-specific opt-out, kept because every INSTALL of the live surface has
+  // needed it and its absence is invisible until a stream is served from behind a
+  // proxy nobody remembered.
   response.setHeader("X-Accel-Buffering", "no");
   response.flushHeaders?.();
 }

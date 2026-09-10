@@ -863,7 +863,7 @@
     {
       "path": "docs/audits/M4.6-stream-vocabulary.json",
       "mode": "100644",
-      "sha256": "7907d5fbbcdead5d4d956074853f77dc4ca51a4e01b768ea9152f7cf5d3ed1ef"
+      "sha256": "c457dd3701eddaac179f4777130627b0d6a0c75bb7f55b271b84f021dca74c56"
     },
     {
       "path": "docs/audits/history/win-252/prompt-caching-progress.md",
@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "5413e107f1521d4507d291ef005bac7fd833d65817b84aaad94176f3aa94ad28"
+      "sha256": "e0b0a97f26f9a24748d83de3e8c158021ca1852d8e4345ec3e1b6ea2b0516c1a"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "4f0edc7951beeab1ed613beaa9e1d6a4add96236e80e592d19b0a5e6d517e022"
+      "sha256": "385c7e09d660096a2f0543c3b8951c39938ccca862d589dc598d217885965be0"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "4018ff6fcabfb9f606ac60941fc107b2d4ce1add10a0b59e3a3d924051183fb4"
+      "sha256": "1cbfdee1f114fbd1d2e5079ab63e958c1580f1f02874c9fc0937b90103f3a0ca"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3543,7 +3543,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "ef03d53e0542000b26cca4c02bb099296e738e9e2ed239e786d3e4ca78f6e755"
+      "sha256": "ab5511ca29ef1b5d857fe6f8f7c465b225d0792d0dc1f7b8fb430c7bd315601d"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3993,7 +3993,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "ad91f71a3dc6bf59eb8f2fbecf446b33e8294259e3a99fff43bf6c89a4c1f18f"
+      "sha256": "eeeaefba95352d3d2c5169698cd76eb30871281c93b3afa4f9259cae066f9969"
     },
     {
       "path": "scripts/workspace-reachability.mjs",

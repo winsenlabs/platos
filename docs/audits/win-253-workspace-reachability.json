@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "2bc8dec5304b030612679cf134fcba1fb8493bfba0a30a8c51752b726e447fa8",
+  "evidenceSha256": "4ab3648b27d8355fe281d45249f1693e28ac9bc962e6d13b890a1a4cfb90daf1",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "2242303812bf564798c6fe312b1b211b939bf26c4da5352d9d4c0b0f32fcf0d6",
+    "aggregateSha256": "7cdd0fee7c9a5c5f1cf182bd17af17b22d7741622ea6c3cfdeed005eb3a6157f",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2851,7 +2851,7 @@
       },
       {
         "path": "apps/core-api/src/transports/ws/sse.ts",
-        "sha256": "9f97cb8c86546dd07d0826edd125c3be60f758214b8788a33ec5c6edf4437f29"
+        "sha256": "89c187aaa18172feef8e47e31cacd83418a0229c0ff5e0f1c8e28a0c49c069d8"
       },
       {
         "path": "apps/core-api/src/transports/ws/stream-errors.test.ts",
@@ -2863,7 +2863,7 @@
       },
       {
         "path": "apps/core-api/src/transports/ws/stream-pump.test.ts",
-        "sha256": "859231a6890286705560594e3fc6f2faf3213f6bb8592203f0f6143cc84d4751"
+        "sha256": "929aac3b1da171586ec995403c4459d59af64d195b10ed9106608981b4541bb9"
       },
       {
         "path": "apps/core-api/src/transports/ws/streams.controller.ts",
@@ -4303,7 +4303,7 @@
       },
       {
         "path": "docs/audits/M4.6-stream-vocabulary.json",
-        "sha256": "7907d5fbbcdead5d4d956074853f77dc4ca51a4e01b768ea9152f7cf5d3ed1ef"
+        "sha256": "c457dd3701eddaac179f4777130627b0d6a0c75bb7f55b271b84f021dca74c56"
       },
       {
         "path": "docs/audits/history/win-252/prompt-caching-progress.md",
@@ -6431,7 +6431,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "ef03d53e0542000b26cca4c02bb099296e738e9e2ed239e786d3e4ca78f6e755"
+        "sha256": "ab5511ca29ef1b5d857fe6f8f7c465b225d0792d0dc1f7b8fb430c7bd315601d"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -19151,11 +19151,11 @@
       },
       {
         "path": "packages/kernel/src/vo/stream-frame.test.ts",
-        "sha256": "5ac4ad97d06e4f6e793faef032eb0f5b9d9a426acad4b7a3f4e04685771112d8"
+        "sha256": "cefa1917c275f91210a5b10b6ccb946eb6c589576ac29bc166163518acd93dd6"
       },
       {
         "path": "packages/kernel/src/vo/stream-frame.ts",
-        "sha256": "d16f8333544532dadc9ebf1408122e907b4364504528e37bd004e3a30ba7f6dc"
+        "sha256": "e3f3bd0686f480196d9c72e44cbb7a10e749b503e5f3cd1124cc4aa870aae054"
       },
       {
         "path": "packages/kernel/tsconfig.json",
@@ -20259,11 +20259,11 @@
       },
       {
         "path": "scripts/arch/stream-contracts.mjs",
-        "sha256": "2f7504817f054697c58325020915fb8276dd4bb11dd5e1b66a1d9bbaf782ad9a"
+        "sha256": "d7289bef2cf87f562230629d44f9ca4d71bccd140b826e4ea7bad1aeffcf94bb"
       },
       {
         "path": "scripts/arch/stream-contracts.test.mjs",
-        "sha256": "f629196700dcc2c9fd8e7f24680fdfc7b1e25bbad436cde3907c632ffa8242c3"
+        "sha256": "c5dc2cc17f6a07b082df359fbc379660ce0a416d6396f2301d47421825904369"
       },
       {
         "path": "scripts/arch/table-ownership.mjs",
@@ -20514,6 +20514,10 @@
         "sha256": "167ac1ebf84fef459299c49f882a8b5baeada4b71cf0a3d3700b781e43b71ccd"
       },
       {
+        "path": "scripts/mutations-win272-m46.json",
+        "sha256": "28bd78344e6ea707f11a6580bc1625270d20666de1e487e920ce49289908d9f6"
+      },
+      {
         "path": "scripts/openapi-compat.mjs",
         "sha256": "b90270c0ea3ce9cfaf29ce8996b0fb4500fab4b506c87ddeae59e099cb906bac"
       },
@@ -20580,6 +20584,10 @@
       {
         "path": "scripts/run-win271-mutations.mjs",
         "sha256": "3704d8cc354642a0ebec6098ec11bc41f519612cd376cc763b0c1ec6f71f3ac8"
+      },
+      {
+        "path": "scripts/run-win272-mutations.mjs",
+        "sha256": "c4974d76aec3f73d19a556921ca89e6ad25a2eb1138a54c0892f75bf527619ae"
       },
       {
         "path": "scripts/sdk/v1-contract.mjs",
@@ -20663,7 +20671,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "ad91f71a3dc6bf59eb8f2fbecf446b33e8294259e3a99fff43bf6c89a4c1f18f"
+        "sha256": "eeeaefba95352d3d2c5169698cd76eb30871281c93b3afa4f9259cae066f9969"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -20712,6 +20720,10 @@
       {
         "path": "scripts/win271-mutation-plan.json",
         "sha256": "b5a930b115b469654db49817a8421e358041b93753d312ae6685d0fc14fac620"
+      },
+      {
+        "path": "scripts/win272-mutation-plan.json",
+        "sha256": "4a02fe15755f26bc5e1657d48981f96c0a51b66088e0835c285e56457b022a4c"
       },
       {
         "path": "scripts/workload-identity-keygen.mjs",
@@ -22167,7 +22179,7 @@
             {
               "from": "docs/audits/M4.6-stream-vocabulary.json",
               "kind": "reference",
-              "line": 17
+              "line": 10
             },
             {
               "from": "docs/audits/sbom/closure-contract.md",
@@ -25923,7 +25935,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "79d0ea366fe220f9b1405cb98391965f37fe78841d8191d6475942805248400c",
+      "evidenceSha256": "3d3c760d08297dc3f831ff9c6553dece9f38e6e75ac936ef894a83d9c01e21a0",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -26129,7 +26141,7 @@
             {
               "from": "docs/audits/M4.6-stream-vocabulary.json",
               "kind": "reference",
-              "line": 182
+              "line": 175
             },
             {
               "from": "docs/audits/win-259-secret-response-census.json",
@@ -26843,6 +26855,11 @@
               "line": 11
             },
             {
+              "from": "packages/kernel/src/vo/stream-frame.test.ts",
+              "kind": "reference",
+              "line": 5
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 318
@@ -27108,6 +27125,10 @@
               "packages/kernel/src/vo/redaction.test.ts"
             ],
             [
+              "packages/kernel/src/vo/stream-frame.test.ts",
+              "packages/kernel/src/vo/stream-frame.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -27238,6 +27259,7 @@
             "packages/contexts/observability/contracts/observability-contract.test.ts",
             "packages/contexts/privacy/contracts/index.test.ts",
             "packages/kernel/src/vo/redaction.test.ts",
+            "packages/kernel/src/vo/stream-frame.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/clean-v1.test.mjs",
             "scripts/arch/composition-root.test.mjs",
@@ -27297,7 +27319,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "86a9632f2a80311368ba2838acf8447743866a03e45ea6fbb0c3f9a454ac362e",
+      "evidenceSha256": "52323b395a99669477acc52e974d431a541279f0bda1367a8fc77c6edc934ca5",
       "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -29402,7 +29424,7 @@
             {
               "from": "scripts/arch/stream-contracts.test.mjs",
               "kind": "reference",
-              "line": 316
+              "line": 320
             },
             {
               "from": "scripts/audit-advisory.test.mjs",
@@ -30053,7 +30075,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "3af55e3a30c5eb88f55f408d94a9e3e2f0742ce8bf02df00b2bd7a808acc157c",
+      "evidenceSha256": "c965ec222a2fb6c6cf752ba4d583dc0e4ca3fb719160af49a8c6da1fa30b87d2",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -81197,6 +81219,11 @@
               "line": 55
             },
             {
+              "from": "docs/audits/M4.6-stream-vocabulary.json",
+              "kind": "reference",
+              "line": 2
+            },
+            {
               "from": "docs/env-vars.md",
               "kind": "reference",
               "line": 217
@@ -81226,6 +81253,10 @@
               "docs/audits/M2.5-transaction-outbox-clock-retry.md"
             ],
             [
+              "docs/audits/M4.6-stream-vocabulary.json",
+              "docs/audits/M4.6-stream-vocabulary.json"
+            ],
+            [
               "docs/env-vars.md",
               "docs/env-vars.md"
             ],
@@ -81242,6 +81273,7 @@
             "ai/references/repo.md",
             "docs/adr/M0.3-bounded-contexts.md",
             "docs/audits/M2.5-transaction-outbox-clock-retry.md",
+            "docs/audits/M4.6-stream-vocabulary.json",
             "docs/env-vars.md",
             "docs/v1-ledger-rules.json",
             "packages/kernel/README.md"
@@ -89509,6 +89541,11 @@
               "line": 1
             },
             {
+              "from": "packages/kernel/src/vo/stream-frame.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 147
@@ -90590,6 +90627,10 @@
               "packages/kernel/src/vo/scope.test.ts"
             ],
             [
+              "packages/kernel/src/vo/stream-frame.test.ts",
+              "packages/kernel/src/vo/stream-frame.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -90902,6 +90943,7 @@
             "packages/kernel/src/vo/redaction.test.ts",
             "packages/kernel/src/vo/retry.test.ts",
             "packages/kernel/src/vo/scope.test.ts",
+            "packages/kernel/src/vo/stream-frame.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/clean-v1.test.mjs",
             "scripts/arch/composition-root.test.mjs",
@@ -91733,7 +91775,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "0774985a6c505f06de72c0745ad14323c8614212e3fb317e18d1fddbf48b3730",
+      "evidenceSha256": "3893cd8faeb1cd07524ac3f60ed44399d76f854db033be604d1922302a62cb42",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

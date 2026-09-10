@@ -1,0 +1,25 @@
+{
+  "issue": "WIN-272 (M4.6)",
+  "purpose": "One row per broken decision, with the suite that noticed and the case that failed. Re-runnable: node scripts/run-win272-mutations.mjs. A SURVIVOR is recorded as one and never explained away, and a mutation the compiler refuses is counted apart from a kill because a type error is evidence the type layer holds rather than evidence a case noticed.",
+  "totals": {
+    "rows": 1,
+    "killed": 1,
+    "survived": 0,
+    "refusedByCompiler": 0,
+    "skipped": 0
+  },
+  "rows": [
+    {
+      "id": "M04",
+      "subject": "why a stream stopped",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a `stream.offline` frame with no cursor of its own classifies as `severed` rather than `interrupted`, so the reader loses the fact that the SERVER let it go on purpose -- the one distinction an operator needs to tell a policy decision from a crash",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "why a stream stopped > falls back to the reader's position when the offline frame carries none",
+        "why a stream stopped > gives every terminal frame type a classification that is not `severed`"
+      ]
+    }
+  ]
+}

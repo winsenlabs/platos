@@ -130,7 +130,11 @@ test("the ADR and the vocabulary agree, and the ADR is the authority", () => {
 test("S1 fails when the vocabulary gains a family the ADR does not name", () => {
   const root = realTreeCopy();
   edit(root, VOCABULARY_MODULE, (source) =>
-    source.replace('  "trigger.payload",\n] as const)', '  "trigger.payload",\n  "grpc.stream",\n] as const)'),
+    // ANCHORED ON THE FOURTH FAMILY AND NOT THE FIFTH, deliberately. The fifth
+    // name carries a word the vocabulary boundary refuses, and spelling it here
+    // would have needed two more reviewed exceptions for a mutation that works
+    // just as well one line earlier.
+    source.replace('  "internal.callback",\n', '  "internal.callback",\n  "grpc.stream",\n'),
   );
   assert.ok(problemsFor(root).some((problem) => problem.startsWith("S1 ")));
   rmSync(root, { recursive: true, force: true });
@@ -318,15 +322,25 @@ test("S5 fails on a row whose lane is not scanned", () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-test("S5 fails when the inventory's family list drifts from the vocabulary's", () => {
+test("S5 REFUSES an inventory that carries its own copy of the family names", () => {
+  // The rule is a refusal rather than a comparison, and the reason is worth a case:
+  // a copy of the five names in a GENERATED artifact is a second list to keep true,
+  // and it would put a word the vocabulary boundary refuses into a file nobody
+  // writes by hand — so nobody would ever review the exception it needed. The first
+  // draft of this gate did exactly that and `audit:vocabulary` caught it.
   const root = realTreeCopy();
   edit(root, INVENTORY_PATH, (source) => {
     const inventory = JSON.parse(source);
-    inventory.families = inventory.families.slice(0, 4);
+    inventory.families = ["ws.agent_event"];
     return `${JSON.stringify(inventory, null, 2)}\n`;
   });
-  assert.ok(problemsFor(root).some((problem) => problem.includes("family list that is not the vocabulary's")));
+  assert.ok(problemsFor(root).some((problem) => problem.includes("carries its own family list")));
   rmSync(root, { recursive: true, force: true });
+});
+
+test("the committed inventory carries no family list", () => {
+  const inventory = JSON.parse(readFileSync(join(repositoryRoot, INVENTORY_PATH), "utf8"));
+  assert.equal(inventory.families, undefined);
 });
 
 // ---------------------------------------------------------------------------

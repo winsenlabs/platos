@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `2bc8dec5304b030612679cf134fcba1fb8493bfba0a30a8c51752b726e447fa8`
+Evidence SHA-256: `4ab3648b27d8355fe281d45249f1693e28ac9bc962e6d13b890a1a4cfb90daf1`
 
 ## Baseline
 
@@ -39,10 +39,10 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 
 | Workspace | Package | OCI | App/deployable | Union | OCI+dev | Candidate status | Public boundary | Owner decision | Evidence hash |
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
-| `apps/agent` | `platos-agent` | yes | yes | yes | yes | retain-oci-image | no | no | `79d0ea366fe220f9…` |
-| `apps/core-api` | `@platos/core-api` | no | yes | yes | no | retain-application-deployable | no | no | `86a9632f2a803113…` |
+| `apps/agent` | `platos-agent` | yes | yes | yes | yes | retain-oci-image | no | no | `3d3c760d08297dc3…` |
+| `apps/core-api` | `@platos/core-api` | no | yes | yes | no | retain-application-deployable | no | no | `52323b395a996694…` |
 | `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `edb40234d7819280…` |
-| `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `3af55e3a30c5eb88…` |
+| `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `c965ec222a2fb6c6…` |
 | `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `869fdbb0fa6073b8…` |
 | `internal-packages/cache` | `@internal/cache` | no | no | no | no | owner-review-repository-referenced | no | yes | `f9f2db1155272a42…` |
 | `internal-packages/compute` | `@internal/compute` | no | no | no | no | owner-review-repository-referenced | no | yes | `744fd4bd20e8d379…` |
@@ -94,7 +94,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/contexts/tenancy` | `@platos/context-tenancy` | no | yes | yes | no | retain-application-deployable | no | no | `1896eae83aae8d77…` |
 | `packages/contexts/tools` | `@platos/context-tools` | no | yes | yes | no | retain-application-deployable | no | no | `83b79fd229b3c70d…` |
 | `packages/core` | `@platos/core` | no | no | no | yes | owner-review-public-boundary | yes | yes | `d0a616eff1f5ae0c…` |
-| `packages/kernel` | `@platos/kernel` | no | yes | yes | no | retain-application-deployable | no | no | `0774985a6c505f06…` |
+| `packages/kernel` | `@platos/kernel` | no | yes | yes | no | retain-application-deployable | no | no | `3893cd8faeb1cd07…` |
 | `packages/platools-js` | `@platosdev/platools-sdk` | no | no | no | no | owner-review-public-boundary | yes | yes | `f1fa3ad918389600…` |
 | `packages/platos-client` | `@platosdev/client` | no | no | no | no | owner-review-public-boundary | yes | yes | `da7530903bf00a52…` |
 | `packages/platos-embed` | `@platosdev/embed` | no | no | no | no | owner-review-public-boundary | yes | yes | `76cb3e9a7cbfa3e3…` |

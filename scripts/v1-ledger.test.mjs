@@ -1883,14 +1883,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // times and whose three wrong versions are recorded as a control). All three
     // take the same blanket `root-infra.tooling.scripts` rule its predecessors
     // took (104 -> 107). NO LEDGER RULE CHANGED.
-    // WIN-272 (M4.6) 83 -> 85. TWO files, and NEITHER is a mutation ledger:
-    // `scripts/arch/stream-contracts.mjs` — the drift-check M0.4 §2 NAMES in its
-    // own WS and SSE rows and which did not exist — and
-    // `scripts/arch/stream-contracts.test.mjs`, its second reconciliation, which
-    // exercises each of the five rules against a copy of the REAL tree with one
-    // thing changed. Both take the same blanket `root-infra.tooling.scripts` rule
-    // every script above them took (107 -> 109). NO LEDGER RULE CHANGED.
-    "root-infra": 85,
+    // WIN-272 (M4.6) 83 -> 88. FIVE files, in two groups.
+    //
+    //   TWO are the drift-check M0.4 §2 NAMES in its own WS and SSE rows and which
+    //   did not exist: `scripts/arch/stream-contracts.mjs` and
+    //   `scripts/arch/stream-contracts.test.mjs`, its second reconciliation, which
+    //   exercises each of the five rules against a copy of the REAL tree with one
+    //   thing changed.
+    //
+    //   THREE are this tranche's mutation sweep, and it is three rather than one
+    //   for the reason WIN-271's was three: the sweep is RE-RUNNABLE rather than
+    //   described. `scripts/win272-mutation-plan.json` (the rows),
+    //   `scripts/run-win272-mutations.mjs` (the driver, which designs around all
+    //   three of the previous driver's recorded mistakes) and
+    //   `scripts/mutations-win272-m46.json` (the ledger it writes).
+    //
+    // All five take the same blanket `root-infra.tooling.scripts` rule every script
+    // above them took (107 -> 112). NO LEDGER RULE CHANGED.
+    "root-infra": 88,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2070,15 +2080,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // eight-key re-derivation from the merged `expectedDeltas` is
   // 10 + 0 + 80 + 4 + 10 + 1532 + 23 + 83 = 1742.
   //
-  // WIN-272 (M4.6) 1742 -> 1762. TWENTY files across FOUR areas, each itemised on
-  // its own delta above: `packages` +10 (seven NET in the newly adopted
+  // WIN-272 (M4.6) 1742 -> 1765. TWENTY-THREE files across FOUR areas, each
+  // itemised on its own delta above: `packages` +10 (seven NET in the newly adopted
   // `redis-streams`, three in `packages/kernel`), `apps-core-api` +7 (the stream
-  // lane's three modules and its four suites), `root-infra` +2 (the stream-contract
-  // drift-check and its second reconciliation) and `docs-content` +1 (the stream
-  // vocabulary census that drift-check joins the tree to). The eight-key
+  // lane's three modules and its four suites), `root-infra` +5 (the stream-contract
+  // drift-check, its second reconciliation, and the mutation sweep's plan, driver
+  // and ledger) and `docs-content` +1 (the stream vocabulary census that drift-check
+  // joins the tree to). The eight-key
   // re-derivation from the merged `expectedDeltas` is
-  // 10 + 0 + 87 + 4 + 10 + 1542 + 24 + 85 = 1762.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1762);
+  // 10 + 0 + 87 + 4 + 10 + 1542 + 24 + 88 = 1765.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1765);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2307,12 +2318,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the total, so the two arithmetics can disagree and be caught.
     // 1720 + 22 = 1742.
     //
-    // AND WIN-272 (M4.6) 1742 -> 1762 -- the TWENTY-FOURTH hand move. The same
-    // twenty files as the `totalFiles` assertion above (ten in `packages`, seven in
-    // `apps-core-api`, two in `root-infra` and one in `docs-content`), reached here
-    // by summing the per-area counts instead of reading the total, so the two
-    // arithmetics can disagree and be caught. 1742 + 20 = 1762.
-    rulesDocument.baseline.totalFiles + 1762
+    // AND WIN-272 (M4.6) 1742 -> 1765 -- the TWENTY-FOURTH hand move. The same
+    // twenty-three files as the `totalFiles` assertion above (ten in `packages`,
+    // seven in `apps-core-api`, five in `root-infra` and one in `docs-content`),
+    // reached here by summing the per-area counts instead of reading the total, so
+    // the two arithmetics can disagree and be caught. 1742 + 23 = 1765.
+    rulesDocument.baseline.totalFiles + 1765
   );
 });
 
