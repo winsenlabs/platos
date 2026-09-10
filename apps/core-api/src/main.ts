@@ -87,6 +87,7 @@ export async function runProcess(io: MainIo): Promise<number> {
     stores: platform.stores,
     security: platform.security,
     providers: platform.providers,
+    channels: platform.channels,
     clock: defaults.clock,
     // The seam WIN-260 built and nothing had wired. `correlationSource` reads
     // the async-local frame the edge middleware opens, so a write issued while

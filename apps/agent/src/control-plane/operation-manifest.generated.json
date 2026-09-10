@@ -1,6 +1,44 @@
 {
   "manifestVersion": "M0.1",
   "canonicalPolicy": "explicit-operation-manifest",
+  "deprecationPolicy": {
+    "source": "docs/adr/M0.4-contract-versioning.md §4",
+    "declaredIn": "apps/agent/src/http/deprecation-signal.ts",
+    "minimumWindowDays": 90,
+    "wireSignal": [
+      "Deprecation",
+      "Sunset",
+      "Link"
+    ],
+    "catalogSignal": [
+      "deprecated",
+      "x-platos-classification",
+      "x-platos-superseded-by",
+      "x-platos-sunset"
+    ],
+    "aliases": [
+      {
+        "id": "legacy-platos-memory-prefix",
+        "aliasPrefix": "/api/v1/platos/memory",
+        "canonicalPrefix": "/api/v1/memory",
+        "announcedOn": "2026-09-10",
+        "sunsetOn": "2027-03-31",
+        "windowDays": 202,
+        "operations": 15,
+        "fanIn": "same-controller-multi-path"
+      }
+    ],
+    "forksWithoutOneHandler": [
+      {
+        "id": "POST /mcp/entity/:entityId/tokens",
+        "reason": "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape."
+      },
+      {
+        "id": "POST /mcp/platform/tokens",
+        "reason": "mid-migration: apps/agent has served this mint since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in. Two independent classes, one wire path — not an alias, and it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn."
+      }
+    ]
+  },
   "tenancyAuthority": [
     "organizationId",
     "projectId",
@@ -10868,6 +10906,23 @@
         ]
       },
       {
+        "id": "GET /api/v1/environments/:environmentId/streams/:streamId",
+        "method": "GET",
+        "path": "/api/v1/environments/:environmentId/streams/:streamId",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "EnvironmentStreamsController",
+            "handler": "read",
+            "source": "apps/core-api/src/transports/ws/streams.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/identity/session",
         "method": "GET",
         "path": "/api/v1/identity/session",
@@ -11191,7 +11246,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "GET /api/v1/memory",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11209,7 +11269,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11227,7 +11292,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "DELETE /api/v1/memory/:id",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11245,7 +11315,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory/:id",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11263,7 +11338,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory/:id/archive",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11281,7 +11361,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory/:id/restore",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11299,7 +11384,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory/admin/extraction-sweep",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11317,7 +11407,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "GET /api/v1/memory/export",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11335,7 +11430,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory/extract",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11353,7 +11453,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "GET /api/v1/memory/graph/entities",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11371,7 +11476,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "GET /api/v1/memory/graph/entities/:id/relationships",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11389,7 +11499,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "GET /api/v1/memory/graph/path",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11407,7 +11522,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory/import",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11425,7 +11545,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "POST /api/v1/memory/relate",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -11443,7 +11568,12 @@
         "policyRule": "legacy-platos-memory-prefix",
         "mcpTools": [],
         "mappingRationale": null,
-        "replacement": "/api/v1/memory",
+        "replacement": "GET /api/v1/memory/search",
+        "deprecation": {
+          "announcedOn": "2026-09-10",
+          "sunsetOn": "2027-03-31",
+          "wireSignal": "Deprecation: true + Sunset (RFC 8594) + Link rel=successor-version"
+        },
         "implementations": [
           {
             "controller": "MemoryController",
@@ -12427,8 +12557,8 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 308,
-    "restRouteBindings": 310,
+    "restOperations": 309,
+    "restRouteBindings": 311,
     "ambiguousRestOperations": 2,
     "crossDeployableRestOperations": 2,
     "restClassifications": {
@@ -12436,7 +12566,7 @@
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 152
+      "REST_ONLY": 153
     },
     "restScanRoots": [
       {
@@ -12451,9 +12581,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 7,
-        "operations": 10,
-        "routeBindings": 10
+        "registeredControllers": 8,
+        "operations": 11,
+        "routeBindings": 11
       }
     ]
   }

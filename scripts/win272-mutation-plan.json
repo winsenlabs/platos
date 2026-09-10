@@ -1,0 +1,494 @@
+{
+  "$comment": [
+    "WIN-272 (M4.6) mutation plan. Each row breaks ONE decision and names the suites that must",
+    "notice. The driver is scripts/run-win272-mutations.mjs and the ledger it writes is",
+    "scripts/mutations-win272-m46.json.",
+    "",
+    "THREE HAZARDS FROM THE PREVIOUS TRANCHE'S SWEEP ARE DESIGNED AROUND HERE, and all three are",
+    "in that tranche's own ledger as a control:",
+    "",
+    "  (1) `execSync('cmd | tail')` reports TAIL's exit status, so every mutation looked KILLED.",
+    "      The driver runs the suite with no pipe and reads the child's own status.",
+    "  (2) a source mutation of a package consumed through `dist/` mutates a file nothing reads.",
+    "      `@platos/kernel` resolves to dist for `redis-streams` and `apps/core-api`, so every row",
+    "      that mutates the kernel declares `rebuild` and the driver refuses to run without it.",
+    "  (3) pnpm does not hand a child's output back on execSync's error object, so a failing-case",
+    "      pattern written against ANSI bytes records a kill with no case name. The driver captures",
+    "      stdio itself and matches on the runner's own plain text.",
+    "",
+    "WHICH ROWS NEED A CONTAINER is declared per row, because a sweep that ran every row against",
+    "Docker would take an hour and one that ran none of them would leave the conservation refusal,",
+    "the trim boundary and the whole socket lane unmutated."
+  ],
+  "mutations": [
+    {
+      "id": "M01",
+      "subject": "the client's own duplicate suppression",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (frame.seq <= lastApplied) return { kind: \"duplicate\" };",
+      "replace": "  if (frame.seq < lastApplied) return { kind: \"duplicate\" };",
+      "breaks": "a redelivery of the frame at exactly the last applied position is APPLIED again, which is the double-apply the acceptance forbids",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M02",
+      "subject": "gap detection",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (frame.seq > expected) return { kind: \"gap\", missing: frame.seq - expected };",
+      "replace": "  if (false) return { kind: \"gap\", missing: frame.seq - expected };",
+      "breaks": "a frame that skips ahead is applied, so a client renders a partial answer it believes is whole",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M03",
+      "subject": "the reserved-field refusal",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "    if (Object.prototype.hasOwnProperty.call(frame.fields, reserved)) {",
+      "replace": "    if (false && Object.prototype.hasOwnProperty.call(frame.fields, reserved)) {",
+      "breaks": "a payload field named `seq` overwrites the sequence ON THE WIRE, so the producer chooses the client's gap detection",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel",
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M04",
+      "subject": "why a stream stopped",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "    if (resumeFrom !== null) return { kind: \"interrupted\", resumeFrom };",
+      "replace": "    if (resumeFrom !== null) return { kind: \"severed\", resumeFrom };",
+      "breaks": "a `stream.offline` frame with no cursor of its own classifies as `severed` rather than `interrupted`, so the reader loses the fact that the SERVER let it go on purpose -- the one distinction an operator needs to tell a policy decision from a crash",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ],
+      "$note": "the first draft of this row replaced the whole `stream.offline` branch with `if (false)`, which the COMPILER refused rather than a case noticing. A type error is evidence the type layer holds, not evidence a case is watching, so the row was rewritten to a mutation that compiles and changes behaviour"
+    },
+    {
+      "id": "M05",
+      "subject": "the cursor's control-character refusal",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (streamId.length === 0 || CONTROL_CHARACTER.test(streamId)) {",
+      "replace": "  if (streamId.length === 0) {",
+      "breaks": "a stream id carrying a newline is encoded into an SSE `id:` line, which injects a field into every reader's byte stream",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M06",
+      "subject": "the length-prefixed cursor",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  const encoded = `${CURSOR_ENCODING}${CURSOR_DELIMITER}${streamId.length}${CURSOR_DELIMITER}${streamId}${seq}`;",
+      "replace": "  const encoded = `${CURSOR_ENCODING}${CURSOR_DELIMITER}${String(streamId.length)}${CURSOR_DELIMITER}${streamId}${CURSOR_DELIMITER}${seq}`;",
+      "breaks": "the delimiter reappears between the id and the sequence, so an id holding the delimiter decodes to the wrong position",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M07",
+      "subject": "M0.4 decision D4 AS CORRECTED",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "    if (options.legacyIngress) return ok(STREAM_SCHEMA_VERSION_MIN);",
+      "replace": "    return ok(STREAM_SCHEMA_VERSION_MIN);",
+      "breaks": "an absent `sv` defaults to 1 on a NEW surface too, which is the uncorrected proposal and makes the version field optional everywhere",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel"
+      ]
+    },
+    {
+      "id": "M08",
+      "subject": "the per-frame byte ceiling",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  if (byteLength <= limit) return ok(byteLength);",
+      "replace": "  if (true) return ok(byteLength);",
+      "breaks": "a frame of any size is admitted, so one tool result becomes a memory incident in every connected browser",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel",
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M09",
+      "subject": "whether a client reconnects",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "find": "  return end.kind === \"interrupted\" || end.kind === \"severed\";",
+      "replace": "  return end.kind === \"interrupted\" || end.kind === \"severed\" || end.kind === \"completed\";",
+      "breaks": "a client polls a finished stream forever, because a completed turn is reported as resumable",
+      "rebuild": [
+        "@platos/kernel"
+      ],
+      "suites": [
+        "kernel",
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M10",
+      "subject": "THE CONSERVATION REFUSAL",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "find": "        if (oldest.seq > afterSeq + 1) {",
+      "replace": "        if (false) {",
+      "breaks": "a cursor whose frames were trimmed is answered with a PAGE, so the client receives a gap dressed as a sequence and renders state that is silently missing the middle",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M11",
+      "subject": "the trim boundary, off by one",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "find": "        if (oldest.seq > afterSeq + 1) {",
+      "replace": "        if (oldest.seq > afterSeq) {",
+      "breaks": "a reader that is exactly caught up is REFUSED, so every reader at the boundary is disconnected instead of served",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M12",
+      "subject": "no frames after a terminal frame",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "find": "        if (seal !== null) return { kind: \"sealed\", seal };",
+      "replace": "        if (seal !== null && false) return { kind: \"sealed\", seal };",
+      "breaks": "a producer can append after the seal, which is the trailing-invalid-frames case the acceptance forbids",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M13",
+      "subject": "the first seal wins",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "      const set = await client.hsetnx(key, field, value);",
+      "replace": "      const set = await client.hset(key, field, value);",
+      "breaks": "HSET OVERWRITES where HSETNX claims: a second seal replaces the first and still reports `already-sealed`, so a retry turns a completed turn into a failed one AND tells the caller it did not",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M14",
+      "subject": "the length bound",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "          await client.xadd(key, \"MAXLEN\", maxLength, entryId(entry.seq), ENTRY_FIELD, entry.body);",
+      "replace": "          await client.xadd(key, entryId(entry.seq), ENTRY_FIELD, entry.body);",
+      "breaks": "one runaway stream is unbounded, so a single turn can evict every other stream's frames from the server",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M15",
+      "subject": "reads are STRICTLY after the cursor",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "      const from = afterSeq <= 0 ? \"-\" : `(${entryId(afterSeq)}`;",
+      "replace": "      const from = afterSeq <= 0 ? \"-\" : `${entryId(afterSeq)}`;",
+      "breaks": "a resuming reader is handed the frame it already holds, which is a duplicate on every reconnect",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M16",
+      "subject": "at-least-once delivery",
+      "file": "packages/adapters/redis-streams/src/event-bus.ts",
+      "find": "              // THE POSITION IS NOT ADVANCED, which IS the redelivery. Break so",
+      "replace": "              position = entry.id;\n              // THE POSITION IS NOT ADVANCED, which IS the redelivery. Break so",
+      "breaks": "a handler that rejects never sees the event again, so a partial failure silently loses it",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M17",
+      "subject": "a fan-out seam is not a queue",
+      "file": "packages/adapters/redis-streams/src/event-bus.ts",
+      "find": "          position = await connection.tip(key);",
+      "replace": "          position = null;",
+      "breaks": "a subscriber catches up on events published before it existed, which makes the bus a second canonical store beside the outbox",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M18",
+      "subject": "the handshake wait is BOUNDED",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "find": "      const timer = setTimeout(() => finish(() => reject(new Error(\"RedisReadyTimeout\"))), readyTimeoutMs);",
+      "replace": "      const timer = setTimeout(() => finish(() => reject(new Error(\"RedisReadyTimeout\"))), 86_400_000);",
+      "breaks": "the wait for a server that is not there yet is a day rather than a bounded window, so the FIRST command against a cold connection HANGS instead of failing closed -- and the caller that was written to report `unavailable` reports nothing at all",
+      "rebuild": [],
+      "suites": [
+        "redis-streams-integration"
+      ],
+      "container": true,
+      "$note": "REPLACES A ROW THAT SURVIVED. The first draft made `ready()` resolve for a client whose status is `end`, and it survived because it is BEHAVIOURALLY EQUIVALENT on this port's contract: the command that follows still rejects (`enableOfflineQueue: false`) and the journal still answers `unavailable`, so no observation could separate the two. The deadline is the half that IS observable, and the cold-start case is what observes it"
+    },
+    {
+      "id": "M19",
+      "subject": "backpressure",
+      "file": "apps/core-api/src/transports/ws/sse.ts",
+      "find": "  if (response.write(chunk)) return true;",
+      "replace": "  response.write(chunk);\n  return true;",
+      "breaks": "a full socket is written to without bound, so a slow browser becomes unbounded heap in this process",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M20",
+      "subject": "THE CREDENTIAL EXPIRY FENCE",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    const remaining = input.deadlineMs - input.now();",
+      "replace": "    const remaining = input.deadlineMs + 86_400_000 - input.now();",
+      "breaks": "the fence is a day past the credential's expiry, so a stream outlives the credential that opened it -- which is the unbounded case the live lane has",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true,
+      "$note": "PUSHES THE DEADLINE FORWARD RATHER THAN WIDENING THE COMPARISON, and the difference is a SPINNING SUITE. The first draft changed `remaining <= 0` to `remaining <= -86_400_000`, which leaves `remaining` NEGATIVE -- and `blockMs = max(1, min(remaining, heartbeatMs))` then collapses to 1, so the pump busy-loops against a real Redis at a thousand reads a second and the suite never returns. Two orphaned vitest processes at 99% CPU for over an hour on the mini were that. A mutation that HANGS a suite is not a mutation that KILLS it, and a driver that counted the eventual timeout as a kill would be reporting coverage it does not have"
+    },
+    {
+      "id": "M21",
+      "subject": "at most ONE terminal frame",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    \"cursor-expired\": streamCursorExpired,\n  });",
+      "replace": "    \"cursor-expired\": streamCursorExpired,\n    sealed: streamJournalUnavailable,\n  });",
+      "breaks": "a completed stream gets a SECOND terminal frame after the producer's own, which is the duplicate the acceptance forbids and the exact defect in `streaming.service.ts`",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M22",
+      "subject": "the tenancy boundary IS the journal key",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "  return `${environmentId}/${streamId}`;",
+      "replace": "  return `${streamId}`;",
+      "breaks": "a stream id becomes a bearer capability across environments, so naming one environment reaches another's frames",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M23",
+      "subject": "the scope is the AUTHORIZATION's, never the path's",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    const key = journalStreamId(authorization.scope.environmentId, streamId);",
+      "replace": "    const key = journalStreamId(environmentId, streamId);",
+      "breaks": "a forged scope is honoured, because the key is built from the caller's own path segment rather than from the scope tenancy re-derived",
+      "rebuild": [],
+      "suites": [
+        "core-api-integration"
+      ],
+      "container": true,
+      "$note": "SURVIVES, AND IT IS RECORDED AS A SURVIVOR RATHER THAN EXPLAINED AWAY -- with the reason, because the reason is a finding. `authorizeEnvironment` RE-DERIVES its scope FROM the path id it was handed, so `authorization.scope.environmentId` and `environmentId` are EQUAL BY CONSTRUCTION on every request that gets past authorization, and no observation can separate them. The rule the controller follows is real and worth keeping -- it makes the ordering visible and it would matter the day tenancy resolved a slug, an alias or a default -- but it is NOT a separate behavioural property in this build, and a suite that claimed to prove it would be claiming coverage it does not have. What IS proven, by M26 below, is the property that actually protects the frames: authorization happens BEFORE the journal is touched at all"
+    },
+    {
+      "id": "M24",
+      "subject": "encode, then write, then advance",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "      if (!wrote) return stop(input.hasDisconnected() ? \"disconnected\" : \"consumer-too-slow\");\n      position = cursorForFrame;\n      lastSeq = frame.seq;",
+      "replace": "      position = cursorForFrame;\n      lastSeq = frame.seq;\n      if (!wrote) return stop(input.hasDisconnected() ? \"disconnected\" : \"consumer-too-slow\");",
+      "breaks": "a frame that was not written advances the position, so a resuming client is handed the frame AFTER the one it never received",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit"
+      ]
+    },
+    {
+      "id": "M25",
+      "subject": "a terminal frame a client will APPLY",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "      const frame = terminalErrorFrame(outcome.lastSeq + 1, Date.now(), fault().code);",
+      "replace": "      const frame = terminalErrorFrame(0, Date.now(), fault().code);",
+      "breaks": "the terminal frame is numbered 0, which every correct client's `admitFrame` calls a DUPLICATE and drops \u2014 leaving it with no explanation for a stream that stopped",
+      "rebuild": [],
+      "suites": [
+        "core-api-unit",
+        "core-api-integration"
+      ],
+      "container": true
+    },
+    {
+      "id": "M26",
+      "subject": "authorization happens BEFORE the journal is touched",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "find": "    const authorization = await authorizeEnvironment(app, operator, environmentId);",
+      "replace": "    const authorization = { scope: { environmentId } } as unknown as Awaited<ReturnType<typeof authorizeEnvironment>>;",
+      "breaks": "the four-gate RBAC decision is skipped entirely, so an authenticated operator with NO membership in the organization reads another tenant's frames -- and the refusal that would have named which gate closed never happens",
+      "rebuild": [],
+      "suites": [
+        "core-api-integration"
+      ],
+      "container": true,
+      "$note": "THE ROW M23 COULD NOT BE. M23 asks whether the key is built from the authorization's scope or the path's, and those are equal by construction; this asks whether the authorization HAPPENED, which is the property that actually keeps one tenant's frames away from another"
+    },
+    {
+      "id": "M27",
+      "subject": "the guest session's server-side expiry fence",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "    if (Number(parsed[1]) * 1_000 <= now()) return \"\";\n",
+      "replace": "",
+      "breaks": "a captured Cookie header is admitted for as long as the platform token behind it lives, so the lifetime is enforced only by the browser that chooses to send it -- which is the defect this tranche closed",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M28",
+      "subject": "the same-origin gate on a SameSite=None credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "  return origin === new URL(request.url).origin && contentType === \"application/json\";",
+      "replace": "  return contentType === \"application/json\";",
+      "breaks": "any site can POST a guest turn with the visitor's own partitioned cookie: the Origin comparison IS the CSRF defence here, and dropping it leaves only a content type an attacker sets themselves",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M29",
+      "subject": "the cookie scope hash binding a session to one agent AND one environment",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "    .update(`${agentId}:${environmentId}`)",
+      "replace": "    .update(agentId)",
+      "breaks": "one agent's guest session is accepted against every environment it exists in, so a session minted in staging reads production",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M30",
+      "subject": "CHIPS partitioning on the embed credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "  return `${serialized}; Partitioned`;",
+      "replace": "  return serialized;",
+      "breaks": "the guest cookie joins the unpartitioned jar, so every embedding site shares one visitor's session instead of each getting its own",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M31",
+      "subject": "the legacy value shape, which is the only thing an old browser still holds",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "find": "    if (parsed === null) return \"\";",
+      "replace": "    if (parsed === null) return value;",
+      "breaks": "a value with no expiry prefix is admitted unbounded, which re-opens exactly the hole the prefix closed -- and does it for every cookie already in a browser",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M32",
+      "subject": "the rate-limit key on an UNAUTHENTICATED mint",
+      "file": "apps/webapp/app/services/platosAgent.server.ts",
+      "find": "      \"X-Forwarded-For\": options.forwardedFor,\n",
+      "replace": "",
+      "breaks": "every guest-token mint arrives at the agent from the BFF's own address, so the per-IP bucket -- the only defence an unauthenticated mint has -- counts the whole internet as one caller",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M33",
+      "subject": "the visitor's disconnect reaching the agent",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "find": "      sessionToken,\n      { signal: request.signal },\n    );",
+      "replace": "      sessionToken,\n      {},\n    );",
+      "breaks": "a visitor closing the tab leaves the agent's turn running to completion against a socket nobody is reading, which is the leak a public guest surface can be pointed at",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M34",
+      "subject": "the refusal that must not reflect the agent's own bytes",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "find": "      return json({ error: \"Streaming failed\" }, { status: upstream.status || 502 });",
+      "replace": "      return json({ error: `Streaming failed: ${await upstream.text()}` }, { status: upstream.status || 502 });",
+      "breaks": "an upstream failure's detail -- provider error codes, and in the case this suite scripts a provider key -- is handed to an anonymous visitor",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M35",
+      "subject": "the anti-buffering directive that makes a proxied stream a stream",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "find": "        \"Cache-Control\": \"no-cache, no-transform\",",
+      "replace": "        \"Cache-Control\": \"no-cache\",",
+      "breaks": "an intermediary is free to gzip the event stream, which buffers it: the visitor gets the whole turn at the end, indistinguishable from a stream that never streamed",
+      "suites": [
+        "webapp-guest"
+      ]
+    },
+    {
+      "id": "M36",
+      "subject": "the mint's refusal to hand a browser a half-minted session",
+      "file": "apps/webapp/app/routes/api.v1.public.guest-token.ts",
+      "find": "      typeof record.token !== \"string\" || !record.token ||\n",
+      "replace": "",
+      "breaks": "an agent answering without a token still produces a Set-Cookie, so the browser holds a guest session whose value is the literal text undefined and every later turn 401s with no way to recover",
+      "suites": [
+        "webapp-guest"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
+  EVIDENCE_STATUSES,
   EXPECTED_BASELINES,
+  JUSTIFIED_EXCLUSION_FIELDS,
   V0_EXCLUDED_TEST_MODULE,
   V0_PRODUCTION_TEST_SEGMENT_ROUTE,
   completionBlockers,
@@ -871,4 +873,105 @@ test("capability design references cannot drift outside the governing manifest",
 test("Markdown generation is deterministic", () => {
   const matrix = readMatrix();
   assert.equal(renderMarkdown(matrix), renderMarkdown(clone(matrix)));
+});
+
+// ── WHAT A JUSTIFIED EXCLUSION HAS TO BE (WIN-267, M4.1) ────────────────────
+//
+// `justified-exclusion` is a terminal status for the completion gate: a cell
+// carrying it is closed WITHOUT evidence. The checker used to ask only that
+// `references` be non-empty strings, so `["out of scope"]` was a valid closure
+// and 107 browser cells could have been retired with a sentence each. These
+// controls pin the rule that replaced that: a reason naming the capability's own
+// route, and references that RESOLVE in this repository.
+//
+// Zero cells carry the status today. That is the point — the bar is set while
+// nobody is standing at it, and every control below shows the bar rejecting
+// something.
+test("evidencePolicy must define every status the checker accepts", () => {
+  const matrix = clone(readMatrix());
+  for (const status of EVIDENCE_STATUSES) {
+    assert.ok(
+      typeof matrix.evidencePolicy?.[status] === "string" && matrix.evidencePolicy[status].trim(),
+      `evidencePolicy leaves ${status} undefined; the committed matrix should not have shipped that way`
+    );
+  }
+  const stripped = clone(matrix);
+  delete stripped.evidencePolicy["justified-exclusion"];
+  assert.match(errorsFor(stripped), /evidencePolicy does not define the accepted evidence status justified-exclusion/);
+});
+
+test("the justified-exclusion rule covers every field the completion gate terminates on", () => {
+  // Derived from the gate's own reducers rather than from the three fields
+  // `validateEvidence` covers: a field missing here is a field where the rule
+  // silently does not run.
+  assert.deepEqual([...JUSTIFIED_EXCLUSION_FIELDS].sort(), [
+    "browserEvidence",
+    "concurrency",
+    "destructiveConfirmation",
+    "idempotency",
+    "permission",
+    "recovery",
+    "secretExposure",
+  ]);
+});
+
+test("MUTATION: a prose reference is not a justified exclusion", () => {
+  const matrix = clone(readMatrix());
+  const row = matrix.capabilities[0];
+  row.browserEvidence = {
+    status: "justified-exclusion",
+    reason: `Out of reach for ${row.currentRoute}.`,
+    references: ["browser evidence is out of scope for this milestone"],
+  };
+  assert.match(errorsFor(matrix), /justified-exclusion reference is prose, not a repository path/);
+});
+
+test("MUTATION: a justified exclusion without a route-specific reason fails", () => {
+  const matrix = clone(readMatrix());
+  const row = matrix.capabilities[0];
+  row.browserEvidence = {
+    status: "justified-exclusion",
+    reason: "Not reachable here.",
+    references: [".github/workflows/build-images.yml#build-candidates"],
+  };
+  assert.match(errorsFor(matrix), /is a justified-exclusion without a reason naming/);
+});
+
+test("MUTATION: a justified exclusion naming a path that does not exist fails", () => {
+  const matrix = clone(readMatrix());
+  const row = matrix.capabilities[0];
+  row.browserEvidence = {
+    status: "justified-exclusion",
+    reason: `Unreachable for ${row.currentRoute}.`,
+    references: ["scripts/there-is-no-such-file.mjs"],
+  };
+  assert.match(errorsFor(matrix, true), /justified-exclusion reference names a path that does not exist/);
+});
+
+test("MUTATION: a justified exclusion naming a workflow job the file does not declare fails", () => {
+  const matrix = clone(readMatrix());
+  const row = matrix.capabilities[0];
+  row.browserEvidence = {
+    status: "justified-exclusion",
+    reason: `Unreachable for ${row.currentRoute}.`,
+    references: [".github/workflows/build-images.yml#no-such-job"],
+  };
+  assert.match(errorsFor(matrix, true), /justified-exclusion reference names job no-such-job/);
+});
+
+test("a source-backed justified exclusion is accepted, and only then", () => {
+  const matrix = clone(readMatrix());
+  const row = matrix.capabilities[0];
+  row.browserEvidence = {
+    status: "justified-exclusion",
+    reason: `Authenticated browser evidence for ${row.currentRoute} is produced only by the release image gate.`,
+    references: [
+      ".github/workflows/build-images.yml#persisted-state",
+      "tests/browser-evidence/global-setup.ts",
+    ],
+  };
+  const errors = validateMatrix(matrix, { inspectRepository: true }).filter((error) =>
+    error.includes("justified-exclusion")
+  );
+  assert.deepEqual(errors, []);
 });

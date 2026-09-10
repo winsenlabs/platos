@@ -548,8 +548,44 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // docs catalog is not in the manifest, and both doors were spelling their
     // own literal. It lands on `apps-agent.test.suites`, a rule that already
     // existed.
-    "apps-agent": 6,
-    "apps-webapp": 0,
+    // WIN-268 (M4.2) 6 -> 8. TWO files, both `apps-agent.test.suites`, and both
+    // integration suites that SKIP without an explicit database URL:
+    // `mcp-platform/permission-gateway-forged-scope.integration.test.ts`, which
+    // drives the tier-2 forged-chain refusal against a real PostgreSQL, and
+    // `mcp-platform/tools/macros-replay-postgres.integration.test.ts`, which
+    // drives a recorded macro's params through the Json column and back. Neither
+    // could be a unit case: both defects live in what the STORE does with a
+    // where-clause and a Json value, and a doubled client answers whatever it was
+    // told to. NO LEDGER RULE CHANGED.
+    // WIN-268 (M4.2) 8 -> 9 with the `end_users` FORGED-scope tenancy proof
+    // salvaged from the refused P3 branch, on the same existing
+    // `apps-agent.test.suites` rule.
+    // WIN-269 (M4.3) 9 -> 10 with
+    // `tool-gateway/registry-incoherent-pair-postgres.integration.test.ts`, the
+    // (entity, environment) pair proved against a real PostgreSQL, on the same
+    // existing `apps-agent.test.suites` rule. It is the suite that REFUTED its
+    // own hypothesis: the incoherent pair is refused by the
+    // `EnvironmentEntityTool_ancestry` trigger, which `schema.prisma` does not
+    // model and which a doubled client would have accepted. NO LEDGER RULE
+    // CHANGED.
+    // WIN-267 (M4.1, this tranche) 10 -> 12 with the compatibility-alias
+    // deprecation signal: `src/http/deprecation-signal.ts`, the ONE declaration
+    // of the alias set and the module that stamps `Deprecation`/`Sunset`/`Link`
+    // from `applyApiSurface`, and `src/http/deprecation-signal.test.ts`, which
+    // reads those headers back off a real socket and joins the table to the
+    // generated manifest in both directions. They land on
+    // `apps-agent.source.runtime` and `apps-agent.test.suites` -- the same two
+    // rules T1's own pair landed on at the top of this comment -- so NO LEDGER
+    // RULE CHANGED. `api-surface.ts`, `generate-control-plane.mjs` and the
+    // manifest/document/report artifacts are edited IN PLACE and add no file.
+    "apps-agent": 12,
+    // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
+    // and embed boundary over two real `node:http` listeners with `fetch`
+    // unstubbed. It is the FIRST file this programme has added under
+    // `apps/webapp`, which is why this row moves off zero for the first time --
+    // and it lands on the `apps-webapp.test.suites` rule that already existed, so
+    // NO LEDGER RULE CHANGED.
+    "apps-webapp": 1,
     // 0 -> 19. WIN-297 makes apps/core-api a real process: 12 source files
     // (composition/{adapter-bindings,registry}, config/{schema,load},
     // health/readiness, http/{health.controller,http.module,token},
@@ -704,7 +740,25 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two identical requests against a real PostgreSQL and a real Redis and
     // reads the row count back with `psql`. Every one lands on a rule that
     // already existed; NO LEDGER RULE CHANGED.
-    "apps-core-api": 80,
+    //
+    // WIN-272 (M4.6) 80 -> 87. SEVEN files, all in `apps/core-api/src`:
+    //
+    //   THREE under `apps-core-api.source.transports` — `transports/ws/
+    //   stream-errors.ts` (the six refusals this lane owns), `transports/ws/sse.ts`
+    //   (the bytes, the keep-alive and the socket's flow control) and
+    //   `transports/ws/streams.controller.ts` (the route, the read loop and the
+    //   credential fence);
+    //
+    //   FOUR under `apps-core-api.test.suites` — `sse.test.ts`,
+    //   `stream-pump.test.ts` and `stream-errors.test.ts` (one suite split in three
+    //   under the §6 file-size budget) plus `composition/
+    //   stream-lane.integration.test.ts`, the one that drives the lane over a real
+    //   socket against a real PostgreSQL and a real Redis.
+    //
+    // 3 + 4 = 7, and 80 + 7 = 87. `http/http.module.ts` and `http/api-surface.ts`
+    // are EDITS. Every one of the seven lands on a rule that already existed; NO
+    // LEDGER RULE CHANGED.
+    "apps-core-api": 87,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1321,7 +1375,51 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // gains an `insert` half inside the EXISTING `identity-bearer.ts`, and the
     // domain gains its mint planning inside the EXISTING `bearer-token.ts`, so
     // both are edits.
-    packages: 1505,
+    //
+    // WIN-271 (M4.5) 1513 -> 1532. NINETEEN files across TWO package trees, each
+    // itemised where it lands.
+    //
+    //   FOURTEEN NET in `packages/adapters/channel-slack`. The directory held
+    //   TWO generated placeholders and now holds SIXTEEN real files, and
+    //   adoption replaces the placeholders in place rather than adding beside
+    //   them — so this is the only term in this table that is a NET rather than a
+    //   count. Nine are production (`adapter`, `vendor`, `verify`, `normalize`,
+    //   `provider`, `failure`, `send`, `index`, and `provider`'s key reader),
+    //   two are test support (`published-vector`, `fixtures`), one is
+    //   `far-side.ts` — a REAL `node:http` server the outbound suites drive —
+    //   and five are suites. They land on `packages.adapters.source` and
+    //   `.test`, rules that already matched this directory's placeholders.
+    //
+    //   FIVE in `packages/contexts/channels`: the `ChannelRuntime` port, the
+    //   `admitSignedDelivery` use case, the inbound conformance harness the
+    //   adapter's suite drives, `domain/delivery.ts` and its suite. The context's
+    //   `errors.ts`, `domain/index.ts`, `application/index.ts`,
+    //   `application/ports/index.ts`, `dependencies.ts`,
+    //   `testing/fixtures.ts` and `testing/in-memory-adapters.ts` are all
+    //   WIDENED rather than added, and `docs/error-taxonomy.json` — which gains
+    //   the five new codes — is tracked already.
+    //
+    // WIN-272 (M4.6) 1532 -> 1542. TEN files across TWO package trees, each
+    // itemised where it lands.
+    //
+    //   SEVEN NET in `packages/adapters/redis-streams`. The directory held TWO
+    //   generated placeholders and now holds NINE real files, and adoption
+    //   replaces the placeholders in place rather than adding beside them — so
+    //   this term is a NET, exactly as `channel-slack`'s fourteen was. Four are
+    //   production (`client`, `journal`, `event-bus`, and `adapter`/`index`
+    //   replacing the placeholders), one is test support (`harness`, which starts
+    //   a real Redis container and takes the URL off it) and three are suites, two
+    //   of them integration. They land on `packages.adapters.source` and `.test`,
+    //   rules that already matched this directory's placeholders.
+    //
+    //   THREE in `packages/kernel`: `vo/stream-frame.ts` (the one stream
+    //   envelope), its suite, and `ports/stream-journal.ts` (the twelfth kernel
+    //   port). `vo/index.ts` and `ports/index.ts` are WIDENED rather than added,
+    //   and the kernel term is the one that has moved least often in this whole
+    //   table.
+    //
+    // NO LEDGER RULE CHANGED. 1532 + 7 + 3 = 1542.
+    packages: 1542,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1648,7 +1746,28 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // breaking-change ratchet compares against. Both are `retain`, and both are
     // under `docs/**` and therefore PROTECTED, which is why protectedCount moves
     // +2 while move-refactor moves +5.
-    "docs-content": 19,
+    // WIN-268 (M4.2) 19 -> 21. TWO files, the MCP surface's ORM register, and
+    // they land on two DIFFERENT existing rules rather than one:
+    // `docs/audits/win-268-mcp-store-ownership.json` on
+    // `docs-content.evidence.audit-receipts` (19 -> 20) and its rendered
+    // `.md` on `docs-content.evidence.audit-notes` (12 -> 13). Both are
+    // `retain`, both are under `docs/**` and therefore PROTECTED, which is why
+    // protectedCount moves +2 with them. NO LEDGER RULE CHANGED.
+    // WIN-269 (M4.3) 21 -> 23. TWO files, the TOOL LIFECYCLE's ORM register,
+    // landing on the same two existing rules its WIN-268 sibling did:
+    // `docs/audits/win-269-tool-lifecycle-reach.json` on
+    // `docs-content.evidence.audit-receipts` (20 -> 21) and its rendered `.md`
+    // on `docs-content.evidence.audit-notes` (13 -> 14). Both are `retain`,
+    // both are under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    // WIN-272 (M4.6) 23 -> 24. ONE file, and it is a RECEIPT rather than a pair:
+    // `docs/audits/M4.6-stream-vocabulary.json`, the first complete census of what
+    // the V1 stream lanes put on a wire — sixteen rows across forty-six emit sites.
+    // There is no rendered `.md` beside it, unlike its two predecessors, because
+    // its whole content is a machine-compared list and a prose rendering would be a
+    // second copy nothing joins. It lands on the existing
+    // `docs-content.evidence.audit-receipts` rule (21 -> 22), is `retain`, is under
+    // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 24,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -1739,7 +1858,65 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // tranche's mutation ledger: twenty mutations, twenty killed, zero
     // survivors, each applied to ONE file and run individually — eleven on the
     // laptop and nine on the mini against a real PostgreSQL and Redis.
-    "root-infra": 67,
+    // WIN-268 (M4.2) 67 -> 69. TWO files, both `root-infra.tooling.scripts`
+    // (98 -> 100): `scripts/arch/mcp-store-ownership.mjs`, the register that
+    // derives every MCP-surface store call site from the Prisma schema, the
+    // ownership map, the composition root and each context's published
+    // contract, and `scripts/arch/mcp-store-ownership.test.mjs`, which proves
+    // the derivation joins to all four rather than to itself. The boundary rule
+    // this tranche adds is an edit to `scripts/arch/boundary-rules.mjs` and adds
+    // no file. NO LEDGER RULE CHANGED.
+    // WIN-268 (M4.2) 69 -> 70 with `scripts/mutations-win268-m42.json`, this
+    // tranche's mutation ledger: twenty-four mutations, twenty-two killed, two
+    // declared equivalent with the proof, zero survivors. It takes the same
+    // blanket `root-infra.tooling.scripts` rule its nine predecessors took
+    // (100 -> 101). NO LEDGER RULE CHANGED.
+    // WIN-268 (M4.2) 70 -> 72 with the STATIC half of that proof —
+    // `scripts/arch/end-user-presence-ancestry.mjs` and its suite, also salvaged.
+    // The scanner takes `root-infra.tooling.scripts` (101 -> 102) and the suite
+    // `root-infra.test.script-suites`. NO LEDGER RULE CHANGED.
+    // WIN-269 (M4.3) 72 -> 74 with the TOOL LIFECYCLE register and its second
+    // reconciliation: `scripts/arch/tool-lifecycle-reach.mjs` on the blanket
+    // `root-infra.tooling.scripts` rule (102 -> 103) and
+    // `scripts/arch/tool-lifecycle-reach.test.mjs` on
+    // `root-infra.test.script-suites`. The suite is the SECOND reconciliation
+    // that gate needs: it re-sums the site total three independent ways, re-counts
+    // the composition delta from the raw site list, and re-checks the disjointness
+    // of the two registers' roots against the sibling module's own export. NO
+    // LEDGER RULE CHANGED.
+    // WIN-269 (M4.3) 74 -> 75 with `scripts/mutations-win269-m43.json`, this
+    // tranche's mutation ledger: eleven mutations, eleven killed, zero
+    // survivors and zero declared equivalent. It takes the same blanket
+    // `root-infra.tooling.scripts` rule its ten predecessors took (103 -> 104).
+    // NO LEDGER RULE CHANGED.
+    // WIN-271 (M4.5) 80 -> 83 with this tranche's mutation sweep, and it is
+    // THREE files rather than the one its ten predecessors took, because this
+    // sweep is RE-RUNNABLE rather than described:
+    // `scripts/mutations-win271-m45.json` (the ledger — nineteen mutations,
+    // nineteen killed, each row naming the CASE that noticed),
+    // `scripts/win271-mutation-plan.json` (the rows it applies) and
+    // `scripts/run-win271-mutations.mjs` (the driver, which was wrong three
+    // times and whose three wrong versions are recorded as a control). All three
+    // take the same blanket `root-infra.tooling.scripts` rule its predecessors
+    // took (104 -> 107). NO LEDGER RULE CHANGED.
+    // WIN-272 (M4.6) 83 -> 88. FIVE files, in two groups.
+    //
+    //   TWO are the drift-check M0.4 §2 NAMES in its own WS and SSE rows and which
+    //   did not exist: `scripts/arch/stream-contracts.mjs` and
+    //   `scripts/arch/stream-contracts.test.mjs`, its second reconciliation, which
+    //   exercises each of the five rules against a copy of the REAL tree with one
+    //   thing changed.
+    //
+    //   THREE are this tranche's mutation sweep, and it is three rather than one
+    //   for the reason WIN-271's was three: the sweep is RE-RUNNABLE rather than
+    //   described. `scripts/win272-mutation-plan.json` (the rows),
+    //   `scripts/run-win272-mutations.mjs` (the driver, which designs around all
+    //   three of the previous driver's recorded mistakes) and
+    //   `scripts/mutations-win272-m46.json` (the ledger it writes).
+    //
+    // All five take the same blanket `root-infra.tooling.scripts` rule every script
+    // above them took (107 -> 112). NO LEDGER RULE CHANGED.
+    "root-infra": 88,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -1837,7 +2014,117 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   //
   // AND P1's mutation ledger 1690 -> 1691. ONE file, `root-infra`, itemised on
   // that area's delta above: 6 + 0 + 80 + 4 + 10 + 1505 + 19 + 67 = 1691.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1691);
+  //
+  // WIN-268 (M4.2) THE REGISTER 1691 -> 1695. FOUR files across TWO areas, each
+  // itemised on its own delta above: `root-infra` +2 (the register and its
+  // suite) and `docs-content` +2 (the register's JSON receipt and its rendered
+  // note). The eight-key re-derivation from the merged `expectedDeltas` is
+  // 6 + 0 + 80 + 4 + 10 + 1505 + 21 + 69 = 1695.
+  //
+  // AND THE TWO REAL-DATABASE SUITES 1695 -> 1697. TWO files, both `apps-agent`,
+  // itemised on that area's delta above: the tier-2 forged-chain refusal and the
+  // macro params round trip. The eight-key re-derivation is
+  // 8 + 0 + 80 + 4 + 10 + 1505 + 21 + 69 = 1697.
+  //
+  // AND THE MUTATION LEDGER 1697 -> 1698. ONE file, `root-infra`, itemised on
+  // that area's delta above: 8 + 0 + 80 + 4 + 10 + 1505 + 21 + 70 = 1698.
+  //
+  // AND THE SALVAGED end_users PROOF 1698 -> 1701. THREE files across TWO areas:
+  // `apps-agent` +1 (the real-database tenancy suite) and `root-infra` +2 (the
+  // static ancestry scanner and its suite). The eight-key re-derivation is
+  // 9 + 0 + 80 + 4 + 10 + 1505 + 21 + 72 = 1701.
+  //
+  // WIN-269 (M4.3) THE TOOL LIFECYCLE REGISTER 1701 -> 1705. FOUR files across
+  // TWO areas, each itemised on its own delta above: `root-infra` +2 (the
+  // register and its second reconciliation) and `docs-content` +2 (the
+  // register's JSON receipt and its rendered note). It is the same shape as
+  // WIN-268's register four paragraphs above, over the roots that one
+  // deliberately excludes. The eight-key re-derivation from the merged
+  // `expectedDeltas` is 9 + 0 + 80 + 4 + 10 + 1505 + 23 + 74 = 1705.
+  //
+  // AND WIN-269's MUTATION LEDGER 1705 -> 1706. ONE file, `root-infra`,
+  // itemised on that area's delta above: 9 + 0 + 80 + 4 + 10 + 1505 + 23 + 75
+  // = 1706.
+  //
+  // AND WIN-269's REAL-DATABASE PAIR PROOF 1706 -> 1707. ONE file,
+  // `apps-agent`, itemised on that area's delta above:
+  // 10 + 0 + 80 + 4 + 10 + 1505 + 23 + 75 = 1707.
+  //
+  // WIN-270 (M4.4) THE GENERATED V1 SDK 1707 -> 1719. TWELVE files across TWO
+  // areas, each itemised on its own delta above.
+  //
+  //   `packages` +8 (1505 -> 1513), and it is 3 + 5.
+  //
+  //   THREE in `packages/platos-client`: `src/generated/v1.ts` (emitted),
+  //   `src/v1-transport.ts` (the hand-written auth/retry half) and
+  //   `tests/v1-contract.test.ts`. Nothing else — `src/errors.ts` and
+  //   `src/index.ts` are edited IN PLACE and add no file.
+  //
+  //   FIVE in `packages/platos-client-py`: `platos_client/generated/__init__.py`
+  //   and `platos_client/generated/v1.py` (emitted),
+  //   `platos_client/v1_transport.py`, `tests/test_v1_contract.py`, and the
+  //   package-scoped `.gitignore` the interpreter's byte-cache needs once
+  //   `pnpm test:sdk-v1` runs one here. `platos_client/errors.py` and
+  //   `platos_client/__init__.py` are edited in place.
+  //
+  //   `root-infra` +4 (75 -> 79): `scripts/sdk/v1-contract.mjs` (the generator
+  //   and the drift gate), `scripts/sdk/v1-contract.test.mjs` (its perturbation
+  //   controls and the Python execution), `scripts/mutations-win270-m44.json`
+  //   (this tranche's mutation ledger, the same shape as WIN-268's and
+  //   WIN-269's) and `tests/sdk-contract/v1-fixtures.json` (the ONE fixture both
+  //   languages drive — it is at the repository root and not inside either SDK
+  //   precisely because neither owns it).
+  //
+  // NO LEDGER RULE CHANGED: all twelve land on rules that already existed, which
+  // is why `node scripts/v1-ledger.mjs --check` is green without an edit to
+  // `docs/v1-ledger-rules.json` beyond its regenerated fingerprint. The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 10 + 0 + 80 + 4 + 10 + 1513 + 23 + 79 = 1719.
+  //
+  // AND WIN-270's CHANGESET 1719 -> 1720. ONE file, `root-infra`, itemised on
+  // that area's delta above: `.changeset/win-270-generated-v1-sdk.md`, the
+  // package-version intent CHANGESETS.md requires for a change that moves a
+  // publishable package's version. Four of the five packages this tranche edits
+  // are non-private with `publishConfig.access: public`, so the entry is
+  // mandatory rather than optional, and `pnpm exec changeset status` reads it
+  // without complaint. 10 + 0 + 80 + 4 + 10 + 1513 + 23 + 80 = 1720.
+  //
+  // WIN-271 (M4.5) 1720 -> 1742. TWENTY-TWO files across TWO areas, each
+  // itemised on its own delta above: `packages` +19 (the ChannelRuntime port,
+  // the channel-slack adoption's fourteen NET, and the delivery rule) and
+  // `root-infra` +3 (the mutation ledger, its plan and its driver). The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 10 + 0 + 80 + 4 + 10 + 1532 + 23 + 83 = 1742.
+  //
+  // WIN-272 (M4.6) 1742 -> 1765. TWENTY-THREE files across FOUR areas, each
+  // itemised on its own delta above: `packages` +10 (seven NET in the newly adopted
+  // `redis-streams`, three in `packages/kernel`), `apps-core-api` +7 (the stream
+  // lane's three modules and its four suites), `root-infra` +5 (the stream-contract
+  // drift-check, its second reconciliation, and the mutation sweep's plan, driver
+  // and ledger) and `docs-content` +1 (the stream vocabulary census that drift-check
+  // joins the tree to). The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 10 + 0 + 87 + 4 + 10 + 1542 + 24 + 88 = 1765.
+  //
+  // WIN-272 (M4.6) TRANCHE 2 1765 -> 1766. ONE file, itemised on the `apps-webapp`
+  // delta above, and the first this programme has added there:
+  // `apps/webapp/test/publicGuestBoundary.test.ts`, the public-guest and embed
+  // boundary over two real `node:http` listeners. The two other product/suite files
+  // this tranche touches -- `publicGuestSession.server.ts` and
+  // `stream-lane.integration.test.ts` -- are edited IN PLACE and add none, and the two
+  // public route modules are mutation TARGETS that are not edited at all. The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 10 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1766.
+  //
+  // WIN-267 (M4.1) 1766 -> 1768. TWO files, both itemised on the `apps-agent`
+  // delta above and both in `src/http`: `deprecation-signal.ts` and
+  // `deprecation-signal.test.ts`. Nothing else this tranche adds a file --
+  // `api-surface.ts`, `generate-control-plane.mjs`, `contract-map.mjs` and its
+  // suite, `route-capability-parity.mjs` and its suite, `ci-policy.test.mjs`,
+  // `ci.yml`, the capability matrix and every generated artifact are edited IN
+  // PLACE. The eight-key re-derivation from the merged `expectedDeltas` is
+  // 12 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1768.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1768);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2011,7 +2298,84 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // AND P1's mutation ledger 1690 -> 1691, the same one file, reached here by
     // summing the per-area counts instead of reading the total.
-    rulesDocument.baseline.totalFiles + 1691
+    //
+    // WIN-268 (M4.2) THE REGISTER 1691 -> 1695 -- the FOURTEENTH hand move of
+    // this second reconciliation. The same four files as the `totalFiles`
+    // assertion above (the register and its suite in `root-infra`, its JSON
+    // receipt and rendered note in `docs-content`), reached here by summing the
+    // per-area counts instead of reading the total, so the two arithmetics can
+    // disagree and be caught. 1691 + 4 = 1695.
+    //
+    // AND THE TWO REAL-DATABASE SUITES 1695 -> 1697 -- the FIFTEENTH hand move.
+    // The same two `apps-agent` files as the `totalFiles` assertion above,
+    // reached here by summing the per-area counts instead of reading the total.
+    // 1695 + 2 = 1697.
+    //
+    // AND THE MUTATION LEDGER 1697 -> 1698 -- the SIXTEENTH hand move. The same
+    // one `root-infra` file, reached here by summing the per-area counts.
+    //
+    // AND THE SALVAGED end_users PROOF 1698 -> 1701 -- the SEVENTEENTH hand move.
+    // The same three files as the `totalFiles` assertion above, reached here by
+    // summing the per-area counts instead of reading the total.
+    //
+    // AND WIN-269's TOOL LIFECYCLE REGISTER 1701 -> 1705 -- the EIGHTEENTH hand
+    // move. The same four files as the `totalFiles` assertion above (the
+    // register and its second reconciliation in `root-infra`, its JSON receipt
+    // and rendered note in `docs-content`), reached here by summing the per-area
+    // counts instead of reading the total, so the two arithmetics can disagree
+    // and be caught. 1701 + 4 = 1705.
+    //
+    // AND WIN-269's MUTATION LEDGER 1705 -> 1706 -- the NINETEENTH hand move.
+    // The same one `root-infra` file, reached here by summing the per-area
+    // counts. 1705 + 1 = 1706.
+    //
+    // AND WIN-269's REAL-DATABASE PAIR PROOF 1706 -> 1707 -- the TWENTIETH hand
+    // move. The same one `apps-agent` file, reached here by summing the per-area
+    // counts instead of reading the total. 1706 + 1 = 1707.
+    //
+    // AND WIN-270's GENERATED V1 SDK 1707 -> 1719 -- the TWENTY-FIRST hand move.
+    // The same twelve files as the `totalFiles` assertion above (eight in
+    // `packages` across the two client packages, four in `root-infra`: the
+    // generator, its perturbation-control suite, the mutation ledger, and the
+    // one cross-language fixture), reached here by summing the per-area counts
+    // instead of reading the total, so the two arithmetics can disagree and be
+    // caught. 1707 + 12 = 1719.
+    //
+    // AND WIN-270's CHANGESET 1719 -> 1720 -- the TWENTY-SECOND hand move. The
+    // same one `root-infra` file, reached here by summing the per-area counts.
+    // 1719 + 1 = 1720.
+    //
+    // AND WIN-271 (M4.5) 1720 -> 1742 -- the TWENTY-THIRD hand move. The same
+    // twenty-two files as the `totalFiles` assertion above (nineteen in
+    // `packages` -- fourteen NET in the newly adopted `channel-slack` and five in
+    // `channels` -- and three in `root-infra`: the mutation ledger, its plan and
+    // its driver), reached here by summing the per-area counts instead of reading
+    // the total, so the two arithmetics can disagree and be caught.
+    // 1720 + 22 = 1742.
+    //
+    // AND WIN-272 (M4.6) 1742 -> 1765 -- the TWENTY-FOURTH hand move. The same
+    // twenty-three files as the `totalFiles` assertion above (ten in `packages`,
+    // seven in `apps-core-api`, five in `root-infra` and one in `docs-content`),
+    // reached here by summing the per-area counts instead of reading the total, so
+    // the two arithmetics can disagree and be caught. 1742 + 23 = 1765.
+    //
+    // AND WIN-272 (M4.6) TRANCHE 2 1765 -> 1766 -- the TWENTY-FIFTH hand move. The
+    // same ONE file as the `totalFiles` assertion above
+    // (`apps/webapp/test/publicGuestBoundary.test.ts`, the first this programme has
+    // added under `apps/webapp`), reached here by summing the per-area counts instead
+    // of reading the total. This is the reconciliation that has caught drift five
+    // times and it caught this tranche too: `audit:v1-ledger` was green, the
+    // `totalFiles` arithmetic above had already been moved to 1766, and this one was
+    // still 1765. 1765 + 1 = 1766.
+    //
+    // AND WIN-267 (M4.1) 1766 -> 1768 -- the TWENTY-SIXTH hand move. The same TWO
+    // files as the `totalFiles` assertion above (`src/http/deprecation-signal.ts`
+    // and its suite, both under `apps-agent`), reached here by summing the per-area
+    // counts instead of reading the total. Moved in the SAME edit as the assertion
+    // above rather than after it went red, which is the discipline the five prior
+    // catches earned: this reconciliation exists precisely because the two
+    // arithmetics can disagree. 1766 + 2 = 1768.
+    rulesDocument.baseline.totalFiles + 1768
   );
 });
 

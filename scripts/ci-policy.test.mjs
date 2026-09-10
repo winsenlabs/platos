@@ -111,6 +111,14 @@ const v1ReleaseGateCommands = [
   // the canonical-row ownership map non-regressable.
   "pnpm audit:kernel-content",
   "pnpm test:kernel-content",
+  // WIN-272 (M4.6). The drift-check M0.4 §2 NAMES in its own WS and SSE rows —
+  // "`check:stream-contracts`: AST-walk all `.emit(` sites -> every emitted `t`
+  // has a contract entry & vice-versa (orphan = fail)" — and which did not exist.
+  // It sits beside `kernel-content` because it is the other half of the same
+  // claim: that one keeps the kernel from holding what it should not, and this one
+  // keeps the stream vocabulary from being whatever the last `.emit(` decided.
+  "pnpm audit:stream-contracts",
+  "pnpm test:stream-contracts",
   "pnpm audit:sole-writer",
   "pnpm test:sole-writer",
   // WIN-297: rule (j) narrowed from a package to the one file, plus the
@@ -140,8 +148,66 @@ const v1ReleaseGateCommands = [
   "pnpm test:error-taxonomy",
   "pnpm audit:secret-response-census",
   "pnpm test:secret-response-census",
+  // WIN-268 (M4.2), +2. The MCP surface's ORM register. Same shape as the
+  // secret-response census above it and admitted for the same reason: it is a
+  // pinned artifact re-derived from the Prisma schema, the ownership map, the
+  // composition root and every context's published contract, and its staleness
+  // is visible to nothing but its own gate. Without these two lines a store call
+  // site could be added to, or removed from, the MCP surface — or a context
+  // could become composed — with a green CI and a register describing a tree
+  // that is gone.
+  "pnpm audit:mcp-store-ownership",
+  "pnpm test:mcp-store-ownership",
+  // WIN-269 (M4.3), +2. The TOOL LIFECYCLE's ORM register — the sibling of the
+  // two lines above, over the roots those roots deliberately exclude
+  // (`apps/agent/src/tool-gateway`). It is admitted for the same reason and for
+  // one more: its generator asserts the two registers' roots are DISJOINT, so
+  // without these lines somebody could widen either root list and turn one
+  // register into a superset of the other while both stayed green. It also
+  // classifies every slot of `ToolsDependencies` against the composition root,
+  // which is the measurement that says what composing `tools` would take — a
+  // claim that goes stale the moment a slot is added to the context.
+  "pnpm audit:tool-lifecycle-reach",
+  "pnpm test:tool-lifecycle-reach",
+  // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
+  // the `end_users` tenancy conjunction: every relation the presence clause names
+  // must resolve to a model that carries the organization ancestry rule. The
+  // dynamic half is a real-database suite that cannot run in this job, so without
+  // these two lines a relation could be added to that clause — widening which
+  // rows an MCP caller can reach across tenants — with nothing in CI to see it.
+  "pnpm audit:end-user-presence-ancestry",
+  "pnpm test:end-user-presence-ancestry",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
+  // WIN-272 (M4.6), +1. The PUBLIC-GUEST AND EMBED BOUNDARY, over two real
+  // `node:http` listeners with `fetch` unstubbed. Named here rather than left to
+  // `pnpm test:webapp`, for two reasons, and the second is the load-bearing one.
+  // `pnpm test:webapp` is NOT a CI gate and is RED on `v1` itself -- six test files
+  // fail there, and `git log v1..HEAD -- apps/webapp` is empty, so a suite added to
+  // that runner would have been a suite nothing ran. And the filesystem enumeration
+  // further down cannot reach this one: it walks the V1 packages for
+  // `*.integration.test.ts`, and this surface is neither a V1 package nor named that
+  // way. Without this line the unauthenticated guest mint, the same-origin gate on a
+  // `SameSite=None` credential, the per-agent cookie scope and the guest session
+  // expiry could every one of them be broken with a green CI.
+  "pnpm test:public-guest-boundary",
+  // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
+  // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
+  // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
+  // exactly: `Deprecation: true` + `Sunset` + a successor `Link`. Nothing in the
+  // repository emitted any of the three, so the clause had no producer and no
+  // observation behind it.
+  //
+  // Named here rather than left to a whole-app agent run for the reason every line
+  // above is named: there IS no whole-app agent run in CI. Every agent suite this
+  // pipeline executes is an explicitly listed file, so a suite not on a list is a
+  // suite nothing runs -- which is the state `src/http/api-surface.test.ts` was
+  // already in, and it is WIN-267 T1's own proof that none of the 300 REST
+  // operations moved. This command needs no prerequisite build: the suite imports
+  // only `src/http/*` and the generated manifest, so it runs on a checkout that has
+  // only ever seen `pnpm install`, which is the property the stream-contracts gate
+  // learned to require the hard way.
+  "pnpm --filter platos-agent exec vitest run src/http/deprecation-signal.test.ts",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   // WIN-299 (M2.6). audit:advisory:check now fails on any un-dispositioned
@@ -294,6 +360,14 @@ const expectedV1EvidenceCommands = [
   // the canonical-row ownership map non-regressable.
   "pnpm audit:kernel-content",
   "pnpm test:kernel-content",
+  // WIN-272 (M4.6). The drift-check M0.4 §2 NAMES in its own WS and SSE rows —
+  // "`check:stream-contracts`: AST-walk all `.emit(` sites -> every emitted `t`
+  // has a contract entry & vice-versa (orphan = fail)" — and which did not exist.
+  // It sits beside `kernel-content` because it is the other half of the same
+  // claim: that one keeps the kernel from holding what it should not, and this one
+  // keeps the stream vocabulary from being whatever the last `.emit(` decided.
+  "pnpm audit:stream-contracts",
+  "pnpm test:stream-contracts",
   // WIN-260 (M2.5). §5.3's clock discipline, which four context headers state in
   // PROSE and nothing checked: `Date.now()`, a no-argument `new Date()`,
   // `performance.now()`, `Math.random()` and `setTimeout` in a context's domain
@@ -352,8 +426,55 @@ const expectedV1EvidenceCommands = [
   "pnpm test:error-taxonomy",
   "pnpm audit:secret-response-census",
   "pnpm test:secret-response-census",
+  // WIN-268 (M4.2), +2. The MCP surface's ORM register. Same shape as the
+  // secret-response census above it and admitted for the same reason: it is a
+  // pinned artifact re-derived from the Prisma schema, the ownership map, the
+  // composition root and every context's published contract, and its staleness
+  // is visible to nothing but its own gate. Without these two lines a store call
+  // site could be added to, or removed from, the MCP surface — or a context
+  // could become composed — with a green CI and a register describing a tree
+  // that is gone.
+  "pnpm audit:mcp-store-ownership",
+  "pnpm test:mcp-store-ownership",
+  // WIN-269 (M4.3), +2. The TOOL LIFECYCLE's ORM register — the sibling of the
+  // two lines above, over the roots those roots deliberately exclude
+  // (`apps/agent/src/tool-gateway`). It is admitted for the same reason and for
+  // one more: its generator asserts the two registers' roots are DISJOINT, so
+  // without these lines somebody could widen either root list and turn one
+  // register into a superset of the other while both stayed green. It also
+  // classifies every slot of `ToolsDependencies` against the composition root,
+  // which is the measurement that says what composing `tools` would take — a
+  // claim that goes stale the moment a slot is added to the context.
+  "pnpm audit:tool-lifecycle-reach",
+  "pnpm test:tool-lifecycle-reach",
+  // WIN-268 (M4.2), +2 (salvaged from the refused P3 branch). The STATIC half of
+  // the `end_users` tenancy conjunction: every relation the presence clause names
+  // must resolve to a model that carries the organization ancestry rule. The
+  // dynamic half is a real-database suite that cannot run in this job, so without
+  // these two lines a relation could be added to that clause — widening which
+  // rows an MCP caller can reach across tenants — with nothing in CI to see it.
+  "pnpm audit:end-user-presence-ancestry",
+  "pnpm test:end-user-presence-ancestry",
   "pnpm test:webapp-image-inventory",
   "pnpm test:webapp-inventory-contract",
+  "pnpm test:public-guest-boundary",
+  // WIN-267 (M4.1), +1. THE COMPATIBILITY-ALIAS DEPRECATION SIGNAL, read back off
+  // a real socket. WIN-267's acceptance asks that "aliases preserve old clients and
+  // emit deprecation metadata", and ADR M0.4 §4.2's REST row names the wire signal
+  // exactly: `Deprecation: true` + `Sunset` + a successor `Link`. Nothing in the
+  // repository emitted any of the three, so the clause had no producer and no
+  // observation behind it.
+  //
+  // Named here rather than left to a whole-app agent run for the reason every line
+  // above is named: there IS no whole-app agent run in CI. Every agent suite this
+  // pipeline executes is an explicitly listed file, so a suite not on a list is a
+  // suite nothing runs -- which is the state `src/http/api-surface.test.ts` was
+  // already in, and it is WIN-267 T1's own proof that none of the 300 REST
+  // operations moved. This command needs no prerequisite build: the suite imports
+  // only `src/http/*` and the generated manifest, so it runs on a checkout that has
+  // only ever seen `pnpm install`, which is the property the stream-contracts gate
+  // learned to require the hard way.
+  "pnpm --filter platos-agent exec vitest run src/http/deprecation-signal.test.ts",
   "pnpm test:advisory",
   "pnpm audit:advisory:check",
   "pnpm audit:advisory:nonvacuity",
@@ -427,6 +548,38 @@ const expectedV1EvidenceCommands = [
   // the same class as the manifest it is built from.
   "pnpm audit:openapi-compat",
   "pnpm test:openapi-compat",
+  // WIN-270 (M4.4) (+2). THE GENERATED SDK, AND THE PROOF IT IS STILL JOINED.
+  //
+  // `scripts/sdk/v1-contract.mjs` emits the TypeScript client, the Python client
+  // and the cross-language fixture from three artifacts nobody hand-edits: the
+  // V1 OpenAPI document the pair above ratchets, the operation manifest, and
+  // `apps/core-api/src/http/idempotency-policy.ts`. `audit:` fails when a
+  // committed client differs from what those inputs emit today, which is what
+  // "a generated client cannot drift" has to mean to be a claim rather than a
+  // hope. `test:` is the half that matters more: it PERTURBS each real input in
+  // memory -- reclassifies a mint, deletes a response field, renames the
+  // idempotency header, drops an operation -- and asserts the emitted artifacts
+  // move, so a generator that had stopped reading an input could not stay green.
+  // It also EXECUTES the Python suite against the same fixture, because a
+  // cross-language fixture only one language ever runs is not one.
+  "pnpm audit:sdk-v1",
+  "pnpm test:sdk-v1",
+  // WIN-270 (M4.4) (+1). THE PUBLISHED SDK SUITES, WHICH RAN NOWHERE.
+  //
+  // No job in this workflow named `packages/platos-client`,
+  // `packages/platos-embed`, `packages/platos-react-widget` or
+  // `packages/platos-token-mint`, so four published packages' vitest suites were
+  // green only on somebody's laptop. `test:v1-packages` above selects
+  // `@platos/kernel`, the contexts, the adapters, `@platos/core-api` and
+  // `@platos/mcp-stdio` -- deliberately, because it is the V1 deployable's
+  // graph -- and the SDKs are not in it. `pnpm test` would have covered them and
+  // is not run by CI either.
+  //
+  // This line closes that, and it is where the WIN-270 refusal cases live: the
+  // widget's coded-refusal cases, the embed's total-refusal cases, and the 46
+  // TypeScript halves of the cross-language fixture. Without it the only part of
+  // the SDK work CI would execute is the generator gate above.
+  "pnpm test:sdk-clients",
 ];
 // WIN-284. The two coverage commands inside the V1 evidence step, listed
 // separately so each gets its own removal and concealment control below. A gate
@@ -491,6 +644,29 @@ const expectedV1PackageScripts = new Map([
   ["test:max-file-lines", "node --test scripts/arch/max-file-lines.test.mjs"],
   ["test:webapp-image-inventory", "node --test scripts/image-package-inventory.test.mjs scripts/verify-webapp-image-inventory.test.mjs"],
   ["test:webapp-inventory-contract", "node --test scripts/webapp-inventory-contract.test.mjs"],
+  // WIN-272 (M4.6). Two halves, both load-bearing.
+  //
+  // It selects the ONE FILE rather than running `pnpm test:webapp`, which would drag
+  // in six suites that are red on `v1` itself.
+  //
+  // AND IT BUILDS `webapp^...` FIRST -- webapp's dependencies, not webapp -- because
+  // the suite does not resolve without them. `platosAgent.server.ts` reaches
+  // `@internal/workload-identity`, and vite fails at IMPORT ANALYSIS on a workspace
+  // package with no `dist`: "Failed to resolve entry for package". That is not a
+  // hypothetical. This gate's own mutation driver refused to sweep on a fresh mini
+  // worktree with "BASELINE webapp-guest is RED on an unmutated tree", which is the
+  // driver working correctly and the script being under-specified. A gate whose
+  // greenness depends on some earlier job having happened to build a package is a
+  // gate that goes red on the first clean checkout that reorders CI.
+  [
+    "test:public-guest-boundary",
+    // UNQUOTED `webapp^...`, and the reason is this file rather than the shell. The
+    // no-op control below mutates the RAW package.json text by searching for this
+    // exact string, and a value carrying `\"` in JSON never matches the source it is
+    // searching -- the control failed with "mutation source is missing occurrence 1".
+    // `^` and `...` need no quoting in the `sh` a pnpm script runs under.
+    "pnpm --filter webapp^... build && pnpm --filter webapp exec vitest run test/publicGuestBoundary.test.ts --no-file-parallelism",
+  ],
   // WIN-299 (M2.6): test:advisory now covers the disposition gate's unit suite
   // alongside the receipt suite, the same two-file shape test:webapp-image-inventory
   // already uses above.
@@ -2349,11 +2525,38 @@ test("committed CI and image-build policy is executable, correlated, and complet
   //      secret-response-census (audit + test). Both gates existed and neither
   //      ran here, and the composition proved the taxonomy one goes stale across
   //      a branch boundary in a way nothing else in this repository can see.
-  // 26 + 2 + 4 = 32.
+  //   +2 WIN-268 (M4.2): mcp-store-ownership (audit + test). The MCP surface's
+  //      ORM register — every store call site, its owning context, whether that
+  //      context is composed, and the per-file disposition naming what each is
+  //      waiting on. It is the artifact the rest of M4.2 is measured against, and
+  //      like the census above it nothing but its own gate can see it go stale.
+  //   +2 WIN-268 (M4.2): end-user-presence-ancestry (audit + test), the static
+  //      half of the `end_users` cross-tenant conjunction.
+  //   +2 WIN-269 (M4.3): tool-lifecycle-reach (audit + test). The TOOL
+  //      LIFECYCLE's ORM register, over the roots the MCP surface register
+  //      deliberately excludes, plus the slot-by-slot classification of
+  //      `ToolsDependencies` against the composition root. Its generator asserts
+  //      the two registers' roots are disjoint, so this gate is also what stops
+  //      either root list being widened into a superset of the other.
+  //   +2 WIN-272 (M4.6): stream-contracts (audit + test). The drift-check M0.4 §2
+  //      names in its own WS and SSE rows and which did not exist — the AST walk
+  //      over every `.emit(` site, joined to a committed vocabulary inventory in
+  //      BOTH directions, plus the ADR's own five envelope families and the rule
+  //      that the stream major is a literal in exactly one module.
+  //   +1 WIN-272 (M4.6): the public-guest and embed boundary suite. See its own note
+  //      in the list above for why it cannot be left to `pnpm test:webapp`.
+  //   +1 WIN-267 (M4.1): the compatibility-alias deprecation signal, read back off
+  //      a real socket. See its own note in the list above; it is one command
+  //      rather than an audit/test pair because the STATIC half of the same ADR
+  //      §4 claim — the published document's `x-platos-superseded-by` and
+  //      `x-platos-sunset` against the manifest's own rows — was folded into
+  //      `scripts/arch/contract-map.mjs`, which is already a gate here, rather
+  //      than minting a second script for a sibling clause of the same section.
+  // 26 + 2 + 4 + 2 + 2 + 2 + 2 + 1 + 1 = 42.
   assert.equal(
     v1ReleaseGateCommands.length,
-    32,
-    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate and the secret-response census"
+    42,
+    "V1 release gate selector must cover existing gates plus image/advisory contract verification, disposition non-vacuity, the ADR M0.3 kernel-content and sole-writer gates, the composition-root gate, the env-access gate, the transaction-outcome gate, the error-taxonomy gate, the secret-response census, the MCP store-ownership register and the tool-lifecycle register"
   );
   assert.equal(
     repositoryGovernanceCommands.length,
@@ -4553,12 +4756,41 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   gains one: a release gate that could be neutralised by appending `|| true`
   //   is a gate that runs and cannot fail.
   //
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 = 367. The count is pinned rather than
-  // derived so that a control silently disappearing is a failure rather than a
-  // smaller number nobody reads.
+  //   WIN-268 (M4.2), +2. audit/test:mcp-store-ownership join the same V1
+  //   release gate list, so each gains the same `|| true` control -- the same
+  //   shape as the M2 INTEGRATION +4 immediately above, and for the same reason.
+  //
+  //   WIN-268 (M4.2), +2 more. audit/test:end-user-presence-ancestry join the
+  //   same V1 release gate list, so each gains the same `|| true` control.
+  //
+  //   WIN-269 (M4.3), +2. audit/test:tool-lifecycle-reach join the same V1
+  //   release gate list, so each gains the same `|| true` control -- the same
+  //   shape as WIN-268's two pairs immediately above, and for the same reason.
+  //
+  //   WIN-272 (M4.6), +2. audit/test:stream-contracts join the same V1 release
+  //   gate list, so each gains the same `|| true` control -- the same shape as
+  //   WIN-268's and WIN-269's pairs above, and for the same reason.
+  //
+  //   WIN-272 (M4.6), +2. test:public-guest-boundary joins the V1 release gate
+  //   selector AND the exact-script table, so both the CI line and the command it
+  //   resolves to are falsifiable — the same two-checkpoint shape every named
+  //   script above has.
+  //   WIN-267 (M4.1), +1. The compatibility-alias deprecation signal joins the V1
+  //   release gate selector, so it gains the same `|| true` control every gate
+  //   above gains. ONE and not two, and the difference is worth recording because
+  //   the note on WIN-272's pair immediately above says two: that pair added a
+  //   package.json SCRIPT as well as a CI line, and `expectedV1PackageScripts`
+  //   derives its own control per entry. This gate is invoked directly, for the
+  //   reason `node --test scripts/capability-matrix.test.mjs` is — root
+  //   package.json is a webapp image build input, so a script there moves the SBOM
+  //   receipt's buildInputsSha256 — so it contributes to the release-gate loop
+  //   only. The number was MEASURED at 378 before this arithmetic was written.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 = 378. The count is pinned
+  // rather than derived so that a control silently disappearing is a failure
+  // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    367,
+    378,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

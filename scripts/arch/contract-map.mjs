@@ -247,6 +247,182 @@ export function assertNoBareApiV1Prefix(measured) {
   );
 }
 
+// ── THE ALIAS CONTRACT (ADR M0.4 §4), MEASURED FROM THE TWO ARTIFACTS ───────
+//
+// WIN-267 (M4.1). §4.2's REST row gives a deprecation TWO channels — a live wire
+// signal and a static catalogue signal — and §5.3 asks for an alias fan-in
+// check. The wire half is emitted by `apps/agent/src/http/deprecation-signal.ts`
+// and read back over a real socket by `deprecation-signal.test.ts`. The catalogue
+// half is this: the generated OpenAPI document must say, for every operation the
+// manifest classifies `DEPRECATED`, the SAME successor and the SAME sunset the
+// wire serves.
+//
+// It is measured HERE rather than inside the control-plane generator because the
+// generator is the party that wrote both files. A gate that only asked the
+// generator to check its own output would be the self-assertion this file's
+// literal-migration comment above was written to kill. This script reads the two
+// committed artifacts and joins them; a document regenerated without the manifest
+// (or the other way round) is red.
+export const ALIAS_MANIFEST_PATH = "apps/agent/src/control-plane/operation-manifest.generated.json";
+export const ALIAS_OPENAPI_PATH = "apps/agent/src/openapi/openapi.generated.json";
+const ALIAS_DAY_MS = 24 * 60 * 60 * 1000;
+
+function openApiPathOf(path) {
+  return path.replaceAll(/:([A-Za-z0-9_]+)/gu, "{$1}");
+}
+
+/**
+ * Join the manifest's alias rows to the published document.
+ *
+ * Returns the numbers the artifact records plus every disagreement found, so a
+ * caller can both WRITE the measurement and FAIL on it. `findings` is empty in a
+ * healthy tree; the artifact records the counts, and `validate` re-measures and
+ * compares, which is what makes a stale artifact visible.
+ */
+export function measureAliasContract(root = repoDir) {
+  const manifest = JSON.parse(readFileSync(join(root, ALIAS_MANIFEST_PATH), "utf8"));
+  const openapi = JSON.parse(readFileSync(join(root, ALIAS_OPENAPI_PATH), "utf8"));
+  const operations = manifest.inventories?.restOperations ?? [];
+  const policy = manifest.deprecationPolicy ?? null;
+  const findings = [];
+  if (policy === null) {
+    findings.push("the manifest carries no deprecationPolicy block");
+  }
+  const minimumWindowDays = policy?.minimumWindowDays ?? null;
+  const byId = new Map(operations.map((operation) => [operation.id, operation]));
+  const deprecated = operations.filter((operation) => operation.classification === "DEPRECATED");
+
+  let catalogued = 0;
+  for (const operation of deprecated) {
+    const entry = openapi.paths?.[openApiPathOf(operation.path)]?.[operation.method.toLowerCase()];
+    if (!entry) {
+      findings.push(`${operation.id} is DEPRECATED and absent from the published document`);
+      continue;
+    }
+    if (entry.deprecated !== true) findings.push(`${operation.id} is not marked deprecated`);
+    if (entry["x-platos-classification"] !== "DEPRECATED") {
+      findings.push(`${operation.id} document classification is ${entry["x-platos-classification"]}`);
+    }
+    if (entry["x-platos-superseded-by"] !== operation.replacement) {
+      findings.push(
+        `${operation.id} document successor ${entry["x-platos-superseded-by"]} != manifest replacement ${operation.replacement}`
+      );
+    }
+    if (entry["x-platos-sunset"] !== operation.deprecation?.sunsetOn) {
+      findings.push(
+        `${operation.id} document sunset ${entry["x-platos-sunset"]} != manifest sunset ${operation.deprecation?.sunsetOn}`
+      );
+    }
+    if (!byId.has(operation.replacement)) {
+      findings.push(`${operation.id} successor ${operation.replacement} is not an operation`);
+    }
+    catalogued += 1;
+  }
+
+  // The other direction: nothing may advertise a successor it was not classified
+  // for. A document entry carrying `x-platos-superseded-by` on a canonical
+  // operation would tell a client to move off a route that is not going anywhere.
+  for (const [path, methods] of Object.entries(openapi.paths ?? {})) {
+    for (const [method, entry] of Object.entries(methods)) {
+      const advertises =
+        entry?.["x-platos-superseded-by"] !== undefined || entry?.["x-platos-sunset"] !== undefined;
+      if (advertises && entry["x-platos-classification"] !== "DEPRECATED") {
+        findings.push(`${method.toUpperCase()} ${path} advertises a sunset but is not DEPRECATED`);
+      }
+    }
+  }
+
+  for (const alias of policy?.aliases ?? []) {
+    const announced = Date.parse(`${alias.announcedOn}T00:00:00.000Z`);
+    const sunset = Date.parse(`${alias.sunsetOn}T00:00:00.000Z`);
+    const windowDays = Math.round((sunset - announced) / ALIAS_DAY_MS);
+    if (Number.isNaN(windowDays)) {
+      findings.push(`alias ${alias.id} carries a date that is not an ISO calendar date`);
+      continue;
+    }
+    if (windowDays !== alias.windowDays) {
+      findings.push(`alias ${alias.id} records ${alias.windowDays} days but its dates span ${windowDays}`);
+    }
+    if (minimumWindowDays !== null && windowDays < minimumWindowDays) {
+      findings.push(
+        `alias ${alias.id} declares ${windowDays} days; ADR M0.4 §4.3 requires at least ${minimumWindowDays}`
+      );
+    }
+    const covered = deprecated.filter(
+      (operation) =>
+        operation.path === alias.aliasPrefix || operation.path.startsWith(`${alias.aliasPrefix}/`)
+    ).length;
+    if (covered !== alias.operations) {
+      findings.push(`alias ${alias.id} claims ${alias.operations} operations and covers ${covered}`);
+    }
+  }
+
+  return {
+    aliases: (policy?.aliases ?? []).length,
+    deprecatedOperations: deprecated.length,
+    cataloguedOperations: catalogued,
+    minimumWindowDays,
+    forksWithoutOneHandler: (policy?.forksWithoutOneHandler ?? []).length,
+    findings,
+  };
+}
+
+/**
+ * The COMMITTED artifact against a fresh measurement — the same shape
+ * `literalMigrationErrors` uses, and for the same reason: a recorded number that
+ * nothing re-derives is a number that goes quietly stale.
+ */
+export function aliasContractErrors(recorded, measured) {
+  const errors = measured.findings.map((finding) => `aliasContract: ${finding}`);
+  if (!recorded) {
+    return [
+      ...errors,
+      "the committed artifact records no aliasContract measurement to check against the generated control plane",
+    ];
+  }
+  for (const field of [
+    "aliases",
+    "deprecatedOperations",
+    "cataloguedOperations",
+    "minimumWindowDays",
+    "forksWithoutOneHandler",
+  ]) {
+    if (recorded[field] !== measured[field]) {
+      errors.push(
+        `aliasContract.${field}: the committed artifact records ${JSON.stringify(recorded[field])} but the generated control plane carries ${JSON.stringify(measured[field])} — run --write, or this record describes a surface that no longer exists`
+      );
+    }
+  }
+  return errors;
+}
+
+function aliasContract(measured) {
+  return {
+    rule: "ADR M0.4 §4.1: an alias is an explicit generator row classified DEPRECATED with a non-null replacement, it delegates 1:1 to the canonical handler, and it carries the deprecation on the wire.",
+    // NO RAW ANGLE BRACKETS IN THIS STRING. It is rendered into a Markdown
+    // BULLET (not a table cell, so `renderTableText` does not touch it) and
+    // `docs/` is validated as MDX by `pnpm audit:docs-build` -> `mintlify
+    // validate`. The first spelling of this line contained `Link <successor>;`
+    // and failed with "Expected a closing tag for `<successor>`", because MDX
+    // read it as JSX. The link target is named in prose instead.
+    wireSignal:
+      'Deprecation: true + Sunset (RFC 8594 HTTP-date) + a Link header whose rel="successor-version" target is the canonical path, installed by applyApiSurface via apps/agent/src/http/deprecation-signal.ts.',
+    catalogSignal:
+      "OpenAPI deprecated:true + x-platos-classification:DEPRECATED + x-platos-superseded-by + x-platos-sunset, emitted by apps/agent/scripts/generate-control-plane.mjs from the same runtime table.",
+    fanIn:
+      "Structural in this tree, not a test: @Controller({ path: [\"memory\", \"platos/memory\"] }) makes the alias and canonical handlers the same function object, so aliasHandler === canonicalHandler cannot fail. The generator instead refuses any DEPRECATED operation whose implementation set differs from its canonical's, which is the case a second controller serving the old path would land in.",
+    measuredBy:
+      "scripts/arch/contract-map.mjs measureAliasContract — joins operation-manifest.generated.json to openapi.generated.json, both directions, and re-derives every window from its own dates.",
+    aliases: measured.aliases,
+    deprecatedOperations: measured.deprecatedOperations,
+    cataloguedOperations: measured.cataloguedOperations,
+    minimumWindowDays: measured.minimumWindowDays,
+    forksWithoutOneHandler: measured.forksWithoutOneHandler,
+    forkPolicy:
+      "An operation served by two deployables cannot satisfy fan-in — two independent classes in two processes — so it is not an alias. Each is named in FORKED_OPERATIONS_WITHOUT_ONE_HANDLER in the generator with the reason it is one, and a new one fails generation.",
+  };
+}
+
 // The canonical version-surface facts (ADR M0.4 §2, D1). "V1 is the frozen
 // semantic surface, not a URL." The major axis is the URL segment via Nest
 // versioning, promoted from per-controller literals.
@@ -657,6 +833,7 @@ function buildModel(measured = measureApiV1Literals()) {
       newContracts: histogram.byStatus.N,
     },
     canonicalPrefix: canonicalPrefix(measured),
+    aliasContract: aliasContract(measureAliasContract()),
     corrections: CORRECTIONS,
     screens,
     undemandedScreens: UNDEMANDED,
@@ -690,6 +867,16 @@ function renderMarkdown(model) {
   const lm = model.canonicalPrefix.literalMigration;
   L.push(`- **Literal migration (M4 pre-gate):** ${lm.literals} \`${lm.from}\` on ${lm.sourceLines} source line(s) across ${lm.files} file(s) → \`${lm.to}\` — status **${lm.status}**. ${lm.enforcedBy}`);
   L.push(`- **Measured, not asserted (D8):** ${lm.measuredBy} Cross-checked by ${lm.crossCheckedBy} This supersedes the recorded figure of ${lm.supersedes.count}: ${lm.supersedes.why}`);
+  L.push("");
+  L.push("## Compatibility aliases and deprecation signal (§4)");
+  L.push("");
+  const ac = model.aliasContract;
+  L.push(`- **Rule:** ${ac.rule}`);
+  L.push(`- **Wire signal:** ${ac.wireSignal}`);
+  L.push(`- **Catalogue signal:** ${ac.catalogSignal}`);
+  L.push(`- **Fan-in:** ${renderTableText(ac.fanIn)}`);
+  L.push(`- **Measured:** ${ac.aliases} alias prefix(es) covering ${ac.deprecatedOperations} DEPRECATED operation(s), ${ac.cataloguedOperations} of them carrying the catalogue signal, minimum window ${ac.minimumWindowDays} days. ${ac.measuredBy}`);
+  L.push(`- **Forks that cannot be aliases:** ${ac.forksWithoutOneHandler}. ${ac.forkPolicy}`);
   L.push("");
   L.push("## Accepted decisions (D0–D7)");
   L.push("");
@@ -776,6 +963,10 @@ function validate(model) {
     committed = null;
   }
   errors.push(...literalMigrationErrors(committed?.canonicalPrefix?.literalMigration, measured));
+  // WIN-267 (M4.1) — the alias contract, joined to the generated control plane
+  // rather than to this file. `measureAliasContract` reads the manifest and the
+  // published document and disagrees with either one out loud.
+  errors.push(...aliasContractErrors(committed?.aliasContract, measureAliasContract()));
   if (!Array.isArray(model.canonicalPrefix?.literalMigration?.sites)) {
     errors.push("literalMigration.sites must enumerate the measured literals, so the count names the files it came from");
   }

@@ -322,6 +322,17 @@ module.exports = {
       }
     },
     {
+      "name": "transport-reaches-no-store",
+      "comment": "apps/core-api/src/transports/** reads the system through the composed AppModule: no ORM package, no legacy database provider, no apps/agent module.",
+      "severity": "error",
+      "from": {
+        "path": "^apps/core-api/src/transports/"
+      },
+      "to": {
+        "path": "^(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))|internal-packages/(database|tenancy-database)(?:/|$)|apps/agent(?:/|$))"
+      }
+    },
+    {
       "name": "unknown-context-directory",
       "comment": "packages/contexts/<name>/ must be one of the 17 contexts named in ADR M0.3 §4; an adapter belongs under packages/adapters/.",
       "severity": "error",
@@ -372,6 +383,17 @@ module.exports = {
       },
       "to": {
         "path": "node_modules/(minio|@aws-sdk)"
+      }
+    },
+    {
+      "name": "chat-sdk-only",
+      "comment": "node_modules/(chat|@chat-adapter) may be imported only from its single owning adapter.",
+      "severity": "error",
+      "from": {
+        "pathNot": "^packages/adapters/channel-slack/"
+      },
+      "to": {
+        "path": "node_modules/(chat|@chat-adapter)"
       }
     },
     {

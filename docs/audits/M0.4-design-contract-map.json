@@ -50,6 +50,19 @@
       "sites": []
     }
   },
+  "aliasContract": {
+    "rule": "ADR M0.4 §4.1: an alias is an explicit generator row classified DEPRECATED with a non-null replacement, it delegates 1:1 to the canonical handler, and it carries the deprecation on the wire.",
+    "wireSignal": "Deprecation: true + Sunset (RFC 8594 HTTP-date) + a Link header whose rel=\"successor-version\" target is the canonical path, installed by applyApiSurface via apps/agent/src/http/deprecation-signal.ts.",
+    "catalogSignal": "OpenAPI deprecated:true + x-platos-classification:DEPRECATED + x-platos-superseded-by + x-platos-sunset, emitted by apps/agent/scripts/generate-control-plane.mjs from the same runtime table.",
+    "fanIn": "Structural in this tree, not a test: @Controller({ path: [\"memory\", \"platos/memory\"] }) makes the alias and canonical handlers the same function object, so aliasHandler === canonicalHandler cannot fail. The generator instead refuses any DEPRECATED operation whose implementation set differs from its canonical's, which is the case a second controller serving the old path would land in.",
+    "measuredBy": "scripts/arch/contract-map.mjs measureAliasContract — joins operation-manifest.generated.json to openapi.generated.json, both directions, and re-derives every window from its own dates.",
+    "aliases": 1,
+    "deprecatedOperations": 15,
+    "cataloguedOperations": 15,
+    "minimumWindowDays": 90,
+    "forksWithoutOneHandler": 2,
+    "forkPolicy": "An operation served by two deployables cannot satisfy fan-in — two independent classes in two processes — so it is not an alias. Each is named in FORKED_OPERATIONS_WITHOUT_ONE_HANDLER in the generator with the reason it is one, and a new one fails generation."
+  },
   "corrections": {
     "D0": {
       "title": "Screen reconciliation",

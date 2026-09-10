@@ -1015,9 +1015,16 @@ importers:
 
   packages/adapters/channel-slack:
     dependencies:
+      '@chat-adapter/slack':
+        specifier: ^4.40.0
+        version: 4.40.0(ai@7.0.28(zod@4.4.3))(bufferutil@4.0.9)(zod@4.4.3)
       '@platos/context-channels':
         specifier: workspace:*
         version: link:../../contexts/channels
+    devDependencies:
+      '@chat-adapter/slack-audited':
+        specifier: npm:@chat-adapter/slack@4.34.0
+        version: '@chat-adapter/slack@4.34.0(ai@7.0.28(zod@4.4.3))(bufferutil@4.0.9)(zod@4.4.3)'
 
   packages/adapters/clickhouse-observability:
     dependencies:
@@ -1201,6 +1208,13 @@ importers:
       '@platos/kernel':
         specifier: workspace:*
         version: link:../../kernel
+      ioredis:
+        specifier: ^5.6.1
+        version: 5.10.1
+    devDependencies:
+      '@testcontainers/redis':
+        specifier: ^10.28.0
+        version: 10.28.0
 
   packages/adapters/tokenmint-totp:
     dependencies:
@@ -2443,8 +2457,16 @@ packages:
     resolution: {integrity: sha512-3j1LIWNLp91du8y78FEUNATOEnXyVGrY3JcTNmO5/KARwHTAa17LMVMuWusj0WQj2KsKW4w/K9wytaOj7ToppA==}
     engines: {node: '>=20'}
 
+  '@chat-adapter/shared@4.40.0':
+    resolution: {integrity: sha512-uTDl9p+PVkGtAw9dgvRdkydifvYVp98R26vGHhU4V5HuS7DBTedTdb1COUOh6vfP0SrC+xSozp4O/IyfbXZSKw==}
+    engines: {node: '>=20'}
+
   '@chat-adapter/slack@4.34.0':
     resolution: {integrity: sha512-l+hHljueSiw/74CZKhjXpmreVlgfUaLcn9+Oh/xzwjbozrqlw3h7+c7PixiHLeuu2vc22uA2GQoFopDdjmXQQw==}
+    engines: {node: '>=20'}
+
+  '@chat-adapter/slack@4.40.0':
+    resolution: {integrity: sha512-aEkJ8OdQPZpIICbxHO08TOPrFVnwvy9e1S1J+AIqB9S1Tf5lE5DtF9AZXWCglRVXFoNCeZ8QcdJYIglxgVIaTg==}
     engines: {node: '>=20'}
 
   '@chat-adapter/state-pg@4.34.0':
@@ -7691,6 +7713,21 @@ packages:
       zod: ^3.0.0 || ^4.0.0
     peerDependenciesMeta:
       ai:
+        optional: true
+      zod:
+        optional: true
+
+  chat@4.40.0:
+    resolution: {integrity: sha512-slu3VDxItlelEZ8A5vqzlmtT2WErqj2YCGuhhcNx+Ev0+wHeBUqUDUA7hXkca+BfFtW1ZX7ECcySCTG2q2gefg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      ai: ^6.0.182 || ^7.0.0
+      workflow: ^5.0.0-beta.35
+      zod: ^3.0.0 || ^4.0.0
+    peerDependenciesMeta:
+      ai:
+        optional: true
+      workflow:
         optional: true
       zod:
         optional: true
@@ -15122,6 +15159,14 @@ snapshots:
       '@vercel/oidc': 3.2.0
       zod: 3.25.76
 
+  '@ai-sdk/gateway@4.0.20(zod@4.4.3)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.10(zod@4.4.3)
+      '@vercel/oidc': 3.2.0
+      zod: 4.4.3
+    optional: true
+
   '@ai-sdk/google-vertex@5.0.20(zod@3.25.76)':
     dependencies:
       '@ai-sdk/anthropic': 4.0.15(zod@3.25.76)
@@ -15159,6 +15204,15 @@ snapshots:
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.0.8
       zod: 3.25.76
+
+  '@ai-sdk/provider-utils@5.0.10(zod@4.4.3)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.3
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.0.8
+      zod: 4.4.3
+    optional: true
 
   '@ai-sdk/provider@4.0.3':
     dependencies:
@@ -16376,6 +16430,23 @@ snapshots:
       - supports-color
       - zod
 
+  '@chat-adapter/shared@4.34.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)':
+    dependencies:
+      chat: 4.34.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)
+    transitivePeerDependencies:
+      - ai
+      - supports-color
+      - zod
+
+  '@chat-adapter/shared@4.40.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)':
+    dependencies:
+      chat: 4.40.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)
+    transitivePeerDependencies:
+      - ai
+      - supports-color
+      - workflow
+      - zod
+
   '@chat-adapter/slack@4.34.0(ai@7.0.28(zod@3.25.76))(bufferutil@4.0.9)(zod@3.25.76)':
     dependencies:
       '@chat-adapter/shared': 4.34.0(ai@7.0.28(zod@3.25.76))(zod@3.25.76)
@@ -16388,6 +16459,35 @@ snapshots:
       - debug
       - supports-color
       - utf-8-validate
+      - zod
+
+  '@chat-adapter/slack@4.34.0(ai@7.0.28(zod@4.4.3))(bufferutil@4.0.9)(zod@4.4.3)':
+    dependencies:
+      '@chat-adapter/shared': 4.34.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)
+      '@slack/socket-mode': 2.0.7(bufferutil@4.0.9)
+      '@slack/web-api': 7.19.0
+      chat: 4.34.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)
+    transitivePeerDependencies:
+      - ai
+      - bufferutil
+      - debug
+      - supports-color
+      - utf-8-validate
+      - zod
+
+  '@chat-adapter/slack@4.40.0(ai@7.0.28(zod@4.4.3))(bufferutil@4.0.9)(zod@4.4.3)':
+    dependencies:
+      '@chat-adapter/shared': 4.40.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)
+      '@slack/socket-mode': 2.0.7(bufferutil@4.0.9)
+      '@slack/web-api': 7.19.0
+      chat: 4.40.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3)
+    transitivePeerDependencies:
+      - ai
+      - bufferutil
+      - debug
+      - supports-color
+      - utf-8-validate
+      - workflow
       - zod
 
   '@chat-adapter/state-pg@4.34.0(ai@7.0.28(zod@3.25.76))(zod@3.25.76)':
@@ -21679,6 +21779,14 @@ snapshots:
       '@ai-sdk/provider-utils': 5.0.10(zod@3.25.76)
       zod: 3.25.76
 
+  ai@7.0.28(zod@4.4.3):
+    dependencies:
+      '@ai-sdk/gateway': 4.0.20(zod@4.4.3)
+      '@ai-sdk/provider': 4.0.3
+      '@ai-sdk/provider-utils': 5.0.10(zod@4.4.3)
+      zod: 4.4.3
+    optional: true
+
   ajv-draft-04@1.0.0(ajv@8.18.0):
     optionalDependencies:
       ajv: 8.18.0
@@ -22378,6 +22486,36 @@ snapshots:
     optionalDependencies:
       ai: 7.0.28(zod@3.25.76)
       zod: 3.25.76
+    transitivePeerDependencies:
+      - supports-color
+
+  chat@4.34.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3):
+    dependencies:
+      '@workflow/serde': 4.1.0-beta.2
+      mdast-util-to-string: 4.0.0
+      remark-gfm: 4.0.1
+      remark-parse: 11.0.0
+      remark-stringify: 11.0.0
+      remend: 1.3.0
+      unified: 11.0.5
+    optionalDependencies:
+      ai: 7.0.28(zod@4.4.3)
+      zod: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
+
+  chat@4.40.0(ai@7.0.28(zod@4.4.3))(zod@4.4.3):
+    dependencies:
+      '@workflow/serde': 4.1.0-beta.2
+      mdast-util-to-string: 4.0.0
+      remark-gfm: 4.0.1
+      remark-parse: 11.0.0
+      remark-stringify: 11.0.0
+      remend: 1.3.0
+      unified: 11.0.5
+    optionalDependencies:
+      ai: 7.0.28(zod@4.4.3)
+      zod: 4.4.3
     transitivePeerDependencies:
       - supports-color
 

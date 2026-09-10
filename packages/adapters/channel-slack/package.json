@@ -2,7 +2,7 @@
   "name": "@platos/adapter-channel-slack",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the channels ChannelAdapter port.",
+  "description": "Implements the channels ChannelAdapter port and the channels ChannelRuntime port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,9 +15,14 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@platos/context-channels": "workspace:*"
+    "@platos/context-channels": "workspace:*",
+    "@chat-adapter/slack": "^4.40.0"
+  },
+  "devDependencies": {
+    "@chat-adapter/slack-audited": "npm:@chat-adapter/slack@4.34.0"
   }
 }

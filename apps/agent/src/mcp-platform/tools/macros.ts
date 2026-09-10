@@ -37,6 +37,7 @@
  */
 
 import * as crypto from "node:crypto";
+import { RPC_ERRORS } from "../mcp-router";
 import type { McpRouter, McpToolHandler, JsonRpcRequest } from "../mcp-router";
 import type { VerifiedToken } from "../token.service";
 import type { RequestScope } from "../../auth/scope.guard";
@@ -159,6 +160,56 @@ function substitutePlaceholders(value: unknown, params: unknown): unknown {
   return value;
 }
 
+/**
+ * WIN-268 (M4.2) — WHAT A REPLAYABLE STEP IS, AND WHY AN UNREADABLE ONE IS
+ * REFUSED RATHER THAN SENT EMPTY.
+ *
+ * THE LIVE DEFECT THIS CLOSES. `macros.replay` used to compose its outbound
+ * arguments as `substitutePlaceholders(step.params ?? {}, replayParams) ?? {}`
+ * and dispatch whatever came out. Two coalescing operators, and between them
+ * they turn every unreadable step into a call with NO PARAMETERS — which the
+ * router then runs, and which the replay reports as `ok: true` because the tool
+ * did not throw. A recorded `send` came back as a `send` with nothing in it and
+ * a success line beside it.
+ *
+ * WHY IT IS REACHABLE AT ALL. `Macro.steps` is a Json column, and its only
+ * database constraint is `Macro_steps_json_root` — `jsonb_typeof("steps") =
+ * 'array'`. NOTHING constrains an ELEMENT. A step is therefore whatever a
+ * writer, a migration, a restore or a future recorder put in the array, and
+ * `row.steps as unknown as MacroStep[]` is a cast that asserts a shape the store
+ * does not enforce. `params` may be absent, null, a string or an array, and each
+ * of those reaches `arguments` as something the tool was never recorded with.
+ *
+ * WHY REFUSAL AND NOT REPAIR. There is no safe default for a missing argument
+ * set: `{}` is not "the same call with fewer options", it is a different call.
+ * The step is reported as a FAILED step, carrying the reason, and is not
+ * dispatched — so a replay that could not reproduce the recording says so
+ * instead of doing something else and calling it success.
+ *
+ * WHY THE REPLAY CONTINUES PAST ONE. That is the behaviour a router error
+ * already has in this loop, and changing sequencing semantics is not this
+ * defect's business. What changes is that the step is never SENT and never
+ * reported `ok`.
+ */
+export type ReplayableStep =
+  | { readonly ok: true; readonly tool: string; readonly params: Record<string, unknown> }
+  | { readonly ok: false; readonly tool: string | null; readonly reason: string };
+
+export function readReplayableStep(step: unknown): ReplayableStep {
+  if (typeof step !== "object" || step === null || Array.isArray(step)) {
+    return { ok: false, tool: null, reason: "step_not_an_object" };
+  }
+  const record = step as { tool?: unknown; params?: unknown };
+  const tool = typeof record.tool === "string" && record.tool.length > 0 ? record.tool : null;
+  if (tool === null) return { ok: false, tool: null, reason: "step_tool_missing" };
+  if (!("params" in record)) return { ok: false, tool, reason: "step_params_absent" };
+  const params = record.params;
+  if (typeof params !== "object" || params === null || Array.isArray(params)) {
+    return { ok: false, tool, reason: "step_params_not_an_object" };
+  }
+  return { ok: true, tool, params: params as Record<string, unknown> };
+}
+
 function isOwnerOrSharedInScope(
   row: {
     environmentId: string;
@@ -232,7 +283,36 @@ export function buildMacroToolHandlers(deps: {
         const name = String(params["name"] ?? "").trim();
         if (!name) throw new Error("`name` is required");
         const description = (params["description"] as string | undefined) ?? null;
-        const paramSchema = (params["paramSchema"] as Record<string, unknown> | undefined) ?? null;
+        // WIN-268 (M4.2). `paramSchema` IS OMITTED WHEN ABSENT, NEVER SENT AS `null`.
+        //
+        // `Macro.paramSchema` is a nullable Json column carrying the check
+        // constraint `Macro_paramSchema_json_root`, which the initial migration
+        // spells:
+        //
+        //     "paramSchema" IS NULL OR jsonb_typeof("paramSchema") = 'object'
+        //
+        // Prisma writes a JavaScript `null` to a nullable Json field as the JSON
+        // VALUE null, and `jsonb_typeof('null'::jsonb)` is `'null'` — which
+        // satisfies neither branch. So `paramSchema: null` made every recording
+        // that supplied no schema fail with SQLSTATE 23514 and surface to the
+        // operator as a bare "internal error". That is the DEFAULT path:
+        // `paramSchema` is optional in this tool's input schema.
+        //
+        // Omitting the key leaves the column at SQL NULL and is the only form
+        // that does, short of the `Prisma.DbNull` sentinel — which would mean
+        // importing the ORM into a module this milestone exists to take off it.
+        //
+        // `mcp-router.test.ts` doubles `prisma.macro.create` with `vi.fn()`, so
+        // it returned the row it was handed and stayed green. The constraint is
+        // in PostgreSQL, so only a real database can report it, and
+        // `macros-replay-postgres.integration.test.ts` is where it now does.
+        const suppliedSchema = params["paramSchema"];
+        const paramSchema =
+          suppliedSchema !== null &&
+          typeof suppliedSchema === "object" &&
+          !Array.isArray(suppliedSchema)
+            ? (suppliedSchema as Record<string, unknown>)
+            : undefined;
 
         const finalized = state.stop(token, recordingId);
         if (!finalized) {
@@ -244,7 +324,7 @@ export function buildMacroToolHandlers(deps: {
             name,
             description,
             steps: finalized.steps as any,
-            paramSchema: paramSchema as any,
+            ...(paramSchema === undefined ? {} : { paramSchema: paramSchema as any }),
             createdBy: finalized.createdBy,
           },
         });
@@ -429,10 +509,27 @@ export function buildMacroToolHandlers(deps: {
 
         for (let i = 0; i < steps.length; i++) {
           if (abortSignal?.aborted) throw new Error("MCP macro replay cancelled");
-          const step = steps[i];
-          if (!step || typeof step.tool !== "string") continue;
-          const resolvedParams = (substitutePlaceholders(step.params ?? {}, replayParams) ??
-            {}) as Record<string, unknown>;
+          const step = readReplayableStep(steps[i]);
+          if (!step.ok) {
+            // NOT `continue`. The previous code skipped an unusable step in
+            // silence while `stepCount` still counted it, so a caller saw three
+            // steps and two results with nothing saying which one vanished.
+            results.push({
+              stepIndex: i,
+              tool: step.tool ?? "",
+              ok: false,
+              error: {
+                code: RPC_ERRORS.INVALID_PARAMS,
+                message: `recorded step ${String(i)} is not replayable: ${step.reason}`,
+                data: { reason: step.reason },
+              },
+            });
+            continue;
+          }
+          const resolvedParams = substitutePlaceholders(step.params, replayParams) as Record<
+            string,
+            unknown
+          >;
           const rpc: JsonRpcRequest = {
             jsonrpc: "2.0",
             id: `replay_${macroId}_${i}`,

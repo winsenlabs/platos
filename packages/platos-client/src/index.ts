@@ -31,9 +31,50 @@ export {
   PlatosRateLimitError,
   PlatosServerError,
   PlatosNetworkError,
+  PlatosRefusal,
   errorFromResponse,
   isRetryableError,
+  readWireError,
 } from "./errors.js";
+export type { PlatosWireErrorDetail } from "./errors.js";
+
+// WIN-270 (M4.4) — THE V1 SURFACE. `./generated/v1.js` is emitted by
+// `pnpm generate:sdk-v1` from the V1 OpenAPI document, the operation manifest
+// and core-api's idempotency policy; `./v1-transport.js` is the hand-written
+// auth/retry half. Re-exported here so a consumer reaches the V1 routes without
+// importing a path that says "generated" — the generation is this repository's
+// business, not the caller's.
+export {
+  V1Api,
+  V1_OPERATIONS,
+  WIRE_ERROR_CODES,
+  IDEMPOTENCY_KEY_HEADER,
+} from "./generated/v1.js";
+export type {
+  V1IdempotencyClass,
+  V1Operation,
+  V1Request,
+  V1Transport,
+  WireError,
+  WireErrorCode,
+  ErrorEnvelope,
+  CreateOrganizationBody,
+  CreateProjectBody,
+  ExchangeSessionBody,
+  MintEntityTokenBody,
+  MintPlatformTokenBody,
+  MintedTokenResource,
+  OperatorSessionResource,
+  OrganizationResource,
+  ProjectResource,
+  EndUserResource,
+} from "./generated/v1.js";
+export {
+  V1HttpTransport,
+  createV1Client,
+  IDEMPOTENCY_REPLAYED_HEADER,
+} from "./v1-transport.js";
+export type { V1ClientOptions, IdempotencyKeyFactory } from "./v1-transport.js";
 
 export type {
   PlatosScope,

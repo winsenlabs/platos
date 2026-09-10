@@ -43,6 +43,15 @@ export function isRequestSurface(path) {
   return (
     /\.controller\.ts$/u.test(path) ||
     /^apps\/agent\/src\/mcp-platform\/tools\/[^/]+\.ts$/u.test(path) ||
+    // WIN-272 (M4.6) MOVES THE SURFACE COUNT 169 -> 172 AND NOT ONE SITE, which is
+    // the reading worth recording: the stream lane's three modules
+    // (`transports/ws/stream-errors.ts`, `sse.ts`, `streams.controller.ts`) are all
+    // inside the rule below and are all scanned, and NONE of them answers with
+    // secret material. A route that streams somebody else's frames returns a
+    // resume cursor and a code, and a cursor is a POSITION rather than a
+    // credential — which is why the cursor's own encoder refuses a control
+    // character instead of encrypting anything.
+    //
     // WIN-268 (M4.2) P1 — THE WHOLE V1 TRANSPORT TREE, not just its controllers.
     //
     // A GAP FOUND BY BUILDING THE FIRST V1 ROUTE THAT RETURNS A SECRET. The two

@@ -1,5 +1,7 @@
 import { VersioningType, type INestApplication } from "@nestjs/common";
 
+import { applyDeprecationSignal } from "./deprecation-signal";
+
 /**
  * WIN-267 (M4.1) T1 — the ONE expression of the REST version.
  *
@@ -111,6 +113,13 @@ export const GLOBAL_PREFIX_EXCLUDE: readonly string[] = Object.freeze(
  * versioned. Controllers on the unversioned roots above say
  * `@Version(VERSION_NEUTRAL)` explicitly, which is the only way to opt out and
  * is therefore visible in review.
+ *
+ * The compatibility-alias signal is installed from HERE rather than from
+ * `main.ts` for the same reason: ADR M0.4 §4.1's third demand is that an alias
+ * carry its deprecation on the wire, and a signal installed at a second call
+ * site is a signal that can be absent from one of them. One installer, one test,
+ * one boot path — see `deprecation-signal.ts` for why the emitter lives in this
+ * application at all.
  */
 export function applyApiSurface(app: INestApplication): void {
   app.setGlobalPrefix(API_GLOBAL_PREFIX, { exclude: [...GLOBAL_PREFIX_EXCLUDE] });
@@ -119,4 +128,5 @@ export function applyApiSurface(app: INestApplication): void {
     prefix: API_VERSION_PREFIX,
     defaultVersion: API_VERSION,
   });
+  applyDeprecationSignal(app);
 }

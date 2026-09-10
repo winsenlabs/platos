@@ -28,6 +28,7 @@ import { err, ok, type EntityId, type EnvironmentScope, type Result } from "@pla
 import type { EnvironmentAuthorization } from "@platos/context-secrets";
 
 import {
+  admitTransport,
   assertNoResidual,
   credentialFingerprintSource,
   endUserRequired,
@@ -99,6 +100,10 @@ export async function resolveDispatchTarget(
   if (subject.connectionKind === "wire") {
     return ok({
       kind: "wire",
+      // A wire backend is reached on a socket Platos did not open; there is no
+      // MCP transport to name, and naming one would be a claim about a protocol
+      // that is not in play.
+      transport: null,
       externalEntityId: subject.externalEntityId,
       url: subject.callbackUrl === "" ? null : subject.callbackUrl,
       headers: {},
@@ -164,11 +169,26 @@ async function resolveMcpTarget(
   const scanned = assertNoResidual(resolved.value);
   if (!scanned.ok) return err(scanned.error);
 
+  // WIN-269. ADMIT THE TRANSPORT, HERE, BEFORE AN ADAPTER SEES IT.
+  //
+  // `admitTransport` is a domain rule that existed and that NOTHING outside its
+  // own unit test called: it refuses a transport that is not one of the three,
+  // and it refuses `http`/`sse` with no URL. Both are conditions an adapter
+  // would otherwise meet at the moment it tried to build a client, which is the
+  // wrong place — a transport nobody recognises is a misconfigured row an
+  // operator fixes, not a dispatch that failed.
+  //
+  // It is admitted against the RESOLVED url rather than the template, because
+  // that is the value the adapter will actually be handed.
+  const transport = admitTransport(client.transport, scanned.value.url);
+  if (!transport.ok) return err(transport.error);
+
   const fingerprint = dependencies.digest.sha256Hex(
     credentialFingerprintSource(scanned.value.headers),
   );
   return ok({
     kind: "mcp",
+    transport: transport.value,
     externalEntityId: command.subject.externalEntityId,
     url: scanned.value.url,
     headers: scanned.value.headers,

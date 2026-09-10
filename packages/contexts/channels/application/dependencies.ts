@@ -37,12 +37,24 @@ import type {
   ChannelAdapterRegistry,
   ChannelCredentialReader,
   ChannelEventCipher,
+  ChannelRuntimeRegistry,
   ChannelsRepository,
 } from "./ports/index.js";
 
 export interface ChannelsDependencies {
   readonly repository: ChannelsRepository;
   readonly adapters: ChannelAdapterRegistry;
+  /**
+   * WIN-271 (M4.5) — the INBOUND half of the same directories.
+   *
+   * A SECOND SLOT AND NOT A REPLACEMENT, even though every `ChannelRuntime` IS
+   * a `ChannelAdapter`. The two answer different questions and can be satisfied
+   * to different depths: an install that can POST to a provider but has no
+   * signing secret for it has an adapter and no runtime, and collapsing the
+   * slots would make that install either refuse to send or accept unsigned
+   * webhooks. Both are worse than reporting it.
+   */
+  readonly runtimes: ChannelRuntimeRegistry;
   readonly credentials: ChannelCredentialReader;
   readonly agents: AgentDirectory;
   readonly cipher: ChannelEventCipher;

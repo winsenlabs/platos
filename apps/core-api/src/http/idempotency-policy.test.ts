@@ -66,7 +66,10 @@ describe("the policy table against the frozen operation manifest", () => {
     // honoured if sent and not demanded). The credential-path case below is what
     // proves that is a classification rather than an oversight — it would fail if
     // any of the eight looked like a credential route.
-    expect(OPERATIONS.length).toBe(308);
+    // 308 -> 309 (WIN-272, M4.6): the stream lane's one route. It is a GET, so
+    // `classifyRequest` puts it in the `none` bucket — an `Idempotency-Key` on a
+    // read is meaningless and this table says so by omission rather than by a row.
+    expect(OPERATIONS.length).toBe(309);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {
@@ -185,5 +188,77 @@ describe("compileTemplate", () => {
     const pattern = compileTemplate("/api/v1/agent/access-key");
     expect(pattern.test("/api/v1/agent/access-key/")).toBe(true);
     expect(pattern.test("/api/v1/agent/access-key//")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// WIN-270 (M4.4) — THE GENERATED SDK'S COPY OF THIS DECISION, JOINED BACK.
+//
+// `scripts/sdk/v1-contract.mjs` emits a TypeScript and a Python client for the
+// V1 surface, and each generated operation carries an idempotency CLASS so the
+// client knows whether an `Idempotency-Key` is mandatory. That class is read off
+// THIS FILE — the generator parses `OPERATION_POLICIES` out of the source rather
+// than restating it — but it is computed over route TEMPLATES at generation
+// time, while `classifyRequest` answers over a CONCRETE path at runtime, by
+// pattern.
+//
+// Two implementations of one rule is exactly the shape this programme keeps
+// getting burned by, so they are joined by EXECUTION. Every operation in the
+// emitted fixture has its template instantiated into a concrete path and handed
+// to the real `classifyRequest`; the answers must agree. A generator that
+// learned a different rule — or a `classifyRequest` that changed — fails here,
+// in the file that owns the decision, rather than in a client nobody runs.
+// ---------------------------------------------------------------------------
+
+interface SdkFixtureOperation {
+  readonly operationId: string;
+  readonly method: string;
+  readonly template: string;
+  readonly idempotency: string;
+  readonly expected: { readonly sendsIdempotencyKey: boolean };
+}
+
+const SDK_FIXTURE = JSON.parse(
+  readFileSync(new URL("../../../../tests/sdk-contract/v1-fixtures.json", import.meta.url), "utf8"),
+) as { readonly operations: readonly SdkFixtureOperation[] };
+
+/** A template with every `:param` replaced by a segment that cannot contain a slash. */
+function instantiate(template: string): string {
+  return template.replaceAll(/:([A-Za-z0-9_]+)/gu, (_match, name: string) => `win270-${name}`);
+}
+
+describe("the generated SDK's idempotency classes against classifyRequest", () => {
+  it("reads a fixture with operations in it", () => {
+    expect(SDK_FIXTURE.operations.length).toBeGreaterThan(0);
+  });
+
+  it.each(SDK_FIXTURE.operations.map((entry) => [entry.operationId, entry] as const))(
+    "%s is classified the same way at generation time and at runtime",
+    (_id, entry) => {
+      expect(classifyRequest(entry.method, instantiate(entry.template))).toBe(entry.idempotency);
+    },
+  );
+
+  it("sends a key for exactly the classes M0.4 section 2 puts the header on", () => {
+    for (const entry of SDK_FIXTURE.operations) {
+      const bound = entry.idempotency === "required" || entry.idempotency === "accepted";
+      expect(entry.expected.sendsIdempotencyKey, entry.operationId).toBe(bound);
+    }
+  });
+
+  it("carries every V1 mint this table requires a key for", () => {
+    const requiredHere = OPERATION_POLICIES.filter((policy) => policy.class === "required").map(
+      (policy) => `${policy.method} ${policy.template}`,
+    );
+    const requiredInSdk = SDK_FIXTURE.operations
+      .filter((entry) => entry.idempotency === "required")
+      .map((entry) => `${entry.method} ${entry.template}`);
+    expect(requiredInSdk.length).toBeGreaterThan(0);
+    // The SDK covers the SERVED V1 surface, which is a subset of the whole
+    // frozen surface this table classifies — so containment, not equality. An
+    // SDK operation the table does not require a key for would fail the
+    // per-operation case above; this one catches the other direction, an SDK
+    // that invented a `required` nothing here asks for.
+    for (const entry of requiredInSdk) expect(requiredHere).toContain(entry);
   });
 });

@@ -1,0 +1,430 @@
+{
+  "issue": "WIN-272 (M4.6)",
+  "baseline": [
+    "core-api-integration",
+    "core-api-unit",
+    "kernel",
+    "redis-streams-integration",
+    "webapp-guest"
+  ],
+  "purpose": "One row per broken decision, with the suite that noticed and the case that failed. Every suite named here was run UNMUTATED and green before the first mutation was applied -- a kill is only evidence if the suite passes on a clean tree. Re-runnable: node scripts/run-win272-mutations.mjs. A SURVIVOR is recorded as one and never explained away, and a mutation the compiler refuses is counted apart from a kill because a type error is evidence the type layer holds rather than evidence a case noticed. A row whose suite TIMED OUT is counted apart from both, because a mutation that hangs a suite is not one that kills it.",
+  "totals": {
+    "rows": 36,
+    "killed": 35,
+    "survived": 1,
+    "refusedByCompiler": 0,
+    "timedOut": 0,
+    "skipped": 0
+  },
+  "rows": [
+    {
+      "id": "M01",
+      "subject": "the client's own duplicate suppression",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a redelivery of the frame at exactly the last applied position is APPLIED again, which is the double-apply the acceptance forbids",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "admitting a frame against the last one applied > calls a redelivery a duplicate rather than a gap",
+        "admitting a frame against the last one applied > conserves a whole run: every frame is applied exactly once"
+      ]
+    },
+    {
+      "id": "M02",
+      "subject": "gap detection",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a frame that skips ahead is applied, so a client renders a partial answer it believes is whole",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "admitting a frame against the last one applied > reports a gap with the number of frames missing"
+      ]
+    },
+    {
+      "id": "M03",
+      "subject": "the reserved-field refusal",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a payload field named `seq` overwrites the sequence ON THE WIRE, so the producer chooses the client's gap detection",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "the flat frame > refuses every reserved field a payload could shadow, one at a time",
+        "the flat frame > does not let a payload field named `seq` rewrite the sequence"
+      ]
+    },
+    {
+      "id": "M04",
+      "subject": "why a stream stopped",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a `stream.offline` frame with no cursor of its own classifies as `severed` rather than `interrupted`, so the reader loses the fact that the SERVER let it go on purpose -- the one distinction an operator needs to tell a policy decision from a crash",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "why a stream stopped > falls back to the reader's position when the offline frame carries none",
+        "why a stream stopped > gives every terminal frame type a classification that is not `severed`"
+      ]
+    },
+    {
+      "id": "M05",
+      "subject": "the cursor's control-character refusal",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a stream id carrying a newline is encoded into an SSE `id:` line, which injects a field into every reader's byte stream",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "the resume cursor > refuses a stream id carrying a control character"
+      ]
+    },
+    {
+      "id": "M06",
+      "subject": "the length-prefixed cursor",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "the delimiter reappears between the id and the sequence, so an id holding the delimiter decodes to the wrong position",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "the resume cursor > round-trips a plain id",
+        "the resume cursor > round-trips an id holding the delimiter and digits",
+        "the resume cursor > round-trips through the two encodings a real `Last-Event-ID` survives"
+      ]
+    },
+    {
+      "id": "M07",
+      "subject": "M0.4 decision D4 AS CORRECTED",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "an absent `sv` defaults to 1 on a NEW surface too, which is the uncorrected proposal and makes the version field optional everywhere",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "negotiating the schema version > defaults an absent version to 1 at a legacy ingress and refuses it elsewhere"
+      ]
+    },
+    {
+      "id": "M08",
+      "subject": "the per-frame byte ceiling",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a frame of any size is admitted, so one tool result becomes a memory incident in every connected browser",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "frame size > admits a frame at the ceiling and refuses one past it",
+        "frame size > counts BYTES, so a multi-byte alphabet cannot buy extra room",
+        "frame size > honours a caller's tighter limit"
+      ]
+    },
+    {
+      "id": "M09",
+      "subject": "whether a client reconnects",
+      "file": "packages/kernel/src/vo/stream-frame.ts",
+      "breaks": "a client polls a finished stream forever, because a completed turn is reported as resumable",
+      "verdict": "KILLED",
+      "killedBy": "kernel",
+      "cases": [
+        "why a stream stopped > resumes on exactly the two ends that can still grow"
+      ]
+    },
+    {
+      "id": "M10",
+      "subject": "THE CONSERVATION REFUSAL",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "breaks": "a cursor whose frames were trimmed is answered with a PAGE, so the client receives a gap dressed as a sequence and renders state that is silently missing the middle",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "backpressure: a consumer slower than the producer > REFUSES a trimmed cursor rather than answering with a gap that looks complete",
+        "backpressure: a consumer slower than the producer > serves the boundary cursor — the oldest frame still held minus one"
+      ]
+    },
+    {
+      "id": "M11",
+      "subject": "the trim boundary, off by one",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "breaks": "a reader that is exactly caught up is REFUSED, so every reader at the boundary is disconnected instead of served",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "backpressure: a consumer slower than the producer > serves the boundary cursor — the oldest frame still held minus one"
+      ]
+    },
+    {
+      "id": "M12",
+      "subject": "no frames after a terminal frame",
+      "file": "packages/adapters/redis-streams/src/journal.ts",
+      "breaks": "a producer can append after the seal, which is the trailing-invalid-frames case the acceptance forbids",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "sealing > refuses an append after the seal"
+      ]
+    },
+    {
+      "id": "M13",
+      "subject": "the first seal wins",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "breaks": "HSET OVERWRITES where HSETNX claims: a second seal replaces the first and still reports `already-sealed`, so a retry turns a completed turn into a failed one AND tells the caller it did not",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "sealing > tells a reader the producer finished, and the first seal wins",
+        "two clients, one server > lets only one of two racing seals win, and both learn the same outcome"
+      ]
+    },
+    {
+      "id": "M14",
+      "subject": "the length bound",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "breaks": "one runaway stream is unbounded, so a single turn can evict every other stream's frames from the server",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "backpressure: a consumer slower than the producer > REFUSES a trimmed cursor rather than answering with a gap that looks complete",
+        "backpressure: a consumer slower than the producer > serves the boundary cursor — the oldest frame still held minus one",
+        "backpressure: a consumer slower than the producer > reads from the beginning without claiming continuity, and the client sees the gap"
+      ]
+    },
+    {
+      "id": "M15",
+      "subject": "reads are STRICTLY after the cursor",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "breaks": "a resuming reader is handed the frame it already holds, which is a duplicate on every reconnect",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "append and read back > reads STRICTLY after a cursor, so a resuming client never sees its own last frame",
+        "append and read back > honours the page limit and lets a caller walk the whole stream",
+        "sealing > surfaces the seal on every page, including one a reader has already caught up past",
+        "backpressure: a consumer slower than the producer > still serves a cursor inside the retained window",
+        "following the live end > returns as soon as a frame arrives rather than after the whole window",
+        "following the live end > returns an empty page when the window closes with nothing written"
+      ]
+    },
+    {
+      "id": "M16",
+      "subject": "at-least-once delivery",
+      "file": "packages/adapters/redis-streams/src/event-bus.ts",
+      "breaks": "a handler that rejects never sees the event again, so a partial failure silently loses it",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "at-least-once > redelivers the same event after a handler rejects, and does not skip ahead",
+        "at-least-once > moves past a poison event rather than stopping the subscription forever"
+      ]
+    },
+    {
+      "id": "M17",
+      "subject": "a fan-out seam is not a queue",
+      "file": "packages/adapters/redis-streams/src/event-bus.ts",
+      "breaks": "a subscriber catches up on events published before it existed, which makes the bus a second canonical store beside the outbox",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "this is a fan-out seam and not a queue > does NOT deliver an event published before the subscriber existed"
+      ]
+    },
+    {
+      "id": "M18",
+      "subject": "the handshake wait is BOUNDED",
+      "file": "packages/adapters/redis-streams/src/client.ts",
+      "breaks": "the wait for a server that is not there yet is a day rather than a bounded window, so the FIRST command against a cold connection HANGS instead of failing closed -- and the caller that was written to report `unavailable` reports nothing at all",
+      "verdict": "KILLED",
+      "killedBy": "redis-streams-integration",
+      "cases": [
+        "a server that is not there yet > recovers once the server appears, rather than failing forever on one early error"
+      ]
+    },
+    {
+      "id": "M19",
+      "subject": "backpressure",
+      "file": "apps/core-api/src/transports/ws/sse.ts",
+      "breaks": "a full socket is written to without bound, so a slow browser becomes unbounded heap in this process",
+      "verdict": "KILLED",
+      "killedBy": "core-api-unit",
+      "cases": [
+        "backpressure > GIVES UP on a socket that never drains, rather than waiting forever",
+        "the pump > reports a slow consumer without writing anything else to it"
+      ]
+    },
+    {
+      "id": "M20",
+      "subject": "THE CREDENTIAL EXPIRY FENCE",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "breaks": "the fence is a day past the credential's expiry, so a stream outlives the credential that opened it -- which is the unbounded case the live lane has",
+      "verdict": "KILLED",
+      "killedBy": "core-api-unit",
+      "cases": [
+        "the pump > STOPS AT THE CREDENTIAL EXPIRY, and reports the position it reached"
+      ]
+    },
+    {
+      "id": "M21",
+      "subject": "at most ONE terminal frame",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "breaks": "a completed stream gets a SECOND terminal frame after the producer's own, which is the duplicate the acceptance forbids and the exact defect in `streaming.service.ts`",
+      "verdict": "KILLED",
+      "killedBy": "core-api-unit",
+      "cases": [
+        "the terminal frame a client receives > is written for exactly four endings and for no others"
+      ]
+    },
+    {
+      "id": "M22",
+      "subject": "the tenancy boundary IS the journal key",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "breaks": "a stream id becomes a bearer capability across environments, so naming one environment reaches another's frames",
+      "verdict": "KILLED",
+      "killedBy": "core-api-unit",
+      "cases": [
+        "the journal key is the tenancy boundary > puts the environment inside the key rather than beside it"
+      ]
+    },
+    {
+      "id": "M23",
+      "subject": "the scope is the AUTHORIZATION's, never the path's",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "breaks": "a forged scope is honoured, because the key is built from the caller's own path segment rather than from the scope tenancy re-derived",
+      "verdict": "SURVIVED",
+      "killedBy": null,
+      "cases": []
+    },
+    {
+      "id": "M24",
+      "subject": "encode, then write, then advance",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "breaks": "a frame that was not written advances the position, so a resuming client is handed the frame AFTER the one it never received",
+      "verdict": "KILLED",
+      "killedBy": "core-api-unit",
+      "cases": [
+        "the pump > reports a slow consumer without writing anything else to it"
+      ]
+    },
+    {
+      "id": "M25",
+      "subject": "a terminal frame a client will APPLY",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "breaks": "the terminal frame is numbered 0, which every correct client's `admitFrame` calls a DUPLICATE and drops — leaving it with no explanation for a stream that stopped",
+      "verdict": "KILLED",
+      "killedBy": "core-api-unit",
+      "cases": []
+    },
+    {
+      "id": "M26",
+      "subject": "authorization happens BEFORE the journal is touched",
+      "file": "apps/core-api/src/transports/ws/streams.controller.ts",
+      "breaks": "the four-gate RBAC decision is skipped entirely, so an authenticated operator with NO membership in the organization reads another tenant's frames -- and the refusal that would have named which gate closed never happens",
+      "verdict": "KILLED",
+      "killedBy": "core-api-integration",
+      "cases": []
+    },
+    {
+      "id": "M27",
+      "subject": "the guest session's server-side expiry fence",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "a captured Cookie header is admitted for as long as the platform token behind it lives, so the lifetime is enforced only by the browser that chooses to send it -- which is the defect this tranche closed",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the guest session's LIFETIME is now enforced by the server and not only by the browser > REFUSES A REPLAYED COOKIE PAST ITS OWN EXPIRY, without contacting the agent"
+      ]
+    },
+    {
+      "id": "M28",
+      "subject": "the same-origin gate on a SameSite=None credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "any site can POST a guest turn with the visitor's own partitioned cookie: the Origin comparison IS the CSRF defence here, and dropping it leaves only a content type an attacker sets themselves",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the stream's refusals are the security boundary, and every one is reached first > refuses a CROSS-ORIGIN mutation with 403 and never contacts the agent",
+        "the stream's refusals are the security boundary, and every one is reached first > refuses a mutation with NO Origin header at all"
+      ]
+    },
+    {
+      "id": "M29",
+      "subject": "the cookie scope hash binding a session to one agent AND one environment",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "one agent's guest session is accepted against every environment it exists in, so a session minted in staging reads production",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the stream's refusals are the security boundary, and every one is reached first > REFUSES A COOKIE MINTED FOR ANOTHER ENVIRONMENT on the same agent"
+      ]
+    },
+    {
+      "id": "M30",
+      "subject": "CHIPS partitioning on the embed credential",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "the guest cookie joins the unpartitioned jar, so every embedding site shares one visitor's session instead of each getting its own",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the unauthenticated mint refuses before it spends an upstream round trip > writes a cookie a browser will keep out of script, off plaintext and out of a third party's jar"
+      ]
+    },
+    {
+      "id": "M31",
+      "subject": "the legacy value shape, which is the only thing an old browser still holds",
+      "file": "apps/webapp/app/services/publicGuestSession.server.ts",
+      "breaks": "a value with no expiry prefix is admitted unbounded, which re-opens exactly the hole the prefix closed -- and does it for every cookie already in a browser",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the guest session's LIFETIME is now enforced by the server and not only by the browser > refuses a value with no expiry prefix — the shape minted before this fence existed"
+      ]
+    },
+    {
+      "id": "M32",
+      "subject": "the rate-limit key on an UNAUTHENTICATED mint",
+      "file": "apps/webapp/app/services/platosAgent.server.ts",
+      "breaks": "every guest-token mint arrives at the agent from the BFF's own address, so the per-IP bucket -- the only defence an unauthenticated mint has -- counts the whole internet as one caller",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the unauthenticated mint refuses before it spends an upstream round trip > forwards the rate-limit key and NOT the visitor's own cookie jar"
+      ]
+    },
+    {
+      "id": "M33",
+      "subject": "the visitor's disconnect reaching the agent",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "breaks": "a visitor closing the tab leaves the agent's turn running to completion against a socket nobody is reading, which is the leak a public guest surface can be pointed at",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "a guest that closes the tab mid-stream > TEARS THE AGENT'S TURN DOWN rather than leaving it streaming into nothing"
+      ]
+    },
+    {
+      "id": "M34",
+      "subject": "the refusal that must not reflect the agent's own bytes",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "breaks": "an upstream failure's detail -- provider error codes, and in the case this suite scripts a provider key -- is handed to an anonymous visitor",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "a stream that ends because the turn finished is distinguishable from one that died > reports an upstream refusal WITHOUT reflecting the agent's own bytes"
+      ]
+    },
+    {
+      "id": "M35",
+      "subject": "the anti-buffering directive that makes a proxied stream a stream",
+      "file": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
+      "breaks": "an intermediary is free to gzip the event stream, which buffers it: the visitor gets the whole turn at the end, indistinguishable from a stream that never streamed",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "a stream that ends because the turn finished is distinguishable from one that died > ends cleanly on the agent's own terminal frame, with the anti-buffering headers a proxy needs"
+      ]
+    },
+    {
+      "id": "M36",
+      "subject": "the mint's refusal to hand a browser a half-minted session",
+      "file": "apps/webapp/app/routes/api.v1.public.guest-token.ts",
+      "breaks": "an agent answering without a token still produces a Set-Cookie, so the browser holds a guest session whose value is the literal text undefined and every later turn 401s with no way to recover",
+      "verdict": "KILLED",
+      "killedBy": "webapp-guest",
+      "cases": [
+        "the unauthenticated mint refuses before it spends an upstream round trip > writes NO cookie when the agent answers with a half-minted session"
+      ]
+    }
+  ]
+}

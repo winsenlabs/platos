@@ -28,7 +28,27 @@ concurrency:
 jobs:
   typecheck:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # MEASURED, 2026-09-10, AND THE FIRST EXPLANATION WAS WRONG -- so both are
+    # here, because the corrected one is the reason the number moved.
+    #
+    # On `v1` this job runs 15m07s (run 34383585684, 7e1243fc), 17m16s and 17m18s
+    # against a 20-minute cap. A run of this branch was then CANCELLED at 20m17s,
+    # on the LAST run step, with all twenty-five earlier steps green -- nothing
+    # failed, it ran out of wall clock. The obvious reading was "the work grew past
+    # the budget", and it is NOT what happened: re-running the SAME work completed
+    # in 16m28s and passed.
+    #
+    # So the real finding is VARIANCE AGAINST A THIN MARGIN. Two hosted runs of
+    # identical work came in 3m49s apart -- about 24% -- and a cap under three
+    # minutes above the mean cannot absorb that. A budget that variance tips does
+    # not fail loudly on a real regression; it produces a red that everybody learns
+    # to re-run, which is worse than no gate at all.
+    #
+    # Raised to 35, which is roughly twice the observed spread above the mean and
+    # is what `postgres-memory-evidence` already uses. The reasoning is the tree's
+    # own, from the widened budget in `clean-prisma-delegates.test.ts`: "a gate that
+    # goes red on wall-clock is a gate someone deletes".
+    timeout-minutes: 35
     services:
       win290-redis:
         image: redis:7
@@ -147,6 +167,8 @@ jobs:
           pnpm test:max-file-lines
           pnpm audit:kernel-content
           pnpm test:kernel-content
+          pnpm audit:stream-contracts
+          pnpm test:stream-contracts
           node scripts/arch/ambient-time.mjs
           node --test scripts/arch/ambient-time.test.mjs
           pnpm audit:sole-writer
@@ -161,8 +183,16 @@ jobs:
           pnpm test:error-taxonomy
           pnpm audit:secret-response-census
           pnpm test:secret-response-census
+          pnpm audit:mcp-store-ownership
+          pnpm test:mcp-store-ownership
+          pnpm audit:tool-lifecycle-reach
+          pnpm test:tool-lifecycle-reach
+          pnpm audit:end-user-presence-ancestry
+          pnpm test:end-user-presence-ancestry
           pnpm test:webapp-image-inventory
           pnpm test:webapp-inventory-contract
+          pnpm test:public-guest-boundary
+          pnpm --filter platos-agent exec vitest run src/http/deprecation-signal.test.ts
           pnpm test:advisory
           pnpm audit:advisory:check
           pnpm audit:advisory:nonvacuity
@@ -181,6 +211,9 @@ jobs:
           pnpm audit:differential-coverage
           pnpm audit:openapi-compat
           pnpm test:openapi-compat
+          pnpm audit:sdk-v1
+          pnpm test:sdk-v1
+          pnpm test:sdk-clients
 
       - name: WIN-284 differential harness and its negative controls
         # The suites prove the comparators, the register and the engine's
@@ -345,7 +378,25 @@ jobs:
     # integration run and a passing one are indistinguishable in a summary, and
     # this job is the whole of this issue's real-store evidence.
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # MEASURED, 2026-09-10, and unlike `typecheck` above this one is REAL GROWTH
+    # rather than variance -- the distinction matters, so here is the whole series.
+    #
+    # On `v1`: 24m18s (run 34383585684, 7e1243fc), 24m18s and 22m54s against a
+    # 25-minute cap. FORTY-TWO SECONDS of margin on the base commit, before this
+    # branch added anything. On this branch the job was cancelled at the 25-minute
+    # cap once, and then completed in 26m20s (run 34443639262) -- so it genuinely
+    # needs more than 25 minutes now, which is the difference from `typecheck`,
+    # where re-running identical work came in comfortably under its old cap.
+    #
+    # The cause is structural and will keep going this way: the job builds
+    # EIGHTEEN context closures and then runs three real-container integration
+    # suites, so its cost grows with every context adopted -- which is the
+    # direction the whole programme is going. A budget set per-context-count is a
+    # budget that expires on a schedule.
+    #
+    # Raised to 40: 26m20s measured, plus room for the same runner variance that
+    # tipped `typecheck`, plus room for the next few adoptions.
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -637,10 +688,20 @@ jobs:
         # same class of defect as the tenancy Prisma delegate census A4 lit after
         # 1,064 commits: a gate is a gate only while a job names it.
         #
+        # WIN-272 (M4.6) ADDS A THIRD REDIS DIRECTORY AND A FIFTH CORE-API SUITE,
+        # and neither line was written from memory: `pnpm test:ci-policy` refused
+        # the commit that added `packages/adapters/redis-streams/src/*.integration
+        # .test.ts` until the script and this line existed. `redis-streams` brings
+        # the journal's conservation and ordering (25 cases) and the bus's
+        # at-least-once redelivery across separate connections (8), and
+        # `core-api:integration` picks up `stream-lane.integration.test.ts` — the
+        # whole stream lane over a real socket — with no new line needed, because
+        # that script selects the package rather than the file.
+        #
         # `scripts/ci-policy.test.mjs` now joins this step to the FILESYSTEM: it
         # enumerates every V1 integration suite on disk and fails if any package
-        # holding one is not selected by some job here. Deleting either line
-        # below turns `pnpm test:ci-policy` red, so this cannot go dark again by
+        # holding one is not selected by some job here. Deleting any line below
+        # turns `pnpm test:ci-policy` red, so this cannot go dark again by
         # omission.
         #
         # They FAIL when Docker is absent rather than skipping, exactly as the
@@ -649,6 +710,7 @@ jobs:
         run: |
           pnpm test:redis-ratelimit:integration
           pnpm test:redis-cache:integration
+          pnpm test:redis-streams:integration
           pnpm test:core-api:integration
 
   differential-state-conservation:

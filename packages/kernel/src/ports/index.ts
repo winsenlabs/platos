@@ -1,6 +1,6 @@
 // ADR M0.3 §4/§13 kernel-hosted decoupling ports.
 //
-// This list is CLOSED at TEN. An adapter-facing port belongs to the context
+// This list is CLOSED at TWELVE. An adapter-facing port belongs to the context
 // whose capability it serves and is published from that context's
 // `application/ports` — it does not move here because its implementation happens
 // to live under `packages/adapters/` (ADR M0.3 §13). Only genuinely
@@ -25,6 +25,20 @@
 // a `JobExecutionErrorCode`, and this one reserves an HTTP request keyed by a
 // caller's header and settles with a status and the bytes. They share a store,
 // which ADR M0.3 §15 permits, and they do not share a contract.
+//
+// `StreamJournal` is the TWELFTH, admitted on the same test and no weaker one
+// (WIN-272, M4.6). M0.4 §2 requires a "per-turn event log keyed (turnId, seq) ...
+// so `Last-Event-ID` survives a process restart", and the five stream lanes it
+// governs — WebSocket, SSE, webhook ingest, public guest and embed — share one
+// envelope family axis and no context. No context decides anything with a resume
+// cursor; the two ends that must agree are the transport that writes frames and
+// the transport that replays them; and the webhook and callback families have no
+// turn to hang the port on at all. It is a SEPARATE port from `EventBus` rather
+// than a widening of it: that one is documented as the TRANSIENT fan-out seam and
+// carries no position, so a subscriber that reconnects joins wherever the bus
+// happens to be, and this one is ordered and addressable and can REFUSE a cursor
+// it no longer holds. They share a STORE, which ADR M0.3 §15 permits, and not a
+// contract.
 export * from "./clock.js";
 export * from "./id-generator.js";
 export * from "./logger.js";
@@ -36,3 +50,4 @@ export * from "./safety-event-sink.js";
 export * from "./erasure-target.js";
 export * from "./correlation.js";
 export * from "./request-idempotency.js";
+export * from "./stream-journal.js";

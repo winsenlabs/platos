@@ -49,6 +49,7 @@ import {
   InMemoryAgentDirectory,
   InMemoryChannelAdapter,
   InMemoryCredentialReader,
+  InMemoryRuntimeRegistry,
   ReversibleEventCipher,
 } from "./in-memory-adapters.js";
 import { InMemoryChannelsRepository } from "./in-memory-channels-repository.js";
@@ -207,6 +208,8 @@ export interface ChannelsTestContext {
   readonly repository: InMemoryChannelsRepository;
   readonly adapter: InMemoryChannelAdapter;
   readonly adapters: InMemoryAdapterRegistry;
+  /** Empty unless a suite registers a REAL runtime. See the class doc. */
+  readonly runtimes: InMemoryRuntimeRegistry;
   readonly credentials: InMemoryCredentialReader;
   readonly agents: InMemoryAgentDirectory;
   readonly cipher: ReversibleEventCipher;
@@ -223,6 +226,7 @@ export function buildChannelsTestContext(policy: ChannelsPolicy = DEFAULT_CHANNE
   const repository = new InMemoryChannelsRepository();
   const adapter = new InMemoryChannelAdapter("slack");
   const adapters = new InMemoryAdapterRegistry(adapter);
+  const runtimes = new InMemoryRuntimeRegistry();
   const credentials = new InMemoryCredentialReader();
   const agents = new InMemoryAgentDirectory();
   const cipher = new ReversibleEventCipher();
@@ -236,6 +240,7 @@ export function buildChannelsTestContext(policy: ChannelsPolicy = DEFAULT_CHANNE
     dependencies: Object.freeze({
       repository,
       adapters,
+      runtimes,
       credentials,
       agents,
       cipher,
@@ -252,6 +257,7 @@ export function buildChannelsTestContext(policy: ChannelsPolicy = DEFAULT_CHANNE
     repository,
     adapter,
     adapters,
+    runtimes,
     credentials,
     agents,
     cipher,

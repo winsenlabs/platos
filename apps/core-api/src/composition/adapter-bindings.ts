@@ -30,6 +30,7 @@ import type {
   EventBus,
   OutboxWriter,
   RequestIdempotency,
+  StreamJournal,
 } from "@platos/kernel";
 
 import type {
@@ -82,6 +83,7 @@ import type {
 } from "@platos/context-providers/application/ports/index.js";
 import type {
   ChannelAdapter,
+  ChannelRuntime,
   ChannelsRepository,
 } from "@platos/context-channels/application/ports/index.js";
 import type { NotificationRuleRepository } from "@platos/context-eventing/application/ports/index.js";
@@ -143,9 +145,15 @@ import { createRedisRatelimitAdapter } from "@platos/adapter-redis-ratelimit";
 import type { RedisCacheAdapter } from "@platos/adapter-redis-cache";
 import { createRedisCacheAdapter } from "@platos/adapter-redis-cache";
 import type { RedisStreamsAdapter } from "@platos/adapter-redis-streams";
+// WIN-272 (M4.6) — the NINTH value import, and the third that turns a generated
+// placeholder into a constructed object. `redis-streams` left
+// `UNIMPLEMENTED_ADAPTERS` in the same commit, which rule (C7) checks against the
+// directory's own source in BOTH directions.
+import { createRedisStreamsAdapter } from "@platos/adapter-redis-streams";
 import type { ModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
 import { createModelRouterProvidersAdapter } from "@platos/adapter-model-router-providers";
 import type { ChannelSlackAdapter } from "@platos/adapter-channel-slack";
+import { createChannelSlackAdapter } from "@platos/adapter-channel-slack";
 import type { NotifierEmailAdapter } from "@platos/adapter-notifier-email";
 import type { NotifierWebhookAdapter } from "@platos/adapter-notifier-webhook";
 import type { KeyringEnvelopeAdapter } from "@platos/adapter-keyring-envelope";
@@ -155,6 +163,7 @@ import { createNodeCryptoDigestAdapter } from "@platos/adapter-node-crypto-diges
 import type { TokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
 import { createTokenmintTotpAdapter } from "@platos/adapter-tokenmint-totp";
 
+import type { ChannelsConfiguration } from "../config/channels.js";
 import type { ProvidersConfiguration } from "../config/providers.js";
 import type { SecurityConfiguration } from "../config/security.js";
 import type { StoresConfiguration } from "../config/stores.js";
@@ -547,8 +556,28 @@ interface PortSatisfaction {
     ProviderProbeCache
   >;
   readonly "redis-streams:EventBus": Satisfies<RedisStreamsAdapter, EventBus>;
+  // WIN-272 (M4.6). The SECOND port on this directory, indexed through the
+  // PROPERTY for the reason `redis-cache`'s three are: the adapter is one object
+  // serving two contracts, and `Satisfies<RedisStreamsAdapter, StreamJournal>`
+  // would ask whether the whole adapter is a journal, which it is not — it IS an
+  // `EventBus`, which is the binding row above and the one this directory was
+  // declared with. The obligation that matters is that `journal` is a journal, so
+  // the day the adapter renames or re-types it, `pnpm build:v1` fails here.
+  readonly "redis-streams:StreamJournal": Satisfies<
+    RedisStreamsAdapter["journal"],
+    StreamJournal
+  >;
   readonly "model-router-providers:ModelRouter": Satisfies<ModelRouterProvidersAdapter, ModelRouter>;
   readonly "channel-slack:ChannelAdapter": Satisfies<ChannelSlackAdapter, ChannelAdapter>;
+  // WIN-271 (M4.5). The SECOND port on this directory, and the one that made the
+  // directory worth constructing. `ChannelRuntime` extends `ChannelAdapter`, so
+  // one object satisfies both — stated as TWO obligations for the reason
+  // `keyring-envelope`'s three are stated as three: a missing obligation is not
+  // a wrong one, and collapsing them would leave the compiler silent the day
+  // `verifyInbound` changed shape. Proven against the ADAPTER rather than
+  // through a property, because `send`, `describePrincipal`, `verifyCredential`
+  // and `verifyInbound` are four names with no collision.
+  readonly "channel-slack:ChannelRuntime": Satisfies<ChannelSlackAdapter, ChannelRuntime>;
   readonly "notifier-email:Notifier": Satisfies<NotifierEmailAdapter, Notifier>;
   readonly "notifier-webhook:Notifier": Satisfies<NotifierWebhookAdapter, Notifier>;
   // WIN-259 M2.4. `secrets`' THREE cryptography ports, every one proven against
@@ -642,8 +671,10 @@ export const PORT_SATISFACTION: PortSatisfaction = Object.freeze({
   "redis-cache:RequestIdempotency": true,
   "redis-cache:ProviderProbeCache": true,
   "redis-streams:EventBus": true,
+  "redis-streams:StreamJournal": true,
   "model-router-providers:ModelRouter": true,
   "channel-slack:ChannelAdapter": true,
+  "channel-slack:ChannelRuntime": true,
   "notifier-email:Notifier": true,
   "notifier-webhook:Notifier": true,
   "keyring-envelope:KeyRing": true,
@@ -1122,6 +1153,24 @@ export const ADAPTER_BINDINGS: readonly AdapterBinding[] = Object.freeze([
   // filled, and its `IDENTITY_ACCESS_UNASSEMBLED` sentence names one.
   Object.freeze({ adapter: "tokenmint-totp", port: "TokenMinter", owner: "identity-access" }),
   Object.freeze({ adapter: "tokenmint-totp", port: "TotpCodeVerifier", owner: "identity-access" }),
+  // WIN-271 (M4.5). The FIFTY-FOURTH binding, and the SECOND on `channel-slack`
+  // — appended at the END for the reason every row above it was: every ordinal
+  // already written stays true. `ChannelRuntime` extends `ChannelAdapter`, so
+  // the directory's two rows are one object; they are two rows because they are
+  // two obligations, and `PORT_SATISFACTION` proves each independently.
+  Object.freeze({ adapter: "channel-slack", port: "ChannelRuntime", owner: "channels" }),
+  // WIN-272 (M4.6). The FIFTY-FIFTH binding, and the SECOND on `redis-streams` —
+  // appended at the END for the reason every row above it was: every ordinal
+  // already written stays true. It is a row on an EXISTING directory rather than a
+  // sixteenth package because ADR M0.3 §15's amendment is exactly this case: one
+  // vendor client is one directory, and `EventBus` and `StreamJournal` are the
+  // same Redis, the same connection and the same primitive. It is a SEPARATE port
+  // from `EventBus` rather than a widening of it because the contracts differ —
+  // that one is documented as the TRANSIENT fan-out seam and carries no position,
+  // this one is ordered and addressable and can REFUSE a cursor it no longer
+  // holds. Its owner is `kernel`, which this directory already had, so
+  // `EXPECTED_EDGE_COUNT` does not move.
+  Object.freeze({ adapter: "redis-streams", port: "StreamJournal", owner: "kernel" }),
 ] as const satisfies readonly AdapterBinding[]);
 
 /**
@@ -1195,8 +1244,26 @@ export const UNIMPLEMENTED_ADAPTERS: readonly AdapterName[] = Object.freeze([
   // optimistic: it reads this list back and joins it to the filesystem, so a
   // directory dropped from here without gaining a `create*Adapter` fails, and
   // one that gained a factory and stayed here fails too.
-  "redis-streams",
-  "channel-slack",
+  // WIN-272 (M4.6) — `redis-streams` LEFT THIS LIST, the THIRD directory ever to
+  // do so, and it is half of what M4.5 recorded as blocking `channels`: the two
+  // ports ADR M0.3 §3 makes load-bearing are the reverse-edge pair, and this is
+  // the outbound one. `CHANNELS_UNCOMPOSABLE` in `context-ports.ts` moved in the
+  // same commit, because `installation.test.ts` reads that sentence back against
+  // THIS list and would otherwise have caught it.
+  //
+  // NO DOUBLE-QUOTE CHARACTER APPEARS IN THIS COMMENT, DELIBERATELY. Rule (C7)
+  // reads the entries of this frozen literal by scanning the whole block for
+  // double-quoted runs, so any such run inside a COMMENT in the array is read as a
+  // listed directory. Two drafts of this note were reported as bogus entries: the
+  // first quoted a sentence, and the second quoted the scanner pattern itself. The
+  // gate is byte-level and does not know a comment from an element, which is the
+  // same class of hazard as the vocabulary boundary reading a sentence about
+  // itself.
+  // WIN-271 (M4.5) — `channel-slack` LEFT THIS LIST, the second directory ever
+  // to do so. Rule (C7) is what makes the removal honest: it reads this list
+  // back and joins it to `packages/adapters/channel-slack/src/index.ts`, so a
+  // directory dropped from here without gaining a `create*Adapter` fails, and
+  // one that gained a factory and stayed here fails too.
   "notifier-email",
   "notifier-webhook",
 ]);
@@ -1216,17 +1283,23 @@ export interface UnwiredAdapter {
 /**
  * What an install hands the constructor, narrowed to what it actually reads.
  *
- * THREE of the six validated sections and two kernel ports — not the whole
+ * FOUR of the six validated sections and two kernel ports — not the whole
  * `PlatformConfiguration`. The `core` section is the process's own (port, host,
- * log level, timeouts) and no adapter reads it; `channels` and `durable` belong
- * to two of the eight directories that have no constructor to hand them to.
- * Taking the whole object would have made this signature claim it consumed
- * things it does not.
+ * log level, timeouts) and no adapter reads it; `durable` belongs to a directory
+ * that still has no constructor to hand it to. Taking the whole object would
+ * have made this signature claim it consumed things it does not.
+ *
+ * WIN-271 (M4.5) ADDED `channels`, and the section was already waiting for it.
+ * `config/channels.ts` has anchored its Slack group on the SIGNING SECRET since
+ * WIN-297 — deliberately, so that "the channel is wired" and "the channel can
+ * tell a real caller from a forged one" are one statement — and until this
+ * tranche there was nothing to hand it to.
  */
 export interface AdapterConstructionInput {
   readonly stores: StoresConfiguration;
   readonly security: SecurityConfiguration;
   readonly providers: ProvidersConfiguration;
+  readonly channels: ChannelsConfiguration;
   /** Injected, never ambient: the outbox stamps every event's time from it. */
   readonly clock: Clock;
   /**
@@ -1352,6 +1425,17 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
       "configuration",
       "PLATOS_STORE_REDIS_URL is not set, so the stores.redis group is undeclared",
     );
+    // WIN-272 (M4.6) — a THIRD decline on the same variable, for the reason there
+    // was a second: three directories, three objects, three lifetimes. An install
+    // that wired the cache and not the journal would be a state this table has to
+    // be able to report, and a reader of `/readyz` who saw `redis-streams`
+    // unsatisfied with no row here could not tell a missing variable from an
+    // adapter that was never written.
+    decline(
+      "redis-streams",
+      "configuration",
+      "PLATOS_STORE_REDIS_URL is not set, so the stores.redis group is undeclared",
+    );
   } else {
     const adapter = createRedisCacheAdapter({ url: redis.url });
     adapters["redis-cache"] = adapter;
@@ -1364,6 +1448,16 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     const limiter = createRedisRatelimitAdapter({ url: redis.url });
     adapters["redis-ratelimit"] = limiter;
     closers.push(() => limiter.close());
+    // A THIRD CLIENT AGAINST THE SAME URL, for the reason the second is a second:
+    // sharing one connection between directories would make
+    // `adapter-is-self-contained` a sentence nobody could check, and it would tie
+    // three lifetimes together so closing the cache silently stopped every live
+    // stream. This one also holds SUBSCRIPTIONS — poll loops that must be stopped
+    // before the socket goes — which is why its closer calls `close()` rather than
+    // a bare disconnect.
+    const streams = createRedisStreamsAdapter({ url: redis.url });
+    adapters["redis-streams"] = streams;
+    closers.push(() => streams.close());
   }
 
   const encryption = input.security.encryption;
@@ -1426,6 +1520,32 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
     const router = createModelRouterProvidersAdapter({});
     if (router.ok) adapters["model-router-providers"] = router.value;
     else faults.push(`model-router-providers could not be constructed: ${router.error.code}`);
+  }
+
+  // WIN-271 (M4.5). THE ANCHOR IS THE SIGNING SECRET AND NOT A BOT TOKEN, which
+  // is `config/channels.ts`'s own decision and the reason this arm can be
+  // written at all. An inbound channel is reachable from the public internet and
+  // the only thing that makes a request on it trustworthy is the signature;
+  // anchoring on the outbound token would let an install declare a channel it
+  // cannot verify, and the process would boot, answer, and accept every forged
+  // request. The per-installation BOT TOKEN is deliberately not here — it is a
+  // row in the `channels` store, one per customer, read per call.
+  if (input.channels.slack === null) {
+    decline(
+      "channel-slack",
+      "configuration",
+      "PLATOS_CHANNELS_SLACK_SIGNING_SECRET is not set, so the channels.slack group is undeclared",
+    );
+  } else {
+    // TOTAL OVER ITS OPTIONS, so no `Result` and no `faults` row: there is
+    // nothing to parse, no pool to open and no credential to validate. The
+    // signing secret is not handed over here — it travels per delivery, on the
+    // command, the same way a bot token travels per send — so this constructor
+    // reads only the replay window, which `config/channels.ts` has already
+    // bounded to 1..3600 seconds.
+    adapters["channel-slack"] = createChannelSlackAdapter({
+      requestMaxAgeSeconds: input.channels.slack.requestMaxAgeSeconds,
+    });
   }
 
   for (const adapter of UNIMPLEMENTED_ADAPTERS) {

@@ -1,0 +1,2247 @@
+{
+  "issue": "WIN-268",
+  "milestone": "M4.2",
+  "surfaceRoots": [
+    "apps/agent/src/mcp-platform",
+    "apps/agent/src/mcp-docs",
+    "apps/core-api/src/transports/mcp",
+    "apps/mcp-stdio/src"
+  ],
+  "canonicalSchema": "internal-packages/tenancy-database/prisma/schema.prisma",
+  "composedContexts": [
+    "identityAccess",
+    "providers",
+    "secrets",
+    "tenancy"
+  ],
+  "totals": {
+    "sites": 154,
+    "delegateSites": 141,
+    "clientSites": 13,
+    "files": 21
+  },
+  "byVerdict": {
+    "blockedOnAdapter": 2,
+    "blockedOnContext": 86,
+    "blockedOnContract": 66
+  },
+  "byOwner": {
+    "<kernel-outbox-adapter>": {
+      "sites": 2,
+      "delegate": 2,
+      "client": 0,
+      "models": [
+        "Event"
+      ],
+      "composed": false,
+      "contractMethods": null
+    },
+    "eventing": {
+      "sites": 6,
+      "delegate": 6,
+      "client": 0,
+      "models": [
+        "NotificationRule"
+      ],
+      "composed": false,
+      "contractMethods": [
+        "deleteRule",
+        "describeRule",
+        "erasureTarget",
+        "listRules",
+        "recordDeliveryFailure",
+        "registerRule",
+        "routeEvent",
+        "testRule",
+        "updateRule"
+      ]
+    },
+    "tools": {
+      "sites": 35,
+      "delegate": 35,
+      "client": 0,
+      "models": [
+        "EntityMcpConfig",
+        "EntityToolPolicy",
+        "EnvironmentEntityTool",
+        "OrganizationMcpPolicy",
+        "Tool",
+        "ToolHealth"
+      ],
+      "composed": false,
+      "contractMethods": [
+        "configureMcpSurface",
+        "deleteOrganizationPolicy",
+        "describeMcpSurface",
+        "discoverEntityTools",
+        "executeTool",
+        "findTools",
+        "listCallableForMcpCaller",
+        "listEntityToolPolicies",
+        "listOrganizationPolicies",
+        "listTools",
+        "pageTools",
+        "readToolAudit",
+        "registerTools",
+        "resolvePermission",
+        "setEntityToolPolicy",
+        "setOrganizationPolicy",
+        "setToolEnabled"
+      ]
+    },
+    "identity-access": {
+      "sites": 35,
+      "delegate": 35,
+      "client": 0,
+      "models": [
+        "EndUser",
+        "EndUserIdentity",
+        "McpAnonymousSession",
+        "McpBearerToken",
+        "McpOidcSession",
+        "McpToken",
+        "OAuthAccessToken",
+        "OAuthClient"
+      ],
+      "composed": true,
+      "contractMethods": [
+        "authenticateBearer",
+        "authenticateOperator",
+        "clearSessionCookie",
+        "consumeRateLimit",
+        "describeSessionCookie",
+        "issueSessionCookie",
+        "listEndUsers",
+        "mintBearerCredential",
+        "revokeOperatorSession",
+        "rotateSessionCookie",
+        "verifySessionCookie"
+      ]
+    },
+    "tenancy": {
+      "sites": 17,
+      "delegate": 17,
+      "client": 0,
+      "models": [
+        "Entity",
+        "Environment",
+        "OrganizationMembership",
+        "Project"
+      ],
+      "composed": true,
+      "contractMethods": [
+        "addProjectMember",
+        "authorizeEnvironmentOperator",
+        "changeMembershipRole",
+        "createOrganization",
+        "createProject",
+        "deactivateMembership",
+        "describeTenant",
+        "findEntity",
+        "findOrganizationMembership",
+        "listOperatorOrganizations",
+        "listProjectEntities",
+        "listVisibleProjects",
+        "resolveEnvironmentScope",
+        "revokeAccessKeyGeneration",
+        "scopeContains",
+        "verifyAuthorization"
+      ]
+    },
+    "<client-level>": {
+      "sites": 13,
+      "delegate": 0,
+      "client": 13,
+      "models": [],
+      "composed": false,
+      "contractMethods": null
+    },
+    "observability": {
+      "sites": 3,
+      "delegate": 3,
+      "client": 0,
+      "models": [
+        "AdminAudit"
+      ],
+      "composed": false,
+      "contractMethods": [
+        "describeStatus",
+        "drainProjections",
+        "erasureTarget",
+        "projectTurn",
+        "readAdminTrail",
+        "recordAdminAction"
+      ]
+    },
+    "agents": {
+      "sites": 15,
+      "delegate": 15,
+      "client": 0,
+      "models": [
+        "AgentBinding",
+        "Macro"
+      ],
+      "composed": false,
+      "contractMethods": [
+        "addAgentToCluster",
+        "appendRecordingStep",
+        "createAgent",
+        "createCluster",
+        "createTemplate",
+        "describeAgent",
+        "describeAgentBySlug",
+        "describeCluster",
+        "describeMacro",
+        "describePins",
+        "describeTemplate",
+        "describeVersion",
+        "disableSkill",
+        "enableSkill",
+        "listAgents",
+        "listClusters",
+        "listMacros",
+        "pageAgents",
+        "pageTemplates",
+        "pageVersions",
+        "planVersionPrune",
+        "promoteCanary",
+        "readLoadout",
+        "removeAgent",
+        "removeAgentFromCluster",
+        "removeCluster",
+        "removeMacro",
+        "removeSkill",
+        "removeTemplate",
+        "resolveCompactionRoute",
+        "resolveMacro",
+        "resolveRoute",
+        "rollbackToVersion",
+        "selectVersion",
+        "setCanary",
+        "startRecording",
+        "stopRecording",
+        "updateAgent",
+        "updateCluster",
+        "updateMacro",
+        "updateTemplate"
+      ]
+    },
+    "cost-monitoring": {
+      "sites": 13,
+      "delegate": 13,
+      "client": 0,
+      "models": [
+        "AlertChannel",
+        "AlertChannelConfiguration",
+        "AlertDelivery",
+        "AlertDeliveryRetry"
+      ],
+      "composed": false,
+      "contractMethods": [
+        "configureBudget",
+        "createAlertChannel",
+        "deliverCrossing",
+        "describeAlertChannel",
+        "describeBudget",
+        "detectCrossings",
+        "estimateSpend",
+        "evaluateBudgets",
+        "guardSpend",
+        "listAlertChannels",
+        "listBudgets",
+        "overrideBudget",
+        "pageBudgets",
+        "probeAlertChannel",
+        "reconcileDeliveries",
+        "recordTurn",
+        "releaseSpend",
+        "removeAlertChannel",
+        "removeBudget",
+        "reserveSpend",
+        "settleSpend",
+        "summariseConsumption",
+        "sweepBreaches",
+        "updateAlertChannel"
+      ]
+    },
+    "conversations": {
+      "sites": 2,
+      "delegate": 2,
+      "client": 0,
+      "models": [
+        "Thread",
+        "Turn"
+      ],
+      "composed": false,
+      "contractMethods": []
+    },
+    "jobs": {
+      "sites": 11,
+      "delegate": 11,
+      "client": 0,
+      "models": [
+        "Job"
+      ],
+      "composed": false,
+      "contractMethods": [
+        "describeApproval",
+        "describeJob",
+        "describeJobByKey",
+        "erasureTarget",
+        "execute",
+        "listApprovals",
+        "listJobs",
+        "markApprovalConsumed",
+        "readJobSource",
+        "registerJob",
+        "requestApproval",
+        "resolveApproval",
+        "sweepAllApprovals",
+        "sweepApprovals"
+      ]
+    },
+    "providers": {
+      "sites": 1,
+      "delegate": 1,
+      "client": 0,
+      "models": [
+        "ProviderKey"
+      ],
+      "composed": true,
+      "contractMethods": [
+        "checkAllProvidersHealth",
+        "checkProviderHealth",
+        "deleteProviderKey",
+        "describeProvider",
+        "describeProviderKey",
+        "describeProviders",
+        "ingestRateCard",
+        "linkProviderKey",
+        "listProviderKeys",
+        "listUsableProviders",
+        "openModelRoute",
+        "pageProviderKeys",
+        "priceModelUsage",
+        "registerProviderKey",
+        "relinkProviderKey",
+        "resolveModelPrice",
+        "rotateProviderKeySecret",
+        "runModelGeneration",
+        "setProviderAdoption",
+        "streamModelGeneration",
+        "unlinkProvider",
+        "updateProviderKey"
+      ]
+    },
+    "governance": {
+      "sites": 1,
+      "delegate": 1,
+      "client": 0,
+      "models": [
+        "SafetyEvent"
+      ],
+      "composed": false,
+      "contractMethods": [
+        "aggregateAgentEvals",
+        "createCriterion",
+        "createGoldenSet",
+        "describeCriterion",
+        "describeEval",
+        "describeGoldenSet",
+        "describeSafetyEvent",
+        "enqueueEvalRun",
+        "erasureTarget",
+        "pageCriteria",
+        "pageEvals",
+        "pageGoldenSets",
+        "pageSafetyEvents",
+        "rateTurn",
+        "readAgentSatisfaction",
+        "readRiskBoard",
+        "readTurnRating",
+        "readVersionSatisfaction",
+        "recordSafetyEvent",
+        "removeCriterion",
+        "removeGoldenSet",
+        "reportRegression",
+        "runJudge",
+        "safetyEventSink",
+        "summariseSafety",
+        "updateCriterion",
+        "updateGoldenSet",
+        "withdrawRating"
+      ]
+    }
+  },
+  "verdicts": {
+    "moved": "MOVED — the site is already inside apps/core-api/src/transports and reaches a contract",
+    "blockedOnContext": "BLOCKED-ON-CONTEXT — the owning context publishes a contract that the composition root does not compose, so no transport can reach it",
+    "blockedOnContract": "BLOCKED-ON-CONTRACT — the owning context IS composed, and publishes no method for this use case",
+    "blockedOnAdapter": "BLOCKED-ON-ADAPTER — the row is written by the kernel outbox adapter, not by a context"
+  },
+  "dispositions": {
+    "apps/agent/src/mcp-platform/events.service.ts": {
+      "contexts": [
+        "eventing",
+        "<kernel-outbox-adapter>"
+      ],
+      "waitingOn": "context-composition",
+      "note": "`NotificationRule` CRUD is `eventing`'s, which publishes 9 methods and is not composed. The two `Event` sites are the kernel outbox's own table and may not become a context call at all: ADR M0.3 §7 decision 8 gives `Event` one writer, the outbox adapter, so this file's event append belongs behind `OutboxWriter` and its event READ behind `observability`."
+    },
+    "apps/agent/src/mcp-platform/identity-resolver.service.ts": {
+      "contexts": [
+        "identity-access",
+        "tenancy",
+        "tools"
+      ],
+      "waitingOn": "contract-method",
+      "note": "`McpAnonymousSession` find/update/create is the anonymous MCP caller's session lifecycle. `identity-access` is composed and publishes `authenticateBearer` for the four BEARER kinds only; an anonymous MCP session is a fifth credential shape with no published mint, no published lookup and no published touch. `EntityMcpConfig` is `tools`' and `Environment.findMany` is `tenancy`'s listing of the environments an entity is exposed in, which `listVisibleProjects`/`listProjectEntities` do not answer."
+    },
+    "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts": {
+      "contexts": [
+        "identity-access",
+        "tenancy",
+        "observability",
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "note": "MINT and VERIFY are already on `identity-access` — `mintBearerCredential` and `authenticateBearer`, both reached by the two moved mint routes. LIST and REVOKE are not: there is no `listBearerCredentials` and no `revokeBearerCredential`, so `GET /mcp/entity/:entityId/tokens` and `DELETE /mcp/entity/:entityId/tokens/:tokenId` cannot be served from a contract. `Entity.findFirst` is `tenancy.findEntity`. The `AdminAudit` writes are `observability`'s and it is not composed."
+    },
+    "apps/agent/src/mcp-platform/mcp-entity.controller.ts": {
+      "contexts": [
+        "identity-access",
+        "tenancy",
+        "tools"
+      ],
+      "waitingOn": "context-composition",
+      "note": "The entity MCP gateway's config, tool exposure and ACL surfaces are `tools`' — `describeMcpSurface`, `configureMcpSurface`, `listEntityToolPolicies`, `setEntityToolPolicy` and `listCallableForMcpCaller` are all PUBLISHED and none of them is reachable, because `composeApplication` does not compose `tools`. Its `McpOidcSession` and `McpAnonymousSession` reads share the identity-resolver's missing session lifecycle."
+    },
+    "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts": {
+      "contexts": [
+        "tools",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "note": "Every site is `tools`', and every use case is on `ToolsContract` already: `listEntityToolPolicies` and `setEntityToolPolicy` are exactly this service. The blocker is composition, not design — see `apps/core-api/src/composition/adapter-bindings.ts`, where `postgres-tenancy:ToolsRepository` is a declared, satisfied binding and `ToolDispatch` has no adapter directory at all."
+    },
+    "apps/agent/src/mcp-platform/permission-gateway.service.ts": {
+      "contexts": [
+        "tools",
+        "agents",
+        "tenancy"
+      ],
+      "waitingOn": "context-composition",
+      "note": "`ToolsContract.resolvePermission`, `listOrganizationPolicies`, `setOrganizationPolicy` and `deleteOrganizationPolicy` are the published form of this entire service, and `packages/contexts/tools/application/index.ts` names it as one of the three files that layer replaces. The `AgentBinding` read is tier 3's, reached through the same context. The `Environment` read is this tranche's tier-2 forged-scope refusal and is `tenancy.resolveEnvironmentScope` — a method that EXISTS and is composed; it stays here only because the service around it cannot move until `tools` is composed. Blocked on composing `tools`."
+    },
+    "apps/agent/src/mcp-platform/token.service.ts": {
+      "contexts": [
+        "identity-access",
+        "tenancy",
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "note": "Same split as the entity bearer service: `mint` is `mintBearerCredential`, `verify` is `authenticateBearer`, `resolveScope` is `tenancy.resolveEnvironmentScope` and the admin-tier gate is `tenancy.findOrganizationMembership` — all published. `list` and `revoke` are not published by `identity-access` at all, which is what keeps `GET /mcp/platform/tokens` and `POST /mcp/platform/tokens/:id/revoke` in this deployable."
+    },
+    "apps/agent/src/mcp-platform/tools/admin.ts": {
+      "contexts": [
+        "tenancy",
+        "agents"
+      ],
+      "waitingOn": "contract-method",
+      "note": "`loadOrgScopes` walks every (organization, project, environment) triple an admin token holds. `tenancy` publishes `listOperatorOrganizations`, `listVisibleProjects` and `listProjectEntities` — all keyed on a USER — and nothing keyed on an organization, which is what an admin-tier MCP token holds instead of a user. The `AgentBinding` fan-out is `agents`', which is not composed."
+    },
+    "apps/agent/src/mcp-platform/tools/alert_channels.ts": {
+      "contexts": [
+        "cost-monitoring",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "note": "Alert channels, their configurations, deliveries and retries are all `cost-monitoring` rows and it publishes 24 methods; the composition root composes four contexts and this is not one of them. The `$queryRawUnsafe` site is the only raw SQL on the MCP surface and must not survive the move in any form."
+    },
+    "apps/agent/src/mcp-platform/tools/channel-apps.ts": {
+      "contexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "note": "One `AgentBinding` read, used to resolve the agent an external workspace installation routes to. `agents` is not composed. The channel rows this file otherwise writes are reached through services outside this surface and are not sites here."
+    },
+    "apps/agent/src/mcp-platform/tools/channels.ts": {
+      "contexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "note": "Two `AgentBinding` reads that check the agent a channel doorway binds to is deployed in the caller's environment. `agents` is not composed."
+    },
+    "apps/agent/src/mcp-platform/tools/end-users.ts": {
+      "contexts": [
+        "identity-access",
+        "conversations"
+      ],
+      "waitingOn": "contract-method",
+      "note": "`identity-access` is composed and publishes `listEndUsers` — a LISTING, and there is no `end_users.list` tool here. The four tools that exist are get, link_identity, bind_external_id and unlink_identity, and the contract publishes no read of one end user and no write of an `EndUserIdentity` at all. The `Thread.aggregate` that supplies threadCount/lastActiveAt is `conversations`', whose contract publishes zero methods."
+    },
+    "apps/agent/src/mcp-platform/tools/entities.ts": {
+      "contexts": [
+        "tools",
+        "identity-access"
+      ],
+      "waitingOn": "context-composition",
+      "note": "`EntityMcpConfig` and `ToolHealth` are `tools`' and covered by `describeMcpSurface`/`discoverEntityTools`; the `McpBearerToken.count` is `identity-access`' and shares the missing listing. Blocked on composing `tools`."
+    },
+    "apps/agent/src/mcp-platform/tools/jobs.ts": {
+      "contexts": [
+        "jobs"
+      ],
+      "waitingOn": "context-composition",
+      "note": "Eleven `Job` sites against a `jobs` contract that publishes 14 methods and is not composed. `packages/contexts/jobs` is also where the approval-timeout clamp lives, and its MCP-vs-generic split is already correct there — see `approvalRequestFrom`."
+    },
+    "apps/agent/src/mcp-platform/tools/macros.ts": {
+      "contexts": [
+        "agents"
+      ],
+      "waitingOn": "context-composition",
+      "note": "`Macro` is an `agents` row per ADR M0.3 §1 row 5. `agents` publishes 41 methods and is not composed, so macro record/list/update/share/replay stay here. The JSON-shape defect this tranche fixes in `record_stop` is a PostgreSQL check constraint, not a contract question, and is fixed in place."
+    },
+    "apps/agent/src/mcp-platform/tools/mcp.ts": {
+      "contexts": [
+        "identity-access"
+      ],
+      "waitingOn": "contract-method",
+      "note": "`mcp_list_clients` and `mcp_list_tokens` read `OAuthClient` and `OAuthAccessToken`. `identity-access` owns both rows and publishes `exchangeOauthRefreshToken`-shaped use cases in `application/` only; its contract publishes no listing of either, so neither tool can reach one."
+    },
+    "apps/agent/src/mcp-platform/tools/orchestration.ts": {
+      "contexts": [
+        "tools"
+      ],
+      "waitingOn": "context-composition",
+      "note": "`Tool` and `EnvironmentEntityTool` writes performed by the `entities.provision` composite. `ToolsContract.registerTools` and `discoverEntityTools` are the published form; blocked on composing `tools`."
+    },
+    "apps/agent/src/mcp-platform/tools/platos-control.ts": {
+      "contexts": [
+        "<client-level>"
+      ],
+      "waitingOn": "contract-method",
+      "note": "One `$transaction` with no delegate call of its own inside this file's scan — a client-level reach that names no row. It cannot be classified by owner and must not survive the move: a transport does not open transactions, a use case does."
+    },
+    "apps/agent/src/mcp-platform/tools/providers.ts": {
+      "contexts": [
+        "providers"
+      ],
+      "waitingOn": "transport-move",
+      "note": "The ONE site on this surface whose owner is composed and whose method exists: `ProviderKey.findMany` scoped to the environment is `ProvidersContract.listProviderKeys`. Nothing about it is blocked; it is here because `providers.set_routes` also writes `AgentVersion.modelRoutes`, which is `agents`', so moving the read alone would split one tool across two deployables."
+    },
+    "apps/agent/src/mcp-platform/tools/reflection.ts": {
+      "contexts": [
+        "tenancy",
+        "tools",
+        "conversations",
+        "governance"
+      ],
+      "waitingOn": "context-composition",
+      "note": "`platos.explain_turn` joins a `Turn` (`conversations`, zero published methods), its `SafetyEvent`s (`governance`, not composed), the `EnvironmentEntityTool` exposures it used (`tools`, not composed) and the `Entity` rows behind them (`tenancy`, composed). Four owners, three uncomposed: this tool cannot move until the turn record itself is on a contract."
+    },
+    "apps/agent/src/mcp-platform/tools/settings.ts": {
+      "contexts": [
+        "tenancy"
+      ],
+      "waitingOn": "transport-move",
+      "note": "`projects.list_all` is `TenancyContract.listVisibleProjects(userId)` exactly — same filter, same soft-delete exclusion, same membership join. Owner composed, method published: this is a MOVE with no missing piece, held only by the fact that the MCP tool table it is registered in has not moved."
+    }
+  },
+  "sites": [
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 173,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "event",
+      "model": "Event",
+      "operation": "create",
+      "owner": "<kernel-outbox-adapter>",
+      "verdict": "blockedOnAdapter"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 200,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "notificationRule",
+      "model": "NotificationRule",
+      "operation": "findMany",
+      "owner": "eventing",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 265,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "event",
+      "model": "Event",
+      "operation": "findMany",
+      "owner": "<kernel-outbox-adapter>",
+      "verdict": "blockedOnAdapter"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 309,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "notificationRule",
+      "model": "NotificationRule",
+      "operation": "create",
+      "owner": "eventing",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 322,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "notificationRule",
+      "model": "NotificationRule",
+      "operation": "findMany",
+      "owner": "eventing",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 331,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "notificationRule",
+      "model": "NotificationRule",
+      "operation": "findFirst",
+      "owner": "eventing",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 379,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "notificationRule",
+      "model": "NotificationRule",
+      "operation": "update",
+      "owner": "eventing",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/events.service.ts",
+      "line": 385,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "notificationRule",
+      "model": "NotificationRule",
+      "operation": "delete",
+      "owner": "eventing",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/identity-resolver.service.ts",
+      "line": 43,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "findUnique",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/identity-resolver.service.ts",
+      "line": 121,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpAnonymousSession",
+      "model": "McpAnonymousSession",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/identity-resolver.service.ts",
+      "line": 131,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpAnonymousSession",
+      "model": "McpAnonymousSession",
+      "operation": "update",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/identity-resolver.service.ts",
+      "line": 141,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpAnonymousSession",
+      "model": "McpAnonymousSession",
+      "operation": "create",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/identity-resolver.service.ts",
+      "line": 168,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findMany",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 47,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 114,
+      "shape": "client",
+      "receiver": "this.prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 115,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "create",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 128,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "adminAudit",
+      "model": "AdminAudit",
+      "operation": "create",
+      "owner": "observability",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 156,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 166,
+      "shape": "client",
+      "receiver": "this.prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 167,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "updateMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 176,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "adminAudit",
+      "model": "AdminAudit",
+      "operation": "create",
+      "owner": "observability",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 221,
+      "shape": "client",
+      "receiver": "this.prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 222,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "count",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 223,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "findMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 256,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 264,
+      "shape": "client",
+      "receiver": "this.prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 265,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "updateMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-bearer-token.service.ts",
+      "line": 270,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "adminAudit",
+      "model": "AdminAudit",
+      "operation": "create",
+      "owner": "observability",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 142,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 171,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findUnique",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 212,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 354,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpAnonymousSession",
+      "model": "McpAnonymousSession",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 415,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 510,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpOidcSession",
+      "model": "McpOidcSession",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 525,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 737,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpAnonymousSession",
+      "model": "McpAnonymousSession",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 802,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1313,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environmentEntityTool",
+      "model": "EnvironmentEntityTool",
+      "operation": "findFirst",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1358,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findMany",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1392,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "findUnique",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1448,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1464,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "findUnique",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1490,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1522,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "updateMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1538,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1548,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1579,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+      "line": 1590,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 121,
+      "shape": "client",
+      "receiver": "this.prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 123,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "environmentEntityTool",
+      "model": "EnvironmentEntityTool",
+      "operation": "count",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 124,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "environmentEntityTool",
+      "model": "EnvironmentEntityTool",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 138,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "entityToolPolicy",
+      "model": "EntityToolPolicy",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 176,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityToolPolicy",
+      "model": "EntityToolPolicy",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 189,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityToolPolicy",
+      "model": "EntityToolPolicy",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 236,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityToolPolicy",
+      "model": "EntityToolPolicy",
+      "operation": "findUnique",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 241,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityToolPolicy",
+      "model": "EntityToolPolicy",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 282,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environmentEntityTool",
+      "model": "EnvironmentEntityTool",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 289,
+      "shape": "client",
+      "receiver": "this.prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 291,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityToolPolicy",
+      "model": "EntityToolPolicy",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 326,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityToolPolicy",
+      "model": "EntityToolPolicy",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
+      "line": 343,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "updateMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 486,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findUnique",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 511,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMcpPolicy",
+      "model": "OrganizationMcpPolicy",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 537,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "agentBinding",
+      "model": "AgentBinding",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 682,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMcpPolicy",
+      "model": "OrganizationMcpPolicy",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 700,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMcpPolicy",
+      "model": "OrganizationMcpPolicy",
+      "operation": "findFirst",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 705,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMcpPolicy",
+      "model": "OrganizationMcpPolicy",
+      "operation": "update",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 712,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMcpPolicy",
+      "model": "OrganizationMcpPolicy",
+      "operation": "create",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 728,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMcpPolicy",
+      "model": "OrganizationMcpPolicy",
+      "operation": "findFirst",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
+      "line": 733,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMcpPolicy",
+      "model": "OrganizationMcpPolicy",
+      "operation": "delete",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 97,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findUnique",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 137,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "organizationMembership",
+      "model": "OrganizationMembership",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 154,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpToken",
+      "model": "McpToken",
+      "operation": "create",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 204,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpToken",
+      "model": "McpToken",
+      "operation": "findUnique",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 230,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpToken",
+      "model": "McpToken",
+      "operation": "updateMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 280,
+      "shape": "client",
+      "receiver": "this.prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 281,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpToken",
+      "model": "McpToken",
+      "operation": "count",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 282,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpToken",
+      "model": "McpToken",
+      "operation": "findMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 321,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpToken",
+      "model": "McpToken",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/token.service.ts",
+      "line": 328,
+      "shape": "delegate",
+      "receiver": "this.prisma",
+      "delegate": "mcpToken",
+      "model": "McpToken",
+      "operation": "updateMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "line": 61,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "environment",
+      "model": "Environment",
+      "operation": "findMany",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "line": 301,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "agentBinding",
+      "model": "AgentBinding",
+      "operation": "findMany",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/admin.ts",
+      "line": 374,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findMany",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 158,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "findMany",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 209,
+      "shape": "client",
+      "receiver": "prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 220,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "create",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 273,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "findFirst",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 291,
+      "shape": "client",
+      "receiver": "prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 332,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "update",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 371,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "findFirst",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 381,
+      "shape": "client",
+      "receiver": "prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 382,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "update",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 393,
+      "shape": "client",
+      "receiver": "tx",
+      "delegate": null,
+      "model": null,
+      "operation": "$queryRawUnsafe",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 397,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "alertChannelConfiguration",
+      "model": "AlertChannelConfiguration",
+      "operation": "count",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 442,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "findFirst",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 451,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "alertDelivery",
+      "model": "AlertDelivery",
+      "operation": "create",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 638,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "alertChannel",
+      "model": "AlertChannel",
+      "operation": "findFirst",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 783,
+      "shape": "client",
+      "receiver": "prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 784,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "alertDelivery",
+      "model": "AlertDelivery",
+      "operation": "findUniqueOrThrow",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 789,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "alertDeliveryRetry",
+      "model": "AlertDeliveryRetry",
+      "operation": "create",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/alert_channels.ts",
+      "line": 801,
+      "shape": "delegate",
+      "receiver": "tx",
+      "delegate": "alertDelivery",
+      "model": "AlertDelivery",
+      "operation": "update",
+      "owner": "cost-monitoring",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/channel-apps.ts",
+      "line": 180,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "agentBinding",
+      "model": "AgentBinding",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "line": 239,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "agentBinding",
+      "model": "AgentBinding",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/channels.ts",
+      "line": 477,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "agentBinding",
+      "model": "AgentBinding",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 134,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUser",
+      "model": "EndUser",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 141,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUser",
+      "model": "EndUser",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 163,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "findMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 167,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "thread",
+      "model": "Thread",
+      "operation": "aggregate",
+      "owner": "conversations",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 245,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUser",
+      "model": "EndUser",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 254,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "findUnique",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 278,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "update",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 286,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "create",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 336,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 358,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "findUnique",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 412,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/end-users.ts",
+      "line": 430,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "endUserIdentity",
+      "model": "EndUserIdentity",
+      "operation": "delete",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "line": 524,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "toolHealth",
+      "model": "ToolHealth",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "line": 831,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "findUnique",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "line": 857,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "mcpBearerToken",
+      "model": "McpBearerToken",
+      "operation": "count",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "line": 906,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/entities.ts",
+      "line": 959,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "entityMcpConfig",
+      "model": "EntityMcpConfig",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 123,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "findMany",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 150,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "findFirst",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 203,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "findFirst",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 211,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "create",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 270,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "findFirst",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 334,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "update",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 364,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "findFirst",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 369,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "deleteMany",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 397,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "findFirst",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 457,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "findFirst",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/jobs.ts",
+      "line": 469,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "job",
+      "model": "Job",
+      "operation": "update",
+      "owner": "jobs",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 321,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "create",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 348,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "findMany",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 370,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 398,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 415,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "update",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 431,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 440,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "delete",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 460,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 469,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "update",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/macros.ts",
+      "line": 492,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "macro",
+      "model": "Macro",
+      "operation": "findFirst",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/mcp.ts",
+      "line": 165,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "oAuthClient",
+      "model": "OAuthClient",
+      "operation": "findMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/mcp.ts",
+      "line": 182,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "oAuthAccessToken",
+      "model": "OAuthAccessToken",
+      "operation": "findMany",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "line": 217,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "tool",
+      "model": "Tool",
+      "operation": "findFirst",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "line": 225,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "tool",
+      "model": "Tool",
+      "operation": "create",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
+      "line": 235,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "environmentEntityTool",
+      "model": "EnvironmentEntityTool",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/platos-control.ts",
+      "line": 1023,
+      "shape": "client",
+      "receiver": "prisma",
+      "delegate": null,
+      "model": null,
+      "operation": "$transaction",
+      "owner": null,
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/providers.ts",
+      "line": 363,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "providerKey",
+      "model": "ProviderKey",
+      "operation": "findMany",
+      "owner": "providers",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/reflection.ts",
+      "line": 212,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "turn",
+      "model": "Turn",
+      "operation": "findFirst",
+      "owner": "conversations",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/reflection.ts",
+      "line": 254,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "environmentEntityTool",
+      "model": "EnvironmentEntityTool",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/reflection.ts",
+      "line": 283,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "entity",
+      "model": "Entity",
+      "operation": "findMany",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/reflection.ts",
+      "line": 303,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "safetyEvent",
+      "model": "SafetyEvent",
+      "operation": "findMany",
+      "owner": "governance",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/tools/settings.ts",
+      "line": 306,
+      "shape": "delegate",
+      "receiver": "prisma",
+      "delegate": "project",
+      "model": "Project",
+      "operation": "findMany",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    }
+  ]
+}

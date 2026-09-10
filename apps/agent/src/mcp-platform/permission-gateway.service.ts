@@ -265,6 +265,10 @@ const PLATFORM_TIER_MINIMUMS: Array<{ pattern: string; min: McpPermissionState }
   { pattern: "clusters.add_agent", min: "require_approval" },
 ];
 
+function isScopeRefusal(value: unknown): value is { refused: McpScopeRefusal } {
+  return typeof value === "object" && value !== null && "refused" in value;
+}
+
 function stateOrder(s: McpPermissionState): number {
   return s === "block" ? 2 : s === "require_approval" ? 1 : 0;
 }
@@ -370,6 +374,83 @@ export interface ResolvedPermission {
   reason: string;
 }
 
+/**
+ * WIN-268 (M4.2) — WHY THE CLAIMED SCOPE IS RE-DERIVED BEFORE TIER 2 READS
+ * ANYTHING.
+ *
+ * `ResolvePermissionInput.scope` is an (organizationId, projectId,
+ * environmentId) TRIPLE, and on one of the two live call paths nothing joins its
+ * three members. `apps/agent/src/auth/scope.guard.ts` builds a `RequestScope`
+ * from three unrelated request headers —
+ *
+ *     const organizationId = request.headers["x-platos-organization-id"];
+ *     const projectId      = request.headers["x-platos-project-id"];
+ *     const environmentId  = request.headers["x-platos-environment-id"];
+ *
+ * — and asserts nothing about whether that environment is in that project, or
+ * that project in that organization. `tool-executor.service.ts` passes exactly
+ * that triple to `resolve()`.
+ *
+ * WHAT THAT DID TO TIER 2, AND WHY IT WAS A BYPASS RATHER THAN A MISREAD. The
+ * tier-2 read was `organizationMcpPolicy.findMany({ where: { organizationId:
+ * scope.organizationId } })` — the CLAIMED organization. Name an organization
+ * that does not own the environment and the read returns rows that are not this
+ * tenant's, or, far more usefully to a caller, NO rows at all. `readOrgPolicy`
+ * then answered `null`, `mostRestrictive` treated `null` as an abstention, and a
+ * tier whose entire contract is that it can only ever TIGHTEN became a tier that
+ * declined to have an opinion. Every `block` the real organization had written
+ * was simply not consulted.
+ *
+ * `null` CARRIED TWO FACTS AND THEY ARE NOT THE SAME FACT. "this organization
+ * has no policy matching this tool" and "the organization I was told to read is
+ * not the one that owns this environment" are different answers, and only the
+ * first is an abstention. The refusal is now its own branch with its own reason.
+ *
+ * TIER 3 WAS ALREADY SAFE, and the asymmetry is the evidence this was an
+ * oversight rather than a design: `readAgentOverride`'s `where` walks
+ * `environment: { projectId, project: { organizationId } }`, so a forged
+ * organization matches no binding and that tier answers `block`. Two tiers, the
+ * same triple, one of them joined and one of them not.
+ *
+ * WHAT IS AND IS NOT EXPOSED TODAY, stated rather than implied. The MCP router
+ * path is SAFE without this fix: `mcp-router.ts` builds its scope from a VERIFIED
+ * token whose ancestry `token.service.verifyPersisted` re-derives from the
+ * `Environment` row, so its triple is canonical by construction. The exposed path
+ * is `tool-executor.service.ts`, and only when
+ * `PLATOS_TOOL_DISPATCH_PERMISSION_GATE` is `1`. That is a narrow window and it
+ * is not the reason to fix it: a tier that can only tighten must never abstain
+ * because it could not verify the tenant it was told to read.
+ */
+export type McpScopeRefusal =
+  /** No `Environment` row with that id at all. */
+  | "environment-not-found"
+  /** The environment exists and belongs to a different project. */
+  | "environment-outside-claimed-project"
+  /** The project exists and belongs to a different organization. */
+  | "project-outside-claimed-organization";
+
+/**
+ * The refusal, as an exception, for the three CRUD helpers.
+ *
+ * WHY AN EXCEPTION HERE AND A VALUE IN `resolve`. `resolve` has a return type
+ * that can already carry a denial — that is what it is for — so a refusal there
+ * is a value. The CRUD helpers return rows and a boolean, and `deleteOrgPolicy`
+ * is the reason this is not a falsy return: it already answers `false` for "no
+ * such row", so a forged scope answering `false` would be indistinguishable from
+ * deleting a row that was already gone. An empty result standing in for a
+ * refusal is the same defect this class exists to remove from tier 2.
+ */
+export class McpScopeRefusedError extends Error {
+  constructor(readonly reason: McpScopeRefusal) {
+    super(`the claimed MCP scope is not a real organization/project/environment chain: ${reason}`);
+    this.name = "McpScopeRefusedError";
+  }
+}
+
+type ResolvedOrganization =
+  | { readonly ok: true; readonly organizationId: string }
+  | { readonly ok: false; readonly reason: McpScopeRefusal };
+
 @Injectable()
 export class MCPPermissionGatewayService {
   private readonly logger = new Logger(MCPPermissionGatewayService.name);
@@ -384,13 +465,55 @@ export class MCPPermissionGatewayService {
     return "auto_allow";
   }
 
-  /** Tier-2 org policy — DB lookup. Returns null when no matching row. */
+  /**
+   * The organization that ACTUALLY owns the claimed environment.
+   *
+   * Read from the `Environment` row's own ancestry, never from the request. The
+   * claimed project and organization are treated as ASSERTIONS to be checked and
+   * are never the value returned — the same rule `token.service.resolveScope`
+   * states for a minted token: "Request tuples are used only as assertions and
+   * never become persisted or returned authority."
+   *
+   * THE THREE REFUSALS ARE DISTINCT ON PURPOSE. Two guards answering the same
+   * code cannot be told apart in an audit line, and these three have genuinely
+   * different causes: a deleted environment, a caller addressing the right
+   * environment through the wrong project, and a caller naming an organization
+   * that owns neither.
+   */
+  private async resolveOrganization(
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+  ): Promise<ResolvedOrganization> {
+    const environment = await this.prisma.environment.findUnique({
+      where: { id: scope.environmentId },
+      select: { id: true, project: { select: { id: true, organizationId: true } } },
+    });
+    if (!environment) return { ok: false, reason: "environment-not-found" };
+    if (environment.project.id !== scope.projectId) {
+      return { ok: false, reason: "environment-outside-claimed-project" };
+    }
+    if (environment.project.organizationId !== scope.organizationId) {
+      return { ok: false, reason: "project-outside-claimed-organization" };
+    }
+    return { ok: true, organizationId: environment.project.organizationId };
+  }
+
+  /**
+   * Tier-2 org policy. `null` when the owning organization has no matching row,
+   * and a REFUSAL when the claimed scope is not a real chain — see the banner on
+   * `McpScopeRefusal` for why those two were the same answer and must not be.
+   */
   private async readOrgPolicy(
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     toolName: string,
-  ): Promise<McpPermissionState | null> {
+  ): Promise<McpPermissionState | null | { refused: McpScopeRefusal }> {
+    const owner = await this.resolveOrganization(scope);
+    if (!owner.ok) return { refused: owner.reason };
     const rows = await this.prisma.organizationMcpPolicy.findMany({
-      where: { organizationId: scope.organizationId },
+      // THE RESOLVED ID, never `scope.organizationId`. They are equal on this
+      // line only because the check above made them equal, which is the whole
+      // point: reading the claimed one would throw the verification away one
+      // statement after earning it.
+      where: { organizationId: owner.organizationId },
       select: { pattern: true, effect: true },
     });
     let winner: McpPermissionState | null = null;
@@ -461,7 +584,16 @@ export class MCPPermissionGatewayService {
     const t1 = this.readPlatformMinimum(input.toolName);
     if (t1 === "block") return { state: "block", tier: 1, reason: "platform-tier block" };
 
-    const t2 = await this.readOrgPolicy(input.scope, input.toolName);
+    const tier2 = await this.readOrgPolicy(input.scope, input.toolName);
+    // A FORGED SCOPE IS A BLOCK, NOT AN ABSTENTION, and it is reported at the
+    // tier that discovered it. `resolve` cannot answer a question about a scope
+    // that is not a real chain: every remaining tier would be reading rows for a
+    // tenant the caller has not named coherently, and tier 4 is caller-supplied.
+    if (isScopeRefusal(tier2)) {
+      this.logger.warn(`MCP permission denied: claimed scope is ${tier2.refused}`);
+      return { state: "block", tier: 2, reason: `scope ${tier2.refused}` };
+    }
+    const t2 = tier2;
     if (t2 === "block") return { state: "block", tier: 2, reason: "org-policy block" };
 
     const t3 = input.agentId
@@ -524,11 +656,31 @@ export class MCPPermissionGatewayService {
   }
 
   // ── CRUD helpers for tier-2 policy ─────────────────────────────────
+  //
+  // ALL THREE RESOLVE THE SCOPE FIRST and refuse a chain that is not real, for
+  // the reason tier 2 does. Without it these are a cross-tenant read and a
+  // cross-tenant WRITE of another organization's MCP policy: every one of them
+  // keyed straight off `scope.organizationId` with nothing joining it to the
+  // environment the caller was actually granted.
+  //
+  // NOTHING CALLS THEM TODAY, and that is stated rather than hidden — the three
+  // are reachable only from a management surface that has not been built. Fixing
+  // an unreachable surface is defence for the day it is reached, not a claim
+  // that something is exploitable now.
+  private async requireOrganization(
+    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
+  ): Promise<string> {
+    const owner = await this.resolveOrganization(scope);
+    if (!owner.ok) throw new McpScopeRefusedError(owner.reason);
+    return owner.organizationId;
+  }
+
   async listOrgPolicies(
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
   ) {
+    const organizationId = await this.requireOrganization(scope);
     const rows = await this.prisma.organizationMcpPolicy.findMany({
-      where: { organizationId: scope.organizationId },
+      where: { organizationId },
       orderBy: [{ pattern: "asc" }],
     });
     return rows.map(({ effect, ...row }) => ({ ...row, policy: fromPolicyEffect(effect) }));
@@ -542,10 +694,11 @@ export class MCPPermissionGatewayService {
     if (!pattern || pattern.length < 1 || pattern.length > 200) {
       throw new Error("pattern must be 1–200 chars");
     }
+    const organizationId = await this.requireOrganization(scope);
     const effect = toPolicyEffect(policy);
     // Upsert via find + update/create since the unique key is composite.
     const existing = await this.prisma.organizationMcpPolicy.findFirst({
-      where: { organizationId: scope.organizationId, pattern },
+      where: { organizationId, pattern },
       select: { id: true },
     });
     if (existing) {
@@ -558,7 +711,7 @@ export class MCPPermissionGatewayService {
     }
     const created = await this.prisma.organizationMcpPolicy.create({
       data: {
-        organizationId: scope.organizationId,
+        organizationId,
         pattern,
         effect,
       },
@@ -571,8 +724,9 @@ export class MCPPermissionGatewayService {
     scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
     id: string,
   ) {
+    const organizationId = await this.requireOrganization(scope);
     const existing = await this.prisma.organizationMcpPolicy.findFirst({
-      where: { id, organizationId: scope.organizationId },
+      where: { id, organizationId },
       select: { id: true },
     });
     if (!existing) return false;

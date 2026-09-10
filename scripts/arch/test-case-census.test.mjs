@@ -448,7 +448,19 @@ test("the census is not vacuous — it reads the real suites", () => {
   //
   // WIN-268 (M4.2) P1 549 -> 550: ONE more, `identity-access`'s
   // `application/mint-bearer-credential.test.ts`. 549 + 1 = 550.
-  assert.equal(live.totalFiles, 550);
+  //
+  // WIN-271 (M4.5) 550 -> 556: SIX more. FIVE in `packages/adapters/channel-slack`,
+  // which this issue adopts — slack-signature, normalize, slack-transport,
+  // signed-admission and sdk-upgrade — and it is the SIXTH row under
+  // `packages/adapters` to move from zero. ONE in `packages/contexts/channels`,
+  // `domain/delivery.test.ts`. 550 + 5 + 1 = 556.
+  //
+  // WIN-272 (M4.6) 556 -> 560: FOUR more. THREE in
+  // `packages/adapters/redis-streams`, which this issue adopts — encoding,
+  // journal.integration and event-bus.integration — and it is the SEVENTH row
+  // under `packages/adapters` to move from zero. ONE in `packages/kernel`,
+  // `vo/stream-frame.test.ts`. 556 + 3 + 1 = 560.
+  assert.equal(live.totalFiles, 560);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total. Each dimension appends its own
@@ -461,7 +473,10 @@ test("the census is not vacuous — it reads the real suites", () => {
   // G2 appends `+ 2`, the two read-seam suites on the same row. SUMMED: `+ 3`.
   // WIN-303 appends `+ 1`, `governance-isolation.integration.test.ts`, on that
   // same postgres-tenancy row and on no other.
-  assert.equal(live.totalFiles, /* WIN-268 P1 mint suite */ 1 + 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1);
+  // WIN-272 (M4.6) appends `+ 3 + 1`: the three suites of the newly adopted
+  // `redis-streams`, and ONE in `packages/kernel` — the term the 88 at the head
+  // of this sum does not carry, because the kernel is its own row further in.
+  assert.equal(live.totalFiles, /* WIN-268 P1 mint suite */ 1 + 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1 + /* WIN-271 channel-slack adoption */ 5 + /* WIN-271 channels delivery rule */ 1 + /* WIN-272 redis-streams adoption */ 3 + /* WIN-272 kernel stream envelope */ 1);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -652,8 +667,14 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // seams' schema join and their two-tenant proof. SUMMED: 545 + 3 = 548.
   // WIN-303 548 -> 549, the tampered-triple proof. 545 + 4 = 549.
   // WIN-268 P1 549 -> 550, the mint suite. 549 + 1 = 550.
-  assert.equal(files, 550);
-  assert.equal(files, /* WIN-268 P1 mint suite */ 1 + 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1);
+  // WIN-271 (M4.5) 550 -> 556: five new suites in the newly adopted
+  // `channel-slack` and one in `channels`. Re-derived from the pinned ROWS
+  // rather than from the live tree, so the two can disagree and be caught.
+  // WIN-272 (M4.6) 556 -> 560: three new suites in the newly adopted
+  // `redis-streams` and ONE in `packages/kernel`, which is the term that has
+  // moved least often — twice before this, both at WIN-260.
+  assert.equal(files, 560);
+  assert.equal(files, /* WIN-268 P1 mint suite */ 1 + 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1 + /* WIN-271 */ (5 + 1) + /* WIN-272 */ (3 + 1));
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -674,9 +695,17 @@ test("the split the 2026-09-02 verification reproduced is pinned per package", (
   // M2 INTEGRATION: the projection dimension's redactor suite (+16) and this
   // dimension's two behaviour suites (+29, +40) are DIFFERENT files, so the
   // terms compose: 44 + 16 + 29 + 40 = 129 over 3 + 1 + 2 = 6 files.
-  assert.equal(EXPECTED["packages/kernel"].cases, 129);
-  assert.equal(EXPECTED["packages/kernel"].cases, 44 + 16 + 29 + 40);
-  assert.equal(EXPECTED["packages/kernel"].files, 6, "3 value-object suites, the WIN-259 redactor suite, and the two WIN-260 behaviour suites");
+  // WIN-272 (M4.6) appends `+36`: `vo/stream-frame.test.ts`, the one stream
+  // envelope. The terms are kept rather than the total adjusted, so a tranche
+  // that removed the retry suite while this landed could not reach the same
+  // number — which is the property the whole paragraph above is about.
+  assert.equal(EXPECTED["packages/kernel"].cases, 165);
+  assert.equal(EXPECTED["packages/kernel"].cases, 44 + 16 + 29 + 40 + 36);
+  assert.equal(
+    EXPECTED["packages/kernel"].files,
+    7,
+    "3 value-object suites, the WIN-259 redactor suite, the two WIN-260 behaviour suites, and the WIN-272 stream envelope",
+  );
   // WIN-267 W3 appends `+6`: the published `revokeOperatorSession` and the two
   // refusal-code cases underneath it. The terms are kept rather than the total
   // adjusted, so a tranche that removed the session-cookie suite while this
@@ -831,7 +860,13 @@ test("the providers context is pinned at what vitest prints", () => {
   // existing one. Both sums moving together is the check working in the other
   // direction — a file added without its cases, or cases without their file,
   // fails one of the two.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  //
+  // WIN-269 (M4.3) appends `+ 4`, and the FILE sum below is UNTOUCHED — the
+  // WIN-267 W3 asymmetry again, in the other package: `packages/contexts/tools`
+  // 362 -> 366 in a suite that already existed. All four are the `DispatchTarget`
+  // transport gap, which only became visible when somebody tried to write the
+  // adapter the port exists for.
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 4 + 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -869,7 +904,13 @@ test("the skills adoption is pinned, and moved nothing else", () => {
     // two suites while leaving the kernel where the redactor left it. The other
     // four are still untouched by it.
     // M2 INTEGRATION: 44 + 16 + 69 = 129.
-    "packages/kernel": 129,
+    // WIN-272 (M4.6) moves it again, 129 -> 165, for `vo/stream-frame.test.ts`.
+    // It is carried here at its CURRENT value for the reason the paragraph above
+    // gives: leaving it at 129 would make this map assert a tree that no longer
+    // exists. The +36 therefore rides INSIDE `sum`, and the new
+    // `packages/adapters/redis-streams` row is a TRAILING TERM — the same split
+    // WIN-259 records, and the one this re-derivation exists to keep visible.
+    "packages/kernel": 165,
     // WIN-267 W3 318 -> 324. `identity-access` STOPS being untouched by the
     // skills adoption's re-derivation here, for the reason `providers` and
     // `secrets` below stopped: the row is kept in this map rather than dropped
@@ -982,7 +1023,11 @@ test("the skills adoption is pinned, and moved nothing else", () => {
     // context: the five new store-scope codes are held to `internal` with no
     // retry hint in `domain/errors.test.ts`. The two halves land in different
     // places in this sum, which is the whole reason it is written out.
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 610 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 1 + 1 + 71 + 12 + 5 + 8 + 5 + 9 + 40 + 25 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11,
+    // WIN-269 (M4.3) moves the `tools` term 362 -> 366 IN PLACE, the way WIN-303
+    // moved `governance` above and for the same reason: the four cases are in a
+    // suite the context already had, so nothing is appended as a trailing term
+    // and no file count moves.
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 366 + 269 + 610 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 1 + 1 + 71 + 12 + 5 + 8 + 5 + 9 + 40 + 25 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 redis-streams adoption */ 46,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
@@ -1019,7 +1064,7 @@ test("the memory context is pinned at what vitest prints", () => {
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -1049,7 +1094,7 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the privacy context is pinned at what vitest prints", () => {
@@ -1087,7 +1132,7 @@ test("the privacy context is pinned at what vitest prints", () => {
   // observability's 288 and agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the observability context is pinned at what vitest prints", () => {
@@ -1120,7 +1165,7 @@ test("the observability context is pinned at what vitest prints", () => {
   // agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
   assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the agents context is pinned at what vitest prints", () => {
@@ -1163,7 +1208,7 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the tools context is pinned at what vitest prints", () => {
@@ -1189,10 +1234,19 @@ test("the tools context is pinned at what vitest prints", () => {
   //
   // M2 WAVE-B: the tools branch pinned 717 + 283 + 362 = 1362 and was right
   // alone; here the identity only closes with every adoption's term present.
+  //
+  // A FOURTH WAVE, AND IT MOVES NO FILE EITHER (WIN-269, M4.3). 362 -> 366: four
+  // cases in `application/execution.test.ts` (35 -> 39) for the `DispatchTarget`
+  // transport gap — the mcp target now CARRIES the client row's transport, a
+  // transport nobody recognises and an `http` row with no URL are both REFUSED
+  // at resolution by `admitTransport` (a domain rule nothing outside its own
+  // unit test called before), and a WIRE target names no transport at all. Same
+  // shape as the 299 -> 325 wave above: a file-count pin would be blind to it,
+  // which is exactly the case this canary exists for.
   assert.equal(EXPECTED["packages/contexts/tools"].files, 19);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 362);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 366);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2 + 4);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the channels context is pinned at what vitest prints", () => {
@@ -1224,10 +1278,23 @@ test("the channels context is pinned at what vitest prints", () => {
   //
   // M2 WAVE-B: the channels branch pinned 717 + 283 + 269 = 1269 and was right
   // alone; here the identity only closes with every adoption's term present.
-  assert.equal(EXPECTED["packages/contexts/channels"].files, 15);
-  assert.equal(EXPECTED["packages/contexts/channels"].cases, 269);
-  assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  // WIN-271 (M4.5) appends `+ 5` over ONE new file, `domain/delivery.test.ts`:
+  // the outbound disposition rule, joined to `CHANNELS_ERROR_CODES` and to the
+  // mint functions rather than to a list retyped in the suite. Both sums move
+  // together — a case without its file, or a file without its cases, fails one
+  // of the two — which is the asymmetry WIN-267 W3 and WIN-269 both relied on in
+  // the other direction.
+  //
+  // THE CONTEXT GAINS NO CASE FOR `admit-signed-delivery.ts`, and that is a
+  // decision rather than an omission. Proving it needs a REAL `ChannelRuntime`
+  // behind the port; the only honest one runs cryptography and lives in
+  // `packages/adapters/channel-slack`, which this package may not import. So its
+  // eleven cases are on the adapter row, driven through the harness this context
+  // publishes from `application/testing/inbound-conformance.ts`.
+  assert.equal(EXPECTED["packages/contexts/channels"].files, 16);
+  assert.equal(EXPECTED["packages/contexts/channels"].cases, 274);
+  assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1 + 5);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the governance context is pinned at what vitest prints", () => {
@@ -1258,7 +1325,7 @@ test("the governance context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 610);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1284,7 +1351,7 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -1379,7 +1446,7 @@ test("the conversations context is pinned at what vitest prints", () => {
   // above do NOT move for any of them: all four implement ports that already
   // existed and all four had their port entry point widened in place, which is
   // what this census distinguishes from an addition.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
 });
 
 test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
@@ -1755,7 +1822,7 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // `24 + 17 + 3 + 4` is four cases added to `agents-rows.test.ts`, a file this
   // row already counted, which is why that dimension's file tail gains 3 while
   // its case tail gains 48.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-268 P1 mint suite */ 15 + 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1779,10 +1846,25 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // `apps/core-api/src/composition/installation.test.ts` moves 8 -> 7 in the
   // same commit and for the same fact.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
+  // SEVEN -> SIX (WIN-271, M4.5). `packages/adapters/channel-slack` stopped
+  // being zero: it is the SIXTH nonzero adapter row and the twenty-ninth adopted
+  // V1 project, and it holds the `channels` `ChannelRuntime` — the outbound
+  // `ChannelAdapter` it was always bound to, plus the INBOUND half that had no
+  // port at all until this tranche. It is the SECOND directory ever to leave
+  // `UNIMPLEMENTED_ADAPTERS`, which
+  // `apps/core-api/src/composition/installation.test.ts` moves 7 -> 6 in the
+  // same commit and for the same fact.
+  // SIX -> FIVE (WIN-272, M4.6). `packages/adapters/redis-streams` stopped being
+  // zero: it is the SEVENTH nonzero adapter row and the thirtieth adopted V1
+  // project, and it holds BOTH kernel stream ports — the `EventBus` it was always
+  // bound to, plus the `StreamJournal` that had no home at all until this
+  // tranche. It is the THIRD directory ever to leave `UNIMPLEMENTED_ADAPTERS`,
+  // which `apps/core-api/src/composition/installation.test.ts` moves 6 -> 5 in
+  // the same commit and for the same fact.
   const zeroAdapters = Object.entries(EXPECTED).filter(
     ([name, row]) => name.startsWith("packages/adapters/") && row.cases === 0
   );
-  assert.equal(zeroAdapters.length, 7);
+  assert.equal(zeroAdapters.length, 5);
 });
 
 test("the kernel outbox adapter is pinned at what vitest prints", () => {

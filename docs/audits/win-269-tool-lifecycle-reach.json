@@ -1,0 +1,473 @@
+{
+  "roots": [
+    "apps/agent/src/tool-gateway",
+    "apps/core-api/src/transports/tools"
+  ],
+  "foreignOwnership": [
+    {
+      "root": "apps/agent/src/agent-runtime",
+      "owner": "WIN-261 (M3.1)",
+      "reason": "AgentController and AgentService serve the entity and tool REST families; M3.1 owns their decomposition and this register would otherwise count its sites twice over two tranches."
+    }
+  ],
+  "subjectContext": "tools",
+  "subjectComposed": false,
+  "composedContexts": [
+    "identityAccess",
+    "providers",
+    "secrets",
+    "tenancy"
+  ],
+  "files": 13,
+  "filesWithSites": 5,
+  "totalSites": 31,
+  "delegateSites": 30,
+  "clientSites": 1,
+  "byOwner": {
+    "tools": 15,
+    "tenancy": 10,
+    "secrets": 2,
+    "identity-access": 1,
+    "agents": 2,
+    "<client-level>": 1
+  },
+  "byVerdict": {
+    "blockedOnContext": 17,
+    "blockedOnContract": 14
+  },
+  "unblockedByComposingSubject": 15,
+  "dependency": [
+    {
+      "slot": "repository",
+      "kind": "adapter",
+      "source": "postgres-tenancy:ToolsRepository",
+      "note": "a declared, satisfied binding with its own conformance differential in packages/adapters/postgres-tenancy/src/tools-conformance.integration.test.ts."
+    },
+    {
+      "slot": "dispatch",
+      "kind": "root-satisfied",
+      "source": "packages/contexts/tools/adapters",
+      "note": "the ToolDispatch port, and the ONLY unimplemented thing between this tree and a composed `tools`. ADR M0.3 §5.1 rule (h) (`SDK_CONTAINMENT.mcp-sdk-only-in-tools`) binds `@modelcontextprotocol/*` to `^packages/contexts/tools/(adapters|transport)/` and to nowhere else, so this port cannot be a `packages/adapters/` directory and cannot be a binding row; it is built in the composition root from the factory that home publishes, the way `Judge` is. FOUR CONCRETE STEPS, each measured rather than guessed: (1) the directory does not exist; (2) `gen-v1-skeleton.mjs` OWNS every context package.json `exports` map — it emits `.`, `./application/ports/index.js` and two conditional subpaths — so `./adapters/index.js` needs a THIRD list there beside APPLICATION_ENTRY_PROJECTS and TESTING_ENTRY_PROJECTS, with its own honesty check; (3) the same generator owns runtime dependencies through ADAPTER_RUNTIME_DEPENDENCIES, which is keyed on `packages/adapters/` directories and has no row shape for a context's own adapter, so `@modelcontextprotocol/sdk` has nowhere to be declared yet; (4) `apps/core-api` may import it — `firesCrossContextContractsOnly` requires the FROM side to be a context and an app is not one — so no boundary rule needs changing. WIN-269 landed the prerequisite instead: `DispatchTarget` now names its `transport`, without which the port is not implementable at all."
+    },
+    {
+      "slot": "digest",
+      "kind": "root-satisfied",
+      "source": "packages/contexts/tools/adapters",
+      "note": "the ContentDigest port — lowercase hex SHA-256 over node:crypto, and the cheap half of the pair. `apps/core-api/src/composition/adapter-bindings.ts` states outright that ContentDigest is `a synchronous host hash with no failure channel and no row`, so it is satisfied where the dispatch is rather than by a binding, and `GOVERNANCE_ROOT_SATISFIED_PORTS = [\"Judge\"]` is the precedent for a port the composition root fills itself. It needs no SDK and no new list; it is only here because it shares a home with the dispatch."
+    },
+    {
+      "slot": "clock",
+      "kind": "kernel",
+      "source": "kernel",
+      "note": "the process clock."
+    },
+    {
+      "slot": "ids",
+      "kind": "kernel",
+      "source": "kernel",
+      "note": "the process id generator."
+    },
+    {
+      "slot": "unitOfWork",
+      "kind": "adapter",
+      "source": "postgres-tenancy:UnitOfWork",
+      "note": "the same unit of work `secrets` and `providers` are already composed over."
+    },
+    {
+      "slot": "policy",
+      "kind": "domain-default",
+      "source": "DEFAULT_TOOLS_POLICY",
+      "note": "published from the context's own `.` entry point beside DEFAULT_PROVIDERS_POLICY, which this root already takes."
+    },
+    {
+      "slot": "tenancy",
+      "kind": "peer",
+      "source": "tenancy",
+      "note": "composed.",
+      "composed": true
+    },
+    {
+      "slot": "identityAccess",
+      "kind": "peer",
+      "source": "identity-access",
+      "note": "composed.",
+      "composed": true
+    },
+    {
+      "slot": "secrets",
+      "kind": "peer",
+      "source": "secrets",
+      "note": "composed.",
+      "composed": true
+    },
+    {
+      "slot": "providers",
+      "kind": "peer",
+      "source": "providers",
+      "note": "composed.",
+      "composed": true
+    }
+  ],
+  "dispositions": {
+    "apps/agent/src/tool-gateway/tool-registry.service.ts": {
+      "contexts": [
+        "tools",
+        "tenancy",
+        "agents",
+        "<client-level>"
+      ],
+      "waitingOn": "context-composition",
+      "methods": {
+        "tools": [
+          "registerTools",
+          "listTools",
+          "setToolEnabled",
+          "findTools"
+        ]
+      },
+      "note": "The registry IS `ToolsContract.registerTools` plus its readers. `packages/contexts/tools/application/register-tools.ts` is the published form of the idempotent-replace write, including the prune, and `read-tools.ts` of the two listings. Its `Entity`/`Environment` scope reads are `tenancy.findEntity` and the environment half of the same pair check; the `AgentBinding` fan-out that decides which agents see a tool is `agents`', which is not composed. Blocked on composing `tools`.",
+      "sites": 14
+    },
+    "apps/agent/src/tool-gateway/tool-executor.service.ts": {
+      "contexts": [
+        "tools",
+        "tenancy",
+        "secrets",
+        "identity-access"
+      ],
+      "waitingOn": "context-composition",
+      "methods": {
+        "tools": [
+          "executeTool",
+          "resolvePermission"
+        ]
+      },
+      "note": "`ToolsContract.executeTool` is this file, and `application/execute-tool.ts` plus `resolve-transport.ts` are the published form of its route resolution, credential substitution and health fold. The `Credential` read is `secrets`' — reached through the vault authorization `ExecuteToolCommand` already carries — and the `McpOidcSession` read is `identity-access`', which publishes no lookup of one. Blocked on composing `tools`.",
+      "sites": 5
+    },
+    "apps/agent/src/tool-gateway/tool-sync-ws.service.ts": {
+      "contexts": [
+        "tenancy",
+        "secrets",
+        "tools"
+      ],
+      "waitingOn": "context-composition",
+      "methods": {
+        "tools": [
+          "registerTools"
+        ]
+      },
+      "note": "The `/tools/sync` socket authenticates a wire backend and pushes its declaration into the same `registerTools` write discovery uses, so its registration half is already published. What is NOT published is the socket's own lifecycle: `Entity.connectionStatus` is a liveness fact `tenancy` owns the row for and publishes no writer of, and the `ToolHealth` upsert is `tools`'. Blocked on composing `tools`; the connection-status write needs a `tenancy` method that does not exist.",
+      "sites": 4
+    },
+    "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts": {
+      "contexts": [
+        "tools",
+        "tenancy"
+      ],
+      "waitingOn": "context-composition",
+      "methods": {
+        "tools": [
+          "discoverEntityTools"
+        ]
+      },
+      "note": "`ToolsContract.discoverEntityTools` is this file exactly — same fan-out over the project's environments, same convergence on `registerTools`, same stamp onto the client row. `application/discover-entity-tools.ts`'s own header states the `Entity`-is-project-scoped/`EnvironmentEntityTool`-is-environment-scoped rule this service implements by hand. Blocked on composing `tools`.",
+      "sites": 7
+    },
+    "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts": {
+      "contexts": [
+        "tools"
+      ],
+      "waitingOn": "context-composition",
+      "methods": {
+        "tools": [
+          "discoverEntityTools"
+        ]
+      },
+      "note": "One `EntityMcpClient.findMany` that selects the stale clients a sweep should re-discover. The sweep ITSELF is `discoverEntityTools` per entity; the selection is not published by `ToolsContract` at all, and a scheduler is a runtime concern rather than a transport, so this file is the one in this root whose destination is a durable job rather than a route.",
+      "sites": 1
+    }
+  },
+  "sites": [
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts",
+      "line": 85,
+      "shape": "delegate",
+      "model": "EntityMcpClient",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 140,
+      "shape": "delegate",
+      "model": "Entity",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 168,
+      "shape": "delegate",
+      "model": "Environment",
+      "operation": "findMany",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 422,
+      "shape": "delegate",
+      "model": "EntityMcpClient",
+      "operation": "update",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 428,
+      "shape": "delegate",
+      "model": "Entity",
+      "operation": "update",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 455,
+      "shape": "delegate",
+      "model": "EntityMcpClient",
+      "operation": "update",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 465,
+      "shape": "delegate",
+      "model": "EntityMcpClient",
+      "operation": "update",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "line": 475,
+      "shape": "delegate",
+      "model": "Entity",
+      "operation": "update",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
+      "line": 909,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "findFirst",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
+      "line": 968,
+      "shape": "delegate",
+      "model": "Entity",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
+      "line": 1026,
+      "shape": "delegate",
+      "model": "Credential",
+      "operation": "findFirst",
+      "owner": "secrets",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
+      "line": 1158,
+      "shape": "delegate",
+      "model": "McpOidcSession",
+      "operation": "findFirst",
+      "owner": "identity-access",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
+      "line": 1598,
+      "shape": "delegate",
+      "model": "ToolHealth",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 161,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 184,
+      "shape": "delegate",
+      "model": "AgentBinding",
+      "operation": "findMany",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 266,
+      "shape": "delegate",
+      "model": "Entity",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 283,
+      "shape": "delegate",
+      "model": "Environment",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 294,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 303,
+      "shape": "client",
+      "model": null,
+      "operation": "$transaction",
+      "owner": "<client-level>",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 325,
+      "shape": "delegate",
+      "model": "Tool",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 342,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 363,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "deleteMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 482,
+      "shape": "delegate",
+      "model": "Environment",
+      "operation": "findFirst",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 516,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "update",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 538,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "findMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 545,
+      "shape": "delegate",
+      "model": "EnvironmentEntityTool",
+      "operation": "deleteMany",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "line": 631,
+      "shape": "delegate",
+      "model": "AgentBinding",
+      "operation": "findMany",
+      "owner": "agents",
+      "verdict": "blockedOnContext"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-sync-ws.service.ts",
+      "line": 232,
+      "shape": "delegate",
+      "model": "Credential",
+      "operation": "findMany",
+      "owner": "secrets",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-sync-ws.service.ts",
+      "line": 341,
+      "shape": "delegate",
+      "model": "Entity",
+      "operation": "update",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-sync-ws.service.ts",
+      "line": 385,
+      "shape": "delegate",
+      "model": "Entity",
+      "operation": "update",
+      "owner": "tenancy",
+      "verdict": "blockedOnContract"
+    },
+    {
+      "file": "apps/agent/src/tool-gateway/tool-sync-ws.service.ts",
+      "line": 640,
+      "shape": "delegate",
+      "model": "ToolHealth",
+      "operation": "upsert",
+      "owner": "tools",
+      "verdict": "blockedOnContext"
+    }
+  ],
+  "problems": []
+}

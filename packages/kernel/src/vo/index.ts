@@ -6,3 +6,4 @@ export * from "./domain-event.js";
 export * from "./error.js";
 export * from "./redaction.js";
 export * from "./retry.js";
+export * from "./stream-frame.js";

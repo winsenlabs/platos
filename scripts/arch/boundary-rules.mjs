@@ -191,6 +191,25 @@ export const SDK_CONTAINMENT = [
     source: "node_modules/(minio|@aws-sdk)",
   },
   {
+    // WIN-271 (M4.5). ADR M0.3 §1 makes `channels` the "sole holder of Slack/etc
+    // SDKs behind `ChannelAdapter`" and §5.1(h) pins each vendor client to one
+    // adapter directory. Until this tranche `packages/adapters/channel-slack`
+    // was a generated interface, so the rule had nothing to protect and the SDK
+    // lived — correctly, for a strangler — in `apps/agent`, which this scan does
+    // not reach. It has something to protect now.
+    //
+    // THE SOURCE MATCHES BOTH THE SCOPE AND THE FRAMEWORK. `@chat-adapter/*` is
+    // the per-provider surface and `chat` is the framework underneath it; a rule
+    // naming only the scope would let a context import the framework's own
+    // types and re-introduce exactly the coupling §1 exists to cut. The `-audited`
+    // ALIAS resolves under the same scope, so the 4.34 build the upgrade
+    // differential runs against is contained by the same rule and needs no
+    // exception.
+    id: "chat-sdk-only",
+    home: "^packages/adapters/channel-slack/",
+    source: "node_modules/(chat|@chat-adapter)",
+  },
+  {
     id: "provider-sdk-only",
     home: MODEL_ROUTER_ADAPTER,
     source: "node_modules/(openai|@anthropic-ai)",
@@ -432,6 +451,49 @@ export const RULES = [
     from: { path: "^apps/webapp/" },
     to: {
       path: "^(node_modules/@prisma/|internal-packages/(database|tenancy-database)/)",
+    },
+  },
+
+  // (k2) WIN-268 (M4.2) — THE MCP TRANSPORT TREE REACHES NO STORE, BY ANY ROUTE.
+  //
+  // WHY A SECOND RULE WHEN `tenancy-prisma-only` ALREADY EXISTS. That rule bans
+  // the Prisma PACKAGES — `@prisma/*`, `prisma`, `@platos/tenancy-database` and
+  // the workspace directory that generates them — from everything outside the two
+  // homes entitled to hold a client, and `apps/core-api` is inside its scan. It
+  // is right and it is not sufficient, because it is a rule about NAMES and the
+  // legacy MCP surface does not reach the store by name:
+  //
+  //     import { PRISMA_TOKEN, type ControlDatabaseClient }
+  //       from "../shared/database.provider";
+  //
+  // Twenty of the twenty-one legacy files carrying an ORM site import it that
+  // way. A module moved into `transports/mcp/` that brought that import along
+  // would name no banned package, satisfy `tenancy-prisma-only`, and hold a live
+  // Prisma client — which is precisely the failure this tranche exists to close
+  // rather than relocate. The indirection is the thing being banned, so the
+  // indirection has to be named.
+  //
+  // IT ALSO BANS `apps/agent` OUTRIGHT, and that clause is not decoration. The
+  // provider above is one module in that tree; a transport reaching for any of
+  // its services would be reaching past the composed `AppModule` into the
+  // deployable the surface is moving OUT of, and `apps/agent` is not a dependency
+  // of `apps/core-api` and must not become one.
+  //
+  // THE `from` SIDE IS THE WHOLE TRANSPORT TREE and not just `transports/mcp/`.
+  // `transports/rest/` sits under the same budget and the same shape rule, and a
+  // rule scoped to one subdirectory would invite the next surface to be moved one
+  // directory sideways.
+  {
+    id: "transport-reaches-no-store",
+    severity: "error",
+    comment:
+      "apps/core-api/src/transports/** reads the system through the composed AppModule: no ORM package, no legacy database provider, no apps/agent module.",
+    from: { path: "^apps/core-api/src/transports/" },
+    to: {
+      path:
+        "^(node_modules/(@prisma/|prisma(?:/|$)|@platos/tenancy-database(?:/|$))" +
+        "|internal-packages/(database|tenancy-database)(?:/|$)" +
+        "|apps/agent(?:/|$))",
     },
   },
 

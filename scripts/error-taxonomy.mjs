@@ -178,16 +178,62 @@ function contextOf(path) {
   return "unknown";
 }
 
+/**
+ * Every module-level `const NAME = "LITERAL";` in one file.
+ *
+ * WIN-272 (M4.6) — THE HOLE THIS CLOSES, AND HOW IT WAS FOUND. `readDomainErrorCall`
+ * below required the first argument to be a STRING LITERAL, so a mint written as
+ * `domainError(SOME_CODE, ...)` was invisible: rule E1 never saw it, so it never
+ * asked for a taxonomy entry, so the code had no status any transport could resolve
+ * and no entry an operator could look up. FIVE codes in
+ * `packages/kernel/src/vo/retry.ts` had been in that state since WIN-260 and
+ * `audit:error-taxonomy` was green through every commit of it. It surfaced when a
+ * suite tried to read a committed status for a code the kernel mints and there was
+ * none.
+ *
+ * A FILE-LOCAL RESOLUTION AND NOTHING WIDER, deliberately. Following an imported
+ * identifier would need the whole module graph and would make this gate's answer
+ * depend on resolution order; a code declared beside its mint is the shape every
+ * real case in this tree has (the kernel's two value objects, and nothing else).
+ * An identifier that does NOT resolve here behaves exactly as before — skipped —
+ * which is what keeps `jobs/domain/errors.ts` working: its helper takes the code as
+ * a PARAMETER, and a parameter has no literal to find.
+ */
+function literalConstants(source) {
+  const constants = new Map();
+  const visit = (node) => {
+    if (ts.isVariableStatement(node)) {
+      for (const declaration of node.declarationList.declarations) {
+        if (!ts.isIdentifier(declaration.name)) continue;
+        const initializer = declaration.initializer;
+        if (initializer !== undefined && ts.isStringLiteral(initializer)) {
+          constants.set(declaration.name.text, initializer.text);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return constants;
+}
+
 /** The literal first two arguments of a `domainError(...)` call, or null. */
-function readDomainErrorCall(node, source) {
+function readDomainErrorCall(node, source, constants = new Map()) {
   if (!ts.isCallExpression(node)) return null;
   if (!ts.isIdentifier(node.expression) || node.expression.text !== "domainError") return null;
   const [codeNode, categoryNode] = node.arguments;
-  if (codeNode === undefined || !ts.isStringLiteral(codeNode)) return null;
+  if (codeNode === undefined) return null;
+  // A LITERAL, OR AN IDENTIFIER THIS FILE DECLARES AS ONE. See `literalConstants`.
+  const code = ts.isStringLiteral(codeNode)
+    ? codeNode.text
+    : ts.isIdentifier(codeNode)
+      ? constants.get(codeNode.text)
+      : undefined;
+  if (code === undefined) return null;
   const category =
     categoryNode !== undefined && ts.isStringLiteral(categoryNode) ? categoryNode.text : null;
   const { line } = source.getLineAndCharacterOfPosition(node.getStart(source));
-  return { code: codeNode.text, category, line: line + 1 };
+  return { code, category, line: line + 1 };
 }
 
 /**
@@ -212,8 +258,10 @@ export function scanSource(root = repositoryRoot) {
   const codes = new Map();
   const constructors = new Map();
   for (const [path, source] of parsed) {
+    // Resolved ONCE per file, not per node: the map is file-local by design.
+    const constants = literalConstants(source);
     const visit = (node) => {
-      const call = readDomainErrorCall(node, source);
+      const call = readDomainErrorCall(node, source, constants);
       if (call !== null) {
         const existing = codes.get(call.code);
         const record = existing ?? { code: call.code, categories: new Set(), contexts: new Set(), sites: [] };
@@ -226,7 +274,7 @@ export function scanSource(root = repositoryRoot) {
         let minted = null;
         const inner = (child) => {
           if (minted !== null) return;
-          const found = readDomainErrorCall(child, source);
+          const found = readDomainErrorCall(child, source, constants);
           if (found !== null) {
             minted = found.code;
             return;

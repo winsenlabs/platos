@@ -228,6 +228,23 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL integration suite for the V1 REST surface. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
   }),
   Object.freeze({
+    // WIN-272 (M4.6) — the stream-lane suite. The identity-REST entry above with
+    // an SSE reader on the end, and it reads the environment in exactly the same
+    // ONE place and for the same reason: `prisma migrate deploy` is a spawned
+    // process and needs PATH.
+    //
+    // THE SEVEN CONFIGURATION VARIABLES IT SETS ARE NOT READS, for the reason its
+    // predecessor's note gives, and this suite has one more thing that would have
+    // shown up here if it had reached for the environment: the SHORT SESSION whose
+    // window closes during a stream is computed from `Date.now()` inside the case
+    // that spends it, not from a variable an operator could set — a knob for it
+    // would have been a knob for how long any stream may live.
+    path: "apps/core-api/src/composition/stream-lane.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL and real-Redis integration suite for the V1 stream lane. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+  }),
+  Object.freeze({
     // WIN-268 (M4.2) P1 — the MCP token mints' real-concurrency suite. The THIRD
     // entry of this exact shape, and it earns the door for exactly the same
     // reason as the two above: `prisma migrate deploy` is a spawned process and
@@ -538,8 +555,65 @@ export const VIOLATION_CODES = Object.freeze({
  * takes ONE read for the same reason the two suites beside it in the table do:
  * `prisma migrate deploy` is a spawned process and needs the inherited PATH.
  * Seven files landed and one door was opened.
+ *
+ * WIN-271 (M4.5): 1644 + 19 = 1663, and NOT ONE DOOR IS OPENED.
+ *
+ * FOURTEEN are net-new under `packages/adapters/channel-slack/src` — the
+ * directory held two generated placeholders and now holds sixteen files, so the
+ * NET is fourteen. Nine of the sixteen are production (`adapter`, `vendor`,
+ * `verify`, `normalize`, `provider`, `failure`, `send`, `index`) plus two test
+ * supports (`published-vector`, `fixtures`) and `far-side`, the real `node:http`
+ * server the outbound suites drive; five are suites.
+ *
+ * The other FIVE are under `packages/contexts/channels`: the `ChannelRuntime`
+ * port, the `admitSignedDelivery` use case, the inbound conformance harness, the
+ * delivery-disposition rule and its suite.
+ *
+ * NONE OF THEM READS THE ENVIRONMENT, and that is the property this gate is for
+ * rather than an accident of how they were written. The adapter takes its API
+ * host, its deadline and its replay window as CONSTRUCTION OPTIONS with
+ * defaults, and the composition root fills the last of them from
+ * `PLATOS_CHANNELS_SLACK_REQUEST_MAX_AGE_S` through `config/channels.ts` — which
+ * is the one place in this deployable entitled to read a variable. An
+ * `apiUrl` an operator could set would be an exfiltration primitive for every
+ * outbound channel message, so it is deliberately in-process only and this gate
+ * is what keeps that true. `far-side.ts` binds a real socket on loopback and
+ * still reads nothing: its port is chosen by the operating system and handed
+ * back, not configured.
+ *
+ * Nineteen files landed and no door was opened.
+ *
+ * WIN-272 (M4.6) 1663 -> 1673, and the same claim a second time. TEN files:
+ * seven under `packages/adapters/redis-streams` as that directory stops being a
+ * generated interface, two under `packages/kernel` (the stream envelope and its
+ * suite), and one is the kernel port. NOT ONE of them reads the ambient
+ * environment, and the reasons are the same shape as `channel-slack`'s.
+ *
+ * The adapter takes its URL, its retention bounds, its poll interval and its
+ * redelivery ceiling as CONSTRUCTION OPTIONS with defaults, and the composition
+ * root fills the URL from `PLATOS_STORE_REDIS_URL` through `config/stores.ts` —
+ * the one place in this deployable entitled to read a variable. `harness.ts`
+ * starts a container and takes the URL back off it rather than from a variable,
+ * which is what `redis-cache`'s harness does and why neither is on the declared
+ * list. And the kernel is held to a STRICTER rule than this one:
+ * `kernel-content` K4 refuses the identifier `process` outright, so the two
+ * kernel files could not have read one.
+ *
+ * Ten files landed and no door was opened.
+ *
+ * AND SEVEN MORE, 1673 -> 1680, when the same tranche landed its transport half:
+ * three modules and three suites under `apps/core-api/src/transports/ws/`, plus the
+ * stream-lane integration suite under `src/composition/`. SIX of the seven read
+ * nothing; the seventh is that integration suite, which is DECLARED above with ONE
+ * read for the reason its two predecessors are — `prisma migrate deploy` is a
+ * spawned process and needs PATH. The transport itself takes its heartbeat, its
+ * drain deadline and its frame ceiling as CONSTRUCTION OPTIONS with defaults, so
+ * an install that wanted to tune them would go through `config/`, which is the one
+ * place in this deployable entitled to read a variable.
+ *
+ * Seven more files landed and ONE declared door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1644;
+export const EXPECTED_FILE_COUNT = 1680;
 
 function listSourceFiles(root) {
   const found = [];

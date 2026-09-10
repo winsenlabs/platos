@@ -652,7 +652,102 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         of a comparison whose entire value is that it is exhaustive, which
   //         would have bought silence about four operations to avoid one
   //         manifest line --> 19411.
-  assert.equal(manifest.exceptions.length, 19411);
+  //   -3    THREE reviewed occurrences REMOVED by WIN-270 (M4.4), in
+  //         `packages/platos-token-mint/src/index.ts`. Each was a doc comment on
+  //         a published SDK type attributing an id Platos mints, owns and
+  //         validates to the external durable-runtime vendor's schema. WIN-270
+  //         asks for stale vendor vocabulary to leave the package APIs, and the
+  //         right answer to a vendor word in a type comment is to delete the
+  //         word rather than to review it — `--write` then drops the exception,
+  //         which is what happened here. Nothing about the wire format moved
+  //         --> 19408.
+  //   +38   reviewed WIN-269 (M4.3) occurrences that were left UNREVIEWED by the
+  //         tranche that wrote them, in four files: 20 in
+  //         `apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts`,
+  //         17 in `scripts/mutations-win269-m43.json`, 6 in
+  //         `apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts`
+  //         and 1 in `scripts/v1-ledger.test.mjs`. THE GATE WAS RED ON THE
+  //         BRANCH, and `.github/workflows/ci.yml` runs it, so the merge would
+  //         have been red; WIN-270 found it while establishing its own baseline.
+  //
+  //         All 38 are classified `technical` rather than `vendor`, for the same
+  //         reason the WIN-258 pair above is: the PostgreSQL occurrences are the
+  //         database ENGINE's own DDL keyword, its system catalogue, and the
+  //         named schema object the suite switches off and on again — not the
+  //         external durable-runtime product this rule exists to keep out. The
+  //         six occurrences in the discovery service are general-language
+  //         English naming whether a discovery pass RAN against an environment
+  //         at all, a distinction with no retry anywhere in it. Each row is
+  //         bound to a removal EVENT rather than to a date --> 19446.
+  //   +1    WIN-271 (M4.5). ONE occurrence, and it is the one kind this gate
+  //         cannot ask anybody to rewrite: a refused word appears inside SLACK'S
+  //         OWN PUBLISHED request-verification example, transcribed
+  //         byte-for-byte into
+  //         `packages/adapters/channel-slack/src/published-vector.ts`. That body
+  //         is HMAC'd — change one character and the digest changes — so
+  //         "rewrite the word" would turn the only EXTERNAL anchor that
+  //         adapter's signature suite has into a vector this repository
+  //         invented, with fifteen cases going on passing against a fiction.
+  //         Classified `vendor` and bound to a removal EVENT: the day
+  //         `channel-slack` stops verifying Slack signatures, or the day the
+  //         vendor publishes a different worked example --> 19447.
+  //
+  //         THE OTHER EIGHT WIN-271 OCCURRENCES WERE REWRITTEN RATHER THAN
+  //         REVIEWED, which is the rule working as intended: seven in
+  //         `send.ts` became `Dispatched`/`dispatched`, and one in a test
+  //         comment was reworded. Only the one that could not move is here.
+  //
+  //         AND THIS PARAGRAPH ITSELF HAD TO BE REWRITTEN ONCE. Its first draft
+  //         quoted both refused words while explaining them, which the gate
+  //         reported as three new unreviewed occurrences IN THIS FILE — a
+  //         reminder that the rule reads bytes and does not care that the
+  //         sentence around them is about the rule.
+  //
+  // WIN-272 (M4.6) ADDS ONE, and it is the first exception ever taken in
+  //         `packages/kernel` — a package that until now carried none.
+  //         `packages/kernel/src/vo/stream-frame.ts` holds the FIVE stream
+  //         envelope families ADR M0.4 section 1.2 names, and the fifth of them
+  //         is the name of the boundary at which a payload crosses into the
+  //         external durable-work vendor. It could not be rewritten for the
+  //         reason the Slack vector could not: the ADR pins one schema-version
+  //         axis per family and section 1.3 classifies a rename as a MAJOR
+  //         change, so renaming the string here would break the axis while
+  //         leaving the accepted document naming the old family. Classified
+  //         `boundary-spec` rather than `vendor` — the kernel holds no vendor
+  //         client and imports nothing; what it holds is a transcription of a
+  //         frozen specification, which is what that classification is for --> 19448.
+  //
+  //         AND TWO MORE FROM THE SAME TRANCHE, both `boundary-spec`, taking it to
+  //         19450. `scripts/arch/stream-contracts.test.mjs` asserts the five family
+  //         names BY NAME so a rename in the ADR and the kernel at once — which
+  //         rule S1 compares only to each other — fails; it is ONE occurrence and
+  //         not three because the mutation beside it is anchored on the FOURTH
+  //         family on purpose. And `docs/audits/M4.6-stream-vocabulary.json` carries
+  //         a FILE PATH, not prose: one of the eleven emit sites of `agent_event` is
+  //         under the external bridge's own directory, and a census that omitted the
+  //         site would report a smaller vocabulary than the lane has. Nothing there
+  //         can be reworded — the artifact is written by `--write` from the
+  //         filesystem, which is also why its line anchor will move whenever the
+  //         census grows.
+  //
+  //         ONE EXISTING EXCEPTION WAS RE-REVIEWED RATHER THAN RE-ADDED, and the
+  //         distinction is the manifest's own: the independent REST census gained a
+  //         row for the stream lane's route, so the vendor-bridge path inside it
+  //         moved from line 252 to line 290. `localContextSha256` is byte-identical
+  //         and only the json-path context shifted, which the gate reports as
+  //         CHANGED-CONTEXT and refuses to bless on its own.
+  //
+  //         AND THIS PARAGRAPH WAS REWRITTEN FOR THE SECOND TIME IN THIS FILE, for
+  //         the reason the one above it was: its first draft named that path
+  //         literally, which the gate reported as a NEW unreviewed occurrence in the
+  //         very suite that pins the manifest count. The rule reads bytes and does
+  //         not care that the sentence is about the rule.
+  //
+  //         THE OTHER FOUR FAMILIES CARRY NO REFUSED WORD, so this is one row
+  //         and not five. And the rest of that file's prose was written to avoid
+  //         the refused vocabulary entirely rather than to be excepted, which is
+  //         the rule working as intended a second time.
+  assert.equal(manifest.exceptions.length, 19450);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

@@ -377,7 +377,40 @@ describe("clean tenancy Prisma boundary", () => {
     // 0b36ea83f83a49ed4795881e9c9ccc00a6214c5e30ef654091d36dc13c2cc5a4 — which
     // is what establishes that 815 is real growth rather than a measurement
     // artifact of a different build state.
-    expect(analysis.calls.length).toBe(815);
+    //
+    // RE-PINNED 815 -> 817, 2026-09-10, and the inventory and digest do NOT move.
+    //
+    // WHY THIS WAS FOUND LATE, WHICH IS THE FINDING. This suite is a CI gate --
+    // ci.yml runs it by name in "Tenancy Prisma delegate boundary and census" --
+    // and it went red on this integration branch some commits before this one.
+    // Nothing surfaced it, because the branch had not yet had the full gate list
+    // run against it: two tranches added a production delegate call site each and
+    // neither moved this pin. The gate was right and the tranches were not.
+    //
+    // THE TWO SITES, EACH NAMED. `mcp-platform/permission-gateway.service.ts`
+    // 8 -> 9: `this.prisma.environment.findUnique` in the environment resolution
+    // the forged-scope refusal needed. `tool-gateway/mcp-transport/
+    // entity-mcp-discovery.service.ts` 6 -> 7: `this.prisma.entityMcpClient` with
+    // `.update(...)` on a SEPARATE LINE from the delegate -- which is why a grep
+    // for `prisma.<model>.update(` finds only the first of the two and the
+    // TYPE-CHECKER-driven analyzer finds both. `mcp-platform/tools/macros.ts` is
+    // 10 in both trees: its `prisma.macro.create` predates this branch.
+    //
+    // MEASURED THE WAY THE COMMENT ABOVE DEMANDS -- against the oracle, not
+    // against itself. With those three files swapped back to their 7e1243fc
+    // contents and nothing else changed, THIS analyzer in THIS build state reads
+    // exactly 815 (per-file: 8 / 10 / 6); swapped forward it reads 817
+    // (9 / 10 / 7). So the delta is those two call sites and nothing else, and
+    // 817 is real growth rather than drift in the measurement.
+    //
+    // THE INVENTORY AND THE DIGEST ARE DELIBERATELY UNMOVED. Both new sites use
+    // `delegate.operation` pairs the inventory already contained
+    // (`environment.findUnique`, `entityMcpClient.update`), so the count of
+    // UNIQUE operations stays 329 and its digest stays `0c4fd159`. Two pins that
+    // move together say less than two pins that move independently: a re-pin that
+    // had to touch all three would be a re-pin that added a new KIND of store
+    // reach, which is a different review.
+    expect(analysis.calls.length).toBe(817);
     expect(inventory).toHaveLength(329);
     expect(inventoryDigest).toBe(
       "0c4fd159179dbf051d093ac039b87771c53d407adbf06e7aa79df0a3cc6f85ac",

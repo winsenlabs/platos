@@ -2450,7 +2450,25 @@ const NON_EXECUTING_MODIFIERS = new Set(["skip", "todo"]);
  * 353 + 3 + 158 = 514.
  */
 export const EXPECTED = Object.freeze({
-  "packages/adapters/channel-slack": { files: 0, cases: 0 },
+  // WIN-271 (M4.5). 0 -> 5 files, 0 -> 61 cases: the directory stops being a
+  // generated interface and becomes the channels `ChannelRuntime`.
+  //
+  // WHERE THE 61 ARE. slack-transport 16 (a REAL `node:http` far side that keeps
+  // its own record: a silent server whose deadline elapses while it holds the
+  // message, an operating-system connection refusal, a reconnect on the same
+  // port, and the four outcome codes proven distinguishable), slack-signature 15
+  // (SLACK'S OWN PUBLISHED request-verification vector, re-derived under
+  // `node:crypto` so a transcription error cannot hide, then that vector with
+  // ONE thing changed per case), normalize 13, signed-admission 11 (the whole
+  // inbound path with the real runtime behind the port, through the context's
+  // published harness), sdk-upgrade 6 (4.34.0 and 4.40 asked the same questions
+  // about the same fixtures, with a negative control).
+  //
+  // THE COUNT IS DOMINATED BY REFUSALS AND THAT IS DELIBERATE. This directory's
+  // job is to be correct when the far side misbehaves, so an emptied body would
+  // drop a refusal that a real socket or a published digest produced, not a
+  // repetition of a happy path.
+  "packages/adapters/channel-slack": { files: 5, cases: 61 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
   "packages/adapters/model-router-providers": { files: 15, cases: 198 },
@@ -2601,9 +2619,31 @@ export const EXPECTED = Object.freeze({
   // "it says nothing about whether a case ASSERTS anything" limitation bites
   // less than usual: an emptied body would drop an authority, not a repetition.
   "packages/adapters/tokenmint-totp": { files: 7, cases: 136 },
-  "packages/adapters/redis-streams": { files: 0, cases: 0 },
+  // WIN-272 (M4.6) -- a NEW ROW, and the THIRD generated interface ever to gain
+  // suites: 0 -> 3 files, 0 -> 46 cases.
+  //
+  // WHERE THE 46 ARE. encoding 13 (the entry id round trip, the two keyspaces,
+  // and the event codec's millisecond and its scope level -- the three places a
+  // silent total loss would look exactly like success), journal.integration 25
+  // and event-bus.integration 8.
+  //
+  // TWO THIRDS OF THEM NEED A SERVER, AND THAT IS THE POINT OF THE SPLIT. The 13
+  // pure cases claim nothing about ordering, retention, resume or fan-out; the 33
+  // integration cases claim nothing that could be shown against a double. A fake
+  // would trim however the suite told it to and would order a single command
+  // queue, so every property WIN-272's acceptance names -- conservation under
+  // reconnect, two clients, a refused trim boundary -- is asserted against a real
+  // Redis or is not asserted at all.
+  "packages/adapters/redis-streams": { files: 3, cases: 46 },
   "packages/contexts/agents": { files: 25, cases: 515 },
-  "packages/contexts/channels": { files: 15, cases: 269 },
+  // WIN-271 (M4.5). 15 -> 16 files, 269 -> 274 cases: `domain/delivery.test.ts`,
+  // the disposition rule joined to `CHANNELS_ERROR_CODES` and to the mint
+  // functions rather than to a list retyped in the suite. The context gains NO
+  // case for `admit-signed-delivery.ts`: proving it needs a real
+  // `ChannelRuntime`, which lives in an adapter this package may not import, so
+  // its cases are the eleven in `channel-slack`'s `signed-admission` above,
+  // driven through the harness this context publishes from `application/testing/`.
+  "packages/contexts/channels": { files: 16, cases: 274 },
   "packages/contexts/conversations": { files: 29, cases: 350 },
   "packages/contexts/cost-monitoring": { files: 21, cases: 352 },
   "packages/contexts/eventing": { files: 15, cases: 157 },
@@ -2656,10 +2696,31 @@ export const EXPECTED = Object.freeze({
   "packages/contexts/secrets": { files: 23, cases: 293 },
   "packages/contexts/skills": { files: 20, cases: 306 },
   "packages/contexts/tenancy": { files: 20, cases: 207 },
-  "packages/contexts/tools": { files: 19, cases: 362 },
+  // WIN-269 (M4.3): tools 362 -> 366 cases, files UNCHANGED at 19. All four land
+  // in `application/execution.test.ts` and all four are the `DispatchTarget`
+  // transport gap, which only became visible when somebody tried to write the
+  // adapter the port exists for: the mcp target now CARRIES its transport (two
+  // cases, one per transport, so a hard-coded constant fails), a transport
+  // nobody recognises is REFUSED at resolution rather than discovered inside an
+  // adapter, an `http` row with no URL is refused too (`url === null` is
+  // necessary for stdio and not sufficient), and a WIRE target names no
+  // transport at all. `admitTransport` is the domain rule all four exercise, and
+  // before this tranche nothing outside its own unit test called it.
+  "packages/contexts/tools": { files: 19, cases: 366 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
-  "packages/kernel": { files: 6, cases: 129 },
+  //
+  // WIN-272 (M4.6). 6 -> 7 files, 129 -> 165 cases: `vo/stream-frame.test.ts`,
+  // the one stream envelope. 36 cases over five groups -- the flat frame and the
+  // reserved-field refusal in both directions (6), the byte-counted size ceiling
+  // (3), the length-prefixed resume cursor and its four distinguishable
+  // malformations (7), `admitFrame`'s apply/duplicate/gap and the whole-run
+  // conservation property (4), the four ways a stream can stop and the two that
+  // may be resumed (7), version negotiation including M0.4 D4 AS CORRECTED (4),
+  // and the family/major shape (3) plus the brand (1) and the wire-shape group
+  // (1). Every one is a pure function over values; the socket half is
+  // `apps/core-api/src/transports/stream/`, outside this census's roots.
+  "packages/kernel": { files: 7, cases: 165 },
 });
 
 /*
@@ -3520,7 +3581,29 @@ export const EXPECTED = Object.freeze({
  * moves not one number for it. A reader taking this file as the measure of what
  * WIN-268 P1 proved would be reading the smaller half.
  */
-export const EXPECTED_RUNTIME_TOTAL = 8145;
+// WIN-269 (M4.3): 8145 + 4 = 8149 over 550 files — files UNCHANGED, because all
+// four cases land in a suite that already existed. They are the `DispatchTarget`
+// transport gap, itemised on the `packages/contexts/tools` row above.
+// WIN-271 (M4.5): 8149 + 66 = 8215 over 556 files (+6). The arithmetic, both
+// halves named: `packages/adapters/channel-slack` 0 -> 61 across 5 NEW files as
+// the directory stops being a generated interface, and
+// `packages/contexts/channels` 269 -> 274 across one new file,
+// `domain/delivery.test.ts`. 61 + 5 = 66; 5 + 1 = 6.
+//
+// THE THREE-WAY IDENTITY MOVES ON THE ADAPTERS TERM AND THE CONTEXTS TERM. Five
+// of the six new files are under `packages/adapters/`, one under
+// `packages/contexts/`, and `packages/kernel` is unmoved.
+//
+// WIN-272 (M4.6): 8215 + 82 = 8297 over 560 files (+4). The arithmetic, both
+// halves named: `packages/adapters/redis-streams` 0 -> 46 across 3 NEW files as
+// the directory stops being a generated interface, and `packages/kernel` 129 ->
+// 165 across one new file, `vo/stream-frame.test.ts`. 46 + 36 = 82; 3 + 1 = 4.
+//
+// THE THREE-WAY IDENTITY MOVES ON THE ADAPTERS TERM AND THE KERNEL TERM, and the
+// kernel term is the one that has moved least often — three of the four new files
+// are under `packages/adapters/`, one under `packages/kernel`, and
+// `packages/contexts/` is unmoved.
+export const EXPECTED_RUNTIME_TOTAL = 8297;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

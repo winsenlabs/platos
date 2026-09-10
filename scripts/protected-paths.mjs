@@ -86,10 +86,57 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // SCRIPT_PREFIXES: the selection protects the EVIDENCE a gate reads, not the
 // gate, and the ratchet's evidence is the baseline above.
 //
+// WIN-268 (M4.2) adds TWO, no removals and no content substitutions, taking the
+// set from 794 to 796:
+//   docs/audits/win-268-mcp-store-ownership.json  (the MCP surface's ORM
+//                                                  register — every store call
+//                                                  site, its owning context, and
+//                                                  the per-file disposition
+//                                                  naming what it is waiting on)
+//   docs/audits/win-268-mcp-store-ownership.md    (the same, rendered)
+// Both fall inside the existing `docs/**` selection rather than widening it, and
+// the difference was verified SET-WISE against the base at 7e1243fc: the 796
+// paths at this head are exactly the 794-path base plus those two, with nothing
+// removed and nothing substituted. `scripts/arch/mcp-store-ownership.mjs` is NOT
+// added to SCRIPT_PREFIXES, for the reason the openapi ratchet was not: the
+// selection protects the EVIDENCE a gate reads, not the gate.
+//
+// WIN-269 (M4.3) adds TWO, no removals and no content substitutions, taking the
+// set from 796 to 798:
+//   docs/audits/win-269-tool-lifecycle-reach.json  (the tool lifecycle's ORM
+//                                                   register — every store call
+//                                                   site under
+//                                                   apps/agent/src/tool-gateway,
+//                                                   its owning context, and the
+//                                                   slot-by-slot account of what
+//                                                   composing `tools` takes)
+//   docs/audits/win-269-tool-lifecycle-reach.md    (the same, rendered)
+// Both fall inside the existing `docs/**` selection rather than widening it, and
+// the difference was verified SET-WISE against the base at 5a2e7bf8: the 798
+// paths at this head are exactly the 796-path base plus those two, with nothing
+// removed and nothing substituted. `scripts/arch/tool-lifecycle-reach.mjs` is
+// NOT added to SCRIPT_PREFIXES, for the reason its sibling register was not:
+// the selection protects the EVIDENCE a gate reads, not the gate.
+//
+// WIN-272 (M4.6) adds ONE, no removals and no content substitutions, taking the
+// set from 798 to 799:
+//   docs/audits/M4.6-stream-vocabulary.json  (the stream vocabulary census — every
+//                                             socket event name and frame type the
+//                                             V1 stream lanes put on a wire, with
+//                                             the lane and the M0.4 §1.2 envelope
+//                                             family each belongs to)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the base at bbab66ea: the 799 paths at
+// this head are exactly the 798-path base plus that one, with nothing removed and
+// nothing substituted — `comm -13` names one addition and `comm -23` names none.
+// `scripts/arch/stream-contracts.mjs` is NOT added to SCRIPT_PREFIXES, for the
+// reason its three predecessors were not: the selection protects the EVIDENCE a
+// gate reads, not the gate.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "f341cd78961e90ed459f1dad75aabbefc299dcf92326c3f3636605ed760bc40d";
+export const EXPECTED_PATH_SET_SHA256 = "df52e403740aba88a43f783dc415d344264681d0cf08d47e93de95000258dff1";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

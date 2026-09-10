@@ -29,6 +29,10 @@ import {
   literalMigrationErrors,
   measureApiV1LiteralLines,
   measureApiV1Literals,
+  ALIAS_MANIFEST_PATH,
+  ALIAS_OPENAPI_PATH,
+  aliasContractErrors,
+  measureAliasContract,
 } from "./contract-map.mjs";
 
 const roots = [];
@@ -203,4 +207,237 @@ test("the histogram counts every row exactly once", () => {
   assert.equal(h.rows, 4);
   assert.deepEqual(h.byStatus, { N: 1, E: 1, "E-stream": 1, "E-partial": 1 });
   assert.deepEqual(contractRowErrors(screens, { newContracts: 1 }), []);
+});
+
+// ── THE ALIAS CONTRACT (ADR M0.4 §4), NEGATIVE CONTROLS ─────────────────────
+//
+// `measureAliasContract` joins the generated manifest to the generated OpenAPI
+// document. Both are produced by ONE program, which is exactly why the join is
+// checked from here rather than from inside it — and why every rule below is fed
+// a synthetic pair where the two artifacts disagree in one specific way. A rule
+// that cannot be shown going red is a rule nobody should trust.
+const ALIAS_SUNSET = "2027-03-31";
+const ALIAS_ANNOUNCED = "2026-09-10";
+
+function aliasFixture({ manifest = {}, openapi = {} } = {}) {
+  const baseManifest = {
+    deprecationPolicy: {
+      minimumWindowDays: 90,
+      aliases: [
+        {
+          id: "legacy-prefix",
+          aliasPrefix: "/api/v1/old/thing",
+          canonicalPrefix: "/api/v1/thing",
+          announcedOn: ALIAS_ANNOUNCED,
+          sunsetOn: ALIAS_SUNSET,
+          windowDays: 202,
+          operations: 1,
+          fanIn: "same-controller-multi-path",
+        },
+      ],
+      forksWithoutOneHandler: [],
+    },
+    inventories: {
+      restOperations: [
+        {
+          id: "GET /api/v1/thing",
+          method: "GET",
+          path: "/api/v1/thing",
+          classification: "MAPPED",
+          implementations: [{ controller: "C", handler: "h", source: "apps/agent/src/c.ts" }],
+        },
+        {
+          id: "GET /api/v1/old/thing",
+          method: "GET",
+          path: "/api/v1/old/thing",
+          classification: "DEPRECATED",
+          replacement: "GET /api/v1/thing",
+          deprecation: { announcedOn: ALIAS_ANNOUNCED, sunsetOn: ALIAS_SUNSET },
+          implementations: [{ controller: "C", handler: "h", source: "apps/agent/src/c.ts" }],
+        },
+      ],
+    },
+  };
+  const baseOpenapi = {
+    paths: {
+      "/api/v1/thing": { get: { "x-platos-classification": "MAPPED" } },
+      "/api/v1/old/thing": {
+        get: {
+          deprecated: true,
+          "x-platos-classification": "DEPRECATED",
+          "x-platos-superseded-by": "GET /api/v1/thing",
+          "x-platos-sunset": ALIAS_SUNSET,
+        },
+      },
+    },
+  };
+  const merge = (base, patch) => JSON.parse(JSON.stringify({ ...base, ...patch }));
+  return fixture({
+    [ALIAS_MANIFEST_PATH]: JSON.stringify(merge(baseManifest, manifest)),
+    [ALIAS_OPENAPI_PATH]: JSON.stringify(merge(baseOpenapi, openapi)),
+  });
+}
+
+test("the alias contract is silent on a manifest and document that agree", () => {
+  const measured = measureAliasContract(aliasFixture());
+  assert.deepEqual(measured.findings, []);
+  assert.deepEqual(
+    {
+      aliases: measured.aliases,
+      deprecatedOperations: measured.deprecatedOperations,
+      cataloguedOperations: measured.cataloguedOperations,
+    },
+    { aliases: 1, deprecatedOperations: 1, cataloguedOperations: 1 }
+  );
+  assert.deepEqual(aliasContractErrors(measured, measured), []);
+});
+
+test("MUTATION: a DEPRECATED operation missing from the published document fails", () => {
+  const measured = measureAliasContract(aliasFixture({ openapi: { paths: { "/api/v1/thing": { get: {} } } } }));
+  assert.ok(
+    measured.findings.some((f) => f.includes("absent from the published document")),
+    measured.findings.join("; ")
+  );
+});
+
+test("MUTATION: a document successor that disagrees with the manifest replacement fails", () => {
+  const measured = measureAliasContract(
+    aliasFixture({
+      openapi: {
+        paths: {
+          "/api/v1/thing": { get: { "x-platos-classification": "MAPPED" } },
+          "/api/v1/old/thing": {
+            get: {
+              deprecated: true,
+              "x-platos-classification": "DEPRECATED",
+              "x-platos-superseded-by": "GET /api/v1/somewhere-else",
+              "x-platos-sunset": ALIAS_SUNSET,
+            },
+          },
+        },
+      },
+    })
+  );
+  assert.ok(
+    measured.findings.some((f) => f.includes("document successor")),
+    measured.findings.join("; ")
+  );
+});
+
+test("MUTATION: a document sunset that disagrees with the wire's sunset fails", () => {
+  const measured = measureAliasContract(
+    aliasFixture({
+      openapi: {
+        paths: {
+          "/api/v1/thing": { get: { "x-platos-classification": "MAPPED" } },
+          "/api/v1/old/thing": {
+            get: {
+              deprecated: true,
+              "x-platos-classification": "DEPRECATED",
+              "x-platos-superseded-by": "GET /api/v1/thing",
+              "x-platos-sunset": "2099-01-01",
+            },
+          },
+        },
+      },
+    })
+  );
+  assert.ok(
+    measured.findings.some((f) => f.includes("document sunset")),
+    measured.findings.join("; ")
+  );
+});
+
+test("MUTATION: a canonical operation advertising a sunset fails", () => {
+  const measured = measureAliasContract(
+    aliasFixture({
+      openapi: {
+        paths: {
+          "/api/v1/thing": {
+            get: { "x-platos-classification": "MAPPED", "x-platos-sunset": ALIAS_SUNSET },
+          },
+          "/api/v1/old/thing": {
+            get: {
+              deprecated: true,
+              "x-platos-classification": "DEPRECATED",
+              "x-platos-superseded-by": "GET /api/v1/thing",
+              "x-platos-sunset": ALIAS_SUNSET,
+            },
+          },
+        },
+      },
+    })
+  );
+  assert.ok(
+    measured.findings.some((f) => f.includes("advertises a sunset but is not DEPRECATED")),
+    measured.findings.join("; ")
+  );
+});
+
+test("MUTATION: a window under ADR M0.4 §4.3's ninety days fails", () => {
+  const short = aliasFixture({
+    manifest: {
+      deprecationPolicy: {
+        minimumWindowDays: 90,
+        aliases: [
+          {
+            id: "legacy-prefix",
+            aliasPrefix: "/api/v1/old/thing",
+            canonicalPrefix: "/api/v1/thing",
+            announcedOn: ALIAS_ANNOUNCED,
+            sunsetOn: "2026-10-01",
+            windowDays: 21,
+            operations: 1,
+            fanIn: "same-controller-multi-path",
+          },
+        ],
+        forksWithoutOneHandler: [],
+      },
+    },
+  });
+  const measured = measureAliasContract(short);
+  assert.ok(
+    measured.findings.some((f) => f.includes("requires at least 90")),
+    measured.findings.join("; ")
+  );
+});
+
+test("MUTATION: a recorded window that its own dates do not span fails", () => {
+  const measured = measureAliasContract(
+    aliasFixture({
+      manifest: {
+        deprecationPolicy: {
+          minimumWindowDays: 90,
+          aliases: [
+            {
+              id: "legacy-prefix",
+              aliasPrefix: "/api/v1/old/thing",
+              canonicalPrefix: "/api/v1/thing",
+              announcedOn: ALIAS_ANNOUNCED,
+              sunsetOn: ALIAS_SUNSET,
+              windowDays: 9999,
+              operations: 1,
+              fanIn: "same-controller-multi-path",
+            },
+          ],
+          forksWithoutOneHandler: [],
+        },
+      },
+    })
+  );
+  assert.ok(
+    measured.findings.some((f) => f.includes("records 9999 days")),
+    measured.findings.join("; ")
+  );
+});
+
+test("MUTATION: a committed record that has gone stale against the generated plan fails", () => {
+  const measured = measureAliasContract(aliasFixture());
+  const stale = { ...measured, deprecatedOperations: measured.deprecatedOperations + 1 };
+  const errors = aliasContractErrors(stale, measured);
+  assert.ok(
+    errors.some((e) => e.includes("aliasContract.deprecatedOperations")),
+    errors.join("; ")
+  );
+  assert.ok(aliasContractErrors(null, measured).some((e) => e.includes("records no aliasContract")));
 });

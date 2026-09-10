@@ -275,7 +275,11 @@ describe("what a backend answers", () => {
 });
 
 describe("the MCP transport and its fail-closed invariant", () => {
-  function seedMcpEntity(headersTemplate: unknown, url: string | null): EntityMcpClient {
+  function seedMcpEntity(
+    headersTemplate: unknown,
+    url: string | null,
+    transport = "http",
+  ): EntityMcpClient {
     context.repository.seedExposure(
       testExposure(context.scope, {
         entityId: ENTITY,
@@ -285,7 +289,7 @@ describe("the MCP transport and its fail-closed invariant", () => {
     );
     return context.repository.seedMcpClient({
       entityId: ENTITY,
-      transport: "http",
+      transport: transport as EntityMcpClient["transport"],
       url,
       credentialId: null,
       credentialName: asToolsIdentifier<CredentialName>("COMPOSIO_API_KEY"),
@@ -318,6 +322,61 @@ describe("the MCP transport and its fail-closed invariant", () => {
     const executed = await execute({ endUserId: asToolsIdentifier<EndUserId>("user-9") });
     expect(executed.ok).toBe(true);
     expect(context.dispatch.requests[0]?.target.headers["X-User"]).toBe("user-9");
+  });
+
+  // WIN-269 (M4.3) — THE TARGET NAMES ITS TRANSPORT, AND THE TRANSPORT IS
+  // ADMITTED BEFORE AN ADAPTER SEES IT.
+  //
+  // `MCP_TRANSPORTS` is `http | sse | stdio`. Two of the three carry an absolute
+  // URL and are DIFFERENT CLIENT CONSTRUCTIONS, so an adapter handed only
+  // `kind: "mcp"` and a URL cannot tell them apart — the port was not
+  // implementable, and that only became visible when somebody tried to write the
+  // adapter. `admitTransport` is the domain rule that decides which three are
+  // real; before this it was called by NOTHING outside its own unit test.
+  it("carries the MCP transport onto the target, so an adapter is not guessing", async () => {
+    seedMcpEntity({ "X-Tenant": "acme" }, "https://mcp.test/x", "sse");
+    const executed = await execute();
+    expect(executed.ok).toBe(true);
+    expect(context.dispatch.requests[0]?.target.transport).toBe("sse");
+    // ...and it is the CLIENT ROW's transport rather than a constant: the `http`
+    // fixture every other case in this block uses lands as `http`.
+    context.dispatch.requests.length = 0;
+    seedMcpEntity({ "X-Tenant": "acme" }, "https://mcp.test/x", "http");
+    await execute();
+    expect(context.dispatch.requests[0]?.target.transport).toBe("http");
+  });
+
+  it("REFUSES a transport nobody recognises, at resolution, with nothing dispatched", async () => {
+    // A misconfigured row an operator has to fix — not a dispatch that failed,
+    // and not something an adapter should discover while building a client.
+    seedMcpEntity({ "X-Tenant": "acme" }, "https://mcp.test/x", "carrier-pigeon");
+    const executed = await execute();
+    expect(!executed.ok && executed.error.code).toBe("TOOLS_MCP_TRANSPORT_INVALID");
+    expect(context.dispatch.requests).toEqual([]);
+  });
+
+  it("REFUSES an http client with no URL, which `url === null` alone could not catch", async () => {
+    // `url === null` is a NECESSARY condition for stdio and not a sufficient
+    // one, so an adapter inferring the transport from the missing field would
+    // open a stdio session against an `http` row. The admission catches it here.
+    seedMcpEntity({ "X-Tenant": "acme" }, null, "http");
+    const executed = await execute();
+    expect(!executed.ok && executed.error.code).toBe("TOOLS_MCP_TRANSPORT_INVALID");
+    expect(context.dispatch.requests).toEqual([]);
+  });
+
+  it("a WIRE target names no transport at all", async () => {
+    // Naming one would be a claim about a protocol that is not in play: a wire
+    // backend is reached on a socket Platos did not open.
+    const live = testExposure(context.scope, { entityId: ENTITY, dispatchable: true });
+    const resolved = await resolveDispatchTarget(context.dependencies, {
+      scope: context.scope,
+      subject: subjectOf(live),
+      endUserId: null,
+      vaultAuthorization: VAULT,
+    });
+    expect(resolved.ok && resolved.value.kind).toBe("wire");
+    expect(resolved.ok && resolved.value.transport).toBeNull();
   });
 
   it("keys the pooled session on the resolved credential, so two users never share one", async () => {

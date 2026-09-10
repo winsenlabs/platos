@@ -1,0 +1,20 @@
+# Byte-cache and local test scaffolding. Mirrors `packages/platools-py/.gitignore`
+# — the only other Python package in this workspace — rather than widening the
+# root ignore file, because these paths are a property of running an interpreter
+# in THIS directory and nowhere else in the repository.
+#
+# WIN-270 (M4.4) added this: `packages/platos-client-py/tests/test_v1_contract.py`
+# is executed by `pnpm test:sdk-v1`, so a `__pycache__` now appears the moment the
+# V1 evidence step runs, and an untracked-but-unignored directory would make
+# `scripts/v1-ledger.test.mjs` — which reads `git ls-files --cached --others` —
+# count files nobody committed.
+.venv/
+.venv_*/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build artefacts (mirrors root `dist`/`packages/**/dist`, but the build backend
+# writes here at the package root, not nested in src).
+build/
+*.egg-info/

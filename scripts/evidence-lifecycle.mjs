@@ -75,6 +75,12 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   "docs/audits/M0.4-design-contract-map.json",
   "docs/audits/M0.4-design-contract-map.md",
   "docs/audits/M0.8-operator-operations.md",
+  // WIN-272 (M4.6). ACCEPTED rather than POINT-IN-TIME, and for the reason the
+  // capability matrix above is: it binds CURRENT repository truth rather than a
+  // dated scan. `audit:stream-contracts` fails unless every socket event name and
+  // frame type the live lanes emit has a row here AND every row is still emitted,
+  // so a snapshot classification would be false the moment an `.emit(` moved.
+  "docs/audits/M4.6-stream-vocabulary.json",
   "docs/audits/M0.9-rest-census-independent.json",
   "docs/audits/M0.9-webapp-bff-matrix.json",
   "docs/audits/sbom/NON-VACUITY-PROOF.md",
@@ -120,6 +126,26 @@ export const EXPLICIT_ACCEPTED_AMBIGUOUS_PATHS = Object.freeze([
   // and a human writes the disposition and the reason — which is why it is
   // pinned here by name rather than picked up by a generated-artifact root.
   "docs/audits/win-259-secret-response-census.json",
+  // WIN-268 (M4.2). The MCP surface's ORM register, ACCEPTED for the same reason
+  // as the secret-response census beside it: `audit:mcp-store-ownership` re-derives
+  // the whole thing from the Prisma schema, `table-ownership.mjs`, the composition
+  // root and each context's published contract on every run, and `--check` fails
+  // when the tree and the file disagree. A site cannot appear or vanish, and a
+  // context cannot become composed, without somebody regenerating it. Like the
+  // census it is HALF generated — the sites and verdicts are derived and the
+  // per-file dispositions are written by a human — which is why it is pinned by
+  // name rather than swept up by a generated-artifact root.
+  "docs/audits/win-268-mcp-store-ownership.json",
+  "docs/audits/win-268-mcp-store-ownership.md",
+  // WIN-269 (M4.3). The TOOL LIFECYCLE's ORM register, ACCEPTED for exactly the
+  // reason its sibling above is and for one more of its own: as well as
+  // re-deriving every site from the schema, the ownership map, the composition
+  // root and each contract, it classifies every slot of `ToolsDependencies`
+  // against that composition root — so the claim "composing `tools` takes these
+  // things" is re-measured on every run rather than recorded on a date. A
+  // POINT-IN-TIME classification would say the opposite of what the artifact is.
+  "docs/audits/win-269-tool-lifecycle-reach.json",
+  "docs/audits/win-269-tool-lifecycle-reach.md",
   "docs/audits/win253-removals/clickhouse-split.json",
   "docs/audits/win253-removals/clickhouse-split.md",
   "docs/audits/win253-removals/vendored-build.json",

@@ -46,7 +46,11 @@ test("the denominator matches the M0 censuses exactly", () => {
   // UNCOVERED by the differential harness and says so with an owning issue,
   // which is the honest state: the harness twin-runs stores, and a REST surface
   // that has just been born has no second implementation to be run against.
-  assert.equal(summary.bySurface.rest.total, 308, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8");
+  // WIN-272 (M4.6): 308 -> 309, the stream lane's one route. It is UNCOVERED by
+  // the differential harness and says so with an owning issue, for the reason all
+  // eight before it are: the harness twin-runs STORES, and a stream lane whose
+  // journal is a Redis log has no second implementation to be run against.
+  assert.equal(summary.bySurface.rest.total, 309, "WIN-247 counted 300 REST operations; WIN-267 R1 adds 8, WIN-272 one more");
   assert.equal(summary.bySurface.mcp.total, 202, "WIN-247 counted 202 MCP tools");
   // WIN-267 G1: 93 -> 94. `EvalRun` is the canonical row `governance`'s
   // `EvalRunQueue` port enqueues into — ADR M0.3 §1 row 14's "eval runs enqueue
@@ -432,8 +436,9 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // above, and it is the whole reason two mechanisms exist.
   //
   // WIN-268 (M4.2) P1 8 -> 10: the two MCP one-time-secret token mints.
-  assert.equal(core.enumeratedOperations, 10);
-  assert.equal(core.independentOperations, 10);
+  // WIN-272 (M4.6) 10 -> 11: the stream lane's one route.
+  assert.equal(core.enumeratedOperations, 11);
+  assert.equal(core.independentOperations, 11);
   // AND THE PER-ROOT SUM CARRIES THE SURPLUS TERM. A root sum counts an
   // operation once per root that serves it, and the two mints are served by
   // both, so the sum exceeds the unique denominator by exactly the surplus the

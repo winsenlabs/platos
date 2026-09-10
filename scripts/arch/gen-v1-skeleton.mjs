@@ -396,9 +396,48 @@ export const ADAPTERS = [
     ],
     note: "one namespaced keyspace behind one Redis client",
   },
-  { dir: "redis-streams", port: "EventBus", owner: "kernel", note: "one namespaced keyspace, one owner" },
+  {
+    dir: "redis-streams",
+    port: "EventBus",
+    owner: "kernel",
+    // WIN-272 (M4.6) ADDS A SECOND, `kernel:StreamJournal`, and the question it
+    // answers is the one §15's amendment is for: does the adapter that already
+    // exists satisfy the port. YES at the level §15 operates on — the same Redis,
+    // the same connection, the same primitive, so a sixteenth directory would
+    // have been a second Redis client for one Redis. And NO at the level of
+    // contract: `EventBus` is documented as the TRANSIENT fan-out seam and its
+    // `subscribe` carries no position, so a reconnecting subscriber joins wherever
+    // the bus happens to be; `StreamJournal` is ordered and addressable and can
+    // REFUSE a cursor whose frames it no longer holds. M0.4 §2 needs the second
+    // one by name — "per-turn event log keyed (turnId, seq) required so
+    // `Last-Event-ID` survives a process restart".
+    //
+    // Its owner is `kernel`, which this directory ALREADY had, so this row moves
+    // `EXPECTED_BINDING_COUNT` and leaves `EXPECTED_EDGE_COUNT` alone.
+    additional: [{ port: "StreamJournal", owner: "kernel" }],
+    note: "one namespaced keyspace behind one Redis client",
+  },
   { dir: "model-router-providers", port: "ModelRouter", owner: "providers", note: "the model-provider clients" },
-  { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "one channel client" },
+  {
+    dir: "channel-slack",
+    port: "ChannelAdapter",
+    owner: "channels",
+    // WIN-271 (M4.5). THE SECOND BINDING ON THIS DIRECTORY, and the one that let
+    // it be constructed at all. `ChannelAdapter` describes the OUTBOUND half of
+    // a provider integration — post, describe an author, check a credential —
+    // and until this tranche the INBOUND half had no port: `admit-channel-event.ts`
+    // took a body "already signature-verified by the transport" and said so, so
+    // the one security decision on a PUBLIC endpoint sat outside the context
+    // that owns channels and was implemented twice in `apps/agent`.
+    //
+    // `ChannelRuntime` EXTENDS `ChannelAdapter`, so this is one object and one
+    // vendor client — the §15 shape, not an exception to it. It is two BINDINGS
+    // because they are two obligations, and `PORT_SATISFACTION` proves each
+    // independently: collapsing them would leave the compiler silent the day
+    // `verifyInbound` changed shape.
+    additional: [{ port: "ChannelRuntime", owner: "channels" }],
+    note: "one channel client, inbound and outbound",
+  },
   { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
   // WIN-259 (M2.4). THE THIRTEENTH DIRECTORY, and the first one added since the
@@ -799,8 +838,17 @@ export function adapterOwnerPackages(adapter) {
 // SUMMED FOR THE INTEGRATION: 54 + 3 (G2) + 1 (G1) = 57 + 1 = 58 bindings
 // over the SAME fifteen directories. Neither branch could state this
 // figure: G1 pinned 55 and G2 pinned 57, both over the same 54 base.
+//
+// WIN-271 (M4.5): 58 -> 59 bindings and the DIRECTORY pin does not move a
+// TWENTY-SECOND time. `channel-slack:ChannelRuntime` is the second row on an
+// EXISTING directory and is the §15 shape rather than an exception to it:
+// `ChannelRuntime` extends `ChannelAdapter`, so both rows are satisfied by one
+// object holding one vendor client. A second directory for the inbound half
+// would have been a second chat SDK install for the same provider, which is
+// exactly the arrangement §15 exists to refuse. This run is SERIAL, so the pin
+// moves once, to the value this tree produces.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 58;
+export const EXPECTED_BINDING_COUNT = 60;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -1149,7 +1197,9 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/keyring-envelope", // WIN-259 — the versioned root key ring, the AES-256-GCM envelope over it, and the constant-time verifier
   "packages/adapters/node-crypto-digest", // WIN-267 A1 — the identity-access SecretHasher: SHA-256 hex over the extraction source's own digests, a constant-time comparison, and RFC 7636's S256 challenge
   "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
+  "packages/adapters/channel-slack", // WIN-271 (M4.5) — the channels ChannelRuntime: Slack's own published request-verification vector, three distinguishable refusals over the exact received octets, and the outbound deadline that separates "did not land" from "do not know"
   "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
+  "packages/adapters/redis-streams", // WIN-272 (M4.6) — the kernel EventBus and StreamJournal over ONE Redis Streams client: the producer's own sequence IS the server-enforced entry id, a trimmed resume position is REFUSED rather than answered with a gap, and a bus that reconnects joins the live end because it is a fan-out seam and not a queue
 ];
 
 // ---------------------------------------------------------------------------
@@ -1467,6 +1517,14 @@ const PROJECT_TEST_SCRIPTS = {
   // have. Byte-identical to the two above so the three cannot drift.
   "packages/adapters/redis-ratelimit":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  // WIN-272 (M4.6) adds `packages/adapters/redis-streams`, the FOURTH entry with a
+  // byte-identical run and the same reason: it ships two real-Redis suites — the
+  // journal's conservation, ordering and trim-boundary refusals, and the bus's
+  // at-least-once redelivery across separate connections — and neither can be
+  // shown against a double, so both need a container and therefore a daemon
+  // `pnpm test:v1-packages` does not have.
+  "packages/adapters/redis-streams":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "apps/core-api":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
@@ -1606,6 +1664,39 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   "redis-ratelimit": {
     ioredis: "^5.6.1",
   },
+  // WIN-271 (M4.5). The chat SDK's Slack adapter, and the ONE place its version
+  // is written. `chat-sdk-only` in scripts/arch/boundary-rules.mjs names this
+  // directory as its only home in the V1 tree, so this table is what makes that
+  // permission real.
+  //
+  // THE SPECIFIER IS DELIBERATELY *NOT* BYTE-IDENTICAL TO `apps/agent`'s, which
+  // every other entry in this table is. WIN-271 asks for the audited 4.34 line
+  // to move toward current stable, "staged and rollbackable": this adapter takes
+  // ^4.40.0 and the legacy channel monolith in `apps/agent` — which this tranche
+  // does not touch — stays on ^4.34.0. Two lines, one version literal each.
+  // Rolling this half back is editing this one string; no source file under
+  // `packages/adapters/channel-slack/` names a version, because every SDK import
+  // goes through its `vendor.ts`.
+  "channel-slack": {
+    "@chat-adapter/slack": "^4.40.0",
+  },
+  // WIN-272 (M4.6). The THIRD and last of the three redis-* directories to hold a
+  // client, and a THIRD client rather than a third copy of one: ADR M0.3 §4 gives
+  // this directory "one namespaced keyspace, one owner", so `platos:stream:v1:`
+  // and `platos:bus:v1:` are held by an object with its own lifetime — one that
+  // also holds SUBSCRIPTIONS, which is why closing it stops poll loops before it
+  // closes the socket. The specifier is byte-identical to `redis-cache`'s,
+  // `redis-ratelimit`'s and `apps/agent`'s, so pnpm resolves it to the entry
+  // already in pnpm-lock.yaml (ioredis@5.10.1) instead of opening a new
+  // resolution.
+  //
+  // WITH THIS ENTRY ALL THREE HOMES `ioredis` IS PERMITTED ARE FILLED, which is
+  // the reason it is deliberately absent from `SDK_CONTAINMENT`: a containment
+  // rule naming one home would refuse the other two, and the ADR's own layout has
+  // three.
+  "redis-streams": {
+    ioredis: "^5.6.1",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -1645,6 +1736,25 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // `GET`-then-`SET`, so the only proof of the port's own "MUST make the
   // read-and-increment atomic" is real concurrent consumers on a real server.
   "redis-ratelimit": {
+    "@testcontainers/redis": "^10.28.0",
+  },
+  // WIN-271 (M4.5). The AUDITED line, under an alias, so the same fixtures can
+  // be asked of both builds in one process. A DEV dependency for the reason the
+  // three above are: an SDK the adapter does not run must not reach the
+  // production image or its SBOM. It is what makes the upgrade EVIDENCED rather
+  // than assumed — `sdk-upgrade.test.ts` asks 4.34.0 and 4.40 the same question
+  // about every provider fixture and every refusal and requires identical
+  // answers, with a negative control proving the comparison can fail.
+  "channel-slack": {
+    "@chat-adapter/slack-audited": "npm:@chat-adapter/slack@4.34.0",
+  },
+  // WIN-272 (M4.6). The Redis container the journal's conservation and the bus's
+  // at-least-once redelivery are proved against. A DEV dependency for the reason
+  // the four above are, and with the same specifier. The two properties it exists
+  // for are unreachable without it: a trimmed resume position is a RETENTION
+  // behaviour of a real server, and "two clients see one ordering" is a claim
+  // about commands a SERVER interleaved rather than about one command queue.
+  "redis-streams": {
     "@testcontainers/redis": "^10.28.0",
   },
 };

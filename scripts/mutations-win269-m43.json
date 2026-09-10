@@ -1,0 +1,256 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under scripts/ or src/ imports this file.",
+  "issue": "WIN-269",
+  "tranche": "M4.3 stage 2 \u2014 the tool lifecycle's ORM register, the three-valued discovery outcome, the stale double that was hiding three assertions, and the (entity, environment) pair against real PostgreSQL, and the DispatchTarget gap that only writing the adapter revealed",
+  "branch": "tejas/m4",
+  "base": "5a2e7bf8 (tejas/m4, after WIN-268 stage 1); mutations run at b5302dc6+",
+  "purpose": [
+    "This tranche has three kinds of claim and each fails in a different way.",
+    "",
+    "THE REGISTER fails by MEASURING LESS THAN IT SAYS, or by measuring the same",
+    "tree its sibling measures. M08 widens the roots until they overlap WIN-268's",
+    "\u2014 the failure that would turn two registers into two numbers to keep in",
+    "agreement; M09 removes the directory->property translation on the composed-",
+    "context join, which makes every hyphenated context read as UNCOMPOSED and",
+    "reports `identity-access` blocked on a composition that has already happened;",
+    "M10 names a contract method that does not exist, which is how a disposition",
+    "goes stale after a rename; M11 under-reports the client-level reach, which is",
+    "exactly the shape WIN-268's own M01 caught in the scanner.",
+    "",
+    "THE DISCOVERY OUTCOME fails by COLLAPSING BACK TO TWO VALUES. Every mutation",
+    "below restores a state the tree actually shipped: M01 puts back the",
+    "`return []` for `hosted-*` transports, which fed an empty list into an",
+    "idempotent-REPLACE write and deleted the entity's whole tool matrix every",
+    "five minutes while reporting success; M02 puts back `stampSuccess` for a",
+    "project with no environments, which wrote `connectionStatus: \"connected\"`",
+    "and a fresh `lastConnectedAt` for an entity nobody had contacted; M04 and M05",
+    "erase the two halves of what makes a SKIP distinguishable from a SUCCESS in",
+    "the persisted rows; M06 lets a pass that asked nothing prune anyway.",
+    "",
+    "THE UNTESTED GUARD fails SILENTLY AND IN PRODUCTION. M03 deletes the",
+    "`callRes.isError === true` check in `mcpDispatch`. Before this tranche that",
+    "mutation SURVIVED the entire repository: the flag is checked on exactly one",
+    "production line and was asserted by zero tests, so every failing MCP tool",
+    "would have reported `success` to the model with every suite green.",
+    "",
+    "THE DOUBLE fails by BEING ONE METHOD SHORT. M07 removes",
+    "`resolveEntitySigningCredential` from the shared credentials double \u2014 the",
+    "exact state the tree was in, and the reason three cases in this suite were",
+    "red for a reason unrelated to anything they assert.",
+    "",
+    "THE TENANCY PAIR fails by BEING PROVED WITH A DOUBLE. M12 and M13 run against",
+    "a REAL PostgreSQL 17.10 because the property is decided by a trigger Prisma",
+    "does not model, and a `vi.fn()` client would have CONFIRMED THE WRONG",
+    "HYPOTHESIS \u2014 which this tranche's first draft of that suite actually did,",
+    "before the database refused the insert it expected to succeed. M14 is recorded",
+    "as a SURVIVOR rather than dressed up: it weakens the suite's own assertion",
+    "rather than the subject, and on a tree where the trigger is enabled a weaker",
+    "assertion still passes. What kills that claim is the out-of-band control in",
+    "`databaseControls` below, which disables the named trigger and shows the",
+    "incoherent row is then ACCEPTED.",
+    "",
+    "THE PORT GAP fails by BEING UNIMPLEMENTABLE AND LOOKING FINE. M15, M16 and M17",
+    "are about `DispatchTarget`, which named no MCP transport at all:",
+    "`MCP_TRANSPORTS` is `http | sse | stdio`, two of the three carry an absolute",
+    "URL and are DIFFERENT CLIENT CONSTRUCTIONS, and `url === null` is a necessary",
+    "but not sufficient condition for the third. An adapter would have had to infer",
+    "a protocol from a missing field. The domain already had the rule that decides",
+    "this -- `admitTransport` -- and NOTHING outside its own unit test called it."
+  ],
+  "procedure": [
+    "Each mutation is applied to the committed source, the named command is run,",
+    "and the source is restored byte-for-byte before the next one. A mutation is",
+    "KILLED when the command exits non-zero. The anchor for every mutation is",
+    "asserted to occur EXACTLY ONCE before it is applied, so a mutation that",
+    "silently matched nothing is reported as ANCHOR-MISSING rather than as a kill."
+  ],
+  "commands": {
+    "acceptance": "pnpm --filter platos-agent exec vitest run src/tool-gateway/mcp-transport/mcp-connected-entity --reporter=basic",
+    "register-test": "node --test scripts/arch/tool-lifecycle-reach.test.mjs",
+    "pair-postgres": "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL=postgresql://platos@127.0.0.1:55433/<db> TOOL_REGISTRY_TENANCY_REQUIRED=1 pnpm --filter platos-agent exec vitest run src/tool-gateway/registry-incoherent-pair-postgres --reporter=basic",
+    "tools-context": "pnpm --filter @platos/context-tools test"
+  },
+  "baseline": {
+    "acceptance": "18 passed / 0 failed (10 pre-existing cases, 8 added by this tranche). Before this tranche the same file was 7 passed / 3 failed; the three reds were the stale double, not a production defect.",
+    "register-test": "13 passed / 0 failed",
+    "toolGatewayWhole": "pnpm --filter platos-agent exec vitest run src/tool-gateway/ \u2014 86 passed / 0 failed across 8 files",
+    "pair-postgres": "7 passed / 0 failed against a throwaway native PostgreSQL 17.10 (Homebrew postgresql@17, port 55433, trust auth, its own migrated schema, dropped in afterAll). With no database URL: 7 skipped, and with TOOL_REGISTRY_TENANCY_REQUIRED=1 and no URL the suite FAILS rather than skipping \u2014 both verified.",
+    "tools-context": "366 passed / 0 failed across 19 files (362 before this tranche, +4 for the transport admission)."
+  },
+  "mutations": [
+    {
+      "name": "M01 a hosted-* transport answers with an empty tool list instead of skipping",
+      "guards": "a discovery pass that asked nothing never reaches registerTools, so it can never prune",
+      "why": "This is the state that shipped. `fetchToolsList` returned `[]` for every `hosted-*` transport with the comment 'so discovery still succeeds (no tools registered yet)'. That empty list went into `ToolRegistryService.registerTools`, whose `deleteMany` drops its `notIn` clause when nothing is active \u2014 so it deleted EVERY `EnvironmentEntityTool` row the entity had in that environment, then stamped the entity connected, on a one-minute cron with a five-minute staleness threshold.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M02 a project with no environments stamps a successful discovery",
+      "guards": "a pass that opened no session never writes connectionStatus: connected",
+      "why": "Also the state that shipped. `stampSuccess` writes `lastDiscoveryAt = now`, clears `discoveryError`, and sets `Entity.connectionStatus = 'connected'` with a fresh `lastConnectedAt`. An operator reading such an entity saw a healthy, freshly-discovered connection to a server that may have been unreachable for a week.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M03 mcpDispatch ignores the MCP `isError` flag",
+      "guards": "a tool whose backend answers with a tool-level error reports `failed`, not `success`",
+      "why": "THE ONE THAT SURVIVED EVERYTHING BEFORE THIS TRANCHE. The MCP SDK returns a SUCCESSFUL JSON-RPC response carrying `isError: true` for a tool-level failure; only the flag distinguishes it from a result. The check is one line in the whole repository and `grep -rn isError --include='*.test.ts' apps/agent/src` returned nothing. A wrong result here is invisible by construction: the model is told the call succeeded and reads the error text as output.",
+      "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M04 the skip stamp clears the reason instead of recording it",
+      "guards": "a skipped pass is distinguishable from a successful one in the PERSISTED rows, not only in the return value",
+      "why": "The return value is read by one caller; the rows are read by the console, the census and the next sweep. With `discoveryError: null` a skip and a success are byte-identical on `EntityMcpClient`, which is the same collapse M01 and M02 make in the other direction.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M05 the skip stamp also marks the entity connected",
+      "guards": "a pass that asked nothing learned nothing about liveness and writes no connection status",
+      "why": "The subtler half of M02: a skip that records its reason but ALSO claims a connection is still a lie, and the reason column would make it look diagnosed.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M06 a skipped environment registers an empty declaration anyway",
+      "guards": "only the `contacted` branch may reach registerTools",
+      "why": "This is M01's damage reached by a different route \u2014 the tag is correct and the prune happens anyway. Without this mutation the three-valued outcome could be right in the type and wrong in the control flow.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M07 the shared credentials double loses resolveEntitySigningCredential",
+      "guards": "every `this.mcpCredentials(?.)X(` in the executor's own source is a method the double provides AND a real method of McpCredentialService",
+      "why": "The exact state of the tree at 5a2e7bf8, reported by the previous stage as a known red and a 'double gap'. It was a double gap and nothing else: the production wiring is correct and `McpCredentialService.resolveEntitySigningCredential` exists. Naming the method would have fixed one instance; the guard joins to the SUBJECT's source so the next method added to the executor fails at the double instead of somewhere unrelated.",
+      "file": "apps/agent/src/tool-gateway/mcp-transport/mcp-connected-entity.acceptance.test.ts",
+      "command": "acceptance",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M08 the two ORM registers are given overlapping roots",
+      "guards": "assertDisjointRoots compares this register's roots against WIN-268's OWN export, prefix-wise, in both directions",
+      "why": "Two registers that can both claim a file are two numbers to keep in agreement, and their totals stop being addable. The mutation adds `apps/agent/src/mcp-platform/tools`, which WIN-268 already counts.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M09 the composed-context join loses the directory->property translation",
+      "guards": "a context the composition root HAS composed is never reported blocked on composition",
+      "why": "`table-ownership.mjs` names a context by its directory (`identity-access`) and `ComposedContexts` by its property (`identityAccess`). Comparing them directly silently never matches for the four hyphenated contexts \u2014 the register reported the `McpOidcSession` site as blockedOnContext when `identity-access` is composed. This was a REAL defect in the first draft of this file, caught by this case, which is why it is in the ledger rather than only in the source.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M10 a disposition names a contract method the context does not publish",
+      "guards": "every method named in a disposition is checked against the contract read by AST from that context's contracts/index.ts",
+      "why": "A disposition's whole value is the sentence 'this file's published form is <method>'. Without the join it is a memory, and it goes stale silently the first time a contract method is renamed.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M11 the register under-reports the client-level reach",
+      "guards": "delegateSites + clientSites == totalSites, and the sites list itself re-derives every summary count",
+      "why": "The same failure WIN-268's M01 caught in the scanner, reached from the summary end: a register that reports fewer reaches than it found is green on everything it did find. The `$transaction` in `tool-registry.service.ts` is the only client-level reach in this root and is the one that must never survive a move.",
+      "file": "scripts/arch/tool-lifecycle-reach.mjs",
+      "command": "register-test",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M12 the registry drops its own (entity, environment) ancestry guard",
+      "guards": "an exposure whose entity and environment are in different projects is served to NO scope",
+      "why": "`if (entity.projectId !== environment.projectId) continue;` in `rebuildIndex` was asserted by NOTHING. It is defence in depth over a database trigger \u2014 established, not assumed, by the suite beside it \u2014 but a reader of the application code alone cannot tell a redundant guard from the only one, and every scope key the registry mints is built from BOTH sides of the pair: organization and project from the ENTITY, environment from the MAPPING. An incoherent row would mint a triple belonging to no tenant, which is exactly the forged triple `scope.guard.ts` accepts from three independent headers.",
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "command": "pair-postgres",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M13 `setToolEnabled` looks its entry up without the scope",
+      "guards": "the cache key is the whole authorization for a write that has no tenancy join of its own",
+      "why": "The write is `environmentEntityTool.update({ where: { environmentId_entityId_toolId: { environmentId: scope.environmentId, entityId: entry.entityPk, toolId } } })` with no organization join, no project join and no ancestry check. The executor's equivalent re-read calls itself 'defense in depth ... a slip that yielded a cross-scope entityPk would otherwise hand back another tenant's HMAC signing key'; there is no such depth here. This mutation is that slip, made deliberately: look the entry up by tool name across every bucket instead of by the scope's key.",
+      "file": "apps/agent/src/tool-gateway/tool-registry.service.ts",
+      "command": "pair-postgres",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M14 the trigger readback accepts a DISABLED trigger",
+      "guards": "the ancestry trigger is present AND enabled, so a refusal is not a false positive",
+      "why": "A disabled trigger is present in `pg_trigger` and enforces nothing. This mutation weakens the assertion from `tgenabled === 'O'` to mere presence.",
+      "file": "apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts",
+      "command": "pair-postgres",
+      "exit": 0,
+      "outcome": "survived",
+      "survivorReason": "IT MUTATES THE ASSERTION, NOT THE SUBJECT. On a tree where the trigger IS enabled, a weaker assertion about it still passes, and no arrangement of the test suite can kill that. The claim it makes is established instead by the out-of-band database control below, which is the honest place for it: a test cannot disable a trigger it is running inside without destroying the isolation every other case depends on. Recorded as a survivor rather than declared equivalent, because it is not equivalent \u2014 it is weaker, and a reader should know by how much."
+    },
+    {
+      "name": "M15 the mcp target hard-codes its transport instead of carrying the client row's",
+      "guards": "an adapter is handed the transport the ENTITY is configured with, not a constant",
+      "why": "A hard-coded `http` type-checks, passes every pre-existing case, and opens a StreamableHTTP client against an SSE server on the first real dispatch.",
+      "file": "packages/contexts/tools/application/resolve-transport.ts",
+      "command": "tools-context",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M16 the transport is copied onto the target without admission",
+      "guards": "`admitTransport` refuses a transport nobody recognises, and an http/sse row with no URL, at RESOLUTION",
+      "why": "`admitTransport` is a domain rule that existed and that nothing outside its own unit test called. Without it a misconfigured row reaches an adapter, which discovers it while building a client \u2014 the wrong place and the wrong error: a transport nobody recognises is a row an operator fixes, not a dispatch that failed.",
+      "file": "packages/contexts/tools/application/resolve-transport.ts",
+      "command": "tools-context",
+      "exit": 1,
+      "outcome": "killed"
+    },
+    {
+      "name": "M17 a wire target claims an MCP transport",
+      "guards": "`transport` is null on a wire target \u2014 a wire backend is reached on a socket Platos did not open",
+      "why": "The null is the half a reader would assume rather than check, and an adapter branching on `target.transport` before `target.kind` would then take the MCP path for a wire call.",
+      "file": "packages/contexts/tools/application/resolve-transport.ts",
+      "command": "tools-context",
+      "exit": 1,
+      "outcome": "killed"
+    }
+  ],
+  "survivors": [
+    "M14 \u2014 see `survivorReason` on the mutation. It weakens the suite's own assertion rather than the subject; the property is established by the `databaseControls` entry below."
+  ],
+  "declared": {
+    "total": 17,
+    "killed": 16,
+    "survived": 1,
+    "anchorMissing": 0,
+    "equivalent": 0,
+    "note": "Seventeen mutations, sixteen killed, ONE survivor \u2014 M14, which mutates an assertion rather than the subject and is compensated by the database control above. M03 is the one worth reading twice: it deletes the `isError` check and, before this tranche, it SURVIVED the entire repository."
+  },
+  "databaseControls": {
+    "what": "The non-vacuity control for the ancestry claim, run out of band against the same native PostgreSQL 17.10: migrate a scratch schema, seed two tenants, and attempt the incoherent EnvironmentEntityTool insert twice \u2014 once with `EnvironmentEntityTool_ancestry` enabled and once with it disabled.",
+    "why": "Without it the suite could be attributing the refusal to the wrong object. If the insert had ALSO failed with the trigger off, something else would be guarding the pair and every sentence naming that trigger would be wrong.",
+    "result": {
+      "triggerEnabled": "REFUSED code=23514 message=EnvironmentEntityTool crosses its canonical owner ancestry",
+      "triggerDisabled": "ACCEPTED"
+    },
+    "conclusion": "The named trigger is precisely and solely what refuses the incoherent pair. It is installed by 00000000000000_initial/migration.sql over enforce_domain_ancestry() and redefined by 20260824233000_m4_forward_upgrade_contract; NONE of it is visible in schema.prisma, which is why the hypothesis this suite was written to confirm survived reading the schema."
+  }
+}

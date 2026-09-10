@@ -356,18 +356,103 @@ test("reported restore argv recreates every deletion byte-for-byte", () => {
   });
 });
 
-test("all protected Platos SDK trees remain byte-identical to the primary base", () => {
+// PROTECTED SDK TREES: WHAT THE RULE IS AFTER WIN-270 (M4.4).
+//
+// WIN-253 pinned all seven trees byte-identical to the integration base. That
+// was right for a removal audit — its worst failure is collateral damage — but
+// written as a standing invariant it also forbade the deliberate SDK work M4.4
+// exists to do, which is a gate measuring elapsed time rather than damage.
+//
+// The rule is now: deviation is a violation UNLESS a reviewed entry in
+// `allowedProtectedSdkChanges` names the exact path and says why. The three
+// cases below are the negative controls that make that a gate rather than a
+// preference — an unlisted change, a stale permission, and a deletion, which has
+// no reviewed form at all. Each runs against a real worktree of the integration
+// base, so none of them asserts against a value this file also wrote.
+test("protected Platos SDK trees deviate only where a reviewed entry says so", () => {
   const { report, violations } = cleanAudit;
   assert.deepEqual(violations, []);
   assert.equal(report.protectedTrees.length, 7);
+  let reviewedTotal = 0;
   for (const tree of report.protectedTrees) {
-    assert.equal(tree.byteIdentical, true, tree.path);
     assert.equal(
       tree.integrationBaseTreeOid,
       execFileSync("git", ["rev-parse", `${INTEGRATION_BASE}:${tree.path}`], { cwd: root, encoding: "utf8" }).trim(),
       tree.path
     );
+    const reviewed = tree.reviewedChanges ?? [];
+    reviewedTotal += reviewed.length;
+    // `byteIdentical` still means byte-identical. It is now the COMPLEMENT of
+    // the reviewed set rather than an unconditional `true`, so a tree cannot
+    // report both a clean bill and a reviewed deviation.
+    assert.equal(tree.byteIdentical, reviewed.length === 0, tree.path);
+    for (const change of reviewed) {
+      assert.ok(change.path.startsWith(`${tree.path}/`), `${change.path} is not under ${tree.path}`);
+      assert.ok(["added", "changed"].includes(change.kind), change.path);
+      assert.match(change.reason, /\S/u, change.path);
+    }
   }
+  // The four trees WIN-270 did not touch are still byte-identical, which is the
+  // half of WIN-253's claim that has not moved.
+  const untouched = report.protectedTrees.filter((tree) => tree.byteIdentical).map((tree) => tree.path);
+  assert.deepEqual(untouched, ["packages/platools-js", "packages/platools-py"]);
+  assert.ok(reviewedTotal > 0, "the reviewed-change mechanism must be exercised by the live tree");
+});
+
+test("an unreviewed change to a protected SDK tree is a violation", () => {
+  withDetachedWorktree("platos-win253-protected-change", INTEGRATION_BASE, (worktree) => {
+    const target = resolve(worktree, "packages/platools-js/package.json");
+    writeFileSync(target, `${readFileSync(target, "utf8")}\n`);
+    const { violations } = auditRepository(worktree, { allowedProtectedSdkChanges: [] });
+    assert.ok(
+      violations.includes("protected SDK file changed from integration base: packages/platools-js/package.json"),
+      JSON.stringify(violations)
+    );
+  });
+});
+
+test("an unreviewed addition to a protected SDK tree is a violation", () => {
+  withDetachedWorktree("platos-win253-protected-add", INTEGRATION_BASE, (worktree) => {
+    writeFileSync(resolve(worktree, "packages/platools-js/win270-probe.txt"), "probe\n");
+    const { violations } = auditRepository(worktree, { allowedProtectedSdkChanges: [] });
+    assert.ok(
+      violations.includes("protected SDK tree gained a path: packages/platools-js/win270-probe.txt"),
+      JSON.stringify(violations)
+    );
+  });
+});
+
+test("a reviewed path that is no longer deviating is itself a violation", () => {
+  withDetachedWorktree("platos-win253-protected-stale", INTEGRATION_BASE, (worktree) => {
+    const { violations } = auditRepository(worktree, {
+      allowedProtectedSdkChanges: [
+        { path: "packages/platools-js/package.json", reason: "a permission for a change nobody made" },
+      ],
+    });
+    assert.ok(
+      violations.includes(
+        "reviewed protected SDK change no longer deviates from the integration base: packages/platools-js/package.json"
+      ),
+      JSON.stringify(violations)
+    );
+  });
+});
+
+test("deletion of a protected SDK file has no reviewed form", () => {
+  withDetachedWorktree("platos-win253-protected-delete", INTEGRATION_BASE, (worktree) => {
+    rmSync(resolve(worktree, "packages/platools-js/package.json"), { force: true });
+    const { violations } = auditRepository(worktree, {
+      // The strongest possible permission for that exact path, and it still
+      // fails: a published SDK file may be edited, never deleted.
+      allowedProtectedSdkChanges: [
+        { path: "packages/platools-js/package.json", reason: "deliberately permitted, and still refused" },
+      ],
+    });
+    assert.ok(
+      violations.includes("protected SDK file is missing: packages/platools-js/package.json"),
+      JSON.stringify(violations)
+    );
+  });
 });
 
 test("committed receipts are exact executable audit output", () => {

@@ -81,7 +81,7 @@ test("the composition root's declared external dependencies are exactly the revi
   });
 });
 
-test("exactly FIVE projects may hold an external dependency, and they are named", () => {
+test("exactly SIX projects may hold an external dependency, and they are named", () => {
   // The list is short on purpose and its shortness is the property. A fourth
   // entry appearing here is a reviewed decision to let a registry package into
   // the V1 layout, and it has to be made by moving this line.
@@ -107,29 +107,62 @@ test("exactly FIVE projects may hold an external dependency, and they are named"
   // one to be adopted holds a second CLIENT by design rather than by accident.
   // The lockfile cost is again seven lines and no new resolution, and again that
   // is not the argument: this line is.
+  //
+  // WIN-271 (M4.5) makes the SIXTH: `packages/adapters/channel-slack` declares
+  // `@chat-adapter/slack`. The argument is ADR M0.3 §1's own — `channels` is the
+  // "sole holder of Slack/etc SDKs behind `ChannelAdapter`" — and §5.1(h)'s "one
+  // vendor client, one adapter directory". Two tranches had already tried and
+  // failed to de-Prisma the channel surface IN PLACE, which is what the port and
+  // this declaration replace.
+  //
+  // AND IT IS THE ONE ENTRY WHOSE SPECIFIER IS NOT BYTE-IDENTICAL TO
+  // `apps/agent`'s, which every argument above turns on. The other five are
+  // pinned to the legacy specifier precisely so extraction cannot become a
+  // supply-chain change; WIN-271 asks for the opposite — a STAGED move of the
+  // audited 4.34 line toward current stable — so this one really does add a
+  // resolution. That is a reviewed decision and this line is where it was made:
+  // the adapter runs ^4.40.0, the legacy monolith stays on ^4.34.0, and
+  // `sdk-upgrade.test.ts` asks both builds the same questions about the same
+  // provider fixtures and requires identical answers.
+  // SIX -> SEVEN (WIN-272, M4.6). `packages/adapters/redis-streams` is the THIRD
+  // and last `redis-*` directory ADR M0.3 §4 gives a client, and the range is
+  // byte-identical to the other two and to `apps/agent`'s — so unlike
+  // `channel-slack` above, this adoption adds NO resolution: the lockfile gained
+  // seven lines and pointed at `ioredis@5.10.1`, which was already in it.
   assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
     "apps/core-api",
+    "packages/adapters/channel-slack",
     "packages/adapters/model-router-providers",
     "packages/adapters/postgres-tenancy",
     "packages/adapters/redis-cache",
     "packages/adapters/redis-ratelimit",
+    "packages/adapters/redis-streams",
   ]);
 });
 
-test("the Redis client is declared in exactly the TWO adopted redis-* projects", () => {
-  // WIN-260 (M2.5) admitted the first. WIN-267 A3 admits the second, and the
-  // shape of this case is what changed rather than its purpose: it is still an
-  // EXACT list, so a third holder cannot appear without moving this line.
-  // `redis-streams` is still declaration-only and holds no client; the day it is
-  // adopted, this is where its holder has to be argued for.
+test("the Redis client is declared in exactly the THREE adopted redis-* projects", () => {
+  // WIN-260 (M2.5) admitted the first. WIN-267 A3 admits the second. WIN-272 (M4.6)
+  // admits the THIRD and last — and this case's own previous wording is what
+  // required it to be argued for here: "`redis-streams` is still declaration-only
+  // and holds no client; the day it is adopted, this is where its holder has to be
+  // argued for." It is adopted, and the argument is ADR M0.3 §4's own layout: three
+  // `redis-*` directories, each with one namespaced keyspace and one owner, and
+  // this one holds `platos:stream:v1:` and `platos:bus:v1:`.
   //
-  // BOTH RANGES ARE THE SAME STRING, deliberately. Two `redis-*` directories at
-  // two ranges would be two resolutions of one client in one lockfile, and the
-  // process would ship both.
+  // WITH IT EVERY HOME §4 GIVES `ioredis` IS FILLED, which is the standing reason
+  // it is absent from `SDK_CONTAINMENT`: a containment rule naming one home would
+  // refuse the other two.
+  //
+  // ALL THREE RANGES ARE THE SAME STRING, deliberately. Three `redis-*`
+  // directories at three ranges would be three resolutions of one client in one
+  // lockfile, and the process would ship all of them.
   assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/redis-cache"], {
     ioredis: "^5.6.1",
   });
   assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/redis-ratelimit"], {
+    ioredis: "^5.6.1",
+  });
+  assert.deepEqual(EXPECTED_EXTERNAL_DEPENDENCIES["packages/adapters/redis-streams"], {
     ioredis: "^5.6.1",
   });
   const holders = Object.entries(EXPECTED_EXTERNAL_DEPENDENCIES)
@@ -138,6 +171,7 @@ test("the Redis client is declared in exactly the TWO adopted redis-* projects",
   assert.deepEqual(holders, [
     "packages/adapters/redis-cache",
     "packages/adapters/redis-ratelimit",
+    "packages/adapters/redis-streams",
   ]);
 });
 

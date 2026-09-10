@@ -29,10 +29,60 @@ const V0_DISPOSITIONS = new Set([
   "requires-product-decision",
 ]);
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE", "NONE"]);
-const EVIDENCE_STATUSES = new Set(["verified", "static-contract-only", "required-not-verified", "not-applicable", "justified-exclusion", "confirmed-defect"]);
+export const EVIDENCE_STATUSES = new Set(["verified", "static-contract-only", "required-not-verified", "not-applicable", "justified-exclusion", "confirmed-defect"]);
 const APPLICABILITY_STATUSES = new Set(["implemented", "redirect", "required-not-verified", "not-applicable", "confirmed-defect"]);
 const SCOPE_STATUSES = new Set(["enforced", "organization-only", "required-not-verified", "not-applicable", "confirmed-defect"]);
-const COMPLETION_EVIDENCE_STATUSES = new Set(["verified", "not-applicable", "justified-exclusion"]);
+export const COMPLETION_EVIDENCE_STATUSES = new Set(["verified", "not-applicable", "justified-exclusion"]);
+
+// ── WHAT A JUSTIFIED EXCLUSION HAS TO BE (WIN-267, M4.1) ────────────────────
+//
+// `justified-exclusion` is one of the three statuses the COMPLETION gate treats
+// as terminal, so it is the status that closes a cell without evidence. Two
+// things were wrong with it and both made it the cheapest way to turn the gate
+// green without proving anything.
+//
+//   `evidencePolicy` in the matrix documented three statuses -- static-contract-
+//   only, required-not-verified, verified -- and the checker accepts SIX. The two
+//   that terminate the completion gate without evidence, `not-applicable` and
+//   `justified-exclusion`, were the two with no written definition at all.
+//
+//   `validateEvidence` asked only that `references` be non-empty strings. A cell
+//   reading `{status: "justified-exclusion", references: ["out of scope"]}` passed.
+//   107 cells want browser evidence; that shape would have closed all 107 with a
+//   sentence each.
+//
+// So a justified exclusion now has to be SOURCE-BACKED in the literal sense: a
+// `reason` naming the capability's own route, and every reference resolving to
+// something in this repository -- an existing file, or a workflow job that exists
+// in the workflow file it names. Prose is no longer a reference. Zero cells carry
+// this status today, which is why the rule costs nothing to adopt and is worth
+// adopting BEFORE somebody needs it: the bar is set while nobody is standing at
+// it.
+//
+// This does NOT close the 107. It cannot -- see the note on
+// `route-capability-completion-audit.mjs`'s `validatePendingMatrix`, which pins
+// the committed matrix to exactly the 125-blocker shape, so the matrix is not
+// where that clause is closed.
+const WORKFLOW_JOB_REFERENCE = /^(\.github\/workflows\/[A-Za-z0-9_.-]+\.yml)#([A-Za-z0-9_-]+)$/u;
+
+export function justifiedExclusionReferenceErrors(reference, repositoryRoot, inspectRepository) {
+  if (!hasText(reference)) return ["is empty"];
+  const workflow = WORKFLOW_JOB_REFERENCE.exec(reference);
+  const path = workflow ? workflow[1] : reference.split("#")[0];
+  if (!/^[A-Za-z0-9_.@/-]+$/u.test(path) || !path.includes("/")) {
+    return [`is prose, not a repository path: ${reference}`];
+  }
+  if (!inspectRepository) return [];
+  const absolutePath = join(repositoryRoot, path);
+  if (!existsSync(absolutePath)) return [`names a path that does not exist: ${path}`];
+  if (workflow) {
+    const source = readFileSync(absolutePath, "utf8");
+    if (!new RegExp(`^  ${workflow[2]}:`, "mu").test(source)) {
+      return [`names job ${workflow[2]}, which ${path} does not declare`];
+    }
+  }
+  return [];
+}
 const COMPLETION_SCOPE_STATUSES = new Set(["enforced", "organization-only", "not-applicable"]);
 const COMPLETION_STATE_STATUSES = new Set(["implemented", "redirect", "not-applicable"]);
 
@@ -460,6 +510,37 @@ function validateEvidence(errors, capability, field) {
   }
 }
 
+/**
+ * Every cell the COMPLETION gate will accept as terminal on the strength of a
+ * `justified-exclusion`, taken from `completionBlockers`'s own reducers rather
+ * than from the three fields `validateEvidence` happens to cover. A field
+ * missing from this list would be a field where the rule below does not run.
+ */
+export const JUSTIFIED_EXCLUSION_FIELDS = Object.freeze([
+  "permission",
+  "destructiveConfirmation",
+  "idempotency",
+  "concurrency",
+  "recovery",
+  "secretExposure",
+  "browserEvidence",
+]);
+
+function validateJustifiedExclusion(errors, capability, field, repositoryRoot, inspectRepository) {
+  const value = capability[field];
+  if (!value || value.status !== "justified-exclusion") return;
+  if (!hasText(value.reason) || !value.reason.includes(capability.currentRoute)) {
+    errors.push(
+      `capability ${capability.capabilityId} ${field} is a justified-exclusion without a reason naming ${capability.currentRoute}`
+    );
+  }
+  for (const reference of value.references ?? []) {
+    for (const problem of justifiedExclusionReferenceErrors(reference, repositoryRoot, inspectRepository)) {
+      errors.push(`capability ${capability.capabilityId} ${field} justified-exclusion reference ${problem}`);
+    }
+  }
+}
+
 function hasMethodEndpoint(capability, method, endpoint) {
   return capability.http?.some((contract) => contract.method === method && contract.endpoint === endpoint);
 }
@@ -567,6 +648,7 @@ function validateCapability(errors, capability, currentRoutePaths, repositoryRoo
   }
   for (const field of ["loaderState", "actionState", "formState", "linkState"]) validateState(errors, capability, field);
   for (const field of ["persistedReadBack", "automatedEvidence", "browserEvidence"]) validateEvidence(errors, capability, field);
+  for (const field of JUSTIFIED_EXCLUSION_FIELDS) validateJustifiedExclusion(errors, capability, field, repositoryRoot, inspectRepository);
   if (!capability.pagination || !APPLICABILITY_STATUSES.has(capability.pagination.status) || !hasText(capability.pagination.strategy) || !hasText(capability.pagination.limit) || !hasText(capability.pagination.totalStatus)) {
     errors.push(`capability ${capability.capabilityId} has invalid pagination`);
   }
@@ -595,6 +677,16 @@ export function validateMatrix(matrix, options = {}) {
   const capabilities = matrix.capabilities ?? [];
 
   if (matrix.schemaVersion !== "2.0") errors.push("schemaVersion must be 2.0");
+  // WIN-267 (M4.1) — EVERY STATUS THIS CHECKER ACCEPTS MUST BE DEFINED IN THE
+  // MATRIX. `evidencePolicy` documented three of the six, and the two it left out
+  // were `not-applicable` and `justified-exclusion` — the two that terminate the
+  // completion gate WITHOUT evidence. A status a reader cannot look up is a status
+  // whose meaning is whatever the tranche that used it needed it to mean.
+  for (const status of EVIDENCE_STATUSES) {
+    if (!hasText(matrix.evidencePolicy?.[status])) {
+      errors.push(`evidencePolicy does not define the accepted evidence status ${status}`);
+    }
+  }
   if (currentRoutes.length !== EXPECTED_BASELINES.currentRoutes) errors.push(`current route count is ${currentRoutes.length}, expected ${EXPECTED_BASELINES.currentRoutes}`);
   if (v0Routes.length !== EXPECTED_BASELINES.v0VerifiedTypeScriptRoutes) errors.push(`v0 route count is ${v0Routes.length}, expected ${EXPECTED_BASELINES.v0VerifiedTypeScriptRoutes}`);
   if (matrix.baselines?.current?.expectedExecutableRoutes !== EXPECTED_BASELINES.currentRoutes) errors.push("matrix current baseline metadata is incorrect");

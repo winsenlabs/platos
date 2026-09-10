@@ -56,7 +56,10 @@
   "evidencePolicy": {
     "static-contract-only": "Source presence/ownership only; not behavioral proof.",
     "required-not-verified": "Mandatory WIN-234/WIN-238 follow-up evidence; explicit status prevents false completion without making this prerequisite permanently red.",
-    "verified": "Allowed only with non-empty concrete evidence references; enforced by the checker."
+    "verified": "Allowed only with non-empty concrete evidence references; enforced by the checker.",
+    "not-applicable": "The dimension does not exist for this capability — a read-only loader has no duplicate-submission question — so there is nothing to prove. Terminal for the completion gate; references must still say which property of the capability makes it inapplicable.",
+    "justified-exclusion": "The dimension DOES exist and is deliberately not proved here, closed on a source-backed record instead of on evidence. The checker enforces the shape: a `reason` that names this capability's own currentRoute, and references that every one of them resolve to a path in this repository or to a `.github/workflows/<file>.yml#<jobId>` job that file actually declares. Prose is not a reference. Terminal for the completion gate, which is exactly why the bar is machine-checked.",
+    "confirmed-defect": "A defect proved against source. It BLOCKS the completion gate rather than closing a cell, and is cleared only by repairing the source and replacing the status with verified evidence."
   },
   "capabilities": [
     {

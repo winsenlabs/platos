@@ -55,6 +55,8 @@ import {
 } from "./adapter-bindings.js";
 import {
   AGENTS_UNBOUND_PORTS,
+  CHANNELS_UNCOMPOSABLE,
+  CHANNELS_UNCOMPOSABLE_CHAIN,
   GOVERNANCE_BOUND_READ_SEAMS,
   GOVERNANCE_ROOT_SATISFIED_PORTS,
   GOVERNANCE_UNCOMPOSABLE,
@@ -70,9 +72,11 @@ import {
  * A platform an install could really set, with every group this tranche can
  * construct declared.
  *
- * The four ClickHouse/object-store/channel/durable groups are deliberately NOT
- * here: their directories have no constructor, so declaring them would prove
- * nothing and would only make the case read as though it had.
+ * The ClickHouse, object-store and durable groups are deliberately NOT here:
+ * their directories have no constructor, so declaring them would prove nothing
+ * and would only make the case read as though it had. The CHANNEL group used to
+ * be in that list and left it at WIN-271 (M4.5), when `channel-slack` gained
+ * one.
  */
 const FULLY_DECLARED = Object.freeze({
   PLATOS_ENVIRONMENT: "test",
@@ -82,6 +86,14 @@ const FULLY_DECLARED = Object.freeze({
   PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
   PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
   PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",
+  // WIN-271 (M4.5). The channels section's anchor, and the reason it is the
+  // SIGNING SECRET rather than a bot token is `config/channels.ts`'s own: an
+  // inbound channel is reachable from the public internet, so anchoring on the
+  // outbound token would let an install declare a channel it cannot verify. It
+  // is 64 characters because the field refuses anything under 32 — the shortest
+  // secret worth the name for an HMAC an attacker can grind offline against a
+  // body they chose.
+  PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
 });
 
 /** Nothing wired at all — the install part-way through setup that must boot. */
@@ -105,6 +117,11 @@ const GROUP_BUILDS: Readonly<Record<string, AdapterName>> = Object.freeze({
   "stores.redis": "redis-cache",
   "security.encryption": "keyring-envelope",
   "providers.modelRouter": "model-router-providers",
+  // WIN-271 (M4.5). The FIFTH group to name a directory, and the section had
+  // been waiting for it since WIN-297: `config/channels.ts` has anchored on the
+  // signing secret from the start, and until this tranche `channel-slack` was a
+  // generated interface with no constructor to hand it to.
+  "channels.slack": "channel-slack",
 });
 
 /**
@@ -156,6 +173,7 @@ function construct(env: Readonly<Record<string, string>>): AdapterConstruction {
     stores: value.stores,
     security: value.security,
     providers: value.providers,
+    channels: value.channels,
     clock: defaults.clock,
     correlation: null,
   });
@@ -217,11 +235,14 @@ describe("constructing the adapters an install declared", () => {
     // configuration including this one. `redis-cache` and `redis-ratelimit` are
     // both here because ONE variable was declared -- WIN-267 A3 gave the limiter
     // its own keyspace and its own client off `PLATOS_STORE_REDIS_URL`, so that
-    // is one variable, two objects, two lifetimes. And the outbox is absent
+    // is one variable, two objects, two lifetimes. WIN-272 (M4.6) makes it one
+    // variable and THREE: `redis-streams` holds the journal and the bus off the
+    // same URL and its own client, and its subscriptions are why it has a
+    // lifetime of its own to close. And the outbox is absent
     // because its dependency was not declared. The three states are what the
     // case is about.
     expect([...Object.keys(withoutDatabase.adapters)].sort()).toEqual(
-      ["node-crypto-digest", "redis-cache", "redis-ratelimit", "tokenmint-totp"].sort(),
+      ["node-crypto-digest", "redis-cache", "redis-ratelimit", "redis-streams", "tokenmint-totp"].sort(),
     );
     const declined = withoutDatabase.unwired.find((row) => row.adapter === "outbox");
     expect(declined?.cause).toBe("configuration");
@@ -243,6 +264,10 @@ describe("constructing the adapters an install declared", () => {
     // `node-crypto-digest` and `tokenmint-totp`, which read no configuration and
     // are therefore wired even here; asserting their ABSENCE from `unwired` is
     // what makes "built unconditionally" falsifiable rather than a comment.
+    // 13 -> 13: `redis-streams` moved from the implementation half to the
+    // configuration half of the SAME list, because with nothing declared it is
+    // still unwired -- just for a reason an operator can fix. The split below is
+    // what moved, and it is asserted per directory rather than by this total.
     expect(construction.unwired).toHaveLength(13);
     for (const adapter of BUILT_UNCONDITIONALLY) {
       expect(byCause.get(adapter)).toBeUndefined();
@@ -278,6 +303,7 @@ describe("constructing the adapters an install declared", () => {
       stores: platform(NOTHING_DECLARED).stores,
       security: { session: null, encryption: { rootKey: "not-hexadecimal", rootKeyVersion: 3 } },
       providers: platform(NOTHING_DECLARED).providers,
+      channels: platform(NOTHING_DECLARED).channels,
       clock: createProcessDefaults(platform(NOTHING_DECLARED).core).clock,
       correlation: null,
     });
@@ -308,6 +334,7 @@ describe("constructing the adapters an install declared", () => {
         stores: platform(FULLY_DECLARED).stores,
         security: platform(NOTHING_DECLARED).security,
         providers: platform(NOTHING_DECLARED).providers,
+      channels: platform(NOTHING_DECLARED).channels,
         clock: createProcessDefaults(platform(NOTHING_DECLARED).core).clock,
         correlation: null,
       });
@@ -396,17 +423,34 @@ describe("readiness over what was actually constructed", () => {
     const unimplementable = ADAPTER_BINDINGS.filter((binding) =>
       UNIMPLEMENTED_ADAPTERS.includes(binding.adapter),
     );
-    expect(ADAPTER_BINDINGS).toHaveLength(58);
-    expect(unimplementable).toHaveLength(7);
+    // WIN-272 (M4.6): 59 -> 60 declared and 6 -> 5 unimplementable, by the same
+    // subtraction WIN-271 spells out below. `redis-streams` gained a SECOND
+    // binding (`StreamJournal`, the ordered and resumable half `EventBus` has no
+    // position for) and simultaneously left `UNIMPLEMENTED_ADAPTERS`, so the
+    // directory's rows go from 1-unimplementable to 2-satisfiable: 59 + 1 = 60
+    // declared, 6 - 1 = 5 unimplementable, and satisfied moves by THREE to 55.
+    // WIN-271 (M4.5): 58 -> 59 declared and 7 -> 6 unimplementable, and the two
+    // move in OPPOSITE directions for one reason. `channel-slack` gained a
+    // SECOND binding (`ChannelRuntime`, the inbound half no port covered) and
+    // simultaneously left `UNIMPLEMENTED_ADAPTERS`, so the directory's rows go
+    // from 1-unimplementable to 2-satisfiable: 58 + 1 = 59 declared, and
+    // 7 - 1 = 6 unimplementable. Satisfied therefore moves by THREE:
+    // 51 + 1 (the new row) + 2 (the two rows the directory now serves, minus
+    // the one it used to fail) — stated as 59 - 6 = 53 below and derived rather
+    // than written, so the two halves cannot drift.
+    expect(ADAPTER_BINDINGS).toHaveLength(60);
+    expect(unimplementable).toHaveLength(5);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
     // WIN-267 A3: 45 -> 47 of 53 -> 54, by the two independent steps above.
     // WIN-267 G1: 47 -> 48 of 54 -> 55. WIN-267 G2: 48 -> 51 of 55 -> 58.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(51);
+    // WIN-271 (M4.5): 51 -> 53 of 58 -> 59. WIN-272 (M4.6): 53 -> 55 of 59 -> 60.
+    // See the subtraction above.
+    expect(verdict.detail.satisfiedBindings).toHaveLength(55);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(7);
-    // STILL RED, AND HONESTLY SO. Seven ports have no implementation in this
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(5);
+    // STILL RED, AND HONESTLY SO. Five ports have no implementation in this
     // build, so this process cannot serve the routes that need them. Going green
     // on "everything this install could have wired" would be comparing the
     // supply to itself.
@@ -446,7 +490,13 @@ describe("readiness over what was actually constructed", () => {
     const { app, verdict, construction } = readiness(FULLY_DECLARED);
     // 8 -> 7 (WIN-267 A3): one row per directory NOT built, and
     // `redis-ratelimit` is now built. The same subtraction as the case above.
-    expect(construction.unwired).toHaveLength(7);
+    // 7 -> 6 (WIN-271, M4.5): `channel-slack` is now built too, from the
+    // `channels.slack` group this fixture declares. It is a row per DIRECTORY,
+    // not per binding, so this number falls by one while the directory's two
+    // bindings move to the satisfied side.
+    // 6 -> 5 (WIN-272, M4.6): `redis-streams` is now built too, off the
+    // `stores.redis` group -- the same subtraction a third time.
+    expect(construction.unwired).toHaveLength(5);
     expect(app.unwired).toEqual(construction.unwired);
     expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });
@@ -629,6 +679,58 @@ describe("the context bundles those adapters can satisfy", () => {
     // AND THE TWO AGENTS PORTS ARE THE SAME TWO `AGENTS_UNBOUND_PORTS` NAMES, so
     // the chain constant cannot drift away from the list G3 wrote.
     expect(GOVERNANCE_UNCOMPOSABLE_CHAIN).toEqual(expect.arrayContaining([...AGENTS_UNBOUND_PORTS]));
+  });
+
+  it("still cannot compose channels, and names the two directories that stop it", () => {
+    // WIN-271 (M4.5) BUILT THE ADAPTER AND DID NOT COMPOSE THE CONTEXT, and this
+    // case exists so nobody reads the adoption as the composition. An install
+    // that declares `channels.slack` now gets an object that verifies Slack
+    // signatures over the exact received octets and posts messages under a
+    // deadline — and `channels` is still absent.
+    const { app, construction } = readiness(FULLY_DECLARED);
+    expect(construction.adapters["channel-slack"]).toBeDefined();
+    expect(app.contexts.channels).toBeUndefined();
+
+    // THE CHAIN, JOINED TO THE BINDING TABLE AND TO THE UNIMPLEMENTED LIST
+    // rather than to the sentence. The directory left is DECLARED — its port
+    // exists and is bound — and is a generated interface, which is a different
+    // fact from an unbound port and must not be allowed to look like one.
+    //
+    // IT WAS TWO AND IS NOW ONE, WHICH IS WHY THIS IS A CONSTANT READ BACK AND
+    // NOT A COMMENT. WIN-272 (M4.6) gave `redis-streams` a real `EventBus`, so
+    // OUTBOUND — the half ADR M0.3 §3 inverts through a subscription — is
+    // satisfied and published on `AppModule`. INBOUND is not: it enqueues a turn
+    // job through `DurableRuntime`, and that directory is still an interface, so
+    // a composed `channels` could post an outbound message and could still
+    // authenticate a webhook and then have nowhere to send the turn.
+    expect(CHANNELS_UNCOMPOSABLE_CHAIN).toEqual(["durable-runtime"]);
+    for (const directory of CHANNELS_UNCOMPOSABLE_CHAIN) {
+      expect(ADAPTER_BINDINGS.map((binding) => binding.adapter)).toContain(directory);
+      expect(UNIMPLEMENTED_ADAPTERS).toContain(directory);
+      expect(construction.adapters[directory as AdapterName]).toBeUndefined();
+    }
+
+    // AND THE PORT THAT DIRECTORY CARRIES IS THE SLOT THE CONTEXT STILL CANNOT
+    // FILL, read off the binding table rather than retyped, so the sentence
+    // cannot drift away from the wiring it describes.
+    const carried = CHANNELS_UNCOMPOSABLE_CHAIN.flatMap((directory) =>
+      ADAPTER_BINDINGS.filter((binding) => binding.adapter === directory).map((binding) => binding.port),
+    );
+    expect(carried.sort()).toEqual(["DurableRuntime"]);
+    for (const port of carried) expect(CHANNELS_UNCOMPOSABLE).toContain(port);
+
+    // THE HALF THAT IS NOW SATISFIED IS ASSERTED TOO, so "one blocker left" is a
+    // measured claim and not the absence of a second one. The bus is a real
+    // object off `stores.redis` and it reaches the transports through `AppModule`,
+    // which is what `ChannelsDependencies.eventBus` would be filled from.
+    expect(construction.adapters["redis-streams"]).toBeDefined();
+    expect(app.eventBus).toBe(construction.adapters["redis-streams"]);
+    expect(app.streamJournal).toBe(construction.adapters["redis-streams"]?.journal);
+
+    // The context's factory is not importable either, which is the SECOND
+    // blocker and the one `UNIMPORTABLE_CONTEXT_FACTORIES` measures against
+    // Node's own resolver.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toContain("channels");
   });
 
   it("holds the governance port partition, and the sink it does build", () => {

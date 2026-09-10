@@ -881,7 +881,28 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `apps/core-api/src/composition/mcp-token-mint.integration.test.ts` — is
   // outside `apps/core-api/src/transports/**` and therefore outside this slice,
   // which is why the two censuses move by different amounts. 1595 + 6 = 1601.
-  assert.equal(result.fileCount, 1601);
+  //
+  // WIN-271 (M4.5) 1601 -> 1620, and the ADAPTERS term carries fourteen of the
+  // nineteen while `CONTEXTS` carries five. The adapters term is a NET: the
+  // `channel-slack` directory held two generated placeholders and now holds
+  // sixteen real files, and adoption replaces the placeholders in place. No app
+  // selector moves at all — this tranche lands not one file under
+  // `apps/core-api/src/transports/**` or `src/http/**`; its core-api delta is
+  // edits to `composition/adapter-bindings.ts` and to suites. 1601 + 19 = 1620.
+  //
+  // WIN-272 (M4.6) 1620 -> 1635, across THREE selectors, which is what a tranche
+  // that lands a port, an adapter AND a route looks like. `ADAPTERS` +7 (a NET:
+  // `redis-streams` held two generated placeholders and now holds nine real
+  // files), `KERNEL` +3 (the stream envelope, its suite and the twelfth kernel
+  // port), and `APPS-TRANSPORTS` +5 (the stream lane's three modules and its two
+  // suites, which became THREE when the mechanics suite reached 495 effective
+  // lines and was split on the two seams it already had — no warning row was added
+  // to the pinned list below, which is the difference between splitting a file and
+  // naming a number). `CONTEXTS` and `APPS-HTTP` are byte-for-byte the same scan —
+  // no context was widened and the chassis was not touched. The integration suite
+  // is in `src/composition/`, which NO selector scans, so it is deliberately
+  // absent from every term. 1620 + 7 + 3 + 6 = 1636.
+  assert.equal(result.fileCount, 1636);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -938,7 +959,24 @@ test("the live selectors scan an exact nonzero source census", () => {
       // its two-tenant proof. Newly WRITTEN, inside the same long-standing
       // selector, and adding nothing to any other term: the five stores,
       // `governance-rows.ts` and `governance-seam-guards.ts` are edits.
-      2
+      2 +
+      // WIN-271 (M4.5): FOURTEEN under `packages/adapters/channel-slack/src/`
+      // (sixteen real files less the two generated placeholders they replace —
+      // the only NET term in this sum, and the reason it is written as one
+      // number rather than 16 - 2) and FIVE under `packages/contexts/channels/`:
+      // the `ChannelRuntime` port, the `admitSignedDelivery` use case, the
+      // inbound conformance harness, the delivery-disposition rule and its
+      // suite. Both selectors already existed; neither app selector moves.
+      14 + 5 +
+      // WIN-272 (M4.6): SEVEN NET under `packages/adapters/redis-streams/src/`
+      // (nine real files less the two generated placeholders they replace — the
+      // second NET term in this sum, and the reason it is one number rather than
+      // 9 - 2), THREE under `packages/kernel/src/` (`vo/stream-frame.ts`, its
+      // suite and `ports/stream-journal.ts`) and FIVE under
+      // `apps/core-api/src/transports/ws/` (`stream-errors.ts`, `sse.ts`,
+      // `streams.controller.ts` and their THREE suites). The integration suite is
+      // under `src/composition/`, outside every selector, so it is absent here.
+      7 + 3 + 6
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1114,7 +1152,19 @@ test("the live selectors scan an exact nonzero source census", () => {
   //   APPS-TRANSPORTS   27
   // 27 + 1075 + 451 + 15 + 27 = 1595.
   // WIN-268 P1: CONTEXTS 1075 -> 1077, APPS-TRANSPORTS 27 -> 31.
-  assert.equal(result.fileCount, 27 + 1077 + 451 + 15 + 31);
+  // WIN-271 (M4.5): ADAPTERS 451 -> 465 (fourteen NET in `channel-slack`, whose
+  // two generated placeholders are replaced in place) and CONTEXTS 1077 -> 1082
+  // (five in `channels`). KERNEL, APPS-HTTP and APPS-TRANSPORTS are all UNMOVED,
+  // and that is the claim worth making about this tranche: it lands not one file
+  // under `apps/core-api/src/transports/**`, because the surface it builds is a
+  // PORT and an ADAPTER rather than a route.
+  // WIN-272 (M4.6): KERNEL 27 -> 30, ADAPTERS 465 -> 472 (seven NET in
+  // `redis-streams`, whose two generated placeholders are replaced in place) and
+  // APPS-TRANSPORTS 31 -> 37. CONTEXTS and APPS-HTTP are UNMOVED, and that is the
+  // claim worth making: this tranche builds a kernel port, its adapter AND a
+  // route, and it widened no context and did not touch the REST chassis. It is
+  // the first tranche to move the KERNEL term since WIN-260.
+  assert.equal(result.fileCount, 30 + 1082 + 472 + 15 + 37);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
@@ -1239,6 +1289,27 @@ test("the live selectors scan an exact nonzero source census", () => {
   // never simplified anything, so the one negative is worth as much as the nine
   // positives. EIGHT of the eighteen did not move at all, which is what says this
   // list was measured rather than regenerated wholesale.
+  //
+  // WIN-271 (M4.5) ADDS A NINETEENTH ROW, AND IT IS NOT THIS TRANCHE'S FILE.
+  // `packages/contexts/tools/application/execution.test.ts` crossed 400 at
+  // WIN-269 (M4.3), which added four cases to it for the `DispatchTarget`
+  // transport gap and did not move this list. THE SUITE HAS THEREFORE BEEN RED
+  // SINCE 9d78e2e1, on a command `.github/workflows/ci.yml` runs (line 147), and
+  // WIN-270 did not run it either — which is exactly the shape this pin exists
+  // to catch and the reason it is stricter than the gate: `audit:max-file-lines`
+  // EXITS 0 ON A WARNING, so nothing but this list could see it.
+  //
+  // It is recorded rather than repaired. 416 is comfortably inside the warning
+  // band and nowhere near the 500-line error, `packages/contexts/tools` is not
+  // this tranche's subject, and splitting somebody else's suite to make a number
+  // move would be a worse change than naming the number. The row carries the
+  // issue that caused it so the next reader knows whose it is.
+  //
+  // WIN-271's OWN NINETEEN FILES ADD NO ROW AT ALL: the longest is
+  // `channel-slack/src/slack-transport.test.ts`, and every one of the sixteen in
+  // that directory is inside the band by construction — the module split
+  // (`vendor`, `verify`, `normalize`, `failure`, `send`, `provider`, `adapter`)
+  // was made before any of them was written.
   assert.deepEqual(result.findings, [
     {
       path: "packages/adapters/postgres-tenancy/src/channels-conformance.ts",
@@ -1359,6 +1430,26 @@ test("the live selectors scan an exact nonzero source census", () => {
       severity: "warning",
     },
     {
+      // WIN-272 (M4.6). THE ONE ROW THIS TRANCHE ADDS, and it is the one file it
+      // deliberately did NOT split. Twenty-five cases against a real Redis, and
+      // the length is the case COUNT rather than any case's size: ordering under
+      // two connections, the server refusing a repeated sequence, two racing
+      // producers, two racing seals, the trim boundary served and the frame past
+      // it refused, a 200-frame run conserved across a mid-run reconnect, and the
+      // cold-start recovery that needs a TCP forwarder.
+      //
+      // SPLITTING IT WOULD COST A SECOND CONTAINER. Every integration suite in
+      // this repository starts its own Redis in `beforeAll`, so a split doubles
+      // the container count and the CI minutes to move a number, and it would
+      // separate cases that are only meaningful as one transcript against one
+      // server. The tranche's other two suites were split — `sse.test.ts` went
+      // from 495 lines to three files — so this is a judgement about THIS file
+      // and not a general shrug. It is 82 lines inside the hard error.
+      path: "packages/adapters/redis-streams/src/journal.integration.test.ts",
+      effectiveLines: 418,
+      severity: "warning",
+    },
+    {
       path: "packages/contexts/jobs/application/approval-lifecycle.test.ts",
       effectiveLines: 465,
       severity: "warning",
@@ -1371,6 +1462,12 @@ test("the live selectors scan an exact nonzero source census", () => {
     {
       path: "packages/contexts/memory/contracts/index.test.ts",
       effectiveLines: 404,
+      severity: "warning",
+    },
+    {
+      // WIN-269 (M4.3), not WIN-271. See the note above the list.
+      path: "packages/contexts/tools/application/execution.test.ts",
+      effectiveLines: 416,
       severity: "warning",
     },
     {
