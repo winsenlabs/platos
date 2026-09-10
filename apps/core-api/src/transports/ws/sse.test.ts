@@ -1,9 +1,10 @@
 // THE STREAM LANE'S MECHANICS, AGAINST DOUBLES — AND WHAT A DOUBLE IS THE RIGHT
 // TOOL FOR HERE.
 //
-// The real-socket half is `streams.integration.test.ts`: a Nest application on a
-// real port, a real PostgreSQL, a real Redis, and a real `EventSource`-shaped
-// reader. Everything a socket can show is shown there.
+// The real-socket half is `composition/stream-lane.integration.test.ts`: a Nest
+// application on a real port, a real PostgreSQL, a real Redis, and a hand-rolled SSE
+// reader. It is in `composition/` and not beside this file because rule (C8) refuses
+// a `transports/**` file that reads `app.adapters`, and that suite is the PRODUCER.
 //
 // ONE THING A SOCKET CANNOT SHOW, AND IT IS IN THIS FILE. `writeWithBackpressure`
 // gives up when a full socket never drains. Filling a real operating-system send

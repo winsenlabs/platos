@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "588ef9f187e3f1a4822f5726fcce25bab62e71fb9d32f97f730e6b71c3a58b6a",
+  "evidenceSha256": "818895a87bd70c5570332707c153f3a473c3c517460068fabf0a856543724234",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "4468a8977be927c04d54c13ac70dc755aa3bbaeb1c4bb729653a7b8fea600457",
+    "aggregateSha256": "0b12e9d882721a48731aa9a3c691b6da68ad1c77dcd58d06b09ed6b3d69242cc",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2847,11 +2847,11 @@
       },
       {
         "path": "apps/core-api/src/transports/ws/sse.test.ts",
-        "sha256": "be721d06724ac22cdd95d1270dba592c4bea4e61036c26ac49491ae68a68fa4a"
+        "sha256": "b5d838b36c636536a8ae0d5336b34287a30de9c3af9bdde44bb587b408fc2114"
       },
       {
         "path": "apps/core-api/src/transports/ws/sse.ts",
-        "sha256": "ba1dfb97d406c2397dc3d33822d14a3f5450f385eacb7d30e3f0378cfc0cd127"
+        "sha256": "9141f65f27cb4756501a6467ec099ac87849312dc8c62418ec49a810222f99b1"
       },
       {
         "path": "apps/core-api/src/transports/ws/stream-errors.test.ts",
@@ -2867,7 +2867,7 @@
       },
       {
         "path": "apps/core-api/src/transports/ws/streams.controller.ts",
-        "sha256": "426060d16bd268e30b6fb93fd5b4e17db2b5012f1e80c94e85ba6cf0917d29a6"
+        "sha256": "d50a32fdb70b72afcdd6b63a34423422d44899c7c9ebffcf7ae73575b73a6d37"
       },
       {
         "path": "apps/core-api/tsconfig.json",
@@ -88388,7 +88388,7 @@
             {
               "from": "apps/core-api/src/transports/ws/sse.test.ts",
               "kind": "reference",
-              "line": 34
+              "line": 35
             },
             {
               "from": "apps/core-api/src/transports/ws/stream-errors.test.ts",
@@ -91805,7 +91805,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "4624941c3d01ac606b48537400ddf73f18caed63144206354bd7cd640018952e",
+      "evidenceSha256": "94a2a9cd3d5abfafa64a409d58055b25fe59dc685688dbd4a05b46572cbf5ad7",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {

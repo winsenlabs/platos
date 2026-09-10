@@ -55,7 +55,7 @@
 // nothing behind it. This is the READ half of the lane: something else appends
 // frames through `StreamJournal` and seals when it reaches an outcome, and this
 // serves them in order, from a position, to a browser. The producer half is the
-// port, and `apps/core-api/src/transports/ws/streams.integration.test.ts` is the
+// port, and `apps/core-api/src/composition/stream-lane.integration.test.ts` is the
 // producer in the suite — standing in for the turn engine exactly as far as the
 // port's contract goes and no further.
 

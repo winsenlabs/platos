@@ -116,17 +116,6 @@ export const DEFAULT_SSE_OPTIONS: SseWriterOptions = Object.freeze({
   maxFrameBytes: STREAM_MAX_FRAME_BYTES,
 });
 
-/** Why the writer stopped. Every value is a fact the caller must react to. */
-export type SseOutcome =
-  /** Every frame handed over reached the socket. */
-  | { readonly kind: "written"; readonly lastCursor: StreamCursor | null }
-  /** The client went away. Nothing further can be written, and nothing should be. */
-  | { readonly kind: "disconnected" }
-  /** The socket never drained inside the deadline. The stream is `severed` to the client. */
-  | { readonly kind: "consumer-too-slow" }
-  /** A frame in the journal is larger than one frame may be. */
-  | { readonly kind: "frame-too-large"; readonly seq: number };
-
 /** The event-stream response headers, written once, before any frame. */
 export function openEventStream(response: StreamResponse): void {
   response.setHeader("Content-Type", "text/event-stream; charset=utf-8");
