@@ -531,7 +531,7 @@ test("the report distinguishes production and dev-only importer patch closures",
   );
 });
 
-test("generated ownership includes the generator's exact 118 outputs across 35 V1 projects", () => {
+test("generated ownership includes the generator's exact 116 outputs across 35 V1 projects", () => {
   const report = repositoryReport();
   // M2 INTEGRATION DELTA — 201 -> 117. Adoption RELEASES placeholders, so this
   // count only ever falls, and the adopting slices release placeholders from
@@ -743,15 +743,25 @@ test("generated ownership includes the generator's exact 118 outputs across 35 V
   // 96 -> 98. The generated total therefore FALLS, 120 -> 118, which is the
   // shape every adapter adoption has had: an adoption removes generated files
   // rather than adding them.
-  assert.equal(report.generatedOwnership.ownedOutputCount, 118);
+  //
+  // WIN-272 (M4.6), read back the same way, prints
+  // "106 scaffolding + 10 placeholder = 116 generated file(s) for 35 V1 projects
+  // and 122 project edges (30 project(s) adopted, 100 placeholder(s) released)".
+  // Scaffolding UNMOVED at 106 because `redis-streams` already existed as a
+  // directory; placeholders EMITTED 12 -> 10 because adoption RELEASES that
+  // project's two declaration placeholders; adopted 29 -> 30 and released
+  // 98 -> 100. The generated total FALLS again, 118 -> 116, which is the same
+  // shape: an adoption removes generated files rather than adding them, and this
+  // is the THIRD generated interface to be adopted.
+  assert.equal(report.generatedOwnership.ownedOutputCount, 116);
   assert.equal(report.generatedOwnership.ownedOutputProjectCount, 35);
   assert.equal(report.generatedOwnership.generators.length, 1);
   assert.equal(
     report.generatedOwnership.generators[0].generator,
     "scripts/arch/gen-v1-skeleton.mjs"
   );
-  // Same 118 as above, re-derived from the single generator's own output list.
-  assert.equal(report.generatedOwnership.generators[0].outputCount, 118);
+  // Same 116 as above, re-derived from the single generator's own output list.
+  assert.equal(report.generatedOwnership.generators[0].outputCount, 116);
   assert.match(report.generatedOwnership.generators[0].sha256, /^[a-f0-9]{64}$/);
   for (const project of report.generatedOwnership.ownedOutputProjects) {
     const workspace = report.workspaces.find((entry) => entry.path === project);
