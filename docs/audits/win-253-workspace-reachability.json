@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "3d1339fb3c6510ba827f2b16c5f259744f94ffd3e8c87c942f53874847dcd94b",
+  "evidenceSha256": "9c004194777a0b9b83fc78a6b7922a0ea822f2b5ef6fd1e1c764e164491b7635",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9f7861aeaca84c0d80324bf8dc56ef4efcc3cfd07e1528a6d4a8110272ef56b6",
+    "aggregateSha256": "16395f1309ddfdbb8fda809c514c88214eb6402df0fedfb92225a7f1e482a5a1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1039,11 +1039,11 @@
       },
       {
         "path": "apps/agent/src/http/deprecation-signal.test.ts",
-        "sha256": "edfdf6069e4420dcaa51eddfb971da82841966b901f5904b02de60b8f7b5d663"
+        "sha256": "a39a65c445a21f979071937bef7d3bcdb0627b4a0d3176a79a62f664b332a524"
       },
       {
         "path": "apps/agent/src/http/deprecation-signal.ts",
-        "sha256": "24f396161f5648881ff8e05c48edb3b82dbb1d2c22039294fa6ca6169d6c8601"
+        "sha256": "cebdabe58fc342af65e1aee34faf653f57cf684476630701b40a861ae398961e"
       },
       {
         "path": "apps/agent/src/http/mcp-surface.test.ts",
