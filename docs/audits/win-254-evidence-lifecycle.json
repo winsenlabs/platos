@@ -1534,14 +1534,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "69b88d01f0c6a576396736f293581f768a3605e2aa1944e28dca70801f71fc5b",
+      "sha256": "d09e1c04192d4cecb04fc68dee43206ce4bde601123eda36e57cb0bdfc174565",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c5777541c7076cbce81a3769a76c0b3d670287cfc7a303321827ffca595a5723",
+      "sha256": "76716aa73a6cdf12287cdc5a6205032efa7221001fb943f679ae1719471475e3",
       "binds": "current-repository-truth"
     },
     {
@@ -1611,7 +1611,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "d75d1e8fb87a593fbff819e9ad17f12f2b6fbb39fc4a55156e6781d66ea2196c",
+      "sha256": "259c03aa511849f40646a161680e1421367de097f4f7791a1377cac78cbb2aec",
       "binds": "current-repository-truth"
     },
     {
