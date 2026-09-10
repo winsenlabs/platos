@@ -127,6 +127,13 @@ let base: string;
 /** Held so a case can mint a session of its own. See `SHORT_WINDOW_MS`. */
 let mintSession: (token: string, expiresAt: Date) => Promise<void>;
 let shortSessions = 0;
+/**
+ * The validated configuration and the process defaults, held so a SECOND instance
+ * can be built from the same URLs. See `describe("two instances")` below.
+ */
+type PlatformConfiguration = Extract<ReturnType<typeof loadPlatformConfiguration>, { ok: true }>["value"];
+let platformValue: PlatformConfiguration;
+let processDefaults: ReturnType<typeof createProcessDefaults>;
 
 function packageRootRelative(...parts: string[]): string {
   return resolve(process.cwd(), ...parts);
@@ -336,6 +343,8 @@ beforeAll(async () => {
   });
   if (!platform.ok) throw new Error(`platform configuration refused: ${JSON.stringify(platform.diagnostics)}`);
   const defaults = createProcessDefaults(platform.value.core);
+  platformValue = platform.value;
+  processDefaults = defaults;
   construction = constructAdapters({
     stores: platform.value.stores,
     security: platform.value.security,
@@ -1045,4 +1054,225 @@ describe("a frame the wire cannot carry", () => {
     });
     expect(framesOf(past).map((event) => event.frame["seq"])).toEqual([4]);
   }, 180_000);
+});
+
+describe("two instances sharing one Redis journal", () => {
+  /**
+   * THE ACCEPTANCE SAYS "ordering and conservation is proven under reconnect AND
+   * MULTI-INSTANCE REDIS PUB/SUB", and until this block only the first half was.
+   *
+   * The reconnect case above disconnects and comes back to the SAME instance, which
+   * proves the cursor survives a socket. It does not prove the thing a horizontally
+   * scaled install actually does: a load balancer sends the reconnect to a
+   * DIFFERENT replica, and that replica has never seen this client. If a position
+   * were held anywhere in a process — a cached tail, a per-connection offset, an
+   * in-memory subscriber registry — this is the case that would find it, and no
+   * single-instance case can.
+   *
+   * WHAT "INSTANCE" MEANS HERE, EXACTLY, BECAUSE THE WORD IS DOING WORK. The second
+   * instance is a SECOND `constructAdapters` and a SECOND `startCoreApi` on its own
+   * port: its own Redis connections, its own PostgreSQL pool, its own Nest
+   * application, its own composition. What it shares with the first is the two
+   * SERVERS — one Redis, one database — which is the sharing the claim is about.
+   * What it does not have is a separate OS process, and this suite does not say it
+   * does. No ordering or conservation property in the journal depends on process
+   * isolation: the sequence is the PRODUCER's, assigned before Redis sees it, and
+   * `XADD`'s monotonicity is enforced by the server both instances talk to. A second
+   * process would prove the same thing about the same server and cost a build.
+   */
+  let second: RunningCoreApi;
+  let secondConstruction: AdapterConstruction;
+  let secondBase: string;
+
+  beforeAll(async () => {
+    secondConstruction = constructAdapters({
+      stores: platformValue.stores,
+      security: platformValue.security,
+      providers: platformValue.providers,
+      channels: platformValue.channels,
+      clock: processDefaults.clock,
+      correlation: null,
+    });
+    if (secondConstruction.faults.length > 0) throw new Error(secondConstruction.faults.join("; "));
+    const assembly = assembleContextPorts(secondConstruction.adapters, processDefaults);
+    second = await startCoreApi({
+      configuration: platformValue.core,
+      adapters: secondConstruction.adapters,
+      ports: assembly.ports,
+      unwired: secondConstruction.unwired,
+      clock: processDefaults.clock,
+      ids: processDefaults.ids,
+      logger: processDefaults.logger,
+    });
+    secondBase = `http://${second.host}:${String(second.port)}`;
+    // NOT VACUOUS: two DIFFERENT ports, or the case below would be reading the
+    // first instance twice and would pass for the wrong reason.
+    expect(second.port).not.toBe(running.port);
+  }, 180_000);
+
+  afterAll(async () => {
+    await second?.stop("test");
+    await secondConstruction?.release();
+  });
+
+  /** Read a stream from the SECOND instance. Same reader, different base. */
+  async function readSecond(
+    path: string,
+    options: { readonly token: string; readonly resumeFrom?: string; readonly stopAfter?: number },
+  ): Promise<StreamRead> {
+    const headers: Record<string, string> = {
+      accept: "text/event-stream",
+      authorization: `Bearer ${options.token}`,
+    };
+    if (options.resumeFrom !== undefined) headers["last-event-id"] = options.resumeFrom;
+    const controller = new AbortController();
+    const budget = setTimeout(() => controller.abort(), 25_000);
+    const response = await fetch(`${secondBase}${path}`, { headers, signal: controller.signal });
+    if (response.status !== 200 || response.body === null) {
+      clearTimeout(budget);
+      return {
+        status: response.status,
+        contentType: response.headers.get("content-type"),
+        events: [],
+        comments: 0,
+        closedByServer: true,
+        body: await response.text(),
+      };
+    }
+    const events: SseEvent[] = [];
+    let buffered = "";
+    let body = "";
+    let closedByServer = true;
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        body += text;
+        buffered += text;
+        let boundary = buffered.indexOf("\n\n");
+        while (boundary >= 0) {
+          const block = buffered.slice(0, boundary);
+          buffered = buffered.slice(boundary + 2);
+          if (!block.startsWith(":")) {
+            const lines = block.split("\n");
+            const name = lines.find((line) => line.startsWith("event: "))?.slice("event: ".length) ?? null;
+            const id = lines.find((line) => line.startsWith("id: "))?.slice("id: ".length) ?? null;
+            const data = lines.find((line) => line.startsWith("data: "))?.slice("data: ".length);
+            if (data !== undefined) events.push({ name, id, frame: JSON.parse(data) as Record<string, unknown> });
+          }
+          boundary = buffered.indexOf("\n\n");
+        }
+        if (options.stopAfter !== undefined && events.filter((event) => event.name === null).length >= options.stopAfter) {
+          closedByServer = false;
+          await reader.cancel();
+          controller.abort();
+          break;
+        }
+      }
+    } catch {
+      closedByServer = false;
+    } finally {
+      clearTimeout(budget);
+    }
+    return { status: 200, contentType: response.headers.get("content-type"), events, comments: 0, closedByServer, body };
+  }
+
+  it("HANDS A RECONNECT TO THE OTHER INSTANCE and conserves every frame exactly once", async () => {
+    const total = 40;
+    await produce(
+      ENVIRONMENT,
+      "multi-instance",
+      Array.from({ length: total }, (_, index) => frame(index + 1)),
+    );
+
+    // The client reads part of the run from instance A and is then cut off.
+    const first = await readStream(streamPath(ENVIRONMENT, "multi-instance"), {
+      token: ADMIN_TOKEN,
+      stopAfter: 15,
+      budgetMs: 20_000,
+    });
+    const firstFrames = framesOf(first);
+    expect(firstFrames.length).toBeGreaterThanOrEqual(15);
+    const carried = firstFrames[firstFrames.length - 1]?.id ?? null;
+    // NOT VACUOUS, AND NOT A NULL PASSED DOWN AS "no resume": a case that carried
+    // nothing would read the whole run again from instance B and would still see 40
+    // frames applied once, so it would pass with the cursor mechanism removed.
+    expect(carried, "the reader must have a cursor to carry").not.toBeNull();
+    if (carried === null) throw new Error("unreachable: asserted above");
+
+    // AND COMES BACK ON INSTANCE B, which has never seen this reader.
+    const resumed = await readSecond(streamPath(ENVIRONMENT, "multi-instance"), {
+      token: ADMIN_TOKEN,
+      resumeFrom: carried,
+      stopAfter: total - firstFrames.length,
+    });
+    const resumedFrames = framesOf(resumed);
+
+    // CONSERVATION, THROUGH THE CLIENT'S OWN ADMISSION RULE. Every frame of the run
+    // is applied exactly once across the two sockets: no gap, no duplicate.
+    let lastApplied = 0;
+    const applied: number[] = [];
+    for (const event of [...firstFrames, ...resumedFrames]) {
+      const seq = Number(event.frame["seq"]);
+      const admission = admitFrame(lastApplied, {
+        sv: STREAM_SCHEMA_VERSION,
+        family: "sse.turn",
+        t: String(event.frame["t"]),
+        seq,
+        ts: 0,
+        fields: {},
+      });
+      expect(admission.kind, `frame ${String(seq)} was ${admission.kind}`).toBe("apply");
+      applied.push(seq);
+      lastApplied = seq;
+    }
+    expect(applied).toEqual(Array.from({ length: total }, (_, index) => index + 1));
+
+    // THE SECOND INSTANCE READ THE CURSOR THE FIRST ONE MINTED, which is the whole
+    // claim: the position is in the CURSOR and in the journal, not in a process.
+    expect(metaOf(resumed)?.["replayFrom"]).toBe(carried);
+    expect(Number(resumedFrames[0]?.frame["seq"])).toBe(firstFrames.length + 1);
+  }, 180_000);
+
+  it("gives both instances the identical ordering of a stream written while they watch", async () => {
+    // Both readers attach to an EMPTY stream and the producer writes underneath
+    // them, so neither is reading history: this is the live fan-out path, across two
+    // independent sets of Redis connections.
+    await produce(ENVIRONMENT, "multi-live", [frame(1)]);
+    const both = Promise.all([
+      readStream(streamPath(ENVIRONMENT, "multi-live"), { token: ADMIN_TOKEN, stopAfter: 12, budgetMs: 25_000 }),
+      readSecond(streamPath(ENVIRONMENT, "multi-live"), { token: ADMIN_TOKEN, stopAfter: 12 }),
+    ]);
+    for (let seq = 2; seq <= 12; seq += 1) {
+      await produce(ENVIRONMENT, "multi-live", [frame(seq)]);
+      await new Promise((resolve) => setTimeout(resolve, 15));
+    }
+    const [viaFirst, viaSecond] = await both;
+    const expected = Array.from({ length: 12 }, (_, index) => index + 1);
+    expect(framesOf(viaFirst).map((event) => event.frame["seq"])).toEqual(expected);
+    expect(framesOf(viaSecond).map((event) => event.frame["seq"])).toEqual(expected);
+  }, 180_000);
+
+  it("REFUSES A FORGED SCOPE ON THE SECOND INSTANCE TOO: the rule is the contract's, not one process's", async () => {
+    // The tenancy boundary is re-derived per request from the authorization, so it
+    // has to hold on an instance that has never authenticated this operator before.
+    await produce(OTHER_ENVIRONMENT, "instance-b-private", [frame(1)]);
+    const forged = await fetch(
+      `${secondBase}${streamPath(ENVIRONMENT, "instance-b-private")}`,
+      { headers: { authorization: `Bearer ${ADMIN_TOKEN}`, accept: "text/event-stream" } },
+    );
+    const payload = (await forged.json()) as { readonly error?: { readonly code?: string } };
+    expect(payload.error?.code).toBe("STREAM_NOT_FOUND");
+    expect(forged.status).toBe(committedStatus("STREAM_NOT_FOUND"));
+
+    // And an outsider is refused by the CONTEXT's code on this instance as well.
+    const outsider = await fetch(
+      `${secondBase}${streamPath(ENVIRONMENT, "multi-instance")}`,
+      { headers: { authorization: `Bearer ${OUTSIDER_TOKEN}`, accept: "text/event-stream" } },
+    );
+    expect(outsider.status).not.toBe(200);
+  }, 120_000);
 });
