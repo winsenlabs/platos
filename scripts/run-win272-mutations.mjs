@@ -48,6 +48,20 @@
 //   over an hour. `spawnSync` reports a timeout with a NULL status, and null is not
 //   zero — so a `status !== 0` test alone would have recorded that hang as a kill.
 //
+// -----------------------------------------------------------------------------
+// AND EVERY SUITE IS RUN UNMUTATED FIRST, WHICH IS THE FOURTH HAZARD AND THE WORST
+//
+// A kill is only evidence if the suite PASSES on a clean tree. Filling the mini's
+// disk corrupted the container image store, so `beforeAll` could not start Redis and
+// every case SKIPPED — and a skipped suite exits non-zero, so the driver recorded
+// three consecutive rows as KILLED with no case name against a suite that had
+// asserted nothing at all. That is the same failure as the pipe hiding TAIL's status
+// and it points the same way: it looks like good news.
+//
+// So the driver now runs each named suite ONCE, unmutated, before it mutates
+// anything, and REFUSES to sweep if any of them is red. It is one extra run of each
+// suite per sweep and it is the difference between a ledger and a list of numbers.
+//
 //   node scripts/run-win272-mutations.mjs                 # every row
 //   node scripts/run-win272-mutations.mjs --no-container  # skip the rows needing Docker
 //   node scripts/run-win272-mutations.mjs --only M10,M22
@@ -146,6 +160,34 @@ function main() {
   const onlyFlag = process.argv.find((argument) => argument.startsWith("--only="));
   const only = onlyFlag === undefined ? null : new Set(onlyFlag.slice("--only=".length).split(","));
 
+  // THE BASELINE. See the banner: a kill is only evidence if the suite passes on a
+  // clean tree, and this is where that is established rather than assumed.
+  const needed = new Set();
+  for (const mutation of plan.mutations) {
+    if (only !== null && !only.has(mutation.id)) continue;
+    if (mutation.container === true && skipContainer) continue;
+    for (const suiteName of mutation.suites) needed.add(suiteName);
+  }
+  for (const suiteName of [...needed].sort()) {
+    const suite = SUITES[suiteName];
+    if (suite === undefined) throw new Error(`the plan names unknown suite ${suiteName}`);
+    const baseline = run(suite.command);
+    if (baseline.status !== 0) {
+      process.stdout.write(`BASELINE ${suiteName} is RED on an unmutated tree; refusing to sweep\n`);
+      process.stdout.write(`${baseline.output.split("\n").slice(-14).join("\n")}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    // AND IT MUST HAVE RUN SOMETHING. A suite whose `beforeAll` fails can still exit
+    // zero in some runners, and one that skips every case proves nothing either.
+    if (/\bskipped\b/u.test(baseline.output) && !/\d+ passed/u.test(baseline.output)) {
+      process.stdout.write(`BASELINE ${suiteName} SKIPPED every case; refusing to sweep\n`);
+      process.exitCode = 1;
+      return;
+    }
+    process.stdout.write(`BASELINE ${suiteName} green\n`);
+  }
+
   const results = [];
   for (const mutation of plan.mutations) {
     if (only !== null && !only.has(mutation.id)) continue;
@@ -231,8 +273,11 @@ function main() {
   const timedOut = results.filter((row) => row.verdict === "timed-out").length;
   const ledger = {
     issue: "WIN-272 (M4.6)",
+    baseline: [...needed].sort(),
     purpose:
-      "One row per broken decision, with the suite that noticed and the case that failed. Re-runnable: " +
+      "One row per broken decision, with the suite that noticed and the case that failed. Every suite " +
+      "named here was run UNMUTATED and green before the first mutation was applied -- a kill is only " +
+      "evidence if the suite passes on a clean tree. Re-runnable: " +
       "node scripts/run-win272-mutations.mjs. A SURVIVOR is recorded as one and never explained away, " +
       "and a mutation the compiler refuses is counted apart from a kill because a type error is evidence " +
       "the type layer holds rather than evidence a case noticed. A row whose suite TIMED OUT is counted " +
