@@ -2706,7 +2706,29 @@ export const EXPECTED = Object.freeze({
   // necessary for stdio and not sufficient), and a WIRE target names no
   // transport at all. `admitTransport` is the domain rule all four exercise, and
   // before this tranche nothing outside its own unit test called it.
-  "packages/contexts/tools": { files: 19, cases: 366 },
+  // WIN-268 (M4.2) stage 2: tools 366 -> 400 cases, files 19 -> 21. TWO NEW files,
+  // both under `adapters/` — a directory that did not exist — and every case in
+  // both is joined to something outside this repository:
+  //
+  //   `adapters/content-digest.test.ts` (8): FIPS 180-4's own published SHA-256
+  //   examples, one case each including the one-million-byte multi-block vector,
+  //   plus the encoding claim and the two-part join to
+  //   `packages/adapters/node-crypto-digest`'s vector file — read off disk as TEXT,
+  //   because `adapters-only-from-core` forbids a context from importing an adapter,
+  //   and that file carries digests produced by executing the extraction source's own
+  //   `hashSecret`. The FOUR FIPS cases are written out one by one rather than
+  //   looped, because this census REFUSES an `it()` declared inside a loop and it
+  //   caught that here.
+  //
+  //   `adapters/dispatch.integration.test.ts` (26): the wire POST and the MCP
+  //   session pool against REAL SOCKETS — `node:http` listeners for the wire half
+  //   and the MCP SDK'S OWN SERVER for the other, so the protocol is exercised by
+  //   the implementation that defines it. Six cases are the pool keyed on
+  //   `DispatchTarget.sessionKey` and the five refusals of `stdio`, which is the one
+  //   transport this deployable has no client for and refuses under its own code.
+  //
+  // 366 + 8 + 26 = 400; 19 + 2 = 21.
+  "packages/contexts/tools": { files: 21, cases: 400 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //
@@ -3603,7 +3625,18 @@ export const EXPECTED = Object.freeze({
 // kernel term is the one that has moved least often — three of the four new files
 // are under `packages/adapters/`, one under `packages/kernel`, and
 // `packages/contexts/` is unmoved.
-export const EXPECTED_RUNTIME_TOTAL = 8297;
+//
+// WIN-268 (M4.2) stage 2: 8297 + 34 = 8331 over 562 files (+2). The arithmetic,
+// both halves named: `packages/contexts/tools` 366 -> 400 across 2 NEW files under
+// `adapters/`, itemised on that package's row above. 8 + 26 = 34; 1 + 1 = 2.
+//
+// THE THREE-WAY IDENTITY MOVES ON THE CONTEXTS TERM ALONE, which is the term the
+// two tranches before this one left unmoved — and it moves there for a reason ADR
+// M0.3 §5.1 rule (h) fixes rather than by preference: `mcp-sdk-only-in-tools`
+// homes `@modelcontextprotocol/*` in `^packages/contexts/tools/(adapters|transport)/`
+// and in no `packages/adapters/` directory, so the MCP client could not have landed
+// on the adapters term.
+export const EXPECTED_RUNTIME_TOTAL = 8331;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

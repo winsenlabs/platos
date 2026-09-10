@@ -5051,6 +5051,70 @@ function owningPackageName(absoluteFile) {
   throw new Error(`no package.json owns ${absoluteFile}`);
 }
 
+/**
+ * The manifest OBJECT of the package a filter selects, found by name.
+ *
+ * WIN-268 (M4.2) stage 2. `owningPackageName` walks UP from a file to a name; this
+ * walks DOWN from the roots to the manifest carrying that name, because the case
+ * below needs the package's own `test` script and only has the name. It is a
+ * search rather than a path derivation on purpose: a package name and its
+ * directory are not the same string — `@platos/context-tools` lives at
+ * `packages/contexts/tools` — so deriving one from the other would be a rule that
+ * happens to hold for most of them.
+ */
+function manifestOfPackage(packageName) {
+  const found = [];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === "dist" || entry.name.startsWith(".")) continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (entry.name !== "package.json") continue;
+      try {
+        const manifest = JSON.parse(readFileSync(full, "utf8"));
+        if (manifest.name === packageName) found.push(manifest);
+      } catch {
+        // an unparseable manifest is another gate's problem
+      }
+    }
+  };
+  for (const root of V1_INTEGRATION_ROOTS) walk(path.join(repositoryRoot, root));
+  if (found.length !== 1) {
+    throw new Error(`expected exactly one manifest named ${packageName}, found ${String(found.length)}`);
+  }
+  return found[0];
+}
+
+/**
+ * Does any `--filter` in this run select `packageName`?
+ *
+ * WIN-268 (M4.2) stage 2. IT HAS TO UNDERSTAND GLOBS, and that is the whole reason
+ * this helper exists rather than a `run.includes()`. `pnpm test:v1-packages` selects
+ * every context and adapter with `--filter "@platos/context-*" --filter
+ * "@platos/adapter-*"` — a pattern, and quoted — so a substring test for
+ * `--filter @platos/context-tools` answers NO about a job that really does run the
+ * package. Measured: the first version of the case below reported "no CI job runs
+ * @platos/context-tools at all" against a workflow that runs its whole suite.
+ *
+ * Only `*` is honoured, because that is the only wildcard pnpm's own filter syntax
+ * uses in this workflow; everything else is escaped, so a pattern this function does
+ * not understand fails CLOSED rather than matching by accident.
+ */
+function filterSelects(run, packageName) {
+  for (const match of run.matchAll(/--filter\s+(?:"([^"]+)"|'([^']+)'|(\S+))/gu)) {
+    const pattern = match[1] ?? match[2] ?? match[3] ?? "";
+    const expression = new RegExp(
+      `^${pattern.replaceAll(/[.*+?^${}()|[\]\\]/gu, (character) => (character === "*" ? "[^\\s]*" : `\\${character}`))}$`,
+      "u"
+    );
+    if (expression.test(packageName)) return true;
+  }
+  return false;
+}
+
 /** Every run value in the workflow, with `pnpm <script>` expanded to a fixpoint. */
 function expandedWorkflowRuns() {
   const violations = [];
@@ -5095,17 +5159,98 @@ test("every V1 integration suite is selected by a CI job", () => {
 
   const runs = expandedWorkflowRuns();
   for (const [packageName, files] of byPackage) {
-    const selected = runs.some(
+    // WIN-268 (M4.2) stage 2 — THE PREMISE IS NOW READ RATHER THAN ASSUMED, and
+    // that closed a real blind spot in this case.
+    //
+    // The message below used to say, of every package: "That package's own `test`
+    // script excludes **/*.integration.test.ts, so these run NOWHERE." That is
+    // true of `apps/core-api` and of the four `packages/adapters/redis-*` and
+    // `postgres-tenancy` directories — every package this case had ever seen — and
+    // it is NOT a property of being a V1 package. `@platos/context-tools`'s `test`
+    // script is a bare `vitest run`, so `pnpm test:v1-packages` in the typecheck
+    // job ALREADY runs its integration suite, and demanding a second, dedicated
+    // step would have added a duplicate CI run to satisfy a sentence that was
+    // false about that package.
+    //
+    // So the requirement is now derived from the package's OWN manifest: a `test`
+    // script that excludes the suffix must be paired with a run that selects the
+    // package AND names `integration`; one that does not exclude it need only be
+    // selected by SOME run. Both branches are still a join between the FILESYSTEM
+    // walk and a parse of `ci.yml`, and neither can be satisfied by editing this
+    // file.
+    const ownTest = manifestOfPackage(packageName).scripts?.test ?? "";
+    const excludesIntegration = /\*\*\/\*\.integration\.test\.ts/u.test(ownTest);
+    const selectsPackage = runs.some((run) => filterSelects(run, packageName));
+    const selectsIntegration = runs.some(
       (run) => run.includes(`--filter ${packageName}`) && /\bintegration\b/u.test(run)
     );
+
+    if (excludesIntegration) {
+      assert.ok(
+        selectsIntegration,
+        `no CI job selects the integration suites of ${packageName}:\n  ${files.join("\n  ")}\n` +
+          `That package's own \`test\` script EXCLUDES **/*.integration.test.ts, so these run ` +
+          `NOWHERE. Add a step running \`pnpm --filter ${packageName} exec vitest run integration\` ` +
+          `to a job that can serve whatever these suites need.`
+      );
+      continue;
+    }
     assert.ok(
-      selected,
-      `no CI job selects the integration suites of ${packageName}:\n  ${files.join("\n  ")}\n` +
-        `That package's own \`test\` script excludes **/*.integration.test.ts, so these run ` +
-        `NOWHERE. Add a step running \`pnpm --filter ${packageName} exec vitest run integration\` ` +
-        `to a job with a Docker daemon.`
+      selectsPackage,
+      `no CI job runs ${packageName} at all, and it holds integration suites:\n  ${files.join("\n  ")}\n` +
+        `Its own \`test\` script does NOT exclude **/*.integration.test.ts, so a job that ` +
+        `selects the package runs them — but no job selects it.`
     );
   }
+});
+
+test("the glob-aware filter selector is not a permissive hole", () => {
+  // THE CONTROL FOR `filterSelects`. Teaching the selector about `*` widened what
+  // counts as "a job runs this package", and a matcher widened in the permissive
+  // direction would answer YES for everything — which would make the case above
+  // pass on any workflow at all, the failure mode its own non-vacuity assertion
+  // exists to catch one level up.
+  const workspaceWide = 'turbo run test --filter @platos/kernel --filter "@platos/context-*" --filter "@platos/adapter-*"';
+  assert.equal(filterSelects(workspaceWide, "@platos/context-tools"), true);
+  assert.equal(filterSelects(workspaceWide, "@platos/adapter-redis-cache"), true);
+  assert.equal(filterSelects(workspaceWide, "@platos/kernel"), true);
+  // A package NEITHER pattern names. `apps/*` is outside both globs and is named
+  // explicitly by `test:v1-packages`, so a selector that matched it here would be
+  // matching on nothing.
+  assert.equal(filterSelects('turbo run test --filter "@platos/adapter-*"', "@platos/core-api"), false);
+  assert.equal(filterSelects('turbo run test --filter "@platos/adapter-*"', "@platos/context-tools"), false);
+  // THE STAR MUST NOT CROSS WHITESPACE, or one `--filter` could swallow the rest
+  // of the command line and select every package there is.
+  assert.equal(filterSelects('--filter "@platos/*" --filter other', "@platos/context-tools"), true);
+  assert.equal(filterSelects('--filter "@other/*"', "@platos/context-tools"), false);
+  // AND EVERY OTHER REGEX METACHARACTER IS A LITERAL. A `.` that matched any
+  // character would make `@platos/context-tools` selectable by a pattern naming a
+  // different package.
+  assert.equal(filterSelects("--filter @platos/context-tools", "@platosXcontext-tools"), false);
+  assert.equal(filterSelects("--filter platos-agent", "@platos/context-tools"), false);
+  // A run with no filter at all selects nothing.
+  assert.equal(filterSelects("pnpm build:v1", "@platos/context-tools"), false);
+});
+
+test("the integration-suite premise is read from each manifest, and both branches are populated", () => {
+  // WITHOUT THIS CASE THE BRANCH ABOVE COULD COLLAPSE. If every package happened
+  // to fall on one side, the other arm would be dead code that nobody notices
+  // going wrong — which is how the old single-branch version came to carry a
+  // sentence that was false about a package it had never seen.
+  const suites = V1_INTEGRATION_ROOTS.flatMap((root) => integrationSuitesUnder(root));
+  const owners = [...new Set(suites.map((suite) => owningPackageName(suite)))];
+  const excluding = [];
+  const including = [];
+  for (const packageName of owners) {
+    const ownTest = manifestOfPackage(packageName).scripts?.test ?? "";
+    (/\*\*\/\*\.integration\.test\.ts/u.test(ownTest) ? excluding : including).push(packageName);
+  }
+  assert.ok(excluding.length > 0, `no V1 package excludes the suffix; the first branch is dead: ${owners.join(", ")}`);
+  assert.ok(including.length > 0, `no V1 package includes the suffix; the second branch is dead: ${owners.join(", ")}`);
+  // AND `@platos/context-tools` IS THE PACKAGE THAT MADE THE SECOND BRANCH REAL,
+  // named so a refactor that gave it an excluding `test` script has to move this
+  // line rather than silently taking the other path.
+  assert.ok(including.includes("@platos/context-tools"), including.join(", "));
 });
 
 test("the integration-suite selector fails when a job stops naming a package", () => {

@@ -94,12 +94,47 @@ function siblingVectors(): { preimage: string; expected: string }[] {
   return found;
 }
 
+/** One vector by name. Throws rather than silently checking nothing. */
+function vector(name: string): { preimage: string; expected: string } {
+  const found = FIPS_180_4_VECTORS.find((candidate) => candidate.name.startsWith(name));
+  if (found === undefined) throw new Error(`no FIPS 180-4 vector named ${name}`);
+  return { preimage: found.preimage, expected: found.expected };
+}
+
 describe("tier 1 — FIPS 180-4's published SHA-256 examples", () => {
-  for (const vector of FIPS_180_4_VECTORS) {
-    it(`matches ${vector.name}`, () => {
-      expect(digest.sha256Hex(vector.preimage)).toBe(vector.expected);
-    });
-  }
+  // FOUR EXPLICIT CASES AND NOT A LOOP OVER THE TABLE, and it is a repository rule
+  // rather than a style: `scripts/arch/test-case-census.mjs` REFUSES an `it()`
+  // declared inside a loop, because a census that counts cases cannot count the
+  // ones a loop generates — and a table that quietly shrank would take its cases
+  // with it while every remaining assertion still passed. The lookup is by NAME and
+  // throws when the table stops carrying one, so deleting a row is a hard failure
+  // here rather than a silent loss of coverage.
+  it("matches the empty message, the algorithm's fixed point", () => {
+    const empty = vector("the empty message");
+    // `""` separates "hashes the bytes" from "hashes some framing around the
+    // bytes": a prefix, a suffix or a length header would change this one and
+    // nothing else about a normal-looking implementation would.
+    expect(digest.sha256Hex(empty.preimage)).toBe(empty.expected);
+  });
+
+  it("matches the one-block message 'abc'", () => {
+    const oneBlock = vector("the one-block message");
+    expect(digest.sha256Hex(oneBlock.preimage)).toBe(oneBlock.expected);
+  });
+
+  it("matches the two-block 448-bit message", () => {
+    const twoBlock = vector("the two-block");
+    expect(digest.sha256Hex(twoBlock.preimage)).toBe(twoBlock.expected);
+  });
+
+  it("matches the long message — one million 'a', which no single block holds", () => {
+    const long = vector("the long message");
+    // THE MULTI-BLOCK PATH. A three-character message never reaches it, so an
+    // implementation that mishandled the second block onward would pass every case
+    // above this one.
+    expect(long.preimage.length).toBe(1_000_000);
+    expect(digest.sha256Hex(long.preimage)).toBe(long.expected);
+  });
 
   it("returns lower-case hex of exactly 64 characters, which the port fixes", () => {
     for (const vector of FIPS_180_4_VECTORS) {

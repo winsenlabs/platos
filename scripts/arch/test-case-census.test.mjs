@@ -460,7 +460,15 @@ test("the census is not vacuous — it reads the real suites", () => {
   // journal.integration and event-bus.integration — and it is the SEVENTH row
   // under `packages/adapters` to move from zero. ONE in `packages/kernel`,
   // `vo/stream-frame.test.ts`. 556 + 3 + 1 = 560.
-  assert.equal(live.totalFiles, 560);
+  //
+  // WIN-268 (M4.2) stage 2 560 -> 562: TWO new suites under
+  // `packages/contexts/tools/adapters`, a directory that did not exist — the
+  // digest's known-answer vectors and the real-socket dispatch suite. It is the
+  // CONTEXTS term that moves, which the two tranches before this left alone, and
+  // rule (h) is why it had to be that term: `mcp-sdk-only-in-tools` homes the MCP
+  // SDK in `^packages/contexts/tools/(adapters|transport)/` and in no
+  // `packages/adapters/` directory. 560 + 2 = 562.
+  assert.equal(live.totalFiles, 562);
   // The sum is written out beside the literal so a file that vanished while
   // governance's 31, the prerequisite's 4, the adapter's 17 and conversations'
   // 29 arrived cannot reach the same total. Each dimension appends its own
@@ -476,7 +484,11 @@ test("the census is not vacuous — it reads the real suites", () => {
   // WIN-272 (M4.6) appends `+ 3 + 1`: the three suites of the newly adopted
   // `redis-streams`, and ONE in `packages/kernel` — the term the 88 at the head
   // of this sum does not carry, because the kernel is its own row further in.
-  assert.equal(live.totalFiles, /* WIN-268 P1 mint suite */ 1 + 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1 + /* WIN-271 channel-slack adoption */ 5 + /* WIN-271 channels delivery rule */ 1 + /* WIN-272 redis-streams adoption */ 3 + /* WIN-272 kernel stream envelope */ 1);
+  // WIN-268 (M4.2) stage 2 appends `+ 2`: the two `tools/adapters` suites. It is a
+  // TRAILING term here and not an in-place edit of the `tools` file term further in,
+  // because the 88 at the head of this sum does not carry `packages/contexts/tools`
+  // — that package is its own term, and the two suites are NEW FILES in it.
+  assert.equal(live.totalFiles, /* WIN-268 stage 2 tools/adapters */ 2 + /* WIN-268 P1 mint suite */ 1 + 88 + 14 + 20 + 16 + 28 + 21 + 15 + 15 + 25 + 19 + 15 + 31 + 4 + 2 + 15 + 29 + 1 + 2 + 4 + 3 + 4 + 7 + 5 + 4 + 4 + 6 + 6 + 6 + 1 + 6 + 6 + 9 + 7 + 8 + 6 + 7 + 6 + 7 + 7 + 5 + 6 + 3 + 6 + 3 + 1 + 1 + 2 + 1 + 2 + 6 + 2 + 1 + 3 + 1 + 3 + 1 + 2 + 1 + 1 + 1 + 2 + 7 + 3 + 2 + 3 + 1 + /* WIN-271 channel-slack adoption */ 5 + /* WIN-271 channels delivery rule */ 1 + /* WIN-272 redis-streams adoption */ 3 + /* WIN-272 kernel stream envelope */ 1);
   assert.equal(live.nonExecuting, 0);
   assert.deepEqual(live.refusals, []);
   assert.ok(listPackages().includes("packages/kernel"));
@@ -673,8 +685,10 @@ test("the pinned rows sum to the pinned runtime total", () => {
   // WIN-272 (M4.6) 556 -> 560: three new suites in the newly adopted
   // `redis-streams` and ONE in `packages/kernel`, which is the term that has
   // moved least often — twice before this, both at WIN-260.
-  assert.equal(files, 560);
-  assert.equal(files, /* WIN-268 P1 mint suite */ 1 + 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1 + /* WIN-271 */ (5 + 1) + /* WIN-272 */ (3 + 1));
+  // WIN-268 (M4.2) stage 2 560 -> 562: the two `tools/adapters` suites, on the
+  // CONTEXTS term.
+  assert.equal(files, 562);
+  assert.equal(files, /* WIN-268 P1 mint suite */ 1 + 503 + 6 + 12 + 5 + (2 + 1 + 1) + (1 + 2) + 7 + 3 + 2 + 3 + 1 + /* WIN-271 */ (5 + 1) + /* WIN-272 */ (3 + 1) + /* WIN-268 stage 2 tools/adapters */ 2);
 });
 
 test("the split the 2026-09-02 verification reproduced is pinned per package", () => {
@@ -866,7 +880,7 @@ test("the providers context is pinned at what vitest prints", () => {
   // 362 -> 366 in a suite that already existed. All four are the `DispatchTarget`
   // transport gap, which only became visible when somebody tried to write the
   // adapter the port exists for.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, 4 + 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, 4 + 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the skills adoption is pinned, and moved nothing else", () => {
@@ -1027,7 +1041,12 @@ test("the skills adoption is pinned, and moved nothing else", () => {
     // moved `governance` above and for the same reason: the four cases are in a
     // suite the context already had, so nothing is appended as a trailing term
     // and no file count moves.
-    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 366 + 269 + 610 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 1 + 1 + 71 + 12 + 5 + 8 + 5 + 9 + 40 + 25 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 redis-streams adoption */ 46,
+    // WIN-268 (M4.2) stage 2 moves the `tools` term 366 -> 400 IN PLACE, and it is
+    // the FIRST time this row's move is a pair of NEW FILES rather than cases added
+    // to an existing suite — `packages/contexts/tools/adapters` did not exist. It is
+    // still an in-place move of this chain's `tools` term rather than a trailing
+    // one, because the term is the whole package and the package is what grew.
+    sum + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 400 + 269 + 610 + 198 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 1 + 1 + 71 + 12 + 5 + 8 + 5 + 9 + 40 + 25 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 redis-streams adoption */ 46,
     EXPECTED_RUNTIME_TOTAL,
   );
 });
@@ -1064,7 +1083,7 @@ test("the memory context is pinned at what vitest prints", () => {
   // alone; here the identity only closes with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/memory"].files, 28);
   assert.equal(EXPECTED["packages/contexts/memory"].cases, 605);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the cost-monitoring context is pinned at what vitest prints", () => {
@@ -1094,7 +1113,7 @@ test("the cost-monitoring context is pinned at what vitest prints", () => {
   // with every adoption's term present.
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].files, 21);
   assert.equal(EXPECTED["packages/contexts/cost-monitoring"].cases, 352);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the privacy context is pinned at what vitest prints", () => {
@@ -1132,7 +1151,7 @@ test("the privacy context is pinned at what vitest prints", () => {
   // observability's 288 and agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/privacy"].cases, 240 + 12 + 2);
   assert.equal(EXPECTED["packages/contexts/privacy"].files, 15, "the file count did NOT move; the case count did");
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the observability context is pinned at what vitest prints", () => {
@@ -1165,7 +1184,7 @@ test("the observability context is pinned at what vitest prints", () => {
   // agents' 515 included.
   assert.equal(EXPECTED["packages/contexts/observability"].files, 15);
   assert.equal(EXPECTED["packages/contexts/observability"].cases, 281 + 6 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the agents context is pinned at what vitest prints", () => {
@@ -1208,7 +1227,7 @@ test("the agents context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/agents"].files, 25);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 515);
   assert.equal(EXPECTED["packages/contexts/agents"].cases, 513 + 4 - 3 - 1 + 2);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the tools context is pinned at what vitest prints", () => {
@@ -1243,10 +1262,16 @@ test("the tools context is pinned at what vitest prints", () => {
   // unit test called before), and a WIRE target names no transport at all. Same
   // shape as the 299 -> 325 wave above: a file-count pin would be blind to it,
   // which is exactly the case this canary exists for.
-  assert.equal(EXPECTED["packages/contexts/tools"].files, 19);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 366);
-  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2 + 4);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  // WIN-268 (M4.2) stage 2 366 -> 400 across 19 -> 21 files, and it is the FIRST
+  // move of this row that a file-count pin WOULD have caught — the two suites are
+  // new files. Both are in `adapters/`: the digest's eight known-answer cases
+  // against FIPS 180-4 and the sibling implementation's own vectors, and the
+  // twenty-six dispatch cases against real sockets, the MCP SDK's own server on the
+  // far side. 366 + 8 + 26 = 400.
+  assert.equal(EXPECTED["packages/contexts/tools"].files, 21);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 400);
+  assert.equal(EXPECTED["packages/contexts/tools"].cases, 325 + 29 + 6 + 2 + 4 + 8 + 26);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the channels context is pinned at what vitest prints", () => {
@@ -1294,7 +1319,7 @@ test("the channels context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/channels"].files, 16);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 274);
   assert.equal(EXPECTED["packages/contexts/channels"].cases, 263 + 4 + 1 + 1 + 5);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the governance context is pinned at what vitest prints", () => {
@@ -1325,7 +1350,7 @@ test("the governance context is pinned at what vitest prints", () => {
   assert.equal(EXPECTED["packages/contexts/governance"].files, 31);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 610);
   assert.equal(EXPECTED["packages/contexts/governance"].cases, 586 + 1 + 22 + 1);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
@@ -1351,7 +1376,7 @@ test("the model-router adapter is pinned at what vitest prints", () => {
   // caught it at 5525 against an actual 5875.
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].files, 15);
   assert.equal(EXPECTED["packages/adapters/model-router-providers"].cases, 198);
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 717 + 375 + 149 + 306 + 378 + 605 + 352 + 254 + 288 + 515 + 362 + 269 + 609 + 198 + 25 + 29 + 59 + 34 + 1 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the WIN-257 identity-access contract suite is pinned at what vitest prints", () => {
@@ -1446,7 +1471,7 @@ test("the conversations context is pinned at what vitest prints", () => {
   // above do NOT move for any of them: all four implement ports that already
   // existed and all four had their port entry point widened in place, which is
   // what this census distinguishes from an addition.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5525 + 350 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
 });
 
 test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
@@ -1822,7 +1847,7 @@ test("the postgres-tenancy adapter is pinned at what vitest prints", () => {
   // `24 + 17 + 3 + 4` is four cases added to `agents-rows.test.ts`, a file this
   // row already counted, which is why that dimension's file tail gains 3 while
   // its case tail gains 48.
-  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46);
+  assert.equal(EXPECTED_RUNTIME_TOTAL, /* WIN-269 tools transport admission */ 4 + /* WIN-268 P1 mint suite */ 15 + 5875 + 56 + 67 + 43 + 41 + 33 + 59 + 60 + 61 + 4 + 72 + 66 + 83 + 77 + 97 + 62 + 89 + 76 + 97 + 100 + 52 + 56 + 48 + 83 + 36 + 6 + 16 + 13 + 11 + 1 + 53 + 1 + 3 + 1 + 71 + 12 + 8 + 53 + 5 + 8 + 5 + 9 + 40 + 25 + 69 + 8 + 22 + 27 + 30 + 136 + 26 + 19 + 13 + 28 + 11 + 1 + 6 + /* WIN-271 channels delivery-disposition rule */ 5 + /* WIN-271 channel-slack adoption */ 61 + /* WIN-272 kernel stream envelope */ 36 + /* WIN-272 redis-streams adoption */ 46 + /* WIN-268 stage 2 tools/adapters: the digest's known-answer vectors 8 and the real-socket dispatch suite 26 */ 34);
   assert.equal(
     EXPECTED_RUNTIME_TOTAL,
     Object.values(EXPECTED).reduce((total, row) => total + row.cases, 0)
