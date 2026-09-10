@@ -1396,10 +1396,10 @@
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "6180d23ce4925d26b93b9a2fccb636c59b5c1197261ceeb0571087e5d1e51d5e",
+      "sha256": "b9dfb3230ca336f99d7597198aab82cf229e1ebb7b7c5bd2e41c722800231f7b",
       "sourceSnapshot": "OSV advisory response recorded by scripts/audit-advisory.mjs",
       "baseline": "network advisory snapshot; current dependency truth is the checked lock/image inventory",
-      "date": "2026-09-09"
+      "date": "2026-09-10"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
@@ -1412,7 +1412,7 @@
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "be96bcc71ed3be8bdd2f5f698fad1308f627253bf98b9111657f701439ccdb44",
+      "sha256": "51cf295fc9fda36247c96df9ee201c351ad53e7a0f7425ad901048d3985ee701",
       "binds": "current-repository-truth"
     },
     {
@@ -1526,14 +1526,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "7ccec5e7f6eb29c32ab2c3155cf29c5697aca5aabc8ac3cb079eaf4561004aa2",
+      "sha256": "2904074f8db2a271b9e746ff82b0802044b08c409cf2c2057d9ddc85e1701894",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "848af882a35b35bb5194d9634e598fb155d73ed522c71bab48c950cf4a0607eb",
+      "sha256": "4367712fcc4d01bfe1d5ba9455e925f76379ae020840de72b61df6026882e9d6",
       "binds": "current-repository-truth"
     },
     {
@@ -1603,7 +1603,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "1c3f7f99002899a181b441b2f34c9f36fe553c2ff313a9f334446860e05a9d63",
+      "sha256": "35bb27b9ebf063c1d07ee0abd5c226d1c063648e83f8e1056c1f37f3ac0fe617",
       "binds": "current-repository-truth"
     },
     {

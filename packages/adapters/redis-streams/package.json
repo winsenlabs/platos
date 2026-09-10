@@ -16,9 +16,13 @@
   "scripts": {
     "build": "tsc -b",
     "clean": "tsc -b --clean",
-    "test": "vitest run"
+    "test": "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'"
   },
   "dependencies": {
-    "@platos/kernel": "workspace:*"
+    "@platos/kernel": "workspace:*",
+    "ioredis": "^5.6.1"
+  },
+  "devDependencies": {
+    "@testcontainers/redis": "^10.28.0"
   }
 }

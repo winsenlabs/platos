@@ -1517,6 +1517,14 @@ const PROJECT_TEST_SCRIPTS = {
   // have. Byte-identical to the two above so the three cannot drift.
   "packages/adapters/redis-ratelimit":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
+  // WIN-272 (M4.6) adds `packages/adapters/redis-streams`, the FOURTH entry with a
+  // byte-identical run and the same reason: it ships two real-Redis suites — the
+  // journal's conservation, ordering and trim-boundary refusals, and the bus's
+  // at-least-once redelivery across separate connections — and neither can be
+  // shown against a double, so both need a container and therefore a daemon
+  // `pnpm test:v1-packages` does not have.
+  "packages/adapters/redis-streams":
+    "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
   "apps/core-api":
     "vitest run --exclude '**/node_modules/**' --exclude '**/dist/**' --exclude '**/*.integration.test.ts'",
 };
@@ -1672,6 +1680,23 @@ const ADAPTER_RUNTIME_DEPENDENCIES = {
   "channel-slack": {
     "@chat-adapter/slack": "^4.40.0",
   },
+  // WIN-272 (M4.6). The THIRD and last of the three redis-* directories to hold a
+  // client, and a THIRD client rather than a third copy of one: ADR M0.3 §4 gives
+  // this directory "one namespaced keyspace, one owner", so `platos:stream:v1:`
+  // and `platos:bus:v1:` are held by an object with its own lifetime — one that
+  // also holds SUBSCRIPTIONS, which is why closing it stops poll loops before it
+  // closes the socket. The specifier is byte-identical to `redis-cache`'s,
+  // `redis-ratelimit`'s and `apps/agent`'s, so pnpm resolves it to the entry
+  // already in pnpm-lock.yaml (ioredis@5.10.1) instead of opening a new
+  // resolution.
+  //
+  // WITH THIS ENTRY ALL THREE HOMES `ioredis` IS PERMITTED ARE FILLED, which is
+  // the reason it is deliberately absent from `SDK_CONTAINMENT`: a containment
+  // rule naming one home would refuse the other two, and the ADR's own layout has
+  // three.
+  "redis-streams": {
+    ioredis: "^5.6.1",
+  },
   "model-router-providers": {
     "@ai-sdk/anthropic": "^4.0.15",
     "@ai-sdk/google": "^4.0.16",
@@ -1722,6 +1747,15 @@ const ADAPTER_DEV_DEPENDENCIES = {
   // answers, with a negative control proving the comparison can fail.
   "channel-slack": {
     "@chat-adapter/slack-audited": "npm:@chat-adapter/slack@4.34.0",
+  },
+  // WIN-272 (M4.6). The Redis container the journal's conservation and the bus's
+  // at-least-once redelivery are proved against. A DEV dependency for the reason
+  // the four above are, and with the same specifier. The two properties it exists
+  // for are unreachable without it: a trimmed resume position is a RETENTION
+  // behaviour of a real server, and "two clients see one ordering" is a claim
+  // about commands a SERVER interleaved rather than about one command queue.
+  "redis-streams": {
+    "@testcontainers/redis": "^10.28.0",
   },
 };
 
