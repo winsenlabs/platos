@@ -578,7 +578,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // rules T1's own pair landed on at the top of this comment -- so NO LEDGER
     // RULE CHANGED. `api-surface.ts`, `generate-control-plane.mjs` and the
     // manifest/document/report artifacts are edited IN PLACE and add no file.
-    "apps-agent": 12,
+    //
+    // M4 FINISH 12 -> 15. THREE files, and NO LEDGER RULE CHANGED — they land on
+    // `apps-agent.source.runtime` (+1) and `apps-agent.test.suites` (+2), the same
+    // two rules every pair above them landed on.
+    //   `agent-runtime/chat-stream.controller.ts` — the POST twin of the chat-stream
+    //   GET, so a user message stops travelling in the upstream REQUEST LINE, where
+    //   a validated 20,000 characters cannot fit under a 16 KiB header limit.
+    //   `streaming/streaming-terminal-frame.test.ts` — at most one terminal frame per
+    //   stream, read back off a real `node:http` listener. The legacy lane wrote an
+    //   `error` frame AND a `done` frame on its failure path.
+    //   `tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts` — the
+    //   FORGED scope triple against a real PostgreSQL, after the unguarded
+    //   cross-tenant `EnvironmentEntityTool` delete was removed.
+    // `streaming.service.ts`, `tool-registry.service.ts`, `tool-sync-ws.test.ts`,
+    // `agent-runtime.module.ts`, `api-surface.test.ts`, `generate-control-plane.mjs`
+    // and every generated artifact are edited IN PLACE and add no file.
+    "apps-agent": 15,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -1419,7 +1435,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   table.
     //
     // NO LEDGER RULE CHANGED. 1532 + 7 + 3 = 1542.
-    packages: 1542,
+    //
+    // M4 FINISH 1542 -> 1543. ONE file:
+    // `packages/platos-client/src/__tests__/retry-idempotency.test.ts`, which proves
+    // `_fetchWithRetry` no longer repeats a request RFC 9110 section 9.2.2 calls
+    // non-idempotent unless it carries an `Idempotency-Key`. `client.ts` is edited
+    // IN PLACE. It lands on `packages.test.suites`, a rule that already existed; NO
+    // LEDGER RULE CHANGED.
+    packages: 1543,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1916,7 +1939,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // All five take the same blanket `root-infra.tooling.scripts` rule every script
     // above them took (107 -> 112). NO LEDGER RULE CHANGED.
-    "root-infra": 88,
+    //
+    // M4 FINISH 88 -> 89. ONE file:
+    // `scripts/agent-tenancy-postgres-integration.mjs`, the walker the new
+    // `agent-tenancy-postgres` CI job runs — the fourth gate-darkness instance, where
+    // three real-database tenancy suites were named by nothing in `ci.yml`. It takes
+    // the same blanket `root-infra.tooling.scripts` rule every script above it took
+    // (117 -> 118). `ci.yml`, `ci-policy.test.mjs`, `package.json`,
+    // `vendored-build-audit.mjs` and the four test files whose pins moved are edited
+    // IN PLACE. NO LEDGER RULE CHANGED.
+    "root-infra": 89,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2124,7 +2156,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `ci.yml`, the capability matrix and every generated artifact are edited IN
   // PLACE. The eight-key re-derivation from the merged `expectedDeltas` is
   // 12 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1768.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1768);
+  //
+  // M4 FINISH 1768 -> 1773. FIVE files across three areas, each itemised on its own
+  // delta above: `apps-agent` +3 (the chat-stream POST controller, the terminal-frame
+  // suite, the forged-scope suite), `packages` +1 (the SDK retry-guard suite) and
+  // `root-infra` +1 (the agent tenancy PostgreSQL walker). The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 87 + 4 + 10 + 1543 + 24 + 89 = 1773.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1773);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2375,7 +2414,15 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // above rather than after it went red, which is the discipline the five prior
     // catches earned: this reconciliation exists precisely because the two
     // arithmetics can disagree. 1766 + 2 = 1768.
-    rulesDocument.baseline.totalFiles + 1768
+    //
+    // AND M4 FINISH 1768 -> 1773 -- the TWENTY-SEVENTH hand move. The same FIVE
+    // files as the `totalFiles` assertion above -- `apps-agent` +3 (the chat-stream
+    // POST controller, the terminal-frame suite, the forged-scope suite),
+    // `packages` +1 (the SDK retry-guard suite), `root-infra` +1 (the agent tenancy
+    // PostgreSQL walker) -- reached here by summing the per-area counts instead of
+    // reading the total. Moved in the SAME edit as the assertion above rather than
+    // after it went red. 1768 + 5 = 1773.
+    rulesDocument.baseline.totalFiles + 1773
   );
 });
 

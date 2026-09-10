@@ -2108,16 +2108,16 @@
     ]
   },
   "expected": {
-    "totalFiles": 5237,
+    "totalFiles": 5242,
     "areaCounts": {
-      "apps-agent": 526,
+      "apps-agent": 529,
       "apps-core-api": 98,
       "apps-mcp-stdio": 8,
       "apps-webapp": 184,
       "docs-content": 744,
       "internal-packages": 1174,
-      "packages": 2179,
-      "root-infra": 324
+      "packages": 2180,
+      "root-infra": 325
     },
     "kindCounts": {
       "asset": 155,
@@ -2128,12 +2128,12 @@
       "legal": 14,
       "lockfile": 3,
       "migration": 896,
-      "source": 2125,
-      "test": 1064
+      "source": 2127,
+      "test": 1067
     },
     "dispositionCounts": {
       "archive": 7,
-      "move-refactor": 1679,
+      "move-refactor": 1684,
       "regenerate": 42,
       "retain": 3507,
       "unresolved": 2
@@ -2147,8 +2147,8 @@
       "apps-agent.entry.process": 1,
       "apps-agent.generated.contract-artifacts": 2,
       "apps-agent.infra.container": 1,
-      "apps-agent.source.runtime": 279,
-      "apps-agent.test.suites": 212,
+      "apps-agent.source.runtime": 280,
+      "apps-agent.test.suites": 214,
       "apps-agent.tooling.scripts": 13,
       "apps-core-api.config.package": 6,
       "apps-core-api.doc.package": 1,
@@ -2249,7 +2249,7 @@
       "packages.python.sources": 39,
       "packages.source.typescript": 299,
       "packages.style.sheet": 1,
-      "packages.test.suites": 63,
+      "packages.test.suites": 64,
       "packages.tooling.scripts": 1,
       "root-infra.automation.renovate": 1,
       "root-infra.build.workspace": 6,
@@ -2275,9 +2275,9 @@
       "root-infra.test.harness": 70,
       "root-infra.test.script-suites": 34,
       "root-infra.test.workspace-reachability": 1,
-      "root-infra.tooling.scripts": 117,
+      "root-infra.tooling.scripts": 118,
       "root-infra.tooling.workspace-reachability": 1
     },
-    "classificationSha256": "04db4d6bd1ea1b1ec0408849fb8fbf16d073441194910f6b01c8c95461c99028"
+    "classificationSha256": "a1c818d28449fbc7cf9cb52b59d0aaaf8137af9d141bbcd0454c22b954ad56e7"
   }
 }
