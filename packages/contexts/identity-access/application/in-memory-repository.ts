@@ -21,7 +21,9 @@
 import type {
   AccessKeyRecord,
   BearerCredentialKind,
+  BearerCredentialQuery,
   BearerCredentialRecord,
+  BearerCredentialSummary,
   EmailAddress,
   EndUserId,
   EndUserIdentityId,
@@ -46,7 +48,12 @@ import type {
   TotpCredential,
   UserId,
 } from "../domain/index.js";
-import { compareEndUsers, isActive, matchesEndUserQuery } from "../domain/index.js";
+import {
+  belongsToBearerQuery,
+  compareEndUsers,
+  isActive,
+  matchesEndUserQuery,
+} from "../domain/index.js";
 import type { AccessKeyRotationPlan } from "../domain/index.js";
 import type { IdentityAccessRepository } from "./ports/index.js";
 import type { EnvironmentId } from "@platos/kernel";
@@ -76,6 +83,23 @@ export interface InMemoryState {
    */
   readonly accessTokens: Map<string, OAuthAccessTokenRecord>;
   readonly bearerCredentials: Map<string, BearerCredentialRecord>;
+  /**
+   * WIN-268 (M4.2) stage 2 — the LISTING view of the same credentials.
+   *
+   * A SECOND MAP AND NOT A WIDER RECORD, because the two views carry different
+   * things and only one of them may carry the digest.
+   * `BearerCredentialRecord` holds `tokenHash` and exists to VERIFY a presented
+   * secret; `BearerCredentialSummary` holds the label, the subject and the
+   * permission tier and exists to DISPLAY a credential, and has no digest field at
+   * all. Merging them would put a verifier on the type a listing returns.
+   *
+   * KEYED BY (kind, credentialId) while the record map is keyed by (kind,
+   * tokenHash), which is the same split the two real tables have: one is looked up
+   * by the secret presented, the other by the id in a URL. `mint` writes both and
+   * `revoke` moves both, so a credential this double reports as revoked also stops
+   * authenticating — an incoherence a single-map double could not even express.
+   */
+  readonly bearerCredentialSummaries: Map<string, BearerCredentialSummary>;
   readonly endUsers: Map<EndUserId, EndUserRecord>;
   readonly endUserIdentities: Map<EndUserIdentityId, EndUserIdentityRecord>;
   readonly impersonationAudit: ImpersonationAuditEntry[];
@@ -95,6 +119,7 @@ function emptyState(): InMemoryState {
     authorizationCodes: new Map(),
     accessTokens: new Map(),
     bearerCredentials: new Map(),
+    bearerCredentialSummaries: new Map(),
     endUsers: new Map(),
     endUserIdentities: new Map(),
     impersonationAudit: [],
@@ -106,6 +131,9 @@ const identityKey = (provider: OperatorIdentityProvider, subject: string): strin
 const recoveryKey = (userId: UserId, codeHash: string): string => `${userId}:${codeHash}`;
 const bearerKey = (kind: BearerCredentialKind, tokenHash: string): string =>
   `${kind}:${tokenHash}`;
+/** The LISTING key. See `InMemoryState.bearerCredentialSummaries`. */
+const bearerIdKey = (kind: BearerCredentialKind, credentialId: string): string =>
+  `${kind}:${credentialId}`;
 
 export function inMemoryIdentityAccessRepository(
   seed: Partial<InMemoryState> = {},
@@ -378,7 +406,79 @@ export function inMemoryIdentityAccessRepository(
           lastUsedAt: null,
         };
         state.bearerCredentials.set(key, record);
+        state.bearerCredentialSummaries.set(bearerIdKey(credential.kind, credential.credentialId), {
+          credentialId: credential.credentialId,
+          // NARROWED, not cast. `BearerCredentialMint.kind` is
+          // `MintableBearerKind` and the summary's is `ListableBearerKind`; the
+          // two constants hold the same names today and are separate on purpose,
+          // so the day one grows this line fails to compile rather than storing a
+          // kind the listing cannot answer for.
+          kind: credential.kind === "mcp-token" ? "mcp-token" : "entity-bearer-token",
+          label: credential.label,
+          principalId: credential.principalId,
+          permissions: credential.permissions,
+          permissionTier: credential.permissionTier,
+          subjectId: credential.subjectId,
+          scope: credential.scope,
+          createdAt: credential.createdAt,
+          expiresAt: credential.expiresAt,
+          lastUsedAt: null,
+          revokedAt: null,
+        });
         return record;
+      },
+
+      /**
+       * The tenant clause, the subject clause and the ORDER are all implemented,
+       * because they are the contract a real adapter's SQL has to reproduce. The
+       * ordering is `createdAt` DESC then `credentialId` DESC — both oracles'
+       * `orderBy: [{ createdAt: "desc" }, { id: "desc" }]` — and the tie-break on
+       * the id is what stops two consecutive pages overlapping when a batch of
+       * credentials shares an instant. Paging is applied LAST, after ordering,
+       * which is the only arrangement under which that is true.
+       */
+      async list(query) {
+        return matchingBearer(state, query)
+          .sort(compareBearerSummaries)
+          .slice(query.offset, query.offset + query.limit);
+      },
+      // The same predicate WITHOUT the window: a total that counted only the page
+      // would make `hasMore` permanently false.
+      async count(query) {
+        return matchingBearer(state, query).length;
+      },
+
+      /**
+       * THREE OUTCOMES, AND THE ABSENT ONE COVERS THE CROSS-ENVIRONMENT CASE.
+       *
+       * The lookup is by (kind, credentialId) AND environment AND subject, so a
+       * credential id belonging to another environment is `absent` here exactly as
+       * it is in the real store. A double that looked up by id alone would pass a
+       * test the canonical store fails — and it would pass it for the forged-scope
+       * case, which is the one that matters.
+       *
+       * BOTH MAPS MOVE. The record map is keyed by digest and the summary map by
+       * id; revoking only the summary would leave a credential this double says is
+       * dead still authenticating.
+       */
+      async revoke(command) {
+        const found = matchingBearer(state, {
+          kind: command.kind,
+          environmentId: command.environmentId,
+          subjectId: command.subjectId,
+          limit: 1,
+          offset: 0,
+        }).find((summary) => summary.credentialId === command.credentialId);
+        if (found === undefined) return { kind: "absent" };
+        if (found.revokedAt !== null) return { kind: "alreadyRevoked", credential: found };
+
+        const revoked: BearerCredentialSummary = { ...found, revokedAt: command.now };
+        state.bearerCredentialSummaries.set(bearerIdKey(found.kind, found.credentialId), revoked);
+        for (const [key, record] of state.bearerCredentials) {
+          if (record.kind !== found.kind || record.credentialId !== found.credentialId) continue;
+          state.bearerCredentials.set(key, { ...record, revokedAt: command.now });
+        }
+        return { kind: "revoked", credential: revoked };
       },
     },
 
@@ -405,6 +505,32 @@ export function inMemoryIdentityAccessRepository(
       },
     },
   };
+}
+
+/**
+ * Every stored credential summary the query's tenant and subject clauses admit.
+ *
+ * `belongsToBearerQuery` IS THE DOMAIN'S OWN PREDICATE and this double calls it
+ * rather than re-deriving the clauses, so the filter a fake applies and the filter
+ * the domain describes cannot drift. The window is applied by the caller.
+ */
+function matchingBearer(
+  state: InMemoryState,
+  query: BearerCredentialQuery,
+): BearerCredentialSummary[] {
+  return [...state.bearerCredentialSummaries.values()].filter((summary) =>
+    belongsToBearerQuery(summary, query),
+  );
+}
+
+/** `createdAt` DESC, then `credentialId` DESC. Both oracles' order. */
+function compareBearerSummaries(
+  left: BearerCredentialSummary,
+  right: BearerCredentialSummary,
+): number {
+  const byInstant = right.createdAt.getTime() - left.createdAt.getTime();
+  if (byInstant !== 0) return byInstant;
+  return right.credentialId.localeCompare(left.credentialId);
 }
 
 /** Every stored end user, with its identities, that satisfies `query`. */

@@ -77,6 +77,19 @@ export {
   type ListEndUsersPorts,
 } from "./list-end-users.js";
 export {
+  listBearerCredentials,
+  revokeBearerCredential,
+  type BearerCredentialPage,
+  type BearerCredentialListRequest,
+  type BearerCredentialSummary,
+  type BearerRevocationOutcome,
+  type ListableBearerKind,
+  type ListBearerCredentialsInput,
+  type ReadBearerCredentialsPorts,
+  type RevokeBearerCredentialInput,
+  type RevokeBearerCredentialPorts,
+} from "./read-bearer-credentials.js";
+export {
   authenticateBearerToken,
   type AuthenticateBearerTokenInput,
   type AuthenticateBearerTokenPorts,

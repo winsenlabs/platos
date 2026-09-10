@@ -1,3 +1,14 @@
+// /mcp/entity/:entityId/tokens — THE ENTITY CREDENTIAL'S WHOLE LIFE, AND THE
+// TENANCY JOIN THE PLATFORM ROUTES DO NOT HAVE.
+//
+// WIN-268 (M4.2) stage 2 ADDS THE LISTING AND THE REVOCATION beside the mint. All
+// three carry the SAME entity/environment pair check described below, and that is
+// the reason they are on one controller rather than three: the pair is the failure
+// this surface is built against, and a route that skipped it would be a route
+// where an operator lists — or revokes — the credentials of an entity in a project
+// they may not reach, one gate at a time each of which passes.
+//
+// -----------------------------------------------------------------------------
 // POST /mcp/entity/:entityId/tokens — THE SECOND MINT, AND THE ONE WITH A
 // TENANCY JOIN THE PLATFORM MINT DOES NOT HAVE.
 //
@@ -40,7 +51,18 @@
 // That default is preserved rather than improved: a different one would make
 // tokens minted by the two deployables sort differently in the same table.
 
-import { Body, Controller, HttpCode, Inject, Param, Post, Req } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+  Query,
+  Req,
+} from "@nestjs/common";
 
 import {
   asIdentifier,
@@ -57,15 +79,33 @@ import type { EntityRecord } from "@platos/context-tenancy";
 import type { AppModule } from "../../app.module.js";
 import { DomainValidationPipe } from "../../http/validation.pipe.js";
 import { REST_APPLICATION, type RestApplication } from "../rest/dependencies.js";
-import { itemEnvelope, type ItemEnvelope } from "../rest/envelope.js";
+import {
+  collectionEnvelope,
+  itemEnvelope,
+  type CollectionEnvelope,
+  type ItemEnvelope,
+} from "../rest/envelope.js";
 import { raise } from "../rest/fault.js";
 import {
+  authenticateOperator,
   authorizeEnvironment,
   requireTenancy,
   type InboundOperatorRequest,
 } from "../rest/operator.js";
 import { requestInvalid } from "../rest/transport-errors.js";
 import { MCP_ENTITY_PATH, MCP_ROUTE_VERSION } from "./mcp-surface.js";
+import {
+  currentTokenCursor,
+  nextTokenCursor,
+  revokedTokenResource,
+  tokenListQueryValidator,
+  tokenResource,
+  tokenScopeQueryValidator,
+  type RevokedTokenResource,
+  type TokenListQuery,
+  type TokenResource,
+  type TokenScopeQuery,
+} from "./token-lifecycle.js";
 import {
   mintedTokenResource,
   mintingOperator,
@@ -154,12 +194,40 @@ export const mintEntityTokenValidator = (input: unknown): Result<MintEntityToken
 };
 
 const MINT_BODY_PIPE = new DomainValidationPipe(mintEntityTokenValidator);
+const LIST_QUERY_PIPE = new DomainValidationPipe(tokenListQueryValidator);
+const REVOKE_QUERY_PIPE = new DomainValidationPipe(tokenScopeQueryValidator);
 
 /** The entity named in the path, or tenancy's own refusal. */
 async function findEntity(app: AppModule, entityId: string): Promise<EntityRecord> {
   const found = await requireTenancy(app).findEntity(asIdentifier<EntityId>(entityId));
   if (!found.ok) raise(found.error);
   return found.value;
+}
+
+/**
+ * The entity, having checked it lives in the authorized environment's project.
+ *
+ * ALL THREE ROUTES CALL THIS AND NONE REPEATS IT, which is the rule
+ * `token-mint.ts` states for `mintingOperator`: two guards spelling the same rule
+ * differently is how one of them ends up not spelling it at all. The check is
+ * exactly the one the mint's banner describes — the entity's `projectId` must
+ * equal the project tenancy re-derived from the environment's ancestry — and it is
+ * the reason a forged (entity, environment) pair cannot list or revoke anything.
+ *
+ * THE ORDER IS AUTHORIZE-THEN-LOAD IN EVERY CALLER. Reversed, an unauthorized
+ * caller could probe which entity ids exist by reading the difference between a
+ * not-found and a forbidden.
+ */
+async function entityInProject(
+  app: AppModule,
+  entityId: string,
+  projectId: string,
+): Promise<EntityRecord> {
+  const entity = await findEntity(app, entityId);
+  if (entity.projectId !== projectId) {
+    raise(entityEnvironmentMismatch(entityId, entity.projectId));
+  }
+  return entity;
 }
 
 @Controller({ path: MCP_ENTITY_PATH, version: MCP_ROUTE_VERSION })
@@ -184,10 +252,7 @@ export class McpEntityTokensController {
       body.environmentId,
       "secret:mutate",
     );
-    const entity = await findEntity(app, entityId);
-    if (entity.projectId !== authorization.scope.projectId) {
-      raise(entityEnvironmentMismatch(entityId, entity.projectId));
-    }
+    const entity = await entityInProject(app, entityId, authorization.scope.projectId);
     const minted = await requireMint(app).mintBearerCredential({
       kind: "entity-bearer-token",
       scope: authorization.scope,
@@ -210,5 +275,99 @@ export class McpEntityTokensController {
     });
     if (!minted.ok) raise(minted.error);
     return itemEnvelope(mintedTokenResource(minted.value));
+  }
+
+  /**
+   * One entity's credentials in one environment, newest first.
+   *
+   * `metadata`, for the reason its platform sibling states: this returns redacted
+   * metadata and no secret, so it is a read.
+   *
+   * THE ENTITY IS A TENANT CLAUSE HERE AND NOT A FILTER. `listBearerCredentials`
+   * refuses an `entity-bearer-token` listing that names no subject, and the store
+   * puts the entity in the `where` beside the environment — so this route cannot
+   * be turned into "every entity token in the environment" by omitting a
+   * parameter.
+   */
+  @Get(":entityId/tokens")
+  async list(
+    @Req() request: InboundOperatorRequest,
+    @Param("entityId") entityId: string,
+    @Query(LIST_QUERY_PIPE) query: TokenListQuery,
+  ): Promise<CollectionEnvelope<TokenResource>> {
+    const app = this.application.app;
+    const operator = await authenticateOperator(app, request);
+    const authorization = await authorizeEnvironment(app, operator, query.environmentId);
+    const entity = await entityInProject(app, entityId, authorization.scope.projectId);
+    const page = await requireMint(app).listBearerCredentials({
+      kind: "entity-bearer-token",
+      scope: authorization.scope,
+      // THE ENTITY THE STORE CONFIRMED, not the string from the path. They are the
+      // same characters and one of them has been checked against the project.
+      subjectId: entity.id,
+      limit: query.limit,
+      offset: query.offset,
+    });
+    if (!page.ok) raise(page.error);
+    return collectionEnvelope({
+      rows: page.value.credentials.map(tokenResource),
+      cursor: currentTokenCursor(query.offset),
+      limit: page.value.limit,
+      nextCursor: nextTokenCursor(page.value),
+      total: page.value.total,
+    });
+  }
+
+  /**
+   * Revoke one entity credential, idempotently.
+   *
+   * A `DELETE` WHERE THE PLATFORM ROUTE IS A `POST :id/revoke`, and the asymmetry
+   * is the MANIFEST'S rather than a choice made here: the generated operation
+   * table already names `DELETE /mcp/entity/:entityId/tokens/:tokenId` and
+   * `POST /mcp/platform/tokens/:id/revoke`, and both spellings have live callers.
+   * A V1 surface that regularised them would break one of the two.
+   *
+   * `200` WITH A BODY AND NOT `204`, for the reason the platform route gives:
+   * `alreadyRevoked` is a fact the caller needs and a 204 has nowhere to put it.
+   *
+   * IT IS NOT `Idempotency-Key`-REQUIRED AND DOES NOT NEED TO BE. A retried mint
+   * leaves a second live credential nobody knows about; a retried revocation
+   * leaves the same credential revoked at the same instant by the same actor, and
+   * says `alreadyRevoked: true` the second time. The idempotency is in the
+   * operation rather than in a reservation.
+   */
+  @Delete(":entityId/tokens/:tokenId")
+  @HttpCode(200)
+  async revoke(
+    @Req() request: InboundOperatorRequest,
+    @Param("entityId") entityId: string,
+    @Param("tokenId") tokenId: string,
+    @Query(REVOKE_QUERY_PIPE) query: TokenScopeQuery,
+  ): Promise<ItemEnvelope<RevokedTokenResource>> {
+    const app = this.application.app;
+    const operator = await mintingOperator(app, request);
+    const authorization = await authorizeEnvironment(
+      app,
+      operator,
+      query.environmentId,
+      "secret:mutate",
+    );
+    const entity = await entityInProject(app, entityId, authorization.scope.projectId);
+    const revoked = await requireMint(app).revokeBearerCredential({
+      kind: "entity-bearer-token",
+      credentialId: tokenId,
+      scope: authorization.scope,
+      subjectId: entity.id,
+      // RECORDED ON THE COMMAND EVEN THOUGH `McpBearerToken` HAS NO `revokedBy`
+      // COLUMN. The adapter's banner says so outright: the legacy service puts the
+      // actor in an `AdminAudit` row, which is `observability`'s table and a
+      // context this deployable does not compose. Carrying it means nothing has to
+      // be threaded through the day that column or that context arrives.
+      revokedByUserId: operator.actorUserId,
+    });
+    if (!revoked.ok) raise(revoked.error);
+    const resource = revokedTokenResource(tokenId, revoked.value);
+    if (!resource.ok) raise(resource.error);
+    return itemEnvelope(resource.value);
   }
 }

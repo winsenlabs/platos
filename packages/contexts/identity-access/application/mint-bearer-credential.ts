@@ -173,6 +173,10 @@ export async function mintBearerCredential(
     // types `expiresAt` as nullable for the kinds that can live forever and this
     // one never can.
     expiresAt: plan.value.expiresAt,
-    createdAt: now,
+    // FROM THE PLAN, which is now the ONE place this instant is decided. It is
+    // the same value `now` holds, and reading it from the plan is what makes the
+    // row's own `createdAt` column — which the store writes from this same field
+    // — provably the value returned here rather than a second clock's answer.
+    createdAt: plan.value.createdAt,
   });
 }

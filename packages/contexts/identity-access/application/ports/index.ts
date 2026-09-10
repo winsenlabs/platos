@@ -122,7 +122,20 @@ export type {
   AuthorizationScopeKind,
   BearerCredentialKind,
   BearerCredentialMint,
+  // WIN-268 (M4.2) stage 2 — the LISTING and REVOCATION vocabulary an
+  // implementation of `BearerCredentialStore` cannot be written without. They are
+  // republished for the reason the WIN-258 T2 block above states: the postgres
+  // adapter implements this port and its only edges are to this package, so
+  // without them it would have to reach into `../../domain/`, which
+  // `cross-context-contracts-only` exists to stop. NOTHING NEW IS PUBLISHED —
+  // every name is already public from `../../domain/index.js`.
+  BearerCredentialQuery,
   BearerCredentialRecord,
+  BearerCredentialRevocation,
+  BearerCredentialSummary,
+  BearerRevocationOutcome,
+  ListableBearerKind,
+  McpPermissionTier,
   EmailAddress,
   EndUserId,
   EndUserIdentityId,

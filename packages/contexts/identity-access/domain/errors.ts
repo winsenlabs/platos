@@ -265,3 +265,30 @@ export function credentialMintRefused(reason: string): DomainError {
     details: { reason },
   });
 }
+
+/**
+ * WIN-268 (M4.2) stage 2 — a LISTING or a REVOCATION the caller asked for wrong.
+ *
+ * A THIRD CODE BESIDE `CREDENTIAL_MATERIAL_INVALID` AND
+ * `CREDENTIAL_SUBJECT_MISMATCH`, and the reason is the same one that separated
+ * those two. Both of them are raised by a MINT: the first means "the value you
+ * sent for this new credential is unusable", the second "you are minting the
+ * wrong kind". This one is raised by a READ or a REVOKE and means "the query you
+ * asked cannot be answered as written" — an over-large page, a negative offset, a
+ * kind with no listing oracle, an entity listing that named no entity. An
+ * operator reading `CREDENTIAL_MATERIAL_INVALID` in a log goes looking for a mint
+ * that never happened; `error-taxonomy.mjs` exists to stop exactly that.
+ *
+ * It carries the offending FIELD, so a client can point at the parameter rather
+ * than re-reading the whole request. It never carries the VALUE: an over-long
+ * search term or a caller-chosen label is text this context does not echo into a
+ * log line.
+ */
+export function credentialQueryInvalid(field: string, reason: string): DomainError {
+  return domainError(
+    "CREDENTIAL_QUERY_INVALID",
+    "invalid_input",
+    "The credential query cannot be answered as written",
+    { fields: [{ field, code: "invalid", message: reason }] },
+  );
+}

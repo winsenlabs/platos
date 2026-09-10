@@ -39,6 +39,23 @@ export type { AuthRateLimitAction, RateLimitPolicy } from "../domain/index.js";
  */
 export type { McpPermissionTier, MintableBearerKind } from "../domain/index.js";
 export { MCP_PERMISSION_TIERS, MINTABLE_BEARER_KINDS, isMintableBearerKind } from "../domain/index.js";
+/**
+ * WIN-268 (M4.2) stage 2 — the LISTING and REVOCATION vocabulary.
+ *
+ * `ListableBearerKind` travels for the same reason `MintableBearerKind` does: a
+ * transport has to NAME a kind to call either method, and one that spelled
+ * `"mcp-token"` as a string literal would be a second declaration of the
+ * enumeration. `LISTABLE_BEARER_KINDS` travels as a VALUE so a request validator
+ * can refuse anything outside it without writing the two names down again.
+ *
+ * IT IS A DIFFERENT CONSTANT FROM `MINTABLE_BEARER_KINDS` even though the two
+ * currently hold the same two names, because they answer different questions. The
+ * day something mints a `PersonalAccessToken`, one grows and the other should not
+ * follow by accident.
+ */
+import type { ListableBearerKind, McpPermissionTier } from "../domain/index.js";
+export type { ListableBearerKind };
+export { LISTABLE_BEARER_KINDS, isListableBearerKind } from "../domain/index.js";
 import type {
   MintBearerCredentialCommand,
   MintedBearerCredentialView,
@@ -195,6 +212,107 @@ export interface ListEndUsersRequest {
   readonly offset?: number;
 }
 
+// ---------------------------------------------------------------------------
+// WIN-268 (M4.2) stage 2 — THE BEARER CREDENTIAL LISTING AND REVOCATION.
+//
+// `mintBearerCredential` below made two of the four MCP token routes servable on
+// the V1 chassis. These two make the other four servable, and the register that
+// measured the gap said so by name: "there is no `listBearerCredentials` and no
+// `revokeBearerCredential`, so `GET /mcp/entity/:entityId/tokens` and
+// `DELETE /mcp/entity/:entityId/tokens/:tokenId` cannot be served from a
+// contract."
+//
+// THE SCOPE IS AN `ENVIRONMENT` TenantScope AND THERE IS NO OTHER TENANT FIELD.
+// The same shape `ListEndUsersRequest` has and the same reason: the value arrives
+// from `tenancy`'s four-gate decision, which re-derived the whole chain from the
+// leaf, so a caller has nothing on either request it could substitute.
+// ---------------------------------------------------------------------------
+
+/** One credential as a listing shows it. NO DIGEST — see `BearerCredentialsRequest`. */
+export interface BearerCredentialView {
+  readonly credentialId: string;
+  readonly kind: ListableBearerKind;
+  /** `McpToken.name` / `McpBearerToken.label`. */
+  readonly label: string;
+  /** Whom it acts as: the minting operator, or the entity's own end-user id. */
+  readonly principalId: PrincipalId;
+  readonly permissions: readonly string[];
+  /** `McpToken.tier`. Null for an entity token, whose table has no such column. */
+  readonly permissionTier: McpPermissionTier | null;
+  /** The entity, for an entity token. Null for a platform one. */
+  readonly subjectId: string | null;
+  /** RE-DERIVED by the store from the row's own ancestry, never echoed. */
+  readonly scope: AuthorizationScopeView;
+  readonly createdAt: Date;
+  readonly expiresAt: Date | null;
+  readonly lastUsedAt: Date | null;
+  readonly revokedAt: Date | null;
+}
+
+/**
+ * A page of credentials.
+ *
+ * WHAT IS DELIBERATELY ABSENT IS THE TOKEN DIGEST. `PrincipalAuthorizationView`
+ * carries `credentialId` and no hash for the same reason, and here the reason has
+ * teeth: one call returns up to a hundred rows, so a projection that carried the
+ * digest would hand a caller a verifier for every live credential in an
+ * environment. The domain models the listing row as a type of its own
+ * (`BearerCredentialSummary`) with no digest field at all, so no store can leak it
+ * by forgetting to strip it.
+ */
+export interface BearerCredentialPageView {
+  readonly credentials: readonly BearerCredentialView[];
+  /** Rows matching the query, ignoring the page window. */
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+}
+
+export interface BearerCredentialsRequest {
+  readonly kind: ListableBearerKind;
+  readonly scope: TenantScope;
+  /**
+   * The entity, for `entity-bearer-token`. REQUIRED for that kind and REFUSED
+   * for `mcp-token`: `McpBearerToken` is keyed by (entity, environment) and
+   * `McpToken` has no entity column, so a subject accepted and ignored on a
+   * platform listing would answer a question the caller did not ask.
+   */
+  readonly subjectId?: string | null;
+  /** Refused above 100 rather than clamped. See `RevokeBearerCredentialRequest`. */
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
+export interface RevokeBearerCredentialRequest {
+  readonly kind: ListableBearerKind;
+  readonly credentialId: string;
+  readonly scope: TenantScope;
+  readonly subjectId?: string | null;
+  /** The operator who asked. Recorded where the table has a column for it. */
+  readonly revokedByUserId: string;
+}
+
+/**
+ * What a revocation says happened — THREE STATES, NOT A BOOLEAN.
+ *
+ * Both legacy services return a boolean in which `true` covers "this call
+ * revoked it" and "somebody had already revoked it". Those are different facts
+ * and a caller cannot act on either without knowing which it got: a dashboard
+ * that reported "revoked" for a credential somebody else killed an hour ago is
+ * telling its operator they did something they did not do.
+ *
+ * `outcome: "absent"` DOES NOT DISTINGUISH "no such credential" FROM "not in your
+ * environment", and that collapse is the opposite decision made for the opposite
+ * reason: separating them would confirm the existence of a credential the caller
+ * does not own, which is an existence oracle across tenants.
+ */
+export interface RevokedBearerCredentialView {
+  readonly outcome: "revoked" | "alreadyRevoked" | "absent";
+  /** The credential as it now stands. Null exactly when `outcome` is `absent`. */
+  readonly credential: BearerCredentialView | null;
+}
+
 /**
  * The session-cookie exchange contract.
  *
@@ -325,6 +443,36 @@ export interface IdentityAccessContract {
    */
   listEndUsers(request: ListEndUsersRequest): Promise<Result<EndUserPageView>>;
 
+  /**
+   * List the MCP bearer credentials of one environment.
+   *
+   * REFUSES AN OVER-LARGE PAGE RATHER THAN CLAMPING IT, which is the one place
+   * this pair departs from the legacy services on purpose. Both of them call
+   * `boundedInteger(limit, 50, 1, 100)`, so a caller that asked for 500 rows is
+   * answered with 100 and TOLD `limit: 100`; paging by the number it sent then
+   * walks past the end of the collection while believing it has seen everything.
+   * `listEndUsers` above already made this call for the same reason. The default
+   * and the ceiling are still the legacy numbers.
+   */
+  listBearerCredentials(
+    request: BearerCredentialsRequest,
+  ): Promise<Result<BearerCredentialPageView>>;
+
+  /**
+   * Revoke one MCP bearer credential, idempotently, and say which of three
+   * things happened.
+   *
+   * IT IS THE HALF OF THE CREDENTIAL LIFECYCLE THIS CONTRACT WAS MISSING.
+   * `mintBearerCredential` creates one and `authenticateBearer` verifies one;
+   * until this method existed nothing published could END one, so the only way to
+   * withdraw a leaked ninety-day credential was the legacy deployable's own
+   * route. A `Result` that is `ok` with `outcome: "absent"` is a well-formed
+   * question about a credential that is not there — not a failed request.
+   */
+  revokeBearerCredential(
+    request: RevokeBearerCredentialRequest,
+  ): Promise<Result<RevokedBearerCredentialView>>;
+
   /** The cookie attributes for one install, before any value is put in it. */
   describeSessionCookie(transport: SessionTransport): Result<SessionCookieShapeView>;
 
@@ -413,6 +561,7 @@ export const IDENTITY_ACCESS_ERROR_CODES = [
   "MISSING_PERMISSION",
   "IMPERSONATION_FORBIDDEN",
   "CREDENTIAL_EXPIRED",
+  "CREDENTIAL_QUERY_INVALID",
   "CREDENTIAL_REVOKED",
   "TOKEN_REPLAYED",
   "INVALID_GRANT",

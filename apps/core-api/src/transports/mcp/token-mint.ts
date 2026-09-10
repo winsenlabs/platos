@@ -146,16 +146,27 @@ export function requireObject(input: unknown): Result<Record<string, unknown>> {
   return ok(input as Record<string, unknown>);
 }
 
-/** A required non-empty string field. */
+/**
+ * A required non-empty string field.
+ *
+ * `location` NAMES WHERE THE FIELD LIVES and defaults to `body`, which is where
+ * both mints read theirs. WIN-268 (M4.2) stage 2 added the parameter because the
+ * two token LISTINGS and the entity revocation carry no body at all — they are a
+ * GET and a DELETE — so their `environmentId` is a query parameter, and M0.4 §2's
+ * `fields[]` has to say `query.environmentId` for a client to point at the right
+ * thing. A hard-coded `body.` prefix on a violation about a query string is a
+ * client sent to look in a place the request does not have.
+ */
 export function requiredString(
   body: Record<string, unknown>,
   field: string,
   violations: FieldViolation[],
+  location: "body" | "query" = "body",
 ): string {
   const value = body[field];
   if (typeof value !== "string" || value.trim() === "") {
     violations.push({
-      field: `body.${field}`,
+      field: `${location}.${field}`,
       code: value === undefined ? "missing" : "invalid",
       message: "Send a non-empty string.",
     });

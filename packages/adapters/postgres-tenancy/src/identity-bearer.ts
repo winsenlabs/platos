@@ -37,8 +37,14 @@ import type {
 import type { BearerCredentialStore } from "@platos/context-identity-access/application/ports/index.js";
 
 import { IdentityWriteRefused, requireDigest } from "./identity-guards.js";
-import type { ScopeAncestry } from "./identity-mapping.js";
-import { readAuthorizationScope, readIdentityTier, writeAuthorizationScope } from "./identity-mapping.js";
+import { createBearerCredentialLifecycle } from "./identity-bearer-lifecycle.js";
+import { readIdentityTier, writeAuthorizationScope } from "./identity-mapping.js";
+import { readAuthorizationScope } from "./identity-mapping.js";
+// WIN-268 (M4.2) stage 2 — the shared ancestry select lives in its own module so
+// this file and `identity-bearer-lifecycle.ts` do not import each other. The
+// cycle they used to form is recorded, with its run-time symptom, in that file's
+// header.
+import { ENVIRONMENT_ANCESTORS, environmentScopeOf } from "./identity-bearer-scope.js";
 import { toBearerCredentialRecord } from "./identity-rows.js";
 import type { TenancyReader } from "./client.js";
 import type { TenancyTransactions } from "./transaction.js";
@@ -62,34 +68,6 @@ export const UNMINTABLE_BEARER_CREDENTIAL_KIND = "identity.write.unmintable_bear
 
 /** A `mint` whose scope is not one environment. */
 export const UNMINTABLE_BEARER_CREDENTIAL_SCOPE = "identity.write.unmintable_bearer_scope";
-
-const ENVIRONMENT_ANCESTORS = {
-  select: { projectId: true, project: { select: { organizationId: true } } },
-} as const;
-
-interface EnvironmentAncestor {
-  readonly projectId: string;
-  readonly project: { readonly organizationId: string };
-}
-
-function environmentAncestry(environment: EnvironmentAncestor): ScopeAncestry {
-  return {
-    environmentProjectId: environment.projectId,
-    environmentOrganizationId: environment.project.organizationId,
-  };
-}
-
-function environmentScopeOf(
-  environmentId: string,
-  environment: EnvironmentAncestor,
-  table: string,
-) {
-  return readAuthorizationScope(
-    { scopeKind: "ENVIRONMENT", organizationId: null, projectId: null, environmentId },
-    environmentAncestry(environment),
-    table,
-  );
-}
 
 async function readMcpToken(reader: TenancyReader, tokenHash: string) {
   const row = await reader.mcpToken.findUnique({
@@ -236,7 +214,21 @@ async function readEndUserSession(reader: TenancyReader, tokenHash: string) {
 export function createBearerCredentialStore(
   transactions: TenancyTransactions,
 ): BearerCredentialStore {
+  // WIN-268 (M4.2) stage 2 — `list`, `count` and `revoke` live in
+  // `identity-bearer-lifecycle.ts` and are ASSIGNED BY NAME below rather than
+  // spread from this object.
+  //
+  // The split is a file-size one and the reason is measured:
+  // `scripts/arch/max-file-lines.mjs` errors at 500 effective lines and this file
+  // was at 429 before the three arrived. Naming each method means the day the port
+  // gains a fourth, this call fails to compile instead of silently publishing a
+  // store that is missing one — the same convention `PORT_SATISFACTION` proves in
+  // the composition root.
+  const lifecycle = createBearerCredentialLifecycle(transactions);
   return {
+    list: lifecycle.list,
+    count: lifecycle.count,
+    revoke: lifecycle.revoke,
     async findByTokenHash(
       kind: BearerCredentialKind,
       tokenHash: TokenHash,
@@ -345,6 +337,11 @@ export function createBearerCredentialStore(
             // carry one, so the fallback below is unreachable and is written as
             // a refusal rather than as a default.
             tier: requiredPermissionTier(credential),
+            // WRITTEN, not left to `@default(now())`. See the field's own note in
+            // `domain/bearer-token.ts`: the mint's response already reports a
+            // `createdAt`, a listing ORDERS on this column, and before this the
+            // two came from two different hosts' clocks.
+            createdAt: credential.createdAt,
             expiresAt: credential.expiresAt,
           },
         });
@@ -362,6 +359,7 @@ export function createBearerCredentialStore(
             // foreign key. The domain carries it as the principal.
             mcpUserId: credential.principalId,
             scopes: [...credential.permissions],
+            createdAt: credential.createdAt,
             expiresAt: credential.expiresAt,
           },
         });

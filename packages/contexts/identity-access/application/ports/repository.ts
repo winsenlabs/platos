@@ -27,7 +27,11 @@ import type {
   AccessKeyRotationPlan,
   BearerCredentialKind,
   BearerCredentialMint,
+  BearerCredentialQuery,
   BearerCredentialRecord,
+  BearerCredentialRevocation,
+  BearerCredentialSummary,
+  BearerRevocationOutcome,
   EmailAddress,
   EndUserQuery,
   EndUserWithIdentities,
@@ -174,6 +178,49 @@ export interface BearerCredentialStore {
    * domain error, and `IdentityWriteRefused` is the adapter's own type for it.
    */
   mint(credential: BearerCredentialMint): Promise<BearerCredentialRecord>;
+
+  /**
+   * WIN-268 (M4.2) stage 2 — the LISTING, and it returns SUMMARIES.
+   *
+   * `BearerCredentialSummary` is a different type from `BearerCredentialRecord`
+   * and the difference is one field: the summary has no `tokenHash`. A listing
+   * that returned records would hand a caller a verifier for every live
+   * credential in an environment, and the two types are separate — rather than
+   * one type with an optional digest — so that no implementation can leak it by
+   * forgetting to strip it.
+   *
+   * BOTH READS TAKE THE SAME QUERY. A total computed under different filtering
+   * from the page it describes is a pagination control that lies about how much
+   * is left, which is what `EndUserStore` says about its own pair.
+   */
+  list(query: BearerCredentialQuery): Promise<readonly BearerCredentialSummary[]>;
+  /** Rows matching the query IGNORING `limit` and `offset`. */
+  count(query: BearerCredentialQuery): Promise<number>;
+
+  /**
+   * WIN-268 (M4.2) stage 2 — the REVOCATION, and it answers with WHICH of three
+   * things happened.
+   *
+   * A `Promise<boolean>` WOULD NOT DO, and that is the whole reason this method
+   * has a return type at all. Both oracles (`token.service.revoke`,
+   * `mcp-bearer-token.revoke`) return a boolean in which `true` covers "this call
+   * revoked it" AND "it was already revoked", so a caller cannot tell a
+   * revocation it performed from one it did not. Those are different facts about
+   * a credential and a transport needs the difference to answer honestly.
+   *
+   * THE ENVIRONMENT ON THE COMMAND IS A TENANCY CLAUSE, NOT A HINT. An
+   * implementation must match on it, so a credential id belonging to another
+   * environment ends as `absent` rather than as a revocation — and `absent`
+   * deliberately does not distinguish "no such row" from "not yours", because
+   * distinguishing them is an existence oracle across tenants.
+   *
+   * IT IS ATOMIC AND IT IS IDEMPOTENT. Two concurrent revocations of one
+   * credential must produce ONE `revoked` and one `alreadyRevoked`, never two
+   * `revoked`: the guard is a conditional update on the not-yet-revoked row, so
+   * the loser observes the winner's work rather than overwriting the instant and
+   * the actor.
+   */
+  revoke(command: BearerCredentialRevocation): Promise<BearerRevocationOutcome>;
 }
 
 /**

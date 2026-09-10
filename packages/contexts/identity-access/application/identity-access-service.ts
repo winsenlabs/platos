@@ -29,8 +29,10 @@ import {
   issueSessionCookie,
   rotateSessionCookie,
   scopeKindOf,
+  tenantAuthorizationScope,
   type AuthorizationScope,
   type BearerAuthorization,
+  type BearerCredentialSummary,
   type EndUserWithIdentities,
   type OperatorAuthorization,
   type RevokedOperatorSession,
@@ -41,10 +43,15 @@ import type {
   AuthenticateBearerRequest,
   AuthenticateOperatorRequest,
   AuthorizationScopeView,
+  BearerCredentialPageView,
+  BearerCredentialsRequest,
+  BearerCredentialView,
   EndUserPageView,
   IdentityAccessContract,
   IssueSessionCookieRequest,
   ListEndUsersRequest,
+  RevokeBearerCredentialRequest,
+  RevokedBearerCredentialView,
   RevokedOperatorSessionView,
   RevokeOperatorSessionRequest,
   RotateSessionCookieRequest,
@@ -58,6 +65,11 @@ import type {
 } from "../contracts/index.js";
 import { authenticateBearerToken } from "./authenticate-bearer-token.js";
 import { listEndUsers, type EndUserPage } from "./list-end-users.js";
+import {
+  listBearerCredentials,
+  revokeBearerCredential,
+  type BearerCredentialPage,
+} from "./read-bearer-credentials.js";
 import {
   mintBearerCredential,
   type MintBearerCredentialCommand,
@@ -176,6 +188,43 @@ function endUserView(row: EndUserWithIdentities) {
       verifiedAt: identity.verifiedAt,
       disabledAt: identity.disabledAt,
     })),
+  };
+}
+
+/**
+ * Project one credential for the wire.
+ *
+ * THE DIGEST CANNOT BE DROPPED HERE BECAUSE IT WAS NEVER PRESENT.
+ * `BearerCredentialSummary` has no `tokenHash` field, so this projection is a
+ * field-by-field copy rather than a redaction — and that is the point of the
+ * domain modelling the listing row as its own type. A projection that stripped a
+ * secret would be one `...spread` away from stopping.
+ */
+function bearerCredentialView(summary: BearerCredentialSummary): BearerCredentialView {
+  return {
+    credentialId: summary.credentialId,
+    kind: summary.kind,
+    label: summary.label,
+    principalId: summary.principalId,
+    permissions: summary.permissions,
+    permissionTier: summary.permissionTier,
+    subjectId: summary.subjectId,
+    scope: scopeView(summary.scope),
+    createdAt: summary.createdAt,
+    expiresAt: summary.expiresAt,
+    lastUsedAt: summary.lastUsedAt,
+    revokedAt: summary.revokedAt,
+  };
+}
+
+/** Project a page of credentials, keeping the window the use case computed. */
+function bearerCredentialPageView(page: BearerCredentialPage): BearerCredentialPageView {
+  return {
+    credentials: page.credentials.map(bearerCredentialView),
+    total: page.total,
+    limit: page.limit,
+    offset: page.offset,
+    hasMore: page.hasMore,
   };
 }
 
@@ -319,6 +368,46 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
      * re-shaping it here would be a second declaration of the same projection,
      * and the two would drift the first time a field moved.
      */
+    async listBearerCredentials(
+      request: BearerCredentialsRequest,
+    ): Promise<Result<BearerCredentialPageView>> {
+      const page = await listBearerCredentials(ports, {
+        kind: request.kind,
+        // THE TENANT SCOPE IS LIFTED INTO A GRANT, not re-typed. A `TenantScope`
+        // says WHERE; an `AuthorizationScope` says what a credential may reach,
+        // and `tenantAuthorizationScope` derives the kind from the tenant's own
+        // level so the two discriminants cannot disagree.
+        scope: tenantAuthorizationScope(request.scope),
+        subjectId: request.subjectId ?? null,
+        ...(request.limit === undefined ? {} : { limit: request.limit }),
+        ...(request.offset === undefined ? {} : { offset: request.offset }),
+      });
+      return page.ok ? ok(bearerCredentialPageView(page.value)) : page;
+    },
+
+    async revokeBearerCredential(
+      request: RevokeBearerCredentialRequest,
+    ): Promise<Result<RevokedBearerCredentialView>> {
+      const revoked = await revokeBearerCredential(ports, {
+        kind: request.kind,
+        credentialId: request.credentialId,
+        subjectId: request.subjectId ?? null,
+        scope: tenantAuthorizationScope(request.scope),
+        revokedByUserId: request.revokedByUserId,
+      });
+      if (!revoked.ok) return revoked;
+      const outcome = revoked.value;
+      // THE VIEW IS BUILT BY BRANCHING ON THE UNION, not by reading an optional
+      // field off a wider object. `credential` is null EXACTLY when the outcome
+      // is `absent`, and the switch is what makes that invariant the compiler's
+      // rather than a comment's.
+      return ok(
+        outcome.kind === "absent"
+          ? { outcome: "absent", credential: null }
+          : { outcome: outcome.kind, credential: bearerCredentialView(outcome.credential) },
+      );
+    },
+
     async mintBearerCredential(
       command: MintBearerCredentialCommand,
     ): Promise<Result<MintedBearerCredentialView>> {

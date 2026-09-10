@@ -16,7 +16,9 @@
 //   access-key           AccessKey, AccessKeyBootstrapGrant
 //   oauth                OAuthClient/AccessToken/RefreshToken/AuthorizationCode
 //   bearer-token         McpToken, McpBearerToken, PersonalAccessToken,
-//                        EndUserSession
+//                        EndUserSession — reading one and planning a new one
+//   bearer-lifecycle     the LISTING and the REVOCATION of the two of those
+//                        four that have an oracle for either
 //   authorization-scope  the scope every one of them is bounded by
 //   credential           the lifecycle rule all of them share
 //   token                the prefix registry that routes a presented secret
@@ -32,6 +34,7 @@
 
 export * from "./access-key.js";
 export * from "./authorization-scope.js";
+export * from "./bearer-lifecycle.js";
 export * from "./bearer-token.js";
 export * from "./credential.js";
 export * from "./end-user.js";

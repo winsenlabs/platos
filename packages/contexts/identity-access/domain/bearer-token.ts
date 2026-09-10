@@ -213,6 +213,19 @@ export interface BearerCredentialMint {
   readonly subjectId: string | null;
   /** `McpToken.tier`. Null for an `entity-bearer-token`, whose table has no such column. */
   readonly permissionTier: McpPermissionTier | null;
+  /**
+   * WIN-268 (M4.2) stage 2 — THE MINT'S OWN INSTANT, carried rather than left to
+   * the database's `@default(now())`.
+   *
+   * It is here because a LISTING orders on `createdAt` and a mint's response
+   * already claims one. Before this field the response's `createdAt` was the
+   * application clock's instant and the row's was the database server's, so the
+   * two could differ by any clock skew between two hosts — and every assertion
+   * that they agreed was reading the same in-process value twice. Writing it
+   * explicitly makes the value a caller was handed the value the row bears, and
+   * the listing's ordering therefore reproducible from the mint.
+   */
+  readonly createdAt: Date;
   readonly expiresAt: Date;
 }
 
@@ -314,6 +327,7 @@ export function planBearerCredential(
     principalId: input.principalId,
     subjectId: input.subjectId,
     permissionTier: input.permissionTier,
+    createdAt: input.now,
     expiresAt: new Date(input.now.getTime() + ttl * 1000),
   });
 }
