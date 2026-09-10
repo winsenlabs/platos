@@ -228,6 +228,23 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL integration suite for the V1 REST surface. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
   }),
   Object.freeze({
+    // WIN-272 (M4.6) — the stream-lane suite. The identity-REST entry above with
+    // an SSE reader on the end, and it reads the environment in exactly the same
+    // ONE place and for the same reason: `prisma migrate deploy` is a spawned
+    // process and needs PATH.
+    //
+    // THE SEVEN CONFIGURATION VARIABLES IT SETS ARE NOT READS, for the reason its
+    // predecessor's note gives, and this suite has one more thing that would have
+    // shown up here if it had reached for the environment: the SHORT SESSION whose
+    // window closes during a stream is computed from `Date.now()` inside the case
+    // that spends it, not from a variable an operator could set — a knob for it
+    // would have been a knob for how long any stream may live.
+    path: "apps/core-api/src/composition/stream-lane.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL and real-Redis integration suite for the V1 stream lane. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+  }),
+  Object.freeze({
     // WIN-268 (M4.2) P1 — the MCP token mints' real-concurrency suite. The THIRD
     // entry of this exact shape, and it earns the door for exactly the same
     // reason as the two above: `prisma migrate deploy` is a spawned process and
@@ -583,8 +600,20 @@ export const VIOLATION_CODES = Object.freeze({
  * kernel files could not have read one.
  *
  * Ten files landed and no door was opened.
+ *
+ * AND SEVEN MORE, 1673 -> 1680, when the same tranche landed its transport half:
+ * three modules and three suites under `apps/core-api/src/transports/ws/`, plus the
+ * stream-lane integration suite under `src/composition/`. SIX of the seven read
+ * nothing; the seventh is that integration suite, which is DECLARED above with ONE
+ * read for the reason its two predecessors are — `prisma migrate deploy` is a
+ * spawned process and needs PATH. The transport itself takes its heartbeat, its
+ * drain deadline and its frame ceiling as CONSTRUCTION OPTIONS with defaults, so
+ * an install that wanted to tune them would go through `config/`, which is the one
+ * place in this deployable entitled to read a variable.
+ *
+ * Seven more files landed and ONE declared door was opened.
  */
-export const EXPECTED_FILE_COUNT = 1673;
+export const EXPECTED_FILE_COUNT = 1680;
 
 function listSourceFiles(root) {
   const found = [];

@@ -1325,7 +1325,23 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // — added by this tranche — is what makes that a rule rather than a habit.
     // The violation list below stays empty while the census moves, which is the
     // same shape every adoption has had. 1644 + 19 = 1663.
-    assert.equal(result.fileCount, 1663, "the generated V1 source census must stay exact");
+    //
+    // WIN-272 (M4.6) 1663 -> 1680. SEVENTEEN files: SEVEN net-new under
+    // `packages/adapters/redis-streams/src` (the directory held two generated
+    // placeholders and now holds nine, so the NET is seven), THREE under
+    // `packages/kernel/src` (the stream envelope, its suite and the twelfth kernel
+    // port), and SEVEN under `apps/core-api/src` (the stream lane's three transport
+    // modules, its three suites, and the integration suite in `composition/`).
+    // NOT ONE crosses a boundary this gate names, and the transport's case is the
+    // interesting one: rule (C8) forbids a `transports/**` file from reading
+    // `app.adapters` at all, which is why the PRODUCER half of the stream suite is
+    // in `composition/` and not beside the controller it drives. The violation list
+    // below stays empty while the census moves. 1663 + 17 = 1680.
+    //
+    // AND `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1680 off a
+    // second, independent scan, which is what makes this pin worth having: a branch
+    // whose files were double-counted here would disagree with that one.
+    assert.equal(result.fileCount, 1680, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1375,7 +1391,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // the admitSignedDelivery use case, the inbound conformance harness, the
       // delivery-disposition rule and its suite. 14 + 5 = 19, and NOTHING under
       // `apps/`.
-      14 + 5);
+      14 + 5 +
+      // WIN-272 (M4.6): redis-streams 7 NET (9 real files less the 2 generated
+      // placeholders they replace), kernel 3 (`vo/stream-frame.ts`, its suite and
+      // `ports/stream-journal.ts`), transports 3 (`stream-errors.ts`, `sse.ts`,
+      // `streams.controller.ts`), transports-suites 3 (the three the 495-line split
+      // produced) and composition 1 (the real-socket integration suite).
+      // 7 + 3 + 3 + 3 + 1 = 17, and this is the first tranche to move BOTH the
+      // adapters term and the two app terms in one sum.
+      7 + 3 + 3 + 3 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

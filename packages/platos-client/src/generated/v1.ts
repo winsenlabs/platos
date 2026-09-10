@@ -398,6 +398,12 @@ export const WIRE_ERROR_CODES = [
   "SKILLS_SOURCE_PROTOCOL_UNSUPPORTED",
   "SKILLS_SOURCE_TOO_LARGE",
   "SKILLS_SOURCE_URL_INVALID",
+  "STREAM_CREDENTIAL_EXPIRED",
+  "STREAM_CURSOR_EXPIRED",
+  "STREAM_CURSOR_UNREADABLE",
+  "STREAM_FRAME_TOO_LARGE",
+  "STREAM_JOURNAL_UNAVAILABLE",
+  "STREAM_NOT_FOUND",
   "TENANCY_ACCESS_KEY_GENERATION_SUPERSEDED",
   "TENANCY_ARCHIVED",
   "TENANCY_AUTHORIZATION_FORGED",
@@ -684,6 +690,14 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     idempotency: "not-applicable",
   },
   {
+    operationId: "get__api_v1_environments_by_environmentId_streams_by_streamId",
+    method: "GET",
+    template: "/api/v1/environments/:environmentId/streams/:streamId",
+    pathParameters: ["environmentId", "streamId"],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
     operationId: "get__api_v1_identity_session",
     method: "GET",
     template: "/api/v1/identity/session",
@@ -831,6 +845,21 @@ export class EnvironmentEndUsersV1Api {
 
 }
 
+export class EnvironmentStreamsV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** GET /api/v1/environments/:environmentId/streams/:streamId */
+  async read(environmentId: string, streamId: string): Promise<void> {
+    return this.transport.send<void>({
+      operation: operation("get__api_v1_environments_by_environmentId_streams_by_streamId"),
+      path: fill("/api/v1/environments/:environmentId/streams/:streamId", { environmentId, streamId }),
+      body: undefined,
+      query: undefined,
+    });
+  }
+
+}
+
 export class IdentitySessionV1Api {
   constructor(private readonly transport: V1Transport) {}
 
@@ -930,6 +959,7 @@ export class McpPlatformTokensV1Api {
 export class V1Api {
   readonly bffSession: BffSessionV1Api;
   readonly environmentEndUsers: EnvironmentEndUsersV1Api;
+  readonly environmentStreams: EnvironmentStreamsV1Api;
   readonly identitySession: IdentitySessionV1Api;
   readonly organizations: OrganizationsV1Api;
   readonly projects: ProjectsV1Api;
@@ -939,6 +969,7 @@ export class V1Api {
   constructor(transport: V1Transport) {
     this.bffSession = new BffSessionV1Api(transport);
     this.environmentEndUsers = new EnvironmentEndUsersV1Api(transport);
+    this.environmentStreams = new EnvironmentStreamsV1Api(transport);
     this.identitySession = new IdentitySessionV1Api(transport);
     this.organizations = new OrganizationsV1Api(transport);
     this.projects = new ProjectsV1Api(transport);

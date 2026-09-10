@@ -338,6 +338,23 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   "packages/adapters/redis-ratelimit": {
     ioredis: "^5.6.1",
   },
+  // WIN-272 (M4.6). The THIRD and LAST directory to declare the Redis client, and
+  // with it every home ADR M0.3 §4 gives `ioredis` is filled. It is a widening of
+  // the two entries above on exactly their argument: §4 lists THREE `redis-*`
+  // directories, each with "one namespaced keyspace, one owner", so a containment
+  // rule naming one home would refuse the other two — and what §4 asks for is one
+  // CLIENT per directory, which is what `src/client.ts` in each of them is. This
+  // one holds `platos:stream:v1:` and `platos:bus:v1:`, and it is the only one of
+  // the three whose object also holds SUBSCRIPTIONS, which is why its closer stops
+  // poll loops before it closes the socket. Range byte-identical to the two above
+  // and to `apps/agent`'s, so the lockfile gained seven lines and no new
+  // resolution.
+  //
+  // `@testcontainers/redis` is deliberately NOT here, for the reason the two
+  // entries above state: it is a devDependency and this axis is about what SHIPS.
+  "packages/adapters/redis-streams": {
+    ioredis: "^5.6.1",
+  },
   // WIN-271 (M4.5). The chat SDK's Slack adapter, declared in the ONE directory
   // ADR M0.3 §4 gives it — the same second half of the cutting rule every entry
   // around it states. `chat-sdk-only` in scripts/arch/boundary-rules.mjs says

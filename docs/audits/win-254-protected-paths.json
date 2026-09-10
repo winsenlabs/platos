@@ -1043,17 +1043,17 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "e0b0a97f26f9a24748d83de3e8c158021ca1852d8e4345ec3e1b6ea2b0516c1a"
+      "sha256": "7fdcc3a97870b4a9beba2bd9cf9e2327392c54b5a21446fd466dfa70dd175c2d"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "385c7e09d660096a2f0543c3b8951c39938ccca862d589dc598d217885965be0"
+      "sha256": "7dcb8a40a9bbd213c1f4d4532e18ae78fa34db281435f37947c0e435f17dd767"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "mode": "100644",
-      "sha256": "6416924763f1172075de88d96f3756017d26ecf0211e1d9788e83d4670b243f1"
+      "sha256": "a8a6580440a2fd150fd0e6ba3351e0e9f9d43183d6fa1012802d89fe113f054f"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
@@ -1088,7 +1088,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "478e8f82203ed804db784c47ad77531678063d5c8e7bf31a0e739317ead5cfc6"
+      "sha256": "73a09d280b8c8bedaf50afe8d362eb33870e230497e87dea024b8fa948ece11e"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "1cbfdee1f114fbd1d2e5079ab63e958c1580f1f02874c9fc0937b90103f3a0ca"
+      "sha256": "4c99d95de14a9e99ee9d367ec24ff0dfb51455073b064179ee9bdeb034368c6c"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3518,7 +3518,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "67cb99962cfb14e6fdf149bb10d7d21caae8a63619aed385046b036441124baf"
+      "sha256": "b7dd9daf9c5eea8f3b9894674fc6ff2ce66724cdab86d5f71a1ae621f5998c7e"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3958,7 +3958,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "545921a5f7a81ec5bb59155285ce80e4049eaff29aa31a6f04f187bc5bc383d7"
+      "sha256": "7575b2ea1a8172487287bdc18af8e306cf8f5a05ae05ac96ffa5b4b47b9751b3"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
