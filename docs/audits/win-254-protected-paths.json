@@ -848,7 +848,7 @@
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "771e495a05bbcb8f64727ed34af327d2326e3efd702256f62b29a0b63f805e80"
+      "sha256": "eafad1639e725c53c96b8b1822081e6264b815178836fb53e86ec0c02d732844"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "cd33c406abdc9594d4bebd354c98671bf96be5ab8aa7aed42b7dafa15f822324"
+      "sha256": "22e91ddfd27b7109e814fd8f76c2363135146d694c4bb6a6312f95b51facbca0"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "c92fff6b30c185776a11768fef14a5a9080c76cf3b01a399afd2c099ea59865a"
+      "sha256": "a5ab47b7dc98e687abda9f66a3c72309b61167352228436dccff9a44ffe0acbd"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1078,12 +1078,12 @@
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "606989ae6fa797a63d0a37570a8886ec1af5c13cec67d129e7d67328e877b0ee"
+      "sha256": "433b8011c40abc5413efd0bebade968b80740d1e34ee4372e1c8c6ac1dc4c114"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "935b623b84207c84a5f72307ac5e8ec5356cdce403a615b95a8e23a4578902ae"
+      "sha256": "878eaf90ee49bf38d848680d32d27267c81447a8233f37b880aa0d5aad7b9b2b"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "b01fea00c479bae8f27fcc7533817e2863d45ba242c42549d75cfdaf9121060a"
+      "sha256": "4d23f61659ca44b8a8dc78f917d9a18c1a3991b78a57328cac95c70d3056f087"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3518,7 +3518,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "ac4a08ddf2d22a31662a7d6f79cd4cbaf92af1c14bd1f250c6014e0994f58775"
+      "sha256": "6f7c0b7912d1379751bcad11b8499fb5cb76409876df61fd1e73ce4925da86bf"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3958,7 +3958,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "ba4658a720efb6a5b0e81829cc6f4aefc1fa204daee719dcfed308e63f1b9ed4"
+      "sha256": "f22a1dffbe409695f2bd2c01ba04d7c4f727f999d46170b7b395dc2e8fc94bec"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
