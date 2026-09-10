@@ -24,16 +24,16 @@
     "unscannedControllers": "the exclusion list is joined to the tree in BOTH directions. Every *.controller.ts inside a scanned application's src/ must be under a declared scan root or named in PROCESS_EDGE_EXCLUSIONS; anything else fails as UNSCANNED ROUTE-BEARING CONTROLLER. Without this half a controller can be accounted for by nothing at all, which is what apps/core-api/src/http/not-found.controller.ts was until WIN-267 W3."
   },
   "totals": {
-    "controllers": 36,
-    "independentUniqueRoutes": 293,
+    "controllers": 37,
+    "independentUniqueRoutes": 296,
     "dualMountAliasOps": 19,
-    "manifestOps": 312,
+    "manifestOps": 315,
     "crossRootBindings": 2,
-    "uniqueOperations": 310,
+    "uniqueOperations": 313,
     "crossRootOperatorBindings": 2,
-    "uniqueOperatorOperations": 128,
+    "uniqueOperatorOperations": 131,
     "independentOperatorFloor": 103,
-    "manifestOperator": 130,
+    "manifestOperator": 133,
     "scanRoots": [
       {
         "id": "agent",
@@ -52,11 +52,11 @@
         "dir": "apps/core-api/src/transports",
         "why": "WIN-267 (M4.1) publishes the canonical V1 REST surface here. It carries no controller yet; the root is declared NOW so the FIRST route to land is counted by this census rather than discovered by a reader months later.",
         "present": true,
-        "sourceControllers": 8,
-        "sourceDecorators": 11,
-        "expandedOperations": 11,
-        "manifestOperations": 11,
-        "manifestControllers": 8,
+        "sourceControllers": 9,
+        "sourceDecorators": 14,
+        "expandedOperations": 14,
+        "manifestOperations": 14,
+        "manifestControllers": 9,
         "ok": true
       }
     ]
@@ -358,6 +358,18 @@
       "operatorOk": true
     },
     {
+      "controller": "McpOrganizationPoliciesController",
+      "file": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+      "scanRoot": "core-api-transports",
+      "independentDecorators": 3,
+      "mountMultiplier": 1,
+      "manifestOps": 3,
+      "independentOperatorFloor": 0,
+      "manifestOperator": 3,
+      "routeOk": true,
+      "operatorOk": true
+    },
+    {
       "controller": "McpPlatformController",
       "file": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
       "scanRoot": "agent",
@@ -528,5 +540,5 @@
   ],
   "ok": true,
   "failures": [],
-  "sourceDigest": "e056a024f872466654462bd957899f71d7b1d77eeb8a6e8a40f2fc4005c52c7c"
+  "sourceDigest": "a994e8489bd9c80d9f0de48677a718ce58ff9a5fe21c95646e41ab25923be678"
 }

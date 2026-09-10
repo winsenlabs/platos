@@ -16,18 +16,18 @@
   ],
   "reconciledAgainst": {
     "source": "docs/audits/M0.9-rest-census-independent.json",
-    "enumeratedRestCells": 310,
-    "enumeratedOperatorCells": 128,
-    "independentUniqueRoutes": 293,
+    "enumeratedRestCells": 313,
+    "enumeratedOperatorCells": 131,
+    "independentUniqueRoutes": 296,
     "dualMountAliasOps": 19,
-    "independentManifestOps": 312,
+    "independentManifestOps": 315,
     "independentCrossRootBindings": 2,
-    "independentUniqueOperations": 310,
+    "independentUniqueOperations": 313,
     "independentCrossRootOperatorBindings": 2,
-    "independentUniqueOperatorOperations": 128,
+    "independentUniqueOperatorOperations": 131,
     "independentOperatorFloor": 103,
-    "independentManifestOperator": 130,
-    "controllers": 36,
+    "independentManifestOperator": 133,
+    "controllers": 37,
     "agrees": true
   },
   "restScanRoots": {
@@ -44,21 +44,21 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "enumeratedOperations": 11,
-        "independentOperations": 11,
-        "independentSourceControllers": 8,
-        "independentSourceDecorators": 11,
+        "enumeratedOperations": 14,
+        "independentOperations": 14,
+        "independentSourceControllers": 9,
+        "independentSourceDecorators": 14,
         "agrees": true
       }
     ],
-    "total": 312
+    "total": 315
   },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {
-    "cells": 784,
+    "cells": 787,
     "covered": 2,
-    "uncovered": 782,
+    "uncovered": 785,
     "bySurface": {
       "bff": {
         "total": 117,
@@ -71,9 +71,9 @@
         "uncovered": 202
       },
       "rest": {
-        "total": 310,
+        "total": 313,
         "covered": 0,
-        "uncovered": 310
+        "uncovered": 313
       },
       "screen": {
         "total": 47,
@@ -97,7 +97,7 @@
       }
     }
   },
-  "digest": "9d49c774585eb9dc74bca8163696577f9046f0a9f0d2571c1f5d6f71de8c36b5",
+  "digest": "a19f54ddd007b992d9482c2cb633cbd69bf3034200f73f1fea3a100cb4062206",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -343,6 +343,17 @@
     },
     {
       "id": "DELETE /mcp/entity/:entityId/tokens/:tokenId",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "DELETE /mcp/platform/environments/:environmentId/policies/:policyId",
       "surface": "rest",
       "owner": "tenancy",
       "requiresOperator": true,
@@ -1775,6 +1786,17 @@
       "id": "GET /mcp/platform/catalog",
       "surface": "rest",
       "owner": "tools",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "GET /mcp/platform/environments/:environmentId/policies",
+      "surface": "rest",
+      "owner": "tenancy",
       "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
@@ -3503,6 +3525,17 @@
       "surface": "rest",
       "owner": "agents",
       "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "PUT /mcp/platform/environments/:environmentId/policies",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",

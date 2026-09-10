@@ -1,0 +1,167 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The guard ledger for WIN-268 (M4.2)'s tier-2 MCP policy surface — the three",
+    "routes that replaced `permission-gateway.service.ts`'s unreachable CRUD",
+    "helpers. One entry per refusal, carrying the file it lives in",
+    "(repository-relative), the EXACT text that implements it (`from`), the edit",
+    "that removes it (`to`), and the NAMED cases that were SEEN to go red",
+    "(`kills`).",
+    "",
+    "WHY THIS SWEEP EXISTS RATHER THAN A REVIEW. The two cases in",
+    "`apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts`",
+    "that covered the deleted helpers went away with them, and a guarantee deleted",
+    "along with its implementation has not been kept. So the question is not 'does",
+    "the new surface work' — it is 'would the new suite NOTICE if each guard were",
+    "gone', and the only way to answer that is to remove them one at a time.",
+    "",
+    "A SEPARATE FILE FROM `mutations.json` (WIN-260's shutdown ledger),",
+    "`mutations-config.json`, `mutations-win267-t3.json` and",
+    "`mutations-win267-g3.json`, for the reason the T3 ledger states: appending",
+    "would make one file whose entries only make sense read against several",
+    "different dimensions.",
+    "",
+    "`file` is REPOSITORY-relative, because this dimension's guards live in FOUR",
+    "homes — apps/core-api/src/transports/mcp/, packages/contexts/tenancy/domain/,",
+    "packages/contexts/tools/domain/ and packages/adapters/postgres-tenancy/src/ —",
+    "and a package-relative path would resolve in one of them and not the others."
+  ],
+  "procedure": [
+    "PROVE THE SUITE GREEN FIRST, then replace an entry's `from` with its `to` in",
+    "the named file, rebuild if the file is outside apps/core-api, run the suite,",
+    "and confirm a NAMED case goes red — not a module-load failure, which is",
+    "VACUOUS and not a kill. Then revert, rebuild, and confirm green.",
+    "",
+    "  suite  pnpm --filter @platos/core-api exec vitest run \\",
+    "           src/composition/mcp-organization-policy.integration.test.ts \\",
+    "           --no-file-parallelism",
+    "",
+    "A REBUILD IS MANDATORY FOR EVERY ENTRY OUTSIDE `apps/core-api`. Workspace",
+    "packages resolve through their `exports` map to `dist/`, so an edit to",
+    "`packages/**/src` is invisible to this suite until `pnpm turbo run build",
+    "--filter @platos/core-api...` has run. A sweep that forgets reports every",
+    "such entry as SURVIVING, which is the vacuity this programme has already paid",
+    "for once — and it is silent, because a stale dist produces a green run.",
+    "",
+    "THE SUITE NEEDS A REAL POSTGRESQL AND NO DOCKER. It takes",
+    "`PLATOS_POSTGRES_INTEGRATION_DATABASE_URL` when one is set and starts a",
+    "container when it is not; this sweep was run against a native Homebrew",
+    "`postgresql@17` on a non-default port with the canonical migrations applied by",
+    "`prisma migrate deploy`, and `PLATOS_PSQL_BINARY` pointed at that install's",
+    "`psql` so the second reader could reach it.",
+    "",
+    "EVERY `to` BELOW COMPILES. A mutation that does not type-check is refused by",
+    "the build rather than measured by the suite, and 'it did not compile' is not",
+    "evidence about a guard."
+  ],
+  "sweep": {
+    "head": "the tree of the commit that carries this file, on tejas/m4-finish (base v1 @ 0a4ffbea)",
+    "entries": 9,
+    "killed": 8,
+    "survived": 1,
+    "vacuous": 0
+  },
+  "mutations": [
+    {
+      "name": "P01 the write asks tenancy for `metadata` instead of `secret:mutate`",
+      "file": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+      "from": "    const authorization = await authorizeEnvironment(app, operator, environmentId, \"secret:mutate\");\n    const saved = await requireTools(app).setOrganizationPolicy({",
+      "to": "    const authorization = await authorizeEnvironment(app, operator, environmentId);\n    const saved = await requireTools(app).setOrganizationPolicy({",
+      "outcome": "killed",
+      "note": "THE MOST INFORMATIVE ENTRY IN THE SWEEP, because it goes red at BOTH ends. The EDITOR case fails as expected — gate 4 no longer refuses, so a project EDITOR could write an organization-wide policy. But the POSITIVE CONTROL fails too, and for the opposite reason: `setOrganizationPolicy`'s own `requireAccess(grant, \"secret:mutate\")` refuses a `metadata` grant with `TOOLS_SCOPE_MISMATCH`, so even the OWNER is turned away. Two independent gates on one decision, and this mutation is the proof that neither of them is decoration.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > POSITIVE CONTROL: alpha's owner writes, lists, deletes — and the row is really in the database",
+        "the tier-2 MCP policy surface on ToolsContract > GATE 4: alpha's EDITOR may READ the policy set and may not WRITE it",
+        "the tier-2 MCP policy surface on ToolsContract > `require_approval` IS REFUSED RATHER THAN ROUNDED, and a 201-character pattern is the context's judgement"
+      ]
+    },
+    {
+      "name": "P02 the authorization mint register degrades into a shape check",
+      "file": "packages/contexts/tenancy/domain/authorization.ts",
+      "from": "  return issuedAuthorizations.has(value) && Object.isFrozen(value);",
+      "to": "  return Object.isFrozen(value);",
+      "outcome": "killed",
+      "note": "THE FORGED TRIPLE, at the layer that makes it unconstructible. Drop the WeakSet and a frozen object literal carrying `{ organizationId: beta, projectId: alpha, environmentId: alpha }` becomes an authorization — three real ids that do not form a chain, accepted. It is the exact defect the legacy tier-2 read had, arriving by a different route. The second case it kills is the one that matters most: a FROZEN STRUCTURAL COPY of a genuine grant with its scope swapped passes every field-level predicate anybody could write, so `Object.isFrozen` alone is not a weaker guard, it is no guard.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > THE FORGED TRIPLE cannot be offered as an authorization: the mint register refuses it",
+        "the tier-2 MCP policy surface on ToolsContract > A FROZEN STRUCTURAL COPY of a genuine grant is refused too, which a shape check would pass"
+      ]
+    },
+    {
+      "name": "P03 the store's ancestry resolve drops its organization half",
+      "file": "packages/adapters/postgres-tenancy/src/tools-scope.ts",
+      "from": "  if (\n    resolved.projectId !== scope.projectId ||\n    resolved.organizationId !== scope.organizationId\n  ) {",
+      "to": "  if (resolved.projectId !== scope.projectId) {",
+      "outcome": "killed",
+      "note": "THE INNER LAYER, ON ITS OWN TERMS. `{ beta.org, alpha.project, alpha.env }` has a MATCHING project and a wrong organization, so the organization half is the only comparison that can refuse it — which is why this mutation is the one that separates a real join from a half-written one. The same forged triple that P02 admits at the mint register is admitted here at the store, and a tranche that only tested one of the two would not know which layer was carrying the guarantee.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > THE STORE REFUSES A FORGED TRIPLE ON ITS OWN TERMS, with a reason distinct from a missing environment"
+      ]
+    },
+    {
+      "name": "P04 an environment that does not exist is admitted instead of refused",
+      "file": "packages/adapters/postgres-tenancy/src/tools-scope.ts",
+      "from": "  if (resolved === undefined) {\n    return err(repositoryUnavailable(`${TOOLS_SCOPE_UNKNOWN}:${operation}`));\n  }",
+      "to": "  if (resolved === undefined) {\n    return ok(true);\n  }",
+      "outcome": "killed",
+      "note": "A DIFFERENT CAUSE FROM P03 AND IT MUST NOT SHARE ITS NAME. `out_of_scope` and `unknown_environment` are two reasons because an operator reading a log has to tell a forged ancestry from a deleted environment without reading a message. This mutation makes a deleted environment answerable, and the case fails on the reason rather than on the boolean — which is what keeps the two codes from collapsing into one over time.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > THE STORE REFUSES A FORGED TRIPLE ON ITS OWN TERMS, with a reason distinct from a missing environment"
+      ]
+    },
+    {
+      "name": "P05 the policy listing loses its tenant clause",
+      "file": "packages/adapters/postgres-tenancy/src/tools-policies.ts",
+      "from": "        const rows = await transactions.reader().organizationMcpPolicy.findMany({\n          where: { organizationId: scope.organizationId },\n          orderBy: { pattern: \"asc\" },\n        });",
+      "to": "        const rows = await transactions.reader().organizationMcpPolicy.findMany({\n          orderBy: { pattern: \"asc\" },\n        });",
+      "outcome": "killed",
+      "note": "WHAT TURNS THE 'COHERENT FOREIGN SCOPE' CASE FROM A DISCLAIMER INTO A DETECTOR. That case exists to say out loud that beta's own empty answer proves nothing about a guard — and under this mutation it is the case that fails, because beta's coherent request now returns ALPHA's policy. Both halves of the read claim go red together, which is the point: the assertion that beta sees nothing is only worth something while somebody has checked it can see something.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > POSITIVE CONTROL: alpha's owner writes, lists, deletes — and the row is really in the database",
+        "the tier-2 MCP policy surface on ToolsContract > A COHERENT FOREIGN SCOPE PROVES NOTHING, and this case exists to say so"
+      ]
+    },
+    {
+      "name": "P06 `require_approval` is rounded to ALLOW instead of refused",
+      "file": "packages/contexts/tools/domain/permission.ts",
+      "from": "  if (state === \"auto_allow\") return \"ALLOW\";\n  return null;",
+      "to": "  return \"ALLOW\";",
+      "outcome": "killed",
+      "note": "THE TWO-VALUED COLUMN AND THE THREE-VALUED STATE SPACE. An operator asking their organization to approve every mutation would silently get `auto_allow` and believe otherwise — a permission that reads as granted and was never asked for. `organization-policy.ts` refuses it loudly and names the state; this mutation is the reason that refusal is a behaviour and not a comment.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > `require_approval` IS REFUSED RATHER THAN ROUNDED, and a 201-character pattern is the context's judgement"
+      ]
+    },
+    {
+      "name": "P07 the LISTING swallows the contract's refusal into an empty page",
+      "file": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+      "from": "    const listed = await requireTools(app).listOrganizationPolicies({ authorization });\n    if (!listed.ok) raise(listed.error);\n    return collectionEnvelope(wholeCollection(listed.value.map(organizationPolicyResource)));",
+      "to": "    const listed = await requireTools(app).listOrganizationPolicies({ authorization });\n    if (!listed.ok) return collectionEnvelope(wholeCollection([]));\n    return collectionEnvelope(wholeCollection(listed.value.map(organizationPolicyResource)));",
+      "outcome": "survived",
+      "note": "RECORDED AS SURVIVING RATHER THAN QUIETLY DROPPED, AND THE REASON IS REACHABILITY RATHER THAN A MISSING CASE. `rest/operator.ts` calls this exact defect out — 'a listing whose authorization failed and which answered 200 {\"data\":[]} would tell an operator that an environment they cannot see is EMPTY' — and the suite does assert the refusal is a 403 with an empty `data`. What it cannot do is reach the CONTRACT's own refusal on this route: `authorizeEnvironment` raises first for every authorization failure, `verifyAuthorization` cannot fail on a grant tenancy just minted, and the GET has no `requireAccess` because it asks for `metadata`. So once control reaches this line the only remaining `!ok` is a STORE outage, which this suite does not simulate. The same is true of the DELETE's `raise`. This is a guard against an infrastructure failure, held by review and by the shape of its two siblings rather than by a case here, and the honest record of that is this entry.",
+      "kills": []
+    },
+    {
+      "name": "P08 the WRITE swallows the contract's refusal and fabricates a 200",
+      "file": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+      "from": "    if (!saved.ok) raise(saved.error);\n    return itemEnvelope(organizationPolicyResource(saved.value));",
+      "to": "    if (!saved.ok) return itemEnvelope(organizationPolicyResource({ organizationMcpPolicyId: \"\", pattern: body.pattern, state: body.state, createdAt: new Date(0), updatedAt: new Date(0) }));\n    return itemEnvelope(organizationPolicyResource(saved.value));",
+      "outcome": "killed",
+      "note": "THE SAME MUTATION AS P07 ON THE ROUTE WHERE IT IS REACHABLE, which is why both are in the ledger. The write has two contract refusals a caller can actually provoke — a 201-character pattern and `require_approval` — so a swallow here answers `200` with the policy the caller asked for and NO ROW IN THE DATABASE: the worst shape a failure can take, because the client believes it landed. P07 and P08 together say exactly which of the three routes this class of defect is currently detectable on.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > `require_approval` IS REFUSED RATHER THAN ROUNDED, and a 201-character pattern is the context's judgement"
+      ]
+    },
+    {
+      "name": "P09 the delete loses its tenant clause and its count",
+      "file": "packages/adapters/postgres-tenancy/src/tools-policies.ts",
+      "from": "          client.organizationMcpPolicy.deleteMany({\n            where: { id: organizationMcpPolicyId, organizationId: scope.organizationId },\n          }),\n        );\n        return ok(removed.count > 0);",
+      "to": "          client.organizationMcpPolicy.deleteMany({\n            where: { id: organizationMcpPolicyId },\n          }),\n        );\n        return ok(true);",
+      "outcome": "killed",
+      "note": "TWO DEFECTS IN ONE EDIT, and the adapter's own note names both: 'delete by primary key alone would let one organization retire another's policy by guessing a uuid, and would raise rather than return false for a row that was never there.' The `ok(true)` half is what the suite catches — the second delete of an already-deleted id answers `true`, so a caller cannot tell a delete that happened from one that did not. An empty result standing in for a fact is the same class of defect as an empty page standing in for a refusal.",
+      "kills": [
+        "the tier-2 MCP policy surface on ToolsContract > POSITIVE CONTROL: alpha's owner writes, lists, deletes — and the row is really in the database"
+      ]
+    }
+  ]
+}
