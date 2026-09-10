@@ -4838,8 +4838,8 @@
   "integration": {
     "lockfileSha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4",
     "vocabularySha256": "9ea5c2dff2c4f95c163aded7e8c56af2c66ebd824569bcdbb2b0770d2b313d23",
-    "ledgerRulesSha256": "09a5dca09c99a215a2d8e2ecccd41526561e2ce14bb98a3aebaf7ef2c4442bfb",
-    "reachabilitySha256": "527512865cc7d16379247f4eb8b08eb8306af2b8785b54d779b6f2d8fd841328",
+    "ledgerRulesSha256": "7cc224fce3daaec0459316a941ab90c897e9c3dbdacba15949b81868b00910d9",
+    "reachabilitySha256": "03526ae2f2c5fc3f2bfb89e259ccbe4a8ab6d36abe52b94830ba1da323a9c111",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0
