@@ -28,21 +28,26 @@ concurrency:
 jobs:
   typecheck:
     runs-on: ubuntu-latest
-    # MEASURED, 2026-09-10. This budget was set when the job was smaller and the
-    # job outgrew it: on `v1` itself it runs 15m07s (run 34383585684, 7e1243fc),
-    # 17m16s and 17m18s against a 20-minute cap, so the headroom was under three
-    # minutes. The M4 integration adds roughly thirty gate commands plus
-    # `build:v1` and the strict agent build to the same job, and the first run of
-    # it was CANCELLED at 20m17s -- on the LAST run step, with all twenty-five
-    # earlier steps green. Nothing failed; the job ran out of wall clock.
+    # MEASURED, 2026-09-10, AND THE FIRST EXPLANATION WAS WRONG -- so both are
+    # here, because the corrected one is the reason the number moved.
     #
-    # Raised to 35 rather than to 25, because a cap a minute above the measurement
-    # is a cap that goes red on a slow runner and teaches everyone to re-run CI
-    # until it passes. 35 is what `postgres-memory-evidence` already uses, and it
-    # leaves the same margin the 120-second budget in
-    # `clean-prisma-delegates.test.ts` was widened to leave, for the reason
-    # written there: "a gate that goes red on wall-clock is a gate someone
-    # deletes".
+    # On `v1` this job runs 15m07s (run 34383585684, 7e1243fc), 17m16s and 17m18s
+    # against a 20-minute cap. A run of this branch was then CANCELLED at 20m17s,
+    # on the LAST run step, with all twenty-five earlier steps green -- nothing
+    # failed, it ran out of wall clock. The obvious reading was "the work grew past
+    # the budget", and it is NOT what happened: re-running the SAME work completed
+    # in 16m28s and passed.
+    #
+    # So the real finding is VARIANCE AGAINST A THIN MARGIN. Two hosted runs of
+    # identical work came in 3m49s apart -- about 24% -- and a cap under three
+    # minutes above the mean cannot absorb that. A budget that variance tips does
+    # not fail loudly on a real regression; it produces a red that everybody learns
+    # to re-run, which is worse than no gate at all.
+    #
+    # Raised to 35, which is roughly twice the observed spread above the mean and
+    # is what `postgres-memory-evidence` already uses. The reasoning is the tree's
+    # own, from the widened budget in `clean-prisma-delegates.test.ts`: "a gate that
+    # goes red on wall-clock is a gate someone deletes".
     timeout-minutes: 35
     services:
       win290-redis:
@@ -375,14 +380,16 @@ jobs:
     runs-on: ubuntu-latest
     # MEASURED, 2026-09-10, and this one was ALREADY on the edge on `v1`: 24m18s
     # (run 34383585684, 7e1243fc), 24m18s and 22m54s against a 25-minute cap.
-    # FORTY-TWO SECONDS of headroom on the base commit, before this branch added
-    # anything. The job builds eighteen context closures and then runs three
-    # real-container integration suites, so its cost grows with every context
-    # adopted -- which is the direction the whole programme is going.
+    # FORTY-TWO SECONDS of margin on the base commit, before this branch added
+    # anything -- far less than the run-to-run variance measured on `typecheck`
+    # above, which is the same argument in a sharper form. The job builds eighteen
+    # context closures and then runs three real-container integration suites, so
+    # its cost also grows with every context adopted, which is the direction the
+    # whole programme is going.
     #
-    # Raised to 40 on the same reasoning as `typecheck` above. This is not a
-    # regression this branch introduced; it is a budget that was one tranche away
-    # from expiring whoever spent it.
+    # Raised to 40 on the same reasoning as `typecheck`. This is not a regression
+    # this branch introduced; it is a budget that was one slow runner away from
+    # expiring whoever spent it next.
     timeout-minutes: 40
     steps:
       - name: Checkout
