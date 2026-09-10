@@ -52,6 +52,7 @@ import { err, ok, type Result } from "@platos/kernel";
 
 import {
   credentialNotFound,
+  credentialRevocationNotApplied,
   credentialStateAt,
   planBearerCredentialRevocation,
   type AuthorizationScope,
@@ -113,11 +114,14 @@ export async function revokeBearerCredential(
 
   const { credential, newlyRevoked } = outcome;
   if (credential.revokedAt === null) {
-    // THE STORE REPORTED A ROW IT DID NOT END. That is a defect in the store
-    // rather than in the caller, and it is refused loudly instead of being
-    // reported as a revocation that did not happen — which would tell an operator
-    // a credential is dead while it still authenticates.
-    return err(credentialNotFound(input.credentialId));
+    // THE STORE REPORTED A ROW IT DID NOT END. Its OWN code and not
+    // `CREDENTIAL_NOT_FOUND`: the row is there, so "no such credential" would be
+    // false, and `error-taxonomy.mjs` rule E6 refuses one function raising one code
+    // from two guards nothing at runtime can tell apart. It is refused loudly
+    // rather than reported as a revocation that happened — an operator told a
+    // credential is dead while it still authenticates is the outcome this route
+    // exists to prevent.
+    return err(credentialRevocationNotApplied(input.credentialId));
   }
   return ok({
     credentialId: credential.credentialId,

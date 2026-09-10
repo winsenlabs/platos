@@ -89,6 +89,19 @@ const HTTP_STATUS_FALLBACK = {
  * that one declaration decides both what is parsed and what is published. That is
  * a change to `apps/core-api/src/transports/rest`, it is not this tranche's, and
  * naming it here is the difference between a known gap and a silent one.
+ *
+ * WIN-268 (M4.2) ADDS THREE MORE AND THEY ARE WORSE THAN THE FIRST, WHICH IS
+ * RECORDED HERE RATHER THAN AVERAGED AWAY. The four MCP token lifecycle routes
+ * carry their tenancy in the query string, because two are `GET` and one is
+ * `DELETE` and their templates are fixed by `apps/core-api/src/http/idempotency-policy.ts`
+ * — so `environmentId` is a REQUIRED query parameter, not an optional filter. An
+ * undocumented optional filter costs a generated client nothing; an undocumented
+ * required parameter means a generated client cannot call the route at all. The
+ * remedy is the same one named above and it is a change to this derivation as much
+ * as to the transports: nothing here can read a wire shape off a
+ * `DomainValidationPipe`, whose validator is typed `(input: unknown)`. Until that
+ * exists these three publish their RESPONSE schemas, which the ratchet does guard,
+ * and their query parameters are marked `not-derived` rather than invented.
  */
 export const UNDERIVABLE_QUERY_HANDLERS = {
   "EnvironmentEndUsersController.list": {
@@ -99,6 +112,33 @@ export const UNDERIVABLE_QUERY_HANDLERS = {
       "`cursor` and `limit`, which every caller does. Publishing it would describe a query string " +
       "this route does not accept. Deriving the real one needs a declared wire-query DTO that the " +
       "validator consumes; until then this route's query parameters are undocumented, not guessed.",
+  },
+  "McpPlatformTokensController.list": {
+    reason: "post-parse-dto",
+    detail:
+      "The @Query parameter is typed TokenListQuery, the shape AFTER tokenListQueryValidator has " +
+      "decoded ?cursor= into an offset — the same post-parse mismatch as the end-user listing: it " +
+      "declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller " +
+      "does. It ALSO carries `environmentId`, which callers do send and which is REQUIRED, so this " +
+      "route's undocumented parameters include one without which it cannot be called. Publishing " +
+      "TokenListQuery would still describe a query string the route does not accept.",
+  },
+  "McpEntityTokensController.list": {
+    reason: "post-parse-dto",
+    detail:
+      "The same TokenListQuery post-parse shape as the platform listing, and the same required " +
+      "`environmentId`. Listed separately rather than folded in, so withdrawing one route does not " +
+      "silently withdraw another's declared gap.",
+  },
+  "McpEntityTokensController.revoke": {
+    reason: "post-parse-dto",
+    detail:
+      "The @Query parameter carries only `environmentId`, so unlike the two listings its POST-PARSE " +
+      "shape and its WIRE shape are identical and it could be derived today. It is declared anyway " +
+      "because this derivation has no path that emits a @Query type at all — the branch that would " +
+      "is the one that raises — so exempting it would mean teaching the derivation a wire-DTO rule " +
+      "for one route and leaving three. When that rule lands, THIS is the entry to delete first: it " +
+      "is the only one whose type is already the truth.",
   },
 };
 
