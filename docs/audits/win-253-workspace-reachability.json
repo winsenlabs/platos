@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "31aae02f5c01f501d50cf8c1a35954e66990d74976b9c50c2dd325fa31f84c60",
+  "evidenceSha256": "d9db934bfe4fb63d0b33b6976361569b27fb318a7e01e2e80d4a2017a13b9c50",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "287f4941a67b63f5cefebc42c5e66b9e9c9e9eb2858ab302d690b9fde3f2695b",
+    "aggregateSha256": "49e844218fb4f7c566be80314d9391219049e51895b3cd95b73afb90f17c3636",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2567,7 +2567,7 @@
       },
       {
         "path": "apps/core-api/src/composition/integration-database.ts",
-        "sha256": "c2fbc2e03668b8e9ca954a502ae3262ceac475dbe163ddbaab54ac158b7b00e2"
+        "sha256": "33121c98e1c58a8b596bbddd74be935259248bf292863e0b9b7970f626b06e08"
       },
       {
         "path": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",

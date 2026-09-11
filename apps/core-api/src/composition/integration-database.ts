@@ -67,8 +67,8 @@ export const PRISMA_ONLY_URL_PARAMETERS: readonly string[] = Object.freeze([
  * A url that does not parse is returned UNCHANGED rather than repaired. `psql`
  * accepts more than a URL — a bare database name, a `key=value` conninfo string —
  * and a helper that threw here would turn a working plain-name invocation into a
- * failure. The caller's own connection attempt is the right place for that to be
- * refused, with the real client's message.
+ * failure. The caller's own connection is the right place for that to be refused,
+ * with the real client's message.
  */
 export function psqlConnectionUrl(databaseUrl: string): string {
   let parsed: URL;
