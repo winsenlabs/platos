@@ -81,6 +81,8 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { RedisContainer, type StartedRedisContainer } from "@testcontainers/redis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { psqlConnectionUrl } from "./integration-database.js";
+
 import { asIdentifier, type EnvironmentId } from "@platos/kernel";
 import type { UserId } from "@platos/context-tenancy";
 
@@ -274,9 +276,15 @@ function packageRootRelative(...parts: string[]): string {
 async function observe(sql: string): Promise<string[]> {
   const lines =
     postgres === null
-      ? execFileSync(AMBIENT["PLATOS_PSQL_BINARY"] ?? "psql", [databaseUrl, "-t", "-A", "-F", "|", "-c", sql], {
-          encoding: "utf8",
-        })
+      ? execFileSync(
+          AMBIENT["PLATOS_PSQL_BINARY"] ?? "psql",
+          // TRANSLATED, NOT PASSED THROUGH. The supplied url is a PRISMA url and
+          // the canonical one in `ci.yml` ends `?schema=public`, which `psql`
+          // refuses outright — "invalid URI query parameter". See
+          // `integration-database.ts`.
+          [psqlConnectionUrl(databaseUrl), "-t", "-A", "-F", "|", "-c", sql],
+          { encoding: "utf8" },
+        )
       : await (async (): Promise<string> => {
           const result = await postgres.exec([
             "psql", "-U", postgres.getUsername(), "-d", postgres.getDatabase(),

@@ -302,7 +302,17 @@ test("no ADAPTER reads the environment outside a test harness", () => {
 // found by this very case: its banner says "nothing here reads `process.env`",
 // which a text scan reads as an environment access and the parser does not. The
 // list is spelled out rather than counted for exactly that reason.
+// SIX, and the sixth is the point of the list rather than an exception to it.
+// `apps/core-api/src/composition/integration-database.ts` is the pure PRISMA-url
+// translation the six composition suites share, and its banner says in as many
+// words that it reads NO environment — "Every suite that uses it takes its own
+// single frozen `{ ...process.env }` and hands the values in". A text scan reads
+// that sentence as an access and the parser correctly finds none, which is exactly
+// the difference this reconciliation exists to surface. The case below then proves
+// the claim: it requires the text to match AND the AST to find nothing, so the day
+// that file DOES read a variable it stops being a prose site and the pin goes red.
 const PROSE_ONLY = [
+  "apps/core-api/src/composition/integration-database.ts",
   "apps/core-api/src/runtime/lifecycle.ts",
   "packages/contexts/conversations/domain/policy.ts",
   "packages/contexts/files/domain/policy.ts",
