@@ -806,7 +806,34 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the two mint controllers, which is why no `CORE_API_MOUNTED_CONTROLLERS` entry
     // moved either. 90 + 2 = 92, and NO LEDGER RULE CHANGED — `source.transports` and
     // `test.suites` matched both new files without one.
-    "apps-core-api": 92,
+    //
+    // WIN-302 — THE PROVIDER-KEY ROTATION — 92 -> 94. TWO files:
+    //
+    //   ONE under `apps-core-api.source.transports` (29 -> 30) —
+    //   `transports/rest/provider-keys.controller.ts`, the THIRD of the eight
+    //   one-time-secret mints `idempotency-policy.ts` binds `required` to gain a
+    //   handler in this process and the first that is not an MCP token. It is
+    //   reachable because `providers` composes and `rotateProviderKeySecret` was
+    //   already published on that contract.
+    //
+    //   ONE under `apps-core-api.test.suites` (32 -> 33) —
+    //   `composition/provider-key-rotation.integration.test.ts`, which proves the
+    //   idempotency contract against a REAL race: two sockets, one
+    //   `CredentialSecretVersion`, counted by a `psql` process sharing no pool with
+    //   the adapter.
+    //
+    // 1 + 1 = 2, and 92 + 2 = 94. `http/http.module.ts`, `http/idempotency-policy.ts`,
+    // `transports/rest/operator.ts`, `composition/context-ports.ts`,
+    // `composition/installation.test.ts`, `app.module.ts`,
+    // `transports/ws/streams.controller.ts`,
+    // `composition/stream-lane.integration.test.ts`, `generate-control-plane.mjs`,
+    // `scripts/arch/stream-contracts.mjs` and `scripts/arch/gen-v1-skeleton.mjs` are
+    // all EDITS, and every regenerated artifact already existed. NO LEDGER RULE
+    // CHANGED — `source.transports` and `test.suites` matched both new files without
+    // one. This tranche adds NO mutation manifest: every mutation it ran was against
+    // the committed tree and is recorded in the commit messages and in the
+    // controller's own banner rather than pinned in a file.
+    "apps-core-api": 94,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2275,7 +2302,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // consistent and they disagree with each other, so this stage is "STAGE 4" HERE
   // and "stage 3" THERE, and each file's own sequence is what a reader of that file
   // should follow.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1792);
+  //
+  // AND WIN-302 — THE PROVIDER-KEY ROTATION — 1792 -> 1794. TWO files, BOTH in
+  // `apps-core-api` and both itemised on that area's delta above: the controller and
+  // its real-race proof. Nothing else this tranche adds a file. Its context-factory
+  // half adds none at all — it corrects a CONSTANT
+  // (`UNIMPORTABLE_CONTEXT_FACTORIES`, 7 -> 6), derives the other side of that
+  // partition inside `installation.test.ts`, and replaces a false reason at four
+  // sites, every one of which is an EDIT. The eight-key re-derivation from the merged
+  // `expectedDeltas` is 15 + 1 + 94 + 4 + 10 + 1556 + 24 + 90 = 1794.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1794);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2562,7 +2598,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // takes it to 1792 — NINE files in this tranche, not eight, and the ledger is the
     // ninth. It is listed here because this reconciliation sums per-area counts and
     // would otherwise disagree with the total above by exactly one.
-    rulesDocument.baseline.totalFiles + 1792
+    // AND WIN-302 — 1792 -> 1794, the THIRTY-FIRST hand move. The same TWO files as
+    // the `totalFiles` assertion above, both `apps-core-api`, reached here by summing
+    // the per-area counts instead of reading the total. MOVED IN THE SAME EDIT as
+    // that assertion and as `expectedDeltas["apps-core-api"]`, for the reason the
+    // note above gives: the two figures are derived differently and this
+    // reconciliation has caught the omission SIX times — it caught this one too,
+    // which is how the figure came to be measured rather than assumed. 1792 + 2 =
+    // 1794, and there is no mutation-manifest +1 this time because this tranche
+    // pinned none.
+    rulesDocument.baseline.totalFiles + 1794
   );
 });
 

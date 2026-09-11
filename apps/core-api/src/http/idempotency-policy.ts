@@ -28,6 +28,70 @@
 // `/api/v1/agent/access-key/origins` is not; a prefix rule would bind both and a
 // suffix rule neither. The manifest states templates, so this table states
 // templates, and the two are compared as strings.
+//
+// -----------------------------------------------------------------------------
+// HOW MANY OF THE EIGHT ARE SERVED IN THIS PROCESS: THREE (WIN-302)
+//
+// THE FIGURE IS KEPT HERE BECAUSE IT HAS BEEN WRONG EVERY TIME IT WAS QUOTED
+// FROM MEMORY. It stood at "3 of 8" in a stage brief while the tree held two:
+// `POST /api/v1/agent/channels/:id/rotate-secret` was counted as served and its
+// handler had never merged. Counted against the `controllers` array in
+// `http/http.module.ts` and the mounted-controller policy in
+// `apps/agent/scripts/generate-control-plane.mjs`, the answer is:
+//
+//   SERVED (3)
+//     POST /mcp/platform/tokens                  transports/mcp/platform-tokens.controller.ts
+//     POST /mcp/entity/:entityId/tokens          transports/mcp/entity-tokens.controller.ts
+//     POST /api/v1/agent/providers/keys/:id/rotate-secret
+//                                                transports/rest/provider-keys.controller.ts
+//
+//   OUT OF BOUNDS (2) — M3.1 owns `apps/agent`'s AgentController and AgentService
+//     POST /api/v1/agent/access-key
+//     POST /api/v1/agent/entities/:entityId/regenerate-secret
+//
+//   UNREACHABLE (3), each for a reason measured rather than assumed
+//
+//     POST /api/v1/entities/:entityId/session-tokens
+//       THREE INDEPENDENT BLOCKERS, and the one usually named is not among them.
+//       It is NOT waiting on `identity-access` composing: that context composes.
+//       (a) the contract publishes no method that can mint this. `MINTABLE_BEARER_KINDS`
+//           in `identity-access/domain/bearer-token.ts` is `["mcp-token",
+//           "entity-bearer-token"]`, and `EndUserSession` is excluded there by a
+//           recorded DOMAIN decision — "zero production call sites ... no
+//           behavioural oracle for what a minted one should contain".
+//       (b) `TokenMinter` is not a JWT signer. Its port mints an opaque
+//           `<prefix><256 bits>` secret plus TOTP material; the oracle
+//           (`apps/agent/src/auth/session-token.controller.ts`) returns a SIGNED
+//           JWT carrying tenancy and identity claims that `resolveEndUser` later
+//           trusts. `tokenmint-totp` landing changed nothing about that.
+//       (c) the manifest classifies it `PUBLIC_TRANSPORT` with
+//           `requiresOperator: false`. The caller authenticates with an entity's
+//           `plt_ent_` bearer, which the ONE authentication seam in
+//           `transports/rest/operator.ts` cannot express — that seam authenticates
+//           an operator SESSION.
+//       Serving it needs a domain decision about end-user credentials, not a route.
+//
+//     POST /api/v1/public/guest-token
+//       `PRINCIPAL_TIERS` in `identity-access/domain/principal.ts` is
+//       `["OPERATOR", "END_USER"]`. There is no guest tier, so the context cannot
+//       mint a guest credential, and adding a principal tier is a DOMAIN decision.
+//       The oracle also signs a JWT (`createPlatformSessionToken` with
+//       `isGuest: true` and a synthetic `guest-<hex>` subject) and rate-limits per
+//       IP, so it has (b) and (c) above as well.
+//
+//     POST /api/v1/agent/channels/:id/rotate-secret
+//       THE CONTRACT HAS NO SUCH METHOD, which is stronger than the reason usually
+//       given. `ChannelsContract` publishes eleven methods — `admitEvent`,
+//       `claimNextEvent`, `renewEventLease`, `completeEvent`, `failEvent`,
+//       `dispatchInboundTurn`, `configureRouting`, `describeConnection`,
+//       `describeApp`, `describeInstallation`, `erasureTarget` — and not one
+//       rotates a webhook secret. A V1 route may only reach a contract method.
+//       AND the context is not composed: `CHANNELS_UNCOMPOSABLE` names
+//       `DurableRuntime`, whose directory `durable-runtime` is on
+//       `UNIMPLEMENTED_ADAPTERS`, and ADR M0.3 §7 decision 10 answers that
+//       supplier question with an EXTERNAL service. Two blockers, either sufficient.
+//
+// 3 + 2 + 3 = 8. Nothing here is rounded up.
 
 /** What the contract asks of one operation. */
 export type IdempotencyClass = "required" | "accepted" | "exempt" | "not-applicable";
