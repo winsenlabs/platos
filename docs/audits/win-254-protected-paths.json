@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "804e9cb429c71ab5fb5115d744f6b1ed870a97d2b6f44c782fa4535a7b95b2ae"
+      "sha256": "9a98bb4369de77f7280cf0d02aedaf6911fa0d10d0df5e6fd1acc5d40e8e4573"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "038772a48dfd19304503d2f576cd7c7ab2dd262c2f94ccbb450d3d6270d2f72d"
+      "sha256": "da792947489300f37247035eebaf92f291aef7d141e541f75bf7df053b3f2434"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1078,12 +1078,12 @@
     {
       "path": "docs/audits/win-284-differential-coverage.json",
       "mode": "100644",
-      "sha256": "433b8011c40abc5413efd0bebade968b80740d1e34ee4372e1c8c6ac1dc4c114"
+      "sha256": "27f29fcee91ece71954ccad2dcb213f2c46327e30cfc92a196f4dff730470f53"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.md",
       "mode": "100644",
-      "sha256": "878eaf90ee49bf38d848680d32d27267c81447a8233f37b880aa0d5aad7b9b2b"
+      "sha256": "265a39664f0282c1ee5d1edcf90d0a9c6ea2cfb68b63534409a3bd907e285cb7"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "962398c54d31675d3ef0b52cd7a04519163624275d1037f3127be1a501a1626f"
+      "sha256": "5217e2e50a2a28a40f81c83bef62b7b6720f52aefdeffcc272067adbc1d33031"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",

@@ -1392,7 +1392,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // the first, this census scans the whole V1 source tree and counts both — the two
     // pins are derived differently ON PURPOSE and must not be expected to agree.
     // 1697 + 2 = 1699.
-    assert.equal(result.fileCount, 1699, "the generated V1 source census must stay exact");
+    //
+    // THE PUNCH-LIST TRANCHE, 1699 -> 1701. TWO files, BOTH under
+    // `apps/core-api/src/composition/`: `integration-database.ts`, the pure
+    // Prisma-url-to-psql translation the six suites in that directory share, and its
+    // suite. NOTHING under `packages/`. This is the SECOND independent copy of this
+    // census -- `scripts/arch/env-access.mjs` carries `EXPECTED_FILE_COUNT` and was
+    // moved first -- and it caught the omission, which is the whole reason two pins
+    // derived differently are kept.
+    // 1699 + 2 = 1701.
+    assert.equal(result.fileCount, 1701, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1475,7 +1484,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // real-race proof). 1 + 1 = 2, and NOTHING under `packages/` at all — the
       // contract method `providers.rotateProviderKeySecret` was already published and
       // the only thing missing was a composed context to call it on.
-      1 + 1);
+      1 + 1 +
+      // THE PUNCH-LIST TRANCHE: composition 2 -- `integration-database.ts` and its
+      // suite, the one copy of the Prisma-url-to-psql translation the six suites in
+      // that directory now share. NOTHING under `packages/` and nothing under
+      // `transports/`: the four suites that learned to take a SUPPLIED server are
+      // edits, as are the two that already could.
+      2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
