@@ -773,7 +773,7 @@
     {
       "path": "docs/adr/M0.4-contract-versioning.md",
       "mode": "100644",
-      "sha256": "41913a881420f87ed66cb5d3eae38a527f7f0c84e016685d234451cbf424aeac"
+      "sha256": "0516203edc42766de013725b7583f7eab6e0ede4dc902682d38d616a3bfc7681"
     },
     {
       "path": "docs/agent-worktrees.md",
@@ -963,7 +963,7 @@
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "mode": "100644",
-      "sha256": "9c732d850886b51a37a5e479ebf40b27df46f9efd8362987c59b9df815017461"
+      "sha256": "040d0a9f01489714de5c3a0ef2feee600cca329699e3b56cd8837cb2dd868aa6"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
@@ -1043,17 +1043,17 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "e0f1dce37955660ffcb70da07d32b794e24c42b3d273586ef08f242996f18bdf"
+      "sha256": "9e1604ac4c6e549e2d567effe4762c7cc20d1942e33d6db1794d0c1ed9ba4195"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "ccada25be13066369748aac153a5bb81c80ad5ee1842342cb4e45a9ad76996fa"
+      "sha256": "33f4a711192a2443d65e047566a67d13d433ed3fa5bc3017df8032ccaaf870ea"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "mode": "100644",
-      "sha256": "2166ac85b2efcbdab3d5e233ed363029de22d93ab53a6579e7385cc0189da361"
+      "sha256": "a200c940acd2ad9dda3951c8c7ab4b998461c316832470eb6fc9320aafb88765"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "da021206b6e486316496a533822c41077b27f3845e1b4af5b8068f1b0d08230b"
+      "sha256": "aacd910d8deeb66c2e02d9beda12b4316bedfb5c0399d9d4b48a2be6fbe5252f"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -2908,7 +2908,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "a41feec5a647607eddf4026139a6e988252a774488dd9df59a52b636acafb4a0"
+      "sha256": "364a6d30c274be019a369a1b558be7edbd93585b6d16aabd72cbfb46d32a473f"
     },
     {
       "path": "docs/openapi.yml",
@@ -3693,7 +3693,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "sha256": "679d19eb65d4910cef6110dce203d1dbe54793212f3ab36c641bc9bf8e0ca3a1"
+      "sha256": "32bbb54bafdb28103bc5e73e866424176c6cddf6ea4bfed400a18c9741b4d1ee"
     },
     {
       "path": "pnpm-lock.yaml",
