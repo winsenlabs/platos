@@ -126,6 +126,14 @@ const CORE_API_MOUNTED_CONTROLLERS = {
   // `apps/core-api/src/transports` that is not in this allowlist fails generation
   // by name rather than quietly leaving the census.
   EnvironmentStreamsController: "http/http.module.ts",
+  // WIN-302 — the provider-key rotation, the THIRD of the eight one-time-secret
+  // mints in `idempotency-policy.ts` to gain a handler in `apps/core-api` and the
+  // first that is not an MCP token. Listed for the same reason as its eight
+  // siblings: this root is STRICT, so a controller under
+  // `apps/core-api/src/transports` that is not in this allowlist fails generation
+  // by name rather than quietly leaving the census — which is exactly how it
+  // failed when the class landed without this line.
+  ProviderKeysController: "http/http.module.ts",
 };
 
 /**
@@ -1120,6 +1128,13 @@ const FORKED_OPERATIONS_WITHOUT_ONE_HANDLER = Object.freeze({
     "mid-migration: the entity credential listing, for the reason given for the platform listing above; it moved on the same tranche and has the same two-implementation shape.",
   "DELETE /mcp/entity/:entityId/tokens/:tokenId":
     "mid-migration: the entity revocation, for the reason given for the platform revocation above; it moved on the same tranche and has the same two-implementation shape.",
+  // WIN-302 — the THIRD of the eight one-time-secret mints to gain a V1 handler,
+  // and the first entry in this register that is not an MCP credential operation.
+  // Same mid-migration shape as the six above: a second, independent class on one
+  // wire path, reachable now because `providers` composes and a V1 route may only
+  // reach a published contract method.
+  "POST /api/v1/agent/providers/keys/:id/rotate-secret":
+    "mid-migration: apps/agent has served this rotation since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in and idempotency-policy.ts binds this template `required`. The two are NOT interchangeable: the legacy handler reads its tenancy from X-Platos-* headers through ScopeGuard and the V1 handler takes environmentId as a named body field re-derived by tenancy, and the V1 handler surfaces PROVIDERS_PROBE_CACHE_NOT_EVICTED as its own refusal where the legacy one cannot. It cannot satisfy §4.1 fan-in until the legacy handler is withdrawn.",
 });
 
 function validateAliasContract(restOperations) {

@@ -56,6 +56,7 @@
 
 import type { DomainError } from "@platos/kernel";
 import type { IdentityAccessContract, OperatorAuthorizationView } from "@platos/context-identity-access";
+import type { ProvidersContract } from "@platos/context-providers";
 import type {
   EnvironmentAccess,
   EnvironmentOperatorAuthorization,
@@ -238,4 +239,29 @@ export async function authorizeEnvironment(
   });
   if (!authorized.ok) raise(authorized.error as DomainError);
   return authorized.value;
+}
+
+/**
+ * The composed `providers`, or a 503 that says which context is missing.
+ *
+ * WIN-302 (M2/M4 reachable). It sits beside `requireIdentityAccess` and
+ * `requireTenancy` rather than in the one controller that needs it, and the
+ * reason is the rule this file's banner opens with: two guards spelling the same
+ * rule differently is how one of them ends up not spelling it at all. A
+ * controller that reached `app.contexts.providers` and found `undefined` would
+ * throw a TypeError, which the exception filter reports as
+ * `TRANSPORT_UNHANDLED_FAULT` — a 500 and an error id for an operator to chase,
+ * for a correctly-configured process that simply has no root key ring.
+ *
+ * `providers` IS THE FIRST CONTEXT THIS SEAM NAMES THAT IS COMPOSED FROM PEERS,
+ * so it is absent for more reasons than a missing adapter: `app.module.ts` leaves
+ * it undefined when EITHER `tenancy` or `secrets` is undefined. The 503 carries
+ * the context's own name and `readiness` carries the cause, which is the split
+ * `AppModule.unwired` exists for — this answer says WHICH context a route needed,
+ * not why the install has not got it.
+ */
+export function requireProviders(app: AppModule): ProvidersContract {
+  const providers = app.contexts.providers;
+  if (providers === undefined) raise(contextUnavailable("providers"));
+  return providers;
 }

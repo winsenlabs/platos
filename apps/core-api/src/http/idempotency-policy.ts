@@ -120,7 +120,30 @@ export const OPERATION_POLICIES: readonly OperationPolicy[] = Object.freeze([
     method: "POST",
     template: "/api/v1/agent/providers/keys/:id/rotate-secret",
     class: "required",
-    reason: "wire-secret — rotates a provider key and returns the new value once.",
+    // WIN-302 — THE CLASS IS KEPT AND THE REASON IS CORRECTED, because the reason
+    // that stood here was false and this table's whole value is that a reader can
+    // see why each row is here. It read "rotates a provider key and returns the new
+    // value once", and the operation returns no material at all: the ORACLE
+    // (`apps/agent`'s `ProvidersController.rotateKeySecret`) takes `{ plaintext }`
+    // inbound and answers `{ key }`, and the CONTRACT method
+    // `providers.rotateProviderKeySecret` returns `ProviderKeyView`, whose ten
+    // fields cannot carry a secret. This is BYOK, like
+    // `POST /api/v1/agent/providers/keys` two rows below, which is `exempt` on the
+    // recorded ground that the secret travels inbound and is never returned.
+    //
+    // SO WHY IS IT STILL `required`. Not for the replay promise — there is no
+    // secret to hand back — but for the DOUBLE ROTATION. A retry that executed
+    // twice writes the caller's material, then writes it again over a credential
+    // whose probe cache the first pass already evicted, and EVERY other provider
+    // key pointing at that one credential moves twice. `required` is the stricter
+    // answer, it is the one the gate already enforces, and reclassifying a bound
+    // operation is a contract decision no tranche should take as a side effect of
+    // finding a comment wrong.
+    reason:
+      "wire-secret — replaces the material behind a provider key's credential. The" +
+      " secret travels INBOUND and no secret is returned; the key is required" +
+      " because a re-executed rotation writes twice and evicts the probe cache" +
+      " twice, for every key pointing at that credential.",
   },
   // ------------------------------------------------------------------
   // EXEMPT. Each of these is side-effecting AND speaks of a token or a secret,

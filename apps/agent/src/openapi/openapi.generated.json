@@ -468,6 +468,21 @@
           "meta"
         ]
       },
+      "ItemEnvelope_ProviderKeyResource": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProviderKeyResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "ItemEnvelope_RevokedTokenResource": {
         "type": "object",
         "properties": {
@@ -829,6 +844,56 @@
           "through"
         ]
       },
+      "ProviderKeyResource": {
+        "type": "object",
+        "properties": {
+          "providerKeyId": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "credentialName": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "createdBy",
+          "credentialName",
+          "environmentId",
+          "isDefault",
+          "label",
+          "lastUsedAt",
+          "provider",
+          "providerKeyId",
+          "updatedAt"
+        ]
+      },
       "RevokePlatformTokenBody": {
         "type": "object",
         "properties": {
@@ -877,6 +942,21 @@
           "revokedAt",
           "revokedBy",
           "tokenId"
+        ]
+      },
+      "RotateProviderKeySecretBody": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "plaintext": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentId",
+          "plaintext"
         ]
       },
       "SetOrganizationPolicyBody": {
@@ -7043,7 +7123,7 @@
     "/api/v1/agent/providers/keys/{id}/rotate-secret": {
       "post": {
         "operationId": "post__api_v1_agent_providers_keys_by_id_rotate_secret",
-        "summary": "ProvidersController.rotateKeySecret",
+        "summary": "ProviderKeysController.rotateSecret",
         "tags": [
           "rest_only"
         ],
@@ -7059,7 +7139,24 @@
         ],
         "responses": {
           "200": {
-            "description": "Operation response. REST payload schemas are intentionally omitted until a source schema is available."
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_ProviderKeyResource"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -7074,8 +7171,18 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
-        "x-platos-schema-source": "undeclared",
-        "x-platos-schema-undeclared-reason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)"
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateProviderKeySecretBody"
+              }
+            }
+          }
+        },
+        "x-platos-schema-source": "typescript-dto",
+        "x-platos-query-parameters": "none-declared"
       }
     },
     "/api/v1/agent/providers/keys/byok": {
@@ -12209,11 +12316,11 @@
   "x-platos-rest-operation-count": 313,
   "x-platos-mcp-tool-count": 202,
   "x-platos-schema-coverage": {
-    "derivedOperations": 18,
-    "undeclaredOperations": 295,
+    "derivedOperations": 19,
+    "undeclaredOperations": 294,
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
-    "componentSchemas": 35,
+    "componentSchemas": 38,
     "canonicalErrorCodes": 459,
     "queryParametersNotDerived": [
       {
