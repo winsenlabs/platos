@@ -218,10 +218,30 @@ export const ALLOWED = Object.freeze([
     // builds a plain object and hands it to `loadPlatformConfiguration`, the way
     // `installation.test.ts` does, so the configuration under test never comes
     // from the ambient environment. The single read is this spawn.
+    // WIN-302 PUNCH-LIST — THIS SUITE NOW TAKES SUPPLIED SERVERS, and the read is
+    // STILL ONE. It used to read the environment in exactly one place, to hand the
+    // inherited `PATH` to a spawned `prisma migrate deploy`, and it could only ever
+    // START a container — right about never skipping, and it made the suite
+    // unrunnable on a machine where Docker may not run at all, so hosted CI proved
+    // it and nobody else could.
+    //
+    // It now takes the shape the two suites below already had: ONE
+    // `{ ...process.env }` frozen at module load, and every lookup off the frozen
+    // copy — the supplied PostgreSQL url, the supplied Redis url, the `psql`
+    // override the second reader spawns, and the inherited environment for the
+    // migration CLI. Four inline reads would have been four panels in a door whose
+    // whole argument is that there should be one; this is the same one read it
+    // always was, and a suite that reached past `AMBIENT` would appear here as a
+    // SECOND.
+    //
+    // WHICH SERVERS TO USE IS THE RUNNER'S DECISION AND NOT A FIXTURE'S. With no
+    // variables set it starts containers exactly as before, which is what CI does
+    // — `ci.yml` sets neither variable in the job that runs
+    // `test:core-api:integration`, so that path is unchanged there.
     path: "apps/core-api/src/composition/operator-authentication.integration.test.ts",
     role: "test-support",
     reads: 1,
-    why: "Real-PostgreSQL integration suite for the composition root. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+    why: "Real-PostgreSQL integration suite for the composition root's operator and end-user tier separation. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied PostgreSQL and Redis urls that let it run where Docker may not, a psql binary override for the second reader, and the inherited environment it spawns the ORM's migration CLI with. Neither path skips.",
   }),
   Object.freeze({
     // WIN-267 R1 — the identity REST suite. It is the operator-authentication
@@ -234,10 +254,30 @@ export const ALLOWED = Object.freeze([
     // takes nothing from the machine it happens to run on — and a suite that had
     // reached for `process.env` for them would have shown up as a SECOND read
     // here, which is what makes this pin worth having.
+    // WIN-302 PUNCH-LIST — THIS SUITE NOW TAKES SUPPLIED SERVERS, and the read is
+    // STILL ONE. It used to read the environment in exactly one place, to hand the
+    // inherited `PATH` to a spawned `prisma migrate deploy`, and it could only ever
+    // START a container — right about never skipping, and it made the suite
+    // unrunnable on a machine where Docker may not run at all, so hosted CI proved
+    // it and nobody else could.
+    //
+    // It now takes the shape the two suites below already had: ONE
+    // `{ ...process.env }` frozen at module load, and every lookup off the frozen
+    // copy — the supplied PostgreSQL url, the supplied Redis url, the `psql`
+    // override the second reader spawns, and the inherited environment for the
+    // migration CLI. Four inline reads would have been four panels in a door whose
+    // whole argument is that there should be one; this is the same one read it
+    // always was, and a suite that reached past `AMBIENT` would appear here as a
+    // SECOND.
+    //
+    // WHICH SERVERS TO USE IS THE RUNNER'S DECISION AND NOT A FIXTURE'S. With no
+    // variables set it starts containers exactly as before, which is what CI does
+    // — `ci.yml` sets neither variable in the job that runs
+    // `test:core-api:integration`, so that path is unchanged there.
     path: "apps/core-api/src/composition/identity-rest.integration.test.ts",
     role: "test-support",
     reads: 1,
-    why: "Real-PostgreSQL integration suite for the V1 REST surface. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+    why: "Real-PostgreSQL and real-Redis integration suite for the V1 identity REST surface. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied PostgreSQL and Redis urls that let it run where Docker may not, a psql binary override for the second reader, and the inherited environment it spawns the ORM's migration CLI with. Neither path skips.",
   }),
   Object.freeze({
     // WIN-272 (M4.6) — the stream-lane suite. The identity-REST entry above with
@@ -251,10 +291,30 @@ export const ALLOWED = Object.freeze([
     // window closes during a stream is computed from `Date.now()` inside the case
     // that spends it, not from a variable an operator could set — a knob for it
     // would have been a knob for how long any stream may live.
+    // WIN-302 PUNCH-LIST — THIS SUITE NOW TAKES SUPPLIED SERVERS, and the read is
+    // STILL ONE. It used to read the environment in exactly one place, to hand the
+    // inherited `PATH` to a spawned `prisma migrate deploy`, and it could only ever
+    // START a container — right about never skipping, and it made the suite
+    // unrunnable on a machine where Docker may not run at all, so hosted CI proved
+    // it and nobody else could.
+    //
+    // It now takes the shape the two suites below already had: ONE
+    // `{ ...process.env }` frozen at module load, and every lookup off the frozen
+    // copy — the supplied PostgreSQL url, the supplied Redis url, the `psql`
+    // override the second reader spawns, and the inherited environment for the
+    // migration CLI. Four inline reads would have been four panels in a door whose
+    // whole argument is that there should be one; this is the same one read it
+    // always was, and a suite that reached past `AMBIENT` would appear here as a
+    // SECOND.
+    //
+    // WHICH SERVERS TO USE IS THE RUNNER'S DECISION AND NOT A FIXTURE'S. With no
+    // variables set it starts containers exactly as before, which is what CI does
+    // — `ci.yml` sets neither variable in the job that runs
+    // `test:core-api:integration`, so that path is unchanged there.
     path: "apps/core-api/src/composition/stream-lane.integration.test.ts",
     role: "test-support",
     reads: 1,
-    why: "Real-PostgreSQL and real-Redis integration suite for the V1 stream lane. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+    why: "Real-PostgreSQL and real-Redis integration suite for the V1 stream lane. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied PostgreSQL and Redis urls that let it run where Docker may not, a psql binary override for the second reader, and the inherited environment it spawns the ORM's migration CLI with. Neither path skips.",
   }),
   Object.freeze({
     // WIN-268 (M4.2) P1 — the MCP token mints' real-concurrency suite. The THIRD
@@ -268,10 +328,30 @@ export const ALLOWED = Object.freeze([
     // idempotency store is absent and the race case would be measuring a
     // fail-closed refusal instead of the contract. A suite that had reached for
     // `process.env` for any of them would appear here as a SECOND read.
+    // WIN-302 PUNCH-LIST — THIS SUITE NOW TAKES SUPPLIED SERVERS, and the read is
+    // STILL ONE. It used to read the environment in exactly one place, to hand the
+    // inherited `PATH` to a spawned `prisma migrate deploy`, and it could only ever
+    // START a container — right about never skipping, and it made the suite
+    // unrunnable on a machine where Docker may not run at all, so hosted CI proved
+    // it and nobody else could.
+    //
+    // It now takes the shape the two suites below already had: ONE
+    // `{ ...process.env }` frozen at module load, and every lookup off the frozen
+    // copy — the supplied PostgreSQL url, the supplied Redis url, the `psql`
+    // override the second reader spawns, and the inherited environment for the
+    // migration CLI. Four inline reads would have been four panels in a door whose
+    // whole argument is that there should be one; this is the same one read it
+    // always was, and a suite that reached past `AMBIENT` would appear here as a
+    // SECOND.
+    //
+    // WHICH SERVERS TO USE IS THE RUNNER'S DECISION AND NOT A FIXTURE'S. With no
+    // variables set it starts containers exactly as before, which is what CI does
+    // — `ci.yml` sets neither variable in the job that runs
+    // `test:core-api:integration`, so that path is unchanged there.
     path: "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
     role: "test-support",
     reads: 1,
-    why: "Real-PostgreSQL and real-Redis integration suite for the two MCP one-time-secret mints, including two identical requests racing. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+    why: "Real-PostgreSQL and real-Redis integration suite for the two MCP one-time-secret mints, including two identical requests racing. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied PostgreSQL and Redis urls that let it run where Docker may not, a psql binary override for the second reader, and the inherited environment it spawns the ORM's migration CLI with. Neither path skips.",
   }),
   Object.freeze({
     // WIN-268 (M4.2) — the tier-2 MCP policy surface's real-database suite. The
@@ -311,6 +391,21 @@ export const ALLOWED = Object.freeze([
     role: "test-support",
     reads: 1,
     why: "Applies migrations against the harness container in the same way, from the suite rather than from a shared harness, because it is the one suite that inspects the column types the migrations produced.",
+  }),
+  // WIN-302 — the provider-key rotation's real-race proof. Declared with the SAME
+  // shape and the SAME variable names as the tier-2 policy suite above rather than
+  // a second convention: one frozen copy at module load, and every lookup off the
+  // copy. It reads FOUR values out of that copy — the external database url that
+  // lets the suite run without Docker, an optional real Redis, a psql binary
+  // override for the second reader, and the inherited environment it spawns the
+  // ORM's migration CLI with — and the six configuration variables it hands
+  // `loadPlatformConfiguration` are properties of a plain object, so the process
+  // under test takes nothing from the machine except the two urls.
+  Object.freeze({
+    path: "apps/core-api/src/composition/provider-key-rotation.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL and real-Redis integration suite for the third bound one-time-secret mint. It copies and freezes the ambient environment once, at module load, and reads four values out of the copy: the external database url that lets it run without Docker, an optional real Redis, a psql binary override for the process that counts rows outside the adapter's pool, and the inherited environment it spawns the ORM's migration CLI with.",
   }),
 ]);
 
@@ -682,8 +777,20 @@ export const VIOLATION_CODES = Object.freeze({
  * the first door in this table that is not about PATH, and it is one read rather
  * than four because the suite copies and freezes the ambient environment once, the
  * way the deployable's own reader does.
+ *
+ * WIN-302 PUNCH-LIST: 1699 + 2 = 1701, and NO DOOR OPENED. The two are
+ * `apps/core-api/src/composition/integration-database.ts` and its suite: the pure
+ * translation that turns a PRISMA url into one `psql` can address, extracted so the
+ * four suites that just learned to take a SUPPLIED server share one copy of the
+ * rule instead of six.
+ *
+ * THE HELPER READS NO ENVIRONMENT, DELIBERATELY, and that is why the declared read
+ * count does not move with the file count. Every suite that uses it still takes its
+ * own single frozen `{ ...process.env }` and hands the values in; a helper that read
+ * `process.env` itself would be a door this gate could not attribute to the suite
+ * that walked through it. Two files landed, thirty-two reads stayed thirty-two.
  */
-export const EXPECTED_FILE_COUNT = 1697;
+export const EXPECTED_FILE_COUNT = 1701;
 
 function listSourceFiles(root) {
   const found = [];

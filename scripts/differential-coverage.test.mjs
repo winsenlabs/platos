@@ -458,8 +458,15 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
   // the entity/environment pair check is the same check for a listing and a
   // revocation as for a mint. Both enumerators moved to 18 on their own again, and
   // `row.agrees` above is what says so.
-  assert.equal(core.enumeratedOperations, 18);
-  assert.equal(core.independentOperations, 18);
+  // THE PROVIDER-KEY ROTATION 18 -> 19, and this pin was left behind rather than
+  // moved: `transports/rest/provider-keys.controller.ts` arrived on this branch
+  // without it. Proved rather than assumed -- the controller does not exist at v1
+  // (078f78e7), it does exist at the branch base, and the punch-list tranche that
+  // moved this figure does not touch it. Both enumerators moved to 19 on their own
+  // again, the generator's AST walk and the independent census's glob, and
+  // `row.agrees` above is what says so.
+  assert.equal(core.enumeratedOperations, 19);
+  assert.equal(core.independentOperations, 19);
   // AND THE PER-ROOT SUM CARRIES THE SURPLUS TERM. A root sum counts an
   // operation once per root that serves it, and the two mints are served by
   // both, so the sum exceeds the unique denominator by exactly the surplus the
@@ -476,5 +483,10 @@ test("BASELINE: the committed matrix agrees root by root, and BOTH roots now car
     document.restScanRoots.total - document.reconciledAgainst.independentCrossRootBindings,
     document.reconciledAgainst.enumeratedRestCells,
   );
-  assert.equal(document.reconciledAgainst.independentCrossRootBindings, 6);
+  // AND THE SURPLUS 6 -> 7, for the same reason and in the same edit. The
+  // provider-key rotation is one more IMPLEMENTATION of an operation `apps/agent`
+  // already served, so it gained a SECOND implementation and no new operation
+  // entered the surface -- the unique denominator does not move. An equality with a
+  // published term reports that; a tolerance would have absorbed it.
+  assert.equal(document.reconciledAgainst.independentCrossRootBindings, 7);
 });

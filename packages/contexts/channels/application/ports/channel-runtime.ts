@@ -25,6 +25,59 @@
 // a new directory satisfying this interface and a row in the registry, and not
 // one line inside `channels`.
 //
+// WHAT A SECOND RUNTIME WOULD ACTUALLY TAKE — MEASURED, BECAUSE "future adapters
+// require no Core modification" IS STILL ASSERTED AND NOT EXERCISED.
+//
+// `channel-slack` is the only implementation. Until a second one exists the
+// sentence above is a design intention, so this is what the second one needs,
+// measured against this tree rather than estimated.
+//
+// WHAT IS ALREADY REACHABLE, AND CHEAPLY. `CONNECTION_PROVIDERS` in
+// `../../domain/provider.ts` already admits `telegram`, `whatsapp` and `discord`,
+// so a new runtime needs NO change here and no change in the domain — which is
+// precisely the claim. `ChannelRuntime` extends `ChannelAdapter`, so a complete
+// one owes FOUR methods, and the outbound three are testable with no credential
+// and no live provider: `channel-slack/src/far-side.ts` is a real `node:http`
+// server that records what it received and can be scripted to go silent, refuse,
+// or answer slowly, and the adapter is pointed at it by base url. Nothing about
+// that pattern is Slack-specific.
+//
+// WHAT NEEDS A DECISION, AND IT IS NOT A CODE ONE. WHICH PROVIDER IS SECOND is
+// unchosen: four are admitted, nothing in the tree selects one, and the answer is
+// a product decision about who Winsen's users are on. A PRODUCTION credential —
+// a bot token, an app secret — follows from that choice and from a supplier, not
+// from this file.
+//
+// AND ONE MEASURED TECHNICAL REASON THE OBVIOUS CANDIDATE IS THE WRONG ONE. The
+// header above names Telegram as the example, and Telegram is the cheapest to
+// write and the weakest to PROVE. Its inbound verification is a constant-time
+// comparison against `X-Telegram-Bot-Api-Secret-Token`, a value the integrator
+// itself chose when it called `setWebhook` — so there is no published vector to
+// transcribe, and a suite for it would compare a secret the suite set against a
+// header the suite wrote. `channel-slack` deliberately avoided exactly that:
+// `published-vector.ts` transcribes Slack's OWN documented example and
+// `recomputePublishedSignature()` re-derives it through `node:crypto`, so
+// agreement there is agreement between three independent things. An adapter whose
+// central assertion compares two values it controls cannot fail, and that is a
+// worse outcome than no second adapter.
+//
+// DISCORD IS THE STRONGEST CANDIDATE ON THAT TEST. Its inbound half is an Ed25519
+// signature over `timestamp + body` verified against the application's PUBLIC key
+// — an IETF standard with published test vectors (RFC 8032), supported natively by
+// `node:crypto`, so it adds no dependency and its verification joins to something
+// outside this repository. WhatsApp is an HMAC-SHA256 over the raw body
+// (`X-Hub-Signature-256`), the same shape as Slack's.
+//
+// WHAT A SECOND RUNTIME STILL COULD NOT BE EXERCISED THROUGH. `channels` IS NOT
+// COMPOSED on this branch, and the reason is recorded and still current:
+// `CHANNELS_UNCOMPOSABLE` in `apps/core-api/src/composition/context-ports.ts`
+// names `DurableRuntime` as the missing half, and `durable-runtime` is the first
+// entry of `UNIMPLEMENTED_ADAPTERS` in `adapter-bindings.ts`. So a second runtime
+// could be proven against THIS PORT in its own package — which is where the "no
+// Core modification" claim actually lives — but not end to end through a composed
+// application, and closing that needs the external service ADR M0.3 section 7
+// decision 10 names.
+//
 // NOTHING BELOW NAMES A VENDOR TYPE, AND THAT IS THE POINT. `SignedDelivery` is
 // bytes and headers; `VerifiedDelivery` is this context's own vocabulary. An
 // adapter may hold `SlackWebhookPayload`, `SlackApiError` and the whole of its

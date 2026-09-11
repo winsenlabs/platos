@@ -1,8 +1,77 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
-import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+/** Where the server this evidence must be at least as new as is actually pinned. */
+export const POSTGRES_IMAGE_PIN_SOURCE = ".github/workflows/ci.yml";
+
+/**
+ * THE MINIMUM PostgreSQL MAJOR, READ OFF THE IMAGE CI ACTUALLY PINS.
+ *
+ * WHAT THIS REPLACED, AND WHY THE OLD ASSERTION WAS THE WRONG SHAPE. This file
+ * used to assert `/^16(?:\.|$)/` against the artifact's `serverVersion` with the
+ * message "gate did not use PostgreSQL 16". That is an EXACTNESS claim, and the
+ * thing it was guarding — "this artifact came from the server CI pins" — is
+ * already guarded, harder, one layer up: the `postgres-memory-evidence` job pins
+ * `pgvector/pgvector:pg16` BY SHA256 DIGEST, which is an immutability no version
+ * string can express. So in CI the old assertion was a second, weaker copy of a
+ * constraint the workflow already enforced, and the only thing it could actually
+ * decide was whether the suites may run anywhere else.
+ *
+ * They may, and the decision was made on evidence rather than on principle. All
+ * fourteen cases across the four suites — every query-count budget, every EXPLAIN
+ * plan, the sequential-scan refusal, the row, buffer and timing ceilings — were
+ * executed against a native Homebrew `postgresql@17` (17.10) with pgvector 0.8.5
+ * and passed. The ONLY failure was this string match. Nothing the evidence asserts
+ * is specific to major 16: the ceilings are UPPER bounds, so a newer planner that
+ * is equal or better still satisfies them, and `pgvectorVersion` is asserted to be
+ * present rather than to be a value.
+ *
+ * SO IT IS A FLOOR, AND THE FLOOR IS NOT A LITERAL THIS FILE KEEPS. It is parsed
+ * out of the workflow's own `pgvector/pgvector:pgNN` tags, so the day CI moves to
+ * `pg17` the floor moves with it and no edit here is required or possible to
+ * forget. An assertion comparing two numbers this file owns could not fail; this
+ * one is joined to the file that decides the answer.
+ *
+ * EVERY OCCURRENCE MUST AGREE. `ci.yml` pins the same image in three jobs and its
+ * own comments say they must not drift onto different versions. Parsing all of
+ * them and refusing a disagreement makes that comment an assertion.
+ */
+export function minimumPostgresMajor(
+  workflow = readFileSync(resolve(repositoryRoot, POSTGRES_IMAGE_PIN_SOURCE), "utf8")
+) {
+  const majors = [...workflow.matchAll(/pgvector\/pgvector:pg(\d+)/g)].map((match) =>
+    Number(match[1])
+  );
+  assert.ok(
+    majors.length > 0,
+    `${POSTGRES_IMAGE_PIN_SOURCE} pins no pgvector/pgvector:pgNN image, so the evidence floor cannot be derived`
+  );
+  const distinct = [...new Set(majors)];
+  assert.equal(
+    distinct.length,
+    1,
+    `${POSTGRES_IMAGE_PIN_SOURCE} pins disagreeing PostgreSQL majors (${distinct.join(", ")}); the evidence jobs must not drift apart`
+  );
+  return distinct[0];
+}
+
+/**
+ * The major version out of a `server_version` string, or null when there is none.
+ *
+ * `current_setting('server_version')` answers `16.4` on the pinned image and
+ * `17.10 (Homebrew)` on a native install, so the parse takes the leading integer
+ * and ignores the rest rather than matching a whole shape.
+ */
+export function postgresMajor(serverVersion) {
+  const match = /^(\d+)(?:[.\s]|$)/.exec(String(serverVersion ?? "").trim());
+  return match === null ? null : Number(match[1]);
+}
 
 export const SUITE_CONTRACT = [
   {
@@ -122,7 +191,20 @@ export async function verifyEvidenceArtifactDirectory(directory) {
 
   const runtime = await readJson(resolve(root, "postgres-runtime.json"));
   assert.equal(runtime.kind, "postgres-runtime", "runtime evidence kind is invalid");
-  assert.match(runtime.serverVersion, /^16(?:\.|$)/, "gate did not use PostgreSQL 16");
+  // TWO DISTINCT REFUSALS AND NOT ONE. "no version at all" and "a version older
+  // than the floor" are different operator actions — a broken capture versus a
+  // wrong server — and a single message could not tell them apart.
+  const major = postgresMajor(runtime.serverVersion);
+  assert.notEqual(
+    major,
+    null,
+    `runtime evidence carries no readable PostgreSQL version (${JSON.stringify(runtime.serverVersion)})`
+  );
+  const floor = minimumPostgresMajor();
+  assert.ok(
+    major >= floor,
+    `gate used PostgreSQL ${major}, older than the ${floor} pinned in ${POSTGRES_IMAGE_PIN_SOURCE}`
+  );
   assert.match(runtime.pgvectorVersion, /^\d+\.\d+/, "pgvector extension version is absent");
 
   for (const contract of QUERY_COUNT_CONTRACT) {

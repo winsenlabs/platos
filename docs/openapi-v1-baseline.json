@@ -458,6 +458,21 @@
         ],
         "type": "object"
       },
+      "ItemEnvelope_ProviderKeyResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ProviderKeyResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "ItemEnvelope_RevokedTokenResource": {
         "properties": {
           "data": {
@@ -819,6 +834,56 @@
         ],
         "type": "object"
       },
+      "ProviderKeyResource": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "credentialName": {
+            "type": "string"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "provider": {
+            "type": "string"
+          },
+          "providerKeyId": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "createdBy",
+          "credentialName",
+          "environmentId",
+          "isDefault",
+          "label",
+          "lastUsedAt",
+          "provider",
+          "providerKeyId",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
       "RevokePlatformTokenBody": {
         "properties": {
           "environmentId": {
@@ -866,6 +931,21 @@
           "revokedAt",
           "revokedBy",
           "tokenId"
+        ],
+        "type": "object"
+      },
+      "RotateProviderKeySecretBody": {
+        "properties": {
+          "environmentId": {
+            "type": "string"
+          },
+          "plaintext": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "environmentId",
+          "plaintext"
         ],
         "type": "object"
       },
@@ -1415,6 +1495,63 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/agent/providers/keys/{id}/rotate-secret": {
+      "post": {
+        "operationId": "post__api_v1_agent_providers_keys_by_id_rotate_secret",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateProviderKeySecretBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_ProviderKeyResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
     "/api/v1/bff/session": {
       "delete": {
         "operationId": "delete__api_v1_bff_session",
@@ -1501,6 +1638,38 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1533,7 +1702,7 @@
             "directHeaders": []
           }
         ],
-        "x-platos-query-parameters": "not-derived",
+        "x-platos-query-parameters": "derived",
         "x-platos-schema-source": "typescript-dto"
       }
     },

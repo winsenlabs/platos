@@ -498,8 +498,21 @@ test("committed matrix: the REST total is split across the declared scan roots a
   // IMPLEMENTATIONS of operations `apps/agent` already served: that is why they sat
   // in the generated manifest with an implementation and no V1 handler, and it is why
   // they widen the surplus rather than the surface. 301 + 18 - 6 = 313.
-  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 18 });
-  assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 6);
+  //
+  // THE PROVIDER-KEY ROTATION 18 -> 19, THE SHARED COUNT 6 -> 7, AND THE TOTAL
+  // UNMOVED AT 313 — the same shape a third time, and this pin was left behind
+  // rather than moved. `transports/rest/provider-keys.controller.ts` arrived on
+  // this branch WITHOUT these three derived artifacts being regenerated, so
+  // `audit:capability-matrix`, `rest-census-independent --check` and
+  // `operator-operations --check` were all stale before this tranche touched
+  // anything. Proved rather than assumed: the controller does not exist at v1
+  // (078f78e7), it does exist at the branch base, and this tranche's diff does not
+  // touch it.
+  //
+  // It is one more IMPLEMENTATION of an operation `apps/agent` already served, which
+  // is why it widens the surplus instead of the surface: 301 + 19 - 7 = 313.
+  assert.deepEqual(MATRIX.totals.restOperationsByScanRoot, { agent: 301, "core-api-transports": 19 });
+  assert.equal(MATRIX.totals.restOperationsSharedAcrossScanRoots, 7);
   assert.deepEqual(MATRIX.scanRoots.unattributed, []);
 });
 

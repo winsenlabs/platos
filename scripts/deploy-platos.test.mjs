@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -8,6 +9,92 @@ const repositoryRoot = path.resolve(import.meta.dirname, "..");
 const deployScript = path.join(repositoryRoot, "scripts/deploy-platos.sh");
 const commitSha = "1".repeat(40);
 const memoryDigest = "d".repeat(64);
+
+// WHY TWO OF THIS FILE'S CASES SKIP ON A MAC, AND WHAT THEY WOULD OTHERWISE
+// MEASURE. READ THIS BEFORE TREATING `94 pass / 2 fail` AS A PRODUCT DEFECT.
+//
+// `pnpm test:persisted-state:performance-contract` sat at 94 passed / 2 FAILED for
+// weeks and nobody had written down what the two were. They are the two cases
+// below that EXECUTE `scripts/deploy-platos.sh` end to end against a mocked
+// `docker`, `git` and `sleep` on `PATH`. Every other case in that gate reads the
+// script and the compose files as TEXT and mutates them, which is why 94 of 96
+// pass anywhere.
+//
+// THE FAILURE WAS NEVER THE ONE THE ERROR NAMED. Both reported
+//
+//     ENOENT: no such file or directory, open '/var/tmp/platos-deploy-test-XXXXXX/docker.log'
+//
+// which reads as "the mock docker did not run". Measured by invoking the script by
+// hand with the suite's own environment, the real cause is four lines earlier and
+// the mock never gets a turn:
+//
+//     awk: can't open file /proc/stat
+//     cut: /proc/loadavg: No such file or directory
+//
+// `deploy-platos.sh`'s FIRST step is the CPU-headroom pre-flight, and
+// `cpu_idle_pct` reads `/proc/stat` twice a second apart while the line under it
+// reads `/proc/loadavg`. Those are LINUX PROCFS. They do not exist on Darwin, so
+// the script exits 1 before it ever calls `docker`, the log is never created, and
+// `runDeploy`'s `readFile` throws before a single assertion is reached.
+//
+// SO IT IS A HOST-KERNEL PRECONDITION, NOT A BUG IN THE SCRIPT AND NOT A BUG IN
+// THE SUITE. The script is correct to read procfs: it deploys to a Linux host, and
+// the comment above `cpu_idle_pct` explains at length why steal time in
+// `/proc/stat` is the only honest headroom signal on the reference box. CI runs
+// `ubuntu-latest`, where both files exist, so BOTH CASES RUN AND PASS THERE — this
+// gate has never been red in CI on this account.
+//
+// WHAT THIS CHANGES, AND WHAT IT REFUSES TO CHANGE. The two cases now SKIP WITH
+// THE REASON PRINTED rather than failing with an error that points at the wrong
+// file. A portable Darwin fallback in `cpu_idle_pct` was considered and rejected:
+// it would add a measurement path that NEVER executes in production and would
+// quietly weaken these two cases from "the Linux pre-flight works" to "some
+// pre-flight works".
+//
+// AND THE SKIP CANNOT GO DARK WHERE IT MATTERS. It is gated on the ACTUAL
+// precondition -- whether those two files exist -- and never on `process.platform`,
+// and if they are missing on a LINUX host it FAILS instead of skipping. A Linux box
+// with no `/proc/stat` is a broken runner, not a supported one, so CI cannot reach
+// the skip branch: an `ubuntu-latest` runner that somehow lacked procfs would go
+// red here rather than reporting two quiet skips.
+
+/** Exactly the files `deploy-platos.sh`'s pre-flight reads, in the order it reads them. */
+const PREFLIGHT_PROCFS_FILES = Object.freeze(["/proc/stat", "/proc/loadavg"]);
+
+/**
+ * The pre-flight files this host does not have, or an empty array.
+ *
+ * Enumerated from the paths above rather than inferred from a platform name, so a
+ * host that grows or loses procfs is measured rather than guessed at.
+ */
+function absentPreflightFiles() {
+  return PREFLIGHT_PROCFS_FILES.filter((file) => !existsSync(file));
+}
+
+/**
+ * True when this host cannot execute the script's pre-flight; asserts on Linux.
+ *
+ * `t.skip()` with the reason, so a reader of the output learns the cause instead of
+ * inheriting a number. See the banner for why the Linux assertion is what keeps
+ * this from becoming a way to green a red.
+ */
+function skipUnlessPreflightRunnable(t) {
+  const absent = absentPreflightFiles();
+  if (absent.length === 0) return false;
+  assert.equal(
+    process.platform,
+    "darwin",
+    `${absent.join(" and ")} absent on ${process.platform}: deploy-platos.sh's CPU-headroom ` +
+      `pre-flight cannot run, and on a non-Darwin host that is a broken runner rather than an ` +
+      `unsupported one. Refusing to skip.`,
+  );
+  t.skip(
+    `${absent.join(" and ")} do not exist on ${process.platform}. deploy-platos.sh reads them in ` +
+      `its CPU-headroom pre-flight before it calls docker, so the script exits 1 and no mock ` +
+      `docker log is written. The case runs on ubuntu-latest in CI. See this file's banner.`,
+  );
+  return true;
+}
 
 function orderingViolations(source) {
   const violations = [];
@@ -86,7 +173,8 @@ test("compose contracts use the migration image and gate application startup on 
   }
 });
 
-test("successful deploy hands the exact dry-run digest to apply before starting apps", async () => {
+test("successful deploy hands the exact dry-run digest to apply before starting apps", async (t) => {
+  if (skipUnlessPreflightRunnable(t)) return;
   const execution = await runDeploy();
   assert.equal(execution.status, 0, execution.stderr);
 
@@ -111,7 +199,8 @@ test("successful deploy hands the exact dry-run digest to apply before starting 
   );
 });
 
-test("a migration failure never starts applications and the EXIT trap stops writers again", async () => {
+test("a migration failure never starts applications and the EXIT trap stops writers again", async (t) => {
+  if (skipUnlessPreflightRunnable(t)) return;
   const execution = await runDeploy("memory-profile-apply");
   assert.notEqual(execution.status, 0);
   assert.equal(execution.log.includes("up -d --no-deps agent webapp"), false);

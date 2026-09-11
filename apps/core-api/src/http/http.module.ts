@@ -34,6 +34,7 @@ import { EnvironmentEndUsersController } from "../transports/rest/environment-en
 import { IdentitySessionController } from "../transports/rest/identity-session.controller.js";
 import { OrganizationsController } from "../transports/rest/organizations.controller.js";
 import { ProjectsController } from "../transports/rest/projects.controller.js";
+import { ProviderKeysController } from "../transports/rest/provider-keys.controller.js";
 import { EnvironmentStreamsController } from "../transports/ws/streams.controller.js";
 import { DomainExceptionFilter } from "./domain-exception.filter.js";
 import { HEALTH_DEPENDENCIES, HealthController, type HealthDependencies } from "./health.controller.js";
@@ -67,6 +68,15 @@ import { NotFoundController } from "./not-found.controller.js";
     OrganizationsController,
     ProjectsController,
     EnvironmentEndUsersController,
+    // WIN-302 — the provider-key rotation, THE THIRD of the eight one-time-secret
+    // mints to gain a handler in this process and the first that is not an MCP
+    // token. It is in this SAME array and not in `forApplication`'s for the reason
+    // the banner above gives: only a statically declared controller is registered
+    // ahead of `NotFoundController`'s `@All("{*path}")`, and a bound mint that lost
+    // that race would 404 while every unit test that constructs it kept passing —
+    // which is precisely the state this operation was in before this tranche, with
+    // the idempotency gate reserving keys on its behalf and replaying the 404.
+    ProviderKeysController,
     BffSessionController,
     // WIN-268 (M4.2) P1 — the two MCP token mints. They sit in this SAME array
     // and not in `forApplication`'s for the reason the banner above gives: only

@@ -806,7 +806,58 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the two mint controllers, which is why no `CORE_API_MOUNTED_CONTROLLERS` entry
     // moved either. 90 + 2 = 92, and NO LEDGER RULE CHANGED — `source.transports` and
     // `test.suites` matched both new files without one.
-    "apps-core-api": 92,
+    //
+    // WIN-302 — THE PROVIDER-KEY ROTATION — 92 -> 94. TWO files:
+    //
+    //   ONE under `apps-core-api.source.transports` (29 -> 30) —
+    //   `transports/rest/provider-keys.controller.ts`, the THIRD of the eight
+    //   one-time-secret mints `idempotency-policy.ts` binds `required` to gain a
+    //   handler in this process and the first that is not an MCP token. It is
+    //   reachable because `providers` composes and `rotateProviderKeySecret` was
+    //   already published on that contract.
+    //
+    //   ONE under `apps-core-api.test.suites` (32 -> 33) —
+    //   `composition/provider-key-rotation.integration.test.ts`, which proves the
+    //   idempotency contract against a REAL race: two sockets, one
+    //   `CredentialSecretVersion`, counted by a `psql` process sharing no pool with
+    //   the adapter.
+    //
+    // 1 + 1 = 2, and 92 + 2 = 94. `http/http.module.ts`, `http/idempotency-policy.ts`,
+    // `transports/rest/operator.ts`, `composition/context-ports.ts`,
+    // `composition/installation.test.ts`, `app.module.ts`,
+    // `transports/ws/streams.controller.ts`,
+    // `composition/stream-lane.integration.test.ts`, `generate-control-plane.mjs`,
+    // `scripts/arch/stream-contracts.mjs` and `scripts/arch/gen-v1-skeleton.mjs` are
+    // all EDITS, and every regenerated artifact already existed. NO LEDGER RULE
+    // CHANGED — `source.transports` and `test.suites` matched both new files without
+    // one. This tranche adds NO mutation manifest: every mutation it ran was against
+    // the committed tree and is recorded in the commit messages and in the
+    // controller's own banner rather than pinned in a file.
+    //
+    // WIN-302 PUNCH-LIST 94 -> 96. TWO files, both under
+    // `apps/core-api/src/composition/`, and both about making the six suites in that
+    // directory runnable off a supplied server rather than only inside a container:
+    //
+    //   `composition/integration-database.ts`, the PURE translation from a Prisma
+    //   url to one `psql` can address. It exists because `schema` is Prisma's query
+    //   parameter and not libpq's, and the canonical url in this repository's own
+    //   `ci.yml` ends `?schema=public` -- so the one suite that already had external
+    //   mode was 5 passed / 5 FAILED against the repo's own value, every failure
+    //   reading as a missing row. One copy of the rule rather than six.
+    //
+    //   `composition/integration-database.test.ts`, its eight cases, joined to the
+    //   REAL url parsed out of `ci.yml` so the parameter that mattered cannot stop
+    //   being tested by someone editing a fixture.
+    //
+    // 94 + 2 = 96. The four suites that LEARNED the supplied-server shape --
+    // `operator-authentication`, `identity-rest`, `stream-lane` and `mcp-token-mint`
+    // -- are EDITS and add no file, as are the two that already had it. NO LEDGER
+    // RULE CHANGED: `source.process` matched the helper (32 -> 33) and `test.suites`
+    // matched its suite (33 -> 34) without one. Two other pins moved with these two
+    // files and are recorded where they live -- `EXPECTED_FILE_COUNT` in
+    // `scripts/arch/env-access.mjs` (1699 -> 1701) and a sixth `PROSE_ONLY` entry in
+    // its suite, because the helper MENTIONS `process.env` while reading none.
+    "apps-core-api": 96,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2275,7 +2326,27 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // consistent and they disagree with each other, so this stage is "STAGE 4" HERE
   // and "stage 3" THERE, and each file's own sequence is what a reader of that file
   // should follow.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1792);
+  //
+  // AND WIN-302 — THE PROVIDER-KEY ROTATION — 1792 -> 1794. TWO files, BOTH in
+  // `apps-core-api` and both itemised on that area's delta above: the controller and
+  // its real-race proof. Nothing else this tranche adds a file. Its context-factory
+  // half adds none at all — it corrects a CONSTANT
+  // (`UNIMPORTABLE_CONTEXT_FACTORIES`, 7 -> 6), derives the other side of that
+  // partition inside `installation.test.ts`, and replaces a false reason at four
+  // sites, every one of which is an EDIT. The eight-key re-derivation from the merged
+  // `expectedDeltas` is 15 + 1 + 94 + 4 + 10 + 1556 + 24 + 90 = 1794.
+  //
+  // AND THE WIN-302 PUNCH-LIST — 1794 -> 1796. TWO files, BOTH in `apps-core-api`
+  // and both itemised on that area's delta above: the pure Prisma-to-psql url
+  // translation the six composition suites now share, and its suite. Nothing else
+  // this tranche adds a file. The other four items are EDITS throughout: the last
+  // `UNDERIVABLE_QUERY_HANDLERS` entry became an `EndUserWireQuery` declaration on
+  // an existing pipe, the PostgreSQL 16 pin became a floor derived from `ci.yml`
+  // inside an existing verifier, the two deploy cases gained a named skip in an
+  // existing suite, and the second-channel-adapter measurement is a comment in an
+  // existing port. The eight-key re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 96 + 4 + 10 + 1556 + 24 + 90 = 1796.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1796);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2562,7 +2633,24 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // takes it to 1792 — NINE files in this tranche, not eight, and the ledger is the
     // ninth. It is listed here because this reconciliation sums per-area counts and
     // would otherwise disagree with the total above by exactly one.
-    rulesDocument.baseline.totalFiles + 1792
+    // AND WIN-302 — 1792 -> 1794, the THIRTY-FIRST hand move. The same TWO files as
+    // the `totalFiles` assertion above, both `apps-core-api`, reached here by summing
+    // the per-area counts instead of reading the total. MOVED IN THE SAME EDIT as
+    // that assertion and as `expectedDeltas["apps-core-api"]`, for the reason the
+    // note above gives: the two figures are derived differently and this
+    // reconciliation has caught the omission SIX times — it caught this one too,
+    // which is how the figure came to be measured rather than assumed. 1792 + 2 =
+    // 1794, and there is no mutation-manifest +1 this time because this tranche
+    // pinned none.
+    // AND THE WIN-302 PUNCH-LIST — 1794 -> 1796, the THIRTY-SECOND hand move. The
+    // same TWO files as the `totalFiles` assertion above, both `apps-core-api`
+    // (`composition/integration-database.ts` and its suite), reached here by summing
+    // the per-area counts instead of reading the total. AND THIS RECONCILIATION
+    // CAUGHT IT AGAIN, for the SEVENTH time: `totalFiles` and
+    // `expectedDeltas["apps-core-api"]` were moved first, this figure was not, and
+    // the suite went red on exactly the disagreement it exists to find. 1794 + 2 =
+    // 1796, with no mutation-manifest +1 because this tranche pins none either.
+    rulesDocument.baseline.totalFiles + 1796
   );
 });
 

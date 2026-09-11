@@ -42,6 +42,10 @@
         "reason": "mid-migration: the platform credential listing, now also served by apps/core-api on the V1 chassis over IdentityAccessContract.listBearerCredentials. Two independent classes, one wire path; it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn."
       },
       {
+        "id": "POST /api/v1/agent/providers/keys/:id/rotate-secret",
+        "reason": "mid-migration: apps/agent has served this rotation since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in and idempotency-policy.ts binds this template `required`. The two are NOT interchangeable: the legacy handler reads its tenancy from X-Platos-* headers through ScopeGuard and the V1 handler takes environmentId as a named body field re-derived by tenancy, and the V1 handler surfaces PROVIDERS_PROBE_CACHE_NOT_EVICTED as its own refusal where the legacy one cannot. It cannot satisfy §4.1 fan-in until the legacy handler is withdrawn."
+      },
+      {
         "id": "POST /mcp/entity/:entityId/tokens",
         "reason": "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape."
       },
@@ -10019,6 +10023,12 @@
             "handler": "rotateKeySecret",
             "source": "apps/agent/src/providers/providers.controller.ts",
             "requiresOperator": true
+          },
+          {
+            "controller": "ProviderKeysController",
+            "handler": "rotateSecret",
+            "source": "apps/core-api/src/transports/rest/provider-keys.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12666,9 +12676,9 @@
       "MCP_ONLY": 120
     },
     "restOperations": 313,
-    "restRouteBindings": 319,
-    "ambiguousRestOperations": 6,
-    "crossDeployableRestOperations": 6,
+    "restRouteBindings": 320,
+    "ambiguousRestOperations": 7,
+    "crossDeployableRestOperations": 7,
     "restClassifications": {
       "DEPRECATED": 15,
       "INTERNAL": 14,
@@ -12689,9 +12699,9 @@
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 9,
-        "operations": 18,
-        "routeBindings": 18
+        "registeredControllers": 10,
+        "operations": 19,
+        "routeBindings": 19
       }
     ]
   }

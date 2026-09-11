@@ -606,6 +606,11 @@ class ItemEnvelope_PolicyDeletionResource(TypedDict):
     meta: "ItemMeta"
 
 
+class ItemEnvelope_ProviderKeyResource(TypedDict):
+    data: "ProviderKeyResource"
+    meta: "ItemMeta"
+
+
 class ItemEnvelope_RevokedTokenResource(TypedDict):
     data: "RevokedTokenResource"
     meta: "ItemMeta"
@@ -708,6 +713,19 @@ class ProjectResource(TypedDict):
     through: str
 
 
+class ProviderKeyResource(TypedDict):
+    providerKeyId: str
+    environmentId: str
+    provider: str
+    label: str
+    credentialName: str
+    isDefault: bool
+    createdBy: str
+    lastUsedAt: str | None
+    createdAt: str
+    updatedAt: str
+
+
 class RevokePlatformTokenBody(TypedDict):
     environmentId: str
 
@@ -719,6 +737,11 @@ class RevokedTokenResource(TypedDict):
     newlyRevoked: bool
     previousState: Literal["active", "revoked", "expired"]
     revokedBy: str | None
+
+
+class RotateProviderKeySecretBody(TypedDict):
+    environmentId: str
+    plaintext: str
 
 
 class SetOrganizationPolicyBody(TypedDict):
@@ -759,6 +782,14 @@ class V1Operation(TypedDict):
 
 
 V1_OPERATIONS: tuple[V1Operation, ...] = (
+    {
+        "operationId": "post__api_v1_agent_providers_keys_by_id_rotate_secret",
+        "method": "POST",
+        "template": "/api/v1/agent/providers/keys/:id/rotate-secret",
+        "pathParameters": ["id"],
+        "successStatus": 200,
+        "idempotency": "required",
+    },
     {
         "operationId": "delete__api_v1_bff_session",
         "method": "DELETE",
@@ -951,6 +982,22 @@ def _fill(template: str, values: dict[str, str]) -> str:
     return re.sub(r":([A-Za-z0-9_]+)", replace, template)
 
 
+class ProviderKeysV1Api:
+    def __init__(self, transport: V1Transport) -> None:
+        self._transport = transport
+
+    def rotate_secret(self, id: str, body: "RotateProviderKeySecretBody") -> "ItemEnvelope_ProviderKeyResource":
+        """POST /api/v1/agent/providers/keys/:id/rotate-secret"""
+        return self._transport.send(
+            {
+                "operation": _operation("post__api_v1_agent_providers_keys_by_id_rotate_secret"),
+                "path": _fill("/api/v1/agent/providers/keys/:id/rotate-secret", {"id": id}),
+                "body": body,
+                "query": None,
+            }
+        )
+
+
 class BffSessionV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
@@ -982,18 +1029,21 @@ class EnvironmentEndUsersV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
-    def list(self, environment_id: str, query: dict[str, str] | None = None) -> "CollectionEnvelope_EndUserResource":
+    def list(self, environment_id: str, cursor: str | None = None, limit: str | None = None, search: str | None = None, status: str | None = None) -> "CollectionEnvelope_EndUserResource":
         """GET /api/v1/environments/:environmentId/end-users
 
-        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-        The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to declare its Wire type argument, as the three MCP token routes now do — so this is the one remaining entry and it is a declaration this tranche did not make, in a controller it did not otherwise touch, rather than a missing mechanism.
+        Query parameters:
+            cursor: optional
+            limit: optional
+            search: optional
+            status: optional
         """
         return self._transport.send(
             {
                 "operation": _operation("get__api_v1_environments_by_environmentId_end_users"),
                 "path": _fill("/api/v1/environments/:environmentId/end-users", {"environmentId": environment_id}),
                 "body": None,
-                "query": query,
+                "query": {name: value for name, value in {"cursor": cursor, "limit": limit, "search": search, "status": status}.items() if value is not None},
             }
         )
 
@@ -1218,6 +1268,7 @@ class V1Api:
     """Every generated V1 namespace, attached to one transport."""
 
     def __init__(self, transport: V1Transport) -> None:
+        self.provider_keys = ProviderKeysV1Api(transport)
         self.bff_session = BffSessionV1Api(transport)
         self.environment_end_users = EnvironmentEndUsersV1Api(transport)
         self.environment_streams = EnvironmentStreamsV1Api(transport)

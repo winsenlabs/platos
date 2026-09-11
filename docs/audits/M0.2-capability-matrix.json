@@ -12,9 +12,9 @@
     "endUserRestrictedModels": 14,
     "restOperationsByScanRoot": {
       "agent": 301,
-      "core-api-transports": 18
+      "core-api-transports": 19
     },
-    "restOperationsSharedAcrossScanRoots": 6
+    "restOperationsSharedAcrossScanRoots": 7
   },
   "scanRoots": {
     "authority": "scripts/rest-census-independent.mjs SCAN_ROOTS",
@@ -28,12 +28,12 @@
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "operations": 18,
-        "routeBindings": 18
+        "operations": 19,
+        "routeBindings": 19
       }
     ],
     "unattributed": [],
-    "sharedAcrossRoots": 6,
+    "sharedAcrossRoots": 7,
     "errors": []
   },
   "surfaces": {
@@ -6116,5 +6116,5 @@
     }
   ],
   "acceptanceCriterion": "Every REST binding in operation-manifest.generated.json and every tenancy Prisma model appears here; counts are read from source, never hardcoded; --check fails on any drift. Every row names an ADR M0.3 §1 context, or the one non-context value `<platform-transport>` under the admission rule in scripts/arch/route-ownership.mjs; the retired unresolved-owner placeholder is neither producible nor accepted, and is refused by its own named rule.",
-  "sourceDigest": "2539b4253245b0eeccf0e0cf9cbcf8f1da1c3087052355a029360b076cbfe618"
+  "sourceDigest": "eaf1d7f641a320fcf5469a89851f977f244f2a0e7280a1671a134c5d1fea3df5"
 }

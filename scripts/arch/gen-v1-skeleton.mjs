@@ -1310,16 +1310,37 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // claim was not, and kept the other four wrong for a further tranche. There is
 // no context in this tree without an assembler, and there never was.
 //
-// WHAT IS REAL IS THE OTHER HALF, and it is this list's own subject. NINE
-// factories can be named from the composition root — six from `.`, and
-// `identity-access`, `tenancy` and `skills` from the `./application/index.js`
-// entries below. The remaining EIGHT — `channels`, `conversations`, `eventing`,
-// `files`, `governance`, `jobs`, `observability` and `privacy` — keep a
-// `create*Contract` in `application/` behind a manifest publishing only `.`,
-// `./application/ports/index.js` and `./application/testing/index.js`. That is
-// WIN-297's finding, still open for eight contexts, and the fix is one line here
-// each — held back by this list's own rule until the context is actually
-// composed.
+// WHAT IS REAL IS THE OTHER HALF, and it is this list's own subject — but the
+// FIGURE that stood here was wrong twice, and WIN-302 measured it instead of
+// repeating it. It read: "NINE factories can be named from the composition root
+// ... The remaining EIGHT — `channels`, `conversations`, `eventing`, `files`,
+// `governance`, `jobs`, `observability` and `privacy`".
+//
+// Counted against Node's own resolver and against the seventeen manifests, it is
+// ELEVEN and SIX:
+//
+//   SEVEN from `.`         agents, conversations, cost-monitoring, memory,
+//                          providers, secrets, tools
+//   FOUR from the subpath  governance, identity-access, skills, tenancy
+//   SIX unimportable       channels, eventing, files, jobs, observability,
+//                          privacy
+//
+// `governance` IS IN THIS LIST, twenty lines above, added by WIN-267 — so the
+// sentence further down that reads "AND `governance` IS IN THE UNIMPORTABLE
+// EIGHT" contradicted the data in its own file and is corrected there too.
+// `conversations` was never unimportable at all: its `contracts/index.ts`
+// re-exports `createConversationsContract` as a VALUE from the `.` entry point.
+//
+// So WIN-297's finding is open for SIX contexts, each keeping a `create*Contract`
+// in `application/` behind a manifest publishing only `.`,
+// `./application/ports/index.js` and `./application/testing/index.js`. The fix is
+// one line here each — held back by this list's own rule until the context is
+// actually composed.
+//
+// AND IT IS A TEST NOW. `apps/core-api/src/composition/installation.test.ts`
+// derives the `.`-entry half from the seventeen packages' own barrels and joins it
+// to `UNIMPORTABLE_CONTEXT_FACTORIES`, so this count cannot go stale again without
+// a named case going red.
 //
 // ONE context clears all three: `tenancy`, whose six driven ports and unit of
 // work are all properties of a single `PostgresTenancyAdapter` (WIN-258 tranches
@@ -1335,10 +1356,13 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // its driven ports are now satisfied. What holds it is the kernel
 // `SafetyEventSink`, implemented only by `governance`.
 //
-// AND `governance` IS IN THE UNIMPORTABLE EIGHT, which is the fact a tranche
-// planning that work needs first: landing adapters for its five unbound ports
-// still would not make it composable, because `createGovernanceContract` cannot
-// be named from the composition root until an entry appears above. Its
+// AND `governance` IS NOT IN THE UNIMPORTABLE SET, which is the correction WIN-302
+// makes to the fact a tranche planning that work needs first. This paragraph said
+// it was, and the entry twenty lines above — added by WIN-267, in the same tranche
+// that wrote this sentence — already made `createGovernanceContract` nameable from
+// the composition root. So landing adapters for its unbound ports is NOT blocked
+// on packaging; `GOVERNANCE_UNBOUND_PORTS` is empty and what remains is the peer
+// chain alone. Its
 // `AgentsContract` slot needs a composed `agents` too, and `agents` is short
 // `AgentVersionLock` and `MacroRecorder` plus a `skills` peer.
 // `apps/core-api/src/composition/context-ports.ts` states this per context, and

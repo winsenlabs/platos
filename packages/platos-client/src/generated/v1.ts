@@ -604,6 +604,11 @@ export interface ItemEnvelope_PolicyDeletionResource {
   readonly "meta": ItemMeta;
 }
 
+export interface ItemEnvelope_ProviderKeyResource {
+  readonly "data": ProviderKeyResource;
+  readonly "meta": ItemMeta;
+}
+
 export interface ItemEnvelope_RevokedTokenResource {
   readonly "data": RevokedTokenResource;
   readonly "meta": ItemMeta;
@@ -700,6 +705,19 @@ export interface ProjectResource {
   readonly "through": string;
 }
 
+export interface ProviderKeyResource {
+  readonly "providerKeyId": string;
+  readonly "environmentId": string;
+  readonly "provider": string;
+  readonly "label": string;
+  readonly "credentialName": string;
+  readonly "isDefault": boolean;
+  readonly "createdBy": string;
+  readonly "lastUsedAt": string | null;
+  readonly "createdAt": string;
+  readonly "updatedAt": string;
+}
+
 export interface RevokePlatformTokenBody {
   readonly "environmentId": string;
 }
@@ -711,6 +729,11 @@ export interface RevokedTokenResource {
   readonly "newlyRevoked": boolean;
   readonly "previousState": "active" | "revoked" | "expired";
   readonly "revokedBy": string | null;
+}
+
+export interface RotateProviderKeySecretBody {
+  readonly "environmentId": string;
+  readonly "plaintext": string;
 }
 
 export interface SetOrganizationPolicyBody {
@@ -749,6 +772,14 @@ export interface V1Operation {
 }
 
 export const V1_OPERATIONS: readonly V1Operation[] = [
+  {
+    operationId: "post__api_v1_agent_providers_keys_by_id_rotate_secret",
+    method: "POST",
+    template: "/api/v1/agent/providers/keys/:id/rotate-secret",
+    pathParameters: ["id"],
+    successStatus: 200,
+    idempotency: "required",
+  },
   {
     operationId: "delete__api_v1_bff_session",
     method: "DELETE",
@@ -959,6 +990,21 @@ function fill(template: string, values: Readonly<Record<string, string>>): strin
   });
 }
 
+export class ProviderKeysV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** POST /api/v1/agent/providers/keys/:id/rotate-secret */
+  async rotateSecret(id: string, body: RotateProviderKeySecretBody): Promise<ItemEnvelope_ProviderKeyResource> {
+    return this.transport.send<ItemEnvelope_ProviderKeyResource>({
+      operation: operation("post__api_v1_agent_providers_keys_by_id_rotate_secret"),
+      path: fill("/api/v1/agent/providers/keys/:id/rotate-secret", { id }),
+      body: body,
+      query: undefined,
+    });
+  }
+
+}
+
 export class BffSessionV1Api {
   constructor(private readonly transport: V1Transport) {}
 
@@ -987,13 +1033,8 @@ export class BffSessionV1Api {
 export class EnvironmentEndUsersV1Api {
   constructor(private readonly transport: V1Transport) {}
 
-  /**
-   * GET /api/v1/environments/:environmentId/end-users
-   *
-   * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-   * The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to declare its Wire type argument, as the three MCP token routes now do — so this is the one remaining entry and it is a declaration this tranche did not make, in a controller it did not otherwise touch, rather than a missing mechanism.
-   */
-  async list(environmentId: string, query?: Readonly<Record<string, string>>): Promise<CollectionEnvelope_EndUserResource> {
+  /** GET /api/v1/environments/:environmentId/end-users */
+  async list(environmentId: string, query?: { readonly cursor?: string; readonly limit?: string; readonly search?: string; readonly status?: string }): Promise<CollectionEnvelope_EndUserResource> {
     return this.transport.send<CollectionEnvelope_EndUserResource>({
       operation: operation("get__api_v1_environments_by_environmentId_end_users"),
       path: fill("/api/v1/environments/:environmentId/end-users", { environmentId }),
@@ -1191,6 +1232,7 @@ export class McpPlatformTokensV1Api {
 
 /** Every generated V1 namespace, attached to one transport. */
 export class V1Api {
+  readonly providerKeys: ProviderKeysV1Api;
   readonly bffSession: BffSessionV1Api;
   readonly environmentEndUsers: EnvironmentEndUsersV1Api;
   readonly environmentStreams: EnvironmentStreamsV1Api;
@@ -1202,6 +1244,7 @@ export class V1Api {
   readonly mcpPlatformTokens: McpPlatformTokensV1Api;
 
   constructor(transport: V1Transport) {
+    this.providerKeys = new ProviderKeysV1Api(transport);
     this.bffSession = new BffSessionV1Api(transport);
     this.environmentEndUsers = new EnvironmentEndUsersV1Api(transport);
     this.environmentStreams = new EnvironmentStreamsV1Api(transport);

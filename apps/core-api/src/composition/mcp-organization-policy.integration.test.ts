@@ -125,6 +125,8 @@ import { resolve } from "node:path";
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testcontainers/postgresql";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { psqlConnectionUrl, psqlRows } from "./integration-database.js";
+
 import { asIdentifier } from "@platos/kernel";
 import type { EnvironmentScope } from "@platos/kernel";
 import type { OrganizationMcpPolicyId, ToolsContract } from "@platos/context-tools";
@@ -323,13 +325,17 @@ beforeAll(async () => {
     // binary.
     const psql = AMBIENT["PLATOS_PSQL_BINARY"] ?? "psql";
     observeWith = async (sql) =>
-      execFileSync(psql, ["-d", databaseUrl, "-t", "-A", "-F", "|", "-c", sql], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      })
-        .split("\n")
-        .map((line) => line.trim())
-        .filter((line) => line !== "");
+      psqlRows(
+        // TRANSLATED, NOT PASSED THROUGH. The supplied url is a PRISMA url and the
+        // canonical one in `ci.yml` ends `?schema=public`, which `psql` refuses
+        // outright — "invalid URI query parameter". Before this call translated it,
+        // this suite was 5 passed / 5 failed against the repository's own url, and
+        // every failure read as a missing row. See `integration-database.ts`.
+        execFileSync(psql, ["-d", psqlConnectionUrl(databaseUrl), "-t", "-A", "-F", "|", "-c", sql], {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        }),
+      );
   }
 
   const databasePackage = packageRootRelative("../../internal-packages/tenancy-database");

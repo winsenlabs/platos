@@ -305,10 +305,17 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // counted under both roots, exactly as the two mints are. That is the difference
   // from the policy surface above, whose three legacy methods answered no route at
   // all.
-  assert.equal(core.sourceControllers, 9);
-  assert.equal(core.sourceDecorators, 18);
-  assert.equal(core.expandedOperations, 18);
-  assert.equal(core.manifestOperations, 18);
+  // WIN-302 (M2/M4 reachable): 9 -> 10 controllers and 18 -> 19 decorators, which is
+  // the OPPOSITE shape from the entry above and the arithmetic worth stating. The
+  // token lifecycle added four decorators and no class because four routes fitted the
+  // two mint controllers that already existed; this adds ONE class for ONE route,
+  // because `POST /api/v1/agent/providers/keys/:id/rotate-secret` sits under a base
+  // path — `agent/providers` — that no controller in this tree had. A reader who
+  // assumed "one route, no new class" would expect 9.
+  assert.equal(core.sourceControllers, 10);
+  assert.equal(core.sourceDecorators, 19);
+  assert.equal(core.expandedOperations, 19);
+  assert.equal(core.manifestOperations, 19);
   // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
@@ -322,9 +329,15 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // identity with a surplus term rather than as a tolerance: four routes gained a
   // second implementation and NO new operation entered the surface, and the two
   // enumerations still reconcile exactly. 319 - 6 = 313.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 319);
+  //
+  // WIN-302: 319 -> 320 bindings and the surplus 6 -> 7, so the UNIQUE total is again
+  // unmoved at 313. The rotation is a FIFTH kind of entry in this sequence and the
+  // cleanest illustration of why the identity carries a surplus term: it adds one
+  // binding and one shared operation in the same move, because `apps/agent` has
+  // served this path since before V1. 320 - 7 = 313.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 320);
   const totals = manifestCensus();
-  assert.equal(totals.crossRootBindings, 6);
+  assert.equal(totals.crossRootBindings, 7);
   assert.equal(totals.totalOps - totals.crossRootBindings, 313);
 });
 

@@ -53,6 +53,8 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from "@testconta
 import { RedisContainer, type StartedRedisContainer } from "@testcontainers/redis";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { psqlConnectionUrl, psqlRows } from "./integration-database.js";
+
 import { asIdentifier } from "@platos/kernel";
 import type { EnvironmentScope } from "@platos/kernel";
 
@@ -92,8 +94,56 @@ const SCOPE: EnvironmentScope = Object.freeze({
   environmentId: asIdentifier(ENVIRONMENT),
 }) as EnvironmentScope;
 
-let postgres: StartedPostgreSqlContainer;
-let redis: StartedRedisContainer;
+/**
+ * THE AMBIENT ENVIRONMENT, COPIED AND FROZEN ONCE.
+ *
+ * `scripts/arch/env-access.mjs` counts READS, and this suite legitimately needs
+ * values off the machine it runs on. It takes them the way
+ * `apps/core-api/src/config/environment.ts` takes the deployable's: ONE
+ * `{ ...process.env }`, frozen at module load, indexed as an ordinary value
+ * afterwards. Separate inline reads would be several panels in a door the gate's
+ * whole argument says should be one, and the pin below stays at `reads: 1`.
+ *
+ * WHY IT READS THE ENVIRONMENT FOR MORE THAN PATH NOW. WHICH SERVERS TO USE IS
+ * THE RUNNER'S DECISION AND NOT A FIXTURE'S. This suite used to only ever start a
+ * container, which is right about never skipping and also made it unrunnable on a
+ * machine where Docker may not run at all — so hosted CI proved it and nobody
+ * else could. It now takes SUPPLIED servers when a runner names them and starts
+ * containers when it does not. Both paths execute every case; NEITHER SKIPS, and
+ * that is the property the container-only shape was defending.
+ *
+ * THE VARIABLE NAMES ARE THE ONES THIS REPOSITORY ALREADY HAS, not a third
+ * spelling: `PLATOS_POSTGRES_INTEGRATION_DATABASE_URL` and
+ * `PLATOS_REDIS_INTEGRATION_URL` are read by the two suites in this directory
+ * that already had this shape and by five more under `apps/agent`;
+ * `PLATOS_PSQL_BINARY` overrides the client the second reader spawns, because a
+ * Homebrew `postgresql@17` is not on `PATH` by default and a bare `psql` would
+ * fail with ENOENT — which reads as "the row is missing" if the caller is not
+ * careful.
+ *
+ * THE CONFIGURATION VARIABLES THIS SUITE SETS ARE STILL NOT READS. They are
+ * properties of a plain object handed to `loadPlatformConfiguration`, so the
+ * process under test takes nothing from the machine except the servers named
+ * above — and a suite that reached past `AMBIENT` for any of them would show up
+ * in that gate as a SECOND read.
+ */
+const AMBIENT: Readonly<Record<string, string | undefined>> = Object.freeze({ ...process.env });
+
+/** A supplied value, or null. An empty string is not a url. */
+function supplied(variable: string): string | null {
+  const value = AMBIENT[variable];
+  return value === undefined || value.trim() === "" ? null : value.trim();
+}
+
+/** A PostgreSQL somebody else started, or null for the container path. */
+const suppliedPostgresUrl = supplied("PLATOS_POSTGRES_INTEGRATION_DATABASE_URL");
+/** A Redis somebody else started, or null for the container path. */
+const suppliedRedisUrl = supplied("PLATOS_REDIS_INTEGRATION_URL");
+
+let postgres: StartedPostgreSqlContainer | null = null;
+/** The url actually in use: a supplied server's, or the container's. */
+let suppliedDatabaseUrl = "";
+let redis: StartedRedisContainer | null = null;
 let construction: AdapterConstruction;
 let assembly: ContextPortAssembly;
 let app: AppModule;
@@ -115,36 +165,47 @@ function packageRootRelative(...parts: string[]): string {
  * somebody else looks" is literal.
  */
 async function observe(sql: string): Promise<string[]> {
+  // SUPPLIED MODE RUNS THE CLIENT ON THE HOST, container mode runs it inside the
+  // container. Either way it is a separate PROCESS sharing no pool, no driver and
+  // no transaction with the code that wrote the row — "the writer can see its own
+  // row" is not durability.
+  if (postgres === null) {
+    return psqlRows(
+      execFileSync(
+        AMBIENT["PLATOS_PSQL_BINARY"] ?? "psql",
+        // TRANSLATED, NOT PASSED THROUGH — a supplied url is a PRISMA url and the
+        // canonical one in `ci.yml` ends `?schema=public`, which `psql` refuses
+        // outright. See `integration-database.ts`.
+        ["-d", psqlConnectionUrl(suppliedDatabaseUrl), "-t", "-A", "-F", "|", "-c", sql],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      ),
+    );
+  }
   const result = await postgres.exec([
-    "psql",
-    "-U",
-    postgres.getUsername(),
-    "-d",
-    postgres.getDatabase(),
-    "-t",
-    "-A",
-    "-F",
-    "|",
-    "-c",
-    sql,
+    "psql", "-U", postgres.getUsername(), "-d", postgres.getDatabase(),
+    "-t", "-A", "-F", "|", "-c", sql,
   ]);
   if (result.exitCode !== 0) throw new Error(`psql refused: ${result.output}`);
-  return result.output
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line !== "");
+  return psqlRows(result.output);
 }
 
 beforeAll(async () => {
-  postgres = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
-  redis = await new RedisContainer("redis:7-alpine").start();
-  const databaseUrl = postgres.getConnectionUri();
+  // SUPPLIED OR STARTED, and the same cases run either way. See `AMBIENT`.
+  if (suppliedPostgresUrl === null) {
+    postgres = await new PostgreSqlContainer("pgvector/pgvector:pg16").start();
+  }
+  if (suppliedRedisUrl === null) {
+    redis = await new RedisContainer("redis:7-alpine").start();
+  }
+  const databaseUrl = suppliedPostgresUrl ?? postgres!.getConnectionUri();
+  suppliedDatabaseUrl = databaseUrl;
+  const redisUrl = suppliedRedisUrl ?? redis!.getConnectionUrl();
 
   const databasePackage = packageRootRelative("../../internal-packages/tenancy-database");
   execFileSync(
     packageRootRelative("../../node_modules/.bin/prisma"),
     ["migrate", "deploy", "--schema", resolve(databasePackage, "prisma/schema.prisma")],
-    { cwd: databasePackage, env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" },
+    { cwd: databasePackage, env: { ...AMBIENT, DATABASE_URL: databaseUrl }, stdio: "pipe" },
   );
 
   // EXACTLY WHAT `main.ts` DOES, in the same order and with the same calls.
@@ -152,7 +213,7 @@ beforeAll(async () => {
     PLATOS_ENVIRONMENT: "test",
     PLATOS_CORE_API_PORT: "0",
     PLATOS_STORE_POSTGRES_URL: databaseUrl,
-    PLATOS_STORE_REDIS_URL: redis.getConnectionUrl(),
+    PLATOS_STORE_REDIS_URL: redisUrl,
     PLATOS_PROVIDERS_DEFAULT_MODEL: "anthropic:claude-haiku-4-5-20251001",
     PLATOS_SECURITY_ENCRYPTION_KEY: "b".repeat(64),
     PLATOS_SECURITY_ENCRYPTION_KEY_VERSION: "3",

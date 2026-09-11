@@ -942,7 +942,14 @@ test("the live selectors scan an exact nonzero source census", () => {
   // was AVOIDED on purpose: `in-memory-bearer-listings.ts` exists because
   // `in-memory-repository.ts` reached 449 effective lines, and splitting on the seam
   // it already had is the difference between honouring a budget and naming a number.
-  assert.equal(result.fileCount, 1652);
+  // WIN-302 — THE PROVIDER-KEY ROTATION, 1652 -> 1653. ONE file, not two.
+  // `transports/rest/provider-keys.controller.ts` is counted; its sibling
+  // `composition/provider-key-rotation.integration.test.ts` is NOT, and the
+  // difference is this gate's own selector rather than an oversight — the
+  // `APPS-TRANSPORTS` term covers `apps/core-api/src/transports/**` and the suite
+  // lives in `composition/`, which no selector here names. A reader who assumed
+  // "two new files" would expect 1654.
+  assert.equal(result.fileCount, 1653);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1033,7 +1040,16 @@ test("the live selectors scan an exact nonzero source census", () => {
       // them here, named for what they are, is what stops the next reader deriving a
       // false attribution from the sum — and what stops the eight being quietly
       // absorbed into this tranche's own count.
-      7 + 1
+      7 + 1 +
+      // WIN-302 (M2/M4 reachable): ONE, under `apps/core-api/src/transports/rest/` --
+      // `provider-keys.controller.ts`, the third of the eight bound one-time-secret
+      // mints to gain a handler and the first that is not an MCP token. Its
+      // real-race proof is under `src/composition/`, which no selector here names,
+      // so it is deliberately absent from this sum exactly as the MCP mints' own
+      // integration suite is. Everything else the tranche touched is an EDIT:
+      // `http/idempotency-policy.ts`, `transports/rest/operator.ts`,
+      // `composition/context-ports.ts` and `composition/installation.test.ts`.
+      1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1252,8 +1268,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // so a reader must not conclude that term did not move: it moved by two, from a
   // tree value of 35 the old pin did not describe.
   //
-  // 30 + 1093 + 474 + 18 + 37 = 1652.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 37);
+  // WIN-302 — THE PROVIDER-KEY ROTATION, +1, AND IT LANDS IN ONE TERM:
+  // APPS-TRANSPORTS 37 -> 38. `KERNEL`, `CONTEXTS`, `ADAPTERS` and `APPS-HTTP` are
+  // flat — this tranche edits `apps/core-api/src/http/idempotency-policy.ts` and
+  // `transports/rest/operator.ts` IN PLACE and adds no file under either.
+  //
+  // 30 + 1093 + 474 + 18 + 38 = 1653.
+  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 38);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

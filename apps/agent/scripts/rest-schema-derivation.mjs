@@ -76,56 +76,44 @@ const HTTP_STATUS_FALLBACK = {
 };
 
 /**
- * Handlers whose QUERY STRING cannot be derived, and why.
+ * Handlers whose QUERY STRING cannot be derived, and why. IT IS NOW EMPTY.
  *
- * M4 FINISH — THE MECHANISM NOW EXISTS AND THIS LIST IS DOWN TO ONE. Until then
- * there was no code path in this derivation that emitted a @Query type at all: the
- * branch that would have was the branch that raised, so a route with a query string
- * was either listed here as a gap or a generation failure, and the OpenAPI ratchet
- * could not guard a field it never saw. A pipe now declares the WIRE shape it
- * accepts as `DomainValidationPipe<Parsed, Wire>`, `declaredWireQueryType` reads it
- * off the decorator through the checker, and the three MCP token lifecycle routes
- * publish their query parameters — including the REQUIRED `environmentId` without
- * which a generated client cannot call them.
+ * THE LIST IS EMPTY BECAUSE THE MECHANISM LANDED AND THEN WAS USED, and both
+ * halves of that sentence are the history worth keeping. Until M4 finish there
+ * was no code path in this derivation that emitted a `@Query` type at all: the
+ * branch that would have was the branch that raised, so a route with a query
+ * string was either listed here as a gap or a generation failure, and the OpenAPI
+ * ratchet could not guard a field it never saw. M4 finish added the mechanism — a
+ * pipe declares the WIRE shape it accepts as `DomainValidationPipe<Parsed, Wire>`,
+ * `declaredWireQueryType` reads it off the decorator through the checker — and
+ * adopted it on the three MCP token lifecycle routes, including the REQUIRED
+ * `environmentId` without which a generated client cannot call them. That left
+ * ONE entry, `EnvironmentEndUsersController.list`, whose note said in as many
+ * words that the remedy was "a change to `apps/core-api/src/transports/rest`, it
+ * is not this tranche's".
  *
- * DECLARED RATHER THAN GUESSED. `EnvironmentEndUsersController.list` types its
- * `@Query` parameter as `EndUserQuery`, which is the POST-PARSE shape — it
- * carries `offset`, a number the caller never sends, and it does NOT carry
- * `cursor`, the parameter the caller actually sends and which
- * `offsetInCursor` decodes into that offset. Emitting `EndUserQuery` as the query
- * schema would publish a parameter that does not exist and omit two that do.
+ * IT IS THIS ONE'S. `environment-end-users.controller.ts` now declares
+ * `EndUserWireQuery` — `status?`/`search?`/`limit?`/`cursor?`, every one a string
+ * — and `END_USER_QUERY_PIPE` passes it as the `Wire` argument, so the route
+ * publishes the four parameters a caller actually sends instead of the
+ * post-parse `EndUserQuery` that carried an `offset` nobody sends and no `cursor`
+ * everybody does.
  *
- * The remedy is a declared wire-query DTO that the validator itself consumes, so
- * that one declaration decides both what is parsed and what is published. That is
- * a change to `apps/core-api/src/transports/rest`, it is not this tranche's, and
- * naming it here is the difference between a known gap and a silent one.
+ * WHY THE REGISTER STAYS RATHER THAN BEING DELETED WITH ITS LAST ENTRY. It is the
+ * declared escape hatch for a route whose query string genuinely cannot be
+ * described — and the `fail()` at the end of the `@Query` branch names it as the
+ * alternative to a generation failure, so removing it would leave that message
+ * pointing at nothing. An empty register also means something the gate can read:
+ * `scripts/openapi-schema-derivation.test.mjs` asserts the document's
+ * `queryParametersNotDerived` equals these keys exactly, so the empty object is
+ * the assertion that NO route is currently undescribed. A future entry costs a
+ * reason string of more than eighty characters and the same test demands it.
  *
- * WIN-268 (M4.2) ADDS THREE MORE AND THEY ARE WORSE THAN THE FIRST, WHICH IS
- * RECORDED HERE RATHER THAN AVERAGED AWAY. The four MCP token lifecycle routes
- * carry their tenancy in the query string, because two are `GET` and one is
- * `DELETE` and their templates are fixed by `apps/core-api/src/http/idempotency-policy.ts`
- * — so `environmentId` is a REQUIRED query parameter, not an optional filter. An
- * undocumented optional filter costs a generated client nothing; an undocumented
- * required parameter means a generated client cannot call the route at all. The
- * remedy is the same one named above and it is a change to this derivation as much
- * as to the transports: nothing here can read a wire shape off a
- * `DomainValidationPipe`, whose validator is typed `(input: unknown)`. Until that
- * exists these three publish their RESPONSE schemas, which the ratchet does guard,
- * and their query parameters are marked `not-derived` rather than invented.
+ * EVERY ENTRY MUST CARRY `reason` AND `detail`. `detail` is prose a reader can act
+ * on; the test refuses one under eighty characters, because "post-parse DTO" is a
+ * label and not an explanation.
  */
-export const UNDERIVABLE_QUERY_HANDLERS = {
-  "EnvironmentEndUsersController.list": {
-    reason: "post-parse-dto",
-    detail:
-      "The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has " +
-      "decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits " +
-      "`cursor` and `limit`, which every caller does. Publishing it would describe a query string " +
-      "this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to " +
-      "declare its Wire type argument, as the three MCP token routes now do — so this is the one " +
-      "remaining entry and it is a declaration this tranche did not make, in a controller it did " +
-      "not otherwise touch, rather than a missing mechanism.",
-  },
-};
+export const UNDERIVABLE_QUERY_HANDLERS = {};
 
 class DerivationError extends Error {}
 
