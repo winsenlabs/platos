@@ -60,7 +60,7 @@
     "deprecatedOperations": 15,
     "cataloguedOperations": 15,
     "minimumWindowDays": 90,
-    "forksWithoutOneHandler": 6,
+    "forksWithoutOneHandler": 7,
     "forkPolicy": "An operation served by two deployables cannot satisfy fan-in — two independent classes in two processes — so it is not an alias. Each is named in FORKED_OPERATIONS_WITHOUT_ONE_HANDLER in the generator with the reason it is one, and a new one fails generation."
   },
   "corrections": {

@@ -1181,14 +1181,14 @@
       "path": "docs/audits/M0.4-design-contract-map.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "c72b0534868df1db447ed23c42ee7cb3e9958be637ec91cd63361368650c34ee",
+      "sha256": "da21e5721e60055e3c1087a347bc260d374cb35bf17ff43955f881ee4978ee11",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "105c629899f96270d12e37156b7d747aff925e844259bddb0518accce0f32328",
+      "sha256": "ddc20c75e99c11ca9ced34e58f8aebfa9fb1c0656912f5ba2d3b46d19bdbd966",
       "binds": "current-repository-truth"
     },
     {
@@ -1534,21 +1534,21 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "24409b5a3ea0a270ca7582f267ff2c7fe98b1bda1c91a760e48464903a4c9c2a",
+      "sha256": "1399ce49b4bf5f10db8a40c83c52bb59db4d2b2300a4c5c59b26af93fa3f58fd",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "2e144441bad7d080991e2954c4e51a7c0e40e4b75191df26771ed6c0080046c1",
+      "sha256": "8d3a06a95aff7c5e933929839e0c32f40e8d6f7bc3a7c25ce9d32db302d454ce",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "a200c940acd2ad9dda3951c8c7ab4b998461c316832470eb6fc9320aafb88765",
+      "sha256": "67cf289eaf34e8c60fc808e2b3e58ffd0c96e7ea4507c97e9506723730ac91d5",
       "binds": "current-repository-truth"
     },
     {
@@ -1611,7 +1611,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "7a8b6cd3fb2db9262e8f74b421a5a63d29fbd7394a2989ff409f231dea7c5c03",
+      "sha256": "5e6229f0a70a3c5e0340799ba3341277ffb9197e1cdef47ab2b3a64d7d8affe5",
       "binds": "current-repository-truth"
     },
     {
