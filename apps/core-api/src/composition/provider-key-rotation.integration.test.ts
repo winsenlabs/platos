@@ -177,8 +177,33 @@ const RUN = Date.now().toString(16).padStart(12, "0").slice(-12);
  * the caller's, so two fixtures of this run can never collide with each other.
  */
 function fixtureId(discriminator: string): string {
-  return `dddddddd-${discriminator.padStart(4, "0")}-4000-8000-${RUN}`;
+  return `${FIXTURE_FAMILY}-${discriminator.padStart(4, "0")}-4000-8000-${RUN}`;
 }
+
+/**
+ * THE ID FAMILY THIS SUITE OWNS, AND WHY IT IS NOT `dddddddd`.
+ *
+ * Each suite in this directory takes a family and the four before this one had
+ * taken `aaaaaaaa` (operator-authentication), `bbbbbbbb` (identity-rest),
+ * `cccccccc` (mcp-token-mint) and `dddddddd` (mcp-organization-policy and
+ * stream-lane). This file's first draft took `dddddddd` too, with FIXED ids, and
+ * `dddddddd-0001-4000-8000-000000000001` was byte-identical to
+ * `ALPHA_ORGANIZATION` in `mcp-organization-policy.integration.test.ts` — which
+ * matters because both suites read `PLATOS_POSTGRES_INTEGRATION_DATABASE_URL` and
+ * therefore share one database when an operator supplies it. That suite's teardown
+ * deletes its organization by exact id, so it would have deleted this one's.
+ *
+ * MEASURED, NOT IMAGINED: running the two together is what surfaced it, and the
+ * symptom was the SIBLING going red — its `DELETE FROM "Organization"` refused,
+ * because rows this file had left behind held the RESTRICT reference described
+ * under `RUN`. A collision between fixtures shows up as a failure in the other
+ * suite, which is the hardest kind to attribute.
+ *
+ * The per-run nonce in the last segment already makes a collision impossible, so
+ * this constant is belt and braces — and it is the half a reader can check at a
+ * glance.
+ */
+const FIXTURE_FAMILY = "eeeeeeee";
 
 /** Every `Idempotency-Key` this file sends. See `RUN`. */
 function idempotencyKey(name: string): string {
