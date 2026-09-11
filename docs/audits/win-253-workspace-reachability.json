@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d9db934bfe4fb63d0b33b6976361569b27fb318a7e01e2e80d4a2017a13b9c50",
+  "evidenceSha256": "313cdc9aae62fcbe41a87f3b9b168c8976e0bd3f5c2d4f327565fa286cf71e04",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "49e844218fb4f7c566be80314d9391219049e51895b3cd95b73afb90f17c3636",
+    "aggregateSha256": "1a832d91a5aa77369ee512686c4a6a8bc0ea961ca52d5c14ac943349b88b155c",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4319,11 +4319,11 @@
       },
       {
         "path": "docs/audits/M0.2-capability-matrix.json",
-        "sha256": "080769420a31e001fe4d009f56b0ce8d033bbfd80ecfa22eb72bc9c05692a0a2"
+        "sha256": "8e088eceb906234df4b1a137cc7fe16dccda28817c8e25a83bc21254b5a771ff"
       },
       {
         "path": "docs/audits/M0.2-capability-matrix.md",
-        "sha256": "9a6f8d6fe572b3866c0539aace761250515596ca202af42e08903140af2bc036"
+        "sha256": "459da9b40b616576fc9baebdbe095cae090fd96b15f389f7e86d601aa8b05a55"
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.json",
@@ -4347,11 +4347,11 @@
       },
       {
         "path": "docs/audits/M0.8-operator-operations.md",
-        "sha256": "01486ed2899aa89e097ac17f85b91b5eaae87f2f029d9775c1a6746d154a5cf9"
+        "sha256": "219a3596d04f3636232cd899915c4de6f11b5aa5c9f08fd8a78fb4c6671fa39b"
       },
       {
         "path": "docs/audits/M0.9-rest-census-independent.json",
-        "sha256": "eafad1639e725c53c96b8b1822081e6264b815178836fb53e86ec0c02d732844"
+        "sha256": "a70a4d38bba25238f4d3060a8261e0cd70d4c40785b7ed879bb17d7505d899f2"
       },
       {
         "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -20467,7 +20467,7 @@
       },
       {
         "path": "scripts/capability-matrix.test.mjs",
-        "sha256": "f7245c158e17574617253d0b27ed0fb83ff8636d1b22bb486b558bfc18c7bced"
+        "sha256": "0ce31293b452f9a146bf8da830e99001569cd166b99b39dd87c85693e5a6d6f5"
       },
       {
         "path": "scripts/ci-policy.test.mjs",
@@ -29829,7 +29829,7 @@
             {
               "from": "scripts/capability-matrix.test.mjs",
               "kind": "reference",
-              "line": 546
+              "line": 559
             },
             {
               "from": "scripts/ci-policy.test.mjs",
@@ -30465,7 +30465,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "93df0bc5b79c83aff36c518daa24d43c2e3fb55386f7743de7f49a0ae9ac9bdc",
+      "evidenceSha256": "5c133b2270588d4563b17d3f5d9cdcacbbdfec06895d126db8aeb2ce551bb51b",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {

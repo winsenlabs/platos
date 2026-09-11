@@ -808,12 +808,12 @@
     {
       "path": "docs/audits/M0.2-capability-matrix.json",
       "mode": "100644",
-      "sha256": "080769420a31e001fe4d009f56b0ce8d033bbfd80ecfa22eb72bc9c05692a0a2"
+      "sha256": "8e088eceb906234df4b1a137cc7fe16dccda28817c8e25a83bc21254b5a771ff"
     },
     {
       "path": "docs/audits/M0.2-capability-matrix.md",
       "mode": "100644",
-      "sha256": "9a6f8d6fe572b3866c0539aace761250515596ca202af42e08903140af2bc036"
+      "sha256": "459da9b40b616576fc9baebdbe095cae090fd96b15f389f7e86d601aa8b05a55"
     },
     {
       "path": "docs/audits/M0.4-design-contract-map.json",
@@ -843,12 +843,12 @@
     {
       "path": "docs/audits/M0.8-operator-operations.md",
       "mode": "100644",
-      "sha256": "01486ed2899aa89e097ac17f85b91b5eaae87f2f029d9775c1a6746d154a5cf9"
+      "sha256": "219a3596d04f3636232cd899915c4de6f11b5aa5c9f08fd8a78fb4c6671fa39b"
     },
     {
       "path": "docs/audits/M0.9-rest-census-independent.json",
       "mode": "100644",
-      "sha256": "eafad1639e725c53c96b8b1822081e6264b815178836fb53e86ec0c02d732844"
+      "sha256": "a70a4d38bba25238f4d3060a8261e0cd70d4c40785b7ed879bb17d7505d899f2"
     },
     {
       "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "11ca13988df8be4ca6f0e640dfcc4d01120528928f6d0045bfde7d5e3ed8920d"
+      "sha256": "804e9cb429c71ab5fb5115d744f6b1ed870a97d2b6f44c782fa4535a7b95b2ae"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "11bae3ff25f8af5a9ba2d74ad0677301a316f13d5169eb1529360507717812ea"
+      "sha256": "038772a48dfd19304503d2f576cd7c7ab2dd262c2f94ccbb450d3d6270d2f72d"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "e49894bce1d8699206667af9f5da189c9be3a6719c90e0b605174ed6b9bb5e80"
+      "sha256": "962398c54d31675d3ef0b52cd7a04519163624275d1037f3127be1a501a1626f"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
