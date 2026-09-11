@@ -312,6 +312,21 @@ export const ALLOWED = Object.freeze([
     reads: 1,
     why: "Applies migrations against the harness container in the same way, from the suite rather than from a shared harness, because it is the one suite that inspects the column types the migrations produced.",
   }),
+  // WIN-302 — the provider-key rotation's real-race proof. Declared with the SAME
+  // shape and the SAME variable names as the tier-2 policy suite above rather than
+  // a second convention: one frozen copy at module load, and every lookup off the
+  // copy. It reads FOUR values out of that copy — the external database url that
+  // lets the suite run without Docker, an optional real Redis, a psql binary
+  // override for the second reader, and the inherited environment it spawns the
+  // ORM's migration CLI with — and the six configuration variables it hands
+  // `loadPlatformConfiguration` are properties of a plain object, so the process
+  // under test takes nothing from the machine except the two urls.
+  Object.freeze({
+    path: "apps/core-api/src/composition/provider-key-rotation.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL and real-Redis integration suite for the third bound one-time-secret mint. It copies and freezes the ambient environment once, at module load, and reads four values out of the copy: the external database url that lets it run without Docker, an optional real Redis, a psql binary override for the process that counts rows outside the adapter's pool, and the inherited environment it spawns the ORM's migration CLI with.",
+  }),
 ]);
 
 const allowedByPath = new Map(ALLOWED.map((entry) => [entry.path, entry]));
@@ -683,7 +698,7 @@ export const VIOLATION_CODES = Object.freeze({
  * than four because the suite copies and freezes the ambient environment once, the
  * way the deployable's own reader does.
  */
-export const EXPECTED_FILE_COUNT = 1697;
+export const EXPECTED_FILE_COUNT = 1699;
 
 function listSourceFiles(root) {
   const found = [];

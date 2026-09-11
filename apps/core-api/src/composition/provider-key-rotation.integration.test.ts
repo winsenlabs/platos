@@ -50,13 +50,14 @@
 // WHERE THE SERVERS COME FROM, AND WHY THERE IS AN ESCAPE HATCH
 //
 // The default is testcontainers, exactly as `mcp-token-mint.integration.test.ts`
-// does it. The two variables below let an operator point this suite at servers
-// they already have, and that is not a new idea in this tree: the precedent is
-// `HARNESS_DATABASE_URL_VARIABLE` in `packages/adapters/postgres-tenancy/src/harness.ts`,
-// whose own note records the one difference it makes — "the supplied server is
-// not this harness's to shut down". It is the same rule here, and it is what
-// lets the suite be PROVEN on a workstation where Docker may not run, rather
-// than written against a runner nobody can reach.
+// does it. `PLATOS_POSTGRES_INTEGRATION_DATABASE_URL` and
+// `PLATOS_REDIS_INTEGRATION_URL` point it at servers an operator already has, and
+// neither name is new: the sibling suite in this directory reads both, five more
+// under `apps/agent` read the first, and `HARNESS_DATABASE_URL_VARIABLE` in
+// `packages/adapters/postgres-tenancy/src/harness.ts` states the rule they all
+// follow — "the supplied server is not this harness's to shut down". That is what
+// lets this suite be PROVEN on a workstation where Docker may not run, rather
+// than written against a runner nobody here can reach.
 //
 // A SUPPLIED SERVER IS NOT A WEAKER TEST. The assertions do not know which path
 // produced the URL; the only branch is `observe`, which runs `psql` inside the
@@ -100,14 +101,32 @@ function committedStatus(code: string): number {
   return entry.status;
 }
 
-/** See the banner: servers an operator supplied, or null for the container path. */
-export const SUPPLIED_POSTGRES_URL_VARIABLE = "PLATOS_WIN302_POSTGRES_URL";
-export const SUPPLIED_REDIS_URL_VARIABLE = "PLATOS_WIN302_REDIS_URL";
+/**
+ * THE AMBIENT ENVIRONMENT, COPIED AND FROZEN ONCE.
+ *
+ * ONE READ, AT MODULE LOAD, AND EVERY LOOKUP BELOW IS OFF THE COPY. That is the
+ * shape `scripts/arch/env-access.mjs` declares for a test-support file and the
+ * shape its sibling `mcp-organization-policy.integration.test.ts` already uses —
+ * a suite that reached for `process.env` per call would show up on that gate as
+ * several readers, and the register it is declared in states a `reads` count.
+ *
+ * THE VARIABLE NAMES ARE THE ONES THIS REPOSITORY ALREADY HAS.
+ * `PLATOS_POSTGRES_INTEGRATION_DATABASE_URL` and `PLATOS_REDIS_INTEGRATION_URL`
+ * are read by the sibling suite in this directory and by five more under
+ * `apps/agent`; `PLATOS_PSQL_BINARY` overrides the client the observer spawns.
+ * This file invented three new names first, which would have been a second
+ * spelling of a decision that already had one.
+ */
+const AMBIENT: Readonly<Record<string, string | undefined>> = Object.freeze({ ...process.env });
 
 function supplied(variable: string): string | null {
-  const value = process.env[variable];
+  const value = AMBIENT[variable];
   return value === undefined || value.trim() === "" ? null : value.trim();
 }
+
+/** See the banner: servers an operator supplied, or null for the container path. */
+export const SUPPLIED_POSTGRES_URL_VARIABLE = "PLATOS_POSTGRES_INTEGRATION_DATABASE_URL";
+export const SUPPLIED_REDIS_URL_VARIABLE = "PLATOS_REDIS_INTEGRATION_URL";
 
 const AT = new Date("2026-05-01T09:00:00.000Z");
 
@@ -128,8 +147,8 @@ const AT = new Date("2026-05-01T09:00:00.000Z");
  *   Deleting the organization subtree is refused: `CredentialAudit` holds a
  *   RESTRICT reference to `Environment`.
  *
- *   And deleting the audit rows is refused outright by
- *   `CredentialAudit_immutable_delete` — a trigger that raises
+ *   And deleting the audit rows is refused outright by the
+ *   `CredentialAudit_immutable_delete` rule the schema installs, which raises
  *   "CredentialAudit is immutable". Under ADR M0.3 §1 row 3 `secrets` is that
  *   table's sole writer and the ledger is APPEND-ONLY, so "reset the fixtures"
  *   is not an operation this schema offers to anybody, including a test.
@@ -230,7 +249,9 @@ function packageRootRelative(...parts: string[]): string {
 async function observe(sql: string): Promise<string[]> {
   const lines =
     postgres === null
-      ? execFileSync("psql", [databaseUrl, "-t", "-A", "-F", "|", "-c", sql], { encoding: "utf8" })
+      ? execFileSync(AMBIENT["PLATOS_PSQL_BINARY"] ?? "psql", [databaseUrl, "-t", "-A", "-F", "|", "-c", sql], {
+          encoding: "utf8",
+        })
       : await (async (): Promise<string> => {
           const result = await postgres.exec([
             "psql", "-U", postgres.getUsername(), "-d", postgres.getDatabase(),
@@ -326,7 +347,7 @@ beforeAll(async () => {
   execFileSync(
     packageRootRelative("../../node_modules/.bin/prisma"),
     ["migrate", "deploy", "--schema", resolve(databasePackage, "prisma/schema.prisma")],
-    { cwd: databasePackage, env: { ...process.env, DATABASE_URL: databaseUrl }, stdio: "pipe" },
+    { cwd: databasePackage, env: { ...AMBIENT, DATABASE_URL: databaseUrl }, stdio: "pipe" },
   );
 
   const platform = loadPlatformConfiguration({
