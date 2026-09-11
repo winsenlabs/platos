@@ -38,8 +38,10 @@
 // nobody asked for.
 //
 // THE PRODUCER IS THIS FILE AND IT STANDS IN FOR THE TURN ENGINE EXACTLY AS FAR AS
-// THE PORT'S CONTRACT GOES AND NO FURTHER. `conversations` is on
-// `UNIMPORTABLE_CONTEXT_FACTORIES`, so no turn can be run in this deployable; what
+// THE PORT'S CONTRACT GOES AND NO FURTHER. `conversations` cannot be composed here
+// — its eleven-peer bundle is what stops it, NOT its packaging: WIN-302 found the
+// factory importable from its root barrel all along and took it off
+// `UNIMPORTABLE_CONTEXT_FACTORIES`. So no turn can be run in this deployable; what
 // is proven here is that frames appended through the port reach a browser in
 // order, resumably, and stop for reasons a client can tell apart. Nothing here
 // claims a turn ran.

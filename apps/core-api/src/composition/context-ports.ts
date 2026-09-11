@@ -68,16 +68,43 @@
 //      one".
 //
 //      SO THE CONDITION IS SPLIT, because the half that is real is a MANIFEST
-//      question and not an authoring one. Nine factories can be named from here:
-//      six from `.`, and `identity-access`, `tenancy` and `skills` from the
-//      `./application/index.js` their manifests publish. The other eight --
-//      `UNIMPORTABLE_CONTEXT_FACTORIES` below -- publish only `.`,
-//      `./application/ports/index.js` and `./application/testing/index.js`, so
-//      their factory exists, is tested, and cannot be imported by the one file
-//      entitled to call it. That is WIN-297's finding, unchanged and still open
-//      for eight contexts; the fix is a line of `APPLICATION_ENTRY_PROJECTS`
-//      each, and that generator's own rule holds it back until the context is
-//      actually composed.
+//      question and not an authoring one.
+//
+//      AND THE FIGURE THAT STOOD HERE WAS WRONG TWICE OVER, WHICH WIN-302
+//      MEASURED RATHER THAN INHERITED. It read "Nine factories can be named from
+//      here: six from `.`, and `identity-access`, `tenancy` and `skills` from the
+//      `./application/index.js` their manifests publish. The other eight ...".
+//      Counted against Node's own resolver and against the seventeen manifests,
+//      the answer is ELEVEN and SIX:
+//
+//        SEVEN from `.`      agents, conversations, cost-monitoring, memory,
+//                            providers, secrets, tools
+//        FOUR from the subpath  governance, identity-access, skills, tenancy
+//        SIX not importable  channels, eventing, files, jobs, observability,
+//                            privacy
+//
+//      The two corrections are different in kind and both matter. `governance`
+//      left because WIN-267 PUBLISHED its subpath -- a real change this file's own
+//      constant recorded and this paragraph did not, so the two contradicted each
+//      other in one file. `conversations` was never entitled to be on the list at
+//      all: `conversations/contracts/index.ts:182` re-exports
+//      `createConversationsContract` as a VALUE, so it was importable the day the
+//      list first named it.
+//
+//      WIN-297'S FINDING IS THEREFORE OPEN FOR SIX CONTEXTS, not eight. Each
+//      publishes only `.`, `./application/ports/index.js` and
+//      `./application/testing/index.js`, so its factory exists, is tested, and
+//      cannot be imported by the one file entitled to call it. The fix is a line
+//      of `APPLICATION_ENTRY_PROJECTS` each, and that generator's own rule holds
+//      it back until the context is actually composed.
+//
+//      AND THE COUNT IS NOW A TEST RATHER THAN A PARAGRAPH.
+//      `installation.test.ts` DERIVES the `.`-entry half from the seventeen
+//      packages' own barrels, by a name rule taken from the directory, so a
+//      context that becomes importable fails a named case until this constant
+//      moves. Every earlier version of this sentence was maintained by hand
+//      against a literal maintained by the same hand, which is why it only ever
+//      moved when somebody looked.
 //
 //   2. every driven port in its dependency bundle has an implementation SOMEWHERE
 //      in this tree.
@@ -160,11 +187,18 @@
 //   measured in that file make an adapter for it impossible.
 //
 // SO `GOVERNANCE_UNBOUND_PORTS` IS EMPTY AND GOVERNANCE STILL DOES NOT COMPOSE.
-// What is left is not a driven port at all. Its bundle names `AgentsContract`,
-// and `@platos/context-governance` publishes no `./application/index.js`, so the
-// factory is not importable from here -- see `UNIMPORTABLE_CONTEXT_FACTORIES`
-// below. That is a MANIFEST line and a peer context, not an adapter, and
-// neither G1 nor G2 could close it alone.
+// What is left is not a driven port at all: its bundle names `AgentsContract`,
+// and the root must hand over a COMPOSED `agents`.
+//
+// THE MANIFEST HALF OF THIS CLAUSE IS WITHDRAWN RATHER THAN CARRIED (WIN-302). It
+// said `@platos/context-governance` publishes no `./application/index.js` and that
+// the factory is therefore not importable, and it was already false when it was
+// written: WIN-267 added that package to `APPLICATION_ENTRY_PROJECTS` in the same
+// tranche, so this file imports `createGovernanceSafetyEventSink` from exactly the
+// subpath the sentence denied, and `UNIMPORTABLE_CONTEXT_FACTORIES` below has not
+// named `governance` since. One file held both halves of the contradiction.
+// `installation.test.ts` now derives the other half of that partition from the
+// packages themselves, so the pair cannot disagree again.
 //
 // AND THE `AgentsContract` SLOT IS NOT AN ASSEMBLER PROBLEM EITHER, WHICH IS
 // WIN-267 G3's FINDING. This paragraph used to end "and `agents` publishes its
@@ -592,9 +626,26 @@ export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([
   // `APPLICATION_ENTRY_PROJECTS` gained it because this file now imports
   // `createGovernanceSafetyEventSink` from `./application/index.js`, which is
   // that list's own rule ("the contexts whose `application/index.js` a V1
-  // project actually imports") rather than a relaxation of it. Seven remain.
+  // project actually imports") rather than a relaxation of it.
+  //
+  // WIN-302 — `conversations` LEFT IT TOO, AND IT WAS NEVER ENTITLED TO BE HERE.
+  // Nothing about that package changed. `conversations/contracts/index.ts:182`
+  // re-exports `createConversationsContract` as a VALUE from the `.` entry point,
+  // so the factory has been nameable from the composition root since before this
+  // list existed — proven by resolving it, and by the static import
+  // `installation.test.ts` now carries.
+  //
+  // WHY IT SURVIVED TWO TRANCHES. The suite partitioned all seventeen and
+  // compared the complement to THIS constant, which reads as a real join and is
+  // not one: route one was enumerated by a hand-written object literal in the
+  // test, so both sides of the equality were maintained by the same hand and the
+  // case could not fail. `installation.test.ts` now DERIVES route one from the
+  // seventeen packages' own `contracts/index.ts` barrels — by a name rule taken
+  // from the directory, following `export *` — so a factory that becomes
+  // importable turns that case red until this constant moves. Six remain, and
+  // each is a context whose `create*Contract` really is behind a manifest
+  // publishing no `./application/index.js`.
   "channels",
-  "conversations",
   "eventing",
   "files",
   "jobs",

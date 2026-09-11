@@ -212,10 +212,19 @@ export interface AppModule {
    * directory, every lane would move with it.
    *
    * AND IT IS WHY THE STREAM SURFACE CAN LAND BEFORE `conversations` CAN BE
-   * COMPOSED. `UNIMPORTABLE_CONTEXT_FACTORIES` still names `conversations`, so no
-   * route that needs the turn engine can be served here. A stream is fan-out of
-   * frames somebody else produced, and the port it reads is kernel-hosted — which
-   * is what makes this surface reachable now rather than after that list shortens.
+   * COMPOSED. A stream is fan-out of frames somebody else produced, and the port
+   * it reads is kernel-hosted — which is what makes this surface reachable now
+   * rather than after that context's supply chain closes.
+   *
+   * `conversations` CANNOT BE COMPOSED HERE, AND WIN-302 CORRECTS THE REASON.
+   * This used to say its factory was unimportable. That was false: its root
+   * barrel re-exports `createConversationsContract`, so the factory has always
+   * been nameable from the composition root, and `UNIMPORTABLE_CONTEXT_FACTORIES`
+   * simply listed it by mistake. What actually stops it is its BUNDLE:
+   * `ConversationsDependencies` names ELEVEN peers, and `files` and `jobs` are
+   * themselves unimportable while `agents` is short `AgentVersionLock` and
+   * `MacroRecorder` and `skills` is short three ports with no directory. The
+   * conclusion is unchanged and the reason is now true.
    */
   readonly streamJournal: StreamJournal | null;
   /**

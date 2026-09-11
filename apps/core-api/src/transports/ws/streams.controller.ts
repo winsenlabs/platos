@@ -49,10 +49,15 @@
 // -----------------------------------------------------------------------------
 // WHAT THIS ROUTE DOES NOT DO
 //
-// It does not START a turn. `conversations` is on
-// `UNIMPORTABLE_CONTEXT_FACTORIES`, so the turn engine cannot be composed in this
-// deployable and a route that claimed to run one would be a controller with
-// nothing behind it. This is the READ half of the lane: something else appends
+// It does not START a turn. The turn engine cannot be composed in this deployable,
+// so a route that claimed to run one would be a controller with nothing behind it.
+//
+// WIN-302 CORRECTS WHY. This said `conversations` is on
+// `UNIMPORTABLE_CONTEXT_FACTORIES`, and it is not — its root barrel re-exports
+// `createConversationsContract`, so the factory was always nameable and the list
+// named it by mistake. What stops the context is its BUNDLE: eleven peers, of
+// which `files` and `jobs` are genuinely unimportable and `agents` and `skills`
+// are each short driven ports that have no adapter directory. This is the READ half of the lane: something else appends
 // frames through `StreamJournal` and seals when it reaches an outcome, and this
 // serves them in order, from a position, to a browser. The producer half is the
 // port, and `apps/core-api/src/composition/stream-lane.integration.test.ts` is the

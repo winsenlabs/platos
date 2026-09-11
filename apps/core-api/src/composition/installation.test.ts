@@ -32,6 +32,14 @@ import { providersContract } from "@platos/context-providers";
 import { toolsContract } from "@platos/context-tools";
 import { memoryContract } from "@platos/context-memory";
 import { costMonitoringContract } from "@platos/context-cost-monitoring";
+// WIN-302. THE SEVENTH FACTORY ON A `.` ENTRY POINT, and the one that had been
+// sitting on `UNIMPORTABLE_CONTEXT_FACTORIES` while being importable the whole
+// time. `conversations/contracts/index.ts` re-exports `createConversationsContract`
+// as a VALUE, so this import resolves — and the reason nobody noticed is the
+// reason the derived half of the partition below now exists: route one was
+// enumerated by a hand-written literal, and a literal compared to another literal
+// cannot fail. Nothing composes this context; the import IS the assertion.
+import { createConversationsContract } from "@platos/context-conversations";
 // And the THREE reached through `./application/index.js` instead. STATIC, so
 // rule (C4) can see them: `composition-root.mjs` refuses a specifier assembled
 // at run time, and this is the shape that proves the resolver rather than
@@ -1034,13 +1042,21 @@ describe("the context bundles those adapters can satisfy", () => {
     for (const binding of owned) expect(AGENTS_UNBOUND_PORTS).not.toContain(binding.port);
   });
 
-  it("cannot import SEVEN context factories, and partitions all seventeen manifests", () => {
+  it("cannot import SIX context factories, and partitions all seventeen by DERIVING route one", () => {
     // THE OTHER HALF OF THE SAME CORRECTION, and the one that will bite the next
     // tranche. Every one of the seventeen contexts publishes a factory over its
-    // whole contract; SEVEN of them keep it in `application/` behind a manifest
+    // whole contract; SIX of them keep it in `application/` behind a manifest
     // that publishes no `./application/index.js`, so this package cannot name it.
-    // It was EIGHT until WIN-267 published `governance`'s subpath, which this
-    // file's own import of `createGovernanceSafetyEventSink` required.
+    //
+    // THE COUNT HAS MOVED TWICE AND ONLY ONE OF THE MOVES WAS A CHANGE TO THE
+    // TREE. It was EIGHT until WIN-267 published `governance`'s subpath, which
+    // this file's own import of `createGovernanceSafetyEventSink` required — a
+    // real change. WIN-302 takes it from seven to SIX and nothing about
+    // `conversations` moved: its root barrel has re-exported
+    // `createConversationsContract` all along, so the list was simply WRONG, and
+    // it was wrong in the direction that costs a tranche its plan. The derived
+    // half below is what makes that class of error a red test instead of a
+    // paragraph somebody has to re-measure.
     //
     // JOINED TO THE MANIFESTS, WHICH IS WHAT THE RESOLVER READS. A negative
     // about packaging is exactly the kind of claim this file has been wrong
@@ -1092,6 +1108,10 @@ describe("the context bundles those adapters can satisfy", () => {
       providers: providersContract,
       secrets: secretsContract,
       tools: toolsContract,
+      // WIN-302 — see this entry's import. It was missing here and PRESENT on
+      // `UNIMPORTABLE_CONTEXT_FACTORIES`, which is the drift the derived half
+      // below now makes impossible.
+      conversations: createConversationsContract,
     } as const;
     // ROUTE TWO, PROVED THE SAME WAY, through the subpath the remaining SEVEN do
     // not have. WIN-267 adds `governance`: this file imports
@@ -1114,6 +1134,88 @@ describe("the context bundles those adapters can satisfy", () => {
       expect(typeof factory, `${context} publishes an importable factory`).toBe("function");
     }
 
+    // ---------------------------------------------------------------------
+    // WIN-302 — ROUTE ONE IS NOW DERIVED FROM THE CONTEXTS' OWN BARRELS, AND
+    // THAT IS THE GATE THAT SHOULD HAVE EXISTED SINCE WIN-267 G3.
+    //
+    // The literal above proves that each named factory RESOLVES; the module
+    // graph settles that and nothing else can. What it could never prove is the
+    // COMPLEMENT — that no OTHER context also publishes one from `.` — because
+    // the literal and `UNIMPORTABLE_CONTEXT_FACTORIES` are both maintained by
+    // hand, and this programme's first lesson is that an assertion comparing two
+    // things you control cannot fail. It did not fail: `conversations`
+    // re-exported `createConversationsContract` from its root barrel and sat on
+    // the unimportable list for two tranches, and the partition below was green
+    // the whole time because both of its sides had been edited to agree.
+    //
+    // SO THE EXPECTATION IS COMPUTED FROM SEVENTEEN FILES THIS PACKAGE DOES NOT
+    // OWN. For each context, the accepted factory NAMES are derived from the
+    // DIRECTORY NAME — `cost-monitoring` -> `costMonitoringContract` /
+    // `createCostMonitoringContract` / `costMonitoringService` /
+    // `createCostMonitoringService` — so nothing here is a list of names somebody
+    // has to remember to extend. The day a context re-exports its assembler from
+    // `contracts/index.ts`, this case fails until the literal above and the
+    // constant below both move.
+    //
+    // IT READS THE FILES RATHER THAN IMPORTING THEM, for the two reasons this
+    // case already records: rule (C4) refuses a specifier assembled at run time,
+    // and a literal dynamic import of a subpath that does not exist fails in
+    // Vite's TRANSFORM, taking the whole file down as a vacuous red.
+    //
+    // `export * from` IS FOLLOWED, up to two levels. `tenancy`, `agents` and
+    // `privacy` all star-export inside their root barrels today, so a rule that
+    // stopped at the barrel's own text would silently answer "no factory" for a
+    // context that publishes one through a star — reintroducing the exact blind
+    // spot this derivation exists to close, in a new place.
+    const factoryNames = (context: string): readonly string[] => {
+      const pascal = context
+        .split("-")
+        .map((part) => `${(part[0] ?? "").toUpperCase()}${part.slice(1)}`)
+        .join("");
+      const camel = `${(pascal[0] ?? "").toLowerCase()}${pascal.slice(1)}`;
+      return [
+        `${camel}Contract`,
+        `create${pascal}Contract`,
+        `${camel}Service`,
+        `create${pascal}Service`,
+      ];
+    };
+    const exportedFactory = (file: string, wanted: readonly string[], depth = 0): string | null => {
+      if (depth > 2 || !existsSync(file)) return null;
+      const source = readFileSync(file, "utf8");
+      for (const name of wanted) {
+        if (new RegExp(`^export function ${name}\\s*(?:<|\\()`, "mu").test(source)) return name;
+        if (new RegExp(`^export const ${name}\\b`, "mu").test(source)) return name;
+        if (new RegExp(`^export \\{[^}]*\\b${name}\\b[^}]*\\} from `, "msu").test(source)) return name;
+      }
+      for (const match of source.matchAll(/^export \* from "(\.[^"]+)";/gmu)) {
+        const relative = (match[1] ?? "").replace(/\.js$/u, ".ts");
+        const target = new URL(relative, new URL(file, "file:///"));
+        const found = exportedFactory(fileURLToPath(target), wanted, depth + 1);
+        if (found !== null) return found;
+      }
+      return null;
+    };
+    const derivedOnDotEntry = contexts.filter(
+      (context) =>
+        exportedFactory(`${root}packages/contexts/${context}/contracts/index.ts`, factoryNames(context)) !==
+        null,
+    );
+    // THE JOIN. Not a length, not a superset: set equality in both directions, so
+    // a factory added to a barrel fails here and a name deleted from the literal
+    // fails here too.
+    expect([...derivedOnDotEntry].sort()).toEqual([...Object.keys(onDotEntry)].sort());
+    // AND IT IS NOT VACUOUS. A derivation that matched nothing — a typo in the
+    // name rule, a moved barrel — would make the equality above a comparison of
+    // two empty sets, which is exactly the failure this whole case is about.
+    expect(derivedOnDotEntry.length).toBeGreaterThan(1);
+    for (const context of derivedOnDotEntry) {
+      expect(
+        exportedFactory(`${root}packages/contexts/${context}/contracts/index.ts`, factoryNames(context)),
+        `${context} must publish a factory whose name the DIRECTORY implies`,
+      ).not.toBeNull();
+    }
+
     // THE MANIFEST HALF, which is the only instrument that can speak for the
     // absent: route two exists exactly when the package publishes the subpath.
     const publishesEntry = contexts.filter(
@@ -1126,9 +1228,16 @@ describe("the context bundles those adapters can satisfy", () => {
     // the list shrank by exactly one and the name that left is the one whose
     // manifest changed. A list edited without the manifest, or a manifest
     // changed without the list, fails here.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(7);
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(6);
     expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("governance");
     expect(publishesEntry).toContain("governance");
+    // WIN-302 — AND `conversations` HAS LEFT IT TOO, by the OTHER route. It never
+    // needed the subpath: its root barrel re-exports the factory, so it was
+    // importable on the day the list first named it. Both halves are asserted so
+    // the removal cannot be mistaken for a manifest change that did not happen.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("conversations");
+    expect(publishesEntry).not.toContain("conversations");
+    expect(derivedOnDotEntry).toContain("conversations");
 
     // AND THE PARTITION OVER ALL SEVENTEEN. Importable is the UNION of the two
     // routes -- `agents` and `secrets` are in both -- and the complement is the
@@ -1139,11 +1248,11 @@ describe("the context bundles those adapters can satisfy", () => {
       ...Object.keys(onDotEntry),
       ...Object.keys(onApplicationEntry),
     ]);
-    expect(importable.size).toBe(10);
+    expect(importable.size).toBe(11);
     expect([...contexts].filter((context) => !importable.has(context)).sort()).toEqual(
       [...UNIMPORTABLE_CONTEXT_FACTORIES].sort(),
     );
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(7);
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(6);
     for (const context of UNIMPORTABLE_CONTEXT_FACTORIES) {
       expect(contexts, `${context} must be one of the seventeen`).toContain(context);
       // The manifest IS there and publishes `.` -- so each of these is a context

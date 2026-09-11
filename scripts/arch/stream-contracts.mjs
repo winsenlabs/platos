@@ -122,9 +122,11 @@ const SKIP_DIRECTORIES = new Set(["node_modules", "dist", ".turbo", "coverage"])
  * directions so neither reason can quietly stop being true.
  *
  * `turn.done` is the terminal frame a COMPLETED TURN carries, and the party that
- * writes it is the turn engine. `conversations` is on
- * `UNIMPORTABLE_CONTEXT_FACTORIES`, so it cannot be composed in `apps/core-api` at
- * all, and the legacy lane spells the same outcome `done` rather than `turn.done` —
+ * writes it is the turn engine. `conversations` cannot be composed in
+ * `apps/core-api` at all — its ELEVEN-peer bundle is what stops it, and WIN-302
+ * corrected the reason recorded here: the factory is importable from that
+ * package's root barrel and always was, so `UNIMPORTABLE_CONTEXT_FACTORIES` named
+ * it by mistake. The legacy lane spells the same outcome `done` rather than `turn.done` —
  * which is the rename M0.4 §2 pins and this tranche does not perform. The
  * canonical name is therefore written by the journal's PRODUCER, and in this build
  * the only producer is a test. The day a composed engine emits it, the second half
