@@ -1384,7 +1384,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // provable with no database and the claims about concurrency, a `@db.Uuid` column
     // and a digest CHECK constraint can only be made where the real client is.
     // 1689 + 8 = 1697.
-    assert.equal(result.fileCount, 1697, "the generated V1 source census must stay exact");
+    //
+    // WIN-302 — THE PROVIDER-KEY ROTATION, 1697 -> 1699. TWO files, BOTH under
+    // `apps/core-api/src`: `transports/rest/provider-keys.controller.ts` and
+    // `composition/provider-key-rotation.integration.test.ts`. Unlike
+    // `max-file-lines.test.mjs`, whose selectors name `transports/**` and count only
+    // the first, this census scans the whole V1 source tree and counts both — the two
+    // pins are derived differently ON PURPOSE and must not be expected to agree.
+    // 1697 + 2 = 1699.
+    assert.equal(result.fileCount, 1699, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1461,6 +1469,12 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // `packages/` at all — the contract methods were already published and the
       // adapter already carried the store half, which is exactly what made the six
       // ORM sites this stage deleted `movable` rather than blocked.
+      1 + 1 +
+      // WIN-302 (M2/M4 reachable): transports 1 (`provider-keys.controller.ts`, the
+      // third bound one-time-secret mint to gain a handler) and composition 1 (its
+      // real-race proof). 1 + 1 = 2, and NOTHING under `packages/` at all — the
+      // contract method `providers.rotateProviderKeySecret` was already published and
+      // the only thing missing was a composed context to call it on.
       1 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
