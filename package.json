@@ -29,6 +29,7 @@
     "audit:route-parity": "node scripts/route-capability-parity.mjs",
     "audit:route-parity:completion": "node scripts/route-capability-parity.mjs --completion",
     "audit:route-parity:completion:evidence": "node scripts/route-capability-completion-audit.mjs",
+    "audit:route-parity:completion:non-browser": "node scripts/route-capability-completion-audit.mjs --non-browser",
     "generate:route-parity": "node scripts/route-capability-parity.mjs --write",
     "audit:vocabulary": "node scripts/vocabulary-boundary.mjs",
     "test:vocabulary": "node --test scripts/vocabulary-boundary.test.mjs scripts/vocabulary/ledger.test.mjs",

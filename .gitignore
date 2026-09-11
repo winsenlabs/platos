@@ -70,3 +70,9 @@ ailogger-output.log
 
 # agent scratch tooling (worktrees, one-shot patch scripts, mini run scripts)
 .claude/
+
+# Evidence a gate PRODUCES and can never commit: the completion artifacts carry
+# a commit SHA, a run id and a freshness window, so a committed copy is invalid by
+# construction the moment HEAD moves. `tests/persisted-state-gate` and
+# `tests/browser-evidence` write here.
+/artifacts/

@@ -7,7 +7,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  auditNonBrowserCompletionEvidence,
   auditValidatedCompletionEvidence,
+  NON_BROWSER_RESIDUE,
   exactRunIdentity,
   readCommittedMatrix,
   runEvidenceBackedCompletionAudit,
@@ -99,6 +101,90 @@ test("promotes exactly 18 non-browser cells and 107 browser fields only in memor
     unresolvedCells: 0,
   });
   assert.deepEqual(value.matrix, original, "the committed matrix fixture was mutated");
+});
+
+// ── THE NON-BROWSER HALF, CLAIMED ON ITS OWN (M4 finish) ───────────────────
+//
+// The completion gate is red at 125 and the committed matrix is PINNED to that
+// shape, so the 18 non-browser cells were never closable by editing a status. They
+// close through a runtime artifact — and the only path that consumed one also
+// demanded digest-pinned candidate images from a job that is red on `v1`. So 18
+// REACHABLE cells were unreportable because 107 unreachable ones were, and "the
+// number went down by about 18" was the best anybody could say.
+//
+// These cases make it exact: promoting the 18 leaves EXACTLY browser evidence 107
+// and nothing else — no idempotency cell, no concurrency cell, no persisted-state
+// cell — and the fall is checked against the committed matrix's own blocker count
+// rather than against the constant 125.
+
+test("closing the 18 non-browser cells leaves exactly 107 browser blockers and nothing else", async () => {
+  const value = fixture();
+  const original = clone(value.matrix);
+  const result = await auditNonBrowserCompletionEvidence({
+    matrix: value.matrix,
+    contract: value.contract,
+    nonBrowserResult: value.nonBrowserResult,
+    candidateSha: SHA,
+    runId: RUN_ID,
+    now: NOW,
+  });
+  assert.deepEqual(result, {
+    candidateSha: SHA,
+    runId: RUN_ID,
+    nonBrowserCells: 18,
+    blockersBefore: 125,
+    blockersAfter: 107,
+    remaining: [{ category: "browser evidence", count: 107 }],
+  });
+  assert.deepEqual(result.remaining, NON_BROWSER_RESIDUE.map((entry) => ({ ...entry })));
+  assert.deepEqual(value.matrix, original, "the committed matrix fixture was mutated");
+});
+
+test("the residue is asserted, so a matrix that grows a NON-browser blocker fails", async () => {
+  const value = fixture();
+  // One capability's recovery cell falls out of the accepted set. It is not one of
+  // the 18, so the evidence cannot close it and the residue stops being browser
+  // evidence alone — which is the claim, rather than "the count went down".
+  const victim = value.matrix.capabilities.find(
+    (capability) => !value.contract.assertions.some((cell) => cell.capabilityId === capability.capabilityId),
+  );
+  assert.ok(victim, "every capability is named by the contract, so this control is vacuous");
+  victim.recovery.status = "required-not-verified";
+  await assert.rejects(
+    auditNonBrowserCompletionEvidence({
+      matrix: value.matrix,
+      contract: value.contract,
+      nonBrowserResult: value.nonBrowserResult,
+      candidateSha: SHA,
+      runId: RUN_ID,
+      now: NOW,
+    }),
+    /committed matrix no longer has the exact expected-red completion shape|other than browser evidence/,
+  );
+});
+
+test("the non-browser audit still refuses evidence that is not this HEAD's", async () => {
+  const value = fixture();
+  value.nonBrowserResult.commitSha = "0".repeat(40);
+  await assert.rejects(
+    auditNonBrowserCompletionEvidence({
+      matrix: value.matrix,
+      contract: value.contract,
+      nonBrowserResult: value.nonBrowserResult,
+      candidateSha: SHA,
+      runId: RUN_ID,
+      now: NOW,
+    }),
+    /artifact commit SHA does not match the candidate/,
+  );
+});
+
+test("the non-browser audit needs no browser reference at all", () => {
+  // The whole reason it exists as a separate entry point: `auditValidatedCompletionEvidence`
+  // takes a `browserReference` and validates 428 visual cells against digest-pinned
+  // candidate images. This one's parameter list cannot ask for one.
+  const parameters = auditNonBrowserCompletionEvidence.toString();
+  assert.ok(!parameters.includes("browserReference"), "the non-browser audit reads a browser reference");
 });
 
 test("reads the capability matrix from exact HEAD instead of the dirty worktree", () => {
