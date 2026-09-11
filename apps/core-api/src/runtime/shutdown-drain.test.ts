@@ -228,10 +228,34 @@ describe("a step that ignores its budget is bounded anyway", () => {
     // must not make the following one vanish from the report, or an operator
     // reading a shutdown log cannot tell "the outbox was skipped" from "there
     // was no outbox".
+    // THE BUDGET IS SPENT ON THE INJECTED CLOCK, NOT ON THE WALL, and that is the
+    // whole difference between this case passing and this case being a coin toss.
+    //
+    // It used to call `drainAll(..., 40)` with the default `Date.now`, so it
+    // needed the wedged step's REAL `setTimeout(40)` to fire at a moment when
+    // `Date.now() - startedAt` had also reached 40. Timer granularity does not
+    // promise that: a callback that fires when 39 ms have been observed leaves
+    // `slice = 40 - 39 = 1`, which is `> 0`, so `after` IS called and `log` reads
+    // `["after"]`. That is exactly how it failed on a loaded hosted runner while
+    // passing 19/19 locally.
+    //
+    // The seam was already here -- `drainAll`'s third parameter and the
+    // `fakeClock` helper above exist for this -- so the wedged step now spends its
+    // slice on the clock the budget is measured with, by advancing it with the
+    // very number it was handed. `after` is then skipped because the arithmetic
+    // says so and not because a timer happened to be late, and every assertion
+    // below is unchanged: the report must still NAME the step it did not run.
     const log: string[] = [];
+    const clock = fakeClock();
     const report = await drainAll(
       [
-        { name: "wedged", drain: () => new Promise<DrainableOutcome>(() => undefined) },
+        {
+          name: "wedged",
+          drain: (budgetMs: number) => {
+            clock.advance(budgetMs);
+            return new Promise<DrainableOutcome>(() => undefined);
+          },
+        },
         {
           name: "after",
           drain: () => {
@@ -241,6 +265,7 @@ describe("a step that ignores its budget is bounded anyway", () => {
         },
       ],
       40,
+      clock.now,
     );
     expect(log).toEqual([]);
     expect(report.steps.map((step) => step.name)).toEqual(["wedged", "after"]);

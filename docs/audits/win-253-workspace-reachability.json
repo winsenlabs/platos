@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "b6d5f82c2278328ff2b28a6595cb357ecb72d13c3d50a581b2905a21ff03aa55",
+  "evidenceSha256": "f9cd5bcda7cb43aee99e6991c8d3c3d0f607764ab3f52542f4755065ef9554fd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "b3947a5694724a3d1aeb29236528035a862e46c22fd1f3119c430d26a865f934",
+    "aggregateSha256": "e93bafd085b2e2d04e9e2e5b1408cbed8105c23efe8345668da5197630756b74",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2755,7 +2755,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/shutdown-drain.test.ts",
-        "sha256": "5ee4548f4af461dd3eede88db6f97e50870ce996a5e07ad157cbd79a6679cf07"
+        "sha256": "9427fa2a8195dbe8afa804adef426405a416dd5f975af32556dcc2106d640bf0"
       },
       {
         "path": "apps/core-api/src/runtime/shutdown-drain.ts",
