@@ -75,9 +75,19 @@
 // which is the one authorization decision it makes. It is also NOT a free choice:
 // `rotateProviderKeySecret` itself calls `requireAccess(verified, "secret:mutate")`,
 // so a transport that asked for `metadata` would earn a grant the use case then
-// refuses — a 403 from the context for a request the transport had already
-// decided was allowed. Asking at the level the domain demands is what makes the
-// refusal happen at the gate that knows why.
+// refuses.
+//
+// THAT IS MEASURED RATHER THAN ASSERTED, and the answer is worth writing down
+// because it is not the one a reader would guess. Weakening this one argument to
+// `"metadata"` turns SEVEN cases in
+// `composition/provider-key-rotation.integration.test.ts` red, and every
+// authorized request answers `PROVIDERS_SCOPE_MISMATCH` at 403 — not
+// `TENANCY_ENVIRONMENT_FORBIDDEN`, because tenancy said YES to the weaker
+// question, and the refusal then comes from `providers`' own derivation of a
+// secrets grant out of a tenancy grant. So the cost of asking too weakly is a
+// refusal that blames the SCOPE, which sends an operator to look at their
+// environment ids rather than at this line. Asking at the level the domain
+// demands is what makes the refusal happen at the gate that knows why.
 //
 // -----------------------------------------------------------------------------
 // AN IMPERSONATED SESSION MAY DO THIS, AND THE TWO MCP MINTS MAY NOT
