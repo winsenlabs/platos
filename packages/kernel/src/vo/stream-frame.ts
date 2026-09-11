@@ -116,6 +116,60 @@ export interface StreamFrame {
 }
 
 /**
+ * THE SSE TURN LANE'S NINE EVENT NAMES, AS ADR M0.4 §2's SSE ROW WRITES THEM.
+ *
+ * WHY A LIST EXISTS AT ALL WHEN `t` IS AN OPEN ENUM. M0.4 §1.3 makes adding an
+ * event additive, and `StreamFrame.t` is deliberately a `string` so a reader
+ * ignores one it does not know. That is the RUNTIME rule and it stays. What was
+ * missing is the CONTRACT rule: the nine names the ADR's SSE row specifies were
+ * written down in one table cell of one document and nowhere in the tree, so a
+ * producer could emit a tenth, a rename could land, and the two could not be
+ * compared. `scripts/arch/stream-contracts.mjs` rule S6 parses the names back out
+ * of that row and asserts this array is exactly them, in both directions — so the
+ * document and the code cannot privately disagree, which is the same argument
+ * `STREAM_ENVELOPE_FAMILIES` records for rule S1.
+ *
+ * ONE SPELLING, SETTLED ON EVIDENCE RATHER THAN TASTE. The ADR wrote
+ * `stream_offline` and this module has always written `stream.offline`, and the two
+ * could have coexisted forever. They were counted: `stream_offline` occurred ONCE
+ * in this repository, in that table cell, with no producer, no consumer, no test
+ * and no SDK; `stream.offline` occurred fifteen times, in `TERMINAL_FRAME_TYPES`
+ * and `classifyStreamEnd`'s own branch below, in the SSE transport, in the
+ * composition suite, in the arch gate's exception list and in two committed
+ * mutation ledgers whose rows depend on that branch. Changing the SHIPPED one is
+ * the breaking change, so the document was corrected and the divergence recorded
+ * in its own errata. The same reading settles `resumeFrom`, which the ADR cell
+ * spelled `replayCursor` and which `classifyStreamEnd` READS — a future producer
+ * following the document would have written a field the shipped consumer ignores,
+ * degrading every `interrupted` to `severed`.
+ *
+ * THE TWO LANE-LEVEL NAMES USE UNDERSCORES AND THE SEQUENCE MEMBERS USE DOTS, and
+ * that is the ADR's own shape rather than an inconsistency: `stream_meta` and
+ * `message_persisted` are statements ABOUT a stream (the first does not even
+ * consume a `seq`; see `encodeStreamMeta`), while `reasoning.delta`,
+ * `tool_call.start`, `tool_call.result`, `assistant.delta` and `turn.done` are
+ * members OF the turn's sequence and are namespaced by their subject.
+ *
+ * NOT EVERY NAME HAS A PRODUCER IN THIS BUILD, and that is recorded rather than
+ * hidden: `scripts/arch/stream-contracts.mjs` holds the list and the reason. A
+ * CLIENT must be able to classify a frame a future producer sends, which is what
+ * `classifyStreamEnd` is for.
+ */
+export const SSE_TURN_EVENTS = Object.freeze([
+  "stream_meta",
+  "meta",
+  "reasoning.delta",
+  "tool_call.start",
+  "tool_call.result",
+  "assistant.delta",
+  "turn.done",
+  "message_persisted",
+  "stream.offline",
+] as const);
+
+export type SseTurnEvent = (typeof SSE_TURN_EVENTS)[number];
+
+/**
  * The frame types that END a stream. Every other `t` is mid-stream.
  *
  * THREE, AND THE THREE ARE NOT INTERCHANGEABLE — which is the whole point of
