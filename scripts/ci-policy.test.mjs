@@ -91,8 +91,18 @@ const expectedPnpmRunInstructions = new Map([
 // pipeline.
 // SIX, not five: M4 finish adds `agent-tenancy-postgres`, the job that runs the
 // MCP-surface and tool-lifecycle real-PostgreSQL suites that ran in NO job at all.
+//
+// SEVEN, not six: the same tranche adds `non-browser-completion-postgres`, and it
+// is the FIFTH instance of the identical pattern. The only producer of the 18
+// non-browser completion cells the WIN-234/WIN-238 gate is red on was named by one
+// step inside `build-images.yml`, downstream of `build-candidate-webapp` — a job red
+// on `v1` over an expired Debian Release file in a base image. So a suite that needs
+// nothing but `DATABASE_URL` and the canonical migrations had never executed in a
+// green pipeline, and 18 REACHABLE blockers were indistinguishable from the 107 that
+// genuinely need a browser. The new job produces the artifact and then asserts what
+// closing those cells MEANS: the residue is `browser evidence 107` and nothing else.
 const expectedSetupNodeCounts = new Map([
-  ["ci", 6],
+  ["ci", 7],
   ["buildImages", 1],
 ]);
 const relocatedCommands = [
@@ -621,6 +631,31 @@ const expectedAgentTenancyPostgresScripts = new Map([
   [
     "test:agent-tenancy-postgres:integration",
     "node scripts/agent-tenancy-postgres-integration.mjs",
+  ],
+]);
+
+// M4 finish — THE FIFTH GATE-DARKNESS INSTANCE, and the most expensive one. The
+// only producer of the 18 non-browser completion cells the WIN-234/WIN-238 gate is
+// red on was named by one step inside `build-images.yml`, downstream of
+// `build-candidate-webapp` — red on `v1` over an expired Debian Release file in a
+// base image. So a suite needing nothing but `DATABASE_URL` and the canonical
+// migrations had never executed in a green pipeline.
+//
+// TWO COMMANDS AND BOTH ARE PINNED. The first PRODUCES the evidence; the second
+// says what closing those cells MEANS — it promotes only those 18 against the
+// matrix read from exact HEAD and asserts the residue is `browser evidence 107` and
+// nothing else. Deleting either is how a number stops being stated, so each is
+// separately falsifiable.
+const nonBrowserCompletionJob = "non-browser-completion-postgres";
+const nonBrowserCompletionCommands = [
+  "pnpm test:non-browser-completion",
+  "pnpm audit:route-parity:completion:non-browser",
+];
+const expectedNonBrowserCompletionScripts = new Map([
+  ["test:non-browser-completion", "node tests/persisted-state-gate/run-non-browser-evidence.mjs"],
+  [
+    "audit:route-parity:completion:non-browser",
+    "node scripts/route-capability-completion-audit.mjs --non-browser",
   ],
 ]);
 
@@ -1788,6 +1823,21 @@ function policyViolations(input) {
     violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
   }
 
+  // M4 finish — the non-browser completion evidence job. A separate job for the
+  // same two reasons: it needs a pgvector server, and its suite must not be
+  // reachable only from a container-image pipeline.
+  const nonBrowserJob = ciJobs.get(nonBrowserCompletionJob);
+  if (nonBrowserJob === undefined) {
+    violations.push("CI must retain the non-browser completion evidence job");
+  } else {
+    const runs = normalizedRunCommands(nonBrowserJob);
+    for (const command of nonBrowserCompletionCommands) {
+      if (countExact(runs, command) !== 1) {
+        violations.push(`non-browser completion job must run ${command} exactly once`);
+      }
+    }
+  }
+
   const v1Lines = reviewedEvidence.commands;
   const allCiLines = [...ciJobs.values()]
     .flatMap((job) => executableRunValues(job))
@@ -1877,6 +1927,10 @@ function policyViolations(input) {
   for (const [name, target] of expectedAgentTenancyPostgresScripts) {
     if (packageScripts[name] !== target)
       violations.push(`package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`);
+  }
+  for (const [name, target] of expectedNonBrowserCompletionScripts) {
+    if (packageScripts[name] !== target)
+      violations.push(`package.json must wire exact non-browser completion script ${name}: ${target}`);
   }
   for (const [name, target] of expectedWin254Scripts) {
     if (packageScripts[name] !== target)
@@ -3417,6 +3471,19 @@ test("CI policy controls fail under generated semantic source mutations", async 
       expected: `package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`,
       mutate: (input) => mutateFixture(input, "packageJson", `"${name}": "${target}"`, `"${name}": "true"`),
     })),
+    // THE CONTROLS FOR THE FIFTH INSTANCE. Deleting either step is exactly how the
+    // 18 non-browser completion cells came to be produced nowhere a green pipeline
+    // could reach, so each deletion has to be the thing that fails.
+    ...nonBrowserCompletionCommands.map((command) => ({
+      name: `non-browser completion job cannot stop running ${command}`,
+      expected: `non-browser completion job must run ${command} exactly once`,
+      mutate: (input) => mutateFixture(input, "ci", `        run: ${command}`, "        run: echo skipped"),
+    })),
+    ...[...expectedNonBrowserCompletionScripts].map(([name, target]) => ({
+      name: `non-browser completion script ${name} cannot be repointed`,
+      expected: `package.json must wire exact non-browser completion script ${name}: ${target}`,
+      mutate: (input) => mutateFixture(input, "packageJson", `"${name}": "${target}"`, `"${name}": "true"`),
+    })),
     {
       name: "root package workspace graph cannot reappear",
       expected: "package.json must not declare workspaces; pnpm-workspace.yaml is authoritative",
@@ -4851,12 +4918,19 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   runs the suite walker, and ONE for the root script that step resolves to.
   //   Deleting either the step or the script is precisely how the three suites it
   //   runs came to run nowhere, so each is separately falsifiable.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 = 381. The count is pinned
-  // rather than derived so that a control silently disappearing is a failure
+  //   M4 FINISH, +5. The `non-browser-completion-postgres` job — the FIFTH
+  //   gate-darkness instance. ONE for the new `setup-node` step it brings (raising
+  //   ci.yml's count from 6 to 7 raises this table by one), TWO for its steps — the
+  //   producer and the audit that states the residue — and TWO for the root scripts
+  //   those steps resolve to. Five rather than three because this job runs two
+  //   commands: producing the 18 cells and saying what closing them means are
+  //   different claims, and deleting either is how a number stops being stated.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 = 386. The count is
+  // pinned rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    381,
+    386,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
@@ -5337,10 +5411,6 @@ const UNGATED_AGENT_INTEGRATION_SUITES = new Map([
     "real-PostgreSQL, outside the two roots the new job walks; unmeasured runtime",
   ],
   [
-    "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts",
-    "driven by tests/persisted-state-gate/run-non-browser-evidence.mjs; CI runs only its :contract sibling",
-  ],
-  [
     "apps/agent/src/memory/conversation-postgres.integration.test.ts",
     "real-PostgreSQL memory suite absent from SUITE_CONTRACT, so postgres-memory-evidence does not run it",
   ],
@@ -5406,10 +5476,35 @@ test("every apps/agent integration suite is gated or recorded as ungated, with a
   );
   assert.ok(gatedByEvidenceRunner.size > 0, "SUITE_CONTRACT is empty; the import is wrong");
 
+  // M4 finish — THE THIRD GATE, and the suite it covers used to be RECORDED AS
+  // UNGATED with the reason "CI runs only its :contract sibling". That reason was
+  // true and stopped being true when `non-browser-completion-postgres` landed, so
+  // the row is gone and the gate is derived instead.
+  //
+  // READ OUT OF THE EVIDENCE CONTRACT, never restated here. `contract.suite` is the
+  // path `run-non-browser-evidence.mjs` validates the vitest report against by
+  // name, so this set and the runner cannot disagree about which file the job runs.
+  // That the JOB still exists and still runs both of its commands is a separate
+  // rule — `policyViolations` asserts it, with a mutation control per command —
+  // which is the same two-independent-rules shape the walker's gate has.
+  const { contractPath: nonBrowserContractPath } = await import(
+    "../tests/persisted-state-gate/verify-non-browser-evidence.mjs"
+  );
+  const nonBrowserContract = JSON.parse(readFileSync(nonBrowserContractPath, "utf8"));
+  assert.match(
+    nonBrowserContract.suite ?? "",
+    /^apps\/agent\/src\/.+\.integration\.test\.ts$/u,
+    "the non-browser evidence contract no longer names an apps/agent integration suite"
+  );
+  const gatedByNonBrowserEvidence = new Set([nonBrowserContract.suite]);
+
   const all = agentIntegrationSuites();
   assert.ok(all.length > 0, `no ${AGENT_TENANCY_SUITE_SUFFIX} found under ${AGENT_INTEGRATION_ROOT}`);
   const ungated = all.filter(
-    (suite) => !gatedByWalker.has(suite) && !gatedByEvidenceRunner.has(suite)
+    (suite) =>
+      !gatedByWalker.has(suite) &&
+      !gatedByEvidenceRunner.has(suite) &&
+      !gatedByNonBrowserEvidence.has(suite)
   );
 
   assert.deepEqual(

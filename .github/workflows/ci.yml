@@ -905,3 +905,107 @@ jobs:
 
       - name: MCP-surface and tool-lifecycle real-PostgreSQL suites
         run: pnpm test:agent-tenancy-postgres:integration
+
+  non-browser-completion-postgres:
+    name: non-browser-completion-postgres
+    # THE FIFTH GATE-DARKNESS INSTANCE, AND THE MOST EXPENSIVE ONE SO FAR.
+    #
+    # `apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts`
+    # is the ONLY producer of the 18 non-browser completion cells the
+    # WIN-234/WIN-238 gate is red on, and it was named by exactly one place: a step
+    # inside `build-images.yml`, downstream of `build-candidate-webapp`. That job is
+    # red on `v1` for a reason no code here controls — an expired Debian Release
+    # file in a base image — so the suite that proves 18 of the 125 blockers had
+    # never executed in a green pipeline, and the 18 were reported as "pending"
+    # forever alongside the 107 that genuinely need a browser.
+    #
+    # NOTHING ABOUT THE SUITE NEEDS A CONTAINER IMAGE. It wants `DATABASE_URL`, the
+    # canonical migrations, an exact HEAD and a run id — a PostgreSQL and nothing
+    # else. It was run to completion against a native Homebrew PostgreSQL 17.10
+    # while this job was written, which is how the coupling was found.
+    #
+    # THE SECOND STEP IS THE POINT. Producing the artifact proves the assertions;
+    # `audit:route-parity:completion:non-browser` proves what closing them MEANS —
+    # it promotes only those 18 cells against the matrix read from exact HEAD and
+    # asserts the residue is `browser evidence 107` and nothing else. So the number
+    # this pipeline can state is 107, and it is stated by a gate rather than by a
+    # commit message.
+    #
+    # IT IS NOT THE WHOLE COMPLETION AUDIT AND MUST NOT BE READ AS ONE.
+    # `audit:route-parity:completion:evidence` additionally consumes 428 visual
+    # browser cells over digest-pinned candidate images and stays in
+    # `build-images.yml` where those images are built. This job closes the half that
+    # does not need them.
+    #
+    # pgvector, not plain postgres, and the SAME digest as the two jobs above:
+    # `00000000000000_initial/migration.sql` opens with
+    # `CREATE EXTENSION IF NOT EXISTS "vector"`, and three jobs on one server
+    # cannot drift onto different ones.
+    #
+    # `public`, not a private schema. The suite builds a `PrismaClient` straight
+    # from `DATABASE_URL` and the controllers under test reach raw SQL that
+    # hardcodes `public`; the private-schema trick the `agent-tenancy-postgres`
+    # suites use does not apply here, so this job gets its own database instead.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+        env:
+          POSTGRES_USER: platos_non_browser_ci
+          POSTGRES_PASSWORD: postgres-non-browser
+          POSTGRES_DB: platos_non_browser_ci
+        ports:
+          - 55435:5432
+        options: >-
+          --health-cmd "pg_isready -U platos_non_browser_ci -d platos_non_browser_ci"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      DATABASE_URL: postgresql://platos_non_browser_ci:postgres-non-browser@127.0.0.1:55435/platos_non_browser_ci?schema=public
+      # EXACT HEAD, AND THE RUNNER CHECKS IT RATHER THAN TRUSTING IT.
+      # `run-non-browser-evidence.mjs` compares this against `git rev-parse HEAD`
+      # and refuses a mismatch, which is what makes the artifact's `commitSha` a
+      # claim about the tree that was tested. `actions/checkout` checks out
+      # `github.sha` on both triggers, so the two agree by construction and a day
+      # when they do not is a day this job must fail.
+      PLATOS_CANDIDATE_SHA: ${{ github.sha }}
+      PLATOS_EVIDENCE_RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+        with:
+          version: 10.23.0
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build the canonical tenancy client
+        # The suite constructs a `PrismaClient` from `@platos/tenancy-database`,
+        # whose package `main` is dist/. Without this the suite fails to LOAD
+        # rather than fail an assertion, which reads as a broken job rather than a
+        # broken rule.
+        run: pnpm --filter @platos/tenancy-database build
+
+      - name: Apply the canonical migrations
+        run: >-
+          pnpm --filter @platos/tenancy-database exec prisma migrate deploy
+          --schema prisma/schema.prisma
+
+      - name: Produce the 18 non-browser completion cells
+        run: pnpm test:non-browser-completion
+
+      - name: Require the non-browser completion residue to be browser evidence alone
+        run: pnpm audit:route-parity:completion:non-browser
