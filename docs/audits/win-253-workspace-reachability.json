@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "7b5ddeb949a061ad01834b60db2db30dde206c98edda8aa2f9f0f3bcbc47cfa6",
+  "evidenceSha256": "b6d5f82c2278328ff2b28a6595cb357ecb72d13c3d50a581b2905a21ff03aa55",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "3a832e21c8fa99b49c299c74bde41e50f3257345bc441d0d18ed11685c496b04",
+    "aggregateSha256": "b3947a5694724a3d1aeb29236528035a862e46c22fd1f3119c430d26a865f934",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20455,7 +20455,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "6f3e8fda0f3b88d3cd324651b8402183087cc18ed2aa0baf5a49dfa95c9d6bc9"
+        "sha256": "b4706006e2200a19b75ef78b5ba422eca42660a8966f80c2f41b15e3f040f4e7"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -27170,7 +27170,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 603
+              "line": 609
             },
             {
               "from": "scripts/differential-coverage.test.mjs",
@@ -27602,7 +27602,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "05d97fdfc89c544bf49a424c7b13ea014568fbb4fa57e39d602ddb1d884fdea4",
+      "evidenceSha256": "6272f237bcea5072a2bb316bbf4bfdc472060af0b53c93569eaf8ac0e5d8c4a4",
       "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -27990,7 +27990,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 604
+              "line": 610
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -28112,7 +28112,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "6110dd45d549dd0d1e7fe69fcc0b4af5d496f6a104b13db9eb05ea24dd8f9237",
+      "evidenceSha256": "16678c4f56320c07cd31259311525e70c9c1804d37cfe1f1ce4768187c0dac6d",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -38638,7 +38638,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 353
+              "line": 359
             }
           ],
           "reversePaths": [
@@ -38750,7 +38750,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "ef3c2f71bbd2df20f4d205293735f14a216badb7f9220073d968993cacf71bad",
+      "evidenceSha256": "d89fca7304bead90c24ffc948a8a6ecda50a85c94f4dd1be1b2a4659253134c8",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -46465,7 +46465,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2943
+              "line": 2949
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -46632,7 +46632,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "b477f075eb9e2a8046dd2271509d8d11c859577969f34ca406ac4a5083c97c16",
+      "evidenceSha256": "399e81cd8e7f4720078d47b95c21d87b8328a435ee60999ffa99fd35725b864d",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -54083,7 +54083,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 5298
+              "line": 5304
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54247,7 +54247,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "d254f6c2d7bc2461f644a5458b546db304ea030ac44e5f29b05530fba98e4b05",
+      "evidenceSha256": "2d9980242258cf4bc1e0bf3d17aecbdc1adfc78074fa3fa62432cd798ed5f5b7",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -80678,7 +80678,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 603
+              "line": 609
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -80993,7 +80993,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "167d2e2dc90ddf0f4f0b9658ba36c1771e4e432197094228672e65953dc5d483",
+      "evidenceSha256": "eba800f5a58d558832a15c493e00a5a9cc626cd2914737981eff6a54cbcab452",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -90433,7 +90433,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 603
+              "line": 609
             },
             {
               "from": "scripts/error-taxonomy.test.mjs",
@@ -92636,7 +92636,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "053fc6274d066c37191101e05dae5a1ac400342236ffe53786d3292fedd138ef",
+      "evidenceSha256": "f8d2034060751ce7486d21e0027e164052864df8824afc7d2802f1554a8cfde0",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -94042,7 +94042,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 599
+              "line": 605
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -94177,7 +94177,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "78f662480d9fbf91edd175e6887a8e64023ff17ba2dffe45421f59b88dbb2dba",
+      "evidenceSha256": "cda9ce3b6dfdd6b7a32a84c85c223633fd38a8c450f643a66d1825c58adee7ee",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -94479,7 +94479,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 600
+              "line": 606
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -94519,7 +94519,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "a4653da74c2fc0d95b5a493167a8032c65a87a9081e563fac817ac215511f88c",
+      "evidenceSha256": "92b93909decfc72de74e12910a52ac3be8003390b383d351e62976011ac83c97",
       "manifestSha256": "b892e563338f333035fef02ca96b5d203a438d3adbb15afc3a77106122e98f26",
       "name": "@platosdev/embed",
       "ociImageClosure": {
@@ -94845,7 +94845,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 600
+              "line": 606
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -94890,7 +94890,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "29f8f3f331db353db3d9933835be3062a3ed40b55580a6e41ad96b92635156e9",
+      "evidenceSha256": "05dbb74780fab7c7a0620fac9b45431db85082ca7a2186a87972b81bf8f3f338",
       "manifestSha256": "85f69f0d46b2932f65eb45f41c9714a097ceae7d5a006e1a51656e830d8ac6a8",
       "name": "@platosdev/react-widget",
       "ociImageClosure": {
@@ -95311,7 +95311,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 601
+              "line": 607
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -95376,7 +95376,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5c89740d0a379c8c862d8ed46472f4a6983a6b0ccfc89431e0d0af4f876027e1",
+      "evidenceSha256": "2555e60e757b65127b412bbb635c147895072675b636605c49dd02964d35702d",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {

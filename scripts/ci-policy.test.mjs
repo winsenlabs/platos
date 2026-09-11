@@ -347,8 +347,14 @@ const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mj
 // type resolves to `any` and the derivation refuses --
 // `DerivationError: SetOrganizationPolicyBody.state is \`any\``. A developer
 // machine has the dist from an earlier build and so never saw it; a cold OCI
-// build has nothing and failed on the first attempt. Reproduced locally by moving
-// `packages/contexts/tools/dist` aside, which is the only way to see it.
+// build has nothing, and the image job went red the first time it ran. Reproduced
+// locally by moving `packages/contexts/tools/dist` aside, which is the only way
+// to see it from a warm tree.
+//
+// THIS COMMENT ALSO HAD TO BE REWRITTEN ONCE, for the reason the vocabulary
+// suite's own pin paragraphs were: its first draft used a refused noun while
+// explaining a build failure, and the gate reads bytes without caring what the
+// sentence is about.
 const agentBuildScriptTarget =
   'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter "@platos/context-tools..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
 const agentRuntimeSmokeInvocation =
