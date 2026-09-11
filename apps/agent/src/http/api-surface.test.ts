@@ -18,6 +18,7 @@ import {
 
 import { AgentController } from "../agent-runtime/agent.controller";
 import { AttachmentUploadController } from "../agent-runtime/attachment-upload.controller";
+import { ChatStreamController } from "../agent-runtime/chat-stream.controller";
 import { ChannelAppsController } from "../agent-runtime/channel-apps.controller";
 import { ChannelsController } from "../agent-runtime/channels.controller";
 import { JobExecutionController } from "../agent-runtime/job-execution.controller";
@@ -86,6 +87,10 @@ import { InternalExecuteToolController } from "../trigger-bridge/internal-execut
 const PRODUCTION_CONTROLLERS = [
   AgentController,
   AttachmentUploadController,
+  // M4 finish — the POST twin of `AgentController`'s chat-stream GET, so a user
+  // message stops travelling in the upstream REQUEST LINE. ADR M0.4 §1.3: adding
+  // a route is additive-in-major; narrowing the BFF's ceiling would not be.
+  ChatStreamController,
   ChannelAppsController,
   ChannelsController,
   JobExecutionController,
@@ -281,7 +286,8 @@ describe("WIN-267 T1 — the version is one expression", () => {
     // routes out of the comparison and the identity check would still pass.
     expect([...named].filter((n) => !probed.has(n))).toEqual([]);
     expect([...probed].filter((n) => !named.has(n))).toEqual([]);
-    expect(probed.size).toBe(27);
+    // 28: +1 for ChatStreamController (M4 finish).
+    expect(probed.size).toBe(28);
   });
 });
 
@@ -299,19 +305,22 @@ describe("WIN-267 T1 — every operation answers on the path it always answered 
     expect([...expectedSet].filter((id) => !servedSet.has(id)).sort()).toEqual([]);
     expect([...servedSet].filter((id) => !expectedSet.has(id)).sort()).toEqual([]);
     expect(servedSet.size).toBe(expectedSet.size);
-    expect(expected.length).toBe(300);
+    // 301: +1 for POST /api/v1/agent/agents/:agentId/chat/stream (M4 finish).
+    expect(expected.length).toBe(301);
     // No path is registered twice under one method — a duplicate would make the
     // set comparison above pass while the second registration was dead.
     expect(served.length).toBe(servedSet.size);
   }, 120_000);
 
-  it("splits the surface the way the ADR does: 244 versioned, 56 deliberately not", async () => {
+  it("splits the surface the way the ADR does: 245 versioned, 56 deliberately not", async () => {
     for (const controller of PRODUCTION_CONTROLLERS) stripInjectionMetadata(controller);
     const served = await routesUnder(PRODUCTION_CONTROLLERS, applyApiSurface);
 
     const versioned = served.filter((r) => r.split(" ")[1].startsWith(`${API_V1_PREFIX}/`));
     const bare = served.filter((r) => !r.split(" ")[1].startsWith(`${API_V1_PREFIX}/`));
-    expect(versioned.length).toBe(244);
+    // 245: +1 for the chat-stream POST (M4 finish). The bare count does NOT move —
+    // the new route is under /api/v1 like the GET it twins.
+    expect(versioned.length).toBe(245);
     expect(bare.length).toBe(56);
 
     // Every bare route is either the process health probe or sits on a root the
@@ -326,7 +335,7 @@ describe("WIN-267 T1 — every operation answers on the path it always answered 
 });
 
 describe("WIN-267 T1 — negative controls", () => {
-  it("MUTATION: without the version expression, all 244 versioned routes move", async () => {
+  it("MUTATION: without the version expression, all 245 versioned routes move", async () => {
     for (const controller of PRODUCTION_CONTROLLERS) stripInjectionMetadata(controller);
     // The controllers now declare only their own paths, so a Nest application
     // that forgets `applyApiSurface` serves the whole REST surface unprefixed.
@@ -334,7 +343,7 @@ describe("WIN-267 T1 — negative controls", () => {
     // than of the decorators.
     const served = new Set(await routesUnder(PRODUCTION_CONTROLLERS, () => {}));
     const expected = MANIFEST_OPERATIONS.filter((op) => op.path.startsWith(`${API_V1_PREFIX}/`));
-    expect(expected.length).toBe(244);
+    expect(expected.length).toBe(245);
     for (const op of expected) expect(served.has(op.id)).toBe(false);
     expect(served.has("GET /agent/agents")).toBe(true);
   }, 120_000);

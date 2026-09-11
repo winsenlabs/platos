@@ -194,3 +194,65 @@ test("the committed evidence exists and reports the same total as the tree", () 
     assert.ok(report.includes(file), `${file} is in the manifest and not in the report`);
   }
 });
+
+test("MOVABLE is minted from the contract, and a column that over-claims is refused", () => {
+  // THE VERDICT THAT COULD BE ASSERTED INTO EXISTENCE. `movable` means "the owner
+  // is composed AND its published contract names this file's use case", and the
+  // second half is a claim a human typed. `checkDispositions` already joins every
+  // named method to the AST-read contract; what this case adds is the OTHER
+  // direction and the NON-VACUITY, neither of which that check makes.
+  const register = buildRegister();
+  const movable = register.sites.filter((site) => site.verdict === "movable");
+  assert.ok(movable.length > 0, "the register must find movable sites or the verdict is dead");
+
+  for (const site of movable) {
+    const named = DISPOSITIONS[site.file]?.methods?.[site.owner] ?? [];
+    assert.ok(
+      named.length > 0,
+      `${site.file}:${String(site.line)} is MOVABLE and its disposition names no ${site.owner} method`,
+    );
+    assert.ok(
+      register.composedContexts.includes(contextKey(site.owner)),
+      `${site.owner} is MOVABLE and composeApplication does not compose it`,
+    );
+  }
+
+  // AND A FILE THAT NAMES NOTHING HAS NO MOVABLE SITE. The two entries this stage
+  // REMOVED — `tool-sync-ws.service.ts`'s `registerTools` and the discovery
+  // scheduler's `discoverEntityTools` — are the reason: each named a method its own
+  // note said does not serve the site, and each would have minted a verdict for a
+  // call nothing can answer.
+  for (const [file, disposition] of Object.entries(DISPOSITIONS)) {
+    if (disposition.methods !== undefined) continue;
+    assert.equal(
+      register.sites.filter((site) => site.file === file && site.verdict === "movable").length,
+      0,
+      `${file} names no method and must have no movable site`,
+    );
+  }
+  assert.ok(
+    DISPOSITIONS["apps/agent/src/tool-gateway/tool-sync-ws.service.ts"].methods === undefined,
+    "the sync socket's only tools site is a ToolHealth upsert, which registerTools does not serve",
+  );
+  assert.ok(
+    DISPOSITIONS["apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts"]
+      .methods === undefined,
+    "the scheduler's stale-client selection is published by no contract method",
+  );
+});
+
+test("moved stays ZERO, because a moved site would be a boundary violation", () => {
+  // `moved` IS A TRAP DETECTOR. A site is `moved` when it sits inside
+  // `apps/core-api/src/transports/`, and `transport-reaches-no-store` (ADR M0.3
+  // §5.1 rule (k2)) forbids an ORM reach there by ANY route — so a nonzero count is
+  // the rule this register's destination scan root exists to catch, not progress.
+  //
+  // NOT A TAUTOLOGY: the destination IS a scan root and IS walked.
+  const register = buildRegister();
+  assert.equal(register.byVerdict.moved ?? 0, 0);
+  assert.ok(LIFECYCLE_ROOTS.includes("apps/core-api/src/transports/tools"));
+  assert.equal(
+    register.sites.filter((site) => site.file.startsWith("apps/core-api/src/transports/")).length,
+    0,
+  );
+});

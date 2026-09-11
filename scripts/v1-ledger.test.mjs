@@ -578,7 +578,23 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // rules T1's own pair landed on at the top of this comment -- so NO LEDGER
     // RULE CHANGED. `api-surface.ts`, `generate-control-plane.mjs` and the
     // manifest/document/report artifacts are edited IN PLACE and add no file.
-    "apps-agent": 12,
+    //
+    // M4 FINISH 12 -> 15. THREE files, and NO LEDGER RULE CHANGED — they land on
+    // `apps-agent.source.runtime` (+1) and `apps-agent.test.suites` (+2), the same
+    // two rules every pair above them landed on.
+    //   `agent-runtime/chat-stream.controller.ts` — the POST twin of the chat-stream
+    //   GET, so a user message stops travelling in the upstream REQUEST LINE, where
+    //   a validated 20,000 characters cannot fit under a 16 KiB header limit.
+    //   `streaming/streaming-terminal-frame.test.ts` — at most one terminal frame per
+    //   stream, read back off a real `node:http` listener. The legacy lane wrote an
+    //   `error` frame AND a `done` frame on its failure path.
+    //   `tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts` — the
+    //   FORGED scope triple against a real PostgreSQL, after the unguarded
+    //   cross-tenant `EnvironmentEntityTool` delete was removed.
+    // `streaming.service.ts`, `tool-registry.service.ts`, `tool-sync-ws.test.ts`,
+    // `agent-runtime.module.ts`, `api-surface.test.ts`, `generate-control-plane.mjs`
+    // and every generated artifact are edited IN PLACE and add no file.
+    "apps-agent": 15,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -758,7 +774,39 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 3 + 4 = 7, and 80 + 7 = 87. `http/http.module.ts` and `http/api-surface.ts`
     // are EDITS. Every one of the seven lands on a rule that already existed; NO
     // LEDGER RULE CHANGED.
-    "apps-core-api": 87,
+    //
+    // WIN-268 (M4.2) 87 -> 90. THREE files, one on each of the three rules this
+    // deployable already had, for the tier-2 MCP policy surface that replaced
+    // `apps/agent`'s three unreachable `OrganizationMcpPolicy` helpers:
+    //
+    //   ONE under `apps-core-api.source.transports` (27 -> 28) —
+    //   `transports/mcp/organization-policies.controller.ts`, the three routes at
+    //   `/mcp/platform/environments/:environmentId/policies`;
+    //
+    //   ONE under `apps-core-api.test.suites` (30 -> 31) —
+    //   `composition/mcp-organization-policy.integration.test.ts`, which proves the
+    //   forged triple refused at BOTH the authorization mint register and the
+    //   store, against a real PostgreSQL, and which is the first suite in this
+    //   directory that runs against an EXTERNAL database when one is named instead
+    //   of insisting on a container;
+    //
+    //   ONE under `apps-core-api.config.package` (6 -> 7) —
+    //   `mutations-win268-policy.json`, the FOURTH mutation manifest to land beside
+    //   `mutations.json`, `mutations-win267-t3.json` and `mutations-win267-g3.json`
+    //   and the FIFTH tranche to use the convention.
+    //
+    // 1 + 1 + 1 = 3, and 87 + 3 = 90. `http/http.module.ts`,
+    // `http/idempotency-policy.test.ts` and `transports/rest/route-manifest.test.ts`
+    // are EDITS; the six regenerated artifacts already existed. NO LEDGER RULE
+    // CHANGED.
+    //
+    // WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 90 -> 92. TWO files, both under
+    // `src/transports/mcp/`: `token-lifecycle.ts`, the projection and query grammar
+    // the four routes share, and its suite. The ROUTES add no file: all four land in
+    // the two mint controllers, which is why no `CORE_API_MOUNTED_CONTROLLERS` entry
+    // moved either. 90 + 2 = 92, and NO LEDGER RULE CHANGED — `source.transports` and
+    // `test.suites` matched both new files without one.
+    "apps-core-api": 92,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -1419,7 +1467,46 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //   table.
     //
     // NO LEDGER RULE CHANGED. 1532 + 7 + 3 = 1542.
-    packages: 1542,
+    //
+    // M4 FINISH 1542 -> 1543. ONE file:
+    // `packages/platos-client/src/__tests__/retry-idempotency.test.ts`, which proves
+    // `_fetchWithRetry` no longer repeats a request RFC 9110 section 9.2.2 calls
+    // non-idempotent unless it carries an `Idempotency-Key`. `client.ts` is edited
+    // IN PLACE. It lands on `packages.test.suites`, a rule that already existed; NO
+    // LEDGER RULE CHANGED.
+    //
+    // WIN-268 (M4.2) STAGE 2 1543 -> 1550. SEVEN files, ALL SEVEN in
+    // `packages/contexts/tools/adapters` — a directory that did not exist:
+    // `index.ts`, `content-digest.ts`, `wire-dispatch.ts`, `mcp-dispatch.ts`,
+    // `dispatch.ts`, `content-digest.test.ts` and `dispatch.integration.test.ts`.
+    // FIVE land on `packages.contexts.source` (722 -> 727) and TWO on
+    // `packages.contexts.test` (360 -> 362), both rules that already existed; NO
+    // LEDGER RULE CHANGED.
+    //
+    // THEY ARE `packages` AND NOT `packages/adapters` BECAUSE ADR M0.3 §5.1 RULE
+    // (h) PUT THEM THERE. `SDK_CONTAINMENT.mcp-sdk-only-in-tools` homes
+    // `@modelcontextprotocol/*` in `^packages/contexts/tools/(adapters|transport)/`
+    // and in no `packages/adapters/` directory, so `ToolDispatch` — an MCP client —
+    // could not be one. Everything else this stage touches is an EDIT:
+    // `app.module.ts`, `context-ports.ts`, `main.ts`, both registers, the skeleton
+    // generator, the project graph, the boundary census and the env-access pin add
+    // no file.
+    //
+    // WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 1550 -> 1556. SIX files, split
+    // the way the tranche's evidence is split. FOUR under
+    // `packages/contexts/identity-access/application/`: the two use cases the four
+    // routes reach (`list-bearer-credentials.ts`, `revoke-bearer-credential.ts`),
+    // `in-memory-bearer-listings.ts` — the double's listing half, split out on the
+    // ADR M0.3 §6 budget `max-file-lines.mjs` enforces rather than at a line number —
+    // and `bearer-credential-lifecycle.test.ts`. TWO under
+    // `packages/adapters/postgres-tenancy/src/`: `identity-bearer-lifecycle.ts`,
+    // which is LIST/COUNT/REVOKE composed into the bearer store because that file was
+    // already at its budget, and `identity-bearer-lifecycle.integration.test.ts`.
+    // Everything else is an EDIT: the contract barrel, the ports barrel, the domain's
+    // two planners and its new refusals, the service, the double, the bearer store and
+    // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
+    // RULE CHANGED.
+    packages: 1556,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -1916,7 +2003,21 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     //
     // All five take the same blanket `root-infra.tooling.scripts` rule every script
     // above them took (107 -> 112). NO LEDGER RULE CHANGED.
-    "root-infra": 88,
+    //
+    // M4 FINISH 88 -> 89. ONE file:
+    // `scripts/agent-tenancy-postgres-integration.mjs`, the walker the new
+    // `agent-tenancy-postgres` CI job runs — the fourth gate-darkness instance, where
+    // three real-database tenancy suites were named by nothing in `ci.yml`. It takes
+    // the same blanket `root-infra.tooling.scripts` rule every script above it took
+    // (117 -> 118). `ci.yml`, `ci-policy.test.mjs`, `package.json`,
+    // `vendored-build-audit.mjs` and the four test files whose pins moved are edited
+    // IN PLACE. NO LEDGER RULE CHANGED.
+    // WIN-268 (M4.2) THE TOKEN LIFECYCLE 89 -> 90. ONE file,
+    // `scripts/mutations-win268-lifecycle.json`, the tranche's mutation ledger — the
+    // SIXTH tranche to use that convention. It is evidence rather than a gate: no
+    // script reads it, and its whole value is that four of its thirty-five rows say
+    // `survived` on a first pass and name the case that closes each one.
+    "root-infra": 90,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2124,7 +2225,57 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `ci.yml`, the capability matrix and every generated artifact are edited IN
   // PLACE. The eight-key re-derivation from the merged `expectedDeltas` is
   // 12 + 1 + 87 + 4 + 10 + 1542 + 24 + 88 = 1768.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1768);
+  //
+  // M4 FINISH 1768 -> 1773. FIVE files across three areas, each itemised on its own
+  // delta above: `apps-agent` +3 (the chat-stream POST controller, the terminal-frame
+  // suite, the forged-scope suite), `packages` +1 (the SDK retry-guard suite) and
+  // `root-infra` +1 (the agent tenancy PostgreSQL walker). The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 87 + 4 + 10 + 1543 + 24 + 89 = 1773.
+  //
+  // WIN-268 (M4.2) STAGE 2 1773 -> 1780. SEVEN files, ALL in `packages` and all
+  // itemised on that area's delta above: the whole of
+  // `packages/contexts/tools/adapters`. Nothing else this stage adds a file —
+  // `app.module.ts`, `context-ports.ts`, `main.ts`, `process.test.ts`,
+  // `installation.test.ts`, `idempotency-policy.test.ts`, both ORM registers and
+  // their suites, `gen-v1-skeleton.mjs`, `v1-project-graph.mjs`,
+  // `arch-boundaries.test.mjs` and `env-access.mjs` are edited IN PLACE. The
+  // eight-key re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 87 + 4 + 10 + 1550 + 24 + 89 = 1780.
+  //
+  // WIN-268 (M4.2) STAGE 3 1780 -> 1783. THREE files, ALL in `apps-core-api` and all
+  // itemised on that area's delta above: the tier-2 MCP policy controller, its
+  // real-database proof, and its mutation ledger. Nothing else this stage adds a
+  // file — the three helpers it DELETED from
+  // `apps/agent/src/mcp-platform/permission-gateway.service.ts` and the `autoInsert`
+  // it deleted from `mcp-tool-acl.service.ts` shrink files that stay, and
+  // `http/http.module.ts`, `generate-control-plane.mjs`,
+  // `idempotency-policy.test.ts`, `route-manifest.test.ts`,
+  // `rest-census-independent.test.mjs`, the tools contract barrel and every
+  // regenerated artifact are edited IN PLACE. The eight-key re-derivation from the
+  // merged `expectedDeltas` is 15 + 1 + 90 + 4 + 10 + 1550 + 24 + 89 = 1783.
+  //
+  // AND WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 1783 -> 1791. EIGHT files, in
+  // the two areas their own deltas above itemise: 2 in `apps-core-api` (the shared
+  // transport projection `transports/mcp/token-lifecycle.ts` and its suite) and 6 in
+  // `packages` (two use cases, the double's listing half, the adapter's lifecycle
+  // store, and the two suites). Nothing else this stage adds a file — the four
+  // ROUTES land in the two mint controllers that already existed, because the entity
+  // pair check is the same check for a listing and a revocation as for a mint — and
+  // the contract, the ports, the domain, the service, the double, the bearer store,
+  // `harness.ts`, `generate-control-plane.mjs`, `rest-schema-derivation.mjs`, both
+  // registers, the test-case census and every regenerated artifact are edited IN
+  // PLACE. The eight-key re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 92 + 4 + 10 + 1556 + 24 + 89 = 1791, and the mutation ledger appended in
+  // the same tranche takes `root-infra` to 90 for a total of 1792.
+  //
+  // A NOTE ON THE NUMBERING, because it is already inconsistent and silence would
+  // make it worse: `scripts/arch/test-case-census.mjs` calls the tranche BEFORE this
+  // one "stage 2" while this file calls it "STAGE 3". Both are internally
+  // consistent and they disagree with each other, so this stage is "STAGE 4" HERE
+  // and "stage 3" THERE, and each file's own sequence is what a reader of that file
+  // should follow.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1792);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2375,7 +2526,43 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // above rather than after it went red, which is the discipline the five prior
     // catches earned: this reconciliation exists precisely because the two
     // arithmetics can disagree. 1766 + 2 = 1768.
-    rulesDocument.baseline.totalFiles + 1768
+    //
+    // AND M4 FINISH 1768 -> 1773 -- the TWENTY-SEVENTH hand move. The same FIVE
+    // files as the `totalFiles` assertion above -- `apps-agent` +3 (the chat-stream
+    // POST controller, the terminal-frame suite, the forged-scope suite),
+    // `packages` +1 (the SDK retry-guard suite), `root-infra` +1 (the agent tenancy
+    // PostgreSQL walker) -- reached here by summing the per-area counts instead of
+    // reading the total. Moved in the SAME edit as the assertion above rather than
+    // after it went red. 1768 + 5 = 1773.
+    //
+    // AND WIN-268 (M4.2) STAGE 2 1773 -> 1780 -- the TWENTY-EIGHTH hand move. The
+    // same SEVEN files as the `totalFiles` assertion above -- `packages` +7, the
+    // whole of `packages/contexts/tools/adapters` -- reached here by summing the
+    // per-area counts instead of reading the total. MOVED IN THE SAME EDIT as the
+    // assertion above and as `expectedDeltas.packages`, which is the discipline the
+    // six prior catches earned: the previous stage moved the total to 1773 and left
+    // this one at 1768, and this reconciliation is what found it. 1773 + 7 = 1780.
+    //
+    // AND WIN-268 (M4.2) STAGE 3 1780 -> 1783 -- the TWENTY-NINTH hand move. The same
+    // THREE files as the `totalFiles` assertion above -- `apps-core-api` +3, the
+    // tier-2 MCP policy controller, its real-database proof and its mutation ledger
+    // -- reached here by summing the per-area counts instead of reading the total.
+    // MOVED IN THE SAME EDIT as the assertion above and as
+    // `expectedDeltas["apps-core-api"]`, for the reason the note above gives: this
+    // reconciliation exists because the two figures are derived differently, and it
+    // has caught the omission SIX times. 1780 + 3 = 1783.
+    //
+    // AND WIN-268 (M4.2) STAGE 4 — THE TOKEN LIFECYCLE — 1783 -> 1791, the THIRTIETH
+    // hand move. The same EIGHT files as the `totalFiles` assertion above --
+    // `apps-core-api` +2 and `packages` +6 -- reached here by summing the per-area
+    // counts instead of reading the total. MOVED IN THE SAME EDIT as that assertion
+    // and as both `expectedDeltas` keys, for the reason the note above gives: the two
+    // figures are derived differently and this reconciliation has caught the omission
+    // SIX times. 1783 + 8 = 1791, and +1 for the mutation ledger under `root-infra`
+    // takes it to 1792 — NINE files in this tranche, not eight, and the ledger is the
+    // ninth. It is listed here because this reconciliation sums per-area counts and
+    // would otherwise disagree with the total above by exactly one.
+    rulesDocument.baseline.totalFiles + 1792
   );
 });
 

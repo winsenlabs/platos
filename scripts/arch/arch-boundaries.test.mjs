@@ -1338,10 +1338,53 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // in `composition/` and not beside the controller it drives. The violation list
     // below stays empty while the census moves. 1663 + 17 = 1680.
     //
-    // AND `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1680 off a
+    // WIN-268 (M4.2) stage 2, 1680 -> 1687. SEVEN files, ALL SEVEN under
+    // `packages/contexts/tools/adapters` — a directory that did not exist: the
+    // barrel, the `ContentDigest` over `node:crypto`, the wire POST, the MCP session
+    // pool, the router over the two, and two suites (the digest's known-answer
+    // vectors and the real-socket dispatch integration suite).
+    //
+    // THE MCP CLIENT IS THE INTERESTING FILE AND IT IS THE REASON THIS TERM IS NOT
+    // UNDER `packages/adapters/`. `mcp-dispatch.ts` is the ONLY file in the V1 tree
+    // permitted to import `@modelcontextprotocol/*`, and `mcp-sdk-only-in-tools` —
+    // which has been in `SDK_CONTAINMENT` since the skeleton and had nothing to
+    // protect until now — homes that scope in
+    // `^packages/contexts/tools/(adapters|transport)/` and in no adapter directory
+    // at all. So this is the first tranche whose census moves a CONTEXT term for an
+    // adapter, and the violation list below stays empty while it does: rule (b)
+    // `no-core-to-adapter` bans `domain/` and `application/` from reaching this
+    // directory and says nothing about the reverse, which is the onion pointing
+    // inward exactly as it should. 1680 + 7 = 1687.
+    //
+    // AND `env-access.mjs`'s EXPECTED_FILE_COUNT carries the identical 1687 off a
     // second, independent scan, which is what makes this pin worth having: a branch
     // whose files were double-counted here would disagree with that one.
-    assert.equal(result.fileCount, 1680, "the generated V1 source census must stay exact");
+    //
+    // WIN-268 (M4.2) stage 3, 1687 -> 1689. TWO files, both under
+    // `apps/core-api/src`: `transports/mcp/organization-policies.controller.ts` — the
+    // tier-2 MCP policy surface, which is where `apps/agent`'s three unreachable
+    // `OrganizationMcpPolicy` helpers went — and
+    // `composition/mcp-organization-policy.integration.test.ts` beside it. The suite
+    // is in `composition/` and not next to the controller for the reason the stream
+    // lane's is: rule (C8) forbids a `transports/**` file from reading
+    // `app.adapters` at all, and this one seeds through the store and asks the
+    // repository directly. Nothing under `packages/` moves — the contract methods it
+    // calls were already published, which is the whole reason the register called
+    // those six ORM sites movable. 1687 + 2 = 1689.
+    //
+    // WIN-268 (M4.2) THE TOKEN LIFECYCLE, 1689 -> 1697. EIGHT files. `apps/core-api`
+    // 2 — `transports/mcp/token-lifecycle.ts`, the projection and query grammar the
+    // four routes share, and its suite; the four ROUTES themselves land in the two
+    // mint controllers that already existed. `packages/contexts/identity-access` 4 —
+    // the two use cases, the double's listing half (split out on the ADR M0.3 §6
+    // budget) and its suite. `packages/adapters/postgres-tenancy` 2 — the lifecycle
+    // store composed into the bearer store, which was already at its budget, and the
+    // real-database proof. THIS IS THE FIRST TRANCHE IN THIS LIST TO MOVE ALL THREE
+    // TREES, and the split is its own shape rather than an accident: the rules are
+    // provable with no database and the claims about concurrency, a `@db.Uuid` column
+    // and a digest CHECK constraint can only be made where the real client is.
+    // 1689 + 8 = 1697.
+    assert.equal(result.fileCount, 1697, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1386,6 +1429,14 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // `packages/adapters` — the store's INSERT half lands inside the existing
       // `identity-bearer.ts`.
       4 + 1 + 2 +
+      // WIN-268 (M4.2) THE TOKEN LIFECYCLE: transports 2 (the shared projection and
+      // its suite; the four routes land in the two existing mint controllers),
+      // identity-access 4 (two use cases, the double's listing half, its suite),
+      // postgres-tenancy 2 (the lifecycle store and its real-database proof).
+      // 2 + 4 + 2 = 8, and the three terms are written separately for the reason the
+      // WIN-303 note gives: this is the re-derivation, so a merge that dropped any
+      // one of them would disagree with the flat pin above.
+      2 + 4 + 2 +
       // WIN-271 (M4.5): channel-slack 14 NET (16 real files less the 2 generated
       // placeholders they replace) and channels 5 -- the ChannelRuntime port,
       // the admitSignedDelivery use case, the inbound conformance harness, the
@@ -1399,7 +1450,18 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // produced) and composition 1 (the real-socket integration suite).
       // 7 + 3 + 3 + 3 + 1 = 17, and this is the first tranche to move BOTH the
       // adapters term and the two app terms in one sum.
-      7 + 3 + 3 + 3 + 1);
+      7 + 3 + 3 + 3 + 1 +
+      // WIN-268 (M4.2) stage 2: tools/adapters 7 — index, content-digest,
+      // wire-dispatch, mcp-dispatch, dispatch, and the two suites. ALL SEVEN in one
+      // term under `packages/contexts/`, and NOTHING under `packages/adapters/` or
+      // `apps/`, because rule (h) homes the MCP SDK in this context.
+      7 +
+      // WIN-268 (M4.2) stage 3: transports 1 (the tier-2 policy controller) and
+      // composition 1 (its real-database suite). 1 + 1 = 2, and NOTHING under
+      // `packages/` at all — the contract methods were already published and the
+      // adapter already carried the store half, which is exactly what made the six
+      // ORM sites this stage deleted `movable` rather than blocked.
+      1 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

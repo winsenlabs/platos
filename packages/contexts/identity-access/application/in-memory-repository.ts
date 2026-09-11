@@ -21,7 +21,11 @@
 import type {
   AccessKeyRecord,
   BearerCredentialKind,
+  BearerCredentialQuery,
   BearerCredentialRecord,
+  BearerCredentialRevocation,
+  BearerCredentialRevocationResult,
+  BearerCredentialSummary,
   EmailAddress,
   EndUserId,
   EndUserIdentityId,
@@ -49,7 +53,11 @@ import type {
 import { compareEndUsers, isActive, matchesEndUserQuery } from "../domain/index.js";
 import type { AccessKeyRotationPlan } from "../domain/index.js";
 import type { IdentityAccessRepository } from "./ports/index.js";
-import type { EnvironmentId } from "@platos/kernel";
+import {
+  createInMemoryBearerLifecycle,
+  type InMemoryBearerListing,
+} from "./in-memory-bearer-listings.js";
+import type { Clock, EnvironmentId } from "@platos/kernel";
 
 export interface InMemoryIdentityAccessRepository extends IdentityAccessRepository {
   readonly state: InMemoryState;
@@ -76,6 +84,20 @@ export interface InMemoryState {
    */
   readonly accessTokens: Map<string, OAuthAccessTokenRecord>;
   readonly bearerCredentials: Map<string, BearerCredentialRecord>;
+  /**
+   * WIN-268 (M4.2) — THE LISTING COLUMNS, KEYED ON CREDENTIAL ID.
+   *
+   * A SECOND MAP AND NOT A WIDER RECORD, because `bearerCredentials` is keyed on
+   * `(kind, tokenHash)` — which is what `findByTokenHash` needs and what every
+   * existing suite seeds directly — while a listing addresses a credential by ID
+   * and needs `label`, `createdAt`, the entity and `revokedBy`, none of which
+   * `BearerCredentialRecord` carries. Widening that record would have changed the
+   * shape four suites already write by hand.
+   *
+   * `mint` populates both. A row seeded straight into `bearerCredentials` has no
+   * entry here, and `list` REFUSES rather than omitting it — see its own note.
+   */
+  readonly bearerCredentialListings: Map<string, InMemoryBearerListing>;
   readonly endUsers: Map<EndUserId, EndUserRecord>;
   readonly endUserIdentities: Map<EndUserIdentityId, EndUserIdentityRecord>;
   readonly impersonationAudit: ImpersonationAuditEntry[];
@@ -95,6 +117,7 @@ function emptyState(): InMemoryState {
     authorizationCodes: new Map(),
     accessTokens: new Map(),
     bearerCredentials: new Map(),
+    bearerCredentialListings: new Map(),
     endUsers: new Map(),
     endUserIdentities: new Map(),
     impersonationAudit: [],
@@ -108,6 +131,7 @@ const bearerKey = (kind: BearerCredentialKind, tokenHash: string): string =>
   `${kind}:${tokenHash}`;
 
 export function inMemoryIdentityAccessRepository(
+  clock: Clock,
   seed: Partial<InMemoryState> = {},
 ): InMemoryIdentityAccessRepository {
   const state: InMemoryState = { ...emptyState(), ...seed };
@@ -327,6 +351,18 @@ export function inMemoryIdentityAccessRepository(
     },
 
     bearerCredentials: {
+      // WIN-268 (M4.2). LIST, COUNT and REVOKE are composed in from
+      // `in-memory-bearer-listings.ts` rather than written here, for the ADR M0.3 §6
+      // budget `scripts/arch/max-file-lines.mjs` enforces — this file reached 413
+      // effective lines with them inline — and because they address a credential by
+      // its ID inside an environment where everything below addresses one by its
+      // DIGEST. It is the SAME split, on the same seam, that
+      // `packages/adapters/postgres-tenancy/src/identity-bearer.ts` makes for the
+      // canonical store, which is what keeps the fake and the real implementation
+      // shaped alike. Spread FIRST, so a name collision is a compile error on the
+      // explicit member below rather than a silent override of it.
+      ...createInMemoryBearerLifecycle(state, bearerKey),
+
       async findByTokenHash(kind, tokenHash) {
         return state.bearerCredentials.get(bearerKey(kind, tokenHash)) ?? null;
       },
@@ -378,8 +414,44 @@ export function inMemoryIdentityAccessRepository(
           lastUsedAt: null,
         };
         state.bearerCredentials.set(key, record);
+        state.bearerCredentialListings.set(credential.credentialId, {
+          summary: {
+            credentialId: credential.credentialId,
+            kind: credential.kind,
+            label: credential.label,
+            permissions: credential.permissions,
+            principalId: credential.principalId,
+            permissionTier: credential.permissionTier,
+            // THE INSTANT THE ROW WOULD CARRY. `McpToken.createdAt` and
+            // `McpBearerToken.createdAt` are both `@default(now())`, so the real
+            // store stamps them and the plan does not carry one. Using `expiresAt`
+            // minus the TTL would reconstruct a number the plan already discarded,
+            // so the double stamps the one instant it can defend — and it takes it
+            // from THE INJECTED CLOCK rather than from the wall.
+            //
+            // IT USED TO READ `new Date()`, and that cost more than a lint row. A
+            // double stamping wall-clock instants made the listing-order case
+            // depend on real elapsed milliseconds, so that suite slept 2ms per mint
+            // to force distinct values. With the clock injected, `advance()` alone
+            // produces distinct instants and the ordering assertion is
+            // deterministic instead of usually-true.
+            createdAt: clock.now(),
+            expiresAt: credential.expiresAt,
+            revokedAt: null,
+            lastUsedAt: null,
+            revokedBy: null,
+          },
+          environmentId:
+            credential.scope.kind === "ENVIRONMENT" &&
+            credential.scope.tenant.level === "environment"
+              ? credential.scope.tenant.environmentId
+              : "",
+          subjectId: credential.subjectId,
+          tokenHash: credential.tokenHash,
+        });
         return record;
       },
+
     },
 
     endUsers: {

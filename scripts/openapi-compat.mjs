@@ -366,8 +366,45 @@ function compareOperation(base, current, pointer, findings) {
     }
     compareSchema(parameter.schema, match.schema, new Set(["request"]), `${pointer}/parameters/${key}/schema`, findings);
   }
+  // A ROUTE LEARNING WHAT IT ALWAYS DEMANDED IS A DISCLOSURE, NOT AN ADDITION.
+  //
+  // M4 finish added the derivation path for `@Query` types, so three MCP token
+  // routes went from `x-platos-query-parameters: not-derived` to `derived` and
+  // published a REQUIRED `environmentId`. Classified as a plain
+  // `parameter-added`, a required parameter is BREAKING and rightly so — ADR M0.4
+  // section 1.3 puts "add required input" on the forces-major list. But NOTHING ON
+  // THE WIRE MOVED: `tokenListQueryValidator` has refused a request without
+  // `environmentId` since the route existed, and any client that omitted it has
+  // always received a 400. Calling that a breaking change would price a
+  // documentation correction as a major, and the only way through would be a
+  // hand-edited baseline — which is how a ratchet stops being read.
+  //
+  // THE CONDITION IS STRUCTURAL AND ONE-SHOT, not a list of forgiven parameters.
+  // The BASELINE must itself say `not-derived` for this operation and the current
+  // document must say `derived`: that pair means "the document learned the query
+  // string", and it cannot be confused with a genuinely new required parameter,
+  // where the baseline already says `derived`. Once absorbed the baseline says
+  // `derived` too, so the NEXT required query parameter on the same route is
+  // BREAKING again. It applies to `in: "query"` only — a new required PATH
+  // parameter is a different route.
+  const disclosingQuery =
+    base["x-platos-query-parameters"] === "not-derived" &&
+    current["x-platos-query-parameters"] === "derived";
   for (const [key, parameter] of currentParameters) {
     if (baseParameters.has(key)) continue;
+    if (disclosingQuery && parameter.in === "query") {
+      findings.push(
+        finding(
+          COMPATIBLE,
+          "query-parameter-disclosed",
+          `${pointer}/parameters/${key}`,
+          parameter.required === true
+            ? "the document learned a parameter the route already required"
+            : "the document learned a parameter the route already accepted",
+        ),
+      );
+      continue;
+    }
     const severity = parameter.required === true ? BREAKING : COMPATIBLE;
     findings.push(finding(severity, "parameter-added", `${pointer}/parameters/${key}`, "new parameter"));
   }
@@ -551,14 +588,31 @@ export function rehydrate(document, contract) {
       operation.responses = responses;
       if (derived.requestBody === null) delete operation.requestBody;
       else operation.requestBody = { required: true, content: { "application/json": { schema: derived.requestBody } } };
-      if (derived.pathParameters.length > 0) {
-        operation.parameters = derived.pathParameters.map((parameter) => ({
+      // THE SAME PROJECTION `generate-control-plane.mjs` PERFORMS, path AND query.
+      //
+      // It has to be the same one, and M4 finish is the tranche that proved it the
+      // hard way: the generator learned to publish derived query parameters, this
+      // re-projection did not, and the ratchet immediately reported four
+      // `parameter-removed` BREAKING findings against a document that had just
+      // gained them. That is the ratchet working — two code paths privately
+      // disagreeing about one document is exactly what it exists to catch — and the
+      // fix is for this simulation to project what the generator projects.
+      const projected = [
+        ...derived.pathParameters.map((parameter) => ({
           name: parameter.name,
           in: "path",
           required: true,
           schema: parameter.schema,
-        }));
-      }
+        })),
+        ...derived.queryParameters.parameters.map((parameter) => ({
+          name: parameter.name,
+          in: "query",
+          required: parameter.required,
+          schema: parameter.schema,
+        })),
+      ];
+      if (projected.length > 0) operation.parameters = projected;
+      else delete operation.parameters;
       operation["x-platos-query-parameters"] = derived.queryParameters.source;
     }
   }

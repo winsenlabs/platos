@@ -747,7 +747,24 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         and not five. And the rest of that file's prose was written to avoid
   //         the refused vocabulary entirely rather than to be excepted, which is
   //         the rule working as intended a second time.
-  assert.equal(manifest.exceptions.length, 19450);
+  //
+  //         M4 FINISH ADDS ONE, taking it to 19451, and it is the only row this
+  //         tranche takes. `apps/agent/src/mcp-platform/tools/orchestration.ts`
+  //         corrected a stale comment that had claimed the tool catalogue row was
+  //         tenant-scoped; the correction has to name the PostgreSQL object that
+  //         actually enforces `(entity, environment)` ancestry, because the claim
+  //         it replaces is joined to a real database by
+  //         `apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts`
+  //         and that suite already holds FOURTEEN rows of the same kind. Rewording
+  //         was considered and refused: the alternatives all name a DIFFERENT
+  //         PostgreSQL object class, so dodging the refused word would have bought
+  //         a green gate with an inaccurate comment. Classified `technical`, which
+  //         is what the database engine's own catalogue vocabulary is for.
+  //
+  //         THIS PARAGRAPH, LIKE THE THREE ABOVE IT, IS WRITTEN AROUND THE REFUSED
+  //         WORD rather than quoting it -- the gate reads bytes, and the suite that
+  //         pins the count is not exempt from the count.
+  assert.equal(manifest.exceptions.length, 19451);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

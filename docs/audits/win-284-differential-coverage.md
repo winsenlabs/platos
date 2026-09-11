@@ -10,9 +10,9 @@ The capability matrix and the independent census enumerate the REST surface by d
 mechanisms — a generated manifest against controller sources globbed and parsed directly.
 Both counts must agree or the denominator is not established and this gate fails.
 
-- operations enumerated here: **309**
-- operations counted independently: **309** (311 route bindings = 292 unique routes + 19 dual-mount aliases, less 2 served by both deployables, across 35 controllers)
-- operator-protected, enumerated here: **128**; counted independently: **128** (130 bindings less 2 served by both), at or above the source-derived floor of 103
+- operations enumerated here: **313**
+- operations counted independently: **313** (319 route bindings = 300 unique routes + 19 dual-mount aliases, less 6 served by both deployables, across 37 controllers)
+- operator-protected, enumerated here: **131**; counted independently: **131** (137 bindings less 6 served by both), at or above the source-derived floor of 103
 
 ### Split by scan root
 
@@ -23,8 +23,8 @@ reading zero is an assertion, not an omission — the first route to land there 
 
 | scan root | directory | enumerated here | counted independently | source controllers | agrees |
 | --- | --- | ---: | ---: | ---: | :-: |
-| agent | `apps/agent/src` | 300 | 300 | 27 | yes |
-| core-api-transports | `apps/core-api/src/transports` | 11 | 11 | 8 | yes |
+| agent | `apps/agent/src` | 301 | 301 | 28 | yes |
+| core-api-transports | `apps/core-api/src/transports` | 18 | 18 | 9 | yes |
 
 ## Why the covered count is small, and why that is the honest answer
 
@@ -36,9 +36,9 @@ missing is the second system, not the instrument.
 
 ## Totals
 
-- capability cells enumerated: **783**
+- capability cells enumerated: **787**
 - covered by a twin-run scenario: **2**
-- uncovered, each attributed to an owning issue: **781**
+- uncovered, each attributed to an owning issue: **785**
 
 ## By surface
 
@@ -46,7 +46,7 @@ missing is the second system, not the instrument.
 | --- | ---: | ---: | ---: | --- |
 | bff | 117 | 0 | 117 | WIN-272 (M4) |
 | mcp | 202 | 0 | 202 | WIN-268 (M4) |
-| rest | 309 | 0 | 309 | WIN-267 (M4) |
+| rest | 313 | 0 | 313 | WIN-267 (M4) |
 | screen | 47 | 0 | 47 | WIN-272 (M4) |
 | sdk | 5 | 0 | 5 | WIN-269 (M4) |
 | store | 94 | 2 | 92 | WIN-285 (M7) |
@@ -72,4 +72,4 @@ Each row names the scenario that twin-runs it against two isolated equivalent st
 - **screen** — WIN-272 (M4): screen contracts land with the transports that serve them
 - **store** — WIN-285 (M7): the store is twin-runnable today; enumerating every model is coverage execution, which M7.2 owns
 
-Matrix digest: `dfbaed348c6fff82114e704b9147efe4b5963b75facb3c2837a71e087406f283`
+Matrix digest: `a19f54ddd007b992d9482c2cb633cbd69bf3034200f73f1fea3a100cb4062206`

@@ -19,6 +19,10 @@
     "./application/testing/index.js": {
       "types": "./dist/application/testing/index.d.ts",
       "import": "./dist/application/testing/index.js"
+    },
+    "./adapters/index.js": {
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.js"
     }
   },
   "scripts": {
@@ -31,6 +35,8 @@
     "@platos/context-tenancy": "workspace:*",
     "@platos/context-identity-access": "workspace:*",
     "@platos/context-secrets": "workspace:*",
-    "@platos/context-providers": "workspace:*"
+    "@platos/context-providers": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.26.0",
+    "zod": "3.25.76"
   }
 }

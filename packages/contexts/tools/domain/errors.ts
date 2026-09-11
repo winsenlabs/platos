@@ -51,6 +51,7 @@ export const TOOLS_ERROR_CODES = [
   "TOOLS_DISPATCH_RATE_LIMITED",
   "TOOLS_MCP_DISABLED",
   "TOOLS_MCP_TRANSPORT_INVALID",
+  "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
   "TOOLS_POLICY_PATTERN_INVALID",
   "TOOLS_POLICY_EFFECT_UNSUPPORTED",
   "TOOLS_CALL_SEQUENCE_CONFLICT",
@@ -254,6 +255,38 @@ export function mcpTransportInvalid(message: string, transport: string): DomainE
   return domainError("TOOLS_MCP_TRANSPORT_INVALID", "invalid_input", message, {
     details: { transport },
   });
+}
+
+/**
+ * A TRANSPORT THIS DEPLOYABLE DOES NOT IMPLEMENT — and it is a DIFFERENT CODE
+ * from `mcpTransportInvalid` on purpose.
+ *
+ * `mcpTransportInvalid` says the value is not one of `MCP_TRANSPORTS`: the
+ * client row names something nobody recognises, and an operator fixes it by
+ * correcting the row. This says the value IS recognised, WAS admitted by
+ * `admitTransport`, and the `ToolDispatch` implementation this process was
+ * composed with has no way to reach it. Nothing an operator edits on the row
+ * makes it work; what closes it is a decision about a supplier.
+ *
+ * IT IS NOT A `DispatchOutcome`, AND THAT IS THE WHOLE POINT OF MINTING IT.
+ * `DispatchOutcome.failed` means the backend was reached and refused, so a
+ * caller reading `failed` retries, tells its user the tool is broken, and folds
+ * a health sample in. A SKIPPED call is none of those things: nothing left this
+ * process, the backend has no opinion, and no health fact was observed. Two
+ * guards returning one code cannot be told apart, and these two guards must be.
+ *
+ * `unavailable` rather than `invalid_input`: the request was well formed and the
+ * capability is missing, which is the same category `repositoryUnavailable`
+ * uses for a store that is not there. No `retryAfterSeconds` — retrying cannot
+ * help, and a retry hint on a permanent gap is worse than none.
+ */
+export function mcpTransportUnimplemented(transport: string, reason: string): DomainError {
+  return domainError(
+    "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
+    "unavailable",
+    "this deployable has no client for that MCP transport; nothing was dispatched",
+    { details: { transport, reason } },
+  );
 }
 
 export function policyPatternInvalid(message: string): DomainError {

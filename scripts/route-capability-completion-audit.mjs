@@ -228,6 +228,135 @@ export async function auditValidatedCompletionEvidence({
   };
 }
 
+/**
+ * WHAT REMAINS WHEN THE NON-BROWSER HALF IS CLOSED ON EVIDENCE.
+ *
+ * NAMED, AND EXACT IN BOTH DIRECTIONS, because "the number went down" is not a
+ * claim anybody can act on. The completion gate is red at 125 and stays red at 125
+ * in the committed matrix BY DESIGN — `validatePendingMatrix` pins that shape, so
+ * the 18 non-browser cells are NOT closed by editing a status; they are closed by a
+ * runtime artifact a real PostgreSQL produced at exact HEAD. This is the residue
+ * after that promotion, and it says the remaining work is browser evidence and
+ * NOTHING ELSE: no idempotency cell, no concurrency cell, no persisted-state cell.
+ */
+export const NON_BROWSER_RESIDUE = Object.freeze([
+  Object.freeze({ category: "browser evidence", count: 107 }),
+]);
+
+/**
+ * The CONTAINER-FREE half of the evidence-backed completion audit.
+ *
+ * WHY IT EXISTS SEPARATELY FROM `auditValidatedCompletionEvidence`. That function
+ * needs both halves, and the browser half needs digest-pinned candidate images
+ * built by a job that is red on `v1` for reasons no code in this repository
+ * controls. The non-browser suite needs `DATABASE_URL` and a run id — the canonical
+ * migrations against a real PostgreSQL and nothing else — so tying its verdict to
+ * the browser half means 18 reachable cells stay unreported because 107 unreachable
+ * ones are. They are separated here so the reachable half can be CLAIMED, and so
+ * the number that remains is stated rather than implied.
+ *
+ * IT PROMOTES ONLY THE EIGHTEEN. Browser evidence is untouched, which is why the
+ * residue below is a positive assertion about what is left rather than an absence.
+ * The arithmetic is checked against the committed matrix's own blocker count, so a
+ * matrix that grew a blocker fails here instead of quietly making "18" mean
+ * something else.
+ */
+export async function auditNonBrowserCompletionEvidence({
+  matrix,
+  contract,
+  nonBrowserResult,
+  candidateSha,
+  runId,
+  now = Date.now(),
+}) {
+  validatePendingMatrix(matrix, contract);
+  await verifyNonBrowserEvidence({
+    contract,
+    result: nonBrowserResult,
+    expectedCandidateSha: candidateSha,
+    expectedRunId: runId,
+    now,
+  });
+
+  const before = completionBlockers(matrix).reduce((sum, blocker) => sum + blocker.count, 0);
+  const promoted = structuredClone(matrix);
+  const promotedById = new Map(
+    promoted.capabilities.map((capability) => [capability.capabilityId, capability])
+  );
+  for (const { capabilityId, category } of contract.assertions) {
+    const capability = promotedById.get(capabilityId);
+    assert.ok(capability, `non-browser evidence names unknown capability ${capabilityId}`);
+    assert.equal(
+      capability[category]?.status,
+      "required-not-verified",
+      `${capabilityId}.${category} is not a pending completion cell`
+    );
+    capability[category].status = "verified";
+  }
+
+  const residue = completionBlockers(promoted).map(({ category, count }) => ({ category, count }));
+  assert.deepEqual(
+    residue,
+    NON_BROWSER_RESIDUE.map((entry) => ({ ...entry })),
+    "closing the non-browser cells left something other than browser evidence"
+  );
+  const after = residue.reduce((sum, blocker) => sum + blocker.count, 0);
+  assert.equal(
+    before - after,
+    contract.assertions.length,
+    "the blocker count did not fall by exactly the number of cells the evidence carries"
+  );
+  return {
+    candidateSha,
+    runId,
+    nonBrowserCells: contract.assertions.length,
+    blockersBefore: before,
+    blockersAfter: after,
+    remaining: residue,
+  };
+}
+
+export async function runNonBrowserCompletionAudit({
+  env = process.env,
+  repositoryRoot = ROOT,
+  execute = execFileSync,
+  now = Date.now(),
+} = {}) {
+  const candidateSha = requiredEnvironment(env, "PLATOS_CANDIDATE_SHA");
+  assert.match(
+    candidateSha,
+    /^[a-f0-9]{40}$/,
+    "PLATOS_CANDIDATE_SHA must be an exact lowercase commit SHA"
+  );
+  const head = execute("git", ["rev-parse", "HEAD"], {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+  }).trim();
+  assert.equal(candidateSha, head, "PLATOS_CANDIDATE_SHA does not match exact HEAD");
+  // THE SAME RUN ID THE PRODUCER STAMPED. `run-non-browser-evidence.mjs` accepts
+  // either name and requires them equal when both are set, so this accepts either
+  // too rather than inventing a third spelling for one value.
+  const runId = env.PLATOS_EVIDENCE_RUN_ID?.trim() || requiredEnvironment(env, "GITHUB_RUN_ID");
+  const { matrix } = readCommittedMatrix({ candidateSha, repositoryRoot, execute });
+  const [contract, nonBrowserResult] = await Promise.all([
+    json(path.resolve(repositoryRoot, path.relative(ROOT, contractPath))),
+    json(
+      path.resolve(
+        repositoryRoot,
+        env.PLATOS_NON_BROWSER_EVIDENCE_OUTPUT ?? "artifacts/win235/non-browser-evidence.json"
+      )
+    ),
+  ]);
+  return auditNonBrowserCompletionEvidence({
+    matrix,
+    contract,
+    nonBrowserResult,
+    candidateSha,
+    runId,
+    now,
+  });
+}
+
 async function json(file) {
   return JSON.parse(await readFile(file, "utf8"));
 }
@@ -281,6 +410,20 @@ export async function runEvidenceBackedCompletionAudit({
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  if (process.argv.includes("--non-browser")) {
+    try {
+      const result = await runNonBrowserCompletionAudit();
+      process.stdout.write(
+        `WIN-234/WIN-238 non-browser completion evidence is green: ${result.nonBrowserCells} cells closed, ` +
+          `${result.blockersBefore} blocker(s) before, ${result.blockersAfter} after — ` +
+          `${result.remaining.map((entry) => `${entry.category} ${entry.count}`).join(", ")} remain(s), ` +
+          `for ${result.candidateSha} run ${result.runId}.\n`
+      );
+    } catch (error) {
+      process.stderr.write(`${error.message}\n`);
+      process.exitCode = 1;
+    }
+  } else
   try {
     const result = await runEvidenceBackedCompletionAudit();
     process.stdout.write(

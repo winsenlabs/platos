@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "d0e98227f526f8ce3ffaea4347672eb5cb4c843f6f1a8f68b9bf011b8f3311b1",
+  "evidenceSha256": "f9cd5bcda7cb43aee99e6991c8d3c3d0f607764ab3f52542f4755065ef9554fd",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "44d952173a4f246147cda8e96e954d28ba58ebb57c0aebe2296cff1e0be05042",
+    "aggregateSha256": "e93bafd085b2e2d04e9e2e5b1408cbed8105c23efe8345668da5197630756b74",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -271,7 +271,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "853316ab447d9847524d22a1bc6fe94156b97ee0b96f44c87e28c8b00689ec24"
+        "sha256": "430837018a0efe2575620fec453b42029eee3c75f8c7e4a676ade3214595265b"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -283,7 +283,7 @@
       },
       {
         "path": ".gitignore",
-        "sha256": "ce4eff450ee86b9b809cadec1f0e69a7ad2639499bc051b7ae1da2ea27018f89"
+        "sha256": "67d9626fd71b4366f5445485d1b322db78a5b8c1e05134de627d876e1e46b982"
       },
       {
         "path": ".gitmodules",
@@ -419,7 +419,7 @@
       },
       {
         "path": "apps/agent/scripts/generate-control-plane.mjs",
-        "sha256": "ab9cac8c9c6b72e431240685e9307d5f7870205fca82e595093e8185391cb29c"
+        "sha256": "bf5b59ef8b70ade122f78fc80c3c251ab42d04ffa383edd2670afc2ecef7528f"
       },
       {
         "path": "apps/agent/scripts/openapi-meta-schema.mjs",
@@ -431,7 +431,7 @@
       },
       {
         "path": "apps/agent/scripts/rest-schema-derivation.mjs",
-        "sha256": "a0afb90bb9ea3ac7809903c9dbf1384412ce0d48ff232980a44f757e0762f7b5"
+        "sha256": "18898a71814276128c180b1d961574b4642b6da2f86032235f0d7a42c3984b97"
       },
       {
         "path": "apps/agent/scripts/runtime-mcp-catalog.ts",
@@ -511,7 +511,7 @@
       },
       {
         "path": "apps/agent/src/agent-runtime/agent-runtime.module.ts",
-        "sha256": "c7d7b2e266da82f6dbc3b9df7627f7a64416a7093ffa5132c65a3b6023dad915"
+        "sha256": "1818d2f50ed27071cad9875f11a2c87857239c7dd1e27f8018e4f94778606c63"
       },
       {
         "path": "apps/agent/src/agent-runtime/agent-task-thread-resolution.test.ts",
@@ -648,6 +648,10 @@
       {
         "path": "apps/agent/src/agent-runtime/channels.controller.ts",
         "sha256": "855fbc467ebe3ec03324438066b1676221d032233a35b6632431cbf778c51313"
+      },
+      {
+        "path": "apps/agent/src/agent-runtime/chat-stream.controller.ts",
+        "sha256": "3d6d347bd6e4c52d874c1f149557494f332ac48e9699075476b8c316e2239dd5"
       },
       {
         "path": "apps/agent/src/agent-runtime/compaction-clean-transport.test.ts",
@@ -943,7 +947,7 @@
       },
       {
         "path": "apps/agent/src/clean-prisma-delegates.test.ts",
-        "sha256": "30bb8829b60fa0e033631f934621f8b7c37d4ad76093e9c60ae7cff3a545c313"
+        "sha256": "a0db5192ee95c4eadb8aee9c39826b2e0dfce9fcb07c8b0f818d7bb64a98d6d1"
       },
       {
         "path": "apps/agent/src/connections/connections.gateway-auth.test.ts",
@@ -967,7 +971,7 @@
       },
       {
         "path": "apps/agent/src/control-plane/operation-manifest.generated.json",
-        "sha256": "c4903207017cb4fbb5548aa0775cf046eda6c01f11acb4d8d9ed64b2f10c5fda"
+        "sha256": "b829293a3f378faf6801063af3db9a57ab274e81f222d4a55d43754544368fd2"
       },
       {
         "path": "apps/agent/src/evals/criterion.service.ts",
@@ -1031,7 +1035,7 @@
       },
       {
         "path": "apps/agent/src/http/api-surface.test.ts",
-        "sha256": "34a92f4793f0e7daa5ae413746bbdb68c0615a348e2af8f31665b95d141b9b63"
+        "sha256": "82e94b709d552b76178d1732a45d8a6eea2f2393c8c3a3bfb0e7f92b619f301b"
       },
       {
         "path": "apps/agent/src/http/api-surface.ts",
@@ -1055,7 +1059,7 @@
       },
       {
         "path": "apps/agent/src/integration/non-browser-completion-postgres.integration.test.ts",
-        "sha256": "b787736d961bca2b981eccfbe39620dde8fa4ad2d13933d39b2c81b6d975edb1"
+        "sha256": "2d676ad2fbdbe2dfd2565a330a618c6b24cd5e4673607b9d79ff7b2e80b046b8"
       },
       {
         "path": "apps/agent/src/main.ts",
@@ -1147,11 +1151,11 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/mcp-tool-acl.service.ts",
-        "sha256": "c5f1cc962d4404c9b4eda619995fb8bea8003683fa264a586313e49852b8d58f"
+        "sha256": "3e9f2cab4fc979d784a713b32042d4b742595ee3596034475a64ebd70377d54c"
       },
       {
         "path": "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
-        "sha256": "0525f8823d974c96fd063c4af46552a9d4779e15ba9cec8330afe210ac328f94"
+        "sha256": "1e9b6d5d2a655e5af7c5a294b2e08bc8064260fb40bb8a11032a0865a0d6c507"
       },
       {
         "path": "apps/agent/src/mcp-platform/permission-gateway.service.test.ts",
@@ -1159,7 +1163,7 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/permission-gateway.service.ts",
-        "sha256": "7f1bc12f3134b42779d0f6e42d198eb1a35aa34736e685bbe2257839b40ff7c9"
+        "sha256": "4aa491ba0d194729b6349fc8e585f9b3d931bc9631887d2f96eeb7ace7315d92"
       },
       {
         "path": "apps/agent/src/mcp-platform/schema-validator.ts",
@@ -1267,7 +1271,7 @@
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/orchestration.ts",
-        "sha256": "7504fd7c1b8f7bebb388a9d5fda9c07bf92a15c378ea74547413c8e2e20ef235"
+        "sha256": "3c8dc4770fb8b4aa04507bcec71db0bc8dbe587bbd3d119977241e39e73bf72c"
       },
       {
         "path": "apps/agent/src/mcp-platform/tools/platos-control.memory.test.ts",
@@ -1799,7 +1803,7 @@
       },
       {
         "path": "apps/agent/src/openapi/openapi.generated.json",
-        "sha256": "4890b8780a69f6cacaf2c7b2109c0398c988d8536f06ca2fdd147c965b7f1ba5"
+        "sha256": "9b11ac9d0eab0ee58e4be2a0d91bae214602eab567615f9f1931c51772a84d17"
       },
       {
         "path": "apps/agent/src/openapi/openapi.module.ts",
@@ -2226,12 +2230,16 @@
         "sha256": "cbbd8a9de22c371b65434877c32f008b2c98e8b14b388ce6b825b9531e553e40"
       },
       {
+        "path": "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
+        "sha256": "c950304748f9d007a4570d32fdcbe7abc3bc0bf9a5898718786aaab949aa454c"
+      },
+      {
         "path": "apps/agent/src/streaming/streaming.module.ts",
         "sha256": "bad7fac59f8818de3f6b142ea77e75df108603ad78a0ee2b67cf2a55cce60bd6"
       },
       {
         "path": "apps/agent/src/streaming/streaming.service.ts",
-        "sha256": "a0f96e63d2c7221eab888dedef082f50f152222fe33ed0d927bc2a97e6063663"
+        "sha256": "b1ea6706cc7faa906d9d5071c70c92f442a1a4b24e755a815a2326f8d4ded763"
       },
       {
         "path": "apps/agent/src/test/test.controller.ts",
@@ -2287,7 +2295,7 @@
       },
       {
         "path": "apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts",
-        "sha256": "7b21cf79e9d51d508d87b7ea8299398312ff068db7dc5e54fe4ae15da0de6f43"
+        "sha256": "d60772d8fb254eb94166aeff7ea75a05879916e66340c007456fa7231507c4f5"
       },
       {
         "path": "apps/agent/src/tool-gateway/registry-invalidation.test.ts",
@@ -2314,8 +2322,12 @@
         "sha256": "80720bde03f2c8b6f8d9787be13ff88d552192727ddedf7635c841d0b48d953c"
       },
       {
+        "path": "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts",
+        "sha256": "36bf99bd1b5192bbace865cebc7db720fe0f1461a264280ca555bc7730b07785"
+      },
+      {
         "path": "apps/agent/src/tool-gateway/tool-registry.service.ts",
-        "sha256": "d3389f5c0da54fae7ee4d4a63ecd7a2e9d8fc067662a725c295e372a7ea8d6aa"
+        "sha256": "2e99e8442c418c505249bb7fabce47abf1a921a71c0c6924d5d47156f1551616"
       },
       {
         "path": "apps/agent/src/tool-gateway/tool-router.service.ts",
@@ -2327,7 +2339,7 @@
       },
       {
         "path": "apps/agent/src/tool-gateway/tool-sync-ws.test.ts",
-        "sha256": "8c451544583110ff2443a4a94a4084d65cc4b91517f988ae6cadae198dbd29e8"
+        "sha256": "f38f8d5b8cf7c099c080749d84b09288e072c4f89a265aa35265500c074b996e"
       },
       {
         "path": "apps/agent/src/trigger-bridge/internal-execute-tool.controller.ts",
@@ -2506,6 +2518,10 @@
         "sha256": "f1180ba916a61e91a9a0c8ba5c5715b0830b0a50bc09af5a054ba603770fb472"
       },
       {
+        "path": "apps/core-api/mutations-win268-policy.json",
+        "sha256": "188f3725fb438752cebf7ec8f631492dd7bbc2521584753c18c50f5d5096a996"
+      },
+      {
         "path": "apps/core-api/mutations.json",
         "sha256": "2f6f4ec49bb143b7b7a7eb5a23bb992d25e914af8ed2d7e92988a08aa562495c"
       },
@@ -2519,7 +2535,7 @@
       },
       {
         "path": "apps/core-api/src/app.module.ts",
-        "sha256": "14cc14f74cafb943d7dbd71eb003f1c8ef7b1e09a29ae3d6d87f9be96b3ebc72"
+        "sha256": "02da8357cdd79c6a0049cdc5c738ab9e6538735a8629827a28401a071eb7a92c"
       },
       {
         "path": "apps/core-api/src/composition/adapter-bindings.ts",
@@ -2527,7 +2543,7 @@
       },
       {
         "path": "apps/core-api/src/composition/context-ports.ts",
-        "sha256": "e1f4d122b34cc56b482ac709871cccb163d7394a4ce4dfb121c06ba167a3fee3"
+        "sha256": "1df3ca124a12cd6d0ad7cd96ad456c1b88ec84bb3562143028a4d07e5a8b354f"
       },
       {
         "path": "apps/core-api/src/composition/governance-judge.test.ts",
@@ -2543,7 +2559,11 @@
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
-        "sha256": "1c115f32faf65d1eb8f71fcaaef2c2b2ed934d752378ae143e55aab0a7b488e0"
+        "sha256": "b8b5441a8a4cc8627ab12dca337886237ba007fea1c6c0d0c2cd881d560b56b4"
+      },
+      {
+        "path": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+        "sha256": "836dbd2e74a2e21fa3c20d5a0396438f8c88fa957fac304fbe0ab482a86e637f"
       },
       {
         "path": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
@@ -2639,7 +2659,7 @@
       },
       {
         "path": "apps/core-api/src/http/http.module.ts",
-        "sha256": "97b157ff962cc77eb71df4f83a2d14dac6e19c3ff45c784c87f4b4eef7afd635"
+        "sha256": "551533c039551e35e1c2e29a2bdea0186e5871b1e9e0a0fb375e945dee8ac95a"
       },
       {
         "path": "apps/core-api/src/http/idempotency-errors.ts",
@@ -2651,7 +2671,7 @@
       },
       {
         "path": "apps/core-api/src/http/idempotency-policy.test.ts",
-        "sha256": "408828df33a8e24e75140febd61e84133a5db0045ca864410e911c42eb53bb36"
+        "sha256": "0caaa3a075df3c32ac4a905cb62afc8287fcbe51df68318630f485ecde337b67"
       },
       {
         "path": "apps/core-api/src/http/idempotency-policy.ts",
@@ -2683,15 +2703,15 @@
       },
       {
         "path": "apps/core-api/src/http/validation.pipe.ts",
-        "sha256": "bfce921e5f5584c363ebbb11871443ed728ad54c4d9e952da36b646de3629878"
+        "sha256": "21a3773e76c663b2a95e2178da73e86229927fc488b9af5c3d7e0695595a3025"
       },
       {
         "path": "apps/core-api/src/main.ts",
-        "sha256": "6e491b1b07d2abfb68c5a10859b1bf83a44331f9e9e1b0bc0c17328bd9c039e1"
+        "sha256": "778b610fa2c5f15488d78bf5a8f616f28be2a2541e0dbaa4fc8d53b43c120585"
       },
       {
         "path": "apps/core-api/src/process.test.ts",
-        "sha256": "2bdead8738a8084ac5a519ecec1d527a6d35cd861e8ddcf9cd0307fc33656768"
+        "sha256": "0396cc3958a6b140b9208d325918e5dea899c9e9912b384c5048174347792abc"
       },
       {
         "path": "apps/core-api/src/runtime/correlation.test.ts",
@@ -2735,7 +2755,7 @@
       },
       {
         "path": "apps/core-api/src/runtime/shutdown-drain.test.ts",
-        "sha256": "5ee4548f4af461dd3eede88db6f97e50870ce996a5e07ad157cbd79a6679cf07"
+        "sha256": "9427fa2a8195dbe8afa804adef426405a416dd5f975af32556dcc2106d640bf0"
       },
       {
         "path": "apps/core-api/src/runtime/shutdown-drain.ts",
@@ -2763,7 +2783,7 @@
       },
       {
         "path": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
-        "sha256": "16d72d88887c4c90101e71cd59a51f01a5c34d11ba044db73c7c879894bb8676"
+        "sha256": "2edbb7741ef037facfbda3ca0a284165c52264ccf747fd580352b1c65b09535e"
       },
       {
         "path": "apps/core-api/src/transports/mcp/index.ts",
@@ -2774,8 +2794,20 @@
         "sha256": "172c09d596781745702a65dd1d87b23895edb831d0f60be5dcb5b2ff958361be"
       },
       {
+        "path": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+        "sha256": "907c12e7a6c9b2b407b30fcc5432bcaf80fd998479da974a4a4fc2cc422214be"
+      },
+      {
         "path": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
-        "sha256": "24d0cb9628f3ad259b32f0e908333e260649055440f06ddcec5858969a22c96f"
+        "sha256": "ddc4de87b44e2633779ba9a052fff710e4edf9f82aa3fbb4fe61bfcab131e9b4"
+      },
+      {
+        "path": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+        "sha256": "ba96044d1c849edfdab43e9c0f2223e4344ab376608b2662a0b0e48357c1eefa"
+      },
+      {
+        "path": "apps/core-api/src/transports/mcp/token-lifecycle.ts",
+        "sha256": "479a11a641387b54ec65b6ddd6ac12124825480965fec92c997c3ad4ef9e92d7"
       },
       {
         "path": "apps/core-api/src/transports/mcp/token-mint.ts",
@@ -2807,7 +2839,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-rest.test.ts",
-        "sha256": "345c8112a0742658a51173e6e17b0f1c55b3944c24b42863180c09aaa65476a2"
+        "sha256": "195ae240108dae3d549005d4a2a997faac6b73731d7477aeae509b7b4792cc55"
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-session.controller.ts",
@@ -2839,7 +2871,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/route-manifest.test.ts",
-        "sha256": "07586e00adb033d9e322b8047adfbb0f81650fa0e1d67797fa39ad286c660a52"
+        "sha256": "5f13461cc9cd4556ac26ebef48a863b12f2d7a9c63a79c0f86722929e869b83f"
       },
       {
         "path": "apps/core-api/src/transports/rest/transport-errors.ts",
@@ -3307,7 +3339,7 @@
       },
       {
         "path": "apps/webapp/app/routes/api.v1.public.agents.$agentId.chat.stream.ts",
-        "sha256": "df7e6b1cf23346df7168d6a27bd74147b51d8aa157c555b4bff13e10ea633164"
+        "sha256": "6f0e1e772e25130acbabadbe71f1be27d29f21b4cd5a5ca5005009fd50216f0c"
       },
       {
         "path": "apps/webapp/app/routes/api.v1.public.guest-token.ts",
@@ -3615,7 +3647,7 @@
       },
       {
         "path": "apps/webapp/test/publicGuestBoundary.test.ts",
-        "sha256": "2f9d4239715c5c9dfc5ff3bac41861f4f0c9cfea3a0bc85ec9d1d2f072b59a93"
+        "sha256": "cd98ea1894cd8fd11e68643801ae4956a286cc056932a74e11621436c08ce082"
       },
       {
         "path": "apps/webapp/test/referenceRouteManifest.test.ts",
@@ -4243,7 +4275,7 @@
       },
       {
         "path": "docs/adr/M0.4-contract-versioning.md",
-        "sha256": "41913a881420f87ed66cb5d3eae38a527f7f0c84e016685d234451cbf424aeac"
+        "sha256": "0516203edc42766de013725b7583f7eab6e0ede4dc902682d38d616a3bfc7681"
       },
       {
         "path": "docs/agent-worktrees.md",
@@ -4271,19 +4303,19 @@
       },
       {
         "path": "docs/audits/M0.2-capability-matrix.json",
-        "sha256": "c0b5810f842bf540b712d86584915895d4ed60b06d2664fda2c312785003a851"
+        "sha256": "080769420a31e001fe4d009f56b0ce8d033bbfd80ecfa22eb72bc9c05692a0a2"
       },
       {
         "path": "docs/audits/M0.2-capability-matrix.md",
-        "sha256": "8ea242fc0bc59b0b6ce12fcf7118ea9075c7a3a7fff27c6c0bcd1fd4437266e0"
+        "sha256": "9a6f8d6fe572b3866c0539aace761250515596ca202af42e08903140af2bc036"
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.json",
-        "sha256": "0f631eb161b9320bbc522eec98d98c847437d9fb53306201d4f776664cad30e6"
+        "sha256": "c72b0534868df1db447ed23c42ee7cb3e9958be637ec91cd63361368650c34ee"
       },
       {
         "path": "docs/audits/M0.4-design-contract-map.md",
-        "sha256": "12e3e992a76f8219356f5adf8876040f8f07cbfbe505999d9bf185ab7e43e13d"
+        "sha256": "105c629899f96270d12e37156b7d747aff925e844259bddb0518accce0f32328"
       },
       {
         "path": "docs/audits/M0.5-dependency-sbom.md",
@@ -4299,11 +4331,11 @@
       },
       {
         "path": "docs/audits/M0.8-operator-operations.md",
-        "sha256": "11021cd2de5dc49eb57d6467a4f96e98a4db45e4491b92114760522534066859"
+        "sha256": "01486ed2899aa89e097ac17f85b91b5eaae87f2f029d9775c1a6746d154a5cf9"
       },
       {
         "path": "docs/audits/M0.9-rest-census-independent.json",
-        "sha256": "8eed21b50a332684847594c05a71d3b1d096f6a32b2e3738ff6d473c83a2828b"
+        "sha256": "eafad1639e725c53c96b8b1822081e6264b815178836fb53e86ec0c02d732844"
       },
       {
         "path": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -4387,7 +4419,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "b9dfb3230ca336f99d7597198aab82cf229e1ebb7b7c5bd2e41c722800231f7b"
+        "sha256": "bf013d6de0cb7c6b42b92423a4be6c1007a927894e92f3369d38974935bf0517"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -4395,7 +4427,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "495eea8793a326b67fb77d1141551df8eb69983ff934a8e400fccc684948dcba"
+        "sha256": "f50c01378e34a3c705d68098aceed380c46bbc643df68a8bea28dba68088b2a5"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4459,35 +4491,35 @@
       },
       {
         "path": "docs/audits/win-259-secret-response-census.json",
-        "sha256": "a8a6580440a2fd150fd0e6ba3351e0e9f9d43183d6fa1012802d89fe113f054f"
+        "sha256": "a200c940acd2ad9dda3951c8c7ab4b998461c316832470eb6fc9320aafb88765"
       },
       {
         "path": "docs/audits/win-268-mcp-store-ownership.json",
-        "sha256": "e0a3fc6d76c96e6029a73e8a1b033d063f7ab8eb0fd8c9073ea41aaaebb50c04"
+        "sha256": "a7824526f2804a842969d335c8f3d703321d9399a742b3949ace2f8acb1c8b0d"
       },
       {
         "path": "docs/audits/win-268-mcp-store-ownership.md",
-        "sha256": "8dabf4cee680f3350d7f6b4e67c2c0bf8da15fc51e2dcb246ab68a2c05a0104b"
+        "sha256": "32a5563b7b6a5c35044856bc97174f95cfdd2b01cbdb493c1b453194cab75ca2"
       },
       {
         "path": "docs/audits/win-269-tool-lifecycle-reach.json",
-        "sha256": "39ea8303c0566f570704b31b5fb47f50b0809cb5d4684a8c7ddf543a02ac3c92"
+        "sha256": "135253bbc01d16941faae0cc1d761757253277453876a9334da609ba98cb4566"
       },
       {
         "path": "docs/audits/win-269-tool-lifecycle-reach.md",
-        "sha256": "cb30550086d3cfb325fa6ef315e0b122e683dea0bfd8ef56770fbdbae33ba2eb"
+        "sha256": "c6c71642ff3d6d63cd56cf032d3d9392294e3a645fc4943690d31b695da94dda"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
-        "sha256": "ad9413203156fe1b250feaa3350e6d92da0a5527b6dbf98d28721cb2965e2da8"
+        "sha256": "433b8011c40abc5413efd0bebade968b80740d1e34ee4372e1c8c6ac1dc4c114"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.md",
-        "sha256": "2059536360d87e6894b5afed0b8e2cbdd6983af213b9d2d4a505676ebddf2fe9"
+        "sha256": "878eaf90ee49bf38d848680d32d27267c81447a8233f37b880aa0d5aad7b9b2b"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "73a09d280b8c8bedaf50afe8d362eb33870e230497e87dea024b8fa948ece11e"
+        "sha256": "510fc9b93e1555071f7de7bffe3db514436e894d397fb7d3e729dcef0ee3beb7"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -4655,7 +4687,7 @@
       },
       {
         "path": "docs/control-plane-parity.generated.md",
-        "sha256": "d033af72c93527d6d006eee1c88c5c4ebc50afe1d8ed3bd274a8d6fa18e4be4f"
+        "sha256": "f24e21b44a8dc40c5dae083d9913a7e95c7495e6b61c325f0bdb48cf3b896941"
       },
       {
         "path": "docs/deploy-environment-variables.mdx",
@@ -4759,7 +4791,7 @@
       },
       {
         "path": "docs/error-taxonomy.json",
-        "sha256": "55e263f632833aec130d35b7e9152dc2b4906b4926cdb2d07cbd31b13e61e9c5"
+        "sha256": "15e5c4eee3ddf9fd816ce14e70433876bffc0b5757477073fa7dae57090a5063"
       },
       {
         "path": "docs/errors-retrying.mdx",
@@ -5871,7 +5903,7 @@
       },
       {
         "path": "docs/mcp-connected-entity-design.md",
-        "sha256": "50f46f726b8c394d1b32cb03b1972631236399390eb7a56fe68f527dff3e1c98"
+        "sha256": "878fa4ee9a73bcd96e177492f706f23d9fcdf42a9ba89cd16468ffcfc2249c1b"
       },
       {
         "path": "docs/mcp-introduction.mdx",
@@ -5935,7 +5967,7 @@
       },
       {
         "path": "docs/openapi-v1-baseline.json",
-        "sha256": "d62ef48fd8e45ca983dea6e12b0c2792c036d808a8ae147fef85fc6d10da1542"
+        "sha256": "364a6d30c274be019a369a1b558be7edbd93585b6d16aabd72cbfb46d32a473f"
       },
       {
         "path": "docs/openapi.yml",
@@ -6423,7 +6455,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "1958defb575c7af6a0170bf40817c29ec259e143cee9e8ab5eb5adc1302aa571"
+        "sha256": "a109b5ef8ccfed2d6d5695d16fc3b6e6193f100cf443a8ce2e73ad7cf68b0d83"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -6443,7 +6475,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "ab5511ca29ef1b5d857fe6f8f7c465b225d0792d0dc1f7b8fb430c7bd315601d"
+        "sha256": "90bc1d716b424fafb6cf70feb84be9749470e4a23d0425a88188c0b6ff368ff7"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -11267,7 +11299,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "fb90990bf4b5a0c866da71d7d78406abfd834a6811462a20e599f7aa6d82733d"
+        "sha256": "89ec870f9b230c23e79355d7a082bd561bc75508b88188548b90357680883e1b"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -12427,15 +12459,23 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/harness.ts",
-        "sha256": "ac5f146233d43957de92c7c47bfd2d146653dfa50be2f4c618ee5dcb098f8c47"
+        "sha256": "153f79ddb8b9aeaa994faab5eef951732c17ffbfab6b68788ec2e0a2c232f716"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-access-keys.ts",
         "sha256": "ed22aeee7ec236fc035930f780d629ea693cc1d0fcf8999c9f5b7d84ba91f8e2"
       },
       {
+        "path": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+        "sha256": "a8059bd564fd7d756d74ab22375acb0a194d4598cd8d52ae2ce52fa3b96e2925"
+      },
+      {
+        "path": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+        "sha256": "401c3ac38b3e838c1aee427aead9b3ac857d3bb4c88a87f8b5161305c404d23c"
+      },
+      {
         "path": "packages/adapters/postgres-tenancy/src/identity-bearer.ts",
-        "sha256": "ff9189f24ecdc3908854dd8f12c4ae4821a1c4c95973a1d10e597e35171c9f19"
+        "sha256": "f11eb2da2446634891e8fd210e6ee9794b89ac02d612c654cd4a12d10c85ca4a"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-conformance-scoped.ts",
@@ -12443,7 +12483,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
-        "sha256": "3c3ad196ceab840094103d2839b79638e7b085407981388c12bfd9b1f75e25e9"
+        "sha256": "01386cd4ff6fbd87f96fc6970d8f4c9047c4af6e4ec4ae393125561d3ad503bf"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-conformance.ts",
@@ -12475,7 +12515,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-harness.ts",
-        "sha256": "db5f8e4f24cb3b63169cd080ff5c66e19bd4711da7a8152c3b48f207ec35de42"
+        "sha256": "cabbb62c9afb3c5643a0410e884d33867c686455eeb26951f67a6c10a019abf3"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-mapping.test.ts",
@@ -15370,6 +15410,10 @@
         "sha256": "71c54aa9d68880bc7c38d249b8a39b4c5a0224aa617350e90c17c7de24e41f3f"
       },
       {
+        "path": "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
+        "sha256": "0c85520de15a0f242b0c11e7987992c1a3cb30b33ee3e96f14123e0ca2dca533"
+      },
+      {
         "path": "packages/contexts/identity-access/application/consume-rate-limit.test.ts",
         "sha256": "22a5a172ba579a1a7dff30542d002d8996e0f12fc85e5e69006db1f90a49102f"
       },
@@ -15411,7 +15455,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/identity-access-service.ts",
-        "sha256": "410ab89ec9cb5b59a253a97ef0e9fe5478aabb01595f19e58d2f9d8aabe638fc"
+        "sha256": "004fbd4bb1b367fc043ed4ef718f2262770750d0f717df5262365e2257158d79"
       },
       {
         "path": "packages/contexts/identity-access/application/impersonation.test.ts",
@@ -15422,8 +15466,12 @@
         "sha256": "3cc628d7d299c18aabb977c73bc12d90e77a37e49354d581e732ea0b0883ca09"
       },
       {
+        "path": "packages/contexts/identity-access/application/in-memory-bearer-listings.ts",
+        "sha256": "72fa4ec5c6a13fc63930de3905b7dd43352ea3155134f96abf39fccc4896a51a"
+      },
+      {
         "path": "packages/contexts/identity-access/application/in-memory-repository.ts",
-        "sha256": "cf9989236067ec9d2d29347ab277457706d6950c6812a8a55c89957d8bf0b206"
+        "sha256": "35a47df10dcec58869c7a0eb72cc9b8c928e3c03a428c5778c7a6f00d0a6625f"
       },
       {
         "path": "packages/contexts/identity-access/application/index.ts",
@@ -15432,6 +15480,10 @@
       {
         "path": "packages/contexts/identity-access/application/issue-operator-session.ts",
         "sha256": "547634ea54e22d1a1e7f302dbb7383e5ff4c8e7ab0ed25de495bae642b95eb00"
+      },
+      {
+        "path": "packages/contexts/identity-access/application/list-bearer-credentials.ts",
+        "sha256": "da249707d4db9802da4841a3e5dd48e71a74eebb589a6a79bb05b176e874ec64"
       },
       {
         "path": "packages/contexts/identity-access/application/list-end-users.test.ts",
@@ -15459,7 +15511,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/ports/index.ts",
-        "sha256": "1d0db27d7d704ddd9acc55eabd6398abd9eb67ee9871159ab41865f6dd8b9a7e"
+        "sha256": "0c3c175df6ab958d4c364df0a9f6828fdd4e03bda6721391c449f2f39bd77121"
       },
       {
         "path": "packages/contexts/identity-access/application/ports/mfa-secret-cipher.ts",
@@ -15471,7 +15523,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/ports/repository.ts",
-        "sha256": "c96a6e093126bc4d0c98d05c80224112bad94e510e477ec95b687a954fed1884"
+        "sha256": "96a4a2dd387498d49d7936f31ce782ad07223287ebe35750c1a79273a62c020f"
       },
       {
         "path": "packages/contexts/identity-access/application/ports/secret-hasher.ts",
@@ -15486,6 +15538,10 @@
         "sha256": "049e7af9ef6aa2d76e309430c4723088d811b824c0c3bbcb95f74adf7b415df3"
       },
       {
+        "path": "packages/contexts/identity-access/application/revoke-bearer-credential.ts",
+        "sha256": "d277f3debbfa6ca693eaef972573359d2ed565d753484fdc33a18a230313f414"
+      },
+      {
         "path": "packages/contexts/identity-access/application/rotate-access-key.test.ts",
         "sha256": "915abc819fde00a4f9210cfbd74b8d5907bd9a44ef7ef4977a79f0c2872c11c7"
       },
@@ -15495,7 +15551,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/testing.ts",
-        "sha256": "c128b609c9f552c154070de13768089040ea54b2de96feb1f9b032f55ec8c40a"
+        "sha256": "ce2140f3bbcf1b3c0edecee6d91a2842d2300ed049d3c1ebfde2355e99db31b9"
       },
       {
         "path": "packages/contexts/identity-access/application/verify-mfa.test.ts",
@@ -15507,7 +15563,7 @@
       },
       {
         "path": "packages/contexts/identity-access/contracts/index.ts",
-        "sha256": "13d5488345e24c6caa97bdf47b918351d6fbd3315ba35151f4c5a60b66d1a101"
+        "sha256": "d2563c599053f59fd645df2f60cbdf0a7f14541d41ad9f2b2e4fa1ac00f0aca8"
       },
       {
         "path": "packages/contexts/identity-access/domain/access-key.test.ts",
@@ -15527,7 +15583,7 @@
       },
       {
         "path": "packages/contexts/identity-access/domain/bearer-token.ts",
-        "sha256": "ca94aa3a4dfc5ce18c19740c2f11238c88c8dc57753cd27d0ed9a9ae4f0180a3"
+        "sha256": "ea404d3806cf1446cd4f5e82cc44e8412b626ee26263f0573fd4a2266120fd0c"
       },
       {
         "path": "packages/contexts/identity-access/domain/credential.test.ts",
@@ -15547,7 +15603,7 @@
       },
       {
         "path": "packages/contexts/identity-access/domain/errors.ts",
-        "sha256": "1b42ff83af330cf3593b5fcb69bbe53cc6e45064c1a77356c69caf8f116a0a11"
+        "sha256": "0542eecb00694ea00829fbf8ff9b068e300009a38492cf5be6bd5799e486ceaa"
       },
       {
         "path": "packages/contexts/identity-access/domain/index.ts",
@@ -17758,6 +17814,34 @@
         "sha256": "08676dd66a2041c803c61cec39788f6108c30304c1275dc9a49b2c04d0924d64"
       },
       {
+        "path": "packages/contexts/tools/adapters/content-digest.test.ts",
+        "sha256": "e32d6a034b3e79cd6800b6c177bd8a1b01deda03087d17e05d2c55a1acde3c32"
+      },
+      {
+        "path": "packages/contexts/tools/adapters/content-digest.ts",
+        "sha256": "8b1a42819797a275abeb36ef0036aa7996bf95118c3637a11ff6cfed6e557ccd"
+      },
+      {
+        "path": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+        "sha256": "3a98e2918aca6380c5c6f41551cd580a121a3aad495af72343e7a14ff1e21f4c"
+      },
+      {
+        "path": "packages/contexts/tools/adapters/dispatch.ts",
+        "sha256": "02855c52ac4c424fd783cb94d244fa16bcbe93c57e4a013062a63adc7b01ebf3"
+      },
+      {
+        "path": "packages/contexts/tools/adapters/index.ts",
+        "sha256": "8807422b91e7ad49a8975d23b6af11e98403ddaae7d1f0edf51bb1cd89613f10"
+      },
+      {
+        "path": "packages/contexts/tools/adapters/mcp-dispatch.ts",
+        "sha256": "3f35cb91741e2490eba04573f7d8bd15b364ed97c245b5171a140cf9dff6e086"
+      },
+      {
+        "path": "packages/contexts/tools/adapters/wire-dispatch.ts",
+        "sha256": "837252ccab22a2d9901e482067d1f320b6ae6036d6c5fdd5afe311b4e5bcaa96"
+      },
+      {
         "path": "packages/contexts/tools/application/authorization.ts",
         "sha256": "8dc816f34a3cd13fcf8c5a00730ea77da25a23e5f969278c32c81c5d4461cd90"
       },
@@ -17867,7 +17951,7 @@
       },
       {
         "path": "packages/contexts/tools/contracts/index.ts",
-        "sha256": "4214de68b872c2e3e3925e20f61afa9c6c534dd4b349571712463aa1b4adbf82"
+        "sha256": "4e6d49ffe798513726e0e68cdc01d61cae9b48e55b46db864b6d4f785d890bde"
       },
       {
         "path": "packages/contexts/tools/contracts/operator-gate.test.ts",
@@ -17919,11 +18003,11 @@
       },
       {
         "path": "packages/contexts/tools/domain/errors.test.ts",
-        "sha256": "56950d2646f1ac35c2d22f6a8f3c55ce6925efda8080864381e9cf30bde19fae"
+        "sha256": "2d527b3d547f0286d0bcd887476d69614b9282853eb456f3aba8d717ccace92b"
       },
       {
         "path": "packages/contexts/tools/domain/errors.ts",
-        "sha256": "8d6a351666bdda3f7b20bea888897b90e4498a0f777349e7aecfa27569bb2857"
+        "sha256": "7922d70af6f9dc701f0e7ac05b5e96d523424d584bf4a0e3b95efe9ff4863b69"
       },
       {
         "path": "packages/contexts/tools/domain/exposure.test.ts",
@@ -17999,11 +18083,11 @@
       },
       {
         "path": "packages/contexts/tools/package.json",
-        "sha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b"
+        "sha256": "164953cbfdcf1a718a65f058aa90a6b74be609a0c2c7ede9f88c30ed277fb8b7"
       },
       {
         "path": "packages/contexts/tools/tsconfig.json",
-        "sha256": "7e9f47bd9eb29edc08355c65d350cc766678793e4787ef4e964a8e2554e695d0"
+        "sha256": "ae05ad1b2513217c200eee0b9be4469d9ab254151b416e712d822b4b81068aa6"
       },
       {
         "path": "packages/core/CHANGELOG.md",
@@ -19167,7 +19251,7 @@
       },
       {
         "path": "packages/kernel/src/vo/stream-frame.ts",
-        "sha256": "e3f3bd0686f480196d9c72e44cbb7a10e749b503e5f3cd1124cc4aa870aae054"
+        "sha256": "20de8da3cf3d50399546b3f7fc83b983f0eb59adbd847df3ce3777281b7d3ade"
       },
       {
         "path": "packages/kernel/tsconfig.json",
@@ -19567,7 +19651,7 @@
       },
       {
         "path": "packages/platos-client-py/platos_client/generated/v1.py",
-        "sha256": "a3506a15be6fcc5b0b7820a5edbed1f7a69d146cb2c8631bda1165bc5fead3cc"
+        "sha256": "f0397a5a82cc2d5cb8334e9e0aea9127fb3bfe1fa8b3a4b8dfad69155b6a0fe9"
       },
       {
         "path": "packages/platos-client-py/platos_client/py.typed",
@@ -19591,7 +19675,7 @@
       },
       {
         "path": "packages/platos-client-py/tests/test_v1_contract.py",
-        "sha256": "b2e262fe61e64b032854a7e315b36b6d37d3edb3ef98e4c205352172ca680b96"
+        "sha256": "c72c165a2033a98b6aecc42e45297ff927e0e1b025dcd564ea955c125728d90d"
       },
       {
         "path": "packages/platos-client/LICENSE",
@@ -19612,6 +19696,10 @@
       {
         "path": "packages/platos-client/src/__tests__/messages.test.ts",
         "sha256": "074cda84c8b88516d3ed592c4b9786c86ca821481d9eead08b0f8da35e07aff2"
+      },
+      {
+        "path": "packages/platos-client/src/__tests__/retry-idempotency.test.ts",
+        "sha256": "510a30d7db922dda1f8c0d36467ff6bc14693c8ed14438c22b59e07830396331"
       },
       {
         "path": "packages/platos-client/src/__tests__/tools.test.ts",
@@ -19651,7 +19739,7 @@
       },
       {
         "path": "packages/platos-client/src/client.ts",
-        "sha256": "94391f640188d1d4aae881fe8ad1444c0faeb64787465442f80f853b1a24eda6"
+        "sha256": "8bef8ccc9558ffb5711739ab0d397ebc01417b1adb228033ad90277038a37e24"
       },
       {
         "path": "packages/platos-client/src/errors.ts",
@@ -19659,7 +19747,7 @@
       },
       {
         "path": "packages/platos-client/src/generated/v1.ts",
-        "sha256": "60229ce136e2cd225fb3ef7dbd5802d9657be2d58721d055b1c1f90c85792200"
+        "sha256": "b89fe13e4ed3e70bd81a78bb4d3e916303af5077b7c637bd7aa3025ddaf13487"
       },
       {
         "path": "packages/platos-client/src/index.ts",
@@ -19683,7 +19771,7 @@
       },
       {
         "path": "packages/platos-client/tests/v1-contract.test.ts",
-        "sha256": "a72941f4092a1144fe58c1fe06612b6d5bd223682e67f775a125698cc278aae5"
+        "sha256": "a46b3d4c56a57fece7e16c13b0568123116a963deba95c1239ede63710ec262e"
       },
       {
         "path": "packages/platos-client/tsconfig.json",
@@ -20007,7 +20095,7 @@
       },
       {
         "path": "pnpm-lock.yaml",
-        "sha256": "b7204381502e38a9e0a2b312366b5583bb0d35bfbae8cb59677a70f44212e850"
+        "sha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4"
       },
       {
         "path": "pnpm-workspace.yaml",
@@ -20146,6 +20234,10 @@
         "sha256": "929e6c45eddd5e803e5fd9f62d87ac8379742fa74fc42fc42464b3ffa569e60f"
       },
       {
+        "path": "scripts/agent-tenancy-postgres-integration.mjs",
+        "sha256": "e3bc6e4e3a74e88fea98f73972dd2d59e2c006c5df8ed0b9a7529c434fb8076d"
+      },
+      {
         "path": "scripts/arch/ambient-time.mjs",
         "sha256": "840a6edc9dd11858071b889e4042e13893d5dd79e637ba3d5b350f4299ebdf9b"
       },
@@ -20159,7 +20251,7 @@
       },
       {
         "path": "scripts/arch/arch-boundaries.test.mjs",
-        "sha256": "a7144d7ed89ab3d21bcd78cc54ec83fe44d270e1d722cb92e69526bb49b43ce7"
+        "sha256": "c52331db1130261dcc4441557d23db7c89447786678a5cbe7a8095723e56282e"
       },
       {
         "path": "scripts/arch/boundary-rules.mjs",
@@ -20199,7 +20291,7 @@
       },
       {
         "path": "scripts/arch/env-access.mjs",
-        "sha256": "bd81e88728a07f6b3889dcfbe56edaaa022cc173d5c7eb098c7d14cc8a82ebec"
+        "sha256": "9a29134f2fc9af5d6b23362fec86e88ec61ebe062e3956ebb6417b8c70fa5510"
       },
       {
         "path": "scripts/arch/env-access.test.mjs",
@@ -20211,11 +20303,11 @@
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.mjs",
-        "sha256": "b0791f3b392c9fb449d82092986c853873f3dd625b0eb655417cfea68495cede"
+        "sha256": "7762b35be3e46edb8613272a6f535d480bae71611022a6c8544f3efaaa969430"
       },
       {
         "path": "scripts/arch/gen-v1-skeleton.test.mjs",
-        "sha256": "fe99a56b7974da174c5470dc5c739580d22f50737d498b78117036b968c9aeb4"
+        "sha256": "ac2b9ab4ffa0b1d865de4e81d6c73034e51e1fa7c1d13cbe0280c8cc3f0574c3"
       },
       {
         "path": "scripts/arch/kernel-content.mjs",
@@ -20231,15 +20323,15 @@
       },
       {
         "path": "scripts/arch/max-file-lines.test.mjs",
-        "sha256": "461ccc9fbf0f7985526d8b14ea197b4ef6c661d9b98ab0a1dbe31cd67a596a57"
+        "sha256": "0c07af41677ec9b0f89532b1a87ecbf067e736901a746e2a8f40813ed0f04a6d"
       },
       {
         "path": "scripts/arch/mcp-store-ownership.mjs",
-        "sha256": "2f298e916e6af78e3ad7da8a6fa58c1f5d796ae73e8a5ebd7a2cc7c327c809d4"
+        "sha256": "99cd0ae4d7a393e415d9d5f5f47f01511f4f15002aa80f5a521e1e77ccbb58a0"
       },
       {
         "path": "scripts/arch/mcp-store-ownership.test.mjs",
-        "sha256": "1f44d0ee1f3c15e8249d6b34b478cc49e9c951b6fbdb878b4e635b8aed4767f5"
+        "sha256": "ec9e99f6bd8c65a8c8759639f66f1f11a20ca7a367d167ba368daa1be47cbf90"
       },
       {
         "path": "scripts/arch/mcp-surface.mjs",
@@ -20255,11 +20347,11 @@
       },
       {
         "path": "scripts/arch/secret-response-census.mjs",
-        "sha256": "d59edeaff36b26516b5b74362cd390397ed9e351ef25d2c9fa3108c70e5fdb91"
+        "sha256": "6f9530bfcf7b5150bb94081cd6dab79d91d857f3846083c2d5b3f6195356f690"
       },
       {
         "path": "scripts/arch/secret-response-census.test.mjs",
-        "sha256": "6819848729e74bd807bf237c34c9dbac76d268b76667166286509d8d029cd4d5"
+        "sha256": "8d4927c69552468bd39a1d088960d64fa991a3fe3a3bab583cb0d460fc4ea6dc"
       },
       {
         "path": "scripts/arch/sole-writer.mjs",
@@ -20267,15 +20359,15 @@
       },
       {
         "path": "scripts/arch/sole-writer.test.mjs",
-        "sha256": "b5c2694c61a044de63ce0148a28d1e1f1db29447439416482db7d5961d66f687"
+        "sha256": "caf53e66cf51857f65f6a0f3dca6b54597f28ca3aaae54fdad8c7b43fee6e598"
       },
       {
         "path": "scripts/arch/stream-contracts.mjs",
-        "sha256": "d7289bef2cf87f562230629d44f9ca4d71bccd140b826e4ea7bad1aeffcf94bb"
+        "sha256": "a0a5556ec1e839477321c2b15f60645257aeed4a687d857bfdcbff6f9103678c"
       },
       {
         "path": "scripts/arch/stream-contracts.test.mjs",
-        "sha256": "c5dc2cc17f6a07b082df359fbc379660ce0a416d6396f2301d47421825904369"
+        "sha256": "78bc9f69424ec98315a6270aadabba2ac26f0aac22dcb775424ed4162921fb67"
       },
       {
         "path": "scripts/arch/table-ownership.mjs",
@@ -20283,19 +20375,19 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "db4f946e45ffdb232287d0eeea343ec04a5ed92c2b2b021ef414594785cdbcc4"
+        "sha256": "6e1df8fd9febc2f523e9cea67bdc3f738bf00366eb4fce12f098067bde6424a5"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "7eaa70334ef5674251ebc7512378101bd29f5c73128385d942dc9065b1c246a3"
+        "sha256": "79e7eee1b0b4bff2e1b89485abe9f52f6c717c179ace744a43ec0d58994ed993"
       },
       {
         "path": "scripts/arch/tool-lifecycle-reach.mjs",
-        "sha256": "54a14f7f54042878c23817328f3081edb9e7b71ede1e876d508ec47035c1d1e9"
+        "sha256": "9f4d73c775109fb721f2214567de539fd3d25eecf2e07115e6acf4329e67f80d"
       },
       {
         "path": "scripts/arch/tool-lifecycle-reach.test.mjs",
-        "sha256": "f5103c318e9558df379dbd6e7749ef49bcb17b84461b77624c14fda22b43fe08"
+        "sha256": "d9d2ecccbe000e84b23e609cf65ade3046d30856368f85cfcd34d042a8f15b57"
       },
       {
         "path": "scripts/arch/transaction-outcome.mjs",
@@ -20307,11 +20399,11 @@
       },
       {
         "path": "scripts/arch/v1-project-graph.mjs",
-        "sha256": "5f35834cacd837084ac1abb500205836b5c82f69d24c9ca3b0e297935854507d"
+        "sha256": "a738549c3797106f1ff8c7126cee976eb1c2e307947e659e0b3b1e0ab2afa6af"
       },
       {
         "path": "scripts/arch/v1-project-graph.test.mjs",
-        "sha256": "c6c0ff11ad158c9d22325c055197aa8e1873dd5716fcd2d00c7659cc319c6748"
+        "sha256": "74b6bda35ccb7112061df966cf9162f79da121d33540c7bfb059934df6f4a89f"
       },
       {
         "path": "scripts/audit-advisory.mjs",
@@ -20359,11 +20451,11 @@
       },
       {
         "path": "scripts/capability-matrix.test.mjs",
-        "sha256": "2fab018d6669d3cbe655cf8cf4d70af9570f35eef6f7d87b2906a2809691e4ef"
+        "sha256": "f7245c158e17574617253d0b27ed0fb83ff8636d1b22bb486b558bfc18c7bced"
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "ae8d236e4969d9989a46557175633ced22926345f9179382dff64762845fbe08"
+        "sha256": "b4706006e2200a19b75ef78b5ba422eca42660a8966f80c2f41b15e3f040f4e7"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -20395,7 +20487,7 @@
       },
       {
         "path": "scripts/differential-coverage.test.mjs",
-        "sha256": "e1cc24dd27274a7305bfe7ba62a3249602581365d4468964a7f205b609c017d5"
+        "sha256": "4f65c0b57057e11139d20d72baf714427aafaab276d3dfdccda1670f8b0754ff"
       },
       {
         "path": "scripts/docs-examples.mjs",
@@ -20506,6 +20598,10 @@
         "sha256": "1e2861996059218682dd16a1e281b7d7f80ade264d6e4e71c915520d24090b51"
       },
       {
+        "path": "scripts/mutations-win268-lifecycle.json",
+        "sha256": "03883bd1286f2cb4f0fb15ce81468c75a0fa18874b5ea026382bf06562745c7d"
+      },
+      {
         "path": "scripts/mutations-win268-m42.json",
         "sha256": "1331550c6972183b68bbc6d55acd5f459d5ad0035625ffdd7229f4c3b7dd087a"
       },
@@ -20531,15 +20627,15 @@
       },
       {
         "path": "scripts/openapi-compat.mjs",
-        "sha256": "b90270c0ea3ce9cfaf29ce8996b0fb4500fab4b506c87ddeae59e099cb906bac"
+        "sha256": "6731621902740873c7c64cf86cd2554d9e42a87958ed2593049d07de898b1f53"
       },
       {
         "path": "scripts/openapi-compat.test.mjs",
-        "sha256": "7a406e68b6cf61269d24d89c44a2c24f0c1ef8d5c0eab47de37a1714ac727596"
+        "sha256": "cf2dce4a248a658864c76872ea90424826c1d48bb9da287531d4b991e48f3d43"
       },
       {
         "path": "scripts/openapi-schema-derivation.test.mjs",
-        "sha256": "ee47fe947bc0d49d0d41fe2ce6f29018b30fcb10b4392e4e3fa85003ebaed5be"
+        "sha256": "e9816e0e7d9d9ccd668c419a101d2c142d6a4e8e1d86db6ac9206be1aec34753"
       },
       {
         "path": "scripts/operator-operations.mjs",
@@ -20567,7 +20663,7 @@
       },
       {
         "path": "scripts/rest-census-independent.test.mjs",
-        "sha256": "aff0c16ce6720bdf7dc1f663fefedef5c70a672291186f19a16092130f11a50d"
+        "sha256": "7d2e4644190b21fc516ee607db136cd56fde428d16f03bc604ce139ecb2931f5"
       },
       {
         "path": "scripts/root-entry-manifest.mjs",
@@ -20579,11 +20675,11 @@
       },
       {
         "path": "scripts/route-capability-completion-audit.mjs",
-        "sha256": "aea5aa11b6eeb92d1ec508134d30ce20135d55c4cb93126e4e5172eac67a0cde"
+        "sha256": "715aa4736f772d36acff02c13534e995c0eae595ce58630eddf0219c0cde442f"
       },
       {
         "path": "scripts/route-capability-completion-audit.test.mjs",
-        "sha256": "5f5c776ab0e5667464023f85bc703061999b401adc628d9cd971f25eee8203ef"
+        "sha256": "2ce969870d57dfaa1f77ede7011da1b2e3cf8a7fd713d97f85f4b985fd1df589"
       },
       {
         "path": "scripts/route-capability-parity.mjs",
@@ -20603,11 +20699,11 @@
       },
       {
         "path": "scripts/sdk/v1-contract.mjs",
-        "sha256": "211d77b72e58057d6e0c55770ffd79811eb296279f82f6910b12afb71dd15105"
+        "sha256": "98c864a602d5b7041bde1f33a8274f2259a88a8812e8e0eb5294d7eb93a3a442"
       },
       {
         "path": "scripts/sdk/v1-contract.test.mjs",
-        "sha256": "b735cda9629a6abbe05869848e46ba4b67069500b7687ebbb257447b83536eb0"
+        "sha256": "85ff529520e98971ebea4cf1b6e948fdba19a168650804d80efeb6dcb48a08b1"
       },
       {
         "path": "scripts/start-prometheus.sh",
@@ -20635,11 +20731,11 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "430d061a4c1fbd018283607917a3cbb9afd76f73a091eeff088070dbe42d51a9"
+        "sha256": "eb00301a9076dba18453093adcdb378e39bc8eea126b8f1dbb8858f74e6e05e4"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
-        "sha256": "022889a70eb287bb5c7163bc6d7ea761eafdbc1cf5e05fcb7a65f0775f190f83"
+        "sha256": "d0df3adc0e26723e2d51a9c77d968fc4d8e767ba549b03fab55597e098273d08"
       },
       {
         "path": "scripts/vendored-build-audit.test.mjs",
@@ -20683,7 +20779,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "64a46244d5c2d2aa9b8f5d712b0f1befbf3f849256a17e7f8b0019a50209869f"
+        "sha256": "d848169b64e813ff863d1c61f09c840e4c645372f188486a8cccd8bdb6cf30a6"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -21027,7 +21123,7 @@
       },
       {
         "path": "tests/sdk-contract/v1-fixtures.json",
-        "sha256": "6e02d5c4469d5619e79c22e254dc911379baeabd3728a7bbadedbd8b04a00464"
+        "sha256": "2f7eb83084ffc1b886a90fc5e723bdeff6260e22b745bae526d34fb3d98f531e"
       },
       {
         "path": "tests/vocabulary-fixtures/scenarios.mjs",
@@ -21677,6 +21773,12 @@
         ],
         "packages/contexts/tools": [
           {
+            "from": "package.json",
+            "kind": "ci-build-entrypoint",
+            "packageName": "@platos/context-tools",
+            "script": "build:platos:agent"
+          },
+          {
             "from": "tsconfig.json",
             "kind": "root-typescript-reference"
           }
@@ -21959,7 +22061,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 10
+              "line": 838
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -22236,7 +22338,7 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "reference",
-              "line": 48
+              "line": 51
             },
             {
               "from": "docs/audits/win-269-tool-lifecycle-reach.json",
@@ -23038,7 +23140,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -23563,7 +23665,7 @@
             {
               "from": "apps/agent/src/http/api-surface.test.ts",
               "kind": "workspace-owned-file",
-              "line": 55
+              "line": 56
             },
             {
               "from": "apps/agent/src/http/deprecation-signal.test.ts",
@@ -23628,7 +23730,7 @@
             {
               "from": "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
               "kind": "workspace-owned-file",
-              "line": 37
+              "line": 34
             },
             {
               "from": "apps/agent/src/mcp-platform/permission-gateway.service.test.ts",
@@ -24191,6 +24293,11 @@
               "line": 1
             },
             {
+              "from": "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "apps/agent/src/test/test.controller.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -24241,6 +24348,11 @@
               "line": 1
             },
             {
+              "from": "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 24
+            },
+            {
               "from": "apps/agent/src/tool-gateway/tool-sync-ws.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -24279,6 +24391,11 @@
               "from": "apps/agent/test/setup.ts",
               "kind": "workspace-owned-file",
               "line": 2
+            },
+            {
+              "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "kind": "reference",
+              "line": 8
             },
             {
               "from": "apps/core-api/src/composition/stream-lane.integration.test.ts",
@@ -24408,12 +24525,17 @@
             {
               "from": "scripts/arch/secret-response-census.test.mjs",
               "kind": "reference",
-              "line": 30
+              "line": 32
             },
             {
               "from": "scripts/arch/stream-contracts.test.mjs",
               "kind": "reference",
-              "line": 48
+              "line": 53
+            },
+            {
+              "from": "scripts/arch/tool-lifecycle-reach.test.mjs",
+              "kind": "reference",
+              "line": 234
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -24428,12 +24550,12 @@
             {
               "from": "scripts/capability-matrix.test.mjs",
               "kind": "reference",
-              "line": 430
+              "line": 451
             },
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 12
+              "line": 21
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -24443,7 +24565,7 @@
             {
               "from": "scripts/differential-coverage.test.mjs",
               "kind": "reference",
-              "line": 370
+              "line": 381
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -25368,6 +25490,10 @@
               "apps/agent/src/startup-failure.test.ts"
             ],
             [
+              "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
+              "apps/agent/src/streaming/streaming-terminal-frame.test.ts"
+            ],
+            [
               "apps/agent/src/test/test.controller.ts",
               "apps/agent/src/test/test.controller.ts"
             ],
@@ -25408,6 +25534,10 @@
               "apps/agent/src/tool-gateway/tool-executor.permission.test.ts"
             ],
             [
+              "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts",
+              "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts"
+            ],
+            [
               "apps/agent/src/tool-gateway/tool-sync-ws.test.ts",
               "apps/agent/src/tool-gateway/tool-sync-ws.test.ts"
             ],
@@ -25438,6 +25568,10 @@
             [
               "apps/agent/test/setup.ts",
               "apps/agent/test/setup.ts"
+            ],
+            [
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
             ],
             [
               "apps/core-api/src/composition/stream-lane.integration.test.ts",
@@ -25546,6 +25680,10 @@
             [
               "scripts/arch/stream-contracts.test.mjs",
               "scripts/arch/stream-contracts.test.mjs"
+            ],
+            [
+              "scripts/arch/tool-lifecycle-reach.test.mjs",
+              "scripts/arch/tool-lifecycle-reach.test.mjs"
             ],
             [
               "scripts/arch/v1-project-graph.test.mjs",
@@ -25869,6 +26007,7 @@
             "apps/agent/src/skills/skill-manifest.parser.test.ts",
             "apps/agent/src/skills/skill-registry.service.test.ts",
             "apps/agent/src/startup-failure.test.ts",
+            "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
             "apps/agent/src/test/test.controller.ts",
             "apps/agent/src/test/test.module.ts",
             "apps/agent/src/tool-gateway/bm25.test.ts",
@@ -25879,6 +26018,7 @@
             "apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts",
             "apps/agent/src/tool-gateway/registry-invalidation.test.ts",
             "apps/agent/src/tool-gateway/tool-executor.permission.test.ts",
+            "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts",
             "apps/agent/src/tool-gateway/tool-sync-ws.test.ts",
             "apps/agent/src/trigger-tasks/budget-alert.task.test.ts",
             "apps/agent/src/trigger-tasks/chat-session.task.test.ts",
@@ -25887,6 +26027,7 @@
             "apps/agent/src/trigger-tasks/platos-custom-task.test.ts",
             "apps/agent/src/trigger-tasks/registration-manifest.test.ts",
             "apps/agent/test/setup.ts",
+            "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
             "apps/core-api/src/composition/stream-lane.integration.test.ts",
             "apps/core-api/src/http/api-surface.test.ts",
             "apps/core-api/src/http/idempotency-policy.test.ts",
@@ -25914,6 +26055,7 @@
             "scripts/arch/mcp-surface.test.mjs",
             "scripts/arch/secret-response-census.test.mjs",
             "scripts/arch/stream-contracts.test.mjs",
+            "scripts/arch/tool-lifecycle-reach.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
             "scripts/audit-licenses.test.mjs",
             "scripts/capability-matrix.test.mjs",
@@ -25996,7 +26138,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "a0f4b662dc650a7dbc0d88920479e17a3cb5b09e7c266eadecbfa58d67bcb154",
+      "evidenceSha256": "dec63462891b66a262d9713dfa59890c722719fe686cf074a0c0336fec80d9c0",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -26123,7 +26265,7 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "reference",
-              "line": 672
+              "line": 837
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -26242,7 +26384,7 @@
             {
               "from": "docs/control-plane-parity.generated.md",
               "kind": "reference",
-              "line": 228
+              "line": 229
             },
             {
               "from": "docs/env-vars.md",
@@ -26731,9 +26873,24 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "apps/agent/src/clean-prisma-delegates.test.ts",
+              "kind": "reference",
+              "line": 421
+            },
+            {
               "from": "apps/agent/src/http/api-surface.test.ts",
               "kind": "reference",
-              "line": 127
+              "line": 132
+            },
+            {
+              "from": "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+              "kind": "reference",
+              "line": 282
+            },
+            {
+              "from": "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
+              "kind": "reference",
+              "line": 11
             },
             {
               "from": "apps/core-api/package.json",
@@ -26759,6 +26916,11 @@
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
+            },
+            {
+              "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 202
             },
             {
               "from": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
@@ -26803,7 +26965,7 @@
             {
               "from": "apps/core-api/src/http/idempotency-policy.test.ts",
               "kind": "workspace-owned-file",
-              "line": 56
+              "line": 77
             },
             {
               "from": "apps/core-api/src/http/idempotency.integration.test.ts",
@@ -26861,6 +27023,11 @@
               "line": 1
             },
             {
+              "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 34
+            },
+            {
               "from": "apps/core-api/src/transports/rest/envelope.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -26896,6 +27063,11 @@
               "line": 7
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+              "kind": "reference",
+              "line": 310
+            },
+            {
               "from": "packages/adapters/redis-cache/src/request-idempotency.test.ts",
               "kind": "reference",
               "line": 5
@@ -26909,6 +27081,11 @@
               "from": "packages/contexts/privacy/contracts/index.test.ts",
               "kind": "reference",
               "line": 5
+            },
+            {
+              "from": "packages/contexts/tools/adapters/content-digest.test.ts",
+              "kind": "reference",
+              "line": 31
             },
             {
               "from": "packages/kernel/src/vo/redaction.test.ts",
@@ -26958,7 +27135,7 @@
             {
               "from": "scripts/arch/secret-response-census.test.mjs",
               "kind": "reference",
-              "line": 162
+              "line": 164
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -26968,12 +27145,17 @@
             {
               "from": "scripts/arch/stream-contracts.test.mjs",
               "kind": "reference",
-              "line": 49
+              "line": 54
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
               "line": 416
+            },
+            {
+              "from": "scripts/arch/tool-lifecycle-reach.test.mjs",
+              "kind": "reference",
+              "line": 246
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -26988,7 +27170,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 573
+              "line": 609
             },
             {
               "from": "scripts/differential-coverage.test.mjs",
@@ -27023,7 +27205,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 589
+              "line": 605
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -27038,8 +27220,20 @@
           ],
           "reversePaths": [
             [
+              "apps/agent/src/clean-prisma-delegates.test.ts",
+              "apps/agent/src/clean-prisma-delegates.test.ts"
+            ],
+            [
               "apps/agent/src/http/api-surface.test.ts",
               "apps/agent/src/http/api-surface.test.ts"
+            ],
+            [
+              "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+              "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts"
+            ],
+            [
+              "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
+              "apps/agent/src/streaming/streaming-terminal-frame.test.ts"
             ],
             [
               "apps/core-api/package.json",
@@ -27060,6 +27254,10 @@
             [
               "apps/core-api/src/composition/installation.test.ts",
               "apps/core-api/src/composition/installation.test.ts"
+            ],
+            [
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
             ],
             [
               "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
@@ -27142,6 +27340,10 @@
               "apps/core-api/src/transports/error-status.test.ts"
             ],
             [
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
+            ],
+            [
               "apps/core-api/src/transports/rest/envelope.test.ts",
               "apps/core-api/src/transports/rest/envelope.test.ts"
             ],
@@ -27170,6 +27372,10 @@
               "packages/adapters/postgres-tenancy/src/correlation.integration.test.ts"
             ],
             [
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts"
+            ],
+            [
               "packages/adapters/redis-cache/src/request-idempotency.test.ts",
               "packages/adapters/redis-cache/src/request-idempotency.test.ts"
             ],
@@ -27180,6 +27386,10 @@
             [
               "packages/contexts/privacy/contracts/index.test.ts",
               "packages/contexts/privacy/contracts/index.test.ts"
+            ],
+            [
+              "packages/contexts/tools/adapters/content-digest.test.ts",
+              "packages/contexts/tools/adapters/content-digest.test.ts"
             ],
             [
               "packages/kernel/src/vo/redaction.test.ts",
@@ -27234,6 +27444,10 @@
               "scripts/arch/test-case-census.test.mjs"
             ],
             [
+              "scripts/arch/tool-lifecycle-reach.test.mjs",
+              "scripts/arch/tool-lifecycle-reach.test.mjs"
+            ],
+            [
               "scripts/arch/v1-project-graph.test.mjs",
               "scripts/arch/v1-project-graph.test.mjs"
             ],
@@ -27283,12 +27497,16 @@
             ]
           ],
           "roots": [
+            "apps/agent/src/clean-prisma-delegates.test.ts",
             "apps/agent/src/http/api-surface.test.ts",
+            "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+            "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
             "apps/core-api/package.json",
             "apps/core-api/src/app.module.test.ts",
             "apps/core-api/src/composition/governance-judge.test.ts",
             "apps/core-api/src/composition/identity-rest.integration.test.ts",
             "apps/core-api/src/composition/installation.test.ts",
+            "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
             "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
             "apps/core-api/src/composition/operator-authentication.integration.test.ts",
             "apps/core-api/src/composition/stream-lane.integration.test.ts",
@@ -27309,6 +27527,7 @@
             "apps/core-api/src/runtime/process-ports.test.ts",
             "apps/core-api/src/runtime/shutdown-drain.test.ts",
             "apps/core-api/src/transports/error-status.test.ts",
+            "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
             "apps/core-api/src/transports/rest/envelope.test.ts",
             "apps/core-api/src/transports/rest/identity-rest.test.ts",
             "apps/core-api/src/transports/rest/route-manifest.test.ts",
@@ -27316,9 +27535,11 @@
             "apps/core-api/src/transports/ws/stream-errors.test.ts",
             "apps/core-api/src/transports/ws/stream-pump.test.ts",
             "packages/adapters/postgres-tenancy/src/correlation.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
             "packages/adapters/redis-cache/src/request-idempotency.test.ts",
             "packages/contexts/observability/contracts/observability-contract.test.ts",
             "packages/contexts/privacy/contracts/index.test.ts",
+            "packages/contexts/tools/adapters/content-digest.test.ts",
             "packages/kernel/src/vo/redaction.test.ts",
             "packages/kernel/src/vo/stream-frame.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
@@ -27332,6 +27553,7 @@
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/stream-contracts.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
+            "scripts/arch/tool-lifecycle-reach.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
             "scripts/capability-matrix.test.mjs",
             "scripts/ci-policy.test.mjs",
@@ -27380,7 +27602,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "29c6a9a794dd78314607159b361dfac5f60b7e766c0222edcc363547d53d9e2f",
+      "evidenceSha256": "6272f237bcea5072a2bb316bbf4bfdc472060af0b53c93569eaf8ac0e5d8c4a4",
       "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -27456,6 +27678,11 @@
             {
               "from": ".github/workflows/ci.yml",
               "kind": "workspace-wide-install"
+            },
+            {
+              "from": ".github/workflows/ci.yml",
+              "kind": "reference",
+              "line": 837
             },
             {
               "from": ".github/workflows/trigger-deploy.yml",
@@ -27708,12 +27935,17 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 1054
+              "line": 1055
             },
             {
               "from": "apps/core-api/src/config/sections.test.ts",
               "kind": "reference",
               "line": 248
+            },
+            {
+              "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 40
             },
             {
               "from": "apps/mcp-stdio/package.json",
@@ -27758,12 +27990,12 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 574
+              "line": 610
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 765
+              "line": 813
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -27779,6 +28011,10 @@
             [
               "apps/core-api/src/config/sections.test.ts",
               "apps/core-api/src/config/sections.test.ts"
+            ],
+            [
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
             ],
             [
               "apps/mcp-stdio/package.json",
@@ -27828,6 +28064,7 @@
           "roots": [
             "apps/core-api/src/composition/installation.test.ts",
             "apps/core-api/src/config/sections.test.ts",
+            "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
             "apps/mcp-stdio/package.json",
             "apps/mcp-stdio/src/main.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
@@ -27875,7 +28112,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "8b30c26d8bf778979eefe1b8e1df78bcbff4a9706c522fb1f8edd3aecea2c4bf",
+      "evidenceSha256": "16678c4f56320c07cd31259311525e70c9c1804d37cfe1f1ce4768187c0dac6d",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -28262,7 +28499,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 3502
+              "line": 3546
             },
             {
               "from": "docs/audits/win-284-differential-coverage.md",
@@ -29491,12 +29728,12 @@
             {
               "from": "scripts/arch/secret-response-census.test.mjs",
               "kind": "reference",
-              "line": 32
+              "line": 34
             },
             {
               "from": "scripts/arch/stream-contracts.test.mjs",
               "kind": "reference",
-              "line": 320
+              "line": 325
             },
             {
               "from": "scripts/audit-advisory.test.mjs",
@@ -29516,12 +29753,12 @@
             {
               "from": "scripts/capability-matrix.test.mjs",
               "kind": "reference",
-              "line": 506
+              "line": 546
             },
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 18
+              "line": 27
             },
             {
               "from": "scripts/clickhouse-split-audit.test.mjs",
@@ -29556,7 +29793,7 @@
             {
               "from": "scripts/route-capability-completion-audit.test.mjs",
               "kind": "reference",
-              "line": 72
+              "line": 74
             },
             {
               "from": "scripts/route-capability-parity.test.mjs",
@@ -30152,7 +30389,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "b64277decd91e3166c4b0e19ce00bd0f30a329eccbf03dbb5cef97823e894c32",
+      "evidenceSha256": "d3daac1637bf981d2254b80fe5e04dc3d626ed34f51d51c23f2019049b7db4a8",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -30746,7 +30983,7 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "workspace-owned-file",
-              "line": 3466
+              "line": 3478
             },
             {
               "from": "docs/audits/M0.2-capability-matrix.md",
@@ -30786,7 +31023,7 @@
             {
               "from": "docs/audits/M0.9-rest-census-independent.json",
               "kind": "workspace-owned-file",
-              "line": 206
+              "line": 218
             },
             {
               "from": "docs/audits/M0.9-webapp-bff-matrix.json",
@@ -31131,7 +31368,7 @@
             {
               "from": "docs/control-plane-parity.generated.md",
               "kind": "workspace-owned-file",
-              "line": 280
+              "line": 281
             },
             {
               "from": "docs/deploy-environment-variables.mdx",
@@ -35614,7 +35851,7 @@
               "script": "audit:docs-link-integrity"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -35730,7 +35967,7 @@
             {
               "from": "apps/agent/src/http/api-surface.test.ts",
               "kind": "reference",
-              "line": 33
+              "line": 34
             },
             {
               "from": "apps/agent/src/http/mcp-surface.test.ts",
@@ -35811,6 +36048,11 @@
               "from": "apps/core-api/src/transports/error-status.test.ts",
               "kind": "reference",
               "line": 30
+            },
+            {
+              "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 45
             },
             {
               "from": "apps/core-api/src/transports/rest/route-manifest.test.ts",
@@ -35915,7 +36157,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 140
+              "line": 161
             },
             {
               "from": "scripts/clickhouse-split-audit.test.mjs",
@@ -35945,12 +36187,12 @@
             {
               "from": "scripts/openapi-compat.test.mjs",
               "kind": "reference",
-              "line": 284
+              "line": 360
             },
             {
               "from": "scripts/openapi-schema-derivation.test.mjs",
               "kind": "reference",
-              "line": 171
+              "line": 173
             },
             {
               "from": "scripts/protected-paths.test.mjs",
@@ -35965,7 +36207,7 @@
             {
               "from": "scripts/route-capability-completion-audit.test.mjs",
               "kind": "reference",
-              "line": 31
+              "line": 33
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -36108,6 +36350,10 @@
             [
               "apps/core-api/src/transports/error-status.test.ts",
               "apps/core-api/src/transports/error-status.test.ts"
+            ],
+            [
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
             ],
             [
               "apps/core-api/src/transports/rest/route-manifest.test.ts",
@@ -36303,6 +36549,7 @@
             "apps/core-api/src/http/rest-chassis.test.ts",
             "apps/core-api/src/runtime/lifecycle.test.ts",
             "apps/core-api/src/transports/error-status.test.ts",
+            "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
             "apps/core-api/src/transports/rest/route-manifest.test.ts",
             "apps/core-api/src/transports/ws/stream-errors.test.ts",
             "apps/webapp/test/authenticatedCredentialRouteEvidence.test.ts",
@@ -36355,7 +36602,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2f5f9e4863a76b657d18d2ce91a6ba7c00a8126d5b91860b5c8d9523f8dd98bc",
+      "evidenceSha256": "41f576a25c7d14a164dfba94f48245ad6806af60dacc6f91cab8e89ad08817f7",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -37146,7 +37393,7 @@
             {
               "from": "docs/mcp-connected-entity-design.md",
               "kind": "reference",
-              "line": 253
+              "line": 267
             },
             {
               "from": "docs/security-audit-2026-07-16.md",
@@ -37830,7 +38077,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1501
+              "line": 1563
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -37945,7 +38192,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "251ae0f925dae1f6c6af209d7faa40098a66273e79ed28cdfe0b89bc04d236d8",
+      "evidenceSha256": "295963960f7d717e0f13d53b5a7e3e93d58d05d985b1739ed302b0047b8a712f",
       "manifestSha256": "2664bbbb7140c4c9272e88b7cc56b3a72c1617b774ae4aff4606336caeccebdf",
       "name": "@platos/database",
       "ociImageClosure": {
@@ -38282,7 +38529,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -38391,7 +38638,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 323
+              "line": 359
             }
           ],
           "reversePaths": [
@@ -38503,7 +38750,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "6885e85116b353ce984b763c575b0c6b85c4e4925b82af3abc849ceb40ab64d0",
+      "evidenceSha256": "d89fca7304bead90c24ffc948a8a6ecda50a85c94f4dd1be1b2a4659253134c8",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -39610,7 +39857,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2408
+              "line": 2595
             }
           ],
           "reversePaths": [
@@ -39635,7 +39882,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "a42b04fb8a8a1373f03315f7874edde0e4ab7547978943a1604402a21ec7213a",
+      "evidenceSha256": "bdf4aac9120d1d161cf490ff390bfcea33a9d78c4e06f750ad9be83181f20306",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -40190,7 +40437,7 @@
             {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1524
+              "line": 1586
             }
           ],
           "reversePaths": [
@@ -40280,7 +40527,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5187a89453717dc44e9efe8c7d8177eb6d27d78a6dcde9decde4c102d8a2d4d9",
+      "evidenceSha256": "1cd0a4cd4068579fa54f6377eed05f395667e36d3145626b17ad518cd7993f03",
       "manifestSha256": "2848f0f02171494d6112ab9631f2b0ed74a98d740454f7a2e43a442b2b3d6c16",
       "name": "@internal/redis",
       "ociImageClosure": {
@@ -40776,7 +41023,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2407
+              "line": 2594
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -41001,7 +41248,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "2d6a6357433303baf994148236dbc5adce80b27d404193a0341aaa02a7b9f608",
+      "evidenceSha256": "2cc2cda252a50bab1c1f08880f3afc439b7c75cdef6dd0585472e1a82ebab2df",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -41852,7 +42099,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -41916,7 +42163,7 @@
             {
               "file": "packages/adapters/postgres-tenancy/src/harness.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 157,
+              "line": 190,
               "specifier": "@platos/tenancy-database"
             },
             {
@@ -42540,7 +42787,7 @@
             {
               "from": "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
               "kind": "reference",
-              "line": 103
+              "line": 100
             },
             {
               "from": "apps/agent/src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts",
@@ -42668,9 +42915,19 @@
               "line": 165
             },
             {
+              "from": "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts",
+              "kind": "reference",
+              "line": 167
+            },
+            {
               "from": "apps/core-api/src/composition/identity-rest.integration.test.ts",
               "kind": "reference",
               "line": 176
+            },
+            {
+              "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "kind": "reference",
+              "line": 335
             },
             {
               "from": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
@@ -42983,14 +43240,19 @@
               "line": 70
             },
             {
+              "from": "packages/contexts/tools/adapters/content-digest.test.ts",
+              "kind": "reference",
+              "line": 26
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
-              "line": 1496
+              "line": 1558
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 2769
+              "line": 2784
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -43000,7 +43262,7 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 180
+              "line": 198
             },
             {
               "from": "scripts/audit-sbom.test.mjs",
@@ -43010,7 +43272,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 282
+              "line": 303
             },
             {
               "from": "scripts/deploy-platos.test.mjs",
@@ -43020,7 +43282,7 @@
             {
               "from": "scripts/differential-coverage.test.mjs",
               "kind": "reference",
-              "line": 58
+              "line": 69
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -43045,7 +43307,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1341
+              "line": 1389
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -43226,8 +43488,16 @@
               "apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts"
             ],
             [
+              "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts",
+              "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts"
+            ],
+            [
               "apps/core-api/src/composition/identity-rest.integration.test.ts",
               "apps/core-api/src/composition/identity-rest.integration.test.ts"
+            ],
+            [
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
             ],
             [
               "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
@@ -43478,6 +43748,10 @@
               "packages/contexts/secrets/domain/legacy-envelope.test.ts"
             ],
             [
+              "packages/contexts/tools/adapters/content-digest.test.ts",
+              "packages/contexts/tools/adapters/content-digest.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -43597,7 +43871,9 @@
             "apps/agent/src/providers/scoped-env.service.test.ts",
             "apps/agent/src/shared/database.provider.test.ts",
             "apps/agent/src/tool-gateway/registry-incoherent-pair-postgres.integration.test.ts",
+            "apps/agent/src/tool-gateway/tool-registry-forged-scope-postgres.integration.test.ts",
             "apps/core-api/src/composition/identity-rest.integration.test.ts",
+            "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
             "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
             "apps/core-api/src/composition/operator-authentication.integration.test.ts",
             "apps/core-api/src/composition/stream-lane.integration.test.ts",
@@ -43660,6 +43936,7 @@
             "packages/contexts/secrets/contracts/index.test.ts",
             "packages/contexts/secrets/domain/envelope.test.ts",
             "packages/contexts/secrets/domain/legacy-envelope.test.ts",
+            "packages/contexts/tools/adapters/content-digest.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
@@ -43837,7 +44114,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "d867ac9de07f1fba7eef7e437d03b34aad3298dd2f5fc5cb1a22c66b19fea983",
+      "evidenceSha256": "52088bd22fff3b4b617ed9fde470514e504a1896437ca64c2d242fd57d84673a",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -46083,7 +46360,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -46188,7 +46465,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2841
+              "line": 2949
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -46355,7 +46632,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "c0ac84e1aa9c15fd50c519f99c9b38bd5da58b1fba766b7e6bc32f9ca7b60817",
+      "evidenceSha256": "399e81cd8e7f4720078d47b95c21d87b8328a435ee60999ffa99fd35725b864d",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -46815,7 +47092,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3216
+              "line": 3237
             },
             {
               "from": "packages/adapters/channel-slack/README.md",
@@ -47037,7 +47314,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 963
+              "line": 1003
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -47062,7 +47339,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1382
+              "line": 1430
             },
             {
               "from": "scripts/vocabulary-boundary.test.mjs",
@@ -47201,7 +47478,7 @@
           "packages/adapters/channel-slack"
         ]
       },
-      "evidenceSha256": "9ec4ff3c4e19b895b94217e9e0d1618b45b9fdaa668184b7a22e9de354d0b7aa",
+      "evidenceSha256": "34765058895578da2ac6f9145f99b0502078052086a7e8c63627490616eec1f0",
       "manifestSha256": "602133cd6f0a158f3dd4764775171821935d6905555f731042114748187eaa04",
       "name": "@platos/adapter-channel-slack",
       "ociImageClosure": {
@@ -48167,7 +48444,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3224
+              "line": 3245
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -48429,12 +48706,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1930
+              "line": 2002
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1213
+              "line": 1261
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -48593,7 +48870,7 @@
           "packages/adapters/keyring-envelope"
         ]
       },
-      "evidenceSha256": "8265e2d48df531e1833e7f2795e41c5d462f65a913b368b86ce762e3d8fa7235",
+      "evidenceSha256": "c2f99f6f7d476d8525193e45bfd50441e0685e0772cc4b3fa50ef6025000cd07",
       "manifestSha256": "ae371bc6b627e6693e9a7b45f6a789d1df3f4489f8b93db1ed61c9c2fefdd854",
       "name": "@platos/adapter-keyring-envelope",
       "ociImageClosure": {
@@ -48996,17 +49273,17 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1352
+              "line": 1400
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 135
+              "line": 152
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 915
+              "line": 963
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -49185,7 +49462,7 @@
           "packages/adapters/model-router-providers"
         ]
       },
-      "evidenceSha256": "22dc09b524e29f8fa0a3e3be03dacce9b472023800859f5b77f234dade6238a9",
+      "evidenceSha256": "b8f87afc64b8d23f42207e3679f25d1ff04f114dda8922fac846983d748ee939",
       "manifestSha256": "eaa4ecedce49dc05224e2c4b7982274d371f8fb27a60a9783fa643a8f6defcbd",
       "name": "@platos/adapter-model-router-providers",
       "ociImageClosure": {
@@ -49319,6 +49596,16 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.json",
+              "kind": "reference",
+              "line": 58
+            },
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "reference",
+              "line": 38
+            },
+            {
               "from": "packages/adapters/node-crypto-digest/README.md",
               "kind": "workspace-owned-file",
               "line": 1
@@ -49326,17 +49613,31 @@
           ],
           "reversePaths": [
             [
+              "docs/audits/win-269-tool-lifecycle-reach.json",
+              "docs/audits/win-269-tool-lifecycle-reach.json"
+            ],
+            [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "packages/adapters/node-crypto-digest/README.md",
               "packages/adapters/node-crypto-digest/README.md"
             ]
           ],
           "roots": [
+            "docs/audits/win-269-tool-lifecycle-reach.json",
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "packages/adapters/node-crypto-digest/README.md"
           ]
         },
         "generated": {
           "reachable": true,
           "reasons": [
+            {
+              "from": "docs/audits/win-269-tool-lifecycle-reach.md",
+              "kind": "explicit-generated-header-reference"
+            },
             {
               "from": "packages/adapters/node-crypto-digest/package.json",
               "generator": "scripts/arch/gen-v1-skeleton.mjs",
@@ -49355,6 +49656,10 @@
           ],
           "reversePaths": [
             [
+              "docs/audits/win-269-tool-lifecycle-reach.md",
+              "docs/audits/win-269-tool-lifecycle-reach.md"
+            ],
+            [
               "packages/adapters/node-crypto-digest/package.json",
               "packages/adapters/node-crypto-digest/package.json"
             ],
@@ -49368,6 +49673,7 @@
             ]
           ],
           "roots": [
+            "docs/audits/win-269-tool-lifecycle-reach.md",
             "packages/adapters/node-crypto-digest/README.md",
             "packages/adapters/node-crypto-digest/package.json",
             "packages/adapters/node-crypto-digest/tsconfig.json"
@@ -49501,14 +49807,19 @@
               "line": 1
             },
             {
+              "from": "packages/contexts/tools/adapters/content-digest.test.ts",
+              "kind": "reference",
+              "line": 22
+            },
+            {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1991
+              "line": 2063
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1308
+              "line": 1356
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -49530,6 +49841,10 @@
               "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts"
             ],
             [
+              "packages/contexts/tools/adapters/content-digest.test.ts",
+              "packages/contexts/tools/adapters/content-digest.test.ts"
+            ],
+            [
               "scripts/arch/test-case-census.test.mjs",
               "scripts/arch/test-case-census.test.mjs"
             ],
@@ -49546,6 +49861,7 @@
             "packages/adapters/node-crypto-digest/package.json",
             "packages/adapters/node-crypto-digest/src/oracle-source-anchor.test.ts",
             "packages/adapters/node-crypto-digest/src/secret-hasher.test.ts",
+            "packages/contexts/tools/adapters/content-digest.test.ts",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/workspace-reachability.test.mjs"
@@ -49607,7 +49923,7 @@
           "packages/adapters/node-crypto-digest"
         ]
       },
-      "evidenceSha256": "843bb6b9669570f60a5b4d502d4ecda7e7926d975fcd1f644d509a3bd2fe0048",
+      "evidenceSha256": "2adfb97d4cc5546cefb767b1722a6b098143cf8bc2dfb5b1587c3d25b69da29d",
       "manifestSha256": "229fe0120b22a0df9fb190c46ea80e762a3efc68e6e509531147796557ea58ce",
       "name": "@platos/adapter-node-crypto-digest",
       "ociImageClosure": {
@@ -50660,7 +50976,7 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 565
+              "line": 583
             }
           ],
           "reversePaths": [
@@ -50729,7 +51045,7 @@
           "packages/adapters/objectstore-minio"
         ]
       },
-      "evidenceSha256": "c6a5ad9937a90a436d9f5b87387442b6fab28566981c4064d188f43a2576b9cd",
+      "evidenceSha256": "774521fcea3ba393699b811605669caaa6870b9ca4d8fe2a8bf149aae69770b0",
       "manifestSha256": "8e1920de7ae2081a0fdd6854c321467200fa8b07d67b3503449c10ec385c6077",
       "name": "@platos/adapter-objectstore-minio",
       "ociImageClosure": {
@@ -51112,12 +51428,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1872
+              "line": 1944
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1029
+              "line": 1077
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -51261,7 +51577,7 @@
           "packages/adapters/outbox"
         ]
       },
-      "evidenceSha256": "39829ec6bff855de925acfab64aaa8e920032b4a881677e5263e90888b428e15",
+      "evidenceSha256": "0302be5b970fd25dcf67abd3b53bdab256970e3cb7f5e737320cc00b6f71258a",
       "manifestSha256": "83a45d455aac9f0e888c1045ad4b91d9111960486ba77a4a087018299d5941b2",
       "name": "@platos/adapter-outbox",
       "ociImageClosure": {
@@ -51407,17 +51723,17 @@
             {
               "from": "docs/audits/win-269-tool-lifecycle-reach.json",
               "kind": "reference",
-              "line": 44
+              "line": 46
             },
             {
               "from": "docs/audits/win-269-tool-lifecycle-reach.md",
               "kind": "reference",
-              "line": 35
+              "line": 36
             },
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3232
+              "line": 3253
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -51657,6 +51973,11 @@
               "line": 285
             },
             {
+              "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "kind": "reference",
+              "line": 46
+            },
+            {
               "from": "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "kind": "reference",
               "line": 110
@@ -51670,6 +51991,11 @@
               "from": "apps/core-api/src/runtime/correlation.test.ts",
               "kind": "reference",
               "line": 96
+            },
+            {
+              "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 5
             },
             {
               "from": "packages/adapters/outbox/src/conformance.test.ts",
@@ -51953,6 +52279,11 @@
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/governance-transaction.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
             },
@@ -52407,6 +52738,11 @@
               "line": 13
             },
             {
+              "from": "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 9
+            },
+            {
               "from": "scripts/arch/arch-boundaries.test.mjs",
               "kind": "reference",
               "line": 706
@@ -52429,7 +52765,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1454
+              "line": 1502
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
@@ -52439,7 +52775,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 961
+              "line": 1009
             },
             {
               "from": "scripts/vocabulary-boundary.test.mjs",
@@ -52462,6 +52798,10 @@
               "apps/core-api/src/composition/identity-rest.integration.test.ts"
             ],
             [
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
+            ],
+            [
               "apps/core-api/src/composition/operator-authentication.integration.test.ts",
               "apps/core-api/src/composition/operator-authentication.integration.test.ts"
             ],
@@ -52472,6 +52812,10 @@
             [
               "apps/core-api/src/runtime/correlation.test.ts",
               "apps/core-api/src/runtime/correlation.test.ts"
+            ],
+            [
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
             ],
             [
               "packages/adapters/outbox/src/conformance.test.ts",
@@ -52700,6 +53044,10 @@
             [
               "packages/adapters/postgres-tenancy/src/governance-transaction.integration.test.ts",
               "packages/adapters/postgres-tenancy/src/governance-transaction.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
@@ -53062,6 +53410,10 @@
               "packages/adapters/tokenmint-totp/src/oracle-totp-differential.test.ts"
             ],
             [
+              "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
+              "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts"
+            ],
+            [
               "scripts/arch/arch-boundaries.test.mjs",
               "scripts/arch/arch-boundaries.test.mjs"
             ],
@@ -53101,9 +53453,11 @@
           "roots": [
             "apps/core-api/src/app.module.test.ts",
             "apps/core-api/src/composition/identity-rest.integration.test.ts",
+            "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
             "apps/core-api/src/composition/operator-authentication.integration.test.ts",
             "apps/core-api/src/http/rest-chassis.test.ts",
             "apps/core-api/src/runtime/correlation.test.ts",
+            "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
             "packages/adapters/outbox/src/conformance.test.ts",
             "packages/adapters/postgres-tenancy/fixtures/agents-rows.sql",
             "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
@@ -53161,6 +53515,7 @@
             "packages/adapters/postgres-tenancy/src/governance-rules.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/governance-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/governance-transaction.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-differential-login.integration.test.ts",
@@ -53251,6 +53606,7 @@
             "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "packages/adapters/tokenmint-totp/src/oracle-mint-widths.test.ts",
             "packages/adapters/tokenmint-totp/src/oracle-totp-differential.test.ts",
+            "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
             "scripts/arch/arch-boundaries.test.mjs",
             "scripts/arch/gen-v1-skeleton.test.mjs",
             "scripts/arch/max-file-lines.test.mjs",
@@ -53318,7 +53674,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "1736ea31661a90028aeed3f362977c118f05b232aa0ffe9f0c36356bba35099e",
+      "evidenceSha256": "6044ba6a8bd2404ffcd42313c26af5914e208b7d260c6e45a2cac6ce5c72e601",
       "manifestSha256": "c3c49b3941820594e187dcbb86c78001443c58add67ce25009e535c3f1374927",
       "name": "@platos/adapter-postgres-tenancy",
       "ociImageClosure": {
@@ -53459,7 +53815,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3256
+              "line": 3277
             },
             {
               "from": "docs/win-260-mutation-ledger.json",
@@ -53722,12 +54078,17 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 443
+              "line": 461
+            },
+            {
+              "from": "scripts/ci-policy.test.mjs",
+              "kind": "reference",
+              "line": 5304
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 661
+              "line": 677
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -53797,6 +54158,10 @@
               "scripts/arch/v1-project-graph.test.mjs"
             ],
             [
+              "scripts/ci-policy.test.mjs",
+              "scripts/ci-policy.test.mjs"
+            ],
+            [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
             ],
@@ -53821,6 +54186,7 @@
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/ci-policy.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/workspace-reachability.test.mjs"
           ]
@@ -53881,7 +54247,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "080826a2da9464f5874ce030908720fbb3a22a5519b38d448c08a876ff0c7052",
+      "evidenceSha256": "2d9980242258cf4bc1e0bf3d17aecbdc1adfc78074fa3fa62432cd798ed5f5b7",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -54215,7 +54581,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 932
+              "line": 972
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -54235,7 +54601,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1311
+              "line": 1359
             }
           ],
           "reversePaths": [
@@ -54349,7 +54715,7 @@
           "packages/adapters/redis-ratelimit"
         ]
       },
-      "evidenceSha256": "c92573ee1971194eabbdfb94f711a5ce94c037a201776184aa23a5d0776df231",
+      "evidenceSha256": "9a1e299aa126d72939d3c4530f9fb5bfba2e1c8f31242e4daeb9edd6052c6344",
       "manifestSha256": "c34050bbafd7dbb339e9a1a8dabffc4ab2ab84203fc1f1739d9045c883563955",
       "name": "@platos/adapter-redis-ratelimit",
       "ociImageClosure": {
@@ -54693,12 +55059,12 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 971
+              "line": 1011
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 2704
+              "line": 2719
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -54713,7 +55079,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1405
+              "line": 1453
             }
           ],
           "reversePaths": [
@@ -54832,7 +55198,7 @@
           "packages/adapters/redis-streams"
         ]
       },
-      "evidenceSha256": "98a65fc4be380365b4d03b4fc6d40c9cf4587a79cb1ff2b4907a189702ef4aac",
+      "evidenceSha256": "b129084ab64965d995759ad1cef0698b14f0ebc5b607547a6b3f8edb55ca3150",
       "manifestSha256": "0b7ad7cf97137ad450d2033aed4deafc061f743a4fab118a56f7effe5b6031d8",
       "name": "@platos/adapter-redis-streams",
       "ociImageClosure": {
@@ -55180,7 +55546,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1309
+              "line": 1357
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -55304,7 +55670,7 @@
           "packages/adapters/tokenmint-totp"
         ]
       },
-      "evidenceSha256": "b5e8626e9c85b924a688f51c2b605727265fccf65c7cbf87cd96a5ce1d7ec7e7",
+      "evidenceSha256": "6a17caf15015eb9e24c3b283d4d0f64859d47ba35fc61a4d4e3fe3a30b3f093f",
       "manifestSha256": "6786de357df47e9fb13ec8d4c69ca91bb24c9ee6c47ebc7aa5565fa77883979b",
       "name": "@platos/adapter-tokenmint-totp",
       "ociImageClosure": {
@@ -55511,7 +55877,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3264
+              "line": 3285
             },
             {
               "from": "packages/contexts/agents/README.md",
@@ -56084,7 +56450,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 445
+              "line": 519
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -56094,7 +56460,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1208
+              "line": 1250
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -56104,7 +56470,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1093
+              "line": 1141
             }
           ],
           "reversePaths": [
@@ -56434,7 +56800,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "b21437326db07aa507aa04e9fb4b563347db81fc286bb1322c27496183afee6e",
+      "evidenceSha256": "b5b8e7b41afaf1c5d18bfc407f143c0b3a7b80c4457dca047e704029db5082d0",
       "manifestSha256": "e43db9efa534960ba5ade2f86cf89a88453e7575222d56297d6b6ccfe816a8f3",
       "name": "@platos/context-agents",
       "ociImageClosure": {
@@ -56619,7 +56985,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3280
+              "line": 3301
             },
             {
               "from": "packages/contexts/channels/README.md",
@@ -56770,7 +57136,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 116,
+              "line": 118,
               "specifier": "@platos/context-channels"
             },
             {
@@ -57171,7 +57537,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 966
+              "line": 1006
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -57181,12 +57547,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1254
+              "line": 1302
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 861
+              "line": 909
             }
           ],
           "reversePaths": [
@@ -57459,7 +57825,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "4e5c1e13f94edf2bf12ce28a39a8252fea4097e03b802cc2a4635ee8d4ce8917",
+      "evidenceSha256": "01abb019210ccf7049d1247155e29725dce5486c32bd070c6ad433d3e1b93d37",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {
@@ -57773,7 +58139,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 123,
+              "line": 125,
               "specifier": "@platos/context-conversations"
             },
             {
@@ -58156,17 +58522,17 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1433
+              "line": 1481
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 285
+              "line": 303
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 953
+              "line": 1001
             }
           ],
           "reversePaths": [
@@ -58477,7 +58843,7 @@
           "packages/contexts/conversations"
         ]
       },
-      "evidenceSha256": "fe30658652cffdfa91d49ece7ccaa9c2480d9930b89f6821ef124c047f95bab3",
+      "evidenceSha256": "309fdb3735faa35c222f4f7b0f370c609cb62764bc4ca103d9325181d9a35665",
       "manifestSha256": "218c32b5c5b423bdf39bf215d6365c07bbd746fca291a1b0609da87e2cebd4d8",
       "name": "@platos/context-conversations",
       "ociImageClosure": {
@@ -58706,7 +59072,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3288
+              "line": 3309
             },
             {
               "from": "packages/contexts/cost-monitoring/README.md",
@@ -58875,7 +59241,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 119,
+              "line": 121,
               "specifier": "@platos/context-cost-monitoring"
             },
             {
@@ -59248,7 +59614,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1095
+              "line": 1137
             }
           ],
           "reversePaths": [
@@ -59570,7 +59936,7 @@
           "packages/contexts/cost-monitoring"
         ]
       },
-      "evidenceSha256": "a799efa05cab7de5b7f68ec2bc693690f7a242e14f3fe8d491b913ff8ac7adde",
+      "evidenceSha256": "ca519624c721c5112266ae6c7c06385b1e9aae95ba36ba6159f4951caf38386a",
       "manifestSha256": "2e327d74bea9a17116d859d643836bc142e0977bd86d3a96567638fb75c7b3bb",
       "name": "@platos/context-cost-monitoring",
       "ociImageClosure": {
@@ -59738,7 +60104,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3312
+              "line": 3333
             },
             {
               "from": "packages/contexts/eventing/README.md",
@@ -59894,7 +60260,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 124,
+              "line": 126,
               "specifier": "@platos/context-eventing"
             },
             {
@@ -60195,7 +60561,7 @@
             {
               "from": "scripts/arch/sole-writer.test.mjs",
               "kind": "reference",
-              "line": 2309
+              "line": 2324
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -60205,7 +60571,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 784
+              "line": 832
             }
           ],
           "reversePaths": [
@@ -60426,7 +60792,7 @@
           "packages/contexts/eventing"
         ]
       },
-      "evidenceSha256": "75ad0842414dc15a987f39ee884adb4d5f624f1194092a718cfa6dd6aee2f529",
+      "evidenceSha256": "c6373babf91a7c26af7f85b1391a2f1140799aa01a20eb6416693f0bfde8787b",
       "manifestSha256": "57c1d00c9dc67970acaec3dc30138bbd18273e9d303ea3804f6a13ab6a2d012a",
       "name": "@platos/context-eventing",
       "ociImageClosure": {
@@ -60705,7 +61071,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3320
+              "line": 3341
             },
             {
               "from": "packages/contexts/files/README.md",
@@ -60865,7 +61231,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 117,
+              "line": 119,
               "specifier": "@platos/context-files"
             },
             {
@@ -61265,7 +61631,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1624
+              "line": 1711
             }
           ],
           "reversePaths": [
@@ -61617,7 +61983,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "1f14488e5382f396d4db68ab86c3929cd7890e4b6268e72f95ca88702b43fa8c",
+      "evidenceSha256": "dbf32bda7aa4ed0ccb2047d6c5e0fb191c54e74e7bfacbb91de67cf24579fc2d",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -61780,7 +62146,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3328
+              "line": 3349
             },
             {
               "from": "packages/contexts/governance/README.md",
@@ -61931,13 +62297,13 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 120,
+              "line": 122,
               "specifier": "@platos/context-governance"
             },
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 121,
+              "line": 123,
               "specifier": "@platos/context-governance/application/ports/index.js"
             },
             {
@@ -62522,7 +62888,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1325
+              "line": 1373
             }
           ],
           "reversePaths": [
@@ -62843,7 +63209,7 @@
           "packages/contexts/governance"
         ]
       },
-      "evidenceSha256": "82713a20a06cfe85e42dd78b36a0c9d560654911ed17a8fb416995a5400bbadb",
+      "evidenceSha256": "9420d6f27d7faa2ac4d264d7cb237d6825a6d270d2867370ad6b9681f9aea114",
       "manifestSha256": "2e4c46079d53cec680be1e27cbc15aed896688935706c604462aef1db775b330",
       "name": "@platos/context-governance",
       "ociImageClosure": {
@@ -63409,6 +63775,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -63667,7 +64039,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3368
+              "line": 3389
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -63767,7 +64139,7 @@
           "reachable": true,
           "reasons": [
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -63869,7 +64241,13 @@
             {
               "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
               "from": "apps/core-api",
-              "line": 56,
+              "line": 71,
+              "specifier": "@platos/context-identity-access"
+            },
+            {
+              "file": "apps/core-api/src/transports/mcp/token-lifecycle.ts",
+              "from": "apps/core-api",
+              "line": 43,
               "specifier": "@platos/context-identity-access"
             },
             {
@@ -63943,6 +64321,18 @@
               "from": "packages/adapters/postgres-tenancy",
               "line": 34,
               "specifier": "@platos/context-identity-access/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 59,
+              "specifier": "@platos/context-identity-access/application/ports/index.js"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 66,
+              "specifier": "@platos/context-identity-access"
             },
             {
               "file": "packages/adapters/postgres-tenancy/src/identity-bearer.ts",
@@ -64234,6 +64624,10 @@
             ],
             [
               "apps/core-api",
+              "apps/core-api/src/transports/mcp/token-lifecycle.ts"
+            ],
+            [
+              "apps/core-api",
               "apps/core-api/src/transports/mcp/token-mint.ts"
             ],
             [
@@ -64271,6 +64665,10 @@
             [
               "packages/adapters/postgres-tenancy",
               "packages/adapters/postgres-tenancy/src/identity-access-keys.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts"
             ],
             [
               "packages/adapters/postgres-tenancy",
@@ -64407,6 +64805,11 @@
               "line": 39
             },
             {
+              "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 71
+            },
+            {
               "from": "apps/core-api/src/transports/rest/identity-rest.test.ts",
               "kind": "reference",
               "line": 22
@@ -64417,9 +64820,14 @@
               "line": 11
             },
             {
+              "from": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+              "kind": "reference",
+              "line": 42
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
               "kind": "reference",
-              "line": 20
+              "line": 23
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
@@ -64483,6 +64891,11 @@
             },
             {
               "from": "packages/contexts/identity-access/application/authenticate-operator.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
             },
@@ -64619,7 +65032,7 @@
             {
               "from": "scripts/arch/max-file-lines.test.mjs",
               "kind": "reference",
-              "line": 922
+              "line": 962
             },
             {
               "from": "scripts/arch/sole-writer.test.mjs",
@@ -64629,22 +65042,22 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 713
+              "line": 475
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 388
+              "line": 406
             },
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 314
+              "line": 335
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1372
+              "line": 1420
             }
           ],
           "reversePaths": [
@@ -64657,12 +65070,20 @@
               "apps/core-api/src/composition/installation.test.ts"
             ],
             [
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
+            ],
+            [
               "apps/core-api/src/transports/rest/identity-rest.test.ts",
               "apps/core-api/src/transports/rest/identity-rest.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
               "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
@@ -64719,6 +65140,10 @@
             [
               "packages/contexts/identity-access/application/authenticate-operator.test.ts",
               "packages/contexts/identity-access/application/authenticate-operator.test.ts"
+            ],
+            [
+              "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
+              "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts"
             ],
             [
               "packages/contexts/identity-access/application/consume-rate-limit.test.ts",
@@ -64852,8 +65277,10 @@
           "roots": [
             "apps/core-api/src/app.module.test.ts",
             "apps/core-api/src/composition/installation.test.ts",
+            "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
             "apps/core-api/src/transports/rest/identity-rest.test.ts",
             "packages/adapters/postgres-tenancy/fixtures/identity-access-rows.sql",
+            "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/identity-differential-login.integration.test.ts",
@@ -64868,6 +65295,7 @@
             "packages/adapters/tokenmint-totp/src/token-minter.test.ts",
             "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
             "packages/contexts/identity-access/application/authenticate-operator.test.ts",
+            "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
             "packages/contexts/identity-access/application/consume-rate-limit.test.ts",
             "packages/contexts/identity-access/application/enrol-totp.test.ts",
             "packages/contexts/identity-access/application/exchange-oauth-refresh-token.test.ts",
@@ -65450,6 +65878,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -65636,7 +66070,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "3a6058f1ffed729f324580956cfb5b8b10bdb749336f07ea147660c9bf9831b9",
+      "evidenceSha256": "6ccc77ebb45801869156ac21e8447ee661c57d1dff5e5c617b47f60f2964e1c9",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -65843,12 +66277,12 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.json",
               "kind": "reference",
-              "line": 496
+              "line": 569
             },
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "reference",
-              "line": 61
+              "line": 64
             },
             {
               "from": "docs/win-260-mutation-ledger.json",
@@ -66023,7 +66457,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 122,
+              "line": 124,
               "specifier": "@platos/context-jobs"
             },
             {
@@ -66418,7 +66852,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1623
+              "line": 1710
             }
           ],
           "reversePaths": [
@@ -66713,7 +67147,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "ccdbf298ecb944b28848492ce676b74e6239bb050637683900644198d18873a8",
+      "evidenceSha256": "dc5c345ee45e78debf68b86ec05cd090884b7f5b5950a1ca513dc296d26fe3af",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -66920,7 +67354,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3408
+              "line": 3429
             },
             {
               "from": "packages/contexts/memory/README.md",
@@ -67071,7 +67505,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 115,
+              "line": 117,
               "specifier": "@platos/context-memory"
             },
             {
@@ -67568,12 +68002,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1065
+              "line": 1107
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 437
+              "line": 455
             }
           ],
           "reversePaths": [
@@ -67923,7 +68357,7 @@
           "packages/contexts/memory"
         ]
       },
-      "evidenceSha256": "caa1318604cd99bbf2586e676055cd7e9a81ba2c4ddb60bc96c69a0be6e41d37",
+      "evidenceSha256": "df4b7cc6c5544558d296a6c8cb15b38467e10288db48e538cdfc29b680291ebf",
       "manifestSha256": "d596af2fb68e3e6c3622cf1cfb1683e20f46b5fac434d3f8cd6bf37df74d5b28",
       "name": "@platos/context-memory",
       "ociImageClosure": {
@@ -68258,7 +68692,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 118,
+              "line": 120,
               "specifier": "@platos/context-observability"
             },
             {
@@ -68503,12 +68937,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1166
+              "line": 1208
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 828
+              "line": 876
             }
           ],
           "reversePaths": [
@@ -68746,7 +69180,7 @@
           "packages/contexts/observability"
         ]
       },
-      "evidenceSha256": "c2bec45b538065ba8f5169cb8387c069507f45d8121bd6cea672fe617073d149",
+      "evidenceSha256": "3fb01d8442f2dff3a4720265c12c6ecb45156861cb4b99b8a389b24cfe4300cd",
       "manifestSha256": "09d858b658a326451d6bdd026af44df9ba5d1b195ce0c71deffc0cb972afc6d7",
       "name": "@platos/context-observability",
       "ociImageClosure": {
@@ -69050,7 +69484,7 @@
             {
               "file": "apps/core-api/src/app.module.ts",
               "from": "apps/core-api",
-              "line": 125,
+              "line": 127,
               "specifier": "@platos/context-privacy"
             },
             {
@@ -69350,12 +69784,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1133
+              "line": 1175
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 821
+              "line": 869
             }
           ],
           "reversePaths": [
@@ -69576,7 +70010,7 @@
           "packages/contexts/privacy"
         ]
       },
-      "evidenceSha256": "15351e50dba35f38e63d6ea7de4d63b1047f76223d4ac20b9681b07918789044",
+      "evidenceSha256": "cec39cf96fdd0f81b8d68ab1bcf46bdafc74daa523f33f70580a3535df544078",
       "manifestSha256": "8d9032044280327b5d3d795c13039f78e41ca275c9d6bce9f093b794a97473f1",
       "name": "@platos/context-privacy",
       "ociImageClosure": {
@@ -69842,6 +70276,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -69998,7 +70438,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3416
+              "line": 3437
             },
             {
               "from": "packages/contexts/providers/README.md",
@@ -70683,7 +71123,7 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 892
+              "line": 893
             },
             {
               "from": "packages/adapters/model-router-providers/src/adapter.test.ts",
@@ -70948,12 +71388,12 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 815
+              "line": 845
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 907
+              "line": 955
             }
           ],
           "reversePaths": [
@@ -71489,6 +71929,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -71573,7 +72019,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "d9c1fd668c3c2e97203840422bab47f819106d42f3b6d29e0492fa756fe48e73",
+      "evidenceSha256": "35e0d5d738cd01e7dac1cd0574322dbc0f0dd9cfacb1be32cb7c24342d242095",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -71881,6 +72327,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -72050,7 +72502,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3424
+              "line": 3445
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -72911,12 +73363,12 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 389
+              "line": 407
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1189
+              "line": 1237
             }
           ],
           "reversePaths": [
@@ -73479,6 +73931,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -73581,7 +74039,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "2b9ff5ed705d5149d243176a8dd41d937f687d48a9aba058e198b2dc0dd7917a",
+      "evidenceSha256": "3d60ee91f426a5339beb8ad617762347831c7f9842e3fd75eab70b40805d5048",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -73812,7 +74270,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3480
+              "line": 3501
             },
             {
               "from": "packages/contexts/skills/README.md",
@@ -74373,7 +74831,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 884
+              "line": 914
             }
           ],
           "reversePaths": [
@@ -74687,7 +75145,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "4682b5396a7ce3686424d17a2265ad438740ef5457a32ad9770fc1e7b71fab50",
+      "evidenceSha256": "0eb87a0602b258057f6d6153faafb443932cf723ffbfe9feb9fd1954b234c726",
       "manifestSha256": "f1e56a67ae6b3d846f0887d8a17048ad19d4e0356bf7f38d1056b58507a2e7e2",
       "name": "@platos/context-skills",
       "ociImageClosure": {
@@ -75144,6 +75602,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -75354,7 +75818,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3488
+              "line": 3509
             },
             {
               "from": "packages/contexts/tenancy/README.md",
@@ -75529,7 +75993,7 @@
             {
               "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
               "from": "apps/core-api",
-              "line": 55,
+              "line": 78,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -75649,19 +76113,19 @@
             {
               "file": "packages/adapters/postgres-tenancy/src/harness.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 18,
+              "line": 40,
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
               "file": "packages/adapters/postgres-tenancy/src/harness.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 31,
+              "line": 53,
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
               "file": "packages/adapters/postgres-tenancy/src/identity-harness.ts",
               "from": "packages/adapters/postgres-tenancy",
-              "line": 33,
+              "line": 36,
               "specifier": "@platos/context-tenancy/application/ports/index.js"
             },
             {
@@ -76410,6 +76874,16 @@
               "line": 41
             },
             {
+              "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "kind": "reference",
+              "line": 131
+            },
+            {
+              "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 77
+            },
+            {
               "from": "packages/adapters/postgres-tenancy/src/channels-transaction.integration.test.ts",
               "kind": "reference",
               "line": 39
@@ -76642,7 +77116,7 @@
             {
               "from": "scripts/arch/gen-v1-skeleton.test.mjs",
               "kind": "reference",
-              "line": 515
+              "line": 589
             },
             {
               "from": "scripts/arch/kernel-content.test.mjs",
@@ -76657,7 +77131,7 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 753
+              "line": 783
             },
             {
               "from": "scripts/arch/transaction-outcome.test.mjs",
@@ -76667,7 +77141,7 @@
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 382
+              "line": 400
             }
           ],
           "reversePaths": [
@@ -76678,6 +77152,14 @@
             [
               "apps/core-api/src/composition/installation.test.ts",
               "apps/core-api/src/composition/installation.test.ts"
+            ],
+            [
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
+            ],
+            [
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/channels-transaction.integration.test.ts",
@@ -76891,6 +77373,8 @@
           "roots": [
             "apps/core-api/src/app.module.test.ts",
             "apps/core-api/src/composition/installation.test.ts",
+            "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+            "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
             "packages/adapters/postgres-tenancy/src/channels-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/cost-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/governance-transaction.integration.test.ts",
@@ -77384,6 +77868,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -77527,7 +78017,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "8e264bc22092e1c19260be699c3efeb2ea795698770c16fa24eccb0ab403df42",
+      "evidenceSha256": "02191718eb7b6577b4fc49f2365eda0356b7307f7233fe6e268b5e1c3f087bd1",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -77636,6 +78126,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -77743,22 +78239,22 @@
             {
               "from": "docs/audits/win-268-mcp-store-ownership.json",
               "kind": "reference",
-              "line": 434
+              "line": 481
             },
             {
               "from": "docs/audits/win-268-mcp-store-ownership.md",
               "kind": "reference",
-              "line": 53
+              "line": 55
             },
             {
               "from": "docs/audits/win-269-tool-lifecycle-reach.json",
               "kind": "reference",
-              "line": 49
+              "line": 51
             },
             {
               "from": "docs/audits/win-269-tool-lifecycle-reach.md",
               "kind": "reference",
-              "line": 31
+              "line": 32
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -77891,6 +78387,12 @@
           "reachable": true,
           "reasons": [
             {
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "build:platos:agent"
+            },
+            {
               "from": "package.json",
               "kind": "root-turbo-task",
               "script": "build"
@@ -77961,10 +78463,46 @@
               "specifier": "@platos/context-tools"
             },
             {
+              "file": "apps/core-api/src/app.module.ts",
+              "from": "apps/core-api",
+              "line": 115,
+              "specifier": "@platos/context-tools"
+            },
+            {
+              "file": "apps/core-api/src/app.module.ts",
+              "from": "apps/core-api",
+              "line": 116,
+              "specifier": "@platos/context-tools"
+            },
+            {
               "file": "apps/core-api/src/composition/adapter-bindings.ts",
               "from": "apps/core-api",
               "line": 53,
               "specifier": "@platos/context-tools/application/ports/index.js"
+            },
+            {
+              "file": "apps/core-api/src/composition/context-ports.ts",
+              "from": "apps/core-api",
+              "line": 239,
+              "specifier": "@platos/context-tools"
+            },
+            {
+              "file": "apps/core-api/src/composition/context-ports.ts",
+              "from": "apps/core-api",
+              "line": 240,
+              "specifier": "@platos/context-tools/adapters/index.js"
+            },
+            {
+              "file": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+              "from": "apps/core-api",
+              "line": 101,
+              "specifier": "@platos/context-tools"
+            },
+            {
+              "file": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+              "from": "apps/core-api",
+              "line": 107,
+              "specifier": "@platos/context-tools"
             },
             {
               "file": "apps/mcp-stdio/src/main.ts",
@@ -78137,7 +78675,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 2212,
+              "line": 2335,
               "specifier": "@platos/context-tools"
             }
           ],
@@ -78149,6 +78687,14 @@
             [
               "apps/core-api",
               "apps/core-api/src/composition/adapter-bindings.ts"
+            ],
+            [
+              "apps/core-api",
+              "apps/core-api/src/composition/context-ports.ts"
+            ],
+            [
+              "apps/core-api",
+              "apps/core-api/src/transports/mcp/organization-policies.controller.ts"
             ],
             [
               "apps/mcp-stdio",
@@ -78237,7 +78783,17 @@
             {
               "from": "apps/core-api/src/composition/installation.test.ts",
               "kind": "reference",
-              "line": 32
+              "line": 1351
+            },
+            {
+              "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "kind": "reference",
+              "line": 130
+            },
+            {
+              "from": "apps/core-api/src/process.test.ts",
+              "kind": "reference",
+              "line": 400
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/plans-tools.integration.test.ts",
@@ -78278,6 +78834,16 @@
               "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
               "kind": "reference",
               "line": 44
+            },
+            {
+              "from": "packages/contexts/tools/adapters/content-digest.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
+              "from": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
             },
             {
               "from": "packages/contexts/tools/application/execution.test.ts",
@@ -78402,23 +78968,36 @@
             {
               "from": "scripts/arch/test-case-census.test.mjs",
               "kind": "reference",
-              "line": 1216
+              "line": 1258
             },
             {
               "from": "scripts/arch/v1-project-graph.test.mjs",
               "kind": "reference",
-              "line": 411
+              "line": 377
+            },
+            {
+              "from": "scripts/ci-policy.test.mjs",
+              "kind": "reference",
+              "line": 351
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1485
+              "line": 1479
             }
           ],
           "reversePaths": [
             [
               "apps/core-api/src/composition/installation.test.ts",
               "apps/core-api/src/composition/installation.test.ts"
+            ],
+            [
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
+            ],
+            [
+              "apps/core-api/src/process.test.ts",
+              "apps/core-api/src/process.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/plans-tools.integration.test.ts",
@@ -78451,6 +79030,14 @@
             [
               "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
               "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts"
+            ],
+            [
+              "packages/contexts/tools/adapters/content-digest.test.ts",
+              "packages/contexts/tools/adapters/content-digest.test.ts"
+            ],
+            [
+              "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+              "packages/contexts/tools/adapters/dispatch.integration.test.ts"
             ],
             [
               "packages/contexts/tools/application/execution.test.ts",
@@ -78557,12 +79144,18 @@
               "scripts/arch/v1-project-graph.test.mjs"
             ],
             [
+              "scripts/ci-policy.test.mjs",
+              "scripts/ci-policy.test.mjs"
+            ],
+            [
               "scripts/v1-ledger.test.mjs",
               "scripts/v1-ledger.test.mjs"
             ]
           ],
           "roots": [
             "apps/core-api/src/composition/installation.test.ts",
+            "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+            "apps/core-api/src/process.test.ts",
             "packages/adapters/postgres-tenancy/src/plans-tools.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/tools-conformance.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/tools-constraints.integration.test.ts",
@@ -78571,6 +79164,8 @@
             "packages/adapters/postgres-tenancy/src/tools-statements.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/tools-transaction.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
+            "packages/contexts/tools/adapters/content-digest.test.ts",
+            "packages/contexts/tools/adapters/dispatch.integration.test.ts",
             "packages/contexts/tools/application/execution.test.ts",
             "packages/contexts/tools/application/mcp-surface.test.ts",
             "packages/contexts/tools/application/registry.test.ts",
@@ -78597,6 +79192,7 @@
             "scripts/arch/sole-writer.test.mjs",
             "scripts/arch/test-case-census.test.mjs",
             "scripts/arch/v1-project-graph.test.mjs",
+            "scripts/ci-policy.test.mjs",
             "scripts/v1-ledger.test.mjs"
           ]
         }
@@ -78691,6 +79287,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -78726,8 +79328,8 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "33cd5cac20caad9727259603822f3023e46577d82658ee6b4124ed58515c9ac8",
-      "manifestSha256": "87996481926b67e29a649aad1f8de452892ea7a0c07fa8f694e70a63420d490b",
+      "evidenceSha256": "6df4bc497fff5d710f12acb42e201a6945dc1e89f0c6d9db1baee75fef561732",
+      "manifestSha256": "164953cbfdcf1a718a65f058aa90a6b74be609a0c2c7ede9f88c30ed277fb8b7",
       "name": "@platos/context-tools",
       "ociImageClosure": {
         "reachable": false,
@@ -79829,6 +80431,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "apps/core-api/src/http/idempotency-policy.test.ts",
+              "kind": "reference",
+              "line": 77
+            },
+            {
               "from": "apps/core-api/src/process.test.ts",
               "kind": "reference",
               "line": 6
@@ -80071,7 +80678,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 573
+              "line": 609
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -80100,6 +80707,10 @@
             }
           ],
           "reversePaths": [
+            [
+              "apps/core-api/src/http/idempotency-policy.test.ts",
+              "apps/core-api/src/http/idempotency-policy.test.ts"
+            ],
             [
               "apps/core-api/src/process.test.ts",
               "apps/core-api/src/process.test.ts"
@@ -80318,6 +80929,7 @@
             ]
           ],
           "roots": [
+            "apps/core-api/src/http/idempotency-policy.test.ts",
             "apps/core-api/src/process.test.ts",
             "internal-packages/llm-model-catalog/src/sync.test.ts",
             "internal-packages/run-engine/src/engine/tests/batchTrigger.test.ts",
@@ -80381,7 +80993,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "9e3e2e97f0f22de27804cf3f98298cf10d6e7d071b27a5375e314ca276e4c442",
+      "evidenceSha256": "eba800f5a58d558832a15c493e00a5a9cc626cd2914737981eff6a54cbcab452",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -81029,6 +81641,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -81311,6 +81929,11 @@
               "line": 138
             },
             {
+              "from": "docs/adr/M0.4-contract-versioning.md",
+              "kind": "reference",
+              "line": 212
+            },
+            {
               "from": "docs/audits/M2.5-transaction-outbox-clock-retry.md",
               "kind": "reference",
               "line": 55
@@ -81328,7 +81951,7 @@
             {
               "from": "docs/error-taxonomy.json",
               "kind": "reference",
-              "line": 3512
+              "line": 3533
             },
             {
               "from": "docs/v1-ledger-rules.json",
@@ -81349,6 +81972,10 @@
             [
               "docs/adr/M0.3-bounded-contexts.md",
               "docs/adr/M0.3-bounded-contexts.md"
+            ],
+            [
+              "docs/adr/M0.4-contract-versioning.md",
+              "docs/adr/M0.4-contract-versioning.md"
             ],
             [
               "docs/audits/M2.5-transaction-outbox-clock-retry.md",
@@ -81378,6 +82005,7 @@
           "roots": [
             "ai/references/repo.md",
             "docs/adr/M0.3-bounded-contexts.md",
+            "docs/adr/M0.4-contract-versioning.md",
             "docs/audits/M2.5-transaction-outbox-clock-retry.md",
             "docs/audits/M4.6-stream-vocabulary.json",
             "docs/env-vars.md",
@@ -81619,13 +82247,25 @@
             {
               "file": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
               "from": "apps/core-api",
-              "line": 45,
+              "line": 68,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+              "from": "apps/core-api",
+              "line": 100,
               "specifier": "@platos/kernel"
             },
             {
               "file": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
               "from": "apps/core-api",
-              "line": 55,
+              "line": 70,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "apps/core-api/src/transports/mcp/token-lifecycle.ts",
+              "from": "apps/core-api",
+              "line": 42,
               "specifier": "@platos/kernel"
             },
             {
@@ -81776,6 +82416,12 @@
               "file": "packages/adapters/postgres-tenancy/src/adapter.ts",
               "from": "packages/adapters/postgres-tenancy",
               "line": 263,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts",
+              "from": "packages/adapters/postgres-tenancy",
+              "line": 67,
               "specifier": "@platos/kernel"
             },
             {
@@ -83389,7 +84035,7 @@
             {
               "file": "packages/contexts/identity-access/application/identity-access-service.ts",
               "from": "packages/contexts/identity-access",
-              "line": 69,
+              "line": 79,
               "specifier": "@platos/kernel"
             },
             {
@@ -83401,13 +84047,19 @@
             {
               "file": "packages/contexts/identity-access/application/in-memory-repository.ts",
               "from": "packages/contexts/identity-access",
-              "line": 52,
+              "line": 60,
               "specifier": "@platos/kernel"
             },
             {
               "file": "packages/contexts/identity-access/application/issue-operator-session.ts",
               "from": "packages/contexts/identity-access",
               "line": 24,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/identity-access/application/list-bearer-credentials.ts",
+              "from": "packages/contexts/identity-access",
+              "line": 38,
               "specifier": "@platos/kernel"
             },
             {
@@ -83455,7 +84107,13 @@
             {
               "file": "packages/contexts/identity-access/application/ports/repository.ts",
               "from": "packages/contexts/identity-access",
-              "line": 50,
+              "line": 54,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/identity-access/application/revoke-bearer-credential.ts",
+              "from": "packages/contexts/identity-access",
+              "line": 51,
               "specifier": "@platos/kernel"
             },
             {
@@ -85631,6 +86289,24 @@
               "specifier": "@platos/kernel"
             },
             {
+              "file": "packages/contexts/tools/adapters/dispatch.ts",
+              "from": "packages/contexts/tools",
+              "line": 26,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/adapters/mcp-dispatch.ts",
+              "from": "packages/contexts/tools",
+              "line": 71,
+              "specifier": "@platos/kernel"
+            },
+            {
+              "file": "packages/contexts/tools/adapters/wire-dispatch.ts",
+              "from": "packages/contexts/tools",
+              "line": 65,
+              "specifier": "@platos/kernel"
+            },
+            {
               "file": "packages/contexts/tools/application/authorization.ts",
               "from": "packages/contexts/tools",
               "line": 31,
@@ -85837,7 +86513,7 @@
             {
               "file": "scripts/arch/gen-v1-skeleton.mjs",
               "from": "scripts/arch/gen-v1-skeleton.mjs",
-              "line": 2093,
+              "line": 2216,
               "specifier": "@platos/kernel"
             }
           ],
@@ -85908,7 +86584,15 @@
             ],
             [
               "apps/core-api",
+              "apps/core-api/src/transports/mcp/organization-policies.controller.ts"
+            ],
+            [
+              "apps/core-api",
               "apps/core-api/src/transports/mcp/platform-tokens.controller.ts"
+            ],
+            [
+              "apps/core-api",
+              "apps/core-api/src/transports/mcp/token-lifecycle.ts"
             ],
             [
               "apps/core-api",
@@ -85985,6 +86669,10 @@
             [
               "packages/adapters/postgres-tenancy",
               "packages/adapters/postgres-tenancy/src/adapter.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy",
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts"
             ],
             [
               "packages/adapters/postgres-tenancy",
@@ -87024,6 +87712,10 @@
             ],
             [
               "packages/contexts/identity-access",
+              "packages/contexts/identity-access/application/list-bearer-credentials.ts"
+            ],
+            [
+              "packages/contexts/identity-access",
               "packages/contexts/identity-access/application/list-end-users.ts"
             ],
             [
@@ -87045,6 +87737,10 @@
             [
               "packages/contexts/identity-access",
               "packages/contexts/identity-access/application/ports/repository.ts"
+            ],
+            [
+              "packages/contexts/identity-access",
+              "packages/contexts/identity-access/application/revoke-bearer-credential.ts"
             ],
             [
               "packages/contexts/identity-access",
@@ -88236,6 +88932,18 @@
             ],
             [
               "packages/contexts/tools",
+              "packages/contexts/tools/adapters/dispatch.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/adapters/mcp-dispatch.ts"
+            ],
+            [
+              "packages/contexts/tools",
+              "packages/contexts/tools/adapters/wire-dispatch.ts"
+            ],
+            [
+              "packages/contexts/tools",
               "packages/contexts/tools/application/authorization.ts"
             ],
             [
@@ -88408,6 +89116,11 @@
               "line": 78
             },
             {
+              "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "kind": "reference",
+              "line": 128
+            },
+            {
               "from": "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
               "kind": "reference",
               "line": 60
@@ -88451,6 +89164,11 @@
               "from": "apps/core-api/src/transports/error-status.test.ts",
               "kind": "reference",
               "line": 11
+            },
+            {
+              "from": "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 63
             },
             {
               "from": "apps/core-api/src/transports/rest/envelope.test.ts",
@@ -88511,6 +89229,11 @@
               "from": "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
               "kind": "reference",
               "line": 37
+            },
+            {
+              "from": "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+              "kind": "reference",
+              "line": 48
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
@@ -88986,6 +89709,11 @@
               "from": "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
               "kind": "reference",
               "line": 17
+            },
+            {
+              "from": "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
+              "kind": "reference",
+              "line": 30
             },
             {
               "from": "packages/contexts/identity-access/application/exchange-oauth-refresh-token.test.ts",
@@ -89685,7 +90413,7 @@
             {
               "from": "scripts/arch/stream-contracts.test.mjs",
               "kind": "reference",
-              "line": 68
+              "line": 73
             },
             {
               "from": "scripts/arch/test-case-census.test.mjs",
@@ -89705,7 +90433,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 573
+              "line": 609
             },
             {
               "from": "scripts/error-taxonomy.test.mjs",
@@ -89715,7 +90443,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 614
+              "line": 630
             },
             {
               "from": "scripts/vocabulary-boundary.test.mjs",
@@ -89740,6 +90468,10 @@
             [
               "apps/core-api/src/composition/identity-rest.integration.test.ts",
               "apps/core-api/src/composition/identity-rest.integration.test.ts"
+            ],
+            [
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+              "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
             ],
             [
               "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
@@ -89776,6 +90508,10 @@
             [
               "apps/core-api/src/transports/error-status.test.ts",
               "apps/core-api/src/transports/error-status.test.ts"
+            ],
+            [
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
+              "apps/core-api/src/transports/mcp/token-lifecycle.test.ts"
             ],
             [
               "apps/core-api/src/transports/rest/envelope.test.ts",
@@ -89824,6 +90560,10 @@
             [
               "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
               "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts"
+            ],
+            [
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
+              "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts"
             ],
             [
               "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
@@ -90204,6 +90944,10 @@
             [
               "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
               "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts"
+            ],
+            [
+              "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
+              "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts"
             ],
             [
               "packages/contexts/identity-access/application/exchange-oauth-refresh-token.test.ts",
@@ -90802,6 +91546,7 @@
             "apps/core-api/src/app.module.test.ts",
             "apps/core-api/src/composition/governance-judge.test.ts",
             "apps/core-api/src/composition/identity-rest.integration.test.ts",
+            "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
             "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
             "apps/core-api/src/composition/operator-authentication.integration.test.ts",
             "apps/core-api/src/composition/stream-lane.integration.test.ts",
@@ -90811,6 +91556,7 @@
             "apps/core-api/src/runtime/log-redaction.test.ts",
             "apps/core-api/src/runtime/process-ports.test.ts",
             "apps/core-api/src/transports/error-status.test.ts",
+            "apps/core-api/src/transports/mcp/token-lifecycle.test.ts",
             "apps/core-api/src/transports/rest/envelope.test.ts",
             "apps/core-api/src/transports/rest/identity-rest.test.ts",
             "apps/core-api/src/transports/ws/sse.test.ts",
@@ -90823,6 +91569,7 @@
             "packages/adapters/outbox/src/flush.test.ts",
             "packages/adapters/postgres-tenancy/src/correlation.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/governance-eval-runs.integration.test.ts",
+            "packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.integration.test.ts",
             "packages/adapters/postgres-tenancy/src/upgrade-rollout.integration.test.ts",
             "packages/adapters/redis-cache/src/request-idempotency.test.ts",
             "packages/adapters/redis-streams/src/encoding.test.ts",
@@ -90918,6 +91665,7 @@
             "packages/contexts/governance/domain/safety-observation.test.ts",
             "packages/contexts/governance/domain/satisfaction.test.ts",
             "packages/contexts/identity-access/application/authenticate-bearer-token.test.ts",
+            "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
             "packages/contexts/identity-access/application/exchange-oauth-refresh-token.test.ts",
             "packages/contexts/identity-access/application/identity-access-service.end-users.test.ts",
             "packages/contexts/identity-access/application/identity-access-service.test.ts",
@@ -91670,6 +92418,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -91882,7 +92636,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "5d262859fe27ee46a3b5ae299b2eb40c080ff7647aa1d51ec152c67bb9d78167",
+      "evidenceSha256": "f8d2034060751ce7486d21e0027e164052864df8824afc7d2802f1554a8cfde0",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -92031,7 +92785,7 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
-              "line": 5995
+              "line": 6043
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -92046,7 +92800,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7334
+              "line": 7378
             },
             {
               "from": "docs/entity-connect.md",
@@ -92539,7 +93293,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f1fa3ad9183896001f6fd67ac42d8eaa240032dcd99a6cf23b76e3a79a6b7a90",
+      "evidenceSha256": "3b18191d8d3f5358cf554698287aaa6d0ea6fb34099a0fd2244d968ee435d79e",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
@@ -92705,7 +93459,7 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
-              "line": 5993
+              "line": 6041
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -92720,7 +93474,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7324
+              "line": 7368
             },
             {
               "from": "docs/launch/release-notes-v1.0.0.md",
@@ -93251,6 +94005,11 @@
               "line": 1
             },
             {
+              "from": "packages/platos-client/src/__tests__/retry-idempotency.test.ts",
+              "kind": "workspace-owned-file",
+              "line": 1
+            },
+            {
               "from": "packages/platos-client/src/__tests__/tools.test.ts",
               "kind": "workspace-owned-file",
               "line": 1
@@ -93283,7 +94042,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 569
+              "line": 605
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -93303,7 +94062,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2058
+              "line": 1472
             },
             {
               "from": "scripts/vendored-build-audit.test.mjs",
@@ -93332,6 +94091,10 @@
             [
               "packages/platos-client/src/__tests__/messages.test.ts",
               "packages/platos-client/src/__tests__/messages.test.ts"
+            ],
+            [
+              "packages/platos-client/src/__tests__/retry-idempotency.test.ts",
+              "packages/platos-client/src/__tests__/retry-idempotency.test.ts"
             ],
             [
               "packages/platos-client/src/__tests__/tools.test.ts",
@@ -93391,6 +94154,7 @@
             "packages/platos-client/package.json",
             "packages/platos-client/src/__tests__/errors.test.ts",
             "packages/platos-client/src/__tests__/messages.test.ts",
+            "packages/platos-client/src/__tests__/retry-idempotency.test.ts",
             "packages/platos-client/src/__tests__/tools.test.ts",
             "packages/platos-client/tests/contracts.test.ts",
             "packages/platos-client/tests/generated-contracts.test.ts",
@@ -93413,7 +94177,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "69754f5738c74c04cfa9e30443aec8be7074ee8ae02b8b92596b93d1fbe29f90",
+      "evidenceSha256": "cda9ce3b6dfdd6b7a32a84c85c223633fd38a8c450f643a66d1825c58adee7ee",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -93715,7 +94479,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 570
+              "line": 606
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -93755,7 +94519,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "8aaf3861f7505a24651632f7874c16aa89da2d78020723ee903b1573ef90df1a",
+      "evidenceSha256": "92b93909decfc72de74e12910a52ac3be8003390b383d351e62976011ac83c97",
       "manifestSha256": "b892e563338f333035fef02ca96b5d203a438d3adbb15afc3a77106122e98f26",
       "name": "@platosdev/embed",
       "ociImageClosure": {
@@ -94081,7 +94845,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 570
+              "line": 606
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -94126,7 +94890,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "6f809f18d00204d7912dba2f592cbac6080d21391d3fd2001c6c87e4c91dbd0d",
+      "evidenceSha256": "05dbb74780fab7c7a0620fac9b45431db85082ca7a2186a87972b81bf8f3f338",
       "manifestSha256": "85f69f0d46b2932f65eb45f41c9714a097ceae7d5a006e1a51656e830d8ac6a8",
       "name": "@platosdev/react-widget",
       "ociImageClosure": {
@@ -94237,7 +95001,7 @@
             {
               "from": "docs/audits/M0.2-capability-matrix.json",
               "kind": "reference",
-              "line": 5997
+              "line": 6045
             },
             {
               "from": "docs/audits/M0.5-dependency-sbom.md",
@@ -94247,7 +95011,7 @@
             {
               "from": "docs/audits/win-284-differential-coverage.json",
               "kind": "reference",
-              "line": 7344
+              "line": 7388
             },
             {
               "from": "docs/sdk-v1-migration.md",
@@ -94547,7 +95311,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 571
+              "line": 607
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -94612,7 +95376,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "24274bd408ec98d92608549adb4b1c08f04752842526b717cd9c939f4b50bd3f",
+      "evidenceSha256": "2555e60e757b65127b412bbb635c147895072675b636605c49dd02964d35702d",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {

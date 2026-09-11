@@ -41,6 +41,7 @@ const TOOL_NAME_PATTERN = /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
 const PRODUCTION_MOUNTED_CONTROLLERS = {
   AgentController: "agent-runtime/agent-runtime.module.ts",
   AttachmentUploadController: "agent-runtime/agent-runtime.module.ts",
+  ChatStreamController: "agent-runtime/agent-runtime.module.ts",
   ChannelAppsController: "agent-runtime/agent-runtime.module.ts",
   ChannelsController: "agent-runtime/agent-runtime.module.ts",
   JobExecutionController: "agent-runtime/agent-runtime.module.ts",
@@ -114,6 +115,11 @@ const CORE_API_MOUNTED_CONTROLLERS = {
   // generation by name rather than quietly leaving the census.
   McpPlatformTokensController: "http/http.module.ts",
   McpEntityTokensController: "http/http.module.ts",
+  // WIN-268 (M4.2) — the tier-2 MCP policy surface. Listed for the same reason as
+  // the two mints above it: this root is STRICT, so a controller under
+  // `apps/core-api/src/transports` that is not in this allowlist fails generation
+  // by name rather than quietly leaving the census.
+  McpOrganizationPoliciesController: "http/http.module.ts",
   // WIN-272 (M4.6) — the stream lane, and the first entry here that lives outside
   // `transports/rest` and `transports/mcp`. It is listed for the same reason as its
   // seven siblings: this root is STRICT, so a controller under
@@ -936,6 +942,42 @@ function assertMountedControllerPolicy() {
       }
     }
   }
+  // THE OTHER DIRECTION, AND IT WAS MISSING. Everything above asks "is every
+  // controller in the policy really registered by the module it names". Nothing
+  // asked the reverse, and the agent root is `strict: false` precisely so that it
+  // may hold controllers this policy omits — that skip is what separates
+  // production controllers from the ones that are not mounted. The consequence
+  // nobody had noticed is that a controller registered in a module the policy
+  // ALREADY NAMES, and therefore mounted in production, is skipped in silence:
+  // its routes reach no manifest, no OpenAPI document, no capability matrix and
+  // no census, and every gate downstream stays green while the surface has grown.
+  //
+  // M4 finish hit this for real. `ChatStreamController` was added to
+  // `agent-runtime.module.ts` — a module five other controllers in this policy
+  // already name — and `--check` PASSED with the route invisible. So the reverse
+  // is now an error, scoped to the modules the policy itself names, which is what
+  // makes it a claim about production rather than about the whole tree: a module
+  // this policy does not name is still free to register whatever it likes, and
+  // that is how `TestController` stays out.
+  //
+  // MEASURED before it was enforced: sixteen modules, and every controller
+  // registered by them was already listed. This refuses a new hole; it forgives
+  // no existing one.
+  for (const root of CONTROLLER_SCAN_ROOTS) {
+    const modulePaths = new Set(
+      Object.values(root.mounted).map((relativeModulePath) => join(root.moduleDir, relativeModulePath))
+    );
+    for (const modulePath of modulePaths) {
+      const controllers = byModule.get(modulePath) ?? moduleControllers(modulePath);
+      byModule.set(modulePath, controllers);
+      for (const controller of controllers) {
+        if (Object.hasOwn(root.mounted, controller)) continue;
+        throw new Error(
+          `${controller} is registered by ${relative(repoDir, modulePath).split("\\").join("/")}, a module the ${root.id} mounted-controller policy names, but is absent from that policy; its routes would reach no manifest, no OpenAPI document and no census. Add it, or move it to a module the policy does not name.`
+        );
+      }
+    }
+  }
   if (Object.hasOwn(PRODUCTION_MOUNTED_CONTROLLERS, "TestController")) {
     throw new Error("TestController must not be present in the production mounted-controller policy");
   }
@@ -1051,18 +1093,33 @@ function implementationKeys(operation) {
  *   * a declared alias row that matches no operation (dead policy), and a
  *     DEPRECATED operation matched by no row (undeclared alias).
  *
- * WHAT IT CANNOT ENFORCE, NAMED RATHER THAN SILENTLY EXCLUDED. Two operations in
- * this tree are served by BOTH deployables — the MCP platform and entity token
- * mints — and their two implementations are genuinely independent classes in two
- * processes, so they cannot satisfy fan-in and are not aliases: they are one
- * route mid-migration. They are listed below with that reason, and a THIRD such
- * operation fails generation rather than joining a list nobody re-reads.
+ * WHAT IT CANNOT ENFORCE, NAMED RATHER THAN SILENTLY EXCLUDED. Six operations in
+ * this tree are served by BOTH deployables — the whole MCP credential lifecycle,
+ * mint/list/revoke on each of the two surfaces — and their two implementations are
+ * genuinely independent classes in two processes, so they cannot satisfy fan-in and
+ * are not aliases: they are one route mid-migration. They are listed below with
+ * that reason, and a SEVENTH such operation fails generation rather than joining a
+ * list nobody re-reads.
  */
 const FORKED_OPERATIONS_WITHOUT_ONE_HANDLER = Object.freeze({
   "POST /mcp/platform/tokens":
     "mid-migration: apps/agent has served this mint since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in. Two independent classes, one wire path — not an alias, and it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn.",
   "POST /mcp/entity/:entityId/tokens":
     "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape.",
+  // WIN-268 (M4.2) — the four LIFECYCLE operations beside the two mints. Each was
+  // in this manifest with an apps/agent implementation and none in apps/core-api,
+  // for the reason the mints had before P1: a V1 route may only reach a contract
+  // method, and identity-access published no listing and no revocation. It does
+  // now, so each of the four is a second, independent V1 class on the same wire
+  // path — the identical mid-migration shape, and NOT an alias.
+  "GET /mcp/platform/tokens":
+    "mid-migration: the platform credential listing, now also served by apps/core-api on the V1 chassis over IdentityAccessContract.listBearerCredentials. Two independent classes, one wire path; it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn.",
+  "POST /mcp/platform/tokens/:id/revoke":
+    "mid-migration: the platform revocation, now also served by apps/core-api over IdentityAccessContract.revokeBearerCredential. The V1 handler distinguishes never-existed from already-revoked from expired, which the legacy boolean cannot — so the two are not interchangeable and this is a migration rather than an alias.",
+  "GET /mcp/entity/:entityId/tokens":
+    "mid-migration: the entity credential listing, for the reason given for the platform listing above; it moved on the same tranche and has the same two-implementation shape.",
+  "DELETE /mcp/entity/:entityId/tokens/:tokenId":
+    "mid-migration: the entity revocation, for the reason given for the platform revocation above; it moved on the same tranche and has the same two-implementation shape.",
 });
 
 function validateAliasContract(restOperations) {
@@ -1718,12 +1775,25 @@ function v1OperationEntry(entry, derived, contract) {
     };
   }
   responses.default = errorResponse(contract.errorComponent);
-  const parameters = derived.pathParameters.map((parameter) => ({
-    name: parameter.name,
-    in: "path",
-    required: true,
-    schema: parameter.schema,
-  }));
+  const parameters = [
+    ...derived.pathParameters.map((parameter) => ({
+      name: parameter.name,
+      in: "path",
+      required: true,
+      schema: parameter.schema,
+    })),
+    // M4 finish — THE QUERY PARAMETERS, now that the derivation has a path that
+    // emits them. `required` comes from the DECLARED optionality of the wire DTO,
+    // so a required `environmentId` reaches a generated client as one; before this
+    // the operation carried an `x-platos-query-parameters: not-derived` marker and
+    // a caller could not tell the route needed a tenant at all.
+    ...derived.queryParameters.parameters.map((parameter) => ({
+      name: parameter.name,
+      in: "query",
+      required: parameter.required,
+      schema: parameter.schema,
+    })),
+  ];
   const patched = {
     ...entry,
     ...(parameters.length > 0 ? { parameters } : {}),

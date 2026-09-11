@@ -140,12 +140,26 @@ const SKIP_DIRECTORIES = new Set(["node_modules", "dist", ".turbo", "coverage"])
  */
 export const TERMINAL_TYPES_WITHOUT_A_PRODUCER = ["turn.done", "stream.offline"];
 
+/**
+ * How many event names ADR M0.4 §2's SSE row specifies.
+ *
+ * A NUMBER, HERE, SO THE PARSE CANNOT SILENTLY FIND FEWER. Every other half of S6 is
+ * a set comparison between the document and the kernel, and two comparisons between
+ * two empty sets both pass — which is exactly how a gate goes green for the wrong
+ * reason. This is the non-vacuity floor and it is deliberately NOT derived from
+ * either side: if the ADR's cell changes, this number is the line a reviewer has to
+ * move by hand, and moving it is the moment somebody asks whether a superseding
+ * record is owed.
+ */
+export const SSE_TURN_EVENT_COUNT = 9;
+
 export const RULES = [
   { id: "S1", description: "the envelope families are exactly ADR M0.4 §1.2's five" },
   { id: "S2", description: "the stream major is a literal in one module and nowhere else" },
   { id: "S3", description: "the canonical lane's terminal frames are the kernel's, and each is reachable" },
   { id: "S4", description: "every emitted name has an inventory row and every row is still emitted" },
   { id: "S5", description: "every inventory row names a lane and one of the five families" },
+  { id: "S6", description: "the SSE turn vocabulary is exactly ADR M0.4 section 2's nine names" },
 ];
 
 function listSourceFiles(root, directory) {
@@ -204,6 +218,77 @@ export function vocabularyTerminals(root = repositoryRoot) {
   );
   if (block === null) return null;
   return [...(block[1] ?? "").matchAll(/"([^"]+)"/gu)].map((match) => match[1]);
+}
+
+/**
+ * THE NINE SSE TURN EVENT NAMES, PARSED OUT OF ADR M0.4 §2's SSE ROW.
+ *
+ * WHY THE DOCUMENT AND NOT A LIST HERE. This is rule S1's argument applied to the
+ * vocabulary rather than to the families: the nine names lived in ONE table cell of
+ * one document and nowhere in the tree, so a producer could emit a tenth, a rename
+ * could land, and nothing could compare the two. Reading them back out of the cell
+ * makes the ADR the authority and the kernel's `SSE_TURN_EVENTS` the claim.
+ *
+ * THE PARSE IS POSITIONAL, NOT A GREP FOR PLAUSIBLE WORDS. The row's cells are
+ * `|`-separated, and the two that carry vocabulary are cell 2 (the version
+ * expression, which holds the LEADING frame) and cell 3 (the canonical envelope,
+ * which holds the turn's sequence and the guest/embed additions). From cell 2 only
+ * a `<code>NAME{...}</code>` counts — its backticked tokens are `sv`, `/api/v1/`
+ * and `Last-Event-ID`, none of them events. From cell 3 both a
+ * `<code>NAME{...}</code>` and a bare `` `NAME` `` count, because the ADR writes a
+ * field-carrying event the first way and a field-less one the second. A row that
+ * gains a tenth name in either position parses to ten and S6 goes red, which is the
+ * behaviour asked for.
+ */
+export function declaredSseTurnEvents(root = repositoryRoot) {
+  const adr = readFileSync(join(root, CONTRACT_ADR), "utf8");
+  const row = adr.split("\n").find((line) => line.startsWith("| **SSE**"));
+  if (row === undefined) return null;
+  const cells = row.split("|");
+  const versionExpression = cells[2] ?? "";
+  const canonicalEnvelope = cells[3] ?? "";
+  const NAME = "[a-z][A-Za-z0-9_.]*";
+  const fielded = (cell) =>
+    [...cell.matchAll(new RegExp(`<code>(${NAME})&lbrace;`, "gu"))].map((match) => match[1]);
+  const bare = (cell) => [...cell.matchAll(new RegExp("`(" + NAME + ")`", "gu"))].map((match) => match[1]);
+  const found = [...fielded(versionExpression), ...fielded(canonicalEnvelope), ...bare(canonicalEnvelope)];
+  return [...new Set(found)];
+}
+
+/** The nine names the vocabulary module freezes, read out of its own array. */
+export function vocabularySseTurnEvents(root = repositoryRoot) {
+  const source = readFileSync(join(root, VOCABULARY_MODULE), "utf8");
+  const block = /export const SSE_TURN_EVENTS = Object\.freeze\(\[([\s\S]*?)\] as const\);/u.exec(source);
+  if (block === null) return null;
+  return [...(block[1] ?? "").matchAll(/"([^"]+)"/gu)].map((match) => match[1]);
+}
+
+/**
+ * The SSE lane's own `event:` channel names, read off the transport that writes them.
+ *
+ * A DIRECTORY, NOT A FILENAME, and a NARROW one. `encodeStreamMeta` writes
+ * `event: stream_meta` into a template literal, so `scanEmissions` cannot see it:
+ * that scan looks for `.emit(` calls and `t:` properties, and the leading frame is
+ * neither. Without this rule the one name the canonical lane puts on SSE's own
+ * channel was outside every check.
+ *
+ * It is scoped to `apps/core-api/src/transports/ws` because that IS the turn lane.
+ * `apps/agent`'s MCP controllers also write `event:` lines — `endpoint`, `message`,
+ * `hello` — and those belong to JSON-RPC-over-SSE, a different lane with a different
+ * vocabulary; holding them to the turn lane's nine names would report a violation
+ * that is not one.
+ */
+export const SSE_EVENT_CHANNEL_DIR = "apps/core-api/src/transports/ws";
+
+export function sseEventChannelNames(root = repositoryRoot) {
+  const found = [];
+  for (const path of listSourceFiles(root, SSE_EVENT_CHANNEL_DIR)) {
+    const text = readFileSync(join(root, path), "utf8");
+    for (const match of text.matchAll(/`event: ([A-Za-z0-9_.]+)\\n/gu)) {
+      found.push({ name: match[1], path });
+    }
+  }
+  return found;
 }
 
 function sourceFile(absolute) {
@@ -533,6 +618,80 @@ export function auditStreamContracts(root = repositoryRoot) {
     }
   }
 
+  // --- S6 ---
+  //
+  // THE SPELLING WAS SETTLED BY COUNTING, NOT BY TASTE, and the count is recorded in
+  // the ADR's own D9 correction and in `SSE_TURN_EVENTS`' comment: `stream_offline`
+  // occurred ONCE in this repository — in the ADR cell — with no producer, no
+  // consumer, no test and no SDK, while `stream.offline` occurred fifteen times
+  // including `classifyStreamEnd`'s own branch. Changing the shipped one is the
+  // breaking change, so the document moved and this rule now holds both to one
+  // spelling forever.
+  const adrEvents = declaredSseTurnEvents(root);
+  const moduleEvents = vocabularySseTurnEvents(root);
+  if (adrEvents === null) {
+    problems.push(`S6 ${CONTRACT_ADR} no longer carries an SSE row to read the vocabulary from`);
+  } else if (moduleEvents === null) {
+    problems.push(`S6 ${VOCABULARY_MODULE} declares no SSE_TURN_EVENTS array`);
+  } else {
+    // NON-VACUITY FIRST. A parse that silently found nothing would make the two
+    // comparisons below pass against two empty sets, which is the shape of every
+    // gate this programme has caught being green for the wrong reason.
+    if (adrEvents.length !== SSE_TURN_EVENT_COUNT) {
+      problems.push(
+        `S6 ${CONTRACT_ADR} §2's SSE row names ${String(adrEvents.length)} event(s) ` +
+          `[${adrEvents.join(", ")}]; the accepted vocabulary is ${String(SSE_TURN_EVENT_COUNT)} — a name ` +
+          "added, renamed or removed in that cell is a contract change and needs a superseding record",
+      );
+    }
+    const missing = adrEvents.filter((name) => !moduleEvents.includes(name));
+    const extra = moduleEvents.filter((name) => !adrEvents.includes(name));
+    for (const name of missing) {
+      problems.push(`S6 ${CONTRACT_ADR} §2 names SSE event "${name}", which SSE_TURN_EVENTS omits`);
+    }
+    for (const name of extra) {
+      problems.push(
+        `S6 SSE_TURN_EVENTS declares "${name}", which ${CONTRACT_ADR} §2's SSE row does not name`,
+      );
+    }
+  }
+
+  // AND THE THIRD DIRECTION: a PRODUCER emitting a name nothing accepted.
+  //
+  // The `sse.turn` frame types the emission scan finds, plus the names the lane puts
+  // on SSE's own `event:` channel, must each be either one of the nine or a
+  // kernel-declared terminal. `stream.error` is the second case and is the reason
+  // the union is not just the nine: the ADR's SSE row names `turn.done` as the only
+  // ending and says nothing about a terminal ERROR frame, while the canonical lane
+  // needs one — `TERMINAL_FRAME_TYPES` is where that is declared, and rule S3
+  // already holds it to the transport's own fault table in both directions.
+  const accepted = new Set([...(moduleEvents ?? []), ...(terminals ?? [])]);
+  if (accepted.size > 0) {
+    for (const row of rows) {
+      if (row.lane !== "core-api" || row.kind !== "frame-type") continue;
+      if (accepted.has(row.name)) continue;
+      problems.push(
+        `S6 the canonical lane emits frame type "${row.name}" at ${row.sites[0] ?? "?"}, which is neither ` +
+          `one of ${CONTRACT_ADR} §2's nine SSE events nor a declared terminal frame type`,
+      );
+    }
+    const channelNames = sseEventChannelNames(root);
+    if (channelNames.length === 0) {
+      problems.push(
+        `S6 no \`event:\` channel name was found under ${SSE_EVENT_CHANNEL_DIR}; the leading frame is ` +
+          "written as a template literal, so a parse that finds none has stopped looking rather than " +
+          "found a clean lane",
+      );
+    }
+    for (const channel of channelNames) {
+      if (accepted.has(channel.name)) continue;
+      problems.push(
+        `S6 ${channel.path} writes SSE channel "event: ${channel.name}", which ${CONTRACT_ADR} §2's SSE ` +
+          "row does not name",
+      );
+    }
+  }
+
   return { rows, problems, families: moduleFamilies ?? [], terminals: terminals ?? [] };
 }
 
@@ -563,8 +722,9 @@ function main() {
   if (result.problems.length === 0) {
     process.stdout.write(
       "ok: the envelope families are the ADR's own, the stream major is a literal in one module, every " +
-        "terminal type is reachable, and the emitted vocabulary matches the committed inventory in both " +
-        "directions.\n",
+        "terminal type is reachable, the emitted vocabulary matches the committed inventory in both " +
+        `directions, and the SSE turn lane's ${String(SSE_TURN_EVENT_COUNT)} event names are exactly the ` +
+        "ones ADR M0.4 section 2's SSE row states.\n",
     );
   } else {
     process.stdout.write(`\n${String(result.problems.length)} stream-contract problem(s).\n`);

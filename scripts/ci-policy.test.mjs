@@ -4,6 +4,15 @@ import path from "node:path";
 import test from "node:test";
 import { parseDocument } from "yaml";
 
+// THE ROOTS ARE IMPORTED, NOT RESTATED. `agent-tenancy-postgres-integration.mjs`
+// is the thing that walks them, so a case that spelled them again here could
+// disagree with the walk the job actually performs.
+import {
+  SUITE_ROOTS as AGENT_TENANCY_SUITE_ROOTS,
+  SUITE_SUFFIX as AGENT_TENANCY_SUITE_SUFFIX,
+  discoverSuites as discoverAgentTenancySuites,
+} from "./agent-tenancy-postgres-integration.mjs";
+
 const repositoryRoot = path.resolve(import.meta.dirname, "..");
 const expectedCandidates = [
   {
@@ -80,8 +89,20 @@ const expectedPnpmRunInstructions = new Map([
 // The count is pinned rather than derived so that adding a job stays a reviewed
 // decision: a silently appearing runner is how unreviewed steps enter a
 // pipeline.
+// SIX, not five: M4 finish adds `agent-tenancy-postgres`, the job that runs the
+// MCP-surface and tool-lifecycle real-PostgreSQL suites that ran in NO job at all.
+//
+// SEVEN, not six: the same tranche adds `non-browser-completion-postgres`, and it
+// is the FIFTH instance of the identical pattern. The only producer of the 18
+// non-browser completion cells the WIN-234/WIN-238 gate is red on was named by one
+// step inside `build-images.yml`, downstream of `build-candidate-webapp` — a job red
+// on `v1` over an expired Debian Release file in a base image. So a suite that needs
+// nothing but `DATABASE_URL` and the canonical migrations had never executed in a
+// green pipeline, and 18 REACHABLE blockers were indistinguishable from the 107 that
+// genuinely need a browser. The new job produces the artifact and then asserts what
+// closing those cells MEANS: the residue is `browser evidence 107` and nothing else.
 const expectedSetupNodeCounts = new Map([
-  ["ci", 5],
+  ["ci", 7],
   ["buildImages", 1],
 ]);
 const relocatedCommands = [
@@ -319,8 +340,23 @@ const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mj
 // resolves to `any` and the derivation refuses it. A container starts cold and
 // has no earlier build to inherit, which is why this was invisible everywhere
 // except the image build.
+// `@platos/context-tools...` IS IN THIS STRING BECAUSE THE IMAGE BUILD PROVED IT
+// HAS TO BE. The tier-2 policy controller imports `PermissionState` from
+// `@platos/context-tools`, and the strict Agent build runs a type-checker-driven
+// schema derivation over `apps/core-api`. With that package's dist absent the
+// type resolves to `any` and the derivation refuses --
+// `DerivationError: SetOrganizationPolicyBody.state is \`any\``. A developer
+// machine has the dist from an earlier build and so never saw it; a cold OCI
+// build has nothing, and the image job went red the first time it ran. Reproduced
+// locally by moving `packages/contexts/tools/dist` aside, which is the only way
+// to see it from a warm tree.
+//
+// THIS COMMENT ALSO HAD TO BE REWRITTEN ONCE, for the reason the vocabulary
+// suite's own pin paragraphs were: its first draft used a refused noun while
+// explaining a build failure, and the gate reads bytes without caring what the
+// sentence is about.
 const agentBuildScriptTarget =
-  'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
+  'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter "@platos/context-tools..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
 const agentRuntimeSmokeInvocation =
   "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
 const expectedV1EvidenceCommands = [
@@ -599,6 +635,44 @@ const expectedDifferentialHarnessCommands = [
 ];
 const expectedDifferentialConservationJob = "differential-state-conservation";
 const expectedDifferentialConservationCommand = "pnpm test:differential-harness:store";
+
+// M4 finish — THE FOURTH GATE-DARKNESS INSTANCE. The MCP-surface and
+// tool-lifecycle real-PostgreSQL suites ran in NO job at all; this job runs them,
+// and it selects them by WALKING two roots rather than by naming files, so a new
+// suite under either joins with no line to add.
+const agentTenancyPostgresJob = "agent-tenancy-postgres";
+const agentTenancyPostgresCommand = "pnpm test:agent-tenancy-postgres:integration";
+const expectedAgentTenancyPostgresScripts = new Map([
+  [
+    "test:agent-tenancy-postgres:integration",
+    "node scripts/agent-tenancy-postgres-integration.mjs",
+  ],
+]);
+
+// M4 finish — THE FIFTH GATE-DARKNESS INSTANCE, and the most expensive one. The
+// only producer of the 18 non-browser completion cells the WIN-234/WIN-238 gate is
+// red on was named by one step inside `build-images.yml`, downstream of
+// `build-candidate-webapp` — red on `v1` over an expired Debian Release file in a
+// base image. So a suite needing nothing but `DATABASE_URL` and the canonical
+// migrations had never executed in a green pipeline.
+//
+// TWO COMMANDS AND BOTH ARE PINNED. The first PRODUCES the evidence; the second
+// says what closing those cells MEANS — it promotes only those 18 against the
+// matrix read from exact HEAD and asserts the residue is `browser evidence 107` and
+// nothing else. Deleting either is how a number stops being stated, so each is
+// separately falsifiable.
+const nonBrowserCompletionJob = "non-browser-completion-postgres";
+const nonBrowserCompletionCommands = [
+  "pnpm test:non-browser-completion",
+  "pnpm audit:route-parity:completion:non-browser",
+];
+const expectedNonBrowserCompletionScripts = new Map([
+  ["test:non-browser-completion", "node tests/persisted-state-gate/run-non-browser-evidence.mjs"],
+  [
+    "audit:route-parity:completion:non-browser",
+    "node scripts/route-capability-completion-audit.mjs --non-browser",
+  ],
+]);
 
 const expectedRepositoryGovernanceScripts = new Map([
   ["generate:root-manifest", "node scripts/root-entry-manifest.mjs --write"],
@@ -1753,6 +1827,32 @@ function policyViolations(input) {
     violations.push("WIN-284 twin-store conservation job must run the store gate exactly once");
   }
 
+  // M4 finish — the MCP-surface and tool-lifecycle real-PostgreSQL job. A
+  // separate job because it needs a pgvector server, which the typecheck job's
+  // services do not provide, and because `pnpm test:v1-packages` must stay
+  // runnable with no database at all.
+  const agentTenancyJob = ciJobs.get(agentTenancyPostgresJob);
+  if (agentTenancyJob === undefined) {
+    violations.push("CI must retain the agent tenancy real-PostgreSQL job");
+  } else if (countExact(normalizedRunCommands(agentTenancyJob), agentTenancyPostgresCommand) !== 1) {
+    violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+  }
+
+  // M4 finish — the non-browser completion evidence job. A separate job for the
+  // same two reasons: it needs a pgvector server, and its suite must not be
+  // reachable only from a container-image pipeline.
+  const nonBrowserJob = ciJobs.get(nonBrowserCompletionJob);
+  if (nonBrowserJob === undefined) {
+    violations.push("CI must retain the non-browser completion evidence job");
+  } else {
+    const runs = normalizedRunCommands(nonBrowserJob);
+    for (const command of nonBrowserCompletionCommands) {
+      if (countExact(runs, command) !== 1) {
+        violations.push(`non-browser completion job must run ${command} exactly once`);
+      }
+    }
+  }
+
   const v1Lines = reviewedEvidence.commands;
   const allCiLines = [...ciJobs.values()]
     .flatMap((job) => executableRunValues(job))
@@ -1838,6 +1938,14 @@ function policyViolations(input) {
       violations.push(
         `package.json must wire exact workspace reachability script ${name}: ${target}`
       );
+  }
+  for (const [name, target] of expectedAgentTenancyPostgresScripts) {
+    if (packageScripts[name] !== target)
+      violations.push(`package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`);
+  }
+  for (const [name, target] of expectedNonBrowserCompletionScripts) {
+    if (packageScripts[name] !== target)
+      violations.push(`package.json must wire exact non-browser completion script ${name}: ${target}`);
   }
   for (const [name, target] of expectedWin254Scripts) {
     if (packageScripts[name] !== target)
@@ -3360,6 +3468,38 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      // THE CONTROL FOR THE FOURTH GATE-DARKNESS INSTANCE. Deleting the step is
+      // exactly how the three suites this job runs came to run nowhere, so the
+      // deletion has to be the thing that fails.
+      name: "agent tenancy PostgreSQL job cannot stop running its suite walker",
+      expected: "agent tenancy PostgreSQL job must run its suite walker exactly once",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `        run: ${agentTenancyPostgresCommand}`,
+          "        run: echo skipped"
+        ),
+    },
+    ...[...expectedAgentTenancyPostgresScripts].map(([name, target]) => ({
+      name: `agent tenancy PostgreSQL script ${name} cannot be repointed`,
+      expected: `package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`,
+      mutate: (input) => mutateFixture(input, "packageJson", `"${name}": "${target}"`, `"${name}": "true"`),
+    })),
+    // THE CONTROLS FOR THE FIFTH INSTANCE. Deleting either step is exactly how the
+    // 18 non-browser completion cells came to be produced nowhere a green pipeline
+    // could reach, so each deletion has to be the thing that fails.
+    ...nonBrowserCompletionCommands.map((command) => ({
+      name: `non-browser completion job cannot stop running ${command}`,
+      expected: `non-browser completion job must run ${command} exactly once`,
+      mutate: (input) => mutateFixture(input, "ci", `        run: ${command}`, "        run: echo skipped"),
+    })),
+    ...[...expectedNonBrowserCompletionScripts].map(([name, target]) => ({
+      name: `non-browser completion script ${name} cannot be repointed`,
+      expected: `package.json must wire exact non-browser completion script ${name}: ${target}`,
+      mutate: (input) => mutateFixture(input, "packageJson", `"${name}": "${target}"`, `"${name}": "true"`),
+    })),
+    {
       name: "root package workspace graph cannot reappear",
       expected: "package.json must not declare workspaces; pnpm-workspace.yaml is authoritative",
       mutate: (input) =>
@@ -4785,12 +4925,27 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   package.json is a webapp image build input, so a script there moves the SBOM
   //   receipt's buildInputsSha256 — so it contributes to the release-gate loop
   //   only. The number was MEASURED at 378 before this arithmetic was written.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 = 378. The count is pinned
-  // rather than derived so that a control silently disappearing is a failure
+  //
+  //   M4 FINISH, +3. The `agent-tenancy-postgres` job — the fourth gate-darkness
+  //   instance. ONE for the new `setup-node` step it brings (the loop over
+  //   `expectedSetupNodeCounts` derives one control per occurrence, so raising
+  //   ci.yml's count from 5 to 6 raises this table by one), ONE for the step that
+  //   runs the suite walker, and ONE for the root script that step resolves to.
+  //   Deleting either the step or the script is precisely how the three suites it
+  //   runs came to run nowhere, so each is separately falsifiable.
+  //   M4 FINISH, +5. The `non-browser-completion-postgres` job — the FIFTH
+  //   gate-darkness instance. ONE for the new `setup-node` step it brings (raising
+  //   ci.yml's count from 6 to 7 raises this table by one), TWO for its steps — the
+  //   producer and the audit that states the residue — and TWO for the root scripts
+  //   those steps resolve to. Five rather than three because this job runs two
+  //   commands: producing the 18 cells and saying what closing them means are
+  //   different claims, and deleting either is how a number stops being stated.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 = 386. The count is
+  // pinned rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    378,
+    386,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
@@ -4985,6 +5140,70 @@ function owningPackageName(absoluteFile) {
   throw new Error(`no package.json owns ${absoluteFile}`);
 }
 
+/**
+ * The manifest OBJECT of the package a filter selects, found by name.
+ *
+ * WIN-268 (M4.2) stage 2. `owningPackageName` walks UP from a file to a name; this
+ * walks DOWN from the roots to the manifest carrying that name, because the case
+ * below needs the package's own `test` script and only has the name. It is a
+ * search rather than a path derivation on purpose: a package name and its
+ * directory are not the same string — `@platos/context-tools` lives at
+ * `packages/contexts/tools` — so deriving one from the other would be a rule that
+ * happens to hold for most of them.
+ */
+function manifestOfPackage(packageName) {
+  const found = [];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === "dist" || entry.name.startsWith(".")) continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (entry.name !== "package.json") continue;
+      try {
+        const manifest = JSON.parse(readFileSync(full, "utf8"));
+        if (manifest.name === packageName) found.push(manifest);
+      } catch {
+        // an unparseable manifest is another gate's problem
+      }
+    }
+  };
+  for (const root of V1_INTEGRATION_ROOTS) walk(path.join(repositoryRoot, root));
+  if (found.length !== 1) {
+    throw new Error(`expected exactly one manifest named ${packageName}, found ${String(found.length)}`);
+  }
+  return found[0];
+}
+
+/**
+ * Does any `--filter` in this run select `packageName`?
+ *
+ * WIN-268 (M4.2) stage 2. IT HAS TO UNDERSTAND GLOBS, and that is the whole reason
+ * this helper exists rather than a `run.includes()`. `pnpm test:v1-packages` selects
+ * every context and adapter with `--filter "@platos/context-*" --filter
+ * "@platos/adapter-*"` — a pattern, and quoted — so a substring test for
+ * `--filter @platos/context-tools` answers NO about a job that really does run the
+ * package. Measured: the first version of the case below reported "no CI job runs
+ * @platos/context-tools at all" against a workflow that runs its whole suite.
+ *
+ * Only `*` is honoured, because that is the only wildcard pnpm's own filter syntax
+ * uses in this workflow; everything else is escaped, so a pattern this function does
+ * not understand fails CLOSED rather than matching by accident.
+ */
+function filterSelects(run, packageName) {
+  for (const match of run.matchAll(/--filter\s+(?:"([^"]+)"|'([^']+)'|(\S+))/gu)) {
+    const pattern = match[1] ?? match[2] ?? match[3] ?? "";
+    const expression = new RegExp(
+      `^${pattern.replaceAll(/[.*+?^${}()|[\]\\]/gu, (character) => (character === "*" ? "[^\\s]*" : `\\${character}`))}$`,
+      "u"
+    );
+    if (expression.test(packageName)) return true;
+  }
+  return false;
+}
+
 /** Every run value in the workflow, with `pnpm <script>` expanded to a fixpoint. */
 function expandedWorkflowRuns() {
   const violations = [];
@@ -5029,17 +5248,98 @@ test("every V1 integration suite is selected by a CI job", () => {
 
   const runs = expandedWorkflowRuns();
   for (const [packageName, files] of byPackage) {
-    const selected = runs.some(
+    // WIN-268 (M4.2) stage 2 — THE PREMISE IS NOW READ RATHER THAN ASSUMED, and
+    // that closed a real blind spot in this case.
+    //
+    // The message below used to say, of every package: "That package's own `test`
+    // script excludes **/*.integration.test.ts, so these run NOWHERE." That is
+    // true of `apps/core-api` and of the four `packages/adapters/redis-*` and
+    // `postgres-tenancy` directories — every package this case had ever seen — and
+    // it is NOT a property of being a V1 package. `@platos/context-tools`'s `test`
+    // script is a bare `vitest run`, so `pnpm test:v1-packages` in the typecheck
+    // job ALREADY runs its integration suite, and demanding a second, dedicated
+    // step would have added a duplicate CI run to satisfy a sentence that was
+    // false about that package.
+    //
+    // So the requirement is now derived from the package's OWN manifest: a `test`
+    // script that excludes the suffix must be paired with a run that selects the
+    // package AND names `integration`; one that does not exclude it need only be
+    // selected by SOME run. Both branches are still a join between the FILESYSTEM
+    // walk and a parse of `ci.yml`, and neither can be satisfied by editing this
+    // file.
+    const ownTest = manifestOfPackage(packageName).scripts?.test ?? "";
+    const excludesIntegration = /\*\*\/\*\.integration\.test\.ts/u.test(ownTest);
+    const selectsPackage = runs.some((run) => filterSelects(run, packageName));
+    const selectsIntegration = runs.some(
       (run) => run.includes(`--filter ${packageName}`) && /\bintegration\b/u.test(run)
     );
+
+    if (excludesIntegration) {
+      assert.ok(
+        selectsIntegration,
+        `no CI job selects the integration suites of ${packageName}:\n  ${files.join("\n  ")}\n` +
+          `That package's own \`test\` script EXCLUDES **/*.integration.test.ts, so these run ` +
+          `NOWHERE. Add a step running \`pnpm --filter ${packageName} exec vitest run integration\` ` +
+          `to a job that can serve whatever these suites need.`
+      );
+      continue;
+    }
     assert.ok(
-      selected,
-      `no CI job selects the integration suites of ${packageName}:\n  ${files.join("\n  ")}\n` +
-        `That package's own \`test\` script excludes **/*.integration.test.ts, so these run ` +
-        `NOWHERE. Add a step running \`pnpm --filter ${packageName} exec vitest run integration\` ` +
-        `to a job with a Docker daemon.`
+      selectsPackage,
+      `no CI job runs ${packageName} at all, and it holds integration suites:\n  ${files.join("\n  ")}\n` +
+        `Its own \`test\` script does NOT exclude **/*.integration.test.ts, so a job that ` +
+        `selects the package runs them — but no job selects it.`
     );
   }
+});
+
+test("the glob-aware filter selector is not a permissive hole", () => {
+  // THE CONTROL FOR `filterSelects`. Teaching the selector about `*` widened what
+  // counts as "a job runs this package", and a matcher widened in the permissive
+  // direction would answer YES for everything — which would make the case above
+  // pass on any workflow at all, the failure mode its own non-vacuity assertion
+  // exists to catch one level up.
+  const workspaceWide = 'turbo run test --filter @platos/kernel --filter "@platos/context-*" --filter "@platos/adapter-*"';
+  assert.equal(filterSelects(workspaceWide, "@platos/context-tools"), true);
+  assert.equal(filterSelects(workspaceWide, "@platos/adapter-redis-cache"), true);
+  assert.equal(filterSelects(workspaceWide, "@platos/kernel"), true);
+  // A package NEITHER pattern names. `apps/*` is outside both globs and is named
+  // explicitly by `test:v1-packages`, so a selector that matched it here would be
+  // matching on nothing.
+  assert.equal(filterSelects('turbo run test --filter "@platos/adapter-*"', "@platos/core-api"), false);
+  assert.equal(filterSelects('turbo run test --filter "@platos/adapter-*"', "@platos/context-tools"), false);
+  // THE STAR MUST NOT CROSS WHITESPACE, or one `--filter` could swallow the rest
+  // of the command line and select every package there is.
+  assert.equal(filterSelects('--filter "@platos/*" --filter other', "@platos/context-tools"), true);
+  assert.equal(filterSelects('--filter "@other/*"', "@platos/context-tools"), false);
+  // AND EVERY OTHER REGEX METACHARACTER IS A LITERAL. A `.` that matched any
+  // character would make `@platos/context-tools` selectable by a pattern naming a
+  // different package.
+  assert.equal(filterSelects("--filter @platos/context-tools", "@platosXcontext-tools"), false);
+  assert.equal(filterSelects("--filter platos-agent", "@platos/context-tools"), false);
+  // A run with no filter at all selects nothing.
+  assert.equal(filterSelects("pnpm build:v1", "@platos/context-tools"), false);
+});
+
+test("the integration-suite premise is read from each manifest, and both branches are populated", () => {
+  // WITHOUT THIS CASE THE BRANCH ABOVE COULD COLLAPSE. If every package happened
+  // to fall on one side, the other arm would be dead code that nobody notices
+  // going wrong — which is how the old single-branch version came to carry a
+  // sentence that was false about a package it had never seen.
+  const suites = V1_INTEGRATION_ROOTS.flatMap((root) => integrationSuitesUnder(root));
+  const owners = [...new Set(suites.map((suite) => owningPackageName(suite)))];
+  const excluding = [];
+  const including = [];
+  for (const packageName of owners) {
+    const ownTest = manifestOfPackage(packageName).scripts?.test ?? "";
+    (/\*\*\/\*\.integration\.test\.ts/u.test(ownTest) ? excluding : including).push(packageName);
+  }
+  assert.ok(excluding.length > 0, `no V1 package excludes the suffix; the first branch is dead: ${owners.join(", ")}`);
+  assert.ok(including.length > 0, `no V1 package includes the suffix; the second branch is dead: ${owners.join(", ")}`);
+  // AND `@platos/context-tools` IS THE PACKAGE THAT MADE THE SECOND BRANCH REAL,
+  // named so a refactor that gave it an excluding `test` script has to move this
+  // line rather than silently taking the other path.
+  assert.ok(including.includes("@platos/context-tools"), including.join(", "));
 });
 
 test("the integration-suite selector fails when a job stops naming a package", () => {
@@ -5059,5 +5359,202 @@ test("the integration-suite selector fails when a job stops naming a package", (
   assert.ok(
     !/test:redis-ratelimit:integration/u.test(withoutRedisStep),
     "removing that line must remove the only reference to the limiter's integration script"
+  );
+});
+
+// ---------------------------------------------------------------------------
+// M4 FINISH — THE FOURTH GATE-DARKNESS INSTANCE, AND THE CENSUS THAT KEEPS IT
+// FROM BEING A FIFTH.
+//
+// `permission-gateway-forged-scope`, `macros-replay-postgres` and
+// `end-users-tenancy-postgres` were real-PostgreSQL tenancy proofs named by
+// NOTHING in `.github/workflows/ci.yml`. So was
+// `registry-incoherent-pair-postgres`. The enumeration above could not see any of
+// them: its roots are the V1 packages plus `apps/core-api` and `apps/mcp-stdio`,
+// and `apps/agent` is none of those.
+//
+// The case below closes that hole in the only way that survives the next suite
+// somebody writes. It walks `apps/agent/src` for `*.integration.test.ts` and
+// partitions the result into three, none of which is a list this file wrote:
+//
+//   GATED BY THE WALKER — `discoverSuites()` imported from
+//   `scripts/agent-tenancy-postgres-integration.mjs`, which is the SAME function
+//   the CI job runs, so the two cannot disagree about what the job covers.
+//
+//   GATED BY THE EVIDENCE RUNNER — `SUITE_CONTRACT` imported from
+//   `tests/postgres-memory-evidence/verify-artifacts.mjs`, which is what
+//   `postgres-memory-evidence` executes.
+//
+//   UNGATED — everything left, which must equal `UNGATED_AGENT_INTEGRATION_SUITES`
+//   EXACTLY. That map is the honest part: seven suites under `apps/agent/src` are
+//   executed by no CI job today, this tranche did not wire them, and each entry
+//   says why. A new suite added anywhere under `apps/agent/src` lands in neither
+//   gated set and is not in that map, so it turns THIS gate red until somebody
+//   either wires it or writes down why not. Darkness becomes a decision instead
+//   of an accident.
+// ---------------------------------------------------------------------------
+
+const AGENT_INTEGRATION_ROOT = "apps/agent/src";
+
+/**
+ * The three suites this tranche found dark and wired. Named here so a later
+ * change to the walker's roots that dropped one turns this case red rather than
+ * silently reopening the hole it was written to close.
+ */
+const NEWLY_GATED_AGENT_SUITES = [
+  "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
+  "apps/agent/src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts",
+  "apps/agent/src/mcp-platform/tools/macros-replay-postgres.integration.test.ts",
+];
+
+/**
+ * MEASURED, not intended: every `*.integration.test.ts` under `apps/agent/src`
+ * that no CI job executes, with the reason each was left alone.
+ *
+ * Wiring these is not free — three need services this repository does not stand
+ * up in CI today, and two are driven by evidence runners whose CONTRACT tests run
+ * while the runners themselves do not. Recording them is what makes the next
+ * tranche's decision informed instead of archaeological.
+ */
+const UNGATED_AGENT_INTEGRATION_SUITES = new Map([
+  [
+    "apps/agent/src/agent-runtime/direct-provider-runtime.integration.test.ts",
+    "needs live provider credentials, which CI does not hold",
+  ],
+  [
+    "apps/agent/src/agent-runtime/postman-execution-postgres.integration.test.ts",
+    "real-PostgreSQL, outside the two roots the new job walks; unmeasured runtime",
+  ],
+  [
+    "apps/agent/src/memory/conversation-postgres.integration.test.ts",
+    "real-PostgreSQL memory suite absent from SUITE_CONTRACT, so postgres-memory-evidence does not run it",
+  ],
+  [
+    "apps/agent/src/memory/memory-feedback-postgres.integration.test.ts",
+    "real-PostgreSQL memory suite absent from SUITE_CONTRACT, so postgres-memory-evidence does not run it",
+  ],
+  [
+    "apps/agent/src/monitoring/model-pricing-bootstrap-postgres.integration.test.ts",
+    "real-PostgreSQL, outside the two roots the new job walks; unmeasured runtime",
+  ],
+  [
+    "apps/agent/src/performance-evidence/performance-evidence.prisma.integration.test.ts",
+    "driven by the persisted-state performance runner; CI runs only its -contract sibling",
+  ],
+]);
+
+function agentIntegrationSuites() {
+  const found = [];
+  const walk = (directory) => {
+    let entries;
+    try {
+      entries = readdirSync(directory, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const full = path.join(directory, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(AGENT_TENANCY_SUITE_SUFFIX)) {
+        found.push(path.relative(repositoryRoot, full));
+      }
+    }
+  };
+  walk(path.join(repositoryRoot, AGENT_INTEGRATION_ROOT));
+  return found.sort();
+}
+
+test("the agent tenancy job's walker covers the suites that were dark, read from the walker itself", () => {
+  const gated = discoverAgentTenancySuites();
+  // NON-VACUITY: the walk has to find something, or every claim below is empty.
+  assert.ok(gated.length > 0, "the agent tenancy walker found no suite at all");
+  for (const root of AGENT_TENANCY_SUITE_ROOTS) {
+    assert.ok(
+      root.startsWith(`${AGENT_INTEGRATION_ROOT}/`),
+      `${root} is not under ${AGENT_INTEGRATION_ROOT}; the census below cannot see it`
+    );
+  }
+  for (const suite of NEWLY_GATED_AGENT_SUITES) {
+    assert.ok(
+      gated.includes(suite),
+      `${suite} ran in NO CI job before this job existed and must still be covered by it`
+    );
+  }
+});
+
+test("every apps/agent integration suite is gated or recorded as ungated, with a reason", async () => {
+  const { SUITE_CONTRACT } = await import("../tests/postgres-memory-evidence/verify-artifacts.mjs");
+  const gatedByWalker = new Set(discoverAgentTenancySuites());
+  const gatedByEvidenceRunner = new Set(
+    SUITE_CONTRACT.map((contract) => path.posix.join("apps/agent", contract.file))
+  );
+  assert.ok(gatedByEvidenceRunner.size > 0, "SUITE_CONTRACT is empty; the import is wrong");
+
+  // M4 finish — THE THIRD GATE, and the suite it covers used to be RECORDED AS
+  // UNGATED with the reason "CI runs only its :contract sibling". That reason was
+  // true and stopped being true when `non-browser-completion-postgres` landed, so
+  // the row is gone and the gate is derived instead.
+  //
+  // READ OUT OF THE EVIDENCE CONTRACT, never restated here. `contract.suite` is the
+  // path `run-non-browser-evidence.mjs` validates the vitest report against by
+  // name, so this set and the runner cannot disagree about which file the job runs.
+  // That the JOB still exists and still runs both of its commands is a separate
+  // rule — `policyViolations` asserts it, with a mutation control per command —
+  // which is the same two-independent-rules shape the walker's gate has.
+  const { contractPath: nonBrowserContractPath } = await import(
+    "../tests/persisted-state-gate/verify-non-browser-evidence.mjs"
+  );
+  const nonBrowserContract = JSON.parse(readFileSync(nonBrowserContractPath, "utf8"));
+  assert.match(
+    nonBrowserContract.suite ?? "",
+    /^apps\/agent\/src\/.+\.integration\.test\.ts$/u,
+    "the non-browser evidence contract no longer names an apps/agent integration suite"
+  );
+  const gatedByNonBrowserEvidence = new Set([nonBrowserContract.suite]);
+
+  const all = agentIntegrationSuites();
+  assert.ok(all.length > 0, `no ${AGENT_TENANCY_SUITE_SUFFIX} found under ${AGENT_INTEGRATION_ROOT}`);
+  const ungated = all.filter(
+    (suite) =>
+      !gatedByWalker.has(suite) &&
+      !gatedByEvidenceRunner.has(suite) &&
+      !gatedByNonBrowserEvidence.has(suite)
+  );
+
+  assert.deepEqual(
+    ungated,
+    [...UNGATED_AGENT_INTEGRATION_SUITES.keys()].sort(),
+    "an apps/agent integration suite is executed by no CI job and is not recorded as ungated. " +
+      "Either add it to a job — putting it under one of " +
+      `${AGENT_TENANCY_SUITE_ROOTS.join(" or ")} is enough, the job walks those — or add it to ` +
+      "UNGATED_AGENT_INTEGRATION_SUITES with the reason it cannot run."
+  );
+  for (const [suite, reason] of UNGATED_AGENT_INTEGRATION_SUITES) {
+    assert.ok(all.includes(suite), `${suite} is recorded as ungated but no longer exists`);
+    assert.ok(reason.length > 20, `${suite} needs a real reason, not a placeholder`);
+  }
+});
+
+test("the agent census fails when a suite is neither gated nor recorded", () => {
+  // THE NEGATIVE CONTROL. The case above compares a filesystem walk to two
+  // imported gate definitions and one committed map; if the partition were wrong
+  // in the permissive direction it would pass on any tree. This asks the same
+  // question of a tree with one extra suite in a directory no job walks, and
+  // requires the answer to change.
+  const invented = "apps/agent/src/nowhere/invented-suite.integration.test.ts";
+  const gated = new Set(discoverAgentTenancySuites());
+  assert.ok(!gated.has(invented), "the control file must not be one the walker covers");
+  assert.ok(
+    !UNGATED_AGENT_INTEGRATION_SUITES.has(invented),
+    "the control file must not be recorded as ungated"
+  );
+  const ungatedWithControl = [...agentIntegrationSuites(), invented]
+    .filter((suite) => !gated.has(suite))
+    .sort();
+  assert.notDeepEqual(
+    ungatedWithControl,
+    [...UNGATED_AGENT_INTEGRATION_SUITES.keys()].sort(),
+    "adding an unreachable suite must break the census"
   );
 });

@@ -134,6 +134,7 @@ export async function runProcess(io: MainIo): Promise<number> {
     // has decided to die, and `main()` calls `process.exit` — so the sockets go
     // when the kernel reaps them rather than when this code says so.
     await construction.release();
+    await assembly.release();
     return EXIT_FAULT;
   }
 
@@ -156,6 +157,13 @@ export async function runProcess(io: MainIo): Promise<number> {
   // out. This call is what makes `PostgresTenancyAdapter.close`'s own comment —
   // "the composition root owns this adapter's lifetime" — a true sentence.
   await construction.release();
+  // WIN-268 (M4.2) stage 2. AND the assembly's own, which owns something the
+  // adapter table does not: the MCP session pool behind `tools`' `ToolDispatch`.
+  // It holds live sockets to third-party servers between calls, and a process that
+  // released its database pool and left those open would exit on the kernel
+  // reaping them rather than when this code says so — the same sentence the line
+  // above makes true for PostgreSQL.
+  await assembly.release();
   return code;
 }
 

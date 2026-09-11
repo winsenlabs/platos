@@ -26,14 +26,19 @@ import {
   canonicalTerminals,
   CONTRACT_ADR,
   declaredFamilies,
+  declaredSseTurnEvents,
   emissionsIn,
   INVENTORY_PATH,
   RULES,
   SCANNED_ROOTS,
   scanEmissions,
+  SSE_EVENT_CHANNEL_DIR,
+  sseEventChannelNames,
+  SSE_TURN_EVENT_COUNT,
   SV_LITERAL_ROOTS,
   TERMINAL_TYPES_WITHOUT_A_PRODUCER,
   vocabularyFamilies,
+  vocabularySseTurnEvents,
   vocabularyTerminals,
   VOCABULARY_MODULE,
 } from "./stream-contracts.mjs";
@@ -92,7 +97,7 @@ test("the live tree passes, and the gate reads a NONZERO vocabulary", () => {
   assert.ok(socketEvents.length >= 10, `only ${String(socketEvents.length)} socket event name(s)`);
   assert.ok(frameTypes.length >= 4, `only ${String(frameTypes.length)} frame type(s)`);
   assert.equal(result.families.length, 5);
-  assert.equal(RULES.length, 5);
+  assert.equal(RULES.length, 6);
 });
 
 test("both lanes are represented, so neither half of the surface is invisible", () => {
@@ -346,6 +351,156 @@ test("the committed inventory carries no family list", () => {
 // ---------------------------------------------------------------------------
 // The scan's own judgements
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// S6 — the nine SSE turn event names, and the one spelling
+// ---------------------------------------------------------------------------
+//
+// THE DIVERGENCE THIS RULE CLOSED. The ADR wrote `stream_offline` and the kernel
+// wrote `stream.offline`, and nothing pinned either, so both could have lived
+// forever. The tie was settled by COUNTING: `stream_offline` occurred once in the
+// repository — in the ADR cell — with no producer, no consumer, no test and no SDK,
+// while `stream.offline` occurred fifteen times including `classifyStreamEnd`'s own
+// branch. Changing the shipped name is the breaking change, so the document moved
+// and D9 records it. These cases are what stops the pair coming back.
+
+test("the ADR's nine SSE event names and SSE_TURN_EVENTS are the same set", () => {
+  const adr = declaredSseTurnEvents(repositoryRoot);
+  const module = vocabularySseTurnEvents(repositoryRoot);
+  assert.equal(adr.length, SSE_TURN_EVENT_COUNT);
+  assert.deepEqual([...adr].sort(), [...(module ?? [])].sort());
+  // NAMED, not counted, so a rename landed in BOTH places at once — which the set
+  // comparison cannot see — fails here. This is the list a reader can check against
+  // the ADR cell by eye.
+  assert.deepEqual([...adr].sort(), [
+    "assistant.delta",
+    "message_persisted",
+    "meta",
+    "reasoning.delta",
+    "stream.offline",
+    "stream_meta",
+    "tool_call.result",
+    "tool_call.start",
+    "turn.done",
+  ]);
+  // AND THE SPELLING THAT LOST IS GONE FROM THE ROW. A cell that reverted to the
+  // underscore would still parse to nine names and still match a kernel that
+  // reverted with it, so the losing spelling is refused by name — in the ROW, which
+  // is where the contract is stated. §7's D9 correction names it on purpose, and
+  // that record is the reason a later reader does not re-litigate the choice.
+  const adrSource = readFileSync(join(repositoryRoot, CONTRACT_ADR), "utf8");
+  const sseRow = adrSource.split("\n").find((line) => line.startsWith("| **SSE**"));
+  assert.ok(sseRow !== undefined);
+  assert.ok(!sseRow.includes("stream_offline"), sseRow);
+  assert.ok(!sseRow.includes("replayCursor"), sseRow);
+  assert.ok(adrSource.includes("D9 \u2014 CORRECTED (M4 finish)"), "the correction record is missing");
+});
+
+test("S6 fails when the ADR renames an SSE event the kernel still declares", () => {
+  const root = realTreeCopy();
+  edit(root, CONTRACT_ADR, (source) => source.replace("`assistant.delta`", "`assistant_delta`"));
+  const problems = problemsFor(root);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("S6") && problem.includes("assistant.delta")),
+    problems.join("\n"),
+  );
+});
+
+test("S6 fails when the ADR's cell gains a TENTH name", () => {
+  const root = realTreeCopy();
+  edit(root, CONTRACT_ADR, (source) =>
+    source.replace("`message_persisted`", "`message_persisted` + `message_recalled`"),
+  );
+  const problems = problemsFor(root);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("S6") && problem.includes("10 event(s)")),
+    problems.join("\n"),
+  );
+});
+
+test("S6 fails when the kernel declares a name the ADR does not", () => {
+  const root = realTreeCopy();
+  edit(root, VOCABULARY_MODULE, (source) =>
+    source.replace('  "message_persisted",\n', '  "message_persisted",\n  "message.recalled",\n'),
+  );
+  const problems = problemsFor(root);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("S6") && problem.includes("message.recalled")),
+    problems.join("\n"),
+  );
+});
+
+test("S6 fails when a PRODUCER emits an sse.turn frame type nothing accepted", () => {
+  const root = realTreeCopy();
+  // A frame type, on the canonical lane, that is neither one of the nine nor a
+  // declared terminal. The inventory row is added too, so S4 stays silent and the
+  // failure is S6's alone.
+  edit(root, "apps/core-api/src/transports/ws/sse.ts", (source) =>
+    `${source}\nexport const INVENTED = { t: "turn.paused" };\n`,
+  );
+  edit(root, INVENTORY_PATH, (source) => {
+    const inventory = JSON.parse(source);
+    inventory.rows.push({
+      lane: "core-api",
+      kind: "frame-type",
+      name: "turn.paused",
+      family: "sse.turn",
+      sites: ["apps/core-api/src/transports/ws/sse.ts:0"],
+    });
+    return `${JSON.stringify(inventory, null, 2)}\n`;
+  });
+  const problems = problemsFor(root);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("S6") && problem.includes("turn.paused")),
+    problems.join("\n"),
+  );
+});
+
+test("S6 reaches the SSE `event:` channel, which no other rule can see", () => {
+  // `encodeStreamMeta` writes its name into a template literal, so `scanEmissions`
+  // — which looks for `.emit(` and `t:` — never sees it. Before this rule the one
+  // name the canonical lane puts on SSE's own channel was outside every check.
+  const channels = sseEventChannelNames(repositoryRoot);
+  assert.deepEqual(
+    channels.map((channel) => channel.name),
+    ["stream_meta"],
+  );
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/ws/sse.ts", (source) =>
+    source.replace("`event: stream_meta\\ndata:", "`event: stream_header\\ndata:"),
+  );
+  const problems = problemsFor(root);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("S6") && problem.includes("stream_header")),
+    problems.join("\n"),
+  );
+});
+
+test("S6 refuses a channel scan that finds NOTHING rather than calling it clean", () => {
+  const root = realTreeCopy();
+  edit(root, "apps/core-api/src/transports/ws/sse.ts", (source) =>
+    source.replace("`event: stream_meta\\ndata:", "`data:"),
+  );
+  const problems = problemsFor(root);
+  assert.ok(
+    problems.some((problem) => problem.startsWith("S6") && problem.includes("stopped looking")),
+    problems.join("\n"),
+  );
+});
+
+test("S6 does NOT fire on the MCP lane's own `event:` names, which are a different vocabulary", () => {
+  // `apps/agent`'s MCP controllers write `event: endpoint`, `event: message` and
+  // `event: hello` — JSON-RPC over SSE, not the turn stream. Holding them to the
+  // turn lane's nine names would report a violation that is not one, so the scan is
+  // scoped to the directory that IS the turn lane.
+  const mcpNames = readFileSync(
+    join(repositoryRoot, "apps/agent/src/mcp-platform/mcp-entity.controller.ts"),
+    "utf8",
+  );
+  assert.ok(mcpNames.includes("event: endpoint"), "the fixture assumes the MCP lane writes event: lines");
+  assert.ok(SSE_EVENT_CHANNEL_DIR.startsWith("apps/core-api/src/transports/ws"));
+  assert.deepEqual(problemsFor(repositoryRoot), []);
+});
 
 test("a `type` OUTSIDE an emit is not a frame, and a `t` anywhere is", () => {
   // THE ONE JUDGEMENT IN THE SCAN, asserted rather than described. `type` is one

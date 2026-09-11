@@ -317,26 +317,21 @@ export class McpToolAclService {
     return toolIds.length;
   }
 
-  async autoInsert(
-    entityPk: string,
-    environmentId: string,
-    toolId: string,
-    _toolName: string,
-  ): Promise<void> {
-    await this.prisma.entityToolPolicy.upsert({
-      where: { environmentId_entityId_toolId: { environmentId, entityId: entityPk, toolId } },
-      create: {
-        environmentId,
-        entityId: entityPk,
-        toolId,
-        effect: PolicyEffect.DENY,
-        minIdentityMode: "bearer",
-        scopeLabels: [DEFAULT_SCOPE],
-        addedBy: "system",
-      },
-      update: {},
-    });
-  }
+  /*
+   * `autoInsert` IS GONE. WIN-268 (M4.2).
+   *
+   * It upserted a default-DENY `EntityToolPolicy` row and NOTHING CALLED IT — no
+   * route, no MCP tool, no other service in either deployable. The register
+   * counted it as a movable ORM site on the strength of
+   * `ToolsContract.setEntityToolPolicy`; what it actually was is a delete rather
+   * than a move, and saying so is the difference between the two.
+   *
+   * The default-deny it existed to write is not lost and never depended on it:
+   * `listEntityToolPolicies` COMPLETES its listing with `synthesizeDenial`, so an
+   * exposure with no row reads as not-exposed without a row having to exist. That
+   * is the invariant `domain/entity-policy.ts` states, and it holds whether
+   * anything wrote a stub or not.
+   */
 
   private async syncAllowlist(entityPk: string): Promise<void> {
     const names = await this.getExposedToolNames(entityPk);

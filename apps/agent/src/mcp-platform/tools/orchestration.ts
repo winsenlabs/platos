@@ -207,13 +207,37 @@ export function buildOrchestrationToolHandlers(deps: OrchestrationDeps): McpTool
         const callbackUrl = effectiveMcpUrls[0] ?? "/mcp";
         for (const toolName of initialTools) {
           try {
-            // Upsert the central tool definition first. SECURITY (audit H15) —
-            // scope by (org, project, name): PlatosToolDefinition is now
-            // per-tenant (was globally unique by name). An unscoped lookup here
-            // would attach this provision's mapping to whatever tenant already
-            // owns that name, and post-migration `findUnique({name})` throws
-            // (name is no longer a unique key) — silently swallowed into
-            // toolWarnings, so stubs would stop being created.
+            // Upsert the central tool definition first. THE TOOL DEFINITION IS
+            // A GLOBAL CATALOGUE, AND THE ABSENCE OF A TENANT CLAUSE HERE IS
+            // CORRECT.
+            //
+            // The comment that stood here until M4 finish claimed the opposite —
+            // "SECURITY (audit H15) — scope by (org, project, name):
+            // PlatosToolDefinition is now per-tenant" — and sent every reader
+            // hunting a cross-tenant defect that is not in this tree. `model
+            // Tool` carries NO tenant column at all (`id, name, description,
+            // kind, paramSchema, category, schemaHash, createdAt, updatedAt`)
+            // and exactly one business key, `@@unique([name, schemaHash])`, so
+            // an `(organizationId, projectId, name)` lookup is not expressible
+            // against it — never mind required. Read back from a database built
+            // by the canonical migrations rather than from `schema.prisma`, and
+            // asserted by `tool-gateway/registry-incoherent-pair-postgres.
+            // integration.test.ts`, so the day a tenant column DOES appear this
+            // claim goes red instead of going stale.
+            //
+            // TENANCY LIVES ON THE MAPPING, one statement below.
+            // `EnvironmentEntityTool` is keyed `(environmentId, entityId,
+            // toolId)`, and its `EnvironmentEntityTool_ancestry` trigger refuses
+            // any row whose entity and environment sit under different projects.
+            // Two tenants that provision the same tool name therefore SHARE this
+            // catalogue row and expose nothing to each other: what a tenant can
+            // see is the mapping it owns, and a stub definition holds no tenant
+            // data — a name, a placeholder description and an open param schema.
+            //
+            // `findFirst` RATHER THAN `findUnique` IS ALSO STILL RIGHT, for the
+            // half of the old comment that was true: `name` alone is not a key,
+            // so `findUnique({ name })` does not typecheck. The pair below IS
+            // the unique one, so at most one row can match it.
             const existing = await prisma.tool.findFirst({
               where: {
                 name: toolName,

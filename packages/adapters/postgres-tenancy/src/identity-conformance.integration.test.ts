@@ -17,7 +17,10 @@
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 
-import { inMemoryIdentityAccessRepository } from "@platos/context-identity-access/application/index.js";
+import {
+  fixedClock,
+  inMemoryIdentityAccessRepository,
+} from "@platos/context-identity-access/application/index.js";
 import type {
   EmailAddress,
   EndUserId,
@@ -136,7 +139,7 @@ describe("the shared identity-access conformance scenario", () => {
 
     // --- the fake, given the SAME identifiers and the same seeded rows -------
     const fakeIds: IdentityConformanceIds = { ...ids, clientId: realIds.clientId };
-    const fake = inMemoryIdentityAccessRepository();
+    const fake = inMemoryIdentityAccessRepository(fixedClock());
     const fakeObserved = await runIdentityConformance({
       repository: fake,
       ids: fakeIds,
@@ -256,7 +259,7 @@ describe("the double is measured, not trusted", () => {
     // The single most important case in this package. `TokenHash` is a branded
     // STRING, so `"session-token-1"` type-checks and satisfies every unit test
     // in the tree — and `OperatorSession_tokenHash_check` refuses it.
-    const fake: IdentityAccessRepository = inMemoryIdentityAccessRepository();
+    const fake: IdentityAccessRepository = inMemoryIdentityAccessRepository(fixedClock());
     const userId = asIdentifier<UserId>(await harness.seedUser("placeholder@example.test"));
     const session = {
       sessionId: asIdentifier<OperatorSessionId>(harness.freshId("0111")),
@@ -278,7 +281,7 @@ describe("the double is measured, not trusted", () => {
   }, 120_000);
 
   test("an un-normalised address is accepted by the fake and refused by the store", async () => {
-    const fake: IdentityAccessRepository = inMemoryIdentityAccessRepository();
+    const fake: IdentityAccessRepository = inMemoryIdentityAccessRepository(fixedClock());
     const address = asIdentifier<EmailAddress>("Mixed@Example.Test");
     const newId = asIdentifier<UserId>(harness.freshId("0112"));
     await expect(fake.users.upsertByEmail(address, newId)).resolves.toBeDefined();

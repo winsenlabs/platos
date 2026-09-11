@@ -30,12 +30,28 @@
     ],
     "forksWithoutOneHandler": [
       {
+        "id": "DELETE /mcp/entity/:entityId/tokens/:tokenId",
+        "reason": "mid-migration: the entity revocation, for the reason given for the platform revocation above; it moved on the same tranche and has the same two-implementation shape."
+      },
+      {
+        "id": "GET /mcp/entity/:entityId/tokens",
+        "reason": "mid-migration: the entity credential listing, for the reason given for the platform listing above; it moved on the same tranche and has the same two-implementation shape."
+      },
+      {
+        "id": "GET /mcp/platform/tokens",
+        "reason": "mid-migration: the platform credential listing, now also served by apps/core-api on the V1 chassis over IdentityAccessContract.listBearerCredentials. Two independent classes, one wire path; it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn."
+      },
+      {
         "id": "POST /mcp/entity/:entityId/tokens",
         "reason": "mid-migration, for the reason given for the platform mint above; the entity mint moved on the same tranche and has the same two-implementation shape."
       },
       {
         "id": "POST /mcp/platform/tokens",
         "reason": "mid-migration: apps/agent has served this mint since before V1 and apps/core-api now serves it on the V1 chassis, because that is the process the Idempotency-Key gate runs in. Two independent classes, one wire path — not an alias, and it cannot satisfy §4.1 fan-in until the legacy handler is withdrawn."
+      },
+      {
+        "id": "POST /mcp/platform/tokens/:id/revoke",
+        "reason": "mid-migration: the platform revocation, now also served by apps/core-api over IdentityAccessContract.revokeBearerCredential. The V1 handler distinguishes never-existed from already-revoked from expired, which the legacy boolean cannot — so the two are not interchangeable and this is a migration rather than an alias."
       }
     ]
   },
@@ -7502,6 +7518,23 @@
         ]
       },
       {
+        "id": "POST /api/v1/agent/agents/:agentId/chat/stream",
+        "method": "POST",
+        "path": "/api/v1/agent/agents/:agentId/chat/stream",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "ChatStreamController",
+            "handler": "chatStream",
+            "source": "apps/agent/src/agent-runtime/chat-stream.controller.ts",
+            "requiresOperator": false
+          }
+        ]
+      },
+      {
         "id": "GET /api/v1/agent/agents/:agentId/evals/aggregate",
         "method": "GET",
         "path": "/api/v1/agent/agents/:agentId/evals/aggregate",
@@ -12005,6 +12038,12 @@
             "handler": "listBearerTokens",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
             "requiresOperator": true
+          },
+          {
+            "controller": "McpEntityTokensController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12044,6 +12083,12 @@
             "controller": "McpEntityController",
             "handler": "revokeBearerToken",
             "source": "apps/agent/src/mcp-platform/mcp-entity.controller.ts",
+            "requiresOperator": true
+          },
+          {
+            "controller": "McpEntityTokensController",
+            "handler": "revoke",
+            "source": "apps/core-api/src/transports/mcp/entity-tokens.controller.ts",
             "requiresOperator": true
           }
         ]
@@ -12151,6 +12196,57 @@
         ]
       },
       {
+        "id": "GET /mcp/platform/environments/:environmentId/policies",
+        "method": "GET",
+        "path": "/mcp/platform/environments/:environmentId/policies",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "McpOrganizationPoliciesController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "PUT /mcp/platform/environments/:environmentId/policies",
+        "method": "PUT",
+        "path": "/mcp/platform/environments/:environmentId/policies",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "McpOrganizationPoliciesController",
+            "handler": "set",
+            "source": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
+        "id": "DELETE /mcp/platform/environments/:environmentId/policies/:policyId",
+        "method": "DELETE",
+        "path": "/mcp/platform/environments/:environmentId/policies/:policyId",
+        "classification": "REST_ONLY",
+        "policyRule": "explicit-default-rest-only",
+        "mcpTools": [],
+        "mappingRationale": null,
+        "implementations": [
+          {
+            "controller": "McpOrganizationPoliciesController",
+            "handler": "remove",
+            "source": "apps/core-api/src/transports/mcp/organization-policies.controller.ts",
+            "requiresOperator": true
+          }
+        ]
+      },
+      {
         "id": "GET /mcp/platform/events/subscribe",
         "method": "GET",
         "path": "/mcp/platform/events/subscribe",
@@ -12215,6 +12311,12 @@
             "handler": "listTokens",
             "source": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
             "requiresOperator": true
+          },
+          {
+            "controller": "McpPlatformTokensController",
+            "handler": "list",
+            "source": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
+            "requiresOperator": true
           }
         ]
       },
@@ -12254,6 +12356,12 @@
             "controller": "McpPlatformController",
             "handler": "revokeToken",
             "source": "apps/agent/src/mcp-platform/mcp-platform.controller.ts",
+            "requiresOperator": true
+          },
+          {
+            "controller": "McpPlatformTokensController",
+            "handler": "revoke",
+            "source": "apps/core-api/src/transports/mcp/platform-tokens.controller.ts",
             "requiresOperator": true
           }
         ]
@@ -12557,33 +12665,33 @@
       "MAPPED": 82,
       "MCP_ONLY": 120
     },
-    "restOperations": 309,
-    "restRouteBindings": 311,
-    "ambiguousRestOperations": 2,
-    "crossDeployableRestOperations": 2,
+    "restOperations": 313,
+    "restRouteBindings": 319,
+    "ambiguousRestOperations": 6,
+    "crossDeployableRestOperations": 6,
     "restClassifications": {
       "DEPRECATED": 15,
       "INTERNAL": 14,
       "MAPPED": 82,
       "PUBLIC_TRANSPORT": 45,
-      "REST_ONLY": 153
+      "REST_ONLY": 157
     },
     "restScanRoots": [
       {
         "id": "agent",
         "dir": "apps/agent/src",
         "strict": false,
-        "registeredControllers": 27,
-        "operations": 300,
-        "routeBindings": 300
+        "registeredControllers": 28,
+        "operations": 301,
+        "routeBindings": 301
       },
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
         "strict": true,
-        "registeredControllers": 8,
-        "operations": 11,
-        "routeBindings": 11
+        "registeredControllers": 9,
+        "operations": 18,
+        "routeBindings": 18
       }
     ]
   }

@@ -29,7 +29,10 @@ import {
   issueSessionCookie,
   rotateSessionCookie,
   scopeKindOf,
+  credentialStateAt,
+  tenantAuthorizationScope,
   type AuthorizationScope,
+  type BearerCredentialSummary,
   type BearerAuthorization,
   type EndUserWithIdentities,
   type OperatorAuthorization,
@@ -41,10 +44,15 @@ import type {
   AuthenticateBearerRequest,
   AuthenticateOperatorRequest,
   AuthorizationScopeView,
+  BearerCredentialPageView,
+  BearerCredentialView,
   EndUserPageView,
   IdentityAccessContract,
   IssueSessionCookieRequest,
+  ListBearerCredentialsRequest,
   ListEndUsersRequest,
+  RevokeBearerCredentialCommand,
+  RevokedBearerCredentialView,
   RevokedOperatorSessionView,
   RevokeOperatorSessionRequest,
   RotateSessionCookieRequest,
@@ -58,6 +66,8 @@ import type {
 } from "../contracts/index.js";
 import { authenticateBearerToken } from "./authenticate-bearer-token.js";
 import { listEndUsers, type EndUserPage } from "./list-end-users.js";
+import { listBearerCredentials, type BearerCredentialPage } from "./list-bearer-credentials.js";
+import { revokeBearerCredential } from "./revoke-bearer-credential.js";
 import {
   mintBearerCredential,
   type MintBearerCredentialCommand,
@@ -180,6 +190,50 @@ function endUserView(row: EndUserWithIdentities) {
 }
 
 /** Project a page, keeping the total and the window the use case computed. */
+/**
+ * Project one credential for a listing — and the `state` is COMPUTED here.
+ *
+ * `credentialStateAt` is the one lifecycle rule in this context, and asking it
+ * rather than publishing the two columns for a consumer to compare is what stops
+ * a dashboard re-deciding whether a revocation beats an expiry. It gets the same
+ * clock every other read in this call used.
+ *
+ * THE DIGEST CANNOT BE COPIED IN BY MISTAKE: `BearerCredentialSummary` has no
+ * `tokenHash` field, so there is nothing here to omit.
+ */
+function bearerCredentialView(
+  credential: BearerCredentialSummary,
+  now: Date,
+): BearerCredentialView {
+  return {
+    credentialId: credential.credentialId,
+    kind: credential.kind,
+    label: credential.label,
+    permissions: credential.permissions,
+    principalId: credential.principalId,
+    permissionTier: credential.permissionTier,
+    state: credentialStateAt(credential, now),
+    createdAt: credential.createdAt,
+    expiresAt: credential.expiresAt,
+    lastUsedAt: credential.lastUsedAt,
+    revokedAt: credential.revokedAt,
+    revokedBy: credential.revokedBy,
+  };
+}
+
+function bearerCredentialPageView(
+  page: BearerCredentialPage,
+  now: Date,
+): BearerCredentialPageView {
+  return {
+    credentials: page.credentials.map((credential) => bearerCredentialView(credential, now)),
+    total: page.total,
+    limit: page.limit,
+    offset: page.offset,
+    hasMore: page.hasMore,
+  };
+}
+
 function endUserPageView(page: EndUserPage): EndUserPageView {
   return {
     users: page.users.map(endUserView),
@@ -323,6 +377,45 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
       command: MintBearerCredentialCommand,
     ): Promise<Result<MintedBearerCredentialView>> {
       return mintBearerCredential(ports, command);
+    },
+
+    /**
+     * WIN-268 (M4.2). The SCOPE IS WIDENED FROM A `TenantScope` HERE, once.
+     *
+     * The contract publishes a `TenantScope` because that is what a transport
+     * holds after `authorizeEnvironment`; the domain works in
+     * `AuthorizationScope`, whose kind it can check. `tenantAuthorizationScope`
+     * is the one conversion, and it is the same one `mintBearerCredential`'s use
+     * case applies — so a listing, a mint and a revocation cannot disagree about
+     * what environment a caller named.
+     */
+    async listBearerCredentials(
+      request: ListBearerCredentialsRequest,
+    ): Promise<Result<BearerCredentialPageView>> {
+      const page = await listBearerCredentials(ports, {
+        kind: request.kind,
+        scope: tenantAuthorizationScope(request.scope),
+        subjectId: request.subjectId ?? null,
+        limit: request.limit ?? null,
+        offset: request.offset ?? null,
+      });
+      return page.ok ? ok(bearerCredentialPageView(page.value, ports.clock.now())) : page;
+    },
+
+    async revokeBearerCredential(
+      command: RevokeBearerCredentialCommand,
+    ): Promise<Result<RevokedBearerCredentialView>> {
+      // PASSED THROUGH UNTOUCHED, and for the reason `mintBearerCredential`'s
+      // note gives: the use case already returns a view rather than a record —
+      // `RevokedBearerCredential` holds no store row and no digest — so
+      // re-shaping it here would be a second declaration of one projection.
+      return revokeBearerCredential(ports, {
+        kind: command.kind,
+        credentialId: command.credentialId,
+        scope: tenantAuthorizationScope(command.scope),
+        subjectId: command.subjectId ?? null,
+        revokedByUserId: command.revokedByUserId ?? null,
+      });
     },
   };
 }

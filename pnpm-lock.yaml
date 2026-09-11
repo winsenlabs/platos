@@ -1413,6 +1413,9 @@ importers:
 
   packages/contexts/tools:
     dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: 1.26.0
+        version: 1.26.0(zod@3.25.76)
       '@platos/context-identity-access':
         specifier: workspace:*
         version: link:../identity-access
@@ -1428,6 +1431,9 @@ importers:
       '@platos/kernel':
         specifier: workspace:*
         version: link:../../kernel
+      zod:
+        specifier: 3.25.76
+        version: 3.25.76
 
   packages/core:
     dependencies:

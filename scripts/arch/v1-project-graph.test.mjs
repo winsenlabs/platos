@@ -129,6 +129,23 @@ test("exactly SIX projects may hold an external dependency, and they are named",
   // byte-identical to the other two and to `apps/agent`'s — so unlike
   // `channel-slack` above, this adoption adds NO resolution: the lockfile gained
   // seven lines and pointed at `ioredis@5.10.1`, which was already in it.
+  // SEVEN -> EIGHT (WIN-268, M4.2 stage 2). `packages/contexts/tools` is the FIRST
+  // AND ONLY CONTEXT on this table, and it is here because ADR M0.3 §5.1 rule (h)
+  // put it here rather than as an exception to §4's layout: `mcp-sdk-only-in-tools`
+  // homes `@modelcontextprotocol/*` in `^packages/contexts/tools/(adapters|transport)/`
+  // and in no `packages/adapters/` directory at all, so `ToolDispatch` — an MCP
+  // client — has nowhere else it is permitted to live. Every other row on this table
+  // is an adapter directory because every other contained SDK is homed in one.
+  //
+  // IT IS ALSO THE ONE ROW WHOSE SPECIFIER IS AN EXACT PIN, and that is the same
+  // argument `channel-slack`'s paragraph above makes, reached from the other end.
+  // The standing rule is byte-identity with `apps/agent`'s specifier so that an
+  // extraction cannot become a supply-chain change; `apps/agent` writes `^1.26.0`
+  // and is HELD at 1.26.0 by the lockfile it is already in, while a NEW importer of
+  // that same range is resolved fresh and recorded 1.30.0 — measured, on the first
+  // install of this row. So the pin is what PRESERVES the property byte-identity
+  // exists for, and `zod` beside it pins the SDK's peer for the same reason: without
+  // it the resolution went to `1.30.0(zod@4.4.3)`, a peer set nothing else here uses.
   assert.deepEqual(Object.keys(EXPECTED_EXTERNAL_DEPENDENCIES).sort(), [
     "apps/core-api",
     "packages/adapters/channel-slack",
@@ -137,6 +154,7 @@ test("exactly SIX projects may hold an external dependency, and they are named",
     "packages/adapters/redis-cache",
     "packages/adapters/redis-ratelimit",
     "packages/adapters/redis-streams",
+    "packages/contexts/tools",
   ]);
 });
 

@@ -2027,7 +2027,22 @@ test("an element-access member that is not a delegate is still not a write", () 
 // cannot mint, because the four tables carry required columns an update path has
 // no values for; `mint` carries them. The violation list stays empty and it is
 // again the COUNT that moved. 316 + 2 = 318.
-const LIVE_TREE_WRITE_COUNT = 318;
+//
+// WIN-268 (M4.2) THE TOKEN LIFECYCLE 318 -> 320. TWO writes, both in
+// `packages/adapters/postgres-tenancy/src/identity-bearer-lifecycle.ts` and both
+// inside `identity-access`'s canonical store directory:
+//
+//   `mcpToken.updateMany`          the platform revocation
+//   `mcpBearerToken.updateMany`    the entity revocation
+//
+// TWO AND NOT FOUR, which is the reading worth recording: the LISTING half of the
+// same file adds `findMany` and `count` on each table and NEITHER is a write, so a
+// tranche that served four routes moved this count by two. Both revocations are
+// `updateMany` rather than `update` because the predicate is `revokedAt IS NULL` as
+// well as the id — that is what makes a second revoke a no-op instead of a rewrite
+// of the first one's instant, and `update` cannot express it. The violation list
+// stays empty and it is again the COUNT that moved. 318 + 2 = 320.
+const LIVE_TREE_WRITE_COUNT = 320;
 
 test("the live tree's writes are exactly the postgres-tenancy adapter's, on tenancy's rows", () => {
   const result = check();

@@ -247,15 +247,24 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // THE ARITHMETIC. Five controllers under `apps/core-api/src/transports` carry
   // EIGHT route decorators, none of them multi-mounted, so 8 decorators x 1 base
   // path = 8 expanded operations, and the committed manifest attributes 8 to that
-  // root. The agent root is untouched at 300. 300 + 8 = 308, which is the
+  // root. The agent root was untouched at 300. 300 + 8 = 308, which was the
   // manifest's own `summary.restOperations`.
+  //
+  // M4 FINISH: the AGENT root moves 300 -> 301, and it is the first time it has.
+  // `ChatStreamController` adds `POST /api/v1/agent/agents/:agentId/chat/stream`,
+  // the POST twin of the GET on that path, so a user message stops travelling in
+  // the upstream REQUEST LINE — where a validated 20,000 characters could not fit
+  // under Node's 16 KiB header limit. ADR M0.4 §1.3 calls adding a route
+  // additive-in-major and narrowing a validation a major, which is why the fix is
+  // this shape. BOTH enumerators moved to 301 on their own: the generator's AST
+  // walk and this file's independent glob.
   const roots = scanRootReport();
   const r = reconcileScanRoots(roots, processEdgeReport(), manifestCensus(), independentCensus(roots));
   assert.equal(r.ok, true, r.failures.join("\n"));
   const agent = r.table.find((t) => t.id === "agent");
   const core = r.table.find((t) => t.id === "core-api-transports");
-  assert.equal(agent.manifestOperations, 300);
-  assert.equal(agent.expandedOperations, 300);
+  assert.equal(agent.manifestOperations, 301);
+  assert.equal(agent.expandedOperations, 301);
   assert.equal(core.present, true, "the declared core-api transport root must exist on disk");
   // WIN-268 (M4.2) P1 5 -> 7 controllers and 8 -> 10 decorators: the two MCP
   // one-time-secret token mints, `POST /mcp/platform/tokens` and
@@ -267,20 +276,56 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // controller under `transports/ws/`. Both enumerators moved to the same numbers
   // on their own again — the generator's AST walk and this file's independent
   // glob — which is the whole reason two mechanisms exist.
-  assert.equal(core.sourceControllers, 8);
-  assert.equal(core.sourceDecorators, 11);
-  assert.equal(core.expandedOperations, 11);
-  assert.equal(core.manifestOperations, 11);
-  // 300 + 11 = 311 BINDINGS, and the manifest's `summary.restOperations` is 309
+  //
+  // WIN-268 (M4.2) 8 -> 9 controllers and 11 -> 14 decorators: the tier-2 MCP
+  // policy surface — `GET`, `PUT` and `DELETE` under
+  // `/mcp/platform/environments/:environmentId/policies` — in
+  // `transports/mcp/organization-policies.controller.ts`. THREE decorators on ONE
+  // controller, which is the first entry here that is not one route per class, and
+  // the arithmetic below is the reason it is worth saying: a reader who assumed
+  // the two counts move together would have expected 12.
+  //
+  // IT IS ALSO THE FIRST ENTRY THAT DOES NOT WIDEN `crossRootBindings`. The two
+  // mints are served by BOTH deployables and are therefore counted twice; these
+  // three are served by this one only, because the three legacy methods they
+  // replace answered no route at all. That is what makes the surplus stay at 2
+  // while both sides grow.
+  //
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE: 9 -> 9 controllers and 14 -> 18 decorators.
+  // FOUR new decorators and NOT ONE new controller, which is the opposite shape from
+  // the entry above and is the arithmetic worth stating: the four MCP token lifecycle
+  // routes land in the two mint controllers that already existed, because the
+  // entity/environment pair check is the same check for a listing and a revocation as
+  // for a mint and a second controller would have had to spell it again. A reader who
+  // assumed a new route means a new class would have expected 13.
+  //
+  // AND IT IS THE FIRST ENTRY THAT DOES WIDEN `crossRootBindings`, from 2 to 6. All
+  // four are served by `apps/agent` TOO — they always were, which is why they sat in
+  // the generated manifest with an implementation and no V1 handler — so each is
+  // counted under both roots, exactly as the two mints are. That is the difference
+  // from the policy surface above, whose three legacy methods answered no route at
+  // all.
+  assert.equal(core.sourceControllers, 9);
+  assert.equal(core.sourceDecorators, 18);
+  assert.equal(core.expandedOperations, 18);
+  assert.equal(core.manifestOperations, 18);
+  // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
   // it reconciles to, which is what keeps the per-root sum an equality rather
   // than an approximation. The stream route adds to BOTH sides — it is served by
-  // one deployable only, so it is not a third shared operation.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 311);
+  // one deployable only, so it is not a third shared operation, and neither are
+  // the three policy routes.
+  //
+  // WIN-268 (M4.2) THE TOKEN LIFECYCLE: 315 -> 319 bindings and the surplus 2 -> 6,
+  // so the UNIQUE total is unmoved at 313. That is the whole point of writing the
+  // identity with a surplus term rather than as a tolerance: four routes gained a
+  // second implementation and NO new operation entered the surface, and the two
+  // enumerations still reconcile exactly. 319 - 6 = 313.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 319);
   const totals = manifestCensus();
-  assert.equal(totals.crossRootBindings, 2);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 309);
+  assert.equal(totals.crossRootBindings, 6);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 313);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

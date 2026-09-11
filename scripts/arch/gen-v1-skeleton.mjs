@@ -1423,6 +1423,97 @@ export const TESTING_ENTRY_PROJECTS = [
 // Every entry must be an adopted project: an unadopted one's `application/`
 // tree is generated placeholders, so `selfCheck` fails on it.
 
+// ---------------------------------------------------------------------------
+// CONTEXTS THAT PUBLISH THEIR OWN `adapters/` BARREL (WIN-268 M4.2 stage 2).
+// Append-only, one project path per entry, each with the issue that needed it.
+//
+// A THIRD LIST RATHER THAN A THIRD USE OF EITHER ABOVE, and the reason is the
+// same reason there are two: each publishes a different subpath to a different
+// reader, and the check that keeps each true is a different check.
+// `APPLICATION_ENTRY_PROJECTS` publishes the factory that BUILDS a context;
+// `TESTING_ENTRY_PROJECTS` publishes the in-memory doubles a canonical-store
+// adapter is measured against. This one publishes `adapters/index.js` — an
+// implementation of a port THIS CONTEXT OWNS, which ADR M0.3 §5.1 rule (h)
+// forbids from living in `packages/adapters/` at all.
+//
+// WHY A CONTEXT MAY HOLD AN ADAPTER, WHICH LOOKS LIKE A CONTRADICTION AND IS
+// NOT. §5.1 rule (h) pins each vendor SDK to ONE directory, and for
+// `@modelcontextprotocol/*` that directory is
+// `packages/contexts/tools/(adapters|transport)/` — see `SDK_CONTAINMENT`'s
+// `mcp-sdk-only-in-tools` in `scripts/arch/boundary-rules.mjs`, whose `home` is
+// exactly that. A `packages/adapters/mcp-dispatch` directory would violate the
+// containment rule the ADR wrote for this SDK, so `ToolDispatch` cannot be a
+// `packages/adapters/*` directory and cannot be a row of `ADAPTER_BINDINGS`. It
+// is `root-satisfied` — built in `apps/core-api` from the factory its own
+// context publishes — which is the shape `GOVERNANCE_ROOT_SATISFIED_PORTS`
+// already established for `Judge`.
+//
+// THE HONESTY CHECK IS A JOIN TO `SDK_CONTAINMENT`, NOT A CLAIM HERE.
+// `selfCheck` requires, in BOTH directions, that a context on this list is
+// named as the home of a containment rule and that every containment rule
+// homed in a context's `adapters/` has an entry. So the list cannot grant a
+// context an adapter barrel that no ADR rule sends there, and cannot omit one
+// the ADR does send there. That is the same shape as the reverse check
+// `selfCheck` already runs over `SDK_CONTAINMENT` and `ADAPTERS`.
+// ---------------------------------------------------------------------------
+export const ADAPTER_ENTRY_PROJECTS = [
+  // WIN-268 (M4.2) — `ToolDispatch` and `ContentDigest`, the two driven ports
+  // standing between this tree and a composed `tools`. The MCP client half
+  // holds `@modelcontextprotocol/sdk`, which rule (h) homes here and nowhere
+  // else; the digest half shares the directory because it shares the barrel the
+  // composition root imports.
+  "packages/contexts/tools",
+];
+
+/**
+ * The external runtime dependencies a CONTEXT'S OWN `adapters/` directory needs.
+ *
+ * The twin of `ADAPTER_RUNTIME_DEPENDENCIES` below, keyed on a context project
+ * instead of a `packages/adapters/` directory, and it exists because that table
+ * has no row shape for a context that holds an adapter. The reason a package
+ * manifest's dependency is declared in the generator at all is unchanged:
+ * adoption releases a project's SOURCE tree and never its `package.json`, so the
+ * generator that owns the file is the only honest place to add a dependency.
+ *
+ * The specifier is byte-identical to `apps/agent`'s so pnpm resolves it to the
+ * entry already in `pnpm-lock.yaml` rather than opening a second resolution — a
+ * second copy of an SDK in the lockfile would be a supply-chain change disguised
+ * as an extraction, which is the same sentence `ADAPTER_RUNTIME_DEPENDENCIES`
+ * makes about the inference framework.
+ */
+const CONTEXT_RUNTIME_DEPENDENCIES = {
+  // WIN-268 (M4.2). `@modelcontextprotocol/sdk` appears HERE and in
+  // `apps/agent`'s manifest and nowhere else, and `mcp-sdk-only-in-tools` names
+  // this context's `adapters/` as its only import site inside the V1 tree.
+  "packages/contexts/tools": {
+    // AN EXACT PIN AND NOT `^1.26.0`, WHICH IS WHAT `apps/agent` WRITES, AND THE
+    // DIFFERENCE WAS MEASURED RATHER THAN PREFERRED. The paragraph above asks for
+    // a specifier that "resolves to the entries already in pnpm-lock.yaml instead
+    // of opening a new resolution"; `apps/agent`'s CARET is pinned to 1.26.0 by
+    // the lockfile it is already in, but a NEW importer of the same range is
+    // resolved fresh against the registry, and the first install of that row
+    // recorded `1.30.0(zod@3.25.76)` — a second SDK snapshot beside the 1.26.0 one
+    // the tree has always held. The exact pin keeps the STATED PROPERTY, which is
+    // the shared resolution, rather than the spelling that happened to express it.
+    "@modelcontextprotocol/sdk": "1.26.0",
+    // `zod` IS HERE TO PIN THE SDK'S PEER, and it is not optional. The SDK
+    // declares `zod` as a peer dependency, so the resolution pnpm records is
+    // keyed on the peer as well as the range: `1.26.0(zod@3.25.76)` is what
+    // `apps/agent` already holds, and a package that declared the SDK alone
+    // resolved to `1.30.0(zod@4.4.3)` — a SECOND copy of the SDK in the
+    // lockfile against a zod nothing else in this repository uses, which is
+    // exactly the supply-chain change the paragraph above forbids. Measured,
+    // not assumed: the first `pnpm install` of this row without it moved 52
+    // lockfile lines and dragged four unrelated transitive versions with it.
+    //
+    // NOTHING IMPORTS IT. `zod` is absent from `BANNED_CORE_IMPORT_SOURCES`, so
+    // the ban is not the reason no file names it; the reason is that the port
+    // this directory implements is spelled in kernel and domain types and needs
+    // no schema library. It is a resolution constraint and nothing else.
+    zod: "3.25.76",
+  },
+};
+
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
 // ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
@@ -1581,11 +1672,22 @@ function contextManifest(
   adopted,
   applicationEntries = APPLICATION_ENTRY_PROJECTS,
   testingEntries = TESTING_ENTRY_PROJECTS,
+  adapterEntries = ADAPTER_ENTRY_PROJECTS,
 ) {
-  const dependencies = workspaceDependencies([
-    "@platos/kernel",
-    ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
-  ]);
+  const dependencies = {
+    ...workspaceDependencies([
+      "@platos/kernel",
+      ...CONTEXT_DEPENDS_ON[name].map((dependency) => `@platos/context-${dependency}`),
+    ]),
+    // WIN-268 (M4.2). A context's external runtime dependencies come LAST so the
+    // workspace edges keep the order `v1-project-graph.mjs` counts them in, and
+    // they appear only for a context that publishes an `adapters/` barrel — an
+    // SDK declared on a context with no adapter directory would be a dependency
+    // `no-infra-in-core` forbids every file of that package from importing.
+    ...(adapterEntries.includes(`packages/contexts/${name}`)
+      ? (CONTEXT_RUNTIME_DEPENDENCIES[`packages/contexts/${name}`] ?? {})
+      : {}),
+  };
   const exports = {
     ".": { types: "./dist/contracts/index.d.ts", import: "./dist/contracts/index.js" },
     "./application/ports/index.js": {
@@ -1603,6 +1705,15 @@ function contextManifest(
     exports["./application/testing/index.js"] = {
       types: "./dist/application/testing/index.d.ts",
       import: "./dist/application/testing/index.js",
+    };
+  }
+  // WIN-268 (M4.2). LAST, so the two subpaths already published keep their
+  // positions in every manifest that has one — a reordered `exports` map is a
+  // diff on ten packages that changed nothing about any of them.
+  if (adapterEntries.includes(`packages/contexts/${name}`)) {
+    exports["./adapters/index.js"] = {
+      types: "./dist/adapters/index.d.ts",
+      import: "./dist/adapters/index.js",
     };
   }
   return packageManifest({
@@ -2042,6 +2153,7 @@ export function renderSkeleton(
   adopted,
   applicationEntries = APPLICATION_ENTRY_PROJECTS,
   testingEntries = TESTING_ENTRY_PROJECTS,
+  adapterEntries = ADAPTER_ENTRY_PROJECTS,
 ) {
   const files = new Map();
   const references = projectReferences();
@@ -2082,8 +2194,19 @@ export function renderSkeleton(
     const Type = pascal(name);
     const adapterPorts = contextAdapterPorts(name);
 
-    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries, testingEntries));
-    put(`${base}/tsconfig.json`, projectTsconfig(base, ["domain/**/*.ts", "application/**/*.ts", "contracts/**/*.ts"], references.get(base), "."));
+    put(`${base}/package.json`, contextManifest(name, adopted, applicationEntries, testingEntries, adapterEntries));
+    // WIN-268 (M4.2). `adapters/**/*.ts` is APPENDED for a context on
+    // `ADAPTER_ENTRY_PROJECTS`, so the barrel the manifest publishes is a file
+    // `tsc -b` actually emits. A published subpath pointing at a `dist/` path no
+    // `include` produces is the dead-surface failure WIN-297 named, one layer
+    // down: the export map resolves, the file is absent, and the composition
+    // root fails at run time instead of at build time.
+    put(`${base}/tsconfig.json`, projectTsconfig(base, [
+      "domain/**/*.ts",
+      "application/**/*.ts",
+      "contracts/**/*.ts",
+      ...(adapterEntries.includes(base) ? ["adapters/**/*.ts"] : []),
+    ], references.get(base), "."));
     put(
       `${base}/README.md`,
       `# @platos/context-${name}\n\nADR M0.3 bounded context. Layers: \`domain/\`, \`application/\`,\n\`application/ports/\`, \`contracts/\`. Other contexts may import \`contracts/\` and\nnothing else (\`cross-context-contracts-only\`).\n\nMay depend on: ${dependencies.length ? dependencies.join(", ") : "nothing (leaf)"}.\n\nGenerated by \`scripts/arch/gen-v1-skeleton.mjs\`; M2 fills it in.\n`
@@ -2294,6 +2417,7 @@ export function selfCheck(
   adopted = ADOPTED_PROJECTS,
   applicationEntries = APPLICATION_ENTRY_PROJECTS,
   testingEntries = TESTING_ENTRY_PROJECTS,
+  adapterEntries = ADAPTER_ENTRY_PROJECTS,
 ) {
   const errors = [];
   const adapterDirectories = new Set(ADAPTERS.map((adapter) => adapter.dir));
@@ -2367,10 +2491,72 @@ export function selfCheck(
     seenTestingEntries.add(project);
   }
 
+  // WIN-268 (M4.2). THE `adapters/` BARREL, judged with the same three rules and
+  // ONE MORE THAT IS A JOIN RATHER THAN A CLAIM.
+  //
+  // A context may publish an adapter barrel only if ADR M0.3 §5.1 rule (h)
+  // actually homes a vendor SDK there — otherwise the right home for the
+  // implementation is `packages/adapters/`, where every other adapter in this
+  // tree lives, and this list would be a loophole around rule (j). The check
+  // runs in BOTH directions off `SDK_CONTAINMENT` in
+  // `scripts/arch/boundary-rules.mjs`, which is a different file derived from a
+  // different section of the ADR: an entry with no containment rule fails, and a
+  // containment rule homed in a context's `adapters/` with no entry fails too.
+  // The second half is the one that will catch a future tranche — it is the shape
+  // that would otherwise ship an SDK the ADR sent to a directory whose barrel the
+  // composition root cannot import.
+  const contextSdkHomes = new Set();
+  for (const sdk of SDK_CONTAINMENT) {
+    const match = /\^packages\/contexts\/([^/]+)\/\(?[a-z|]*adapters/u.exec(sdk.home);
+    if (match) contextSdkHomes.add(`packages/contexts/${match[1]}`);
+  }
+  const seenAdapterEntries = new Set();
+  for (const project of adapterEntries) {
+    if (!project.startsWith("packages/contexts/")) {
+      errors.push(`ADAPTER_ENTRY_PROJECTS names ${project}, which is not a context`);
+    } else if (!knownProjects.has(project)) {
+      errors.push(`ADAPTER_ENTRY_PROJECTS names ${project}, which is not a V1 project`);
+    }
+    if (!seenAdoptions.has(project)) {
+      errors.push(`ADAPTER_ENTRY_PROJECTS names ${project}, which is not adopted`);
+    }
+    if (seenAdapterEntries.has(project)) {
+      errors.push(`ADAPTER_ENTRY_PROJECTS names ${project} more than once`);
+    }
+    if (!contextSdkHomes.has(project)) {
+      errors.push(
+        `ADAPTER_ENTRY_PROJECTS names ${project}, which no SDK_CONTAINMENT rule homes an SDK in; an adapter with no contained SDK belongs under packages/adapters/`,
+      );
+    }
+    seenAdapterEntries.add(project);
+  }
+  // THE REVERSE DIRECTION IS JUDGED OVER THE LIVE CONSTANT AND NOT OVER THE
+  // ARGUMENT, deliberately, and the reason is the same one the FIRST loop above
+  // this file has: `selfCheck`'s registry parameters exist so a case can exercise
+  // one registry in isolation, and a rule that read the ARGUMENT here would report
+  // "SDK_CONTAINMENT has an unpublished home" in every case that passes an empty
+  // list — which is every negative case about the other three registries. That is
+  // a true sentence about a registry the case is not describing, which is exactly
+  // the mistake the `selfCheck([], [], [], [])` comment in the suite records.
+  //
+  // So this half is a join between TWO MODULE CONSTANTS IN TWO FILES:
+  // `SDK_CONTAINMENT` in `scripts/arch/boundary-rules.mjs`, which is ADR M0.3
+  // §5.1 rule (h) as data, and `ADAPTER_ENTRY_PROJECTS` above. It is the same
+  // shape and the same pairing as the `SDK_CONTAINMENT` vs `ADAPTERS` loop at the
+  // head of this function, and it fails the day a containment rule sends an SDK to
+  // a context whose barrel nothing publishes.
+  for (const home of contextSdkHomes) {
+    if (!ADAPTER_ENTRY_PROJECTS.includes(home)) {
+      errors.push(
+        `SDK_CONTAINMENT homes an SDK in ${home}/adapters/, which ADAPTER_ENTRY_PROJECTS does not publish, so apps/core-api cannot import the barrel that holds it`,
+      );
+    }
+  }
+
   // The two tiers must still account for the whole skeleton. Scaffolding is
   // invariant; placeholders shrink by exactly what adoption released.
   const { scaffolding, placeholders } = tierCounts(
-    renderSkeleton(adopted, applicationEntries, testingEntries),
+    renderSkeleton(adopted, applicationEntries, testingEntries, adapterEntries),
   );
   if (scaffolding !== EXPECTED_SCAFFOLDING_FILE_COUNT) {
     errors.push(`scaffolding file count is ${scaffolding}, expected ${EXPECTED_SCAFFOLDING_FILE_COUNT}`);

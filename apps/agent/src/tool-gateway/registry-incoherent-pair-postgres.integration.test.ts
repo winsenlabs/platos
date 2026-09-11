@@ -202,6 +202,80 @@ describeWithDatabase("the (entity, environment) pair against real PostgreSQL", (
     }
   });
 
+  // M4 finish — THE CLAIM A STALE COMMENT GOT BACKWARDS, JOINED TO THE DATABASE.
+  //
+  // `mcp-platform/tools/orchestration.ts` looked up its stub definition with
+  // `prisma.tool.findFirst({ where: { name, schemaHash } })` under a comment that
+  // read "SECURITY (audit H15) — scope by (org, project, name):
+  // PlatosToolDefinition is now per-tenant". The code has no tenant clause, so a
+  // reader could only conclude they had found a cross-tenant defect. They had
+  // not: the COMMENT was wrong, and the corrected one asserts a shape. A comment
+  // that asserts a shape needs a case, or it goes stale the same way — so the
+  // shape is read out of the migrated schema and out of PostgreSQL's own refusal,
+  // neither of which this file gets to choose.
+  it("holds `Tool` as a GLOBAL catalogue: no tenant column, one business key", async () => {
+    const columns = await admin.query(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = $1 AND table_name = 'Tool' ORDER BY ordinal_position`,
+      [schemaName],
+    );
+    const names: string[] = columns.rows.map((row: { column_name: string }) => row.column_name);
+    // NOT A COUNT. A count would agree with the wrong set of columns; these are
+    // the four names a per-tenant definition would have to carry, and the point
+    // is that an `(org, project, name)` lookup is NOT EXPRESSIBLE here.
+    expect(names).toEqual(
+      expect.arrayContaining(["id", "name", "schemaHash", "paramSchema", "kind"]),
+    );
+    for (const tenantColumn of ["organizationId", "projectId", "environmentId", "entityId"]) {
+      expect(names).not.toContain(tenantColumn);
+    }
+
+    // ONE unique business key, and it is the pair `findFirst` searches on. Read
+    // from `pg_indexes` rather than from `schema.prisma` for the reason this whole
+    // suite exists: the schema file is not what the database enforces.
+    const indexes = await admin.query(
+      `SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = $1 AND tablename = 'Tool'`,
+      [schemaName],
+    );
+    const uniqueDefinitions: string[] = indexes.rows
+      .filter((row: { indexdef: string }) => row.indexdef.includes("CREATE UNIQUE INDEX"))
+      .map((row: { indexname: string; indexdef: string }) => row.indexname)
+      .sort();
+    expect(uniqueDefinitions).toEqual(["Tool_name_schemaHash_key", "Tool_pkey"]);
+
+    // AND THE BEHAVIOUR THE SHAPE IMPLIES, decided by PostgreSQL. A second row
+    // with the same `(name, schemaHash)` is REFUSED, which is what makes the
+    // unscoped `findFirst` unambiguous — at most one row can ever match it — and
+    // what makes "two tenants share this catalogue row" a fact rather than a
+    // preference.
+    const shared = { name: "shared.catalogue_entry", schemaHash: "stub" };
+    const first = await prisma.tool.create({
+      data: {
+        ...shared,
+        description: "[stub] shared.catalogue_entry",
+        kind: "ENTITY",
+        paramSchema: { type: "object", additionalProperties: true },
+      },
+    });
+    await expect(
+      prisma.tool.create({
+        data: {
+          ...shared,
+          description: "[stub] a second tenant asking for the same name",
+          kind: "ENTITY",
+          paramSchema: { type: "object", additionalProperties: true },
+        },
+      }),
+    ).rejects.toThrow();
+    // The lookup `orchestration.ts` performs, run for real: it finds the ONE row,
+    // whichever tenant is asking.
+    const found = await prisma.tool.findFirst({ where: shared });
+    expect(found?.id).toEqual(first.id);
+    // ...and the row carries no tenant data to leak: the exposure does.
+    const exposures = await prisma.environmentEntityTool.count({ where: { toolId: first.id } });
+    expect(exposures).toEqual(0);
+  });
+
   it("the ancestry rule is a NAMED, ENABLED trigger on the table, not a belief about the schema", async () => {
     // THE ANCHOR FOR EVERY REFUSAL BELOW. `schema.prisma` shows two independent
     // foreign keys and no relation between them; the rule lives in raw SQL that

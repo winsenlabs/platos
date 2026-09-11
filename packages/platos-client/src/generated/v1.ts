@@ -139,6 +139,8 @@ export const WIRE_ERROR_CODES = [
   "CREDENTIAL_MATERIAL_INVALID",
   "CREDENTIAL_MINT_REFUSED",
   "CREDENTIAL_NAME_TAKEN",
+  "CREDENTIAL_NOT_FOUND",
+  "CREDENTIAL_REVOCATION_NOT_APPLIED",
   "CREDENTIAL_REVOKED",
   "CREDENTIAL_SUBJECT_MISMATCH",
   "CREDENTIAL_UNAVAILABLE",
@@ -449,6 +451,7 @@ export const WIRE_ERROR_CODES = [
   "TOOLS_EXPOSURE_NOT_FOUND",
   "TOOLS_MCP_DISABLED",
   "TOOLS_MCP_TRANSPORT_INVALID",
+  "TOOLS_MCP_TRANSPORT_UNIMPLEMENTED",
   "TOOLS_PERMISSION_BLOCKED",
   "TOOLS_POLICY_EFFECT_UNSUPPORTED",
   "TOOLS_POLICY_PATTERN_INVALID",
@@ -472,8 +475,32 @@ export type WireErrorCode = (typeof WIRE_ERROR_CODES)[number];
 /** The header M0.4 section 2 binds one-time-secret mints to. */
 export const IDEMPOTENCY_KEY_HEADER = "idempotency-key";
 
+export interface BearerCredentialResource {
+  readonly "tokenId": string;
+  readonly "label": string;
+  readonly "permissions": readonly string[];
+  readonly "principalId": string;
+  readonly "tier": "scope" | "admin" | null;
+  readonly "state": "active" | "revoked" | "expired";
+  readonly "createdAt": string;
+  readonly "expiresAt": string | null;
+  readonly "lastUsedAt": string | null;
+  readonly "revokedAt": string | null;
+  readonly "revokedBy": string | null;
+}
+
+export interface CollectionEnvelope_BearerCredentialResource {
+  readonly "data": readonly BearerCredentialResource[];
+  readonly "page": PageBlock;
+}
+
 export interface CollectionEnvelope_EndUserResource {
   readonly "data": readonly EndUserResource[];
+  readonly "page": PageBlock;
+}
+
+export interface CollectionEnvelope_OrganizationPolicyResource {
+  readonly "data": readonly OrganizationPolicyResource[];
   readonly "page": PageBlock;
 }
 
@@ -562,8 +589,23 @@ export interface ItemEnvelope_OperatorSessionResource {
   readonly "meta": ItemMeta;
 }
 
+export interface ItemEnvelope_OrganizationPolicyResource {
+  readonly "data": OrganizationPolicyResource;
+  readonly "meta": ItemMeta;
+}
+
 export interface ItemEnvelope_OrganizationResource {
   readonly "data": OrganizationResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_PolicyDeletionResource {
+  readonly "data": PolicyDeletionResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_RevokedTokenResource {
+  readonly "data": RevokedTokenResource;
   readonly "meta": ItemMeta;
 }
 
@@ -612,6 +654,14 @@ export interface OperatorSessionResource {
   readonly "impersonating": OperatorSessionResource_impersonating;
 }
 
+export interface OrganizationPolicyResource {
+  readonly "policyId": string;
+  readonly "pattern": string;
+  readonly "state": string;
+  readonly "createdAt": string;
+  readonly "updatedAt": string;
+}
+
 export interface OrganizationResource_membership {
   readonly "id": string;
   readonly "role": string;
@@ -635,6 +685,11 @@ export interface PageBlock {
   readonly "total"?: number;
 }
 
+export interface PolicyDeletionResource {
+  readonly "policyId": string;
+  readonly "deleted": boolean;
+}
+
 export interface ProjectResource {
   readonly "id": string;
   readonly "organizationId": string;
@@ -643,6 +698,24 @@ export interface ProjectResource {
   readonly "archivedAt": string | null;
   readonly "createdAt": string;
   readonly "through": string;
+}
+
+export interface RevokePlatformTokenBody {
+  readonly "environmentId": string;
+}
+
+export interface RevokedTokenResource {
+  readonly "tokenId": string;
+  readonly "label": string;
+  readonly "revokedAt": string;
+  readonly "newlyRevoked": boolean;
+  readonly "previousState": "active" | "revoked" | "expired";
+  readonly "revokedBy": string | null;
+}
+
+export interface SetOrganizationPolicyBody {
+  readonly "pattern": string;
+  readonly "state": "auto_allow" | "require_approval" | "block";
 }
 
 export interface WireError_fields_item {
@@ -749,6 +822,14 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     idempotency: "accepted",
   },
   {
+    operationId: "get__mcp_entity_by_entityId_tokens",
+    method: "GET",
+    template: "/mcp/entity/:entityId/tokens",
+    pathParameters: ["entityId"],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
     operationId: "post__mcp_entity_by_entityId_tokens",
     method: "POST",
     template: "/mcp/entity/:entityId/tokens",
@@ -757,12 +838,60 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     idempotency: "required",
   },
   {
+    operationId: "delete__mcp_entity_by_entityId_tokens_by_tokenId",
+    method: "DELETE",
+    template: "/mcp/entity/:entityId/tokens/:tokenId",
+    pathParameters: ["entityId", "tokenId"],
+    successStatus: 200,
+    idempotency: "exempt",
+  },
+  {
+    operationId: "get__mcp_platform_environments_by_environmentId_policies",
+    method: "GET",
+    template: "/mcp/platform/environments/:environmentId/policies",
+    pathParameters: ["environmentId"],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
+    operationId: "put__mcp_platform_environments_by_environmentId_policies",
+    method: "PUT",
+    template: "/mcp/platform/environments/:environmentId/policies",
+    pathParameters: ["environmentId"],
+    successStatus: 200,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "delete__mcp_platform_environments_by_environmentId_policies_by_policyId",
+    method: "DELETE",
+    template: "/mcp/platform/environments/:environmentId/policies/:policyId",
+    pathParameters: ["environmentId", "policyId"],
+    successStatus: 200,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "get__mcp_platform_tokens",
+    method: "GET",
+    template: "/mcp/platform/tokens",
+    pathParameters: [],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
     operationId: "post__mcp_platform_tokens",
     method: "POST",
     template: "/mcp/platform/tokens",
     pathParameters: [],
     successStatus: 201,
     idempotency: "required",
+  },
+  {
+    operationId: "post__mcp_platform_tokens_by_id_revoke",
+    method: "POST",
+    template: "/mcp/platform/tokens/:id/revoke",
+    pathParameters: ["id"],
+    successStatus: 200,
+    idempotency: "exempt",
   },
 ];
 
@@ -792,6 +921,25 @@ function operation(operationId: string): V1Operation {
   const found = BY_ID.get(operationId);
   if (found === undefined) throw new Error(`unknown V1 operation ${operationId}`);
   return found;
+}
+
+/**
+ * Drop the parameters a caller left out.
+ *
+ * A typed query object carries `undefined` for an optional parameter nobody
+ * set, and `URLSearchParams` would serialise that as the literal string
+ * `undefined` — `?limit=undefined`, which the server refuses as a malformed
+ * integer. Absent has to mean absent.
+ */
+function compactQuery(
+  query: Readonly<Record<string, string | undefined>> | undefined,
+): Readonly<Record<string, string>> | undefined {
+  if (query === undefined) return undefined;
+  const present: Record<string, string> = {};
+  for (const [name, value] of Object.entries(query)) {
+    if (value !== undefined) present[name] = value;
+  }
+  return present;
 }
 
 /**
@@ -843,14 +991,14 @@ export class EnvironmentEndUsersV1Api {
    * GET /api/v1/environments/:environmentId/end-users
    *
    * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-   * The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. Deriving the real one needs a declared wire-query DTO that the validator consumes; until then this route's query parameters are undocumented, not guessed.
+   * The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to declare its Wire type argument, as the three MCP token routes now do — so this is the one remaining entry and it is a declaration this tranche did not make, in a controller it did not otherwise touch, rather than a missing mechanism.
    */
   async list(environmentId: string, query?: Readonly<Record<string, string>>): Promise<CollectionEnvelope_EndUserResource> {
     return this.transport.send<CollectionEnvelope_EndUserResource>({
       operation: operation("get__api_v1_environments_by_environmentId_end_users"),
       path: fill("/api/v1/environments/:environmentId/end-users", { environmentId }),
       body: undefined,
-      query: query,
+      query: compactQuery(query),
     });
   }
 
@@ -939,6 +1087,16 @@ export class ProjectsV1Api {
 export class McpEntityTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
+  /** GET /mcp/entity/:entityId/tokens */
+  async list(entityId: string, query: { readonly environmentId: string; readonly cursor?: string; readonly limit?: string }): Promise<CollectionEnvelope_BearerCredentialResource> {
+    return this.transport.send<CollectionEnvelope_BearerCredentialResource>({
+      operation: operation("get__mcp_entity_by_entityId_tokens"),
+      path: fill("/mcp/entity/:entityId/tokens", { entityId }),
+      body: undefined,
+      query: compactQuery(query),
+    });
+  }
+
   /** POST /mcp/entity/:entityId/tokens */
   async mint(entityId: string, body: MintEntityTokenBody): Promise<ItemEnvelope_MintedTokenResource> {
     return this.transport.send<ItemEnvelope_MintedTokenResource>({
@@ -949,16 +1107,81 @@ export class McpEntityTokensV1Api {
     });
   }
 
+  /** DELETE /mcp/entity/:entityId/tokens/:tokenId */
+  async revoke(entityId: string, tokenId: string, query: { readonly environmentId: string }): Promise<ItemEnvelope_RevokedTokenResource> {
+    return this.transport.send<ItemEnvelope_RevokedTokenResource>({
+      operation: operation("delete__mcp_entity_by_entityId_tokens_by_tokenId"),
+      path: fill("/mcp/entity/:entityId/tokens/:tokenId", { entityId, tokenId }),
+      body: undefined,
+      query: compactQuery(query),
+    });
+  }
+
+}
+
+export class McpOrganizationPoliciesV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** GET /mcp/platform/environments/:environmentId/policies */
+  async list(environmentId: string): Promise<CollectionEnvelope_OrganizationPolicyResource> {
+    return this.transport.send<CollectionEnvelope_OrganizationPolicyResource>({
+      operation: operation("get__mcp_platform_environments_by_environmentId_policies"),
+      path: fill("/mcp/platform/environments/:environmentId/policies", { environmentId }),
+      body: undefined,
+      query: undefined,
+    });
+  }
+
+  /** PUT /mcp/platform/environments/:environmentId/policies */
+  async set(environmentId: string, body: SetOrganizationPolicyBody): Promise<ItemEnvelope_OrganizationPolicyResource> {
+    return this.transport.send<ItemEnvelope_OrganizationPolicyResource>({
+      operation: operation("put__mcp_platform_environments_by_environmentId_policies"),
+      path: fill("/mcp/platform/environments/:environmentId/policies", { environmentId }),
+      body: body,
+      query: undefined,
+    });
+  }
+
+  /** DELETE /mcp/platform/environments/:environmentId/policies/:policyId */
+  async remove(environmentId: string, policyId: string): Promise<ItemEnvelope_PolicyDeletionResource> {
+    return this.transport.send<ItemEnvelope_PolicyDeletionResource>({
+      operation: operation("delete__mcp_platform_environments_by_environmentId_policies_by_policyId"),
+      path: fill("/mcp/platform/environments/:environmentId/policies/:policyId", { environmentId, policyId }),
+      body: undefined,
+      query: undefined,
+    });
+  }
+
 }
 
 export class McpPlatformTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
+
+  /** GET /mcp/platform/tokens */
+  async list(query: { readonly environmentId: string; readonly cursor?: string; readonly limit?: string }): Promise<CollectionEnvelope_BearerCredentialResource> {
+    return this.transport.send<CollectionEnvelope_BearerCredentialResource>({
+      operation: operation("get__mcp_platform_tokens"),
+      path: "/mcp/platform/tokens",
+      body: undefined,
+      query: compactQuery(query),
+    });
+  }
 
   /** POST /mcp/platform/tokens */
   async mint(body: MintPlatformTokenBody): Promise<ItemEnvelope_MintedTokenResource> {
     return this.transport.send<ItemEnvelope_MintedTokenResource>({
       operation: operation("post__mcp_platform_tokens"),
       path: "/mcp/platform/tokens",
+      body: body,
+      query: undefined,
+    });
+  }
+
+  /** POST /mcp/platform/tokens/:id/revoke */
+  async revoke(id: string, body: RevokePlatformTokenBody): Promise<ItemEnvelope_RevokedTokenResource> {
+    return this.transport.send<ItemEnvelope_RevokedTokenResource>({
+      operation: operation("post__mcp_platform_tokens_by_id_revoke"),
+      path: fill("/mcp/platform/tokens/:id/revoke", { id }),
       body: body,
       query: undefined,
     });
@@ -975,6 +1198,7 @@ export class V1Api {
   readonly organizations: OrganizationsV1Api;
   readonly projects: ProjectsV1Api;
   readonly mcpEntityTokens: McpEntityTokensV1Api;
+  readonly mcpOrganizationPolicies: McpOrganizationPoliciesV1Api;
   readonly mcpPlatformTokens: McpPlatformTokensV1Api;
 
   constructor(transport: V1Transport) {
@@ -985,6 +1209,7 @@ export class V1Api {
     this.organizations = new OrganizationsV1Api(transport);
     this.projects = new ProjectsV1Api(transport);
     this.mcpEntityTokens = new McpEntityTokensV1Api(transport);
+    this.mcpOrganizationPolicies = new McpOrganizationPoliciesV1Api(transport);
     this.mcpPlatformTokens = new McpPlatformTokensV1Api(transport);
   }
 }

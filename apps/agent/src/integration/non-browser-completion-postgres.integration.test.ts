@@ -84,8 +84,25 @@ const noOpRedis = {
   set: vi.fn(async () => "OK"),
 };
 
+/**
+ * A per-INVOCATION salt, so this suite can run twice against one database.
+ *
+ * M4 finish found it the way anybody would: the evidence was produced once against
+ * a native PostgreSQL, and the SECOND run failed with `Unique constraint failed on
+ * the fields: (keyHash)`. The eight `hash("...")` call sites below are deterministic
+ * string literals, and `AccessKey.keyHash` is globally unique, so every access-key
+ * case collided with its own previous run's rows. In CI the suite gets a fresh
+ * service container and never noticed; on a workstation it means "run it again"
+ * fails for a reason that has nothing to do with what it is proving.
+ *
+ * NOTHING THE CONTRACT PINS MOVES. The facts in
+ * `tests/persisted-state-gate/non-browser-evidence-contract.json` are counts,
+ * statuses and error codes; a credential's hash input appears in none of them.
+ */
+const RUN_SALT = `${process.pid}-${Date.now()}-${randomUUID().slice(0, 8)}`;
+
 function hash(value: string) {
-  return createHash("sha256").update(value).digest("hex");
+  return createHash("sha256").update(`${RUN_SALT}:${value}`).digest("hex");
 }
 
 function operatorScope(fixture: ScopeFixture): RequestScope {

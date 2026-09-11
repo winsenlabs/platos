@@ -16,18 +16,18 @@
   ],
   "reconciledAgainst": {
     "source": "docs/audits/M0.9-rest-census-independent.json",
-    "enumeratedRestCells": 309,
-    "enumeratedOperatorCells": 128,
-    "independentUniqueRoutes": 292,
+    "enumeratedRestCells": 313,
+    "enumeratedOperatorCells": 131,
+    "independentUniqueRoutes": 300,
     "dualMountAliasOps": 19,
-    "independentManifestOps": 311,
-    "independentCrossRootBindings": 2,
-    "independentUniqueOperations": 309,
-    "independentCrossRootOperatorBindings": 2,
-    "independentUniqueOperatorOperations": 128,
+    "independentManifestOps": 319,
+    "independentCrossRootBindings": 6,
+    "independentUniqueOperations": 313,
+    "independentCrossRootOperatorBindings": 6,
+    "independentUniqueOperatorOperations": 131,
     "independentOperatorFloor": 103,
-    "independentManifestOperator": 130,
-    "controllers": 35,
+    "independentManifestOperator": 137,
+    "controllers": 37,
     "agrees": true
   },
   "restScanRoots": {
@@ -35,30 +35,30 @@
       {
         "id": "agent",
         "dir": "apps/agent/src",
-        "enumeratedOperations": 300,
-        "independentOperations": 300,
-        "independentSourceControllers": 27,
-        "independentSourceDecorators": 281,
+        "enumeratedOperations": 301,
+        "independentOperations": 301,
+        "independentSourceControllers": 28,
+        "independentSourceDecorators": 282,
         "agrees": true
       },
       {
         "id": "core-api-transports",
         "dir": "apps/core-api/src/transports",
-        "enumeratedOperations": 11,
-        "independentOperations": 11,
-        "independentSourceControllers": 8,
-        "independentSourceDecorators": 11,
+        "enumeratedOperations": 18,
+        "independentOperations": 18,
+        "independentSourceControllers": 9,
+        "independentSourceDecorators": 18,
         "agrees": true
       }
     ],
-    "total": 311
+    "total": 319
   },
   "generatedBy": "scripts/differential-coverage.mjs",
   "coverageComputedFrom": "tests/differential-harness/scenarios.mjs",
   "summary": {
-    "cells": 783,
+    "cells": 787,
     "covered": 2,
-    "uncovered": 781,
+    "uncovered": 785,
     "bySurface": {
       "bff": {
         "total": 117,
@@ -71,9 +71,9 @@
         "uncovered": 202
       },
       "rest": {
-        "total": 309,
+        "total": 313,
         "covered": 0,
-        "uncovered": 309
+        "uncovered": 313
       },
       "screen": {
         "total": 47,
@@ -97,7 +97,7 @@
       }
     }
   },
-  "digest": "dfbaed348c6fff82114e704b9147efe4b5963b75facb3c2837a71e087406f283",
+  "digest": "a19f54ddd007b992d9482c2cb633cbd69bf3034200f73f1fea3a100cb4062206",
   "rows": [
     {
       "id": "DELETE /api/v1/agent/access-key",
@@ -343,6 +343,17 @@
     },
     {
       "id": "DELETE /mcp/entity/:entityId/tokens/:tokenId",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "DELETE /mcp/platform/environments/:environmentId/policies/:policyId",
       "surface": "rest",
       "owner": "tenancy",
       "requiresOperator": true,
@@ -1783,6 +1794,17 @@
       "reason": "no V1 REST transport exists at this baseline"
     },
     {
+      "id": "GET /mcp/platform/environments/:environmentId/policies",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
       "id": "GET /mcp/platform/events/subscribe",
       "surface": "rest",
       "owner": "tools",
@@ -2249,6 +2271,17 @@
       "surface": "rest",
       "owner": "agents",
       "requiresOperator": true,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "POST /api/v1/agent/agents/:agentId/chat/stream",
+      "surface": "rest",
+      "owner": "agents",
+      "requiresOperator": false,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",
@@ -3492,6 +3525,17 @@
       "surface": "rest",
       "owner": "agents",
       "requiresOperator": false,
+      "status": "uncovered",
+      "scenarios": [],
+      "blockedBy": "WIN-267",
+      "milestone": "M4",
+      "reason": "no V1 REST transport exists at this baseline"
+    },
+    {
+      "id": "PUT /mcp/platform/environments/:environmentId/policies",
+      "surface": "rest",
+      "owner": "tenancy",
+      "requiresOperator": true,
       "status": "uncovered",
       "scenarios": [],
       "blockedBy": "WIN-267",

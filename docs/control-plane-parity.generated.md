@@ -8,10 +8,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
 - MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
-- REST operations: **309** unique method/path pairs from **311** route bindings.
-- Ambiguous duplicate REST method/path pairs: **2**, of which **2** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
+- REST operations: **313** unique method/path pairs from **319** route bindings.
+- Ambiguous duplicate REST method/path pairs: **6**, of which **6** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=153.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=157.
 
 ## REST inventory
 
@@ -44,6 +44,7 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/agent/agents/:agentId/canary/promote` | MAPPED | `agents.canary.promote` | Reviewed behavioral equivalence: the REST adapter and agents.canary.promote invoke the same scope-pinned AgentCrudService operation; only transport parameters/envelopes differ. | `apps/agent/src/agent-runtime/agent.controller.ts#promoteAgentCanary` |
 | `GET /api/v1/agent/agents/:agentId/categories` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#getAgentCategories` |
 | `GET /api/v1/agent/agents/:agentId/chat/stream` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#agentChatStream` |
+| `POST /api/v1/agent/agents/:agentId/chat/stream` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/chat-stream.controller.ts#chatStream` |
 | `GET /api/v1/agent/agents/:agentId/evals/aggregate` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#aggregateEvals` |
 | `PATCH /api/v1/agent/agents/:agentId/feature-flags` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#setAgentFeatureFlags` |
 | `POST /api/v1/agent/agents/:agentId/messages` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#agentMessages` |
@@ -294,21 +295,24 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `PATCH /mcp/entity/:entityId/inject-context` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#setInjectMcpContext` |
 | `POST /mcp/entity/:entityId/messages` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#messages` |
 | `GET /mcp/entity/:entityId/sse` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#sse` |
-| `GET /mcp/entity/:entityId/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#listBearerTokens` |
+| `GET /mcp/entity/:entityId/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#listBearerTokens`<br />`apps/core-api/src/transports/mcp/entity-tokens.controller.ts#list` |
 | `POST /mcp/entity/:entityId/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#generateBearerToken`<br />`apps/core-api/src/transports/mcp/entity-tokens.controller.ts#mint` |
-| `DELETE /mcp/entity/:entityId/tokens/:tokenId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#revokeBearerToken` |
+| `DELETE /mcp/entity/:entityId/tokens/:tokenId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#revokeBearerToken`<br />`apps/core-api/src/transports/mcp/entity-tokens.controller.ts#revoke` |
 | `GET /mcp/entity/:entityId/tool-acl` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#listToolAcl` |
 | `PATCH /mcp/entity/:entityId/tool-acl/:toolId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#patchToolAcl` |
 | `POST /mcp/entity/:entityId/tool-acl/bulk` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-entity.controller.ts#bulkToolAcl` |
 | `POST /mcp/messages` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-docs/docs-mcp.controller.ts#messages` |
 | `POST /mcp/platform` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#jsonRpc` |
 | `GET /mcp/platform/catalog` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#toolCatalog` |
+| `GET /mcp/platform/environments/:environmentId/policies` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/mcp/organization-policies.controller.ts#list` |
+| `PUT /mcp/platform/environments/:environmentId/policies` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/mcp/organization-policies.controller.ts#set` |
+| `DELETE /mcp/platform/environments/:environmentId/policies/:policyId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/mcp/organization-policies.controller.ts#remove` |
 | `GET /mcp/platform/events/subscribe` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#eventsSubscribe` |
 | `POST /mcp/platform/messages` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#messages` |
 | `GET /mcp/platform/sse` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#sse` |
-| `GET /mcp/platform/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#listTokens` |
+| `GET /mcp/platform/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#listTokens`<br />`apps/core-api/src/transports/mcp/platform-tokens.controller.ts#list` |
 | `POST /mcp/platform/tokens` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#mintToken`<br />`apps/core-api/src/transports/mcp/platform-tokens.controller.ts#mint` |
-| `POST /mcp/platform/tokens/:id/revoke` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#revokeToken` |
+| `POST /mcp/platform/tokens/:id/revoke` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/mcp-platform/mcp-platform.controller.ts#revokeToken`<br />`apps/core-api/src/transports/mcp/platform-tokens.controller.ts#revoke` |
 | `GET /mcp/sse` | PUBLIC_TRANSPORT | — | `mcp-protocol` | `apps/agent/src/mcp-docs/docs-mcp.controller.ts#sse` |
 | `GET /metrics` | PUBLIC_TRANSPORT | — | `service-observability` | `apps/agent/src/monitoring/metrics.controller.ts#scrape` |
 | `GET /oauth/authorize` | PUBLIC_TRANSPORT | — | `oauth-protocol` | `apps/agent/src/oauth/oauth.controller.ts#authorize` |

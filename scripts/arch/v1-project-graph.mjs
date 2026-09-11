@@ -308,6 +308,43 @@ export const EXPECTED_EXTERNAL_DEPENDENCIES = {
   "packages/adapters/postgres-tenancy": {
     "@platos/tenancy-database": "workspace:*",
   },
+  // WIN-268 (M4.2) stage 2. The MCP SDK, and the ONLY context on this table.
+  //
+  // IT IS A CONTEXT AND NOT AN ADAPTER DIRECTORY BECAUSE THE ADR PUT IT THERE.
+  // §5.1 rule (h) (`SDK_CONTAINMENT.mcp-sdk-only-in-tools`) homes
+  // `@modelcontextprotocol/*` in `^packages/contexts/tools/(adapters|transport)/`
+  // and in nothing under `packages/adapters/`, so `ToolDispatch` — an MCP client —
+  // cannot be a `packages/adapters/` directory at all. This row is the second half
+  // of the same cutting rule the two entries above state: the boundary rule says
+  // the SDK may only be IMPORTED there, and this says it may only be DECLARED
+  // there. Without it, `tools` could carry the SDK in its manifest and pass the
+  // import rule by never importing it.
+  //
+  // `ADAPTER_ENTRY_PROJECTS` in `gen-v1-skeleton.mjs` is what emits both lines
+  // into the manifest, and its own check joins to `SDK_CONTAINMENT` in both
+  // directions — so a context cannot appear here without the ADR sending an SDK to
+  // it, and cannot be missing when the ADR does.
+  //
+  // AN EXACT PIN AND NOT `^1.26.0`, WHICH IS WHAT `apps/agent` WRITES, and the
+  // difference was measured. The paragraph above asks for a range that resolves to
+  // the entry already in `pnpm-lock.yaml`; `apps/agent`'s caret is held at 1.26.0
+  // by the lockfile it is already IN, but a NEW importer of the same range is
+  // resolved fresh against the registry and recorded `1.30.0` — a second SDK
+  // snapshot beside the one this tree has always held. The pin keeps the stated
+  // PROPERTY rather than the spelling.
+  //
+  // `zod` IS THE SDK'S PEER AND NOTHING IMPORTS IT. Without it pnpm resolves the
+  // SDK against a zod nothing else here uses (`1.30.0(zod@4.4.3)` was measured),
+  // which is the same second-snapshot outcome one field along. It is a resolution
+  // constraint; `zod` is absent from `BANNED_CORE_IMPORT_SOURCES`, so the ban is
+  // not why no production file names it — the reason is that this port is spelled
+  // in kernel and domain types and needs no schema library. The context's own
+  // `adapters/dispatch.integration.test.ts` names it once, to give the SDK'S OWN
+  // SERVER a tool schema on the far side of a real socket.
+  "packages/contexts/tools": {
+    "@modelcontextprotocol/sdk": "1.26.0",
+    zod: "3.25.76",
+  },
   // WIN-260 (M2.5). The Redis client, declared in the ONE directory ADR M0.3 §4
   // gives it — the same second half of the cutting rule the two entries around
   // it state. The range is byte-identical to `apps/agent`'s, so pnpm resolves it

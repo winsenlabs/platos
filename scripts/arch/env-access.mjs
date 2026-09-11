@@ -171,6 +171,13 @@ export const ALLOWED = Object.freeze([
     "eventing-harness",
     "files-harness",
     "governance-harness",
+    // WIN-268 (M4.2) — `identity-harness` joins its thirteen siblings. It gained
+    // `applyPeerRows` so the credential-lifecycle suite can seed an `Entity`, a row
+    // `tenancy` owns and `sole-writer.mjs` gives the tenancy repository as sole
+    // writer of — so no port this harness holds can create one. Declared HERE rather
+    // than on the suite for the reason `governance-harness`'s note gives: the door
+    // stays in one file.
+    "identity-harness",
     "jobs-harness",
     "memory-harness",
     "privacy-harness",
@@ -191,7 +198,12 @@ export const ALLOWED = Object.freeze([
       // only way "the transaction rolled back" is a fact about the DATABASE
       // rather than the store's opinion of itself, and it is declared here
       // rather than spawned from the suite so the door stays in one file.
-      reads: name === "harness" || name === "governance-harness" ? 2 : 1,
+      // WIN-268 (M4.2) — `harness.ts` carries a THIRD read: the one opt-in
+      // `PLATOS_TENANCY_HARNESS_DATABASE_URL`, which points the harness at a server
+      // that is already running instead of starting a container. It changes WHERE the
+      // database comes from and nothing else, and unset — which is how CI runs — the
+      // container path is unchanged.
+      reads: name === "harness" ? 3 : name === "governance-harness" ? 2 : 1,
       why: "Real-PostgreSQL integration harness. It applies the repository's OWN migrations by spawning the ORM's CLI, which reads DATABASE_URL from the environment it is given, so the container's URL is layered over the inherited one.",
     }),
   ),
@@ -260,6 +272,39 @@ export const ALLOWED = Object.freeze([
     role: "test-support",
     reads: 1,
     why: "Real-PostgreSQL and real-Redis integration suite for the two MCP one-time-secret mints, including two identical requests racing. It applies the repository's OWN migrations by spawning the ORM's CLI, which needs the inherited environment to run and reads DATABASE_URL from it, so the container's URL is layered over it.",
+  }),
+  Object.freeze({
+    // WIN-268 (M4.2) — the tier-2 MCP policy surface's real-database suite. The
+    // FOURTH entry of this shape under `apps/core-api/src/composition`, and the
+    // FIRST that reads the environment for something other than PATH.
+    //
+    // IT IS ONE READ AND THAT IS THE WHOLE POINT OF THE ENTRY. The suite needs FOUR
+    // values off the machine it runs on — the external database url, an override for
+    // `psql`'s path, an optional real Redis, and the inherited environment
+    // `prisma migrate deploy` is spawned with — and it takes them the way
+    // `apps/core-api/src/config/environment.ts` takes the deployable's: ONE
+    // `{ ...process.env }`, frozen at module load, indexed as an ordinary value
+    // afterwards. Four inline reads would have been a four-panel door in the gate
+    // whose entire argument is that there should be one, and this gate is what made
+    // that difference visible rather than a matter of taste.
+    //
+    // WHY IT READS THE ENVIRONMENT FOR MORE THAN PATH, when its three siblings do
+    // not: WHICH DATABASE TO USE IS THE RUNNER'S DECISION AND NOT A FIXTURE'S. Those
+    // three start a container and fail when Docker is absent — right, and it makes
+    // them unrunnable where Docker may not run at all. This one takes an external
+    // url when a runner names one and starts a container when it does not, so the
+    // same cases execute on a laptop against a native `postgresql@17` and in CI
+    // against `pgvector/pgvector:pg16`. Neither path skips.
+    //
+    // THE SIX CONFIGURATION VARIABLES IT SETS ARE STILL NOT READS. They are
+    // properties of a plain object handed to `loadPlatformConfiguration`, so the
+    // process under test takes nothing from the machine except the two urls named
+    // above — and a suite that had reached past `AMBIENT` for any of them would show
+    // up here as a SECOND read.
+    path: "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL integration suite for the tier-2 MCP policy surface. It copies and freezes the ambient environment once, at module load, and reads four values out of the copy: the external database url that lets it run without Docker, a psql binary override for the second reader, an optional real Redis, and the inherited environment it spawns the ORM's migration CLI with.",
   }),
   Object.freeze({
     path: "packages/adapters/postgres-tenancy/src/json-columns.integration.test.ts",
@@ -612,8 +657,33 @@ export const VIOLATION_CODES = Object.freeze({
  * place in this deployable entitled to read a variable.
  *
  * Seven more files landed and ONE declared door was opened.
+ *
+ * AND SEVEN MORE, 1680 -> 1687 (WIN-268 M4.2 stage 2): the whole of
+ * `packages/contexts/tools/adapters` — the barrel, the SHA-256 `ContentDigest`, the
+ * wire POST, the MCP session pool, the router over the two, and two suites.
+ *
+ * NOT ONE OF THE SEVEN READS A VARIABLE, and that is a claim about the port rather
+ * than about restraint. The legacy MCP pool this replaces reads `env.PLATOS_VERSION`
+ * for the `initialize` handshake and reads its pool ceiling and its discovery
+ * timeout from the environment; NONE of those survives. The client identity is a
+ * constant because the version this tree publishes lives once in
+ * `apps/agent/src/http/mcp-surface.ts` and an AST lint refuses a second spelling of
+ * it, and every budget arrives on `DispatchTarget.timeoutMs`, which the DOMAIN
+ * resolved from `ToolsPolicy` — a published default the composition root may
+ * override. So the tuning an operator would reach for goes through `config/`, which
+ * is the one place in this deployable entitled to read a variable.
+ *
+ * Seven more files landed and NO door was opened.
+ *
+ * WIN-268 (M4.2) STAGE 3: 1687 + 2 = 1689. The tier-2 MCP policy controller and its
+ * real-database suite. THE CONTROLLER OPENS NO DOOR — it reads its tenancy off a
+ * path parameter and its authorization off the one authentication seam, which is
+ * what a transport is for — and THE SUITE OPENS EXACTLY ONE, declared above. It is
+ * the first door in this table that is not about PATH, and it is one read rather
+ * than four because the suite copies and freezes the ambient environment once, the
+ * way the deployable's own reader does.
  */
-export const EXPECTED_FILE_COUNT = 1680;
+export const EXPECTED_FILE_COUNT = 1697;
 
 function listSourceFiles(root) {
   const found = [];

@@ -44,6 +44,23 @@ import type {
   MintedBearerCredentialView,
 } from "../application/mint-bearer-credential.js";
 export type { MintBearerCredentialCommand, MintedBearerCredentialView };
+/**
+ * WIN-268 (M4.2) — the credential LIFECYCLE's vocabulary.
+ *
+ * `CredentialState` travels because `revokeBearerCredential` reports which of
+ * three things was true when the call arrived, and a transport that spelled
+ * `"expired"` as a literal would be a second declaration of the enumeration the
+ * lifecycle rule in `domain/credential.ts` owns.
+ */
+export type { CredentialState } from "../domain/index.js";
+// IMPORTED AS WELL AS RE-EXPORTED, because the interfaces below NAME these three.
+// A re-export makes a type available to a consumer; it does not bring the name
+// into this module's own scope, and the compiler says so.
+import type {
+  CredentialState,
+  McpPermissionTier,
+  MintableBearerKind,
+} from "../domain/index.js";
 
 /**
  * A grant's reach, flattened for the wire.
@@ -249,6 +266,118 @@ export interface RateLimitRequest {
 }
 
 /**
+ * ONE CREDENTIAL AS A LISTING RENDERS IT — AND NOTE WHAT IS MISSING.
+ *
+ * No raw secret, which no row holds after a mint, and NO `tokenHash`. The digest
+ * is the value every verification compares against, so a listing that published
+ * it would hand a reader offline guessing material for every credential in an
+ * environment at once. The domain projection this view is built from
+ * (`BearerCredentialSummary`) has no such field either, so the omission is a
+ * compile error rather than a review note at each layer.
+ *
+ * `environmentId` is absent for the reason `EndUserView` gives: it cannot be
+ * anything but the scope the caller asked under, and echoing it back would invite
+ * a consumer to believe the listing decided which tenant to answer for.
+ */
+export interface BearerCredentialView {
+  readonly credentialId: string;
+  readonly kind: MintableBearerKind;
+  readonly label: string;
+  readonly permissions: readonly string[];
+  /**
+   * Whom the credential acts as. The operator who minted a PLATFORM token; an end
+   * user of the entity — with no Platos account — for an ENTITY token.
+   */
+  readonly principalId: string;
+  /** `"scope" | "admin"` for a platform token; null for an entity token. */
+  readonly permissionTier: McpPermissionTier | null;
+  /**
+   * `active`, `revoked` or `expired`, DERIVED from the two columns by the one
+   * lifecycle rule every credential in this context obeys — never stored, and
+   * never computed a second time by a consumer that would have to re-decide
+   * whether a revocation beats an expiry.
+   */
+  readonly state: CredentialState;
+  readonly createdAt: Date;
+  readonly expiresAt: Date | null;
+  readonly lastUsedAt: Date | null;
+  readonly revokedAt: Date | null;
+  /** The operator who ended it, where the table records one; else null. */
+  readonly revokedBy: string | null;
+}
+
+export interface BearerCredentialPageView {
+  readonly credentials: readonly BearerCredentialView[];
+  /** Rows matching the query, ignoring the page window. */
+  readonly total: number;
+  readonly limit: number;
+  readonly offset: number;
+  readonly hasMore: boolean;
+}
+
+/**
+ * NOTE WHAT IS MISSING: an environment id.
+ *
+ * The tenant is taken from `scope`, which tenancy minted by re-deriving the whole
+ * chain from a leaf. There is no field here a caller could use to address another
+ * tenant — the same rule `ListEndUsersRequest` states.
+ */
+export interface ListBearerCredentialsRequest {
+  readonly kind: MintableBearerKind;
+  readonly scope: TenantScope;
+  /**
+   * The entity, and for an entity token it is part of the ADDRESS rather than a
+   * filter. `McpBearerToken` carries both `entityId` and `environmentId` and
+   * neither derives from the other, so a listing that took only the environment
+   * would show an operator holding one entity every other entity's credentials in
+   * it. Refused for `mcp-token`, whose table has no subject column.
+   */
+  readonly subjectId?: string | null;
+  readonly limit?: number | null;
+  readonly offset?: number | null;
+}
+
+export interface RevokeBearerCredentialCommand {
+  readonly kind: MintableBearerKind;
+  readonly credentialId: string;
+  readonly scope: TenantScope;
+  readonly subjectId?: string | null;
+  /**
+   * The operator ending it, recorded where the table has a column.
+   *
+   * `McpToken.revokedBy` exists; `McpBearerToken` has NO such column — the legacy
+   * service records the actor in an `AdminAudit` row instead, which is
+   * `observability`'s and is not composed. The view reports what the row holds, so
+   * a caller is never told an attribution was stored that the table cannot hold.
+   */
+  readonly revokedByUserId?: string | null;
+}
+
+/**
+ * What a SUCCESSFUL revocation reports.
+ *
+ * `revokedAt` is the instant the ROW now holds, not the instant the caller asked
+ * — the same rule `RevokedOperatorSessionView` states, and for the same reason: a
+ * caller that stamped its own clock into an audit line would be recording
+ * something no row says.
+ *
+ * `newlyRevoked` AND `previousState` ARE THE POINT OF THIS VIEW. Both legacy
+ * handlers return a bare boolean — false for absent, TRUE for revoked-now and for
+ * already-revoked alike — so an operator could not tell a mistyped id from a
+ * second click, nor a decision from a clock. `CREDENTIAL_NOT_FOUND` separates the
+ * first; these two separate the rest.
+ */
+export interface RevokedBearerCredentialView {
+  readonly credentialId: string;
+  readonly kind: MintableBearerKind;
+  readonly label: string;
+  readonly revokedAt: Date;
+  readonly newlyRevoked: boolean;
+  readonly previousState: CredentialState;
+  readonly revokedBy: string | null;
+}
+
+/**
  * The identity-access façade.
  *
  * Every method returns `Result`, so a consumer's failure handling is
@@ -376,6 +505,52 @@ export interface IdentityAccessContract {
   mintBearerCredential(
     command: MintBearerCredentialCommand,
   ): Promise<Result<MintedBearerCredentialView>>;
+
+  /**
+   * LIST one environment's MCP bearer credentials, WITHOUT their material.
+   *
+   * WHY IT IS PUBLISHED. `GET /mcp/platform/tokens` and
+   * `GET /mcp/entity/:entityId/tokens` are both in the generated operation
+   * manifest with an `apps/agent` implementation and none in `apps/core-api`, and
+   * a V1 route may only reach a contract method — so the dashboard's own two
+   * credential tables were served by the legacy deployable alone.
+   *
+   * THE PAGE AND ITS TOTAL COME FROM ONE QUERY, including the tenant clause. A
+   * total counted without it would tell an operator how many credentials exist in
+   * tenants they cannot see.
+   *
+   * AN OVER-LARGE `limit` IS A REFUSAL, NOT A CORRECTION. Both oracles clamp with
+   * `boundedInteger(limit, 50, 1, 100)`; a caller that asked for five thousand
+   * rows, received one hundred and was told nothing believes it has seen
+   * everything.
+   */
+  listBearerCredentials(
+    request: ListBearerCredentialsRequest,
+  ): Promise<Result<BearerCredentialPageView>>;
+
+  /**
+   * END one MCP bearer credential, server-side, idempotently.
+   *
+   * WHY DESTRUCTION IS PUBLISHED WHERE MINTING IS RESTRICTED — the same argument
+   * `revokeOperatorSession` records: this creates nothing, and it can only be
+   * aimed at a credential inside a scope the caller was already authorized to
+   * administer at `secret:mutate`.
+   *
+   * THE ROW SURVIVES AND `revokedAt` IS SET. It is not a delete, and the
+   * difference is what the holder is told: a revoked row answers
+   * `CREDENTIAL_REVOKED` — a decision somebody made — where a deleted one would
+   * answer `UNAUTHENTICATED` and read as a typo worth retrying.
+   *
+   * EXACTLY ONE REFUSAL: `CREDENTIAL_NOT_FOUND`, for a credential id no row in the
+   * authorized scope carries. Already-revoked and already-expired are SUCCESSES
+   * reporting `previousState`, because `apps/core-api/src/http/idempotency-policy.ts`
+   * classes both routes `exempt` on the recorded ground that "a token revoked
+   * twice is revoked" — and a method that refused the second call would falsify
+   * that exemption.
+   */
+  revokeBearerCredential(
+    command: RevokeBearerCredentialCommand,
+  ): Promise<Result<RevokedBearerCredentialView>>;
 }
 
 /**
@@ -414,6 +589,8 @@ export const IDENTITY_ACCESS_ERROR_CODES = [
   "IMPERSONATION_FORBIDDEN",
   "CREDENTIAL_EXPIRED",
   "CREDENTIAL_REVOKED",
+  "CREDENTIAL_NOT_FOUND",
+  "CREDENTIAL_REVOCATION_NOT_APPLIED",
   "TOKEN_REPLAYED",
   "INVALID_GRANT",
   "UNKNOWN_CLIENT",

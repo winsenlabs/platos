@@ -78,6 +78,16 @@ const HTTP_STATUS_FALLBACK = {
 /**
  * Handlers whose QUERY STRING cannot be derived, and why.
  *
+ * M4 FINISH — THE MECHANISM NOW EXISTS AND THIS LIST IS DOWN TO ONE. Until then
+ * there was no code path in this derivation that emitted a @Query type at all: the
+ * branch that would have was the branch that raised, so a route with a query string
+ * was either listed here as a gap or a generation failure, and the OpenAPI ratchet
+ * could not guard a field it never saw. A pipe now declares the WIRE shape it
+ * accepts as `DomainValidationPipe<Parsed, Wire>`, `declaredWireQueryType` reads it
+ * off the decorator through the checker, and the three MCP token lifecycle routes
+ * publish their query parameters — including the REQUIRED `environmentId` without
+ * which a generated client cannot call them.
+ *
  * DECLARED RATHER THAN GUESSED. `EnvironmentEndUsersController.list` types its
  * `@Query` parameter as `EndUserQuery`, which is the POST-PARSE shape — it
  * carries `offset`, a number the caller never sends, and it does NOT carry
@@ -89,6 +99,19 @@ const HTTP_STATUS_FALLBACK = {
  * that one declaration decides both what is parsed and what is published. That is
  * a change to `apps/core-api/src/transports/rest`, it is not this tranche's, and
  * naming it here is the difference between a known gap and a silent one.
+ *
+ * WIN-268 (M4.2) ADDS THREE MORE AND THEY ARE WORSE THAN THE FIRST, WHICH IS
+ * RECORDED HERE RATHER THAN AVERAGED AWAY. The four MCP token lifecycle routes
+ * carry their tenancy in the query string, because two are `GET` and one is
+ * `DELETE` and their templates are fixed by `apps/core-api/src/http/idempotency-policy.ts`
+ * — so `environmentId` is a REQUIRED query parameter, not an optional filter. An
+ * undocumented optional filter costs a generated client nothing; an undocumented
+ * required parameter means a generated client cannot call the route at all. The
+ * remedy is the same one named above and it is a change to this derivation as much
+ * as to the transports: nothing here can read a wire shape off a
+ * `DomainValidationPipe`, whose validator is typed `(input: unknown)`. Until that
+ * exists these three publish their RESPONSE schemas, which the ratchet does guard,
+ * and their query parameters are marked `not-derived` rather than invented.
  */
 export const UNDERIVABLE_QUERY_HANDLERS = {
   "EnvironmentEndUsersController.list": {
@@ -97,8 +120,10 @@ export const UNDERIVABLE_QUERY_HANDLERS = {
       "The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has " +
       "decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits " +
       "`cursor` and `limit`, which every caller does. Publishing it would describe a query string " +
-      "this route does not accept. Deriving the real one needs a declared wire-query DTO that the " +
-      "validator consumes; until then this route's query parameters are undocumented, not guessed.",
+      "this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to " +
+      "declare its Wire type argument, as the three MCP token routes now do — so this is the one " +
+      "remaining entry and it is a declaration this tranche did not make, in a controller it did " +
+      "not otherwise touch, rather than a missing mechanism.",
   },
 };
 
@@ -330,6 +355,73 @@ function awaited(type, checker) {
   return checker.getAwaitedType(type) ?? type;
 }
 
+/**
+ * The `Wire` type argument a `@Query(PIPE)` declares, or null when it declares none.
+ *
+ * ONE HOP THROUGH THE TYPE CHECKER, and that is why it is the pipe's type argument
+ * rather than a naming convention or a second table. `@Query(LIST_QUERY_PIPE)` is
+ * an expression whose type is `DomainValidationPipe<TokenListQuery,
+ * TokenListWireQuery>`; asking the checker for that type's arguments answers "what
+ * must a caller send" from the same declaration the parser is typed by. A rule
+ * that matched `SomethingWireQuery` by NAME, or that kept a map of route to DTO,
+ * would be the parallel list this file's own header refuses.
+ *
+ * `never` IS "NOT DECLARED" and the default on the class. It is distinguishable
+ * from every real shape, which is what lets the caller below refuse rather than
+ * invent — a pipe with no wire argument reaches the same failure a post-parse DTO
+ * does.
+ */
+function declaredWireQueryType(call, context) {
+  const argument = call.arguments[0];
+  if (argument === undefined) return null;
+  const type = context.checker.getTypeAtLocation(argument);
+  if ((type.flags & ts.TypeFlags.Object) === 0) return null;
+  if ((((type).objectFlags ?? 0) & ts.ObjectFlags.Reference) === 0) return null;
+  const args = context.checker.getTypeArguments(type) ?? [];
+  const wire = args[1];
+  if (wire === undefined) return null;
+  if ((wire.flags & (ts.TypeFlags.Never | ts.TypeFlags.Unknown)) !== 0) return null;
+  return wire;
+}
+
+/**
+ * A declared wire query as OpenAPI `parameters`, or a failure naming the property.
+ *
+ * EVERY VALUE IS A STRING, AND THAT IS ENFORCED RATHER THAN ASSUMED. Express hands
+ * a query string's values across as strings — `page.ts` says so in its own
+ * `QueryInput` — so a wire property typed `number` describes a request no caller
+ * can send. Refusing it is what makes publishing a POST-PARSE shape by accident
+ * impossible instead of merely documented: `TokenListQuery` carries `offset:
+ * number`, so the mistake the old `UNDERIVABLE_QUERY_HANDLERS` entries warned
+ * about now stops generation.
+ *
+ * A repeated parameter (`?a=1&a=2`) is `string[]` on the wire and every validator
+ * in this tree REFUSES one by name, so an array is refused here too: publishing it
+ * would document a shape the parser rejects.
+ */
+function wireQueryParameters(type, context, pointer) {
+  const parameters = [];
+  for (const property of context.checker.getPropertiesOfType(type)) {
+    const name = property.getName();
+    const declaration = property.valueDeclaration ?? (property.declarations ?? [])[0];
+    if (declaration === undefined) fail(`${pointer}.${name} has no declaration`);
+    const propertyType = context.checker.getTypeOfSymbolAtLocation(property, declaration);
+    const optional = (property.flags & ts.SymbolFlags.Optional) !== 0;
+    const schema = schemaForType(propertyType, context, `${pointer}.${name}`);
+    if (schema.type !== "string") {
+      fail(
+        `${pointer}.${name} is ${context.checker.typeToString(propertyType)}; a wire query ` +
+          `parameter is a string, because that is what Express hands a @Query() across as. A ` +
+          `non-string here means the declared Wire type is a POST-PARSE shape rather than the ` +
+          `wire one.`,
+      );
+    }
+    parameters.push({ name, required: !optional, schema });
+  }
+  if (parameters.length === 0) fail(`${pointer} declares a wire query with no parameters`);
+  return parameters.sort((left, right) => left.name.localeCompare(right.name));
+}
+
 function deriveHandler(method, sourceFile, className, context) {
   const { checker } = context;
   const calls = decoratorCalls(method);
@@ -366,8 +458,19 @@ function deriveHandler(method, sourceFile, className, context) {
         });
       } else if (name === "Query") {
         const declared = UNDERIVABLE_QUERY_HANDLERS[key];
+        const wire = declaredWireQueryType(call, context);
         if (declared !== undefined) {
           queryParameters = { source: "not-derived", ...declared, parameters: [] };
+        } else if (wire !== null) {
+          // THE DERIVED PATH, and the one this derivation had no code for at all
+          // until M4 finish. The branch that would have emitted a query type was
+          // the branch that raised, so every route with a query string was either
+          // listed as a gap or a generation failure — and the OpenAPI ratchet
+          // cannot guard a field it never sees.
+          queryParameters = {
+            source: "derived",
+            parameters: wireQueryParameters(wire, context, `${key}.query`),
+          };
         } else if ((parameterType.flags & ts.TypeFlags.Null) !== 0) {
           // `@Query(UNPAGED_QUERY_PIPE) _page: null` — the pipe REFUSES every
           // query parameter, and `null` is the type that says so. No parameters
@@ -375,9 +478,10 @@ function deriveHandler(method, sourceFile, className, context) {
           queryParameters = { source: "refused", parameters: [] };
         } else {
           fail(
-            `${key}: @Query parameter is typed ${checker.typeToString(parameterType)}. Either it is a ` +
-              `declared wire-query DTO this derivation should learn, or it is a post-parse shape that ` +
-              `must be listed in UNDERIVABLE_QUERY_HANDLERS with a reason.`,
+            `${key}: @Query parameter is typed ${checker.typeToString(parameterType)} and its pipe ` +
+              `declares no wire shape. Give the pipe its Wire type argument — ` +
+              `new DomainValidationPipe<Parsed, WireQuery>(validator) — so the document publishes ` +
+              `what a caller sends, or list the route in UNDERIVABLE_QUERY_HANDLERS with a reason.`,
           );
         }
       }

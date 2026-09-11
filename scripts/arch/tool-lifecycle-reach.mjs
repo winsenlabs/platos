@@ -138,12 +138,12 @@ export const DEPENDENCY_SLOTS = Object.freeze({
   dispatch: {
     kind: "root-satisfied",
     source: "packages/contexts/tools/adapters",
-    note: "the ToolDispatch port, and the ONLY unimplemented thing between this tree and a composed `tools`. ADR M0.3 §5.1 rule (h) (`SDK_CONTAINMENT.mcp-sdk-only-in-tools`) binds `@modelcontextprotocol/*` to `^packages/contexts/tools/(adapters|transport)/` and to nowhere else, so this port cannot be a `packages/adapters/` directory and cannot be a binding row; it is built in the composition root from the factory that home publishes, the way `Judge` is. FOUR CONCRETE STEPS, each measured rather than guessed: (1) the directory does not exist; (2) `gen-v1-skeleton.mjs` OWNS every context package.json `exports` map — it emits `.`, `./application/ports/index.js` and two conditional subpaths — so `./adapters/index.js` needs a THIRD list there beside APPLICATION_ENTRY_PROJECTS and TESTING_ENTRY_PROJECTS, with its own honesty check; (3) the same generator owns runtime dependencies through ADAPTER_RUNTIME_DEPENDENCIES, which is keyed on `packages/adapters/` directories and has no row shape for a context's own adapter, so `@modelcontextprotocol/sdk` has nowhere to be declared yet; (4) `apps/core-api` may import it — `firesCrossContextContractsOnly` requires the FROM side to be a context and an app is not one — so no boundary rule needs changing. WIN-269 landed the prerequisite instead: `DispatchTarget` now names its `transport`, without which the port is not implementable at all.",
+    note: "the ToolDispatch port. IT IS BUILT. ADR M0.3 §5.1 rule (h) (`SDK_CONTAINMENT.mcp-sdk-only-in-tools`) binds `@modelcontextprotocol/*` to `^packages/contexts/tools/(adapters|transport)/` and to nowhere else, so this port could not be a `packages/adapters/` directory and cannot be a binding row; it is built in the composition root from the factory that home publishes, the way `Judge` is, and `TOOLS_ROOT_SATISFIED_PORTS` in `apps/core-api/src/composition/context-ports.ts` records that in both directions. THE FOUR STEPS THIS NOTE USED TO LIST ARE DONE, and they were accurate: (1) `packages/contexts/tools/adapters` exists — `content-digest.ts`, `wire-dispatch.ts`, `mcp-dispatch.ts`, the router over the two, and a barrel; (2) `ADAPTER_ENTRY_PROJECTS` is the THIRD list in `gen-v1-skeleton.mjs`, and its check joins to `SDK_CONTAINMENT` in both directions so a context cannot gain a barrel no ADR rule sends it; (3) `CONTEXT_RUNTIME_DEPENDENCIES` is the row shape the SDK needed, and `EXPECTED_EXTERNAL_DEPENDENCIES` in `v1-project-graph.mjs` is where it may only be declared; (4) no boundary rule changed. TWO OF THREE MCP TRANSPORTS ARE SERVED: `http` and `sse` are real client constructions against the SDK's own server over a real socket, and `stdio` — a child process, which ADR M0.3 §7 decision 10 assigns to `durable-runtime` and `SkillSandbox` — is REFUSED under `TOOLS_MCP_TRANSPORT_UNIMPLEMENTED` and never as `DispatchOutcome.failed`, so a skipped call cannot be mistaken for a failed one.",
   },
   digest: {
     kind: "root-satisfied",
     source: "packages/contexts/tools/adapters",
-    note: "the ContentDigest port — lowercase hex SHA-256 over node:crypto, and the cheap half of the pair. `apps/core-api/src/composition/adapter-bindings.ts` states outright that ContentDigest is `a synchronous host hash with no failure channel and no row`, so it is satisfied where the dispatch is rather than by a binding, and `GOVERNANCE_ROOT_SATISFIED_PORTS = [\"Judge\"]` is the precedent for a port the composition root fills itself. It needs no SDK and no new list; it is only here because it shares a home with the dispatch.",
+    note: "the ContentDigest port — lowercase hex SHA-256 over node:crypto, and the cheap half of the pair. IT IS BUILT. `apps/core-api/src/composition/adapter-bindings.ts` states outright that ContentDigest is `a synchronous host hash with no failure channel and no row`, so it is satisfied where the dispatch is rather than by a binding, and `GOVERNANCE_ROOT_SATISFIED_PORTS = [\"Judge\"]` was the precedent for a port the composition root fills itself. It needs no SDK and no new list; it is here because it shares a home with the dispatch and the root imports ONE barrel per context. ITS EVIDENCE IS EXTERNAL: FIPS 180-4's own published SHA-256 examples including the one-million-byte multi-block vector, plus every vector `packages/adapters/node-crypto-digest` publishes — read off disk as text, since `adapters-only-from-core` forbids a context from importing an adapter — which brings in digests produced by executing the extraction source's own `hashSecret`, the function that wrote every tokenHash column in every live database. `Tool.schemaHash` is PERSISTED, so a wrong digest here reminds every tool row in the installation.",
   },
   clock: { kind: "kernel", source: "kernel", note: "the process clock." },
   ids: { kind: "kernel", source: "kernel", note: "the process id generator." },
@@ -171,13 +171,16 @@ export const DEPENDENCY_SLOTS = Object.freeze({
  * counts could be added.
  */
 export const VERDICTS = Object.freeze({
-  moved: "MOVED — the site is already inside apps/core-api/src/transports and reaches a contract",
+  moved:
+    "MOVED — an ORM site INSIDE apps/core-api/src/transports. It is a TRAP DETECTOR and its healthy value is 0: `transport-reaches-no-store` (ADR M0.3 §5.1 rule (k2)) forbids an ORM reach there by any route, so a nonzero count is the violation this register's destination root exists to catch, never progress. The number that rises as work lands is `movable`; the number that falls is the total",
   blockedOnContext:
     "BLOCKED-ON-CONTEXT — the owning context publishes a contract that the composition root does not compose, so no transport can reach it",
   blockedOnContract:
     "BLOCKED-ON-CONTRACT — the owning context IS composed, and publishes no method for this use case",
   blockedOnAdapter:
     "BLOCKED-ON-ADAPTER — the row is written by the kernel outbox adapter, not by a context",
+  movable:
+    "MOVABLE — the owner IS composed AND this file's disposition names a published contract method for it; only the transport move is left",
 });
 
 /**
@@ -191,37 +194,49 @@ export const VERDICTS = Object.freeze({
  * `packages/contexts/<owner>/contracts/index.ts`: a method that is not published
  * is a hard failure, so this column cannot describe a contract that does not
  * exist and cannot survive a rename.
+ *
+ * WIN-268 stage 2 MADE IT LOAD-BEARING, so its meaning is now narrower and has to
+ * be stated: naming methods for an owner asserts that EVERY site of that owner in
+ * that file is served by them, because `verdictFor` turns each such site into
+ * `movable`. A column naming the method for two sites out of three would report
+ * the third as movable when nothing can serve it — the vacuity this register
+ * exists to refuse. Two entries were REMOVED for exactly that reason when the
+ * verdict landed: `tool-sync-ws.service.ts` named `registerTools` for a file whose
+ * only `tools` site is a `ToolHealth` upsert, and
+ * `entity-mcp-discovery-scheduler.service.ts` named `discoverEntityTools` beside a
+ * note saying its stale-client selection "is not published by `ToolsContract` at
+ * all".
  */
 export const DISPOSITIONS = Object.freeze({
   "apps/agent/src/tool-gateway/tool-registry.service.ts": {
     contexts: ["tools", "tenancy", "agents", "<client-level>"],
     waitingOn: "context-composition",
+    // `tools` is composed, so all five of its sites here are MOVABLE. `agents` is
+    // not, which is why `waitingOn` stays `context-composition`.
     methods: { tools: ["registerTools", "listTools", "setToolEnabled", "findTools"] },
-    note: "The registry IS `ToolsContract.registerTools` plus its readers. `packages/contexts/tools/application/register-tools.ts` is the published form of the idempotent-replace write, including the prune, and `read-tools.ts` of the two listings. Its `Entity`/`Environment` scope reads are `tenancy.findEntity` and the environment half of the same pair check; the `AgentBinding` fan-out that decides which agents see a tool is `agents`', which is not composed. Blocked on composing `tools`.",
+    note: "The registry IS `ToolsContract.registerTools` plus its readers. `packages/contexts/tools/application/register-tools.ts` is the published form of the idempotent-replace write, including the prune, and `read-tools.ts` of the two listings. Its `Entity`/`Environment` scope reads are `tenancy.findEntity` and the environment half of the same pair check; the `AgentBinding` fan-out that decides which agents see a tool is `agents`', which is not composed. `tools` IS NOW COMPOSED, so its five sites here are MOVABLE and the file is not: ONE `AgentBinding.findMany` holds it, plus the `$transaction`, which must not survive the move in any form.",
   },
   "apps/agent/src/tool-gateway/tool-executor.service.ts": {
     contexts: ["tools", "tenancy", "secrets", "identity-access"],
-    waitingOn: "context-composition",
+    waitingOn: "contract-method",
     methods: { tools: ["executeTool", "resolvePermission"] },
-    note: "`ToolsContract.executeTool` is this file, and `application/execute-tool.ts` plus `resolve-transport.ts` are the published form of its route resolution, credential substitution and health fold. The `Credential` read is `secrets`' — reached through the vault authorization `ExecuteToolCommand` already carries — and the `McpOidcSession` read is `identity-access`', which publishes no lookup of one. Blocked on composing `tools`.",
+    note: "`ToolsContract.executeTool` is this file, and `application/execute-tool.ts` plus `resolve-transport.ts` are the published form of its route resolution, credential substitution and health fold. The `Credential` read is `secrets`' — reached through the vault authorization `ExecuteToolCommand` already carries — and the `McpOidcSession` read is `identity-access`', which publishes no lookup of one. `tools` IS NOW COMPOSED, so both of its sites — the route resolution and the health fold — are MOVABLE, and `waitingOn` moved from `context-composition` to `contract-method`: the session lookup is the one with no published form. The `secrets` site is deliberately NOT claimed movable, because after the move it does not become a contract call at all — it disappears INTO `executeTool`, which reads the credential through the vault authorization the command already carries.",
   },
   "apps/agent/src/tool-gateway/tool-sync-ws.service.ts": {
     contexts: ["tenancy", "secrets", "tools"],
-    waitingOn: "context-composition",
-    methods: { tools: ["registerTools"] },
-    note: "The `/tools/sync` socket authenticates a wire backend and pushes its declaration into the same `registerTools` write discovery uses, so its registration half is already published. What is NOT published is the socket's own lifecycle: `Entity.connectionStatus` is a liveness fact `tenancy` owns the row for and publishes no writer of, and the `ToolHealth` upsert is `tools`'. Blocked on composing `tools`; the connection-status write needs a `tenancy` method that does not exist.",
+    waitingOn: "contract-method",
+    note: "The `/tools/sync` socket authenticates a wire backend and pushes its declaration into the same `registerTools` write discovery uses, so its registration half is already published. What is NOT published is the socket's own lifecycle: `Entity.connectionStatus` is a liveness fact `tenancy` owns the row for and publishes no writer of, and the `ToolHealth` upsert is `tools`'. THIS FILE NAMES NO METHOD AND ITS `registerTools` CLAIM WAS REMOVED when `movable` landed: the registration half has no ORM site HERE — it goes through `tool-registry.service.ts` — so the only `tools` site in this file is that `ToolHealth` upsert, and `registerTools` does not serve it. Health folding is `executeTool`'s. Naming it would have reported a site as movable that nothing can serve.",
   },
   "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts": {
     contexts: ["tools", "tenancy"],
-    waitingOn: "context-composition",
+    waitingOn: "contract-method",
     methods: { tools: ["discoverEntityTools"] },
-    note: "`ToolsContract.discoverEntityTools` is this file exactly — same fan-out over the project's environments, same convergence on `registerTools`, same stamp onto the client row. `application/discover-entity-tools.ts`'s own header states the `Entity`-is-project-scoped/`EnvironmentEntityTool`-is-environment-scoped rule this service implements by hand. Blocked on composing `tools`.",
+    note: "`ToolsContract.discoverEntityTools` is this file exactly — same fan-out over the project's environments, same convergence on `registerTools`, same stamp onto the client row. `application/discover-entity-tools.ts`'s own header states the `Entity`-is-project-scoped/`EnvironmentEntityTool`-is-environment-scoped rule this service implements by hand. `tools` IS NOW COMPOSED and the `EntityMcpClient.update` stamp is MOVABLE. WHAT HOLDS THE FILE IS `tenancy`: the `Environment.findMany` fan-out over a project's environments is the same listing `listVisibleProjects`/`listProjectEntities` do not answer, and the `Entity.update` is the discovery-status write `tenancy` publishes no writer of.",
   },
   "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery-scheduler.service.ts": {
     contexts: ["tools"],
-    waitingOn: "context-composition",
-    methods: { tools: ["discoverEntityTools"] },
-    note: "One `EntityMcpClient.findMany` that selects the stale clients a sweep should re-discover. The sweep ITSELF is `discoverEntityTools` per entity; the selection is not published by `ToolsContract` at all, and a scheduler is a runtime concern rather than a transport, so this file is the one in this root whose destination is a durable job rather than a route.",
+    waitingOn: "contract-method",
+    note: "One `EntityMcpClient.findMany` that selects the stale clients a sweep should re-discover. The sweep ITSELF is `discoverEntityTools` per entity; THE SELECTION IS NOT PUBLISHED BY `ToolsContract` AT ALL, and a scheduler is a runtime concern rather than a transport, so this file is the one in this root whose destination is a durable job rather than a route. ITS `discoverEntityTools` CLAIM WAS REMOVED when `movable` landed, because the sentence before this one says the site is unserved: leaving the column in place would have reported it movable on the strength of a method the note itself says does not answer it.",
   },
 });
 
@@ -316,8 +331,18 @@ function isComposed(owner, composed) {
 
 function verdictFor(site, owner, composed) {
   if (site.file.startsWith("apps/core-api/src/transports/")) return "moved";
+  // A CLIENT-LEVEL REACH NAMES NO ROW, so there is no owner and no contract to
+  // check a method against; it can never be `movable`.
   if (owner === "<client-level>") return "blockedOnContract";
-  return isComposed(owner, composed) ? "blockedOnContract" : "blockedOnContext";
+  if (!isComposed(owner, composed)) return "blockedOnContext";
+  // WIN-268 stage 2. `movable` — and the `methods` column is the join, not a
+  // claim: `checkDispositions` fails the build when a named method is absent from
+  // the contract read by AST, so this verdict cannot be typed into existence. It
+  // was added when `tools` composed and 13 sites in this register needed a
+  // verdict other than "publishes no method for this use case", which the
+  // dispositions beside them contradicted by NAMING the published methods.
+  const named = DISPOSITIONS[site.file]?.methods?.[owner] ?? [];
+  return named.length > 0 ? "movable" : "blockedOnContract";
 }
 
 export function buildRegister(root = repositoryRoot) {

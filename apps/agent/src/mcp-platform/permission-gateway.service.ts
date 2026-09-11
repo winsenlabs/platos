@@ -429,23 +429,32 @@ export type McpScopeRefusal =
   /** The project exists and belongs to a different organization. */
   | "project-outside-claimed-organization";
 
-/**
- * The refusal, as an exception, for the three CRUD helpers.
+/*
+ * `McpScopeRefusedError` AND THE THREE CRUD HELPERS THAT THREW IT ARE GONE.
  *
- * WHY AN EXCEPTION HERE AND A VALUE IN `resolve`. `resolve` has a return type
- * that can already carry a denial — that is what it is for — so a refusal there
- * is a value. The CRUD helpers return rows and a boolean, and `deleteOrgPolicy`
- * is the reason this is not a falsy return: it already answers `false` for "no
- * such row", so a forged scope answering `false` would be indistinguishable from
- * deleting a row that was already gone. An empty result standing in for a
- * refusal is the same defect this class exists to remove from tier 2.
+ * WIN-268 (M4.2). They were the tier-2 policy MANAGEMENT surface — list, upsert,
+ * delete over `OrganizationMcpPolicy` — and the note that stood here recorded
+ * that NOTHING CALLED THEM: no route, no MCP tool, no other service. They were
+ * ninety lines of ORM against a table this deployable is not the owner of,
+ * reachable only from a surface that had not been built.
+ *
+ * WHERE THE CAPABILITY IS NOW. `ToolsContract.listOrganizationPolicies`,
+ * `setOrganizationPolicy` and `deleteOrganizationPolicy`, composed in
+ * `apps/core-api/src/app.module.ts` and served by
+ * `apps/core-api/src/transports/mcp/organization-policies.controller.ts`. The
+ * forged-chain refusal these helpers hand-rolled is `requireScope` in
+ * `packages/adapters/postgres-tenancy/src/tools-scope.ts`, which resolves the
+ * environment THROUGH its project to its organization in one statement and mints
+ * two distinct reasons — `out_of_scope` and `unknown_environment` — where this
+ * file minted three. It is strictly stronger, because the scope it checks came
+ * off a `EnvironmentOperatorAuthorization` that tenancy's own private mint
+ * register vouched for, rather than off a triple a caller supplied.
+ *
+ * WHAT STAYS HERE. `resolve` — the four-tier decision — and its `resolveOrganization`
+ * join, because `tool-executor.service.ts` in this deployable still calls it. Its
+ * ORM sites are still on the register and still say `apps/agent`; that is the
+ * honest state and not an omission.
  */
-export class McpScopeRefusedError extends Error {
-  constructor(readonly reason: McpScopeRefusal) {
-    super(`the claimed MCP scope is not a real organization/project/environment chain: ${reason}`);
-    this.name = "McpScopeRefusedError";
-  }
-}
 
 type ResolvedOrganization =
   | { readonly ok: true; readonly organizationId: string }
@@ -653,85 +662,6 @@ export class MCPPermissionGatewayService {
       tier: winnerTier,
       reason: `tier-${winnerTier} ${state}`,
     };
-  }
-
-  // ── CRUD helpers for tier-2 policy ─────────────────────────────────
-  //
-  // ALL THREE RESOLVE THE SCOPE FIRST and refuse a chain that is not real, for
-  // the reason tier 2 does. Without it these are a cross-tenant read and a
-  // cross-tenant WRITE of another organization's MCP policy: every one of them
-  // keyed straight off `scope.organizationId` with nothing joining it to the
-  // environment the caller was actually granted.
-  //
-  // NOTHING CALLS THEM TODAY, and that is stated rather than hidden — the three
-  // are reachable only from a management surface that has not been built. Fixing
-  // an unreachable surface is defence for the day it is reached, not a claim
-  // that something is exploitable now.
-  private async requireOrganization(
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
-  ): Promise<string> {
-    const owner = await this.resolveOrganization(scope);
-    if (!owner.ok) throw new McpScopeRefusedError(owner.reason);
-    return owner.organizationId;
-  }
-
-  async listOrgPolicies(
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
-  ) {
-    const organizationId = await this.requireOrganization(scope);
-    const rows = await this.prisma.organizationMcpPolicy.findMany({
-      where: { organizationId },
-      orderBy: [{ pattern: "asc" }],
-    });
-    return rows.map(({ effect, ...row }) => ({ ...row, policy: fromPolicyEffect(effect) }));
-  }
-
-  async upsertOrgPolicy(
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
-    pattern: string,
-    policy: McpPermissionState,
-  ) {
-    if (!pattern || pattern.length < 1 || pattern.length > 200) {
-      throw new Error("pattern must be 1–200 chars");
-    }
-    const organizationId = await this.requireOrganization(scope);
-    const effect = toPolicyEffect(policy);
-    // Upsert via find + update/create since the unique key is composite.
-    const existing = await this.prisma.organizationMcpPolicy.findFirst({
-      where: { organizationId, pattern },
-      select: { id: true },
-    });
-    if (existing) {
-      const updated = await this.prisma.organizationMcpPolicy.update({
-        where: { id: existing.id },
-        data: { effect },
-      });
-      const { effect: savedEffect, ...row } = updated;
-      return { ...row, policy: fromPolicyEffect(savedEffect) };
-    }
-    const created = await this.prisma.organizationMcpPolicy.create({
-      data: {
-        organizationId,
-        pattern,
-        effect,
-      },
-    });
-    const { effect: savedEffect, ...row } = created;
-    return { ...row, policy: fromPolicyEffect(savedEffect) };
-  }
-
-  async deleteOrgPolicy(
-    scope: Pick<RequestScope, "organizationId" | "projectId" | "environmentId">,
-    id: string,
-  ) {
-    const organizationId = await this.requireOrganization(scope);
-    const existing = await this.prisma.organizationMcpPolicy.findFirst({
-      where: { id, organizationId },
-      select: { id: true },
-    });
-    if (!existing) return false;
-    await this.prisma.organizationMcpPolicy.delete({ where: { id } });
-    return true;
   }
 
   /** Export for tests and tools that want to know the baseline. */

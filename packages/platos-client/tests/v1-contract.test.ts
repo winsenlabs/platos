@@ -55,10 +55,13 @@ interface Fixture {
     readonly arguments: {
       readonly pathParameters: Readonly<Record<string, string>>;
       readonly body: unknown;
+      readonly query: Readonly<Record<string, string>> | null;
     };
     readonly expected: {
       readonly method: string;
       readonly path: string;
+      readonly query: Readonly<Record<string, string>> | null;
+      readonly queryString: string;
       readonly sendsIdempotencyKey: boolean;
       readonly contentType: string | null;
     };
@@ -101,6 +104,11 @@ async function drive(api: V1Api, entry: Fixture["operations"][number]): Promise<
   );
   const args: unknown[] = Object.values(entry.arguments.pathParameters);
   if (entry.arguments.body !== null) args.push(entry.arguments.body);
+  // M4 finish — the DERIVED query. Three operations publish typed query parameters
+  // and one of them is required, so a driver that stopped at path and body would
+  // not compile for them — which is the point: the argument exists because the
+  // route cannot be called without it.
+  if (entry.arguments.query !== null) args.push(entry.arguments.query);
   await method.apply(namespace, args);
 }
 
@@ -145,6 +153,7 @@ describe("the generated V1 surface matches the contract it was emitted from", ()
       expect(request.operation.successStatus).toBe(entry.successStatus);
       expect(request.path).toBe(entry.expected.path);
       expect(request.body ?? null).toEqual(entry.arguments.body);
+      expect(request.query ?? null).toEqual(entry.expected.query);
     },
   );
 
@@ -163,7 +172,9 @@ describe("the generated V1 surface matches the contract it was emitted from", ()
       await drive(client, entry);
       expect(calls).toHaveLength(1);
       const headers = calls[0]!.init.headers as Record<string, string>;
-      expect(calls[0]!.url).toBe(`https://platos.example.com${entry.expected.path}`);
+      expect(calls[0]!.url).toBe(
+        `https://platos.example.com${entry.expected.path}${entry.expected.queryString}`,
+      );
       expect(calls[0]!.init.method).toBe(entry.expected.method);
       expect(headers["authorization"]).toBe("Bearer operator-token");
       expect(headers["content-type"] ?? null).toBe(entry.expected.contentType);

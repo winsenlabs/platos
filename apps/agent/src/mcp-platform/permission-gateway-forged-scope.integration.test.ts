@@ -29,10 +29,7 @@ import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@platos/tenancy-database";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import {
-  MCPPermissionGatewayService,
-  McpScopeRefusedError,
-} from "./permission-gateway.service";
+import { MCPPermissionGatewayService } from "./permission-gateway.service";
 
 // NO `DATABASE_URL` FALLBACK. `apps/agent/test/setup.ts` stamps a fake URL into
 // every worker so unit tests can read `env.*` with no database; a suite that fell
@@ -275,59 +272,22 @@ describeWithDatabase("tier-2 MCP policy refuses a forged organization/project/en
     expect(decision.state).toBe("block");
   });
 
-  it("THE CRUD HELPERS REFUSE THE FORGED CHAIN, and succeed on the coherent one", async () => {
-    const forged = {
-      organizationId: beta.organizationId,
-      projectId: alpha.projectId,
-      environmentId: alpha.environmentId,
-    };
-    const coherent = {
-      organizationId: alpha.organizationId,
-      projectId: alpha.projectId,
-      environmentId: alpha.environmentId,
-    };
-
-    await expect(gateway.listOrgPolicies(forged as never)).rejects.toBeInstanceOf(
-      McpScopeRefusedError,
-    );
-    await expect(
-      gateway.upsertOrgPolicy(forged as never, "forged.*", "block"),
-    ).rejects.toBeInstanceOf(McpScopeRefusedError);
-
-    // AND NOTHING WAS WRITTEN. A refusal that threw after the write would satisfy
-    // the assertion above and still have created beta's row.
-    const forgedRows = await prisma.organizationMcpPolicy.count({
-      where: { organizationId: beta.organizationId },
-    });
-    expect(forgedRows).toBe(0);
-
-    // THE POSITIVE HALF. Without it, "throw always" passes.
-    const listed = await gateway.listOrgPolicies(coherent as never);
-    expect(listed.map((row) => row.pattern)).toContain(GUARDED_TOOL);
-    const created = await gateway.upsertOrgPolicy(coherent as never, "coherent.*", "block");
-    expect(created.policy).toBe("block");
-    expect(await gateway.deleteOrgPolicy(coherent as never, created.id)).toBe(true);
-  });
-
-  it("deleteOrgPolicy tells a refused scope apart from a row that was already gone", async () => {
-    // The reason the refusal is an exception and not `false`: `false` already
-    // means "no such row", so a forged scope answering `false` would be an empty
-    // result standing in for a refusal — the same defect this suite is about.
-    const coherent = {
-      organizationId: alpha.organizationId,
-      projectId: alpha.projectId,
-      environmentId: alpha.environmentId,
-    };
-    expect(await gateway.deleteOrgPolicy(coherent as never, randomUUID())).toBe(false);
-    await expect(
-      gateway.deleteOrgPolicy(
-        {
-          organizationId: beta.organizationId,
-          projectId: alpha.projectId,
-          environmentId: alpha.environmentId,
-        } as never,
-        randomUUID(),
-      ),
-    ).rejects.toBeInstanceOf(McpScopeRefusedError);
-  });
+  // THE TWO CRUD CASES THAT STOOD HERE ARE GONE WITH THE CODE THEY COVERED.
+  //
+  // WIN-268 (M4.2) deleted `listOrgPolicies`, `upsertOrgPolicy` and
+  // `deleteOrgPolicy` from `permission-gateway.service.ts`: nothing called them,
+  // and the tier-2 MANAGEMENT surface is now
+  // `ToolsContract.listOrganizationPolicies` / `setOrganizationPolicy` /
+  // `deleteOrganizationPolicy`, served by
+  // `apps/core-api/src/transports/mcp/organization-policies.controller.ts`.
+  //
+  // THE GUARANTEE MOVED WITH IT RATHER THAN BEING DROPPED. Its replacement is
+  // `apps/core-api/src/composition/mcp-organization-policy.integration.test.ts`,
+  // which asks the same question of the contract path against a real tree — a
+  // forged authorization, a forged triple, an environment that is not one, and
+  // the `metadata`-vs-`secret:mutate` narrowing — with a distinct refusal code
+  // for each and a positive control for each refusal.
+  //
+  // WHAT REMAINS BELOW is `resolve`'s tier-2 join, which `tool-executor.service.ts`
+  // in this deployable still reaches. Those ORM sites are still on the register.
 });

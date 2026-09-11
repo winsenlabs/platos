@@ -317,3 +317,251 @@ export function planBearerCredential(
     expiresAt: new Date(input.now.getTime() + ttl * 1000),
   });
 }
+
+// ---------------------------------------------------------------------------
+// WIN-268 (M4.2) — THE OTHER HALF OF A CREDENTIAL'S LIFE: LISTING IT, AND ENDING
+// IT.
+//
+// MINT and VERIFY were already here. LIST and REVOKE were not, and the gap was
+// not cosmetic: `apps/agent/src/mcp-platform/mcp-bearer-token.service.ts` and
+// `token.service.ts` hold the only implementations, so the four operations
+// `GET /mcp/platform/tokens`, `POST /mcp/platform/tokens/:id/revoke`,
+// `GET /mcp/entity/:entityId/tokens` and
+// `DELETE /mcp/entity/:entityId/tokens/:tokenId` are in the generated operation
+// manifest with an `apps/agent` implementation and NOTHING in `apps/core-api` —
+// the same shape the two mints had before P1, and the reason a V1 route could not
+// be built for them: a V1 route may only reach a contract method.
+//
+// -----------------------------------------------------------------------------
+// A LISTING PROJECTION THAT CANNOT CARRY THE VERIFIER
+//
+// `BearerCredentialRecord` holds `tokenHash`. A listing must not, and "must not"
+// is worth more as a TYPE than as a review comment: `BearerCredentialSummary` has
+// no such field, so a store that projected the digest could not compile, and
+// `scripts/arch/secret-response-census.mjs` never has to be argued with about
+// this route. It is not the raw secret — that exists once, at mint — but it is
+// the value every verification compares against, and a listing that leaked it
+// would hand a reader offline guessing material for every credential at once.
+//
+// It carries what `BearerCredentialRecord` cannot instead: `label` and
+// `createdAt`, which both oracles' listings return and which the shared
+// authentication record has no use for.
+
+/**
+ * One credential as a LISTING renders it. No digest, and no raw secret.
+ *
+ * `principalId` is the one field whose column differs by kind —
+ * `McpToken.mintedByUserId` and `McpBearerToken.mcpUserId` — and it is named for
+ * what the domain means rather than for either column, because that is the axis
+ * `BearerCredentialRecord` already models. For a platform token it is the
+ * operator who minted it; for an entity token it is an END USER of the entity and
+ * is not a Platos user at all.
+ */
+export interface BearerCredentialSummary extends RevocableCredential {
+  readonly credentialId: string;
+  readonly kind: MintableBearerKind;
+  readonly label: string;
+  readonly permissions: readonly string[];
+  readonly principalId: PrincipalId;
+  /** `McpToken.tier`. Null for an entity token, whose table has no such column. */
+  readonly permissionTier: McpPermissionTier | null;
+  readonly createdAt: Date;
+  readonly lastUsedAt: Date | null;
+  /**
+   * `McpToken.revokedBy`, read back from the row.
+   *
+   * ALWAYS NULL FOR AN ENTITY TOKEN, AND THAT IS A SCHEMA FACT RATHER THAN A
+   * MISSING FEATURE: `McpBearerToken` has no `revokedBy` column at all — the
+   * legacy service records the actor in an `AdminAudit` row instead, which is
+   * `observability`'s and is not composed. Reporting the null is what stops a
+   * caller believing an attribution was stored when the table cannot hold one.
+   */
+  readonly revokedBy: string | null;
+}
+
+/**
+ * The default page, and the largest one.
+ *
+ * BOTH EXTRACTED, from `token.service.list` and `mcp-bearer-token.list`, which
+ * agree: `boundedInteger(options.limit, 50, 1, 100)`.
+ *
+ * THE ORACLES CLAMP AND THIS REFUSES, which is the one deliberate divergence.
+ * `boundedInteger` silently turns `limit=5000` into 100, and a caller that asked
+ * for five thousand rows, received one hundred and was told nothing believes it
+ * has seen everything. `planEndUserPage` already made the same call for the same
+ * reason, and `transports/rest/page.ts` states it as the chassis rule: "malformed
+ * pagination and filter values now return HTTP 400 instead of being silently
+ * coerced".
+ */
+export const DEFAULT_BEARER_PAGE_SIZE = 50;
+export const MAX_BEARER_PAGE_SIZE = 100;
+
+/**
+ * A validated window over one environment's credentials of one kind.
+ *
+ * THE SCOPE IS AN `AuthorizationScope` AND NOT AN ENVIRONMENT ID, so the store
+ * derives the leaf from the same value the mint does and there is no second
+ * spelling of "which environment". `subjectId` is the entity for an
+ * `entity-bearer-token` and is refused for an `mcp-token`, by the same rule
+ * `planBearerCredential` applies to a mint: `McpToken` has no subject column, so
+ * a subject supplied for it could only be silently dropped.
+ */
+export interface BearerCredentialQuery {
+  readonly kind: MintableBearerKind;
+  /**
+   * The environment the credentials are bounded by, DERIVED FROM THE AUTHORIZED
+   * SCOPE by the planner below and never read off a request.
+   *
+   * The leaf rather than the whole scope, and this is the one place the two
+   * differ from `BearerCredentialMint`. A mint WRITES a row whose tenancy the
+   * store then re-derives from the environment's own ancestry and reads back, so
+   * it has to carry the scope it claimed in order for the two to be comparable. A
+   * listing only FILTERS, and a token row's `environmentId` IS its tenancy — so
+   * carrying the whole triple here would give every store the same derivation to
+   * repeat and one of them the chance to do it differently.
+   */
+  readonly environmentId: string;
+  readonly subjectId: string | null;
+  readonly limit: number;
+  readonly offset: number;
+}
+
+export interface PlanBearerCredentialPageInput {
+  readonly kind: MintableBearerKind;
+  readonly scope: AuthorizationScope;
+  readonly subjectId: string | null;
+  /** Null means "the fifty-row default"; a number is checked, never clamped. */
+  readonly limit: number | null;
+  readonly offset: number | null;
+}
+
+/**
+ * The kind/subject pairing and the environment rule, shared by the page and the
+ * revocation.
+ *
+ * ONE FUNCTION BECAUSE THEY ARE ONE RULE. Written twice, the day somebody
+ * narrowed the mint's subject rule would be the day a listing and a revocation
+ * disagreed about which credentials belong to an entity — and a revocation that
+ * ignored `entityId` would let an operator holding one entity end another
+ * entity's credentials inside the same environment.
+ */
+function checkBearerAddress(input: {
+  readonly kind: MintableBearerKind;
+  readonly scope: AuthorizationScope;
+  readonly subjectId: string | null;
+}): Result<string> {
+  if (input.kind === "entity-bearer-token" && input.subjectId === null) {
+    return err(credentialSubjectMismatch(input.kind, "requires the entity it is scoped to"));
+  }
+  if (input.kind === "mcp-token" && input.subjectId !== null) {
+    return err(
+      credentialSubjectMismatch(input.kind, "is scoped to an environment, not to a subject"),
+    );
+  }
+  if (input.scope.kind !== "ENVIRONMENT" || input.scope.tenant.level !== "environment") {
+    return err(
+      credentialMaterialInvalid("scope", "a bearer credential is bounded by ONE environment"),
+    );
+  }
+  // BOTH HALVES OF THE CHECK ARE LOAD-BEARING. `scopeKindOf` alone would satisfy
+  // the compiler and leave `tenant` typed as any of the three levels, so the
+  // narrowing is written against the discriminant the leaf id actually lives on.
+  return ok(input.scope.tenant.environmentId);
+}
+
+export function planBearerCredentialPage(
+  input: PlanBearerCredentialPageInput,
+): Result<BearerCredentialQuery> {
+  const address = checkBearerAddress(input);
+  if (!address.ok) return err(address.error);
+
+  const limit = input.limit ?? DEFAULT_BEARER_PAGE_SIZE;
+  if (!Number.isSafeInteger(limit) || limit < 1) {
+    return err(credentialMaterialInvalid("limit", "must be a positive whole number of rows"));
+  }
+  if (limit > MAX_BEARER_PAGE_SIZE) {
+    return err(
+      credentialMaterialInvalid(
+        "limit",
+        `must not exceed ${String(MAX_BEARER_PAGE_SIZE)} rows`,
+      ),
+    );
+  }
+  const offset = input.offset ?? 0;
+  if (!Number.isSafeInteger(offset) || offset < 0) {
+    return err(credentialMaterialInvalid("offset", "must be a whole number of rows, or zero"));
+  }
+  return ok({
+    kind: input.kind,
+    environmentId: address.value,
+    subjectId: input.subjectId,
+    limit,
+    offset,
+  });
+}
+
+/**
+ * What the store is asked to END.
+ *
+ * `revokedAt` ARRIVES rather than being taken, for the reason ADR M0.3 §2 gives
+ * and `planBearerCredential` already obeys: the clock stays out of the domain so a
+ * revocation can be replayed exactly in a test. It is also the instant the
+ * CONDITIONAL update writes, which is what makes a concurrent second revoke a
+ * no-op rather than a rewrite of the first one's timestamp.
+ */
+export interface BearerCredentialRevocation {
+  readonly kind: MintableBearerKind;
+  readonly credentialId: string;
+  /** The environment leaf, derived from the authorized scope. See the query above. */
+  readonly environmentId: string;
+  readonly subjectId: string | null;
+  /**
+   * `McpToken.revokedBy`. Null when the caller is not a Platos user, and ignored
+   * by `McpBearerToken`, which has no such column — see
+   * `BearerCredentialSummary.revokedBy`.
+   */
+  readonly revokedByUserId: string | null;
+  readonly revokedAt: Date;
+}
+
+/**
+ * What the store answers with, having written.
+ *
+ * `credential` IS READ BACK AFTER THE WRITE, never assembled from the request.
+ * That is what lets the caller report the instant the ROW holds — the same bar
+ * `revokeOperatorSession` set for server-side sign-out, whose view's own note
+ * says "`revokedAt` is the instant the store now holds, not the instant the
+ * caller asked".
+ *
+ * `newlyRevoked` is whether THIS call made the transition, and it comes from the
+ * conditional update's own row count rather than from comparing timestamps. Two
+ * operators revoking at once therefore see one `true` and one `false`, and the
+ * `revokedAt` they both read is the winner's.
+ */
+export interface BearerCredentialRevocationResult {
+  readonly credential: BearerCredentialSummary;
+  readonly newlyRevoked: boolean;
+}
+
+export function planBearerCredentialRevocation(input: {
+  readonly kind: MintableBearerKind;
+  readonly credentialId: string;
+  readonly scope: AuthorizationScope;
+  readonly subjectId: string | null;
+  readonly revokedByUserId: string | null;
+  readonly now: Date;
+}): Result<BearerCredentialRevocation> {
+  const address = checkBearerAddress(input);
+  if (!address.ok) return err(address.error);
+  if (input.credentialId.trim() === "") {
+    return err(credentialMaterialInvalid("credentialId", "must name the credential to revoke"));
+  }
+  return ok({
+    kind: input.kind,
+    credentialId: input.credentialId,
+    environmentId: address.value,
+    subjectId: input.subjectId,
+    revokedByUserId: input.revokedByUserId,
+    revokedAt: input.now,
+  });
+}

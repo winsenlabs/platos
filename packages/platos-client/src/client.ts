@@ -21,6 +21,7 @@ import {
   PlatosRateLimitError,
   PlatosServerError,
 } from "./errors.js";
+import { IDEMPOTENCY_KEY_HEADER } from "./generated/v1.js";
 import { AgentsApi } from "./apis/agents.js";
 import { ApprovalsApi } from "./apis/approvals.js";
 import { BudgetsApi } from "./apis/budgets.js";
@@ -43,6 +44,61 @@ const DEFAULT_RETRY: Required<PlatosRetryOptions> = {
   jitter: 0.2,
 };
 const DEFAULT_TIMEOUT_MS = 30_000;
+
+/**
+ * THE METHODS A RETRY CANNOT DUPLICATE, TAKEN FROM RFC 9110 AND NOT FROM TASTE.
+ *
+ * RFC 9110 §9.2.2 lists the idempotent request methods — "GET, HEAD, PUT,
+ * DELETE, OPTIONS, and TRACE" — and defines idempotent as "the intended effect
+ * on the server of multiple identical requests ... is the same as the effect for
+ * a single such request". POST and PATCH are excluded there, and they are
+ * excluded here, so the set is the standard's rather than this file's. TRACE is
+ * omitted only because nothing in this SDK can emit one.
+ */
+const IDEMPOTENT_METHODS: ReadonlySet<string> = new Set([
+  "GET",
+  "HEAD",
+  "PUT",
+  "DELETE",
+  "OPTIONS",
+]);
+
+/**
+ * MAY THIS REQUEST BE SENT A SECOND TIME?
+ *
+ * WHY THIS IS A GUARD AND NOT A COMMENT. `_fetchWithRetry` retried ANY method,
+ * POST included, and the reason nothing had gone wrong was that no namespace on
+ * this legacy client happens to reach a mint — a property of which files exist,
+ * not a rule. ADR M0.4 §2 puts `Idempotency-Key` on the one-time-secret mints
+ * precisely because of a retry: the first try creates a credential nobody ever
+ * sees again, the socket drops before the response lands, and a client that
+ * tries again WITHOUT a stable key creates a second live credential nobody knows
+ * about. A `mints.create()` added to `apis/` tomorrow would have inherited that
+ * behaviour from the transport and nothing would have gone red.
+ *
+ * THE RULE. A request is repeatable when its METHOD is idempotent, or when it
+ * carries an `Idempotency-Key` — the header that makes the server replay its
+ * first answer instead of performing the effect again. Anything else is sent
+ * exactly once, and its first failure is final. `v1-transport.ts` reaches this
+ * conclusion the other way round, by minting the key once per logical call
+ * before the first try; both files now hold the same rule and neither depends on
+ * the other being right.
+ *
+ * The header name is IMPORTED rather than spelled here: `generated/v1.ts` emits
+ * it from core-api's own policy table, so the guard and the server cannot
+ * disagree about which header they mean. Matching is case-insensitive because
+ * HTTP field names are (RFC 9110 §5.1) and a caller writing
+ * `Idempotency-Key` must not be treated differently from one writing
+ * `idempotency-key`.
+ */
+function isRepeatable(method: string, headers: Record<string, string>): boolean {
+  if (IDEMPOTENT_METHODS.has(method.toUpperCase())) return true;
+  for (const [name, value] of Object.entries(headers)) {
+    if (name.toLowerCase() !== IDEMPOTENCY_KEY_HEADER) continue;
+    if (typeof value === "string" && value.trim() !== "") return true;
+  }
+  return false;
+}
 
 const sleep = (ms: number, signal?: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
@@ -212,8 +268,20 @@ export class PlatosClient {
     const url = `${this.opts.baseUrl}${path}`;
     const externalSignal = init.signal ?? undefined;
 
+    // DECIDED ONCE, BEFORE THE FIRST TRY, from the headers the request will
+    // actually carry — `_buildHeaders` first so a caller's own `init.headers`
+    // wins, exactly as the `fetch` call below merges them. Deciding per try would
+    // let a header mutated between sends change the answer halfway through, and
+    // "may this be repeated" is a property of the logical call, not of one send.
+    const effectiveHeaders = {
+      ...this._buildHeaders(scope),
+      ...(init.headers as Record<string, string> | undefined),
+    };
+    const repeatable = isRepeatable(init.method ?? "GET", effectiveHeaders);
+    const repeatBudget = repeatable ? this.retryCfg.maxRetries : 0;
+
     let lastError: unknown;
-    for (let retryCount = 0; retryCount <= this.retryCfg.maxRetries; retryCount++) {
+    for (let retryCount = 0; retryCount <= repeatBudget; retryCount++) {
       // Per-retry timeout signal combined with caller's signal.
       const retryController = new AbortController();
       const timeoutId = setTimeout(() => retryController.abort(), this.timeoutMs);
@@ -226,13 +294,18 @@ export class PlatosClient {
         res = await fetchImpl(url, {
           ...init,
           signal: combined,
-          headers: { ...this._buildHeaders(scope), ...(init.headers as Record<string, string> | undefined) },
+          // THE SAME MAP THE GUARD READ. Rebuilding it here would let the
+          // request carry headers the repeatability decision never saw.
+          headers: effectiveHeaders,
         });
       } catch (err) {
         clearTimeout(timeoutId);
         const netErr = new PlatosNetworkError(err);
         lastError = netErr;
-        if (retryCount < this.retryCfg.maxRetries && !externalSignal?.aborted) {
+        // A NETWORK ERROR IS THE DANGEROUS ONE: the request may have been
+        // delivered and the response lost, so a retry of a non-repeatable call
+        // is exactly the double effect the guard exists to prevent.
+        if (retryCount < repeatBudget && !externalSignal?.aborted) {
           await sleep(this._backoffMs(retryCount), externalSignal);
           continue;
         }
@@ -248,11 +321,7 @@ export class PlatosClient {
 
       const parsed = await errorFromResponse(res);
       lastError = parsed;
-      if (
-        retryCount < this.retryCfg.maxRetries &&
-        isRetryableError(parsed) &&
-        !externalSignal?.aborted
-      ) {
+      if (retryCount < repeatBudget && isRetryableError(parsed) && !externalSignal?.aborted) {
         // Honor Retry-After for 429s.
         const delay =
           parsed instanceof PlatosRateLimitError && parsed.retryAfterMs

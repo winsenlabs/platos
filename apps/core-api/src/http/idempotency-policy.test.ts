@@ -69,7 +69,32 @@ describe("the policy table against the frozen operation manifest", () => {
     // 308 -> 309 (WIN-272, M4.6): the stream lane's one route. It is a GET, so
     // `classifyRequest` puts it in the `none` bucket — an `Idempotency-Key` on a
     // read is meaningless and this table says so by omission rather than by a row.
-    expect(OPERATIONS.length).toBe(309);
+    //
+    // 309 -> 310: `POST /api/v1/agent/agents/:agentId/chat/stream`, the route that
+    // took the 20,000-character message out of the request line. IT IS A CARRIED
+    // PIN AND NOT THIS TRANCHE'S ROUTE — the manifest was regenerated when the
+    // route landed and this count was not moved with it, so `pnpm --filter
+    // @platos/core-api test` has been one assertion red ever since. Recorded here
+    // rather than silently corrected because it is the SIXTH pin of the seven-
+    // artifact sequence a new agent route costs, and the list that sequence is
+    // written down in does not name this file.
+    //
+    // IT NEEDS NO POLICY ROW EITHER, and that is a classification rather than an
+    // omission: the route mints no credential, so it takes the unlisted default
+    // (`accepted` — a key is honoured if sent and not demanded), and the
+    // credential-path case below would fail if its path looked like a secret's.
+    //
+    // 310 -> 313 (WIN-268, M4.2): the tier-2 MCP policy surface's three routes at
+    // `/mcp/platform/environments/:environmentId/policies`. THE `PUT` IS THE ONE
+    // WORTH READING TWICE. It is a mutating operation that mints no credential, so
+    // it takes the unlisted default `accepted` rather than a `required` row — and
+    // that is the classification the two token mints beside it do NOT take. The
+    // difference is not "how dangerous": it is that a replayed policy upsert
+    // converges on the same single row keyed `@@unique([organizationId, pattern])`,
+    // while a replayed mint would leave a second live credential behind. Demanding
+    // a key here would refuse three hundred operations' worth of callers for a
+    // property the operation already has by construction.
+    expect(OPERATIONS.length).toBe(313);
   });
 
   it("classifies only operations the frozen surface actually serves", () => {

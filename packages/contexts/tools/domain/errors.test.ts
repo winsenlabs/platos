@@ -25,6 +25,7 @@ const MINTED = [
   errors.dispatchRateLimited("files.upload", 30),
   errors.mcpDisabled("entity-1"),
   errors.mcpTransportInvalid("bad", "carrier-pigeon"),
+  errors.mcpTransportUnimplemented("stdio", "no process supplier"),
   errors.policyPatternInvalid("too long"),
   errors.policyEffectUnsupported("require_approval"),
   errors.callSequenceConflict("step-1", 0),
