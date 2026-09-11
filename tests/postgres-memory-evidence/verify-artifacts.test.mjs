@@ -1,16 +1,23 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import {
   EXPLAIN_CONTRACT,
+  minimumPostgresMajor,
+  postgresMajor,
+  POSTGRES_IMAGE_PIN_SOURCE,
   QUERY_COUNT_CONTRACT,
   resolveArtifactDirectoryArgument,
   SUITE_CONTRACT,
   verifyEvidenceArtifactDirectory,
 } from "./verify-artifacts.mjs";
+
+const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 test("artifact verifier CLI ignores pnpm separators and rejects extra paths", () => {
   assert.equal(resolveArtifactDirectoryArgument(["--", "artifacts/evidence"], undefined), "artifacts/evidence");
@@ -122,6 +129,99 @@ test("artifact verifier rejects a normalized endpoint SQL hash mutation", async 
       verifyEvidenceArtifactDirectory(directory),
       /normalized SQL hash is invalid/
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+// ── THE POSTGRESQL FLOOR (was an exact `/^16/` pin) ────────────────────────
+//
+// The pin was widened to a floor because the evidence turned out not to assert
+// anything specific to major 16: all fourteen cases across the four suites pass
+// against a native `postgresql@17` (17.10, pgvector 0.8.5), and the only failure
+// was the string match itself. Widening a refusal is only safe if the widened one
+// still refuses, so these cases are the proof that it does — and they mutate the
+// captured evidence and the pinned workflow rather than asserting against
+// constants this suite owns.
+
+test("the floor is READ OFF the workflow's pinned image, not kept as a literal here", () => {
+  const workflow = readFileSync(resolve(repositoryRoot, POSTGRES_IMAGE_PIN_SOURCE), "utf8");
+  const major = minimumPostgresMajor(workflow);
+  // Joined to the real file: the number must be the one actually pinned there.
+  assert.ok(workflow.includes(`pgvector/pgvector:pg${major}`), "derived floor is not the pinned tag");
+  assert.equal(minimumPostgresMajor(), major, "the default read disagrees with the explicit one");
+});
+
+test("a workflow whose jobs pin DISAGREEING majors is refused, not averaged", () => {
+  assert.throws(
+    () => minimumPostgresMajor("a: pgvector/pgvector:pg16\nb: pgvector/pgvector:pg17\n"),
+    /must not drift apart/
+  );
+  assert.throws(() => minimumPostgresMajor("no image pinned here\n"), /pins no pgvector/);
+});
+
+test("server_version parses on both real shapes and refuses what is not one", () => {
+  // The two strings `current_setting('server_version')` actually answers: the
+  // pinned image, and the native install the suites were re-proven against.
+  assert.equal(postgresMajor("16.4"), 16);
+  assert.equal(postgresMajor("17.10 (Homebrew)"), 17);
+  assert.equal(postgresMajor(""), null);
+  assert.equal(postgresMajor(undefined), null);
+  assert.equal(postgresMajor("sixteen"), null);
+});
+
+test("artifact verifier REFUSES evidence captured on a server older than the floor", async () => {
+  const directory = await fixtureDirectory();
+  try {
+    const path = resolve(directory, "postgres-runtime.json");
+    const runtime = JSON.parse(await readFile(path, "utf8"));
+    const floor = minimumPostgresMajor();
+
+    // One major below the pin: the case the floor exists to catch.
+    runtime.serverVersion = `${floor - 1}.13`;
+    await writeJson(path, runtime);
+    await assert.rejects(
+      verifyEvidenceArtifactDirectory(directory),
+      new RegExp(`gate used PostgreSQL ${floor - 1}, older than the ${floor} pinned`)
+    );
+
+    // And an ancient one, so the refusal is not an off-by-one that only rejects
+    // the immediately preceding major.
+    runtime.serverVersion = "9.6.24";
+    await writeJson(path, runtime);
+    await assert.rejects(verifyEvidenceArtifactDirectory(directory), /older than the/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("artifact verifier tells an UNREADABLE version apart from a too-old one", async () => {
+  const directory = await fixtureDirectory();
+  try {
+    const path = resolve(directory, "postgres-runtime.json");
+    const runtime = JSON.parse(await readFile(path, "utf8"));
+    delete runtime.serverVersion;
+    await writeJson(path, runtime);
+    // A broken capture and a wrong server are different operator actions, so the
+    // two refusals must not share a message.
+    await assert.rejects(
+      verifyEvidenceArtifactDirectory(directory),
+      /carries no readable PostgreSQL version/
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("the floor ADMITS the newer server the suites were re-proven against", async () => {
+  const directory = await fixtureDirectory();
+  try {
+    const path = resolve(directory, "postgres-runtime.json");
+    const runtime = JSON.parse(await readFile(path, "utf8"));
+    runtime.serverVersion = "17.10 (Homebrew)";
+    await writeJson(path, runtime);
+    const result = await verifyEvidenceArtifactDirectory(directory);
+    assert.equal(result.suites, SUITE_CONTRACT.length);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

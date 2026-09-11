@@ -9049,6 +9049,38 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -9086,9 +9118,7 @@
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
         "x-platos-schema-source": "typescript-dto",
-        "x-platos-query-parameters": "not-derived",
-        "x-platos-query-not-derived-reason": "post-parse-dto",
-        "x-platos-query-not-derived-detail": "The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to declare its Wire type argument, as the three MCP token routes now do — so this is the one remaining entry and it is a declaration this tranche did not make, in a controller it did not otherwise touch, rather than a missing mechanism."
+        "x-platos-query-parameters": "derived"
       }
     },
     "/api/v1/environments/{environmentId}/streams/{streamId}": {
@@ -12322,12 +12352,6 @@
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
     "componentSchemas": 38,
     "canonicalErrorCodes": 459,
-    "queryParametersNotDerived": [
-      {
-        "operation": "GET /api/v1/environments/:environmentId/end-users",
-        "handler": "EnvironmentEndUsersController.list",
-        "reason": "post-parse-dto"
-      }
-    ]
+    "queryParametersNotDerived": []
   }
 }

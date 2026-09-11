@@ -82,6 +82,42 @@ export interface EndUserQuery {
   readonly search: string | null;
 }
 
+/**
+ * `?status=&search=&limit=&cursor=` — WHAT A CALLER SENDS.
+ *
+ * SEPARATE FROM `EndUserQuery` BECAUSE THE TWO GENUINELY DIFFER, and the
+ * difference was the last entry in `UNDERIVABLE_QUERY_HANDLERS`. `EndUserQuery`
+ * is the POST-PARSE shape: it carries `offset`, a number `offsetInCursor`
+ * decoded out of `?cursor=`, and it has no `cursor` at all. A document that
+ * published it would name a parameter nobody can send and omit two every caller
+ * does, so `apps/agent/scripts/rest-schema-derivation.mjs` marked this route
+ * `not-derived` instead of guessing.
+ *
+ * THIS interface is what the pipe declares as its `Wire` argument, so the
+ * derivation reads it off the decorator through the type checker and the OpenAPI
+ * ratchet guards it like any other field. It is the same declaration the three
+ * MCP token routes make in `transports/mcp/token-lifecycle.ts`, and not a second
+ * convention for the same problem.
+ *
+ * EVERY PROPERTY IS A STRING because that is what Express hands across from a
+ * query string; the derivation REFUSES a wire property that is not one, which is
+ * what stops the post-parse shape being published by accident — `EndUserQuery`
+ * carries `offset: number` and `limit: number` and would be refused on either.
+ *
+ * ALL FOUR ARE OPTIONAL, and that is read off the rules rather than assumed.
+ * `parsePageQuery` defaults an absent `limit` to `DEFAULT_PAGE_SIZE` and an
+ * absent `cursor` to `null`; `optional()` below returns `null` for an absent
+ * `status` or `search`. So `GET` with no query string at all is a valid request
+ * for the first page, and publishing any of these as required would describe a
+ * demand this route does not make.
+ */
+export interface EndUserWireQuery {
+  readonly status?: string;
+  readonly search?: string;
+  readonly limit?: string;
+  readonly cursor?: string;
+}
+
 /** A single-valued, optional string parameter. A repeated one is refused. */
 function optional(
   query: QueryInput,
@@ -159,7 +195,9 @@ export const endUserQueryValidator = (input: unknown): Result<EndUserQuery> => {
   return ok({ offset, limit: page.value.limit, status, search });
 };
 
-const END_USER_QUERY_PIPE = new DomainValidationPipe(endUserQueryValidator);
+const END_USER_QUERY_PIPE = new DomainValidationPipe<EndUserQuery, EndUserWireQuery>(
+  endUserQueryValidator,
+);
 
 export function endUserResource(user: EndUserView): EndUserResource {
   return {
