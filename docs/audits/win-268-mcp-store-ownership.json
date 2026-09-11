@@ -2147,7 +2147,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
-      "line": 217,
+      "line": 241,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "tool",
@@ -2158,7 +2158,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
-      "line": 225,
+      "line": 249,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "tool",
@@ -2169,7 +2169,7 @@
     },
     {
       "file": "apps/agent/src/mcp-platform/tools/orchestration.ts",
-      "line": 235,
+      "line": 259,
       "shape": "delegate",
       "receiver": "prisma",
       "delegate": "environmentEntityTool",
