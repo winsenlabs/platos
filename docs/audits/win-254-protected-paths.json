@@ -1043,12 +1043,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "8397378dce0a0735f679b61e2a73463fe5b0dae9466b66f0ca9db81254ece535"
+      "sha256": "51b5478838e361e8d9265bb6c5eb7772f373b12331c40077adc96f299e5bae49"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "6eaf5e316c107277498a7c33ab13481127679caf473180de9a4794043a96e9b0"
+      "sha256": "36d8ff17eb2fafa3ca459b2cfa73f76e245c62f77c2b1b3f336cb321ce5b93f8"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1058,12 +1058,12 @@
     {
       "path": "docs/audits/win-268-mcp-store-ownership.json",
       "mode": "100644",
-      "sha256": "9d4588e5618cf5f149430fd4b4bed7c7a9ae85961ddc241cd6ce8a0ba01f6cc1"
+      "sha256": "a7824526f2804a842969d335c8f3d703321d9399a742b3949ace2f8acb1c8b0d"
     },
     {
       "path": "docs/audits/win-268-mcp-store-ownership.md",
       "mode": "100644",
-      "sha256": "3cfe7458f4d2f25d7f6977bb26c5758fc9b249ebb736553b23755475de015b3c"
+      "sha256": "32a5563b7b6a5c35044856bc97174f95cfdd2b01cbdb493c1b453194cab75ca2"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
@@ -1098,7 +1098,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "2c0a11c8deeaad93328371340ab60398223e1247d8ca52f22c5867618a22475e"
+      "sha256": "1e3be2950b11164d572a82bf97db32ac05fcb182a8d846415f4fcdf58ed0bc47"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
