@@ -57,7 +57,7 @@ import {
   createInMemoryBearerLifecycle,
   type InMemoryBearerListing,
 } from "./in-memory-bearer-listings.js";
-import type { EnvironmentId } from "@platos/kernel";
+import type { Clock, EnvironmentId } from "@platos/kernel";
 
 export interface InMemoryIdentityAccessRepository extends IdentityAccessRepository {
   readonly state: InMemoryState;
@@ -131,6 +131,7 @@ const bearerKey = (kind: BearerCredentialKind, tokenHash: string): string =>
   `${kind}:${tokenHash}`;
 
 export function inMemoryIdentityAccessRepository(
+  clock: Clock,
   seed: Partial<InMemoryState> = {},
 ): InMemoryIdentityAccessRepository {
   const state: InMemoryState = { ...emptyState(), ...seed };
@@ -423,12 +424,18 @@ export function inMemoryIdentityAccessRepository(
             permissionTier: credential.permissionTier,
             // THE INSTANT THE ROW WOULD CARRY. `McpToken.createdAt` and
             // `McpBearerToken.createdAt` are both `@default(now())`, so the real
-            // store stamps them and the plan does not carry one. The double has no
-            // clock of its own, and using `expiresAt` minus the TTL would
-            // reconstruct a number the plan already discarded — so it stamps the
-            // one instant it can defend: `new Date()`, the same thing
-            // `@default(now())` means.
-            createdAt: new Date(),
+            // store stamps them and the plan does not carry one. Using `expiresAt`
+            // minus the TTL would reconstruct a number the plan already discarded,
+            // so the double stamps the one instant it can defend — and it takes it
+            // from THE INJECTED CLOCK rather than from the wall.
+            //
+            // IT USED TO READ `new Date()`, and that cost more than a lint row. A
+            // double stamping wall-clock instants made the listing-order case
+            // depend on real elapsed milliseconds, so that suite slept 2ms per mint
+            // to force distinct values. With the clock injected, `advance()` alone
+            // produces distinct instants and the ordering assertion is
+            // deterministic instead of usually-true.
+            createdAt: clock.now(),
             expiresAt: credential.expiresAt,
             revokedAt: null,
             lastUsedAt: null,

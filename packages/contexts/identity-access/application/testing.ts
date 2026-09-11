@@ -197,14 +197,18 @@ export interface TestPorts extends IdentityAccessPorts {
 
 /** One line of arrangement for a use case: seed the state, get the ports. */
 export function testPorts(seed: Partial<InMemoryState> = {}): TestPorts {
+  // ONE CLOCK, SHARED. The double stamps `createdAt` from this same instance, so
+  // `clock.advance()` in a test moves the rows it then writes. Building a second
+  // clock here would leave the fake reading a different time from the use case.
+  const clock = fixedClock();
   return {
-    repository: inMemoryIdentityAccessRepository(seed),
+    repository: inMemoryIdentityAccessRepository(clock, seed),
     rateLimiter: fakeRateLimiter(),
     hasher: fakeSecretHasher(),
     minter: fakeTokenMinter(),
     totp: fakeTotpCodeVerifier(),
     cipher: fakeMfaSecretCipher(),
-    clock: fixedClock(),
+    clock,
     ids: sequentialIdGenerator(),
     safety: recordingSafetySink(),
     logger: silentLogger(),

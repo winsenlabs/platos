@@ -970,7 +970,7 @@ jobs:
       # `run-non-browser-evidence.mjs` compares this against `git rev-parse HEAD`
       # and refuses a mismatch, which is what makes the artifact's `commitSha` a
       # claim about the tree that was tested. `actions/checkout` checks out
-      # `github.sha` on both triggers, so the two agree by construction and a day
+      # `github.sha` on both workflow events, so the two agree by construction and a
       # when they do not is a day this job must fail.
       PLATOS_CANDIDATE_SHA: ${{ github.sha }}
       PLATOS_EVIDENCE_RUN_ID: ${{ github.run_id }}

@@ -212,11 +212,12 @@ describe("WIN-268 — the listing answers for ONE environment and ONE entity", (
     const ids: string[] = [];
     for (const label of ["first", "second", "third", "fourth"]) {
       ids.push(await mintPlatform(identity, label));
-      // The double stamps `createdAt` from the wall clock, so distinct instants need
-      // distinct milliseconds; without this the tiebreak is the only ordering left
-      // and the case would be proving half of the rule.
+      // The double stamps `createdAt` from THIS clock, so advancing it is what
+      // makes the four instants distinct. It used to also sleep 2ms, because the
+      // double read the wall clock and the tiebreak would otherwise have been the
+      // only ordering left — which would have proved half the rule. Injecting the
+      // clock removed the sleep and the real-time dependency with it.
       ports.clock.advance(1000);
-      await new Promise((resolve) => setTimeout(resolve, 2));
     }
     const first = await identity.listBearerCredentials({
       kind: "mcp-token",

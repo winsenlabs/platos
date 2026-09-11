@@ -410,10 +410,53 @@ describe("clean tenancy Prisma boundary", () => {
     // move together say less than two pins that move independently: a re-pin that
     // had to touch all three would be a re-pin that added a new KIND of store
     // reach, which is a different review.
-    expect(analysis.calls.length).toBe(817);
-    expect(inventory).toHaveLength(329);
+    //
+    // M4 FINISH: 817 -> 808, AND THE COUNT FELL FOR THE FIRST TIME. Every pin
+    // above this one recorded GROWTH that a tranche had failed to declare. This
+    // one records nine production delegate call sites LEAVING `apps/agent`, which
+    // is the direction the whole de-Prisma programme is pointed, and the delta is
+    // fully attributable rather than merely plausible.
+    //
+    // THE NINE, EACH NAMED, from `git diff v1..HEAD -- apps/agent/src`:
+    //   the tier-2 policy surface moving to `apps/core-api` on `ToolsContract` (7)
+    //     mcp-tool-acl.service.ts        entityToolPolicy.upsert
+    //     permission-gateway.service.ts  organizationMcpPolicy.findMany
+    //     permission-gateway.service.ts  organizationMcpPolicy.findFirst  (x2)
+    //     permission-gateway.service.ts  organizationMcpPolicy.update
+    //     permission-gateway.service.ts  organizationMcpPolicy.create
+    //     permission-gateway.service.ts  organizationMcpPolicy.delete
+    //   the unguarded cross-tenant DELETE being removed outright (2)
+    //     tool-registry.service.ts       environmentEntityTool.findMany
+    //     tool-registry.service.ts       environmentEntityTool.deleteMany
+    //
+    // THE COMPANION PINS MOVE TOO, and independently, which is exactly what the
+    // paragraph above predicted would distinguish a real change of store reach
+    // from a re-pin of the same reach. FOUR unique `delegate.operation` pairs
+    // left production code entirely -- `organizationMcpPolicy.findFirst`,
+    // `.update`, `.create` and `.delete` -- so the inventory falls 329 -> 325 and
+    // the digest moves with it. An entire MODEL's write surface left `apps/agent`,
+    // which is a different review from a count, and that is the point.
+    //
+    // FOUR OF THE EIGHT PAIRS SURVIVE, each still reached elsewhere:
+    // `organizationMcpPolicy.findMany` (permission gateway),
+    // `entityToolPolicy.upsert` (ACL service, twice),
+    // `environmentEntityTool.findMany` (three files), and
+    // `environmentEntityTool.deleteMany`.
+    //
+    // THAT LAST ONE IS WHY THIS ANALYZER EARNS ITS COST, and the prediction that
+    // got it wrong is worth recording. A source search for `prisma.<model>.` said
+    // `deleteMany` had gone with the removed cross-tenant delete, and it had not:
+    // the two survivors are `tx.environmentEntityTool.deleteMany` --
+    // `auth/auth.service.ts:939` and `tool-gateway/tool-registry.service.ts:363`,
+    // the idempotent-REPLACE prune that `registerTools` runs inside its OWN
+    // transaction after resolving the tenant. They are reached through a
+    // TRANSACTION CLIENT, not through `this.prisma`, so a grep anchored on the
+    // latter cannot see them and the type checker can. Predicted 324; measured
+    // 325; the measurement is the oracle and the prediction was the guess.
+    expect(analysis.calls.length).toBe(808);
+    expect(inventory).toHaveLength(325);
     expect(inventoryDigest).toBe(
-      "0c4fd159179dbf051d093ac039b87771c53d407adbf06e7aa79df0a3cc6f85ac",
+      "c550e7386b99dd368bc75fb3176c099a54c061eec74eca9c2b36c30ce0541444",
     );
     // 120s, not 20s. Building the program and walking it three times takes
     // ~10-16s on an M-series laptop; a hosted runner is slower, and a gate that

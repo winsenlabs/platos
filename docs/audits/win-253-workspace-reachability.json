@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "9e3ae990d170a1e01c5a99a5c753aea93a9325798d2db25799aa9529e7cc69a7",
+  "evidenceSha256": "a069bfaa35bf79316617b88411fe929eea6bc64024b602733a93b504801d68ba",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "7f79d2f49cd1d0543994a74468149dd9f0fbb50784e277f2eeb28a369c4386e3",
+    "aggregateSha256": "fb92c960826206fe457d06378ab29407874788e4371f00c840239659f390c8ed",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -271,7 +271,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "3c3dce4fb42db7f19836adad195758b6f311e388f82ba90c6a2e5ab913e74143"
+        "sha256": "ebb355e49b62b6719c9a0da61ebe7049dcbc48faecbb14d06a1a9915a06e9f54"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -947,7 +947,7 @@
       },
       {
         "path": "apps/agent/src/clean-prisma-delegates.test.ts",
-        "sha256": "30bb8829b60fa0e033631f934621f8b7c37d4ad76093e9c60ae7cff3a545c313"
+        "sha256": "a0db5192ee95c4eadb8aee9c39826b2e0dfce9fcb07c8b0f818d7bb64a98d6d1"
       },
       {
         "path": "apps/agent/src/connections/connections.gateway-auth.test.ts",
@@ -4331,7 +4331,7 @@
       },
       {
         "path": "docs/audits/M0.8-operator-operations.md",
-        "sha256": "11021cd2de5dc49eb57d6467a4f96e98a4db45e4491b92114760522534066859"
+        "sha256": "01486ed2899aa89e097ac17f85b91b5eaae87f2f029d9775c1a6746d154a5cf9"
       },
       {
         "path": "docs/audits/M0.9-rest-census-independent.json",
@@ -12483,7 +12483,7 @@
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
-        "sha256": "3c3ad196ceab840094103d2839b79638e7b085407981388c12bfd9b1f75e25e9"
+        "sha256": "01386cd4ff6fbd87f96fc6970d8f4c9047c4af6e4ec4ae393125561d3ad503bf"
       },
       {
         "path": "packages/adapters/postgres-tenancy/src/identity-conformance.ts",
@@ -15411,7 +15411,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/bearer-credential-lifecycle.test.ts",
-        "sha256": "40f34ffa746ac7791734b1b60bfac1be7977539cc41c0ba9315b263d32cd4285"
+        "sha256": "0c85520de15a0f242b0c11e7987992c1a3cb30b33ee3e96f14123e0ca2dca533"
       },
       {
         "path": "packages/contexts/identity-access/application/consume-rate-limit.test.ts",
@@ -15471,7 +15471,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/in-memory-repository.ts",
-        "sha256": "ed541c582fc26d748947fee25f85b1c7b5a4bf6804efde9e0568d1e901369388"
+        "sha256": "35a47df10dcec58869c7a0eb72cc9b8c928e3c03a428c5778c7a6f00d0a6625f"
       },
       {
         "path": "packages/contexts/identity-access/application/index.ts",
@@ -15551,7 +15551,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/testing.ts",
-        "sha256": "c128b609c9f552c154070de13768089040ea54b2de96feb1f9b032f55ec8c40a"
+        "sha256": "ce2140f3bbcf1b3c0edecee6d91a2842d2300ed049d3c1ebfde2355e99db31b9"
       },
       {
         "path": "packages/contexts/identity-access/application/verify-mfa.test.ts",
@@ -26867,6 +26867,11 @@
           "reachable": true,
           "reasons": [
             {
+              "from": "apps/agent/src/clean-prisma-delegates.test.ts",
+              "kind": "reference",
+              "line": 421
+            },
+            {
               "from": "apps/agent/src/http/api-surface.test.ts",
               "kind": "reference",
               "line": 132
@@ -27209,6 +27214,10 @@
           ],
           "reversePaths": [
             [
+              "apps/agent/src/clean-prisma-delegates.test.ts",
+              "apps/agent/src/clean-prisma-delegates.test.ts"
+            ],
+            [
               "apps/agent/src/http/api-surface.test.ts",
               "apps/agent/src/http/api-surface.test.ts"
             ],
@@ -27482,6 +27491,7 @@
             ]
           ],
           "roots": [
+            "apps/agent/src/clean-prisma-delegates.test.ts",
             "apps/agent/src/http/api-surface.test.ts",
             "apps/agent/src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
             "apps/agent/src/streaming/streaming-terminal-frame.test.ts",
@@ -27586,7 +27596,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "8b6e0e3af7895997b7710332001aac4203aec32271a88c2cf9e0194f229788ae",
+      "evidenceSha256": "e09db5860b330d12a577a04a3228ff34ac307bc46ca4b432f9b86b877fb5a1e4",
       "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -64805,7 +64815,7 @@
             {
               "from": "packages/adapters/postgres-tenancy/src/identity-conformance.integration.test.ts",
               "kind": "reference",
-              "line": 20
+              "line": 23
             },
             {
               "from": "packages/adapters/postgres-tenancy/src/identity-constraints.integration.test.ts",
@@ -66042,7 +66052,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "ece058272721231a21a8968eba0e60fa09ead56de145bdc2d232c230227024b6",
+      "evidenceSha256": "801d919b5f3a88272789bbce1b34f96217fd2a767849107f7433adaed5144953",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
