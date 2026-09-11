@@ -96,6 +96,7 @@ import {
   type BearerCredentialResource,
   type RevokedTokenResource,
   type TokenListQuery,
+  type TokenListWireQuery,
 } from "./token-lifecycle.js";
 import {
   mintedTokenResource,
@@ -167,7 +168,9 @@ export const revokePlatformTokenValidator = (input: unknown): Result<RevokePlatf
 };
 
 const REVOKE_BODY_PIPE = new DomainValidationPipe(revokePlatformTokenValidator);
-const LIST_QUERY_PIPE = new DomainValidationPipe(tokenListQueryValidator);
+const LIST_QUERY_PIPE = new DomainValidationPipe<TokenListQuery, TokenListWireQuery>(
+  tokenListQueryValidator,
+);
 
 @Controller({ path: MCP_PLATFORM_PATH, version: MCP_ROUTE_VERSION })
 export class McpPlatformTokensController {

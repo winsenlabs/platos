@@ -1797,6 +1797,30 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1829,7 +1853,7 @@
             "directHeaders": []
           }
         ],
-        "x-platos-query-parameters": "not-derived",
+        "x-platos-query-parameters": "derived",
         "x-platos-schema-source": "typescript-dto"
       },
       "post": {
@@ -1907,6 +1931,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "in": "query",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1939,7 +1971,7 @@
             "directHeaders": []
           }
         ],
-        "x-platos-query-parameters": "not-derived",
+        "x-platos-query-parameters": "derived",
         "x-platos-schema-source": "typescript-dto"
       }
     },
@@ -2103,6 +2135,32 @@
     "/mcp/platform/tokens": {
       "get": {
         "operationId": "get__mcp_platform_tokens",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -2133,7 +2191,7 @@
             "directHeaders": []
           }
         ],
-        "x-platos-query-parameters": "not-derived",
+        "x-platos-query-parameters": "derived",
         "x-platos-schema-source": "typescript-dto"
       },
       "post": {

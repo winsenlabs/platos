@@ -8981,7 +8981,7 @@
         "x-platos-schema-source": "typescript-dto",
         "x-platos-query-parameters": "not-derived",
         "x-platos-query-not-derived-reason": "post-parse-dto",
-        "x-platos-query-not-derived-detail": "The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. Deriving the real one needs a declared wire-query DTO that the validator consumes; until then this route's query parameters are undocumented, not guessed."
+        "x-platos-query-not-derived-detail": "The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to declare its Wire type argument, as the three MCP token routes now do — so this is the one remaining entry and it is a declaration this tranche did not make, in a controller it did not otherwise touch, rather than a missing mechanism."
       }
     },
     "/api/v1/environments/{environmentId}/streams/{streamId}": {
@@ -10920,6 +10920,30 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -10957,9 +10981,7 @@
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
         "x-platos-schema-source": "typescript-dto",
-        "x-platos-query-parameters": "not-derived",
-        "x-platos-query-not-derived-reason": "post-parse-dto",
-        "x-platos-query-not-derived-detail": "The same TokenListQuery post-parse shape as the platform listing, and the same required `environmentId`. Listed separately rather than folded in, so withdrawing one route does not silently withdraw another's declared gap."
+        "x-platos-query-parameters": "derived"
       },
       "post": {
         "operationId": "post__mcp_entity_by_entityId_tokens",
@@ -11048,6 +11070,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -11085,9 +11115,7 @@
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
         "x-platos-schema-source": "typescript-dto",
-        "x-platos-query-parameters": "not-derived",
-        "x-platos-query-not-derived-reason": "post-parse-dto",
-        "x-platos-query-not-derived-detail": "The @Query parameter carries only `environmentId`, so unlike the two listings its POST-PARSE shape and its WIRE shape are identical and it could be derived today. It is declared anyway because this derivation has no path that emits a @Query type at all — the branch that would is the one that raises — so exempting it would mean teaching the derivation a wire-DTO rule for one route and leaving three. When that rule lands, THIS is the entry to delete first: it is the only one whose type is already the truth."
+        "x-platos-query-parameters": "derived"
       }
     },
     "/mcp/entity/{entityId}/tool-acl": {
@@ -11590,10 +11618,34 @@
         "x-platos-auth-class": "OPERATOR",
         "x-platos-policy-rule": "explicit-default-rest-only",
         "x-platos-mcp-tools": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "environmentId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "x-platos-schema-source": "typescript-dto",
-        "x-platos-query-parameters": "not-derived",
-        "x-platos-query-not-derived-reason": "post-parse-dto",
-        "x-platos-query-not-derived-detail": "The @Query parameter is typed TokenListQuery, the shape AFTER tokenListQueryValidator has decoded ?cursor= into an offset — the same post-parse mismatch as the end-user listing: it declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. It ALSO carries `environmentId`, which callers do send and which is REQUIRED, so this route's undocumented parameters include one without which it cannot be called. Publishing TokenListQuery would still describe a query string the route does not accept."
+        "x-platos-query-parameters": "derived"
       },
       "post": {
         "operationId": "post__mcp_platform_tokens",
@@ -12167,21 +12219,6 @@
       {
         "operation": "GET /api/v1/environments/:environmentId/end-users",
         "handler": "EnvironmentEndUsersController.list",
-        "reason": "post-parse-dto"
-      },
-      {
-        "operation": "GET /mcp/entity/:entityId/tokens",
-        "handler": "McpEntityTokensController.list",
-        "reason": "post-parse-dto"
-      },
-      {
-        "operation": "DELETE /mcp/entity/:entityId/tokens/:tokenId",
-        "handler": "McpEntityTokensController.revoke",
-        "reason": "post-parse-dto"
-      },
-      {
-        "operation": "GET /mcp/platform/tokens",
-        "handler": "McpPlatformTokensController.list",
         "reason": "post-parse-dto"
       }
     ]

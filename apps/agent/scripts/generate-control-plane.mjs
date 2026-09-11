@@ -1775,12 +1775,25 @@ function v1OperationEntry(entry, derived, contract) {
     };
   }
   responses.default = errorResponse(contract.errorComponent);
-  const parameters = derived.pathParameters.map((parameter) => ({
-    name: parameter.name,
-    in: "path",
-    required: true,
-    schema: parameter.schema,
-  }));
+  const parameters = [
+    ...derived.pathParameters.map((parameter) => ({
+      name: parameter.name,
+      in: "path",
+      required: true,
+      schema: parameter.schema,
+    })),
+    // M4 finish — THE QUERY PARAMETERS, now that the derivation has a path that
+    // emits them. `required` comes from the DECLARED optionality of the wire DTO,
+    // so a required `environmentId` reaches a generated client as one; before this
+    // the operation carried an `x-platos-query-parameters: not-derived` marker and
+    // a caller could not tell the route needed a tenant at all.
+    ...derived.queryParameters.parameters.map((parameter) => ({
+      name: parameter.name,
+      in: "query",
+      required: parameter.required,
+      schema: parameter.schema,
+    })),
+  ];
   const patched = {
     ...entry,
     ...(parameters.length > 0 ? { parameters } : {}),

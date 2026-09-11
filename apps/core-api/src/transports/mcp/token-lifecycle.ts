@@ -137,6 +137,40 @@ export function revokedTokenResource(
   };
 }
 
+/**
+ * `?environmentId=&limit=&cursor=` — WHAT A CALLER SENDS.
+ *
+ * SEPARATE FROM `TokenListQuery` BECAUSE THE TWO GENUINELY DIFFER, and the
+ * difference used to be a documented gap rather than a published schema.
+ * `TokenListQuery` is the POST-PARSE shape: it carries `offset`, a number
+ * `offsetInCursor` decoded out of `?cursor=`, and it has no `cursor` at all. A
+ * document that published it would name a parameter nobody can send and omit two
+ * every caller does — so `apps/agent/scripts/rest-schema-derivation.mjs` marked
+ * these routes `not-derived` instead.
+ *
+ * THIS interface is what the pipe declares as its `Wire` argument, so the
+ * derivation reads it off the decorator through the type checker and the ratchet
+ * guards it like any other field. Every property is a STRING because that is what
+ * Express hands across from a query string; the derivation refuses a wire property
+ * that is not one, which is what stops the post-parse shape being published by
+ * accident.
+ *
+ * `environmentId` IS REQUIRED, and that is the field whose absence mattered most:
+ * an undocumented optional filter costs a generated client nothing, while an
+ * undocumented required parameter means a generated client cannot call the route
+ * at all.
+ */
+export interface TokenListWireQuery {
+  readonly environmentId: string;
+  readonly limit?: string;
+  readonly cursor?: string;
+}
+
+/** `?environmentId=` alone, for the DELETE that has no page. */
+export interface TokenScopeWireQuery {
+  readonly environmentId: string;
+}
+
 /** The page window plus the environment, read off a query string. */
 export interface TokenListQuery {
   readonly environmentId: string;

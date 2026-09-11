@@ -42,6 +42,8 @@ import {
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RESOURCES = join(repositoryRoot, "apps/core-api/src/transports/rest/resources.ts");
 const ERROR_STATUS = join(repositoryRoot, "apps/core-api/src/transports/error-status.ts");
+const TOKEN_LIFECYCLE = join(repositoryRoot, "apps/core-api/src/transports/mcp/token-lifecycle.ts");
+const ENTITY_TOKENS = join(repositoryRoot, "apps/core-api/src/transports/mcp/entity-tokens.controller.ts");
 const DOCUMENT = JSON.parse(
   readFileSync(join(repositoryRoot, "apps/agent/src/openapi/openapi.generated.json"), "utf8"),
 );
@@ -188,6 +190,98 @@ test("a route whose query string cannot be derived is declared, with a reason", 
     if (declared.includes(key)) assert.equal(handler.queryParameters.source, "not-derived");
     else assert.notEqual(handler.queryParameters.source, "not-derived");
   }
+});
+
+// ── THE DERIVED QUERY PATH (M4 finish) ─────────────────────────────────────
+//
+// This derivation had NO code path that emitted a @Query type: the branch that
+// would have was the branch that raised, so every route with a query string was
+// either listed in `UNDERIVABLE_QUERY_HANDLERS` or a generation failure — and the
+// ratchet cannot guard a field it never sees. Three of the four listed routes were
+// the MCP token lifecycle's, and one of the parameters they hid was REQUIRED:
+// `environmentId`. An undocumented optional filter costs a generated client
+// nothing; an undocumented required parameter means it cannot call the route.
+//
+// Each case below MUTATES THE REAL SOURCE and re-derives, for the reason the
+// response-schema cases do: a suite that fed the deriver its own fixture would
+// prove only that the deriver can read a fixture.
+
+test("the three MCP token routes publish their query parameters, `environmentId` REQUIRED", () => {
+  const derived = derive();
+  for (const key of [
+    "McpPlatformTokensController.list",
+    "McpEntityTokensController.list",
+    "McpEntityTokensController.revoke",
+  ]) {
+    const handler = derived.handlers.get(key);
+    assert.ok(handler, `${key} is not a derived handler`);
+    assert.equal(handler.queryParameters.source, "derived", key);
+    const required = handler.queryParameters.parameters
+      .filter((parameter) => parameter.required)
+      .map((parameter) => parameter.name);
+    assert.deepEqual(required, ["environmentId"], key);
+    for (const parameter of handler.queryParameters.parameters) {
+      assert.deepEqual(parameter.schema, { type: "string" }, `${key}.${parameter.name}`);
+    }
+  }
+  // The two listings page and the revocation does not, so the sets differ — which
+  // is the point of deriving each from its own declared wire shape.
+  assert.deepEqual(
+    derived.handlers
+      .get("McpPlatformTokensController.list")
+      .queryParameters.parameters.map((parameter) => parameter.name),
+    ["cursor", "environmentId", "limit"],
+  );
+  assert.deepEqual(
+    derived.handlers
+      .get("McpEntityTokensController.revoke")
+      .queryParameters.parameters.map((parameter) => parameter.name),
+    ["environmentId"],
+  );
+});
+
+test("deleting a property from a WIRE QUERY DTO removes the published parameter", () => {
+  const mutated = source(TOKEN_LIFECYCLE).replace("  readonly cursor?: string;\n", "");
+  assert.notEqual(mutated, source(TOKEN_LIFECYCLE), "the mutation did not apply");
+  const after = derive(new Map([[TOKEN_LIFECYCLE, mutated]]));
+  assert.deepEqual(
+    after.handlers
+      .get("McpPlatformTokensController.list")
+      .queryParameters.parameters.map((parameter) => parameter.name),
+    ["environmentId", "limit"],
+  );
+});
+
+test("a POST-PARSE shape declared as the wire shape STOPS generation", () => {
+  // The mistake the four `not-derived` entries existed to prevent, now prevented by
+  // a rule rather than by prose: `TokenListQuery` carries `offset: number`, and a
+  // query string cannot carry a number because Express hands values across as
+  // strings. Declaring it as the Wire argument is a generation failure naming the
+  // property, not a document publishing a parameter nobody can send.
+  const mutated = source(ENTITY_TOKENS).replace(
+    "new DomainValidationPipe<TokenListQuery, TokenListWireQuery>(",
+    "new DomainValidationPipe<TokenListQuery, TokenListQuery>(",
+  );
+  assert.notEqual(mutated, source(ENTITY_TOKENS), "the mutation did not apply");
+  assert.throws(
+    () => derive(new Map([[ENTITY_TOKENS, mutated]])),
+    (error) =>
+      error instanceof DerivationError &&
+      error.message.includes("query.offset") &&
+      error.message.includes("POST-PARSE"),
+  );
+});
+
+test("a @Query pipe that declares NO wire shape stops generation and says what to do", () => {
+  const mutated = source(ENTITY_TOKENS).replace(
+    "new DomainValidationPipe<TokenListQuery, TokenListWireQuery>(",
+    "new DomainValidationPipe<TokenListQuery>(",
+  );
+  assert.notEqual(mutated, source(ENTITY_TOKENS), "the mutation did not apply");
+  assert.throws(
+    () => derive(new Map([[ENTITY_TOKENS, mutated]])),
+    (error) => error instanceof DerivationError && error.message.includes("declares no wire shape"),
+  );
 });
 
 test("HTTP_STATUS_FALLBACK agrees with the HttpStatus enum @nestjs/common ships", (t) => {
