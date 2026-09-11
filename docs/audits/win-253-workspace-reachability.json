@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "25a5f5c3e5ba19b8975cbf6b062f56a9c039b58459c8568dc3fab0d8b9b9764a",
+  "evidenceSha256": "2824134d80583233b56ef3958eac600c5ea52a9f5875a7c6ba9dfd0075942606",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "c3eb0eb9e9addd786e45fdc5416c9f16ee920ce6fe1f946335e933102edce219",
+    "aggregateSha256": "13a394545ad98e4cf319c497173bc356e9b989395dbeb83fff1ec4b8f55261d1",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2575,7 +2575,7 @@
       },
       {
         "path": "apps/core-api/src/composition/provider-key-rotation.integration.test.ts",
-        "sha256": "b7a4260d676ceae60fe95e22818a193d7e216e81221e96a5f94678226e9d267d"
+        "sha256": "6ef55aa07c60e70045d77fabd7baffc912424e3a0bc17a15566be03e1fdfc336"
       },
       {
         "path": "apps/core-api/src/composition/registry.ts",
@@ -42980,7 +42980,7 @@
             {
               "from": "apps/core-api/src/composition/provider-key-rotation.integration.test.ts",
               "kind": "reference",
-              "line": 346
+              "line": 371
             },
             {
               "from": "apps/core-api/src/composition/stream-lane.integration.test.ts",
@@ -44162,7 +44162,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "a34c55badf4e1895c131646b822e7b4364189166d860b594c0e53af4def352f2",
+      "evidenceSha256": "cb0f55244ca2dc7bd117b6df54b68af4584693e636f7bce2f894f0f7c29b65b7",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
