@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "e20f66d3ec013460440193286d23e2351f2f65a099276703e514bacd080a0cf0",
+  "evidenceSha256": "9e3ae990d170a1e01c5a99a5c753aea93a9325798d2db25799aa9529e7cc69a7",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "9470eaf0f1651fcb1091d22f143c45a166424a09dfadef769f4241396f807cbf",
+    "aggregateSha256": "7f79d2f49cd1d0543994a74468149dd9f0fbb50784e277f2eeb28a369c4386e3",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4419,7 +4419,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "b9dfb3230ca336f99d7597198aab82cf229e1ebb7b7c5bd2e41c722800231f7b"
+        "sha256": "bf013d6de0cb7c6b42b92423a4be6c1007a927894e92f3369d38974935bf0517"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -4519,7 +4519,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "73a09d280b8c8bedaf50afe8d362eb33870e230497e87dea024b8fa948ece11e"
+        "sha256": "510fc9b93e1555071f7de7bffe3db514436e894d397fb7d3e729dcef0ee3beb7"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -6475,7 +6475,7 @@
       },
       {
         "path": "docs/vocabulary-boundary-exceptions.json",
-        "sha256": "9ea5c2dff2c4f95c163aded7e8c56af2c66ebd824569bcdbb2b0770d2b313d23"
+        "sha256": "90bc1d716b424fafb6cf70feb84be9749470e4a23d0425a88188c0b6ff368ff7"
       },
       {
         "path": "docs/vocabulary-boundary.md",
@@ -20779,7 +20779,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "64a46244d5c2d2aa9b8f5d712b0f1befbf3f849256a17e7f8b0019a50209869f"
+        "sha256": "d848169b64e813ff863d1c61f09c840e4c645372f188486a8cccd8bdb6cf30a6"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
