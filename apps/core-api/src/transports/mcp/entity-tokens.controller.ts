@@ -106,6 +106,8 @@ import {
   type BearerCredentialResource,
   type RevokedTokenResource,
   type TokenListQuery,
+  type TokenListWireQuery,
+  type TokenScopeWireQuery,
 } from "./token-lifecycle.js";
 import {
   mintedTokenResource,
@@ -232,8 +234,12 @@ export const mintEntityTokenValidator = (input: unknown): Result<MintEntityToken
 };
 
 const MINT_BODY_PIPE = new DomainValidationPipe(mintEntityTokenValidator);
-const LIST_QUERY_PIPE = new DomainValidationPipe(tokenListQueryValidator);
-const SCOPE_QUERY_PIPE = new DomainValidationPipe(tokenScopeQueryValidator);
+const LIST_QUERY_PIPE = new DomainValidationPipe<TokenListQuery, TokenListWireQuery>(
+  tokenListQueryValidator,
+);
+const SCOPE_QUERY_PIPE = new DomainValidationPipe<TokenScopeWireQuery, TokenScopeWireQuery>(
+  tokenScopeQueryValidator,
+);
 
 /** The entity named in the path, or tenancy's own refusal. */
 async function findEntity(app: AppModule, entityId: string): Promise<EntityRecord> {

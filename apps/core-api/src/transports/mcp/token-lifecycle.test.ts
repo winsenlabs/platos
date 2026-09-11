@@ -86,7 +86,10 @@ import {
   revokedTokenResource,
   tokenListQueryValidator,
   tokenScopeQueryValidator,
+  type TokenListWireQuery,
+  type TokenScopeWireQuery,
 } from "./token-lifecycle.js";
+import { encodeCursor } from "../rest/envelope.js";
 
 const ORGANIZATION = "11111111-1111-4111-8111-111111111111";
 const PROJECT = "22222222-2222-4222-8222-222222222222";
@@ -413,6 +416,54 @@ describe("WIN-268 — reading the query string, and reporting every mistake at o
     expect(tokenScopeQueryValidator({}).ok).toBe(false);
     const outcome = tokenScopeQueryValidator({ environmentId: AUTHORIZED_ENVIRONMENT });
     expect(outcome.ok && outcome.value.environmentId).toBe(AUTHORIZED_ENVIRONMENT);
+  });
+
+  // M4 finish — THE PUBLISHED QUERY SCHEMA AND THE PARSER, HELD TO EACH OTHER.
+  //
+  // `TokenListWireQuery` and `TokenScopeWireQuery` are what the OpenAPI document
+  // now publishes as these routes' `parameters`: the derivation reads them off
+  // `DomainValidationPipe<Parsed, Wire>` through the type checker
+  // (`scripts/openapi-schema-derivation.test.mjs` proves that half by deleting a
+  // property and watching the parameter vanish). A declaration is only worth
+  // publishing if the PARSER agrees with it, so this is the other half — and the
+  // two literals below are TYPED BY THE DECLARATION, so adding a parameter to the
+  // interface without sending it here does not compile.
+  it("accepts every parameter the published wire query declares", () => {
+    const everyDeclared: Required<TokenListWireQuery> = {
+      environmentId: AUTHORIZED_ENVIRONMENT,
+      limit: "5",
+      cursor: encodeCursor({ offset: 10 }),
+    };
+    const outcome = tokenListQueryValidator(everyDeclared);
+    expect(outcome.ok).toBe(true);
+    expect(outcome.ok && outcome.value).toEqual({
+      environmentId: AUTHORIZED_ENVIRONMENT,
+      limit: 5,
+      offset: 10,
+    });
+  });
+
+  it("REFUSES the absence of the one parameter the document marks required", () => {
+    // `environmentId` is the only member of both wire declarations with no `?`, so
+    // it is the only parameter published as `required: true`. The minimum literal
+    // is typed by the declaration: making `environmentId` optional on the interface
+    // would let `{}` through here and the parser would then disagree with the
+    // document.
+    const minimum: TokenListWireQuery = { environmentId: AUTHORIZED_ENVIRONMENT };
+    expect(tokenListQueryValidator(minimum).ok).toBe(true);
+    const scopeMinimum: TokenScopeWireQuery = { environmentId: AUTHORIZED_ENVIRONMENT };
+    expect(tokenScopeQueryValidator(scopeMinimum).ok).toBe(true);
+
+    for (const validator of [tokenListQueryValidator, tokenScopeQueryValidator]) {
+      const outcome = validator({});
+      expect(outcome.ok).toBe(false);
+      // BY NAME, and the name is the published parameter's own. A 403 about an
+      // environment called `undefined` is the answer a generated client could not
+      // act on.
+      expect(
+        !outcome.ok && domainErrorOf(outcome.error)?.fields.map((field) => field.field),
+      ).toContain("query.environmentId");
+    }
   });
 
   it("the platform revocation's BODY carries the environment and nothing else", () => {

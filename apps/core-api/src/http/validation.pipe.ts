@@ -34,7 +34,39 @@ import { requestInvalid } from "../transports/rest/transport-errors.js";
 /** A rule: unparsed input in, a domain refusal or a decided value out. */
 export type Validator<Value> = (input: unknown) => Result<Value>;
 
-export class DomainValidationPipe<Value> implements PipeTransform<unknown, Value> {
+/**
+ * THE WIRE SHAPE A PIPE ACCEPTS, DECLARED FOR THE DOCUMENT AND ERASED AT RUNTIME.
+ *
+ * `Value` is the shape a HANDLER receives; `Wire` is the shape a CALLER sends,
+ * and for a query string the two are routinely different. `tokenListQueryValidator`
+ * accepts `?environmentId=&limit=&cursor=` and hands back
+ * `{environmentId, offset, limit}` — `offset` is a number no caller ever sends and
+ * `cursor` is a parameter the handler never sees. So the type on the `@Query()`
+ * PARAMETER cannot be published: it names one parameter that does not exist and
+ * omits two that do, which is precisely what `UNDERIVABLE_QUERY_HANDLERS` in
+ * `apps/agent/scripts/rest-schema-derivation.mjs` recorded as a gap rather than
+ * guessing.
+ *
+ * `Wire` closes it. `apps/agent/scripts/rest-schema-derivation.mjs` reads this
+ * type argument off the decorator's own argument through the TypeScript checker
+ * and publishes it as the operation's `parameters`, so one declaration decides
+ * both what the parser is typed by and what the document promises. The default
+ * `never` means "not declared", which the derivation refuses rather than
+ * inventing.
+ *
+ * IT IS A `declare` FIELD, so nothing is emitted, nothing is allocated and no
+ * runtime code can read it. A phantom that existed at runtime would invite a
+ * `pipe.wireQuery` somewhere and the erasure is the point.
+ *
+ * EVERY WIRE PROPERTY MUST BE A STRING, and the derivation enforces it: Express
+ * hands a query string's values across as strings, so a wire DTO declaring a
+ * `number` is describing a request nobody can send. That rule is what makes
+ * publishing a POST-PARSE shape by accident impossible instead of merely
+ * documented — `TokenListQuery` carries `offset: number` and would be refused.
+ */
+export class DomainValidationPipe<Value, Wire = never> implements PipeTransform<unknown, Value> {
+  declare readonly wireQuery?: Wire;
+
   constructor(private readonly validate: Validator<Value>) {}
 
   transform(value: unknown): Value {

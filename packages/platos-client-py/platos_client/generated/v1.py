@@ -986,7 +986,7 @@ class EnvironmentEndUsersV1Api:
         """GET /api/v1/environments/:environmentId/end-users
 
         THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-        The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. Deriving the real one needs a declared wire-query DTO that the validator consumes; until then this route's query parameters are undocumented, not guessed.
+        The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to declare its Wire type argument, as the three MCP token routes now do — so this is the one remaining entry and it is a declaration this tranche did not make, in a controller it did not otherwise touch, rather than a missing mechanism.
         """
         return self._transport.send(
             {
@@ -1088,18 +1088,20 @@ class McpEntityTokensV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
-    def list(self, entity_id: str, query: dict[str, str] | None = None) -> "CollectionEnvelope_BearerCredentialResource":
+    def list(self, entity_id: str, environment_id: str, cursor: str | None = None, limit: str | None = None) -> "CollectionEnvelope_BearerCredentialResource":
         """GET /mcp/entity/:entityId/tokens
 
-        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-        The same TokenListQuery post-parse shape as the platform listing, and the same required `environmentId`. Listed separately rather than folded in, so withdrawing one route does not silently withdraw another's declared gap.
+        Query parameters:
+            environmentId: required
+            cursor: optional
+            limit: optional
         """
         return self._transport.send(
             {
                 "operation": _operation("get__mcp_entity_by_entityId_tokens"),
                 "path": _fill("/mcp/entity/:entityId/tokens", {"entityId": entity_id}),
                 "body": None,
-                "query": query,
+                "query": {name: value for name, value in {"environmentId": environment_id, "cursor": cursor, "limit": limit}.items() if value is not None},
             }
         )
 
@@ -1114,18 +1116,18 @@ class McpEntityTokensV1Api:
             }
         )
 
-    def revoke(self, entity_id: str, token_id: str, query: dict[str, str] | None = None) -> "ItemEnvelope_RevokedTokenResource":
+    def revoke(self, entity_id: str, token_id: str, environment_id: str) -> "ItemEnvelope_RevokedTokenResource":
         """DELETE /mcp/entity/:entityId/tokens/:tokenId
 
-        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-        The @Query parameter carries only `environmentId`, so unlike the two listings its POST-PARSE shape and its WIRE shape are identical and it could be derived today. It is declared anyway because this derivation has no path that emits a @Query type at all — the branch that would is the one that raises — so exempting it would mean teaching the derivation a wire-DTO rule for one route and leaving three. When that rule lands, THIS is the entry to delete first: it is the only one whose type is already the truth.
+        Query parameters:
+            environmentId: required
         """
         return self._transport.send(
             {
                 "operation": _operation("delete__mcp_entity_by_entityId_tokens_by_tokenId"),
                 "path": _fill("/mcp/entity/:entityId/tokens/:tokenId", {"entityId": entity_id, "tokenId": token_id}),
                 "body": None,
-                "query": query,
+                "query": {name: value for name, value in {"environmentId": environment_id}.items() if value is not None},
             }
         )
 
@@ -1172,18 +1174,20 @@ class McpPlatformTokensV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
-    def list(self, query: dict[str, str] | None = None) -> "CollectionEnvelope_BearerCredentialResource":
+    def list(self, environment_id: str, cursor: str | None = None, limit: str | None = None) -> "CollectionEnvelope_BearerCredentialResource":
         """GET /mcp/platform/tokens
 
-        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-        The @Query parameter is typed TokenListQuery, the shape AFTER tokenListQueryValidator has decoded ?cursor= into an offset — the same post-parse mismatch as the end-user listing: it declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. It ALSO carries `environmentId`, which callers do send and which is REQUIRED, so this route's undocumented parameters include one without which it cannot be called. Publishing TokenListQuery would still describe a query string the route does not accept.
+        Query parameters:
+            environmentId: required
+            cursor: optional
+            limit: optional
         """
         return self._transport.send(
             {
                 "operation": _operation("get__mcp_platform_tokens"),
                 "path": "/mcp/platform/tokens",
                 "body": None,
-                "query": query,
+                "query": {name: value for name, value in {"environmentId": environment_id, "cursor": cursor, "limit": limit}.items() if value is not None},
             }
         )
 

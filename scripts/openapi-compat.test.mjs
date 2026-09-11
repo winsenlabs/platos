@@ -236,6 +236,82 @@ test("CHANGING a route's security is BREAKING", () => {
   assert.ok(kinds.includes("security-changed"), JSON.stringify(kinds));
 });
 
+/* --- the one-shot query disclosure (M4 finish) ----------------------------- */
+//
+// Adding a required parameter is BREAKING, and it should be. But a route that goes
+// from `x-platos-query-parameters: not-derived` to `derived` has not gained a
+// requirement — the document has learned one the validator always enforced, and
+// pricing that as a major is how a ratchet stops being read. The downgrade is
+// therefore conditioned on the BASELINE's own marker, so it can fire once per
+// route and never again.
+
+const DISCLOSING_OPERATION = "GET /mcp/platform/tokens";
+
+/** The baseline as it stood BEFORE the query path existed: no parameters, not-derived. */
+function baselineBeforeDisclosure() {
+  const before = structuredClone(baseline);
+  let found = false;
+  for (const item of Object.values(before.paths)) {
+    for (const operation of Object.values(item)) {
+      if (operation["x-platos-query-parameters"] !== "derived") continue;
+      operation["x-platos-query-parameters"] = "not-derived";
+      operation.parameters = (operation.parameters ?? []).filter(
+        (parameter) => parameter.in !== "query",
+      );
+      if (operation.parameters.length === 0) delete operation.parameters;
+      found = true;
+    }
+  }
+  assert.ok(found, "the baseline no longer carries a derived query operation");
+  return before;
+}
+
+test("a REQUIRED query parameter disclosed by a not-derived route is COMPATIBLE", () => {
+  const findings = classifyChanges(baselineBeforeDisclosure(), currentSlice());
+  assert.deepEqual(breakingOf(findings), []);
+  const disclosed = findings.filter((entry) => entry.kind === "query-parameter-disclosed");
+  assert.ok(
+    disclosed.some((entry) => entry.pointer.endsWith("query:environmentId")),
+    JSON.stringify(disclosed),
+  );
+  for (const entry of disclosed) assert.equal(entry.severity, COMPATIBLE);
+  // And it is absorbable, which is the whole point: no hand-edited baseline.
+  assert.equal(decide({ mode: "write", baseline: baselineBeforeDisclosure(), slice: currentSlice() }).action, "write");
+});
+
+test("the disclosure is ONE-SHOT: once the baseline says `derived`, a new required query parameter is BREAKING", () => {
+  // The absorbed baseline already says `derived`, so this is the second required
+  // parameter on a route whose query string is documented — a real addition.
+  const mutated = structuredClone(currentSlice());
+  const [path, method] = DISCLOSING_OPERATION.split(" ").reverse();
+  const operation = mutated.paths[path]?.[method.toLowerCase()];
+  assert.ok(operation, `${DISCLOSING_OPERATION} is not in the slice`);
+  assert.equal(operation["x-platos-query-parameters"], "derived");
+  operation.parameters = [
+    ...(operation.parameters ?? []),
+    { name: "tenantId", in: "query", required: true, schema: { type: "string" } },
+  ];
+  const kinds = breakingOf(classifyChanges(baseline, mutated)).map((entry) => entry.kind);
+  assert.deepEqual(kinds, ["parameter-added"]);
+});
+
+test("a disclosing route does NOT forgive a new required PATH parameter", () => {
+  const before = baselineBeforeDisclosure();
+  const mutated = structuredClone(currentSlice());
+  const [path, method] = DISCLOSING_OPERATION.split(" ").reverse();
+  const operation = mutated.paths[path][method.toLowerCase()];
+  operation.parameters = [
+    ...(operation.parameters ?? []),
+    { name: "organizationId", in: "path", required: true, schema: { type: "string" } },
+  ];
+  const breaking = breakingOf(classifyChanges(before, mutated));
+  assert.deepEqual(
+    breaking.map((entry) => entry.kind),
+    ["parameter-added"],
+  );
+  assert.ok(breaking[0].pointer.endsWith("path:organizationId"), breaking[0].pointer);
+});
+
 /* --- the ratchet itself --------------------------------------------------- */
 
 test("`write` REFUSES to absorb a breaking change, and accepts a compatible one", () => {

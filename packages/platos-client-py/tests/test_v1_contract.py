@@ -110,6 +110,12 @@ def drive(api: V1Api, entry: dict):  # noqa: ANN201
     args = list(entry["arguments"]["pathParameters"].values())
     if entry["arguments"]["body"] is not None:
         args.append(entry["arguments"]["body"])
+    # M4 finish - the DERIVED query, under Python's own spelling. Three operations
+    # publish typed query parameters and one of them is required, so a driver that
+    # stopped at path and body would raise for them.
+    query = entry["arguments"]["pythonQuery"]
+    if query is not None:
+        return method(*args, **query)
     return method(*args)
 
 
@@ -181,7 +187,12 @@ def test_the_transport_sends_the_fixture_headers() -> None:
         drive(api, entry)
         assert len(calls) == 1, where
         method, url, headers, _body = calls[0]
-        assert url == f"https://platos.example.com{entry['expected']['path']}", where
+        expected_url = (
+            "https://platos.example.com"
+            + entry["expected"]["path"]
+            + entry["expected"]["queryString"]
+        )
+        assert url == expected_url, where
         assert method == entry["expected"]["method"], where
         assert headers["authorization"] == "Bearer operator-token", where
         assert headers.get("content-type") == entry["expected"]["contentType"], where

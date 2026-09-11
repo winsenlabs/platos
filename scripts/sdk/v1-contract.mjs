@@ -210,6 +210,23 @@ export function derivedOperations({ document, manifest, policy }) {
       ),
       successStatus: Number(successStatus[0]),
       queryParameters: operation["x-platos-query-parameters"],
+      // M4 finish — THE DERIVED QUERY PARAMETERS, which this generator had no
+      // branch for. Before the derivation learned to emit a `@Query` type the only
+      // possible states were `not-derived` (an untyped `Record<string,string>`
+      // escape hatch) and "no query at all", so `derived` silently took the second
+      // branch and the generated client passed `query: undefined` — it could not
+      // send the REQUIRED `environmentId` and could not call the route.
+      queryFields: (operation.parameters ?? [])
+        .filter((parameter) => parameter.in === "query")
+        .map((parameter) => ({ name: parameter.name, required: parameter.required === true }))
+        // REQUIRED FIRST, then alphabetical. Python refuses a parameter without a
+        // default after one with a default, so the order is load-bearing rather than
+        // tidy — and the same order in both languages keeps the two emitters
+        // readable side by side.
+        .sort(
+          (left, right) =>
+            Number(right.required) - Number(left.required) || left.name.localeCompare(right.name),
+        ),
       queryNotDerivedDetail: operation["x-platos-query-not-derived-detail"] ?? null,
       idempotency: classifyTemplate(entry.method, entry.path, policy),
     });
@@ -405,11 +422,28 @@ const samplePathValue = (name) => `${name}-1/a b`;
 const encodePathValue = (value) =>
   encodeURIComponent(value).replaceAll("%20", "%20");
 
+/**
+ * The sample query one derived operation must be driven with.
+ *
+ * EVERY PUBLISHED PARAMETER, required and optional alike, so the fixture proves the
+ * whole declared set reaches the wire rather than only the one a caller cannot
+ * omit. `null` for a route with no derived query, which is also what the one
+ * remaining `not-derived` route gets: its parameters are undocumented, so there is
+ * no set to drive it with.
+ */
+function sampleQueryFor(operation) {
+  if (operation.queryFields.length === 0) return null;
+  return Object.fromEntries(
+    operation.queryFields.map((field) => [field.name, `sample-query-${field.name}`]),
+  );
+}
+
 /** The request one operation must produce when driven with the sample arguments. */
 function invocationFor(operation, hoisted) {
   const pathParameters = Object.fromEntries(
     operation.pathParameters.map((name) => [name, samplePathValue(name)]),
   );
+  const query = sampleQueryFor(operation);
   const body =
     operation.requestSchema === null
       ? null
@@ -418,10 +452,34 @@ function invocationFor(operation, hoisted) {
     encodePathValue(pathParameters[name]),
   );
   return {
-    arguments: { pathParameters, body },
+    arguments: {
+      pathParameters,
+      body,
+      query,
+      // THE SAME VALUES UNDER PYTHON'S OWN SPELLING. The generated Python method
+      // names its keywords in snake_case, so a driver that reused the wire names
+      // would call it with keywords it does not declare. Emitted rather than
+      // converted in the test, for the reason nothing here is hand-written twice.
+      pythonQuery:
+        query === null
+          ? null
+          : Object.fromEntries(Object.entries(query).map(([name, value]) => [snake(name), value])),
+    },
     expected: {
       method: operation.method,
       path,
+      query,
+      // THE RENDERED SUFFIX, so both languages compare one string rather than each
+      // re-implementing a serializer in a test. The sample values are alphanumeric
+      // and hyphenated on purpose: `URLSearchParams` and `urllib.parse.urlencode`
+      // agree on those exactly, so a difference in the assertion is a difference in
+      // the CLIENT rather than in two encoders' spelling of a space.
+      queryString:
+        query === null
+          ? ""
+          : `?${Object.entries(query)
+              .map(([name, value]) => `${encodeURIComponent(name)}=${encodeURIComponent(value)}`)
+              .join("&")}`,
       sendsIdempotencyKey: operation.idempotency === "required" || operation.idempotency === "accepted",
       contentType: body === null ? null : "application/json",
     },
@@ -591,6 +649,25 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
     "}",
     "",
     "/**",
+    " * Drop the parameters a caller left out.",
+    " *",
+    " * A typed query object carries `undefined` for an optional parameter nobody",
+    " * set, and `URLSearchParams` would serialise that as the literal string",
+    " * `undefined` — `?limit=undefined`, which the server refuses as a malformed",
+    " * integer. Absent has to mean absent.",
+    " */",
+    "function compactQuery(",
+    "  query: Readonly<Record<string, string | undefined>> | undefined,",
+    "): Readonly<Record<string, string>> | undefined {",
+    "  if (query === undefined) return undefined;",
+    "  const present: Record<string, string> = {};",
+    "  for (const [name, value] of Object.entries(query)) {",
+    "    if (value !== undefined) present[name] = value;",
+    "  }",
+    "  return present;",
+    "}",
+    "",
+    "/**",
     " * Substitute path parameters, refusing an empty one.",
     " *",
     " * An empty segment silently changes which route the server matches — a mint",
@@ -625,6 +702,16 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
       if (member.requestSchema !== null) args.push(`body: ${member.requestSchema}`);
       if (member.queryParameters === "not-derived") {
         args.push("query?: Readonly<Record<string, string>>");
+      } else if (member.queryFields.length > 0) {
+        // TYPED, AND REQUIRED WHEN ANY PARAMETER IS. A caller cannot forget
+        // `environmentId` on a route that will refuse them without it, and the
+        // optional ones stay optional — the shape the document publishes, in the
+        // language's own type system.
+        const shape = member.queryFields
+          .map((field) => `readonly ${field.name}${field.required ? "" : "?"}: string`)
+          .join("; ");
+        const optional = member.queryFields.every((field) => !field.required);
+        args.push(`query${optional ? "?" : ""}: { ${shape} }`);
       }
       const returns = member.responseSchema === null ? "void" : member.responseSchema;
       if (member.queryParameters === "not-derived" && member.queryNotDerivedDetail !== null) {
@@ -649,7 +736,11 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
               .map((name) => `${name}`)
               .join(", ")} }),`,
         `      body: ${member.requestSchema === null ? "undefined" : "body"},`,
-        `      query: ${member.queryParameters === "not-derived" ? "query" : "undefined"},`,
+        `      query: ${
+          member.queryParameters === "not-derived" || member.queryFields.length > 0
+            ? "compactQuery(query)"
+            : "undefined"
+        },`,
         "    });",
         "  }",
         "",
@@ -811,6 +902,15 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
       for (const parameter of member.pathParameters) args.push(`${snake(parameter)}: str`);
       if (member.requestSchema !== null) args.push(`body: "${member.requestSchema}"`);
       if (member.queryParameters === "not-derived") args.push("query: dict[str, str] | None = None");
+      else {
+        // ONE KEYWORD PER PUBLISHED PARAMETER, required ones with no default. The
+        // TypeScript client gets a typed object for the same reason: a route that
+        // refuses a request without `environmentId` should not be callable without
+        // it.
+        for (const field of member.queryFields) {
+          args.push(field.required ? `${snake(field.name)}: str` : `${snake(field.name)}: str | None = None`);
+        }
+      }
       const returns = member.responseSchema === null ? "None" : `"${member.responseSchema}"`;
       lines.push(`    def ${pyMethod(member)}(${args.join(", ")}) -> ${returns}:`);
       if (member.queryParameters === "not-derived" && member.queryNotDerivedDetail !== null) {
@@ -819,6 +919,16 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
           "",
           "        THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:",
           `        ${member.queryNotDerivedDetail.replace(/\s+/gu, " ")}`,
+          '        """',
+        );
+      } else if (member.queryFields.length > 0) {
+        lines.push(
+          '        """' + `${member.method} ${member.template}`,
+          "",
+          "        Query parameters:",
+          ...member.queryFields.map(
+            (field) => `            ${field.name}: ${field.required ? "required" : "optional"}`,
+          ),
           '        """',
         );
       } else {
@@ -835,7 +945,7 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
           ? `                "path": ${JSON.stringify(member.template)},`
           : `                "path": _fill(${JSON.stringify(member.template)}, {${values}}),`,
         `                "body": ${member.requestSchema === null ? "None" : "body"},`,
-        `                "query": ${member.queryParameters === "not-derived" ? "query" : "None"},`,
+        `                "query": ${pyQueryArgument(member)},`,
         "            }",
         "        )",
         "",
@@ -849,6 +959,23 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
   }
   lines.push("");
   return lines.join("\n");
+}
+
+/**
+ * The Python expression that assembles one operation's query dict.
+ *
+ * `None` when the route has no query string, the caller's own dict for the one
+ * remaining `not-derived` route, and a comprehension over the PUBLISHED parameters
+ * otherwise — dropping the optional ones nobody set, because `?limit=None` is not
+ * an absent limit.
+ */
+function pyQueryArgument(member) {
+  if (member.queryParameters === "not-derived") return "query";
+  if (member.queryFields.length === 0) return "None";
+  const pairs = member.queryFields
+    .map((field) => `${JSON.stringify(field.name)}: ${snake(field.name)}`)
+    .join(", ");
+  return `{name: value for name, value in {${pairs}}.items() if value is not None}`;
 }
 
 /* ---------------------------------------------------------------------------

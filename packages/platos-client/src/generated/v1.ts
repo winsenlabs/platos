@@ -924,6 +924,25 @@ function operation(operationId: string): V1Operation {
 }
 
 /**
+ * Drop the parameters a caller left out.
+ *
+ * A typed query object carries `undefined` for an optional parameter nobody
+ * set, and `URLSearchParams` would serialise that as the literal string
+ * `undefined` — `?limit=undefined`, which the server refuses as a malformed
+ * integer. Absent has to mean absent.
+ */
+function compactQuery(
+  query: Readonly<Record<string, string | undefined>> | undefined,
+): Readonly<Record<string, string>> | undefined {
+  if (query === undefined) return undefined;
+  const present: Record<string, string> = {};
+  for (const [name, value] of Object.entries(query)) {
+    if (value !== undefined) present[name] = value;
+  }
+  return present;
+}
+
+/**
  * Substitute path parameters, refusing an empty one.
  *
  * An empty segment silently changes which route the server matches — a mint
@@ -972,14 +991,14 @@ export class EnvironmentEndUsersV1Api {
    * GET /api/v1/environments/:environmentId/end-users
    *
    * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-   * The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. Deriving the real one needs a declared wire-query DTO that the validator consumes; until then this route's query parameters are undocumented, not guessed.
+   * The @Query parameter is typed EndUserQuery, the shape AFTER endUserQueryValidator has decoded ?cursor= into an offset. It declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. Publishing it would describe a query string this route does not accept. The wire-DTO path now EXISTS — END_USER_QUERY_PIPE has only to declare its Wire type argument, as the three MCP token routes now do — so this is the one remaining entry and it is a declaration this tranche did not make, in a controller it did not otherwise touch, rather than a missing mechanism.
    */
   async list(environmentId: string, query?: Readonly<Record<string, string>>): Promise<CollectionEnvelope_EndUserResource> {
     return this.transport.send<CollectionEnvelope_EndUserResource>({
       operation: operation("get__api_v1_environments_by_environmentId_end_users"),
       path: fill("/api/v1/environments/:environmentId/end-users", { environmentId }),
       body: undefined,
-      query: query,
+      query: compactQuery(query),
     });
   }
 
@@ -1068,18 +1087,13 @@ export class ProjectsV1Api {
 export class McpEntityTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
-  /**
-   * GET /mcp/entity/:entityId/tokens
-   *
-   * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-   * The same TokenListQuery post-parse shape as the platform listing, and the same required `environmentId`. Listed separately rather than folded in, so withdrawing one route does not silently withdraw another's declared gap.
-   */
-  async list(entityId: string, query?: Readonly<Record<string, string>>): Promise<CollectionEnvelope_BearerCredentialResource> {
+  /** GET /mcp/entity/:entityId/tokens */
+  async list(entityId: string, query: { readonly environmentId: string; readonly cursor?: string; readonly limit?: string }): Promise<CollectionEnvelope_BearerCredentialResource> {
     return this.transport.send<CollectionEnvelope_BearerCredentialResource>({
       operation: operation("get__mcp_entity_by_entityId_tokens"),
       path: fill("/mcp/entity/:entityId/tokens", { entityId }),
       body: undefined,
-      query: query,
+      query: compactQuery(query),
     });
   }
 
@@ -1093,18 +1107,13 @@ export class McpEntityTokensV1Api {
     });
   }
 
-  /**
-   * DELETE /mcp/entity/:entityId/tokens/:tokenId
-   *
-   * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-   * The @Query parameter carries only `environmentId`, so unlike the two listings its POST-PARSE shape and its WIRE shape are identical and it could be derived today. It is declared anyway because this derivation has no path that emits a @Query type at all — the branch that would is the one that raises — so exempting it would mean teaching the derivation a wire-DTO rule for one route and leaving three. When that rule lands, THIS is the entry to delete first: it is the only one whose type is already the truth.
-   */
-  async revoke(entityId: string, tokenId: string, query?: Readonly<Record<string, string>>): Promise<ItemEnvelope_RevokedTokenResource> {
+  /** DELETE /mcp/entity/:entityId/tokens/:tokenId */
+  async revoke(entityId: string, tokenId: string, query: { readonly environmentId: string }): Promise<ItemEnvelope_RevokedTokenResource> {
     return this.transport.send<ItemEnvelope_RevokedTokenResource>({
       operation: operation("delete__mcp_entity_by_entityId_tokens_by_tokenId"),
       path: fill("/mcp/entity/:entityId/tokens/:tokenId", { entityId, tokenId }),
       body: undefined,
-      query: query,
+      query: compactQuery(query),
     });
   }
 
@@ -1148,18 +1157,13 @@ export class McpOrganizationPoliciesV1Api {
 export class McpPlatformTokensV1Api {
   constructor(private readonly transport: V1Transport) {}
 
-  /**
-   * GET /mcp/platform/tokens
-   *
-   * THE QUERY STRING IS NOT TYPED, AND THE DOCUMENT SAYS WHY:
-   * The @Query parameter is typed TokenListQuery, the shape AFTER tokenListQueryValidator has decoded ?cursor= into an offset — the same post-parse mismatch as the end-user listing: it declares `offset`, which no caller sends, and omits `cursor` and `limit`, which every caller does. It ALSO carries `environmentId`, which callers do send and which is REQUIRED, so this route's undocumented parameters include one without which it cannot be called. Publishing TokenListQuery would still describe a query string the route does not accept.
-   */
-  async list(query?: Readonly<Record<string, string>>): Promise<CollectionEnvelope_BearerCredentialResource> {
+  /** GET /mcp/platform/tokens */
+  async list(query: { readonly environmentId: string; readonly cursor?: string; readonly limit?: string }): Promise<CollectionEnvelope_BearerCredentialResource> {
     return this.transport.send<CollectionEnvelope_BearerCredentialResource>({
       operation: operation("get__mcp_platform_tokens"),
       path: "/mcp/platform/tokens",
       body: undefined,
-      query: query,
+      query: compactQuery(query),
     });
   }
 
