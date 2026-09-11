@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "a069bfaa35bf79316617b88411fe929eea6bc64024b602733a93b504801d68ba",
+  "evidenceSha256": "7b5ddeb949a061ad01834b60db2db30dde206c98edda8aa2f9f0f3bcbc47cfa6",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "fb92c960826206fe457d06378ab29407874788e4371f00c840239659f390c8ed",
+    "aggregateSha256": "3a832e21c8fa99b49c299c74bde41e50f3257345bc441d0d18ed11685c496b04",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -271,7 +271,7 @@
       },
       {
         "path": ".github/workflows/ci.yml",
-        "sha256": "ebb355e49b62b6719c9a0da61ebe7049dcbc48faecbb14d06a1a9915a06e9f54"
+        "sha256": "430837018a0efe2575620fec453b42029eee3c75f8c7e4a676ade3214595265b"
       },
       {
         "path": ".github/workflows/publish-images.yml",
@@ -4427,7 +4427,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "040d0a9f01489714de5c3a0ef2feee600cca329699e3b56cd8837cb2dd868aa6"
+        "sha256": "f50c01378e34a3c705d68098aceed380c46bbc643df68a8bea28dba68088b2a5"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -11299,7 +11299,7 @@
       },
       {
         "path": "package.json",
-        "sha256": "32bbb54bafdb28103bc5e73e866424176c6cddf6ea4bfed400a18c9741b4d1ee"
+        "sha256": "89ec870f9b230c23e79355d7a082bd561bc75508b88188548b90357680883e1b"
       },
       {
         "path": "packages/adapters/channel-slack/README.md",
@@ -20455,7 +20455,7 @@
       },
       {
         "path": "scripts/ci-policy.test.mjs",
-        "sha256": "8a486e7ec10ace2db07594d778ad54b09e108d94ce1f5b3540f8d14ce0e21723"
+        "sha256": "6f3e8fda0f3b88d3cd324651b8402183087cc18ed2aa0baf5a49dfa95c9d6bc9"
       },
       {
         "path": "scripts/clickhouse-split-audit.mjs",
@@ -21772,6 +21772,12 @@
           }
         ],
         "packages/contexts/tools": [
+          {
+            "from": "package.json",
+            "kind": "ci-build-entrypoint",
+            "packageName": "@platos/context-tools",
+            "script": "build:platos:agent"
+          },
           {
             "from": "tsconfig.json",
             "kind": "root-typescript-reference"
@@ -23134,7 +23140,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -26132,7 +26138,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "852f26038a0eb503946da40054279d41f405a9784b21f595034535127eb43c96",
+      "evidenceSha256": "dec63462891b66a262d9713dfa59890c722719fe686cf074a0c0336fec80d9c0",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -27164,7 +27170,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 594
+              "line": 603
             },
             {
               "from": "scripts/differential-coverage.test.mjs",
@@ -27596,7 +27602,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "e09db5860b330d12a577a04a3228ff34ac307bc46ca4b432f9b86b877fb5a1e4",
+      "evidenceSha256": "05d97fdfc89c544bf49a424c7b13ea014568fbb4fa57e39d602ddb1d884fdea4",
       "manifestSha256": "8f069781279f60d7e3e5f0fdb9c952dff23d79800a8494c9a97e43672c007e26",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -27984,7 +27990,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 595
+              "line": 604
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -28106,7 +28112,7 @@
           "apps/mcp-stdio"
         ]
       },
-      "evidenceSha256": "19745a4d37eac3cdd856a76dd5579cf62dc04ce82909e18f6a18b3a50959b3b4",
+      "evidenceSha256": "6110dd45d549dd0d1e7fe69fcc0b4af5d496f6a104b13db9eb05ea24dd8f9237",
       "manifestSha256": "c9bb318e0946a79c6a4572d2c852f7ac414cb361c6dab2e34c5543dcefcc00a3",
       "name": "@platos/mcp-stdio",
       "ociImageClosure": {
@@ -35845,7 +35851,7 @@
               "script": "audit:docs-link-integrity"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -36596,7 +36602,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "43493154327fe99cbb3a8e3e5a9e5e665b9c55567d030597881280a74463e2a9",
+      "evidenceSha256": "41f576a25c7d14a164dfba94f48245ad6806af60dacc6f91cab8e89ad08817f7",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -38523,7 +38529,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -38632,7 +38638,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 344
+              "line": 353
             }
           ],
           "reversePaths": [
@@ -38744,7 +38750,7 @@
           "internal-packages/docs"
         ]
       },
-      "evidenceSha256": "1aa74cd145bcdb4cf2b66c26867ffa8dd68b27dd0b7eae11f1dac6a434aea1d2",
+      "evidenceSha256": "ef3c2f71bbd2df20f4d205293735f14a216badb7f9220073d968993cacf71bad",
       "manifestSha256": "e94891f0e15acb19983a7c5bd1ac41fa15ea5a4e15ecbfc5800f1c501b85f52d",
       "name": "@internal/docs",
       "ociImageClosure": {
@@ -42093,7 +42099,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -44108,7 +44114,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "d20774aa8ed7ee6172c49518fe5648d3681812e10c8eea190c9458fe0282477c",
+      "evidenceSha256": "52088bd22fff3b4b617ed9fde470514e504a1896437ca64c2d242fd57d84673a",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -46354,7 +46360,7 @@
               "script": "typecheck"
             },
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -46459,7 +46465,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 2934
+              "line": 2943
             },
             {
               "from": "scripts/image-package-inventory.test.mjs",
@@ -46626,7 +46632,7 @@
           "internal-packages/workload-identity"
         ]
       },
-      "evidenceSha256": "dc8c32d774b550105ced8bec1569e667dccd23ea075c1e9feab3fba08bd12eea",
+      "evidenceSha256": "b477f075eb9e2a8046dd2271509d8d11c859577969f34ca406ac4a5083c97c16",
       "manifestSha256": "97671a87e5c4ba7c89300ccbc3c297a6f7aafd16ba2c3dfb5d4e28af62bc50d7",
       "name": "@internal/workload-identity",
       "ociImageClosure": {
@@ -54077,7 +54083,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 5289
+              "line": 5298
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -54241,7 +54247,7 @@
           "packages/adapters/redis-cache"
         ]
       },
-      "evidenceSha256": "776f32bd14cfa2591ebf4f317c38d9dfa29d0fbc6bf042fba9ff3f36cf933e63",
+      "evidenceSha256": "d254f6c2d7bc2461f644a5458b546db304ea030ac44e5f29b05530fba98e4b05",
       "manifestSha256": "28d8382e77863b7c6b09e45dbccdcb4dd2e5d292e3dcdef574a37a2e21dac28d",
       "name": "@platos/adapter-redis-cache",
       "ociImageClosure": {
@@ -63769,6 +63775,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -64127,7 +64139,7 @@
           "reachable": true,
           "reasons": [
             {
-              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
               "from": "package.json",
               "kind": "script-reference",
               "script": "build:platos:agent"
@@ -65866,6 +65878,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -66052,7 +66070,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "801d919b5f3a88272789bbce1b34f96217fd2a767849107f7433adaed5144953",
+      "evidenceSha256": "6ccc77ebb45801869156ac21e8447ee661c57d1dff5e5c617b47f60f2964e1c9",
       "manifestSha256": "df554d7bb17a6aab26b8ff63eb9c6033d16e186a234ad9d69c52d1eca7edf146",
       "name": "@platos/context-identity-access",
       "ociImageClosure": {
@@ -70258,6 +70276,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -71905,6 +71929,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -71989,7 +72019,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "16467bdfd7688b198c3b4823f6c8dd0a1af4f19faf6dd43632e7f2e788ab810d",
+      "evidenceSha256": "35e0d5d738cd01e7dac1cd0574322dbc0f0dd9cfacb1be32cb7c24342d242095",
       "manifestSha256": "7462dcd3934c960646a6d3528915863411b9e195545de995cb54d10e6c43da83",
       "name": "@platos/context-providers",
       "ociImageClosure": {
@@ -72296,6 +72326,12 @@
             ],
             "root": "packages/contexts/tools",
             "rootReasons": [
+              {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -73895,6 +73931,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -73997,7 +74039,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "10d4878ecf83282f9acd95d5f0a89edf36f78615808be0c8b4165ff14b13c109",
+      "evidenceSha256": "3d60ee91f426a5339beb8ad617762347831c7f9842e3fd75eab70b40805d5048",
       "manifestSha256": "03739f55f9812a44e47b5c9175c9ebb610f9448ba48bf906432c70796ecc3c03",
       "name": "@platos/context-secrets",
       "ociImageClosure": {
@@ -75559,6 +75601,12 @@
             ],
             "root": "packages/contexts/tools",
             "rootReasons": [
+              {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -77820,6 +77868,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -77963,7 +78017,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "f8b5d2dde7bcc83c63b89015d2e92ece49206cc76cd7a31560549a78cb155487",
+      "evidenceSha256": "02191718eb7b6577b4fc49f2365eda0356b7307f7233fe6e268b5e1c3f087bd1",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -78071,6 +78125,12 @@
             ],
             "root": "packages/contexts/tools",
             "rootReasons": [
+              {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -78326,6 +78386,12 @@
         "packageScripts": {
           "reachable": true,
           "reasons": [
+            {
+              "command": "pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter \"@platos/context-identity-access...\" build && pnpm --filter \"@platos/context-tools...\" build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies",
+              "from": "package.json",
+              "kind": "script-reference",
+              "script": "build:platos:agent"
+            },
             {
               "from": "package.json",
               "kind": "root-turbo-task",
@@ -78912,7 +78978,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 5136
+              "line": 351
             },
             {
               "from": "scripts/v1-ledger.test.mjs",
@@ -79221,6 +79287,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -79256,7 +79328,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "b0c3bdfcf1f43af1cf1fbdc788df64d72e067414cfebd851d925b9939bce19ad",
+      "evidenceSha256": "6df4bc497fff5d710f12acb42e201a6945dc1e89f0c6d9db1baee75fef561732",
       "manifestSha256": "164953cbfdcf1a718a65f058aa90a6b74be609a0c2c7ede9f88c30ed277fb8b7",
       "name": "@platos/context-tools",
       "ociImageClosure": {
@@ -80606,7 +80678,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 594
+              "line": 603
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -80921,7 +80993,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "254620f7ec796a546cc7fbfc26c5be07320e3f517dbbf1f56f41dbc35c53e829",
+      "evidenceSha256": "167d2e2dc90ddf0f4f0b9658ba36c1771e4e432197094228672e65953dc5d483",
       "manifestSha256": "8481fd56fdf96c180ba38c5aec5dc5fb6e023cb5f99dfe2a1d97577a634cfcf7",
       "name": "@platos/core",
       "ociImageClosure": {
@@ -81568,6 +81640,12 @@
             ],
             "root": "packages/contexts/tools",
             "rootReasons": [
+              {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
               {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
@@ -90355,7 +90433,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 594
+              "line": 603
             },
             {
               "from": "scripts/error-taxonomy.test.mjs",
@@ -92340,6 +92418,12 @@
             "root": "packages/contexts/tools",
             "rootReasons": [
               {
+                "from": "package.json",
+                "kind": "ci-build-entrypoint",
+                "packageName": "@platos/context-tools",
+                "script": "build:platos:agent"
+              },
+              {
                 "from": "tsconfig.json",
                 "kind": "root-typescript-reference"
               }
@@ -92552,7 +92636,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "e5392f580f00ebcde3467c34dbdc9700cf5c46083718aa9f850c863f85391f27",
+      "evidenceSha256": "053fc6274d066c37191101e05dae5a1ac400342236ffe53786d3292fedd138ef",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -93958,7 +94042,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 590
+              "line": 599
             },
             {
               "from": "scripts/docs-examples.test.mjs",
@@ -94093,7 +94177,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "127d83ec72774ae69e6764f7330f51fd98d688281d1ad95b17e9cd27b1dd7be8",
+      "evidenceSha256": "78f662480d9fbf91edd175e6887a8e64023ff17ba2dffe45421f59b88dbb2dba",
       "manifestSha256": "41eb9e8fb84d13041efd08f3bfe43ba8630a9a071206d0631c752333d6134899",
       "name": "@platosdev/client",
       "ociImageClosure": {
@@ -94395,7 +94479,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 591
+              "line": 600
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -94435,7 +94519,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1a58f188d947e383e290f0e0a417b4219aef6a9193cc41a666eb47920a778ad4",
+      "evidenceSha256": "a4653da74c2fc0d95b5a493167a8032c65a87a9081e563fac817ac215511f88c",
       "manifestSha256": "b892e563338f333035fef02ca96b5d203a438d3adbb15afc3a77106122e98f26",
       "name": "@platosdev/embed",
       "ociImageClosure": {
@@ -94761,7 +94845,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 591
+              "line": 600
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -94806,7 +94890,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "5ee120acc5c62f46ceb128c5761bc9eef20dd1fafc12a341326367c535940d5e",
+      "evidenceSha256": "29f8f3f331db353db3d9933835be3062a3ed40b55580a6e41ad96b92635156e9",
       "manifestSha256": "85f69f0d46b2932f65eb45f41c9714a097ceae7d5a006e1a51656e830d8ac6a8",
       "name": "@platosdev/react-widget",
       "ociImageClosure": {
@@ -95227,7 +95311,7 @@
             {
               "from": "scripts/ci-policy.test.mjs",
               "kind": "reference",
-              "line": 592
+              "line": 601
             },
             {
               "from": "scripts/license-distribution.test.mjs",
@@ -95292,7 +95376,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "d33e863216d8f4a2fbf9a4a25c12b0ec6b3e71d8529ccba3a3534af73cd41edb",
+      "evidenceSha256": "5c89740d0a379c8c862d8ed46472f4a6983a6b0ccfc89431e0d0af4f876027e1",
       "manifestSha256": "41a33c2dfbf68f8484c8edc61f4490d1467d92783932dc10c91413b30c210162",
       "name": "@platosdev/token-mint",
       "ociImageClosure": {

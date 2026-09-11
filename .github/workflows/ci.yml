@@ -997,7 +997,16 @@ jobs:
         # whose package `main` is dist/. Without this the suite fails to LOAD
         # rather than fail an assertion, which reads as a broken job rather than a
         # broken rule.
-        run: pnpm --filter @platos/tenancy-database build
+        #
+        # `@internal/workload-identity` IS THE SECOND HALF, and leaving it out is
+        # exactly the broken-job-reading-as-a-broken-rule failure the note above
+        # warns about. The suite reaches `apps/agent/src/auth/scope.guard.ts`,
+        # which imports that package, and it too ships only a compiled dist entry
+        # -- so on a fresh checkout Vite fails to RESOLVE it and the run reports
+        # "no tests" with one failed suite. It was missed because a developer
+        # machine has the dist from an earlier build and a runner never does.
+        # `typecheck` builds the same pair for the same reason.
+        run: pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/workload-identity build
 
       - name: Apply the canonical migrations
         run: >-

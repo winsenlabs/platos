@@ -340,8 +340,17 @@ const licenseDeterminismTestTarget = "node --test scripts/audit-licenses.test.mj
 // resolves to `any` and the derivation refuses it. A container starts cold and
 // has no earlier build to inherit, which is why this was invisible everywhere
 // except the image build.
+// `@platos/context-tools...` IS IN THIS STRING BECAUSE THE IMAGE BUILD PROVED IT
+// HAS TO BE. The tier-2 policy controller imports `PermissionState` from
+// `@platos/context-tools`, and the strict Agent build runs a type-checker-driven
+// schema derivation over `apps/core-api`. With that package's dist absent the
+// type resolves to `any` and the derivation refuses --
+// `DerivationError: SetOrganizationPolicyBody.state is \`any\``. A developer
+// machine has the dist from an earlier build and so never saw it; a cold OCI
+// build has nothing and failed on the first attempt. Reproduced locally by moving
+// `packages/contexts/tools/dist` aside, which is the only way to see it.
 const agentBuildScriptTarget =
-  'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
+  'pnpm --filter @platos/tenancy-database build && pnpm --filter @internal/docs build && pnpm --filter @internal/workload-identity build && pnpm --filter "@platos/context-identity-access..." build && pnpm --filter "@platos/context-tools..." build && pnpm --filter platos-agent build:strict && pnpm --filter platos-agent audit:production-dependencies';
 const agentRuntimeSmokeInvocation =
   "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
 const expectedV1EvidenceCommands = [
