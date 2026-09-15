@@ -213,6 +213,24 @@ export const CORE_API_CONFIG_FIELDS: readonly ConfigFieldSpec[] = Object.freeze(
     describe: "bearer token gating the detailed readiness body; omit to keep detail off entirely",
     minimumLength: 16,
   }),
+  Object.freeze({
+    name: "PLATOS_CORE_API_TRUSTED_PROXY",
+    kind: "string",
+    required: false,
+    // OFF UNLESS AN OPERATOR SAYS OTHERWISE (D-COOKIE). With no value,
+    // `X-Forwarded-Proto` is caller-supplied text and nothing reads it. With a
+    // value, exactly ONE hop is believed: the TCP peer, and only when its
+    // address is inside this range. The same header from any other peer is
+    // still ignored, which is what stops a client that can reach the listener
+    // directly from claiming it arrived over TLS. `load.ts` refuses a value that
+    // is not an address or a range, and refuses a range that trusts everyone;
+    // `runtime/trusted-proxy.ts` makes the per-request decision.
+    defaultValue: null,
+    secret: false,
+    describe:
+      "the one reverse proxy whose X-Forwarded-Proto is believed, as an IP address or CIDR range; omit to trust no proxy",
+    minimumLength: 2,
+  }),
 ]);
 
 export type PlatosEnvironment = "development" | "test" | "staging" | "production";
@@ -229,6 +247,21 @@ export interface CoreApiConfiguration {
   readonly logLevel: CoreApiLogLevel;
   /** Null when unset: readiness detail is then unavailable to everyone. */
   readonly adminHealthToken: string | null;
+  /**
+   * The address range of the ONE proxy hop whose forwarded protocol this process
+   * believes, already parsed. Null when unset: no forwarded header is believed.
+   */
+  readonly trustedProxy: TrustedProxyRange | null;
+}
+
+/** An IP address and a prefix length. A bare address carries its family's full length. */
+export interface TrustedProxyRange {
+  /** The value as configured. Not a secret; rendered in diagnostics and logs. */
+  readonly source: string;
+  readonly family: 4 | 6;
+  /** The network address as written, before the prefix is applied. */
+  readonly address: string;
+  readonly prefixLength: number;
 }
 
 export function configFieldByName(name: string): ConfigFieldSpec | undefined {

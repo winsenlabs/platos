@@ -33,6 +33,7 @@ import { assembleContextPorts } from "./composition/context-ports.js";
 import { readProcessEnvironment } from "./config/environment.js";
 import { renderStartupFailure } from "./config/load.js";
 import { loadPlatformConfiguration } from "./config/platform.js";
+import { sessionCookiePolicy } from "./config/security.js";
 import { correlationSource } from "./runtime/correlation.js";
 import { createProcessDefaults, startCoreApi } from "./runtime/lifecycle.js";
 
@@ -121,6 +122,8 @@ export async function runProcess(io: MainIo): Promise<number> {
       clock: defaults.clock,
       ids: defaults.ids,
       logger: defaults.logger,
+      // D-COOKIE. The documented session cookie settings, consumed at last.
+      sessionCookie: sessionCookiePolicy(platform.security),
     });
   } catch (error) {
     // Startup faults are structured too. A composition fault here means a

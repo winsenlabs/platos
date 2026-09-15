@@ -13,11 +13,14 @@
 
 import {
   CORE_API_CONFIG_FIELDS,
+  configFieldByName,
   type ConfigFieldSpec,
   type CoreApiConfiguration,
   type CoreApiLogLevel,
   type PlatosEnvironment,
+  type TrustedProxyRange,
 } from "./schema.js";
+import { parseTrustedProxy } from "./trusted-proxy.js";
 
 export interface ConfigDiagnostic {
   readonly field: string;
@@ -172,6 +175,21 @@ export function loadCoreApiConfiguration(env: EnvironmentSource): ConfigOutcome 
   for (const field of CORE_API_CONFIG_FIELDS) {
     resolved.set(field.name, validateField(field, env[field.name], diagnostics));
   }
+  // THE ONE FIELD WHOSE SHAPE A PATTERN CANNOT STATE. An address range is a
+  // parse, not a regular expression, and "not every address" is arithmetic on the
+  // prefix. Refused here, with the same diagnostic shape as every other field, so
+  // a trusted proxy that is not an address never reaches the listener.
+  let trustedProxy: TrustedProxyRange | null = null;
+  const trustedProxyValue = resolved.get("PLATOS_CORE_API_TRUSTED_PROXY") ?? null;
+  const trustedProxyField = configFieldByName("PLATOS_CORE_API_TRUSTED_PROXY");
+  if (trustedProxyValue !== null && trustedProxyField !== undefined) {
+    const parsed = parseTrustedProxy(trustedProxyValue);
+    if ("problem" in parsed) {
+      diagnostics.push(diagnostic(trustedProxyField, parsed.problem, env[trustedProxyField.name]));
+    } else {
+      trustedProxy = parsed;
+    }
+  }
   if (diagnostics.length > 0) return { ok: false, diagnostics };
 
   const read = (name: string): string => {
@@ -192,6 +210,7 @@ export function loadCoreApiConfiguration(env: EnvironmentSource): ConfigOutcome 
       requestIdHeader: read("PLATOS_CORE_API_REQUEST_ID_HEADER").toLowerCase(),
       logLevel: read("PLATOS_LOG_LEVEL") as CoreApiLogLevel,
       adminHealthToken: resolved.get("PLATOS_CORE_API_ADMIN_HEALTH_TOKEN") ?? null,
+      trustedProxy,
     }),
   };
 }
