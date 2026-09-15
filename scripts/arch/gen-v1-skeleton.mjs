@@ -1538,6 +1538,33 @@ const CONTEXT_RUNTIME_DEPENDENCIES = {
   },
 };
 
+/**
+ * A context's TEST-ONLY external dependencies — the dev twin of the table above,
+ * and the context-shaped twin of `ADAPTER_DEV_DEPENDENCIES`.
+ *
+ * WIN-268 (M4.2). The MCP SDK 1.30.x CANDIDATE, under an alias, so the adopted
+ * 1.26.0 and the candidate can be asked the same questions in one process
+ * before any version bump — the shape `@chat-adapter/slack-audited` established
+ * for WIN-271. `adapters/dispatch.integration.test.ts` puts the candidate's OWN
+ * SERVER on the far side of the adopted Platos client, and
+ * `apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts`
+ * drives the Platos servers with the candidate's client. A DEV dependency for
+ * the reason every row of `ADAPTER_DEV_DEPENDENCIES` is: an SDK the adapter does
+ * not run must not reach a production image or its SBOM's runtime set, and
+ * adopting it is a separate, reviewed change to the runtime row above.
+ *
+ * AN EXACT PIN, and the latest 1.30.x the registry published when this row was
+ * written (`npm view @modelcontextprotocol/sdk dist-tags` answered
+ * `latest: 1.30.0` on 2026-09-16). The tarball was already in `pnpm-lock.yaml`
+ * through `@mintlify/cli`'s optional `@anthropic-ai/claude-agent-sdk`, so the
+ * lockfile gains a snapshot keyed on this package's `zod` and no new tarball.
+ */
+const CONTEXT_DEV_DEPENDENCIES = {
+  "packages/contexts/tools": {
+    "@modelcontextprotocol/sdk-candidate": "npm:@modelcontextprotocol/sdk@1.30.0",
+  },
+};
+
 // Every entry point below takes an optional `adopted` override so the adoption
 // path itself is exercisable. Production callers pass nothing and get
 // ADOPTED_PROJECTS. An untestable adoption seam would be an unproven gate.
@@ -1770,6 +1797,11 @@ function contextManifest(
     types: "./dist/contracts/index.d.ts",
     exports,
     dependencies,
+    // Test-only, and only for a context whose `adapters/` the ADR sends an SDK
+    // to — the same gate the runtime row above is behind.
+    devDependencies: adapterEntries.includes(`packages/contexts/${name}`)
+      ? (CONTEXT_DEV_DEPENDENCIES[`packages/contexts/${name}`] ?? {})
+      : {},
   });
 }
 

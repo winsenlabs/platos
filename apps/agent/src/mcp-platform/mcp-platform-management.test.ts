@@ -22,6 +22,7 @@ function harness() {
     del: vi.fn().mockResolvedValue(1),
     publish: vi.fn().mockResolvedValue(1),
     duplicate: vi.fn(() => ({
+      connect: vi.fn().mockResolvedValue(undefined),
       on: vi.fn(),
       off: vi.fn(),
       subscribe: vi.fn().mockResolvedValue(1),
