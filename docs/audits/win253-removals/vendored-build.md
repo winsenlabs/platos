@@ -29,18 +29,19 @@ Deviation from the integration base is a violation unless a reviewed entry in `s
 
 | Tree | Integration-base tree | Files | Byte-identical | Reviewed changes |
 | --- | --- | ---: | --- | ---: |
-| `packages/platools-js` | `7d34644e66e4ec98a1158539db78df1f7c2ee4be` | 41 | no | 2 |
-| `packages/platos-client` | `82e0fbb9b2d32e8168a731856034695a2f0235e5` | 21 | no | 9 |
+| `packages/platools-js` | `7d34644e66e4ec98a1158539db78df1f7c2ee4be` | 41 | no | 3 |
+| `packages/platos-client` | `82e0fbb9b2d32e8168a731856034695a2f0235e5` | 21 | no | 10 |
 | `packages/platos-embed` | `d19dd2ef79dd240e3a48321f90d5647824fe793c` | 6 | no | 2 |
 | `packages/platos-react-widget` | `18bf2d9326a82789154f1eec407848539816dad0` | 12 | no | 2 |
 | `packages/platos-token-mint` | `0fcd94ddd1c45d4dfda4563389f3a43c1a5291fc` | 6 | no | 1 |
-| `packages/platools-py` | `fdb5617a39bdc95c0f6b2ef7b0060d98cb96748a` | 46 | no | 4 |
+| `packages/platools-py` | `fdb5617a39bdc95c0f6b2ef7b0060d98cb96748a` | 46 | no | 5 |
 | `packages/platos-client-py` | `88b67ab00e4073390951b8b59d645782784ac599` | 13 | no | 9 |
 
 ### Reviewed changes
 
 | Path | Kind | Reason |
 | --- | --- | --- |
+| `packages/platools-js/README.md` | changed | WIN-270 (M4.4): the `currentScope()` example repeated the misdescription the doc comments carried, calling the Platos tenancy scope an external vendor's, and the README ships in the npm tarball. Reworded; its vocabulary exception row is deleted. Documentation only. |
 | `packages/platools-js/src/context.ts` | changed | WIN-270 (M4.4): `currentScope()` and the `PlatosCallContext` field table documented organizationId, projectId and environmentId as an external vendor's ids. Platos mints and owns them; the doc comments now say so, and the six vocabulary exception rows that excused the old wording are deleted. Documentation only. |
 | `packages/platools-js/tests/protocol-fixture.test.ts` | added | WIN-270 (M4.4), cross-language fixtures: drives the real PlatoolsClient through registration and dispatch against `tests/sdk-contract/platools-protocol.json`, the fixture the platools-py suite also reads, and joins its frame keys to the platform's own protocol header. |
 | `packages/platos-client/src/__tests__/retry-idempotency.test.ts` | added | M4 finish: proves the guard rather than the current accident. Nine cases drive SYNTHETIC requests through the transport and count `fetch` calls — a POST with no key sent once on a 503 and once on a network error, a POST WITH a key retried and carrying the same key on the second try, an empty key refused, PUT and DELETE still retried, and a GET retried to the configured limit as the non-vacuity control. It never asks whether a mint exists today, which is the question that would go green again the moment somebody added one. |
@@ -52,11 +53,13 @@ Deviation from the integration base is a violation unless a reviewed entry in `s
 | `packages/platos-client/src/v1-transport.ts` | added | WIN-270 (M4.4): the hand-written half of the V1 client — auth, retry, and the `Idempotency-Key` minted once per logical call so a retried mint replays instead of minting a second credential. |
 | `packages/platos-client/tests/v1-contract.test.ts` | added | WIN-270 (M4.4): drives the generated client against `tests/sdk-contract/v1-fixtures.json`, the same fixture the Python suite drives. |
 | `packages/platos-client/tests/v1-stream.test.ts` | added | WIN-272 (M4.6): drives the reader against `tests/sdk-contract/v1-stream-resume.json` per connection, and joins that fixture to core-api's SSE encoders and the kernel's rules. |
+| `packages/platos-client/vitest.config.ts` | added | WIN-272 (M4.6): test-only. Aliases `@platos/kernel` to its source so `tests/v1-stream.test.ts`, which imports core-api's SSE encoders, loads on a cold checkout instead of only after `build:v1` has produced the kernel's dist. |
 | `packages/platos-embed/src/embed.ts` | changed | WIN-270 (M4.4): `this.iframe` went on pointing at a detached element after a missing-attribute refusal, and that reference is what `onMessage` compares an event's `source` against. The handle is now dropped with the frame. |
 | `packages/platos-embed/tests/embed.test.ts` | changed | WIN-270 (M4.4): holds the missing-attribute refusal to being total — no iframe in the tree and no live handle behind it — and records that this package makes no authenticated request of its own. |
 | `packages/platos-react-widget/src/usePlatosChat.ts` | changed | WIN-270 (M4.4): the widget's only unauthenticated call now throws a coded refusal, and the optimistic assistant bubble is withdrawn when the turn never reached the agent, so a declined visitor does not get a transcript reading `[error]`. |
 | `packages/platos-react-widget/tests/usePlatosChat.test.tsx` | changed | WIN-270 (M4.4): the refusal cases for the above, and a mock factory that keeps the real error helpers instead of stubbing the thing under test. |
 | `packages/platos-token-mint/src/index.ts` | changed | WIN-270 (M4.4): three doc comments on published types attributed ids Platos mints, owns and validates to an external vendor's schema. Removing the words also removed three reviewed vocabulary exceptions. No wire-format change. |
+| `packages/platools-py/README.md` | changed | WIN-270 (M4.4): the Python twin of the platools-js README correction on the `current_scope()` example. Documentation only. |
 | `packages/platools-py/platools/context.py` | changed | WIN-270 (M4.4): the Python twin of the platools-js doc correction; `current_scope()` and the module example described Platos tenancy ids as an external vendor's scope. Documentation only. |
 | `packages/platools-py/requirements-ci.in` | added | WIN-270 (M4.4): the exact pins the CI pytest step resolves, the input to the hashed lock beside it. |
 | `packages/platools-py/requirements-ci.txt` | added | WIN-270 (M4.4): the hashed lock `.github/workflows/ci.yml` installs with `--require-hashes --no-deps`, so every distribution the platools-py suite imports in CI is named at an exact version and verified by hash. |

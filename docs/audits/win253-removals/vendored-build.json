@@ -4686,6 +4686,11 @@
       "byteIdentical": false,
       "reviewedChanges": [
         {
+          "path": "packages/platools-js/README.md",
+          "kind": "changed",
+          "reason": "WIN-270 (M4.4): the `currentScope()` example repeated the misdescription the doc comments carried, calling the Platos tenancy scope an external vendor's, and the README ships in the npm tarball. Reworded; its vocabulary exception row is deleted. Documentation only."
+        },
+        {
           "path": "packages/platools-js/src/context.ts",
           "kind": "changed",
           "reason": "WIN-270 (M4.4): `currentScope()` and the `PlatosCallContext` field table documented organizationId, projectId and environmentId as an external vendor's ids. Platos mints and owns them; the doc comments now say so, and the six vocabulary exception rows that excused the old wording are deleted. Documentation only."
@@ -4748,6 +4753,11 @@
           "path": "packages/platos-client/tests/v1-stream.test.ts",
           "kind": "added",
           "reason": "WIN-272 (M4.6): drives the reader against `tests/sdk-contract/v1-stream-resume.json` per connection, and joins that fixture to core-api's SSE encoders and the kernel's rules."
+        },
+        {
+          "path": "packages/platos-client/vitest.config.ts",
+          "kind": "added",
+          "reason": "WIN-272 (M4.6): test-only. Aliases `@platos/kernel` to its source so `tests/v1-stream.test.ts`, which imports core-api's SSE encoders, loads on a cold checkout instead of only after `build:v1` has produced the kernel's dist."
         }
       ]
     },
@@ -4810,6 +4820,11 @@
       "trackedBytes": 297916,
       "byteIdentical": false,
       "reviewedChanges": [
+        {
+          "path": "packages/platools-py/README.md",
+          "kind": "changed",
+          "reason": "WIN-270 (M4.4): the Python twin of the platools-js README correction on the `current_scope()` example. Documentation only."
+        },
         {
           "path": "packages/platools-py/platools/context.py",
           "kind": "changed",
@@ -4889,9 +4904,9 @@
   ],
   "integration": {
     "lockfileSha256": "79d41ad4b0a27d19e41cff3b38d3a239673b69ccae76574a316aa40508823bb4",
-    "vocabularySha256": "6307514a54c753fb948c33ad472ffcb27ce2d33390a815c56c440061e078f314",
-    "ledgerRulesSha256": "42bb5618c00ce6cba2b9b26b922a5824f7efba2f17825ce1d00ba626c1f0cfb6",
-    "reachabilitySha256": "d182a317e331fcd0c8b635d6756bf87766e56bc639ae3a81dbed2004c397ff8e",
+    "vocabularySha256": "76fdd700897ecf4564e21705ceee899373744a0333c5160eddf40a5988c908ad",
+    "ledgerRulesSha256": "84fff2590bfe1eca5498ecb12215f86f8aed46a4117e22468a69bf0f630c6a21",
+    "reachabilitySha256": "62848a396a55d8b0b812068c021a804f97abcc7365f32626d87968bb0dae739e",
     "staleVocabularyRows": 0,
     "obsoleteLedgerPins": 0,
     "staleReachabilityWorkspaces": 0

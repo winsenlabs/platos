@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "f42c33bf98d92b3c542c3275dd44db6054e0d3aa957af6c14003d937f5070094"
+      "sha256": "f9d521916c111a3278258a87211ecdb5a1e91471f67d121762aef7ce54657398"
     },
     {
       "path": "LICENSE",
@@ -1048,12 +1048,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "d182a317e331fcd0c8b635d6756bf87766e56bc639ae3a81dbed2004c397ff8e"
+      "sha256": "62848a396a55d8b0b812068c021a804f97abcc7365f32626d87968bb0dae739e"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "d901ff8a2a81cd6afceae1169a9a92844549f79e2dcc723020faa886ea2362e4"
+      "sha256": "652cdb4056388db5177dd8029305115b35711dbaba414c0e1d65176e6b6d3eb8"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1093,7 +1093,7 @@
     {
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "mode": "100644",
-      "sha256": "6fa8f8ec38785d61e357fb38740f2a36a25bfc9f7e17430e61584677c52fadd8"
+      "sha256": "52446b7fe8ad25513ca90fdb2d313f49231e1934c73afd2ac5be302d36a94ea5"
     },
     {
       "path": "docs/audits/win253-removals/clickhouse-split.md",
@@ -1103,12 +1103,12 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "4b2267f860effce778cc449a563c065e8bea88b1c527f83d1d3489ccce7bdb8b"
+      "sha256": "a6146170f5604e23e3047e8e07a1b54759b6dac45d2bf04878a2c6d1c3cdb9ac"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
       "mode": "100644",
-      "sha256": "8e45bcb37c3c76f4f2d4576a2ed54331ef13e0d6e8b543f42cac03f4f3270923"
+      "sha256": "ccf6d8c074f7195ea7cc26c148156f556dc315aa28e02c5e842c39c0b833b39e"
     },
     {
       "path": "docs/authentication.md",
@@ -3093,7 +3093,7 @@
     {
       "path": "docs/sdk-v1-migration.md",
       "mode": "100644",
-      "sha256": "4365594d615861536311023f84e6aaafd259a7f12013b03296dd5a74c4c636c5"
+      "sha256": "0267582abaf0a4cc5610f8c3fd37d0808a6cd2d1841291687ddedf6210e7712c"
     },
     {
       "path": "docs/security-audit-2026-07-16.md",
@@ -3523,7 +3523,7 @@
     {
       "path": "docs/v1-ledger-rules.json",
       "mode": "100644",
-      "sha256": "42bb5618c00ce6cba2b9b26b922a5824f7efba2f17825ce1d00ba626c1f0cfb6"
+      "sha256": "84fff2590bfe1eca5498ecb12215f86f8aed46a4117e22468a69bf0f630c6a21"
     },
     {
       "path": "docs/v3-openapi.yaml",
@@ -3548,7 +3548,7 @@
     {
       "path": "docs/vocabulary-boundary-exceptions.json",
       "mode": "100644",
-      "sha256": "6307514a54c753fb948c33ad472ffcb27ce2d33390a815c56c440061e078f314"
+      "sha256": "76fdd700897ecf4564e21705ceee899373744a0333c5160eddf40a5988c908ad"
     },
     {
       "path": "docs/vocabulary-boundary.md",
@@ -3963,7 +3963,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "7dd9dd35ab4a9f03e2904ee3e34898931d9120bdf097ff9142e7c380fd1a4b92"
+      "sha256": "c72a650cb38ef1995565d0a0826e13a52668dfb3a1f3639f69227c11a3975699"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -3998,7 +3998,7 @@
     {
       "path": "scripts/vocabulary-boundary.test.mjs",
       "mode": "100644",
-      "sha256": "63534be629c4b3c11197c0c24e05139827968b69633d18b394ea0a3bacfcdf5b"
+      "sha256": "51fef74fda6a05fcd99192771c8eeed999345290a2be7d831ed0ee8b29e41895"
     },
     {
       "path": "scripts/workspace-reachability.mjs",
