@@ -1048,12 +1048,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "8f1b84953ccc5b34bac6b03d69f70888d41625ec3864f1e48cb2dabb2ae2b5a7"
+      "sha256": "ee9ca121d5f7d9912a702ace51f9573aec33b73ab646e1f9da5cf9aee1f1d519"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "dbb0c854423e01f5e2dbc210c1d824bcf3f234e4baeb376702fba629df621eb6"
+      "sha256": "0594e81f66c3351b8c788556866050b503c936d7a776adf7d78f371a73c65712"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1103,7 +1103,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "a3aad3a30523f632e1a5f555d1a58c954546c8a7da85397d90d6c4cc48434324"
+      "sha256": "13197810b75d12f6b2eae4dd99c266c1653481f3dbfc2167a81a4d8e8322a3a3"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -1438,12 +1438,12 @@
     {
       "path": "docs/env-vars.md",
       "mode": "100644",
-      "sha256": "e43f2481e91dc1d5c947ac0977053dac5da78e2a70fd4736bf6ee0f865737aa5"
+      "sha256": "c7563deb93536632ae44c527dedb4d4f31bf3f08ddb926dfb6eeb4fb95614c90"
     },
     {
       "path": "docs/error-taxonomy.json",
       "mode": "100644",
-      "sha256": "76b2af8d80ec1c4022dd3bbe3c53089116db07f91e69d94cc1d305af42759bfb"
+      "sha256": "b778807ee176cd32da3fe1ff98086c4931f296bc162cc29d7bb5c8ce1c8801b9"
     },
     {
       "path": "docs/errors-retrying.mdx",
@@ -2913,7 +2913,7 @@
     {
       "path": "docs/openapi-v1-baseline.json",
       "mode": "100644",
-      "sha256": "d4c2a0e8bdca8490a0c9c4431baad6372aaf8e543d3334d86666b4b0196c3c32"
+      "sha256": "86371861a655e3917cd746bb76dbc438cec83ba6879bdabea61c087c8b16feb6"
     },
     {
       "path": "docs/openapi.yml",
@@ -4008,7 +4008,7 @@
     {
       "path": "scripts/workspace-reachability.test.mjs",
       "mode": "100644",
-      "sha256": "1862ee2dfc84567593cafa44b518b703505f3ab8c9d6770e025e10077dd5270f"
+      "sha256": "fa902f9d52839cd989c4a386b4634921cc1b732466b5e8c7c60eaf924ff484d9"
     }
   ]
 }
