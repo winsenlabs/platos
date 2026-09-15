@@ -76,10 +76,10 @@
 //      IMPORTS each context's factory in a named case of its own, derives both
 //      routes from the packages' own barrels and manifests, and joins them to
 //      `UNIMPORTABLE_CONTEXT_FACTORIES` below. It also reads every count of
-//      importable factories stated in V1 prose, this clause included, back
-//      against that constant. Every earlier version of this sentence was kept
-//      by hand against a literal kept by the same hand, which is why it only
-//      ever moved when somebody looked.
+//      importable factories stated in the repository's comments and Markdown,
+//      this clause included, back against that constant. Every earlier version
+//      of this sentence was kept by hand against a literal kept by the same
+//      hand, which is why it only ever moved when somebody looked.
 //
 //   2. every driven port in its dependency bundle has an implementation SOMEWHERE
 //      in this tree.
@@ -174,8 +174,9 @@
 // tranche, so this file imports `createGovernanceSafetyEventSink` from exactly the
 // subpath the sentence denied, and `UNIMPORTABLE_CONTEXT_FACTORIES` below has not
 // named `governance` since. One file held both halves of the contradiction.
-// `installation.test.ts` now derives the other half of that partition from the
-// packages themselves, so the pair cannot disagree again.
+// `context-factories.test.ts` now derives the other half of that partition from
+// the packages themselves, so the pair cannot disagree again. WIN-302 moved it
+// there from `installation.test.ts`, which this sentence named until then.
 //
 // AND THE `AgentsContract` SLOT IS NOT AN ASSEMBLER PROBLEM EITHER, WHICH IS
 // WIN-267 G3's FINDING. This paragraph used to end "and `agents` publishes its
@@ -572,9 +573,11 @@ export const AGENTS_UNBOUND_PORTS: readonly string[] = Object.freeze([
  * packages -- a factory on the `.` barrel, or a manifest that publishes
  * `./application/index.js` -- and requires the contexts on neither route to
  * equal this list, as sets. It also reads every count of importable or
- * unimportable factories stated in V1 prose back against this list's length. So
- * the day a context lands here, every sentence that says otherwise goes red with
- * it, and the day a manifest stops publishing its subpath, the partition does.
+ * unimportable factories stated in the repository's comments and Markdown back
+ * against this list's length. So the day a context lands here, every sentence
+ * that says otherwise goes red with it, and the day a manifest stops publishing
+ * the entry point a context's factory is imported through, that context's own
+ * case does.
  *
  * HOW IT EMPTIED. WIN-267 G3 wrote this list with eight names under a paragraph
  * that read "Nine factories are reachable from here ... The eight below keep

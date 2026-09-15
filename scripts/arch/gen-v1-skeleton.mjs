@@ -1352,8 +1352,9 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // `apps/core-api/src/composition/context-factories.test.ts`: one named case per
 // context that IMPORTS its factory; a partition that derives both routes from
 // the seventeen manifests and barrels and joins them to that constant; and a
-// readback of every count of importable or unimportable factories stated in V1
-// prose — this paragraph included — against the constant. A figure outside
+// readback of every count of importable or unimportable factories stated in the
+// repository's comments and Markdown — this paragraph included — against the
+// constant. A figure outside
 // quotation marks that disagrees with it is a red case, which is the failure
 // this clause never had in any of its four wrong versions.
 //

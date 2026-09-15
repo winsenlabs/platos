@@ -1402,14 +1402,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // derived differently are kept.
     // 1699 + 2 = 1701.
     //
-    // WIN-302 — THE FACTORY ENTRIES, 1701 -> 1712. ELEVEN files, ALL under
-    // `apps/core-api/src/composition/`: the ten one-line modules of
-    // `factory-entries/`, one per context whose factory is reached through
-    // `./application/index.js`, and `context-factories.test.ts`, which imports
-    // each in a named case of its own. NOTHING under `packages/`: the six manifests
-    // that gained the subpath are scaffolding, and this census reads source.
-    // 1701 + 11 = 1712.
-    assert.equal(result.fileCount, 1712, "the generated V1 source census must stay exact");
+    // WIN-302 — THE FACTORY ENTRIES, 1701 -> 1719. EIGHTEEN files, ALL under
+    // `apps/core-api/src/composition/`: the seventeen one-line modules of
+    // `factory-entries/`, one per context, and `context-factories.test.ts`, which
+    // loads each in a named case of its own. NOTHING under `packages/`: the six
+    // manifests that gained the subpath are scaffolding, and this census reads
+    // source. The tranche first landed ten modules (1712), one per subpath-route
+    // context; the other seven, for the `.` route, followed when a removed `.`
+    // entry was measured failing the whole suite at load instead of one case.
+    // 1701 + 18 = 1719.
+    assert.equal(result.fileCount, 1719, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1499,9 +1501,10 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // `transports/`: the four suites that learned to take a SUPPLIED server are
       // edits, as are the two that already could.
       2 +
-      // WIN-302 THE FACTORY ENTRIES: composition 11 -- ten `factory-entries/`
-      // modules and the suite that loads them. NOTHING under `packages/`.
-      11);
+      // WIN-302 THE FACTORY ENTRIES: composition 18 -- seventeen `factory-entries/`
+      // modules, one per context, and the suite that loads them. NOTHING under
+      // `packages/`.
+      18);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });
