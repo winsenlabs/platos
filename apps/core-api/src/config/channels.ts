@@ -127,7 +127,23 @@ export const CHANNELS_SECTION: ConfigSectionSpec = Object.freeze({
           schemes: Object.freeze(["https:", "http:"]),
         }),
       ]),
-      optional: Object.freeze([]),
+      optional: Object.freeze([
+        // TRUE BY DEFAULT, BECAUSE THE RELAY CARRIES A LOGIN-CAPABLE SECRET. An
+        // `smtp:` relay upgraded only "when offered" hands a sign-in link in clear
+        // to a relay that offers no STARTTLS, or to anybody on the path who strips
+        // the offer from EHLO — which a plaintext EHLO cannot detect. With this
+        // true, such a relay gets EHLO and nothing else
+        // (`NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED`). `false` is for a local sink
+        // that speaks no TLS; relay CREDENTIALS still never go in clear.
+        Object.freeze({
+          name: "PLATOS_CHANNELS_EMAIL_REQUIRE_TLS",
+          kind: "boolean",
+          required: false,
+          defaultValue: "true",
+          secret: false,
+          describe: "whether a message may only be sent over smtps: or a STARTTLS-upgraded connection",
+        }),
+      ]),
     }),
     Object.freeze({
       id: "webhookNotifier",
@@ -159,6 +175,8 @@ export interface EmailNotifierConfiguration {
   readonly smtpUrl: string;
   readonly from: string;
   readonly loginUrl: string;
+  /** `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS`; true unless set to exactly `false`. */
+  readonly requireTls: boolean;
 }
 
 export interface WebhookNotifierConfiguration {
@@ -186,6 +204,7 @@ export function assembleChannels(read: SectionReader, declared: GroupPresence): 
           smtpUrl: read("PLATOS_CHANNELS_EMAIL_SMTP_URL") ?? "",
           from: read("PLATOS_CHANNELS_EMAIL_FROM") ?? "",
           loginUrl: read("PLATOS_CHANNELS_EMAIL_LOGIN_URL") ?? "",
+          requireTls: read("PLATOS_CHANNELS_EMAIL_REQUIRE_TLS") !== "false",
         }),
     webhookNotifier: !declared("webhookNotifier")
       ? null

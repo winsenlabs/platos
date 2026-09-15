@@ -93,6 +93,7 @@ export function anOperatorUser(
   return {
     userId: userId(),
     email: email(),
+    displayName: null,
     platformOperator: false,
     disabledAt: null,
     ...overrides,

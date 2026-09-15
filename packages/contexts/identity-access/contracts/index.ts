@@ -280,7 +280,14 @@ export interface RotateSessionCookieRequest extends IssueSessionCookieRequest {
 export interface RateLimitRequest {
   readonly action: "LOGIN" | "INVITE_ACCEPT" | "MFA_VERIFY";
   readonly identifier: string;
-  readonly scope: TenantScope;
+  /**
+   * The tenant the spend is recorded against, or null for a budget spent before
+   * any tenant is known — `INVITE_ACCEPT` is spent before the invitation names its
+   * organization. A null scope is LOGGED under the rule rather than written to the
+   * safety sink, which requires a tenant; the budget is spent either way. Widened
+   * from `TenantScope` for the accept route; every existing caller still fits.
+   */
+  readonly scope: TenantScope | null;
   readonly principalId: PrincipalId | null;
 }
 
@@ -498,6 +505,10 @@ export interface IdentityAccessContract {
    * `RATE_LIMIT_FAILED_CLOSED`, distinct from `RATE_LIMITED`. `degraded` remains
    * in the outcome type because it is what the domain reports if the policy is
    * ever set back to `allow`; no install produces it today.
+   *
+   * `POST /api/v1/invitations/accept` spends `INVITE_ACCEPT` through this method
+   * before tenancy looks at the token, as the oracle's `acceptInvitation` spends
+   * it before its transaction.
    */
   consumeRateLimit(request: RateLimitRequest): Promise<Result<RateLimitDecisionView>>;
 

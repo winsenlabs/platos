@@ -1061,6 +1061,12 @@
               "null"
             ]
           },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "accountDisabledAt": {
             "type": [
               "string",
@@ -1071,6 +1077,7 @@
         "required": [
           "accountDisabledAt",
           "createdAt",
+          "displayName",
           "email",
           "membershipId",
           "role",
@@ -1727,6 +1734,7 @@
               "MISSING_PERMISSION",
               "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
               "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
+              "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED",
               "NOTIFIER_EMAIL_MESSAGE_REFUSED",
               "NOTIFIER_EMAIL_RELAY_REFUSED",
               "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
@@ -13363,7 +13371,7 @@
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
     "componentSchemas": 62,
-    "canonicalErrorCodes": 472,
+    "canonicalErrorCodes": 473,
     "queryParametersNotDerived": []
   }
 }

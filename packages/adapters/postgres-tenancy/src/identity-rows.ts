@@ -50,6 +50,7 @@ import { readAuthorizationScope, readIdentityProvider, readIdentityTier } from "
 export interface UserRow {
   readonly id: string;
   readonly email: string;
+  readonly displayName: string | null;
   readonly platformOperator: boolean;
   readonly disabledAt: Date | null;
 }
@@ -162,6 +163,7 @@ export function toUserRecord(row: UserRow): OperatorUserRecord {
   return {
     userId: asIdentifier<UserId>(row.id),
     email: asIdentifier<EmailAddress>(row.email),
+    displayName: row.displayName,
     platformOperator: row.platformOperator,
     disabledAt: row.disabledAt,
   };

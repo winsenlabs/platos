@@ -1,7 +1,7 @@
 // The bytes of a message, and the relay URL's meaning — the pure half.
 //
 // The conversation with a REAL relay is proven in
-// `apps/core-api/src/composition/magic-link-email.integration.test.ts`, against a
+// `apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts`, against a
 // Mailpit container that parses what arrives with its own MIME decoder. What is
 // here is what that suite would only see as a rejected or mangled message: the
 // refusals, and the encodings a relay must carry unchanged.

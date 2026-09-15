@@ -250,6 +250,12 @@ beforeAll(async () => {
     PLATOS_CHANNELS_EMAIL_SMTP_URL: `smtp://${mailpit.getHost()}:${String(mailpit.getMappedPort(1025))}`,
     PLATOS_CHANNELS_EMAIL_FROM: "login@platos.t6.test",
     PLATOS_CHANNELS_EMAIL_LOGIN_URL: LOGIN_PAGE,
+    // THE ONE SETTING THIS SUITE TURNS DOWN, AND WHY. Mailpit speaks no TLS unless
+    // it is handed a certificate, and this process could not trust one it was
+    // handed. So the suite that proves delivery opts out of required TLS — and the
+    // describe "required TLS" below proves, against this same relay, that an install
+    // which does NOT opt out mails nothing.
+    PLATOS_CHANNELS_EMAIL_REQUIRE_TLS: "false",
   });
   if (!platform.ok) throw new Error(`platform configuration refused: ${JSON.stringify(platform.diagnostics)}`);
   const defaults = createProcessDefaults(platform.value.core);
@@ -423,6 +429,48 @@ describe("D20 — a magic link is MAILED through notifier-email, and no response
   });
 });
 
+describe("required TLS — the default an install gets — against the same real relay, which offers no STARTTLS", () => {
+  it("refuses to put a sign-in link on a connection without TLS, and the relay receives nothing", async () => {
+    const address = "plaintext@example.t6.test";
+    // THE LOADER'S DEFAULT, not a literal here: the variable is simply absent.
+    const platform = loadPlatformConfiguration({
+      PLATOS_ENVIRONMENT: "test",
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: `smtp://${mailpit.getHost()}:${String(mailpit.getMappedPort(1025))}`,
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.t6.test",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: LOGIN_PAGE,
+    });
+    if (!platform.ok) throw new Error(JSON.stringify(platform.diagnostics));
+    expect(platform.value.channels.emailNotifier?.requireTls).toBe(true);
+    // AND THE REAL BINDING, so a composition root that dropped the setting on the
+    // way to the adapter is caught here too.
+    const defaults = createProcessDefaults(platform.value.core);
+    const strict = constructAdapters({
+      stores: platform.value.stores,
+      security: platform.value.security,
+      providers: platform.value.providers,
+      channels: platform.value.channels,
+      clock: defaults.clock,
+      correlation: null,
+    });
+    try {
+      const notifier = strict.adapters["notifier-email"];
+      if (notifier === undefined) throw new Error(`notifier-email was not constructed: ${strict.faults.join("; ")}`);
+      const refused = await notifier.deliverMagicLink({
+        email: asIdentifier(address),
+        token: asIdentifier("plt_ml_must-never-reach-a-plaintext-relay"),
+        expiresAt: FAR,
+      });
+      expect(refused.ok).toBe(false);
+      if (refused.ok) return;
+      expect(refused.error.code).toBe("NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED");
+      expect(committedStatus(refused.error.code)).toBe(503);
+      expect(await mailTo(address)).toHaveLength(0);
+    } finally {
+      await strict.release();
+    }
+  });
+});
+
 describe("D19 — a session minted by the legacy Remix code authenticates through core-api", () => {
   it("accepts the cookie Remix's own createCookie wrote, over a real socket", async () => {
     const name = "platos_operator_session";
@@ -454,14 +502,19 @@ describe("D19 — a session minted by the legacy Remix code authenticates throug
 });
 
 describe("members — settings.team ported, with the forged scope asked", () => {
-  it("lists acme's ACTIVE members with their addresses, oldest first, to its OWNER", async () => {
+  it("lists acme's ACTIVE members with their addresses and display names, oldest first, to its OWNER", async () => {
+    // `settings.team` renders `displayName ?? email`. The name is written to the
+    // User ROW by the second connection — V1 has no write path for it, and a
+    // migrated install's rows carry the oracle's — so the route is seen reading the
+    // column, and the null beside it.
+    await observe(`UPDATE "User" SET "displayName" = 'Olive Owner' WHERE "id" = '${OPERATORS.owner.user}'`);
     const answer = await call("GET", `/organizations/${ID.acme}/members`, { as: "owner" });
     expect(answer.status, answer.text).toBe(200);
-    expect(rows(answer).map((row) => [row["role"], row["email"]])).toEqual([
-      ["OWNER", OPERATORS.owner.email],
-      ["ADMIN", OPERATORS.admin.email],
-      ["MEMBER", OPERATORS.member.email],
-      ["MEMBER", OPERATORS.legacy.email],
+    expect(rows(answer).map((row) => [row["role"], row["email"], row["displayName"]])).toEqual([
+      ["OWNER", OPERATORS.owner.email, "Olive Owner"],
+      ["ADMIN", OPERATORS.admin.email, null],
+      ["MEMBER", OPERATORS.member.email, null],
+      ["MEMBER", OPERATORS.legacy.email, null],
     ]);
   });
 
@@ -561,6 +614,41 @@ describe("D1 — invitations, against the database that enforces one live invita
     expect(data(accepted)["role"]).toBe("MEMBER");
     expect(await observe(`SELECT "role" FROM "OrganizationMembership" WHERE "userId" = '${OPERATORS.invitee.user}' AND "organizationId" = '${ID.acme}'`)).toEqual(["MEMBER"]);
     expectRefused(await call("POST", "/invitations/accept", { as: "invitee", body: { token: issued.value.token } }), "TENANCY_INVITATION_CONSUMED");
+  });
+
+  it("spends INVITE_ACCEPT before the token is read: a guesser is RATE_LIMITED, and then even a VALID token is refused and joins nothing", async () => {
+    // The oracle's `acceptInvitation` consumes INVITE_ACCEPT before its
+    // transaction. Bounded rather than exact, for the reason the LOGIN case gives:
+    // a run straddling a fixed window edge legitimately admits more.
+    let admitted = 0;
+    let limited: Answer | null = null;
+    const codes = new Set<string>();
+    for (let request = 0; request < 21 && limited === null; request += 1) {
+      const guess = await call("POST", "/invitations/accept", { as: "member", body: { token: `plt_inv_guess-${String(request)}` } });
+      if (codeOf(guess) === "RATE_LIMITED") limited = guess;
+      else {
+        admitted += 1;
+        codes.add(codeOf(guess));
+      }
+    }
+    expect(limited, "INVITE_ACCEPT must refuse within two windows").not.toBeNull();
+    if (limited === null) return;
+    expectRefused(limited, "RATE_LIMITED");
+    expect(admitted).toBeGreaterThanOrEqual(1);
+    expect([...codes].some((code) => code === "RATE_LIMITED" || !code.startsWith("TENANCY_"))).toBe(false);
+
+    const tenancy = running.app.contexts.tenancy;
+    if (tenancy === undefined) throw new Error("tenancy must be composed");
+    const real = await tenancy.issueInvitation({
+      organizationId: asIdentifier(ID.globex),
+      inviterUserId: asIdentifier(OPERATORS.rival.user),
+      email: OPERATORS.member.email,
+    });
+    if (!real.ok) throw new Error(`issue refused: ${real.error.code}`);
+    const matching = await call("POST", "/invitations/accept", { as: "member", body: { token: real.value.token } });
+    expectRefused(matching, "RATE_LIMITED");
+    expect(await observe(`SELECT count(*) FROM "OrganizationMembership" WHERE "userId" = '${OPERATORS.member.user}' AND "organizationId" = '${ID.globex}'`)).toEqual(["0"]);
+    expect(await observe(`SELECT count(*) FROM "OrganizationInvitation" WHERE "organizationId" = '${ID.globex}' AND "email" = '${OPERATORS.member.email}' AND "acceptedAt" IS NULL AND "revokedAt" IS NULL`)).toEqual(["1"]);
   });
 });
 

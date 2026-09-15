@@ -2116,6 +2116,13 @@
         "adapters"
       ]
     },
+    "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "adapters"
+      ]
+    },
     "NOTIFIER_EMAIL_MESSAGE_REFUSED": {
       "category": "invalid_input",
       "status": 400,

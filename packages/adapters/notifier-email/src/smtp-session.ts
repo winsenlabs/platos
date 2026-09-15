@@ -6,8 +6,8 @@
 // commands below. Every one of those features is a surface the SBOM, the advisory
 // scan and the image would carry; none is used. The protocol subset a
 // submission client needs is small, stable since 2008, and testable against a
-// real relay — which is what `composition/magic-link-email.integration.test.ts`
-// does.
+// real relay — which is what
+// `apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts` does.
 //
 // THE SUBSET, IN ORDER:
 //
@@ -24,13 +24,36 @@
 // unexpected EOF all resolve `err(NOTIFIER_EMAIL_RELAY_UNREACHABLE)` with the
 // STAGE; a 4xx/5xx resolves `err(NOTIFIER_EMAIL_RELAY_REFUSED)` with the stage and
 // the reply code. No reply TEXT is kept: it can echo the recipient back.
+//
+// THE DEADLINE STARTS BEFORE THE FIRST BYTE, NOT AFTER THE CONNECT. `timeoutMs`
+// is the whole transaction's budget, and the connect and an implicit-TLS
+// handshake are part of the transaction: a relay whose port is blackholed, or an
+// `smtps://` listener that accepts TCP and never finishes TLS, would otherwise
+// hold the sign-in request that asked for the link until the OS gave up — or, for
+// the second, forever. The timer is armed first, every socket this send opens
+// is registered with it, and when it fires they are destroyed, pending or not.
+//
+// TLS IS REQUIRED UNLESS THE INSTALL SAYS OTHERWISE. A sign-in link is a
+// login-capable secret, and `smtp://` upgraded only "when offered" sends it in
+// clear to any relay that does not offer STARTTLS — or through anybody on the path
+// who strips `STARTTLS` out of the EHLO reply, which a plaintext EHLO cannot
+// detect. So `requireTls` (true unless `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS=false`)
+// refuses the transaction with `NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED` BEFORE
+// the envelope: no MAIL FROM, no RCPT TO, no DATA. Credentials were already
+// refused over plaintext whatever the setting (`NOTIFIER_EMAIL_INSECURE_AUTH_
+// REFUSED`); the setting only decides whether an UNauthenticated message may go.
 
-import { connect as connectPlain, type Socket } from "node:net";
+import { connect as connectPlain, isIP, type Socket } from "node:net";
 import { connect as connectTls, type TLSSocket } from "node:tls";
 
 import { err, ok, type Result } from "@platos/context-identity-access/application/ports/index.js";
 
-import { insecureAuthenticationRefused, relayRefused, relayUnreachable } from "./errors.js";
+import {
+  insecureAuthenticationRefused,
+  insecureTransportRefused,
+  relayRefused,
+  relayUnreachable,
+} from "./errors.js";
 import type { RelayEndpoint } from "./relay.js";
 
 export interface SmtpEnvelope {
@@ -43,8 +66,13 @@ export interface SmtpEnvelope {
 }
 
 export interface SmtpOptions {
-  /** The whole transaction's budget, connect to final 250. */
+  /** The whole transaction's budget, from before the connect to the final 250. */
   readonly timeoutMs: number;
+  /**
+   * Refuse to send anything over a connection that is not TLS — neither
+   * `smtps:` nor upgraded by STARTTLS. See the banner.
+   */
+  readonly requireTls: boolean;
   /**
    * Extra trust for a relay's certificate — a private CA. Certificates ARE
    * verified; there is deliberately no option to turn that off.
@@ -163,10 +191,6 @@ class Conversation {
     this.socket.write(`${line}\r\n`, "latin1");
     return this.read(stage);
   }
-
-  close(): void {
-    this.socket.destroy();
-  }
 }
 
 function accept(reply: Result<Reply>, stage: string, codes: readonly number[]): Result<Reply> {
@@ -182,20 +206,42 @@ async function hello(conversation: Conversation, clientName: string): Promise<Re
   return ok(conversation.lines.some((line) => /^250[ -]STARTTLS\b/iu.test(line)));
 }
 
-function open(endpoint: RelayEndpoint, options: SmtpOptions): Promise<Result<Socket | TLSSocket>> {
+/**
+ * The SNI name for a relay host. RFC 6066 §3 forbids an IP literal there; the
+ * certificate is still checked against the host whichever form it takes.
+ */
+function serverNameOf(host: string): string | undefined {
+  return isIP(host) === 0 ? host : undefined;
+}
+
+/**
+ * Every socket one send opened, so the deadline can destroy them all — the
+ * plain socket still connecting, the TLS socket still handshaking, and the TLS
+ * socket STARTTLS wrapped around the plain one.
+ */
+type Track = (socket: Socket | TLSSocket) => void;
+
+function open(endpoint: RelayEndpoint, options: SmtpOptions, track: Track): Promise<Result<Socket | TLSSocket>> {
   return new Promise((resolve) => {
     const socket = endpoint.implicitTls
-      ? connectTls({ host: endpoint.host, port: endpoint.port, servername: endpoint.host, ...(options.tls ?? {}) })
+      ? connectTls({ host: endpoint.host, port: endpoint.port, servername: serverNameOf(endpoint.host), ...(options.tls ?? {}) })
       : connectPlain({ host: endpoint.host, port: endpoint.port });
+    track(socket);
+    const settle = (result: Result<Socket | TLSSocket>): void => {
+      socket.removeListener("error", onError);
+      socket.removeListener("close", onClose);
+      resolve(result);
+    };
     const onError = (error: Error): void => {
       socket.destroy();
-      resolve(err(relayUnreachable("connect", error.name)));
+      settle(err(relayUnreachable("connect", error.name)));
     };
+    // Destroyed by the deadline before it connected: `destroy()` without an error
+    // emits `close` and no `error`, and this promise must still settle.
+    const onClose = (): void => settle(err(relayUnreachable("connect", "closed")));
     socket.once("error", onError);
-    socket.once(endpoint.implicitTls ? "secureConnect" : "connect", () => {
-      socket.removeListener("error", onError);
-      resolve(ok(socket));
-    });
+    socket.once("close", onClose);
+    socket.once(endpoint.implicitTls ? "secureConnect" : "connect", () => settle(ok(socket)));
   });
 }
 
@@ -203,12 +249,15 @@ async function startTls(
   conversation: Conversation,
   endpoint: RelayEndpoint,
   options: SmtpOptions,
+  track: Track,
 ): Promise<Result<void>> {
   const ready = accept(await conversation.command("STARTTLS", "starttls"), "starttls", [220]);
   if (!ready.ok) return ready;
   const plain = conversation.transport as Socket;
   return new Promise((resolve) => {
-    const secured = connectTls({ socket: plain, servername: endpoint.host, ...(options.tls ?? {}) });
+    const secured = connectTls({ socket: plain, host: endpoint.host, servername: serverNameOf(endpoint.host), ...(options.tls ?? {}) });
+    track(secured);
+    secured.once("close", () => resolve(err(relayUnreachable("tls-handshake", "closed"))));
     secured.once("error", (error: Error) => resolve(err(relayUnreachable("tls-handshake", error.name))));
     secured.once("secureConnect", () => {
       conversation.upgrade(secured);
@@ -222,6 +271,7 @@ async function converse(
   endpoint: RelayEndpoint,
   envelope: SmtpEnvelope,
   options: SmtpOptions,
+  track: Track,
 ): Promise<Result<void>> {
   const greeting = accept(await conversation.read("greeting"), "greeting", [220]);
   if (!greeting.ok) return greeting;
@@ -229,12 +279,15 @@ async function converse(
   if (!offered.ok) return offered;
   let secure = endpoint.implicitTls;
   if (!secure && offered.value) {
-    const upgraded = await startTls(conversation, endpoint, options);
+    const upgraded = await startTls(conversation, endpoint, options, track);
     if (!upgraded.ok) return upgraded;
     secure = true;
     const again = await hello(conversation, envelope.clientName);
     if (!again.ok) return again;
   }
+  // Before credentials AND before the envelope: with TLS required, a relay that
+  // offered none — or a path that stripped the offer — learns nothing but EHLO.
+  if (!secure && options.requireTls) return err(insecureTransportRefused());
   if (endpoint.username !== null && endpoint.password !== null) {
     if (!secure) return err(insecureAuthenticationRefused());
     const plain = Buffer.from(`${NUL}${endpoint.username}${NUL}${endpoint.password}`, "utf8").toString("base64");
@@ -259,17 +312,24 @@ export async function sendOverSmtp(
   envelope: SmtpEnvelope,
   options: SmtpOptions,
 ): Promise<Result<void>> {
-  const socket = await open(endpoint, options);
-  if (!socket.ok) return socket;
-  const conversation = new Conversation(socket.value);
+  // ARMED FIRST. See the banner: the connect and the handshake spend this budget.
+  const sockets: (Socket | TLSSocket)[] = [];
+  const track: Track = (socket) => {
+    sockets.push(socket);
+  };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<Result<void>>((resolve) => {
     timer = setTimeout(() => resolve(err(relayUnreachable("deadline", "timeout"))), options.timeoutMs);
   });
+  const exchange = async (): Promise<Result<void>> => {
+    const socket = await open(endpoint, options, track);
+    if (!socket.ok) return socket;
+    return converse(new Conversation(socket.value), endpoint, envelope, options, track);
+  };
   try {
-    return await Promise.race([converse(conversation, endpoint, envelope, options), deadline]);
+    return await Promise.race([exchange(), deadline]);
   } finally {
     if (timer !== undefined) clearTimeout(timer);
-    conversation.close();
+    for (const socket of sockets) socket.destroy();
   }
 }

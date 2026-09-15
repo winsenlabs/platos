@@ -309,6 +309,7 @@ export const WIRE_ERROR_CODES = [
   "MISSING_PERMISSION",
   "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
   "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
+  "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED",
   "NOTIFIER_EMAIL_MESSAGE_REFUSED",
   "NOTIFIER_EMAIL_RELAY_REFUSED",
   "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
@@ -789,6 +790,7 @@ export interface OrganizationMemberResource {
   readonly "role": string;
   readonly "createdAt": string;
   readonly "email": string | null;
+  readonly "displayName": string | null;
   readonly "accountDisabledAt": string | null;
 }
 

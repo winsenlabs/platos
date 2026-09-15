@@ -60,6 +60,11 @@ export interface OrganizationMemberResource {
   readonly createdAt: string;
   /** The address the member signs in with; null when identity-access has no such user. */
   readonly email: string | null;
+  /**
+   * The name the account set, or null. `settings.team` renders
+   * `displayName ?? email`, so a cutover onto this route keeps the names it shows.
+   */
+  readonly displayName: string | null;
   /** Non-null when the account behind the membership can no longer sign in. */
   readonly accountDisabledAt: string | null;
 }
@@ -102,6 +107,7 @@ export function organizationMemberResource(row: OrganizationMemberView): Organiz
     role: row.membership.role,
     createdAt: instant(row.membership.createdAt),
     email: row.account?.email ?? null,
+    displayName: row.account?.displayName ?? null,
     accountDisabledAt: nullableInstant(row.account?.disabledAt ?? null),
   };
 }

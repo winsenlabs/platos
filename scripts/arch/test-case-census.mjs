@@ -2479,7 +2479,13 @@ export const EXPECTED = Object.freeze({
   // relay on a real socket for the refusals a real sink will not give on demand:
   // no STARTTLS with credentials, a 550 at RCPT, a silent greeting, a closed
   // port). The accepting path is proven against a real relay in core-api.
-  "packages/adapters/notifier-email": { files: 2, cases: 14 },
+  // 14 -> 18 (2026-09-16, the verifier's round on the same remainder), no file
+  // added: `smtp-session.test.ts` gains the deadline over an smtps:// handshake
+  // that never finishes (and the socket it abandons, closed), the deadline over a
+  // STARTTLS handshake that never finishes, the whole message refused before the
+  // envelope when TLS is required and none is offered, and the one opt-out that
+  // sends in clear.
+  "packages/adapters/notifier-email": { files: 2, cases: 18 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   // M2 INTEGRATION: outbox 4 + 0 + 1 = 5 files, 41 + 5 (the replay codes) + 22
@@ -2619,7 +2625,9 @@ export const EXPECTED = Object.freeze({
   // `scripts/mutations-win268-lifecycle.json`.
   // 1570 -> 1571 (2026-09-15): `listOrganizationMemberships` against a real
   // PostgreSQL — one organization's rows, deactivated included, never another's.
-  "packages/adapters/postgres-tenancy": { files: 141, cases: 1571 },
+  // 1571 -> 1572 (2026-09-16): the operator directory reads `User.displayName`
+  // off the row, and null where the row holds none — the team page renders it.
+  "packages/adapters/postgres-tenancy": { files: 141, cases: 1572 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -3756,7 +3764,11 @@ export const EXPECTED = Object.freeze({
 // accounted for on its row. The same asymmetry a FOURTH time: the 12 new
 // `apps/core-api` unit cases and the 22-case integration suite that proves these
 // routes over HTTP move no number here.
-export const EXPECTED_RUNTIME_TOTAL = 8401;
+//
+// 8401 -> 8406 (2026-09-16, the verifier's round on the same remainder): +4
+// notifier-email, +1 postgres-tenancy, each on its row. The two new
+// `apps/core-api` unit cases and the two new integration cases move nothing.
+export const EXPECTED_RUNTIME_TOTAL = 8406;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

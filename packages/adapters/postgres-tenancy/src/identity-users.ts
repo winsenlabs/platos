@@ -31,6 +31,7 @@ import type { TenancyTransactions } from "./transaction.js";
 const USER_COLUMNS = {
   id: true,
   email: true,
+  displayName: true,
   platformOperator: true,
   disabledAt: true,
 } as const;

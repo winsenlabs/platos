@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from "vitest";
 
-import { domainError, err, type DomainError, type FieldViolation } from "@platos/kernel";
+import { domainError, err, ok, type DomainError, type FieldViolation } from "@platos/kernel";
 import {
   IDENTITY_ACCESS_ERROR_CODES,
   type IdentityAccessContract,
@@ -25,6 +25,7 @@ import {
   createIdentityAccessService,
   testPorts,
 } from "@platos/context-identity-access/application/index.js";
+import { createTenancyFixture, createTenancyService } from "@platos/context-tenancy/application/index.js";
 
 import type { AppModule } from "../../app.module.js";
 import { BffSessionController, serializeSetCookie } from "../bff/session.controller.js";
@@ -37,6 +38,7 @@ import {
   nextCursorFor,
   offsetInCursor,
 } from "./environment-end-users.controller.js";
+import { InvitationsController } from "./invitations.controller.js";
 import { createOrganizationValidator } from "./organizations.controller.js";
 import { presentedOperatorToken, readCookie } from "./operator.js";
 import { refuseUnpagedQuery } from "./page.js";
@@ -331,8 +333,9 @@ describe("WIN-267 R1 — the finding that no V1 REST route could spend an authen
     // YES. `startMagicLinkLogin` and `completeMagicLinkLogin` are published, the
     // start spends the LOGIN budget, and `POST /api/v1/bff/magic-link` reaches it —
     // so RATE_LIMITED, and under D3 RATE_LIMIT_FAILED_CLOSED, CAN now truthfully
-    // reach this surface. The finding is withdrawn for LOGIN and stands for the
-    // other two actions, whose performers are still unpublished.
+    // reach this surface. The finding is withdrawn for LOGIN. For INVITE_ACCEPT it
+    // is withdrawn by the next case, which measures the accept route spending it;
+    // for MFA_VERIFY it stands, because that performer is still unpublished.
     expect(methods).toEqual([
       "authenticateBearer",
       "authenticateOperator",
@@ -362,11 +365,88 @@ describe("WIN-267 R1 — the finding that no V1 REST route could spend an authen
     }
     expect(refusal?.code).toBe("RATE_LIMITED");
 
-    // AND THE TWO THAT STILL HAVE NO PUBLISHED PERFORMER.
-    for (const performer of ["verifyMfaForSession", "beginTotpEnrolment", "acceptInvitation"]) {
-      expect(methods, `${performer} is now published — revisit the MFA_VERIFY / INVITE_ACCEPT finding`).not.toContain(
-        performer,
-      );
+    // AND THE PERFORMERS THAT STILL HAVE NO PUBLISHED METHOD — ON EITHER CONTRACT.
+    // This guard once listed `acceptInvitation` against identity-access alone, and
+    // it went on passing after the method was published on TENANCY: a guard scoped
+    // to one contract cannot see a performer that moved to another. So both
+    // published surfaces are read off real service objects.
+    const tenancyMethods = publishedMethods(createTenancyService(createTenancyFixture().dependencies));
+    for (const performer of ["verifyMfaForSession", "beginTotpEnrolment"]) {
+      expect(methods, `${performer} is now published — revisit the MFA_VERIFY finding`).not.toContain(performer);
+      expect(tenancyMethods, `${performer} is now published — revisit the MFA_VERIFY finding`).not.toContain(performer);
     }
   });
+
+  it("INVITE_ACCEPT: `acceptInvitation` IS published, on tenancy, and its route spends the budget before tenancy sees a token", async () => {
+    // THE FINDING, WITHDRAWN FOR INVITE_ACCEPT BY MEASUREMENT. The method is
+    // tenancy's, not identity-access's — which is exactly where the guard above
+    // used not to look.
+    const tenancy = createTenancyService(createTenancyFixture().dependencies);
+    expect(publishedMethods(tenancy)).toContain("acceptInvitation");
+    expect(publishedMethods(createIdentityAccessService(testPorts()))).not.toContain("acceptInvitation");
+
+    // THE ROUTE, against the REAL limiter behind identity-access's published
+    // `consumeRateLimit` and the REAL tenancy use case. Only authentication is
+    // stood in for, because no session exists in memory to authenticate.
+    let reached = 0;
+    let actor = "operator-guessing-tokens";
+    const identityAccess: IdentityAccessContract = {
+      ...createIdentityAccessService(testPorts()),
+      authenticateOperator: () =>
+        Promise.resolve(
+          ok({
+            sessionId: "session-1",
+            actorUserId: actor,
+            effectiveUserId: actor,
+            email: "guesser@example.com",
+            expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+            mfaVerifiedAt: null,
+            impersonating: null,
+          }),
+        ),
+    };
+    const controller = new InvitationsController({
+      app: {
+        contexts: {
+          identityAccess,
+          tenancy: {
+            ...tenancy,
+            acceptInvitation: (request: Parameters<typeof tenancy.acceptInvitation>[0]) => {
+              reached += 1;
+              return tenancy.acceptInvitation(request);
+            },
+          },
+        },
+      } as unknown as AppModule,
+    });
+    const present = async (): Promise<string> => {
+      const thrown = await controller.accept({ headers: {} }, { token: "plt_inv_a-guess" }).catch((error: unknown) => error);
+      return domainErrorOf(thrown)?.code ?? "(accepted)";
+    };
+
+    let admitted = 0;
+    let refusal: string | null = null;
+    for (let request = 0; request < 21 && refusal === null; request += 1) {
+      const code = await present();
+      if (code === "RATE_LIMITED") refusal = code;
+      else admitted += 1;
+    }
+    expect(refusal, "INVITE_ACCEPT must refuse a guesser within twenty-one requests").toBe("RATE_LIMITED");
+    expect(admitted).toBeGreaterThan(0);
+    // SPENT FIRST: every request tenancy saw was an admitted one, and the refused
+    // request never reached the token lookup.
+    expect(reached).toBe(admitted);
+
+    // THE BUCKET IS THE ACTOR: another human is not refused by this one's guesses.
+    actor = "a-different-operator";
+    expect(await present()).not.toBe("RATE_LIMITED");
+    expect(reached).toBe(admitted + 1);
+  });
 });
+
+/** The method names a real service object publishes, sorted. */
+function publishedMethods(service: object): readonly string[] {
+  return Object.keys(service)
+    .filter((key) => typeof (service as Record<string, unknown>)[key] === "function")
+    .sort();
+}

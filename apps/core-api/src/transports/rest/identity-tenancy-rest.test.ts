@@ -3,11 +3,10 @@
 // session cookie's value (D19).
 //
 // The behaviour over HTTP, with real PostgreSQL, Redis and an SMTP relay, is in
-// `composition/identity-tenancy-rest.integration.test.ts` and
-// `composition/magic-link-email.integration.test.ts`. The cookie cases here are
-// joined to the REAL Remix library in
-// `composition/legacy-session-cookie.integration.test.ts`; what is here is the
-// branch table a real cookie would only exercise one arm of.
+// `composition/identity-tenancy-rest.integration.test.ts` — its D20 block for the
+// relay, and its D19 block, which joins the cookie cases here to the REAL Remix
+// library. What is here is the branch table a real cookie would only exercise one
+// arm of.
 
 import { describe, expect, it } from "vitest";
 

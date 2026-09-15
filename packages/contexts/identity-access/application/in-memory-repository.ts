@@ -152,6 +152,7 @@ export function inMemoryIdentityAccessRepository(
         const created: OperatorUserRecord = {
           userId: newUserId,
           email: address,
+          displayName: null,
           platformOperator: false,
           disabledAt: null,
         };
