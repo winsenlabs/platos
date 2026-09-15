@@ -1577,7 +1577,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `packages/platos-client-py/platos_client/v1_stream.py`
     // (`packages.python.sources`) and `packages/platos-client-py/tests/test_v1_stream.py`
     // (`packages.test.suites`). 1556 + 8 = 1564.
-    packages: 1564,
+    //
+    // THE SDK LANE, ROUND 2 — 1564 -> 1565. ONE file:
+    // `packages/platos-client/vitest.config.ts`, on the existing
+    // `packages.config.build` rule beside the other packages' vitest configs. It
+    // aliases the kernel to its source so the stream suite loads on a cold checkout.
+    packages: 1565,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2415,7 +2420,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // AND THE SDK LANE — 1803 -> 1818. FIFTEEN files, itemised on their areas' deltas
   // above: eight in `packages` and seven in `root-infra`:
   // 15 + 1 + 97 + 4 + 10 + 1564 + 25 + 102 = 1818.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1818);
+  //
+  // AND THE SDK LANE, ROUND 2 — 1818 -> 1819. ONE file in `packages` (the client's
+  // vitest config): 15 + 1 + 97 + 4 + 10 + 1565 + 25 + 102 = 1819.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1819);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2726,7 +2734,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // edit as the total and both area deltas: three root-infra files and one SBOM.
     // AND THE SDK LANE — 1803 -> 1818, eight packages and seven root-infra files,
     // moved in the same edit as the total and both area deltas.
-    rulesDocument.baseline.totalFiles + 1818
+    // AND THE SDK LANE, ROUND 2 — 1818 -> 1819, the one packages file.
+    rulesDocument.baseline.totalFiles + 1819
   );
 });
 
