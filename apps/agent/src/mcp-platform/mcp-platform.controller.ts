@@ -491,7 +491,19 @@ export class McpPlatformController {
     };
     req.once("aborted", onDisconnect);
     res.once("close", onDisconnect);
-    if (req.aborted || req.destroyed || res.destroyed) onDisconnect();
+    // WIN-268 (M4.2) — `req.destroyed` ALONE IS NOT A DISCONNECT. Node destroys
+    // an `IncomingMessage` as soon as its body has been read to the end, and the
+    // JSON body parser reads every body before this handler is entered — so
+    // `req.destroyed` was true on EVERY request that carried one, and this
+    // pre-check aborted the dispatch signal before the tool ever ran. Nothing
+    // noticed because only three platform tools take the signal; the one that
+    // does, `macros.replay`, answered `-32603 "internal error"` on its first step
+    // for every Streamable HTTP caller. A complete request whose body was
+    // consumed is not a client that went away — `req.complete` is what tells the
+    // two apart — and a client that really did hang up still reaches
+    // `onDisconnect` through `aborted`, `res` close, or an already-destroyed
+    // response.
+    if (req.aborted || (req.destroyed && !req.complete) || res.destroyed) onDisconnect();
     try {
       const bearer = this.extractBearer(authorization);
       if (!bearer) {

@@ -25,6 +25,7 @@
 
 import { readFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { createRequire } from "node:module";
 import { AddressInfo } from "node:net";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -308,12 +309,21 @@ describe("the wire transport, against a real HTTP listener", () => {
 // below that has an SDK server on the far side runs once per build through
 // `it.each` over an ARRAY LITERAL, which is the one table shape
 // `scripts/arch/test-case-census.mjs` can count statically. The builds are
-// required to be two different installed versions, joined to `pnpm-lock.yaml`,
-// so the table cannot collapse into one build asked twice.
+// required to be two different installed versions, joined to `pnpm-lock.yaml`.
+//
+// THAT JOIN READS THE TREE, NOT THIS FILE, and on its own it does not stop the
+// table collapsing into one build asked twice: repointing the three
+// `sdk-candidate` imports at `@modelcontextprotocol/sdk` leaves both manifests
+// and the lockfile untouched. So the case below also requires the three loaded
+// classes to be DIFFERENT objects, each to be the export of the specifier it
+// claims (fetched by a dynamic import of that literal), and each specifier to
+// resolve inside the pnpm store directory of its own version.
 
 interface SdkServerBuild {
   readonly label: "adopted" | "candidate";
   readonly directory: string;
+  /** Every module specifier the imports above take from this build. */
+  readonly specifiers: readonly string[];
   readonly McpServer: typeof McpServer;
   readonly StreamableHTTPServerTransport: typeof StreamableHTTPServerTransport;
   readonly SSEServerTransport: typeof SSEServerTransport;
@@ -322,6 +332,11 @@ interface SdkServerBuild {
 const ADOPTED: SdkServerBuild = {
   label: "adopted",
   directory: "@modelcontextprotocol/sdk",
+  specifiers: [
+    "@modelcontextprotocol/sdk/server/mcp.js",
+    "@modelcontextprotocol/sdk/server/sse.js",
+    "@modelcontextprotocol/sdk/server/streamableHttp.js",
+  ],
   McpServer,
   StreamableHTTPServerTransport,
   SSEServerTransport,
@@ -330,10 +345,32 @@ const ADOPTED: SdkServerBuild = {
 const CANDIDATE: SdkServerBuild = {
   label: "candidate",
   directory: "@modelcontextprotocol/sdk-candidate",
+  specifiers: [
+    "@modelcontextprotocol/sdk-candidate/server/mcp.js",
+    "@modelcontextprotocol/sdk-candidate/server/sse.js",
+    "@modelcontextprotocol/sdk-candidate/server/streamableHttp.js",
+  ],
   McpServer: CandidateMcpServer as unknown as typeof McpServer,
   StreamableHTTPServerTransport: CandidateStreamableHTTPServerTransport as unknown as typeof StreamableHTTPServerTransport,
   SSEServerTransport: CandidateSSEServerTransport as unknown as typeof SSEServerTransport,
 };
+
+const requireFromHere = createRequire(import.meta.url);
+
+/**
+ * The version whose pnpm store directory a specifier actually resolves into.
+ * The alias and the adopted name are two `node_modules` entries, but both are
+ * links into `.pnpm/@modelcontextprotocol+sdk@<version>_…`, so the store path is
+ * the resolver's own answer to "which build is this specifier".
+ */
+function resolvedStoreVersion(specifier: string): string {
+  const resolved = requireFromHere.resolve(specifier);
+  const match = /@modelcontextprotocol\+sdk@(\d+\.\d+\.\d+)/u.exec(resolved);
+  if (!match) {
+    throw new Error(`${specifier} did not resolve inside an @modelcontextprotocol/sdk store directory: ${resolved}`);
+  }
+  return match[1]!;
+}
 
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
@@ -355,6 +392,38 @@ describe("the SDK builds this suite runs against", () => {
     const importer = lockfile.slice(start, lockfile.indexOf("\n\n", start + 1));
     expect(importer).toContain(`'@modelcontextprotocol/sdk':\n        specifier: ${adopted.version}\n        version: ${adopted.version}(`);
     expect(importer).toContain(`'@modelcontextprotocol/sdk-candidate':\n        specifier: npm:@modelcontextprotocol/sdk@${candidate.version}\n        version: '@modelcontextprotocol/sdk@${candidate.version}(`);
+  });
+
+  it("are two DIFFERENT LOADED MODULE GRAPHS: the classes differ and each is its own specifier's export", async () => {
+    // The case above reads `node_modules` and `pnpm-lock.yaml`; it stays green
+    // when the candidate imports are repointed at the adopted SDK, which is
+    // exactly the collapse the table must not survive. These three joins fail.
+    for (const build of [ADOPTED, CANDIDATE]) {
+      const expected = installedSdk(build).version;
+      for (const specifier of build.specifiers) {
+        expect({ specifier, store: resolvedStoreVersion(specifier) }).toEqual({ specifier, store: expected });
+      }
+    }
+    expect(CANDIDATE.McpServer).not.toBe(ADOPTED.McpServer);
+    expect(CANDIDATE.StreamableHTTPServerTransport).not.toBe(ADOPTED.StreamableHTTPServerTransport);
+    expect(CANDIDATE.SSEServerTransport).not.toBe(ADOPTED.SSEServerTransport);
+
+    const [adoptedMcp, adoptedSse, adoptedHttp] = await Promise.all([
+      import("@modelcontextprotocol/sdk/server/mcp.js"),
+      import("@modelcontextprotocol/sdk/server/sse.js"),
+      import("@modelcontextprotocol/sdk/server/streamableHttp.js"),
+    ]);
+    const [candidateMcp, candidateSse, candidateHttp] = await Promise.all([
+      import("@modelcontextprotocol/sdk-candidate/server/mcp.js"),
+      import("@modelcontextprotocol/sdk-candidate/server/sse.js"),
+      import("@modelcontextprotocol/sdk-candidate/server/streamableHttp.js"),
+    ]);
+    expect(ADOPTED.McpServer).toBe(adoptedMcp.McpServer);
+    expect(ADOPTED.SSEServerTransport).toBe(adoptedSse.SSEServerTransport);
+    expect(ADOPTED.StreamableHTTPServerTransport).toBe(adoptedHttp.StreamableHTTPServerTransport);
+    expect(CANDIDATE.McpServer).toBe(candidateMcp.McpServer as never);
+    expect(CANDIDATE.SSEServerTransport).toBe(candidateSse.SSEServerTransport as never);
+    expect(CANDIDATE.StreamableHTTPServerTransport).toBe(candidateHttp.StreamableHTTPServerTransport as never);
   });
 });
 

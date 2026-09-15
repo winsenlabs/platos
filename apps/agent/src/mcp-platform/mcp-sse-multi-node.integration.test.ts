@@ -35,6 +35,19 @@
  *   request order; it is the order the transport is obliged to preserve, and
  *   only B's own log can say what it was.
  *
+ * AND CANCELLATION ACROSS THE SAME SPLIT. `McpPlatformController` carries a
+ * second Redis pair for the legacy transport: closing the stream sets
+ * `platos:mcp:platform:sse-cancelled:<id>` and publishes `cancel` on
+ * `platos:mcp:platform:sse-cancel:<id>`, which `messages()` subscribes to before
+ * dispatching so a request running on ANOTHER node is aborted when its client
+ * hangs up. This tranche changed that subscriber (it now waits for READY before
+ * SUBSCRIBE) and nothing exercised it: the only test of the controller used a
+ * `vi.fn()` Redis. The last case below runs a long `macros.replay` posted to B
+ * and closes the stream on A while it is still running, twice — once WITHOUT the
+ * close, which answers with the replay result, and once with it, which answers
+ * with an error instead. Two nodes, one Redis, the same call: only the close
+ * differs.
+ *
  * GATED on the same services as the conformance suite, under its own flag.
  */
 
@@ -75,6 +88,8 @@ interface NodeRecord {
   readonly event: "ready" | "publish";
   readonly channel?: string;
   readonly id?: unknown;
+  /** The JSON-RPC error code the published frame carried, or null. */
+  readonly errorCode?: unknown;
   readonly baseUrl?: string;
   readonly pid?: number;
 }
@@ -302,6 +317,185 @@ describeWithServices("legacy MCP SSE across two agent processes sharing one Redi
       }, 60_000);
     }
   }
+
+  it("platform server: closing the stream on A aborts a dispatch already running on B", async () => {
+    // THE CLAIM. `McpPlatformController.sse` publishes `cancel` on this session's
+    // cancel channel as it cleans up; `messages()` on the OTHER node subscribes to
+    // that channel before it dispatches, and aborts the request when it arrives.
+    // Nothing exercised it before this case — the controller's only other test
+    // gives it a `vi.fn()` Redis, where a publish reaches every subscriber by
+    // construction and a subscriber that was never ready is indistinguishable
+    // from one that was. This tranche changed exactly that subscriber.
+    //
+    // THE TOOL HAS TO BE ABORTABLE AND LONG. `macros.replay` is the platform
+    // tool that takes the router's `abortSignal`: it re-runs each recorded step
+    // through the router and checks the signal between steps. How long a step
+    // takes is a property of the machine, so the step count is CALIBRATED here
+    // rather than guessed — a fixed number is either flaky on a fast runner or
+    // slow on a loaded one.
+    const authorization = `Bearer ${tenant.platformToken}`;
+    const post = (node: AgentNode, path: string, body: unknown) =>
+      fetch(new URL(path, node.baseUrl), {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization, "x-forwarded-for": "192.0.2.40" },
+        body: JSON.stringify(body),
+      });
+    const replayCall = (id: string, macroId: string) => ({
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: { name: "macros.replay", arguments: { macroId, params: {} } },
+    });
+    const macroOf = async (steps: number, name: string): Promise<string> => {
+      const row = await schema.prisma.macro.create({
+        data: {
+          environmentId: tenant.environmentId,
+          name,
+          steps: Array.from({ length: steps }, () => ({ tool: "platos.whoami", params: {} })) as never,
+          createdBy: tenant.userId,
+        },
+        select: { id: true },
+      });
+      return row.id;
+    };
+
+    // CALIBRATION, over Streamable HTTP on A: 20 steps, timed, and required to
+    // SUCCEED — which is also how a macro this token may not replay would be
+    // caught here rather than being read as a cancellation later.
+    const calibrationSteps = 20;
+    const calibrationMacro = await macroOf(calibrationSteps, "cancel-calibration");
+    const calibrationStart = Date.now();
+    const calibrated = await post(nodeA, "/mcp/platform", replayCall("calibrate", calibrationMacro));
+    const calibrationMs = Date.now() - calibrationStart;
+    expect(calibrated.status).toBe(200);
+    const calibratedBody = (await calibrated.json()) as {
+      error?: unknown;
+      result?: { content?: Array<{ text?: string }> };
+    };
+    expect({ id: "calibrate", error: calibratedBody.error }).toEqual({ id: "calibrate", error: undefined });
+    expect(calibratedBody.result?.content?.[0]?.text).toContain(`"stepCount":${String(calibrationSteps)}`);
+
+    // Enough steps for ~3s of replay on THIS machine, bounded both ways so a
+    // pathological measurement cannot make the suite take minutes.
+    const perStepMs = Math.max(calibrationMs / calibrationSteps, 0.25);
+    const steps = Math.min(6_000, Math.max(200, Math.ceil(3_000 / perStepMs)));
+    const probeMacro = await macroOf(steps, "cancel-probe");
+
+    // The stream on A, opened WITHOUT the SDK: the SDK's transport owns its
+    // fetch, and this case needs to destroy the socket at a moment it chooses.
+    const streamAbort = new AbortController();
+    const streamed = await fetch(new URL("/mcp/platform/sse", nodeA.baseUrl), {
+      headers: { authorization, accept: "text/event-stream", "x-forwarded-for": "192.0.2.40" },
+      signal: streamAbort.signal,
+    });
+    expect(streamed.status).toBe(200);
+    const frames: Array<{ event: string; data: string }> = [];
+    const decoder = new TextDecoder();
+    const reader = streamed.body!.getReader();
+    const pump = (async () => {
+      let buffer = "";
+      try {
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let boundary = buffer.indexOf("\n\n");
+          while (boundary !== -1) {
+            const block = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
+            let event = "message";
+            const data: string[] = [];
+            for (const line of block.split("\n")) {
+              if (line.startsWith("event:")) event = line.slice(6).trim();
+              else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /u, ""));
+            }
+            if (data.length > 0) frames.push({ event, data: data.join("\n") });
+            boundary = buffer.indexOf("\n\n");
+          }
+        }
+      } catch {
+        // the abort below destroys this socket, which is the point of the case
+      }
+    })();
+    try {
+      await until("the endpoint frame from node A", () => frames.some((frame) => frame.event === "endpoint"));
+      const endpointPath = frames.find((frame) => frame.event === "endpoint")!.data;
+      const sessionId = new URL(endpointPath, nodeA.baseUrl).searchParams.get("sessionId")!;
+      expect(sessionId).toMatch(/^[0-9a-f]{32}$/u);
+
+      // THE CONTROL — the same replay, posted to B, with the stream left open.
+      // It answers on A's stream with the replay's own result.
+      const controlStart = Date.now();
+      const control = await post(nodeB, endpointPath, replayCall("replay-control", probeMacro));
+      expect(control.status).toBe(202);
+      await until(
+        "node B's answer to the uncancelled replay",
+        () => frames.some((frame) => frame.event === "message" && frame.data.includes('"replay-control"')),
+        180_000,
+      );
+      const controlMs = Date.now() - controlStart;
+      // THE PROBE'S PRECONDITION, MEASURED RATHER THAN ASSUMED. The cancel below
+      // is sent 300ms after the POST, so the replay has to still be running then.
+      // The calibration sizes the macro for ~3s; if it lands under a second the
+      // calibration is wrong for this machine and the probe would be racing —
+      // which must be a loud failure here, not a flake there.
+      expect({
+        longEnough: controlMs > 800,
+        remedy: "raise the replay target in this case; the calibrated macro is too short",
+      }).toEqual({
+        longEnough: true,
+        remedy: "raise the replay target in this case; the calibrated macro is too short",
+      });
+      const controlFrame = JSON.parse(
+        frames.find((frame) => frame.event === "message" && frame.data.includes('"replay-control"'))!.data,
+      ) as { error?: unknown; result?: { content?: Array<{ text?: string }> } };
+      expect({ id: "replay-control", error: controlFrame.error }).toEqual({ id: "replay-control", error: undefined });
+      expect(controlFrame.result?.content?.[0]?.text).toContain(`"stepCount":${String(steps)}`);
+
+      // THE PROBE — the same call again, and this time the client hangs up while
+      // B is still replaying.
+      const before = { A: nodeA.records.length, B: nodeB.records.length };
+      const probe = await post(nodeB, endpointPath, replayCall("replay-cancelled", probeMacro));
+      expect(probe.status).toBe(202);
+      // B acks with 202 BEFORE it subscribes to the cancel channel, so a close
+      // sent instantly would be testing that race instead of the cancel. A beat
+      // here makes the case about the cancel; the replay runs for seconds.
+      await new Promise((resolveBeat) => setTimeout(resolveBeat, 300));
+      streamAbort.abort();
+      await pump;
+
+      const publishes = (agent: AgentNode, from: number) =>
+        agent.records.slice(from).filter((record) => record.event === "publish");
+      // A, cleaning up the stream, publishes the cancel for THIS session.
+      await until(
+        "node A's cancel publish",
+        () =>
+          publishes(nodeA, before.A).some(
+            (record) => record.channel === `platos:mcp:platform:sse-cancel:${sessionId}`,
+          ),
+        30_000,
+      );
+      // B answers the replay it was running — with an error, where the identical
+      // call thirty lines up answered with the result. The frame is read off B's
+      // own publish log because the stream it was written to no longer exists.
+      await until(
+        "node B's answer to the cancelled replay",
+        () => publishes(nodeB, before.B).some((record) => record.id === "replay-cancelled"),
+        180_000,
+      );
+      const cancelledAnswer = publishes(nodeB, before.B).find((record) => record.id === "replay-cancelled")!;
+      expect({ channel: cancelledAnswer.channel, errorCode: cancelledAnswer.errorCode }).toEqual({
+        channel: `platos:mcp:platform:sse:${sessionId}`,
+        errorCode: -32603,
+      });
+      // …and B published it ONCE: an abort that raced the normal answer would
+      // put two frames on the channel for one id.
+      expect(publishes(nodeB, before.B).filter((record) => record.id === "replay-cancelled")).toHaveLength(1);
+    } finally {
+      streamAbort.abort();
+      await pump;
+    }
+  }, 300_000);
 
   it("RECORDED: the docs server's SSE sessions are process-local, so a POST to the other node is 404", async () => {
     // `DocsMcpController` keeps its sessions in a module-level Map. It is

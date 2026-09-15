@@ -12,9 +12,16 @@
  *
  * The node reports on stdout, one JSON record per line behind `NODE_LINE_PREFIX`:
  * `ready` once it listens, and one `publish` record for EVERY Redis PUBLISH it
- * sends, in send order, with the JSON-RPC id it carried. That log is how the
- * suite pins WHICH node dispatched each request — the split point — instead of
- * inferring it from a stream that would look the same either way.
+ * sends, in send order, with the JSON-RPC id it carried and, where the frame is a
+ * JSON-RPC error, that error's code. That log is how the suite pins WHICH node
+ * dispatched each request — the split point — instead of inferring it from a
+ * stream that would look the same either way, and it is the ONLY witness left in
+ * the cancellation case, whose whole point is that the stream those frames would
+ * have arrived on is gone.
+ *
+ * The frame BODY is deliberately not reported: a completed macro replay carries
+ * thousands of step results, and one stdout line per publish is not the place
+ * for it. The id and the error code are what the suite joins on.
  *
  * Environment: `MCP_NODE_LABEL`, `MCP_NODE_DATABASE_URL` (a private schema the
  * parent already migrated and seeded), `MCP_NODE_REDIS_URL`.
@@ -39,13 +46,15 @@ async function main(): Promise<void> {
     redisUrl: required("MCP_NODE_REDIS_URL"),
     onPublish: (channel, message) => {
       let id: unknown = null;
+      let errorCode: unknown = null;
       try {
-        const parsed = JSON.parse(message) as { id?: unknown };
+        const parsed = JSON.parse(message) as { id?: unknown; error?: { code?: unknown } };
         id = parsed.id ?? null;
+        errorCode = parsed.error?.code ?? null;
       } catch {
         // a session-control message such as "cancel", not a JSON-RPC frame
       }
-      emit({ event: "publish", channel, id });
+      emit({ event: "publish", channel, id, errorCode });
     },
   });
   emit({ event: "ready", baseUrl: servers.baseUrl, pid: process.pid });

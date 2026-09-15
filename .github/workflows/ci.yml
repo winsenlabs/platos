@@ -846,6 +846,15 @@ jobs:
     # integration step above uses, one level up — and `pnpm test:ci-policy` joins
     # that walk to this job, so neither side can go quiet.
     #
+    # WHAT A WALK CANNOT NOTICE is one of its own suites going away, so the M4
+    # conformance evidence is also NAMED: `M4_CONFORMANCE_AGENT_SUITES` in
+    # `scripts/ci-policy.test.mjs` lists the three files of this tranche
+    # (`mcp-protocol-conformance`, `mcp-sse-multi-node`, `tool-call-parity`) and
+    # requires the walker to still find each one, with a negative control that the
+    # membership check fails when a name is renamed away. Deleting a suite is then
+    # a red gate rather than a silent drop — which is the same gate-darkness
+    # pattern this job was created to close, one turn later.
+    #
     # A SKIP IS A FAILURE HERE. Every one of these suites gates itself on its own
     # `*_REQUIRED` environment variable so a laptop with no PostgreSQL skips
     # instead of erroring; the runner reads those variable NAMES out of the suite

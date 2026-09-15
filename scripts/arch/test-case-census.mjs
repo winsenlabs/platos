@@ -2800,13 +2800,17 @@ export const EXPECTED = Object.freeze({
   // cases — so each is asked of the 1.26.0 server and of the 1.30.0 candidate
   // aliased as `@modelcontextprotocol/sdk-candidate`: +9. FOUR are new, the `sse`
   // transport against both builds' `SSEServerTransport` (call and enumeration),
-  // which no case had put a server behind: +4. ONE joins the two installed
-  // versions to `pnpm-lock.yaml` and requires them to differ, so the table cannot
-  // collapse into one build asked twice: +1. The table is an array literal so this
-  // census counts its rows rather than refusing it.
+  // which no case had put a server behind: +4. TWO hold the table to two builds:
+  // one joins the installed versions to `pnpm-lock.yaml` and requires them to
+  // differ, and one — added after a verifier repointed the candidate imports at
+  // the adopted SDK and every version assertion stayed green — requires the three
+  // LOADED classes to be different objects, each the export of the specifier it
+  // claims, each resolved inside its own version's pnpm store directory: +2. Only
+  // the second can fail when the table collapses into one build asked twice. The
+  // table is an array literal so this census counts its rows rather than refusing it.
   //
-  // 400 + 9 + 4 + 1 = 414; 21 files.
-  "packages/contexts/tools": { files: 21, cases: 414 },
+  // 400 + 9 + 4 + 2 = 415; 21 files.
+  "packages/contexts/tools": { files: 21, cases: 415 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //

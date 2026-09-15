@@ -5610,6 +5610,25 @@ const NEWLY_GATED_AGENT_SUITES = [
 ];
 
 /**
+ * WIN-268/WIN-269 (M4) — the three suites that tranche added under the walked
+ * roots, NAMED as well as walked.
+ *
+ * The walk is what RUNS them, and a new suite still joins this job by existing.
+ * What a walk cannot notice is one of ITS OWN suites going away: delete one of
+ * these files, or rename it out of `SUITE_SUFFIX`, and the job keeps passing with
+ * the evidence gone — which is the gate-darkness pattern this file exists to
+ * close, one turn later. Two of the three are also pinned by `SUITES` in
+ * `scripts/mcp-sdk-candidate-compatibility.mjs`, which asserts they exist and
+ * import both SDK builds; the tool-call parity suite was pinned by nothing at
+ * all, so its filename was one rename away from being dropped in silence.
+ */
+const M4_CONFORMANCE_AGENT_SUITES = [
+  "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+  "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+  "apps/agent/src/tool-gateway/tool-call-parity.integration.test.ts",
+];
+
+/**
  * MEASURED, not intended: every `*.integration.test.ts` under `apps/agent/src`
  * that no CI job executes, with the reason each was left alone.
  *
@@ -5683,6 +5702,35 @@ test("the agent tenancy job's walker covers the suites that were dark, read from
       `${suite} ran in NO CI job before this job existed and must still be covered by it`
     );
   }
+  for (const suite of M4_CONFORMANCE_AGENT_SUITES) {
+    assert.ok(
+      gated.includes(suite),
+      `${suite} is the MCP conformance / tool-call parity evidence for M4 and the walker no longer ` +
+        "finds it: it was deleted, moved out of the walked roots, or renamed out of the suffix"
+    );
+  }
+});
+
+test("the named M4 conformance suites gate fails when one of them is renamed away", () => {
+  // THE NEGATIVE CONTROL for the loop above. The assertion is a membership test
+  // against a filesystem walk, so it is worth proving it can fail: the same walk
+  // with one of the three names missing must reject, naming that file.
+  const gated = discoverAgentTenancySuites().filter(
+    (suite) => suite !== M4_CONFORMANCE_AGENT_SUITES[2]
+  );
+  assert.equal(
+    gated.length,
+    discoverAgentTenancySuites().length - 1,
+    "the control removed nothing; the parity suite is not in the walk to begin with"
+  );
+  assert.throws(
+    () => {
+      for (const suite of M4_CONFORMANCE_AGENT_SUITES) {
+        assert.ok(gated.includes(suite), `${suite} is no longer found by the walker`);
+      }
+    },
+    /tool-call-parity\.integration\.test\.ts is no longer found by the walker/u
+  );
 });
 
 test("every apps/agent integration suite is gated or recorded as ungated, with a reason", async () => {

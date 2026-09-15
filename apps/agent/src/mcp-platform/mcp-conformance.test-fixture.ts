@@ -1,6 +1,6 @@
 /**
  * WIN-268 (M4.2) — THE THREE PLATOS MCP SERVERS, ON A REAL SOCKET, OVER A REAL
- * DATABASE AND A REAL REDIS, WITH NOTHING UNDER TEST REPLACED.
+ * DATABASE AND A REAL REDIS, WITH NOTHING ON THE PROTOCOL PATH REPLACED.
  *
  * Shared by `mcp-protocol-conformance.integration.test.ts` (in-process) and by
  * `mcp-sse-node.test-fixture.ts` (the child process the two-node suite starts
@@ -24,6 +24,29 @@
  * that THROWS on first use. A double that answered would be a double that could
  * make a conformance case pass; one that throws can only make it fail, and
  * loudly, naming the service the protocol path was not supposed to need.
+ *
+ * WHAT THE PRODUCTION SURFACE HAS AND THIS HARNESS DOES NOT — two pieces, named
+ * because an earlier draft of this header said "nothing under test replaced" and
+ * a reader would have taken conformance conclusions to cover them:
+ *
+ *   1. THE SECOND GLOBAL GUARD. `app.module.ts` provides `ScopeGuard` AND
+ *      `RateLimitGuard` as `APP_GUARD`; only the first is mounted below. The
+ *      rate limiter counts 60 requests a minute per scope in Redis, and this
+ *      matrix makes several hundred against ONE seeded scope, so mounting it
+ *      would make the suite's own volume the thing under test. What a
+ *      third-party client sees when it exceeds that budget (429 with the
+ *      `Retry-After` the entity controller sets from the JSON-RPC error) is
+ *      therefore NOT asserted here.
+ *   2. THE UNAUTHENTICATED BODY CAP. `main.ts` registers a middleware that
+ *      rejects a body-bearing `/mcp` request over 2 MB — or with no
+ *      `Content-Length` at all — with 413 before the parser sees it. It is
+ *      written inline in `main.ts` (another lane owns that file), so copying it
+ *      here would be a second spelling that could drift; the parser below is the
+ *      15 MB one `main.ts` installs after it.
+ *
+ * Both omissions are joined to their production sources by a case in
+ * `mcp-protocol-conformance.integration.test.ts`, so this paragraph goes red if
+ * either side changes.
  *
  * WHY THE INJECTION TOKENS ARE READ OUT OF THE CONTROLLER SOURCE. Vitest and
  * tsx compile with esbuild, which does not emit `design:paramtypes`, so Nest

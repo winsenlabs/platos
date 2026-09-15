@@ -608,6 +608,49 @@ export class McpEntityController {
     // client's POST /messages correctly. TTL bounded at 1h to match
     // OAuth access-token TTL.
     const sessionKey = `platos:mcp:entity:session:${sessionId}`;
+    const sseChannel = `platos:mcp:entity:sse:${sessionId}`;
+    const sub = createSubscriber(this.redis);
+    let pingInterval: ReturnType<typeof setInterval> | null = null;
+    let cleanedUp = false;
+    let cleanupPromise: Promise<void> | null = null;
+
+    // WIN-268 (M4.2) — THE DISCONNECT LISTENERS ARE REGISTERED BEFORE THE FIRST
+    // `await`, and `cleanedUp` is re-checked after each one. They used to be
+    // registered at the very END of this handler, so a client that hung up while
+    // the handler was still awaiting Redis left the duplicated subscriber
+    // connection open, the 1-hour session key in Redis and (once it was armed)
+    // the ping interval running, for the lifetime of the process. The ready
+    // check this tranche added made that window a round trip longer, which is
+    // what turned a theoretical race into one worth closing.
+    // `McpPlatformController.sse` guards the same race the same way.
+    const cleanup = () => {
+      if (cleanedUp) return;
+      cleanedUp = true;
+      req.off("close", cleanup);
+      res.off("close", cleanup);
+      if (pingInterval) clearInterval(pingInterval);
+      cleanupPromise = (async () => {
+        await sub.unsubscribe(sseChannel).catch(() => undefined);
+        await sub.quit().catch(() => undefined);
+        await this.redis.del(sessionKey).catch(() => undefined);
+      })();
+      try {
+        res.end();
+      } catch {
+        /* already closed */
+      }
+    };
+    req.on("close", cleanup);
+    res.on("close", cleanup);
+
+    sub.on("message", (_ch, message) => {
+      try {
+        res.write(`event: message\ndata: ${message}\n\n`);
+      } catch {
+        /* socket closed */
+      }
+    });
+
     await this.redis.set(
       sessionKey,
       JSON.stringify({
@@ -618,21 +661,24 @@ export class McpEntityController {
       "EX",
       3600,
     );
-    const sseChannel = `platos:mcp:entity:sse:${sessionId}`;
-    const sub = createSubscriber(this.redis);
-    sub.on("message", (_ch, message) => {
-      try {
-        res.write(`event: message\ndata: ${message}\n\n`);
-      } catch {
-        /* socket closed */
-      }
-    });
+    if (cleanedUp) {
+      await cleanupPromise;
+      return;
+    }
     try {
       // READY before SUBSCRIBE — see `redis-subscriber.ts` for the frames this lost.
       await readySubscriber(sub);
+      if (cleanedUp) {
+        await cleanupPromise;
+        return;
+      }
       await sub.subscribe(sseChannel);
     } catch {
       /* best-effort */
+    }
+    if (cleanedUp) {
+      await cleanupPromise;
+      return;
     }
 
     // WIN-268 (M4.2) — the endpoint is advertised only AFTER the subscriber is
@@ -644,7 +690,7 @@ export class McpEntityController {
     const endpointUrl = `/mcp/entity/${encodeURIComponent(entityIdSlug)}/messages?sessionId=${sessionId}`;
     res.write(`event: endpoint\ndata: ${endpointUrl}\n\n`);
 
-    const pingInterval = setInterval(() => {
+    pingInterval = setInterval(() => {
       try {
         const msg = JSON.stringify({ jsonrpc: "2.0", method: "notifications/ping" });
         res.write(`event: message\ndata: ${msg}\n\n`);
@@ -652,26 +698,11 @@ export class McpEntityController {
         /* socket closed */
       }
     }, 30_000);
-
-    const cleanup = () => {
+    // The socket can have closed while the endpoint frame was being written.
+    if (cleanedUp) {
       clearInterval(pingInterval);
-      sub.unsubscribe(sseChannel).catch(() => {
-        /* */
-      });
-      sub.quit().catch(() => {
-        /* */
-      });
-      this.redis.del(sessionKey).catch(() => {
-        /* */
-      });
-      try {
-        res.end();
-      } catch {
-        /* */
-      }
-    };
-    req.on("close", cleanup);
-    res.on("close", cleanup);
+      await cleanupPromise;
+    }
   }
 
   @Post(":entityId/messages")

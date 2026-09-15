@@ -15,9 +15,19 @@
  * 2024-11-05 HTTP+SSE) x 2 SDK builds = 12 sessions, each asked the same
  * questions. The builds are the adopted `@modelcontextprotocol/sdk` and the
  * candidate aliased as `@modelcontextprotocol/sdk-candidate`; which versions
- * those ARE is read from the installed manifests and joined to
- * `pnpm-lock.yaml`, and the two are required to differ, so the matrix cannot
- * collapse into one build asked twice.
+ * those ARE is read from the installed manifests and joined to `pnpm-lock.yaml`.
+ *
+ * THAT VERSION JOIN IS NOT ENOUGH ON ITS OWN, and this file's first draft claimed
+ * it was. Two manifests on disk say nothing about which MODULES this file loaded:
+ * repointing the four candidate import specifiers at the adopted SDK leaves both
+ * manifests, the lockfile and every version assertion untouched, and the matrix
+ * then asks ONE build the same questions twice while the derived evidence still
+ * reads "candidate — compatible". So the separation is asserted where it can
+ * fail: the two rows of `SDK_BUILDS` must hold DIFFERENT objects, each must be
+ * the very object a dynamic `import()` of its own specifier yields, and each
+ * specifier must resolve inside the pnpm store directory of its own version.
+ * Only with those three does the matrix fail to collapse into one build asked
+ * twice.
  *
  * THE WIRE IS TAPPED, NOT TRUSTED. The SDK client is lenient where the
  * specification is not: it ignores a body on a notification's reply and routes
@@ -47,6 +57,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
 
 import { Client as AdoptedClient } from "@modelcontextprotocol/sdk/client/index.js";
@@ -57,8 +68,10 @@ import { Client as CandidateClient } from "@modelcontextprotocol/sdk-candidate/c
 import { SSEClientTransport as CandidateSseTransport } from "@modelcontextprotocol/sdk-candidate/client/sse.js";
 import { StreamableHTTPClientTransport as CandidateHttpTransport } from "@modelcontextprotocol/sdk-candidate/client/streamableHttp.js";
 import { EmptyResultSchema as CandidateEmptyResultSchema } from "@modelcontextprotocol/sdk-candidate/types.js";
+import { APP_GUARD } from "@nestjs/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { ScopeGuard } from "../auth/scope.guard";
 import {
   DOCS_MCP_SERVER_NAME,
   MCP_PROTOCOL_VERSION,
@@ -98,6 +111,8 @@ const describeWithServices = baseDatabaseUrl && redisUrl ? describe : describe.s
 interface SdkBuild {
   readonly label: "adopted" | "candidate";
   readonly packageDirectory: string;
+  /** Every module specifier the imports above take from this build. */
+  readonly specifiers: readonly string[];
   readonly Client: typeof AdoptedClient;
   readonly HttpTransport: typeof AdoptedHttpTransport;
   readonly SseTransport: typeof AdoptedSseTransport;
@@ -108,6 +123,12 @@ const SDK_BUILDS: readonly SdkBuild[] = [
   {
     label: "adopted",
     packageDirectory: "@modelcontextprotocol/sdk",
+    specifiers: [
+      "@modelcontextprotocol/sdk/client/index.js",
+      "@modelcontextprotocol/sdk/client/sse.js",
+      "@modelcontextprotocol/sdk/client/streamableHttp.js",
+      "@modelcontextprotocol/sdk/types.js",
+    ],
     Client: AdoptedClient,
     HttpTransport: AdoptedHttpTransport,
     SseTransport: AdoptedSseTransport,
@@ -116,6 +137,12 @@ const SDK_BUILDS: readonly SdkBuild[] = [
   {
     label: "candidate",
     packageDirectory: "@modelcontextprotocol/sdk-candidate",
+    specifiers: [
+      "@modelcontextprotocol/sdk-candidate/client/index.js",
+      "@modelcontextprotocol/sdk-candidate/client/sse.js",
+      "@modelcontextprotocol/sdk-candidate/client/streamableHttp.js",
+      "@modelcontextprotocol/sdk-candidate/types.js",
+    ],
     Client: CandidateClient as unknown as typeof AdoptedClient,
     HttpTransport: CandidateHttpTransport as unknown as typeof AdoptedHttpTransport,
     SseTransport: CandidateSseTransport as unknown as typeof AdoptedSseTransport,
@@ -131,6 +158,26 @@ function installedVersion(build: SdkBuild): string {
   // manifest inside it must still be the SDK's, or the alias points elsewhere.
   expect(manifest.name).toBe("@modelcontextprotocol/sdk");
   return manifest.version;
+}
+
+// `createRequire` from the agent package root, not from `import.meta.url`: this
+// package typechecks as CommonJS, where `import.meta` is an error. Resolution
+// starts in `apps/agent`, which is the importer that declares both builds.
+const requireFromHere = createRequire(resolve(agentRoot(), "package.json"));
+
+/**
+ * The version whose pnpm store directory a specifier actually resolves into.
+ * The alias and the adopted name are two `node_modules` entries, but both are
+ * links into `.pnpm/@modelcontextprotocol+sdk@<version>_…`, so the store path is
+ * the resolver's own answer to "which build is this specifier".
+ */
+function resolvedStoreVersion(specifier: string): string {
+  const resolved = requireFromHere.resolve(specifier);
+  const match = /@modelcontextprotocol\+sdk@(\d+\.\d+\.\d+)/u.exec(resolved);
+  if (!match) {
+    throw new Error(`${specifier} did not resolve inside an @modelcontextprotocol/sdk store directory: ${resolved}`);
+  }
+  return match[1]!;
 }
 
 // ---------------------------------------------------------------------------
@@ -250,9 +297,86 @@ describeWithServices("MCP protocol conformance of the Platos servers", () => {
     );
   });
 
+  it("loads two DIFFERENT SDK MODULE GRAPHS, not two manifests: the classes differ and each is its own specifier's", async () => {
+    // WHY THIS IS A SEPARATE CASE FROM THE VERSION JOIN ABOVE. That one reads
+    // `node_modules` and `pnpm-lock.yaml` — the tree, not this file. Repointing
+    // the four `sdk-candidate` imports at `sdk` keeps it green and quietly turns
+    // the matrix into one build asked twice. These three joins cannot be:
+    //
+    //   1. the resolver's own answer for each specifier this file imports,
+    const adoptedVersion = installedVersion(SDK_BUILDS[0]!);
+    const candidateVersion = installedVersion(SDK_BUILDS[1]!);
+    for (const build of SDK_BUILDS) {
+      const expected = build.label === "adopted" ? adoptedVersion : candidateVersion;
+      for (const specifier of build.specifiers) {
+        expect({ specifier, store: resolvedStoreVersion(specifier) }).toEqual({ specifier, store: expected });
+      }
+    }
+    //   2. the objects the matrix actually constructs are DIFFERENT objects —
+    //      one module graph cannot supply both rows,
+    expect(SDK_BUILDS[1]!.Client).not.toBe(SDK_BUILDS[0]!.Client);
+    expect(SDK_BUILDS[1]!.HttpTransport).not.toBe(SDK_BUILDS[0]!.HttpTransport);
+    expect(SDK_BUILDS[1]!.SseTransport).not.toBe(SDK_BUILDS[0]!.SseTransport);
+    expect(SDK_BUILDS[1]!.EmptyResultSchema).not.toBe(SDK_BUILDS[0]!.EmptyResultSchema);
+    //   3. and each row holds the export of the specifier it CLAIMS, fetched here
+    //      by a dynamic import of that literal. A static import edited to point
+    //      elsewhere fails here even where both objects still differ.
+    const [adoptedClient, adoptedSse, adoptedHttp, adoptedTypes] = await Promise.all([
+      import("@modelcontextprotocol/sdk/client/index.js"),
+      import("@modelcontextprotocol/sdk/client/sse.js"),
+      import("@modelcontextprotocol/sdk/client/streamableHttp.js"),
+      import("@modelcontextprotocol/sdk/types.js"),
+    ]);
+    const [candidateClient, candidateSse, candidateHttp, candidateTypes] = await Promise.all([
+      import("@modelcontextprotocol/sdk-candidate/client/index.js"),
+      import("@modelcontextprotocol/sdk-candidate/client/sse.js"),
+      import("@modelcontextprotocol/sdk-candidate/client/streamableHttp.js"),
+      import("@modelcontextprotocol/sdk-candidate/types.js"),
+    ]);
+    expect(SDK_BUILDS[0]!.Client).toBe(adoptedClient.Client);
+    expect(SDK_BUILDS[0]!.SseTransport).toBe(adoptedSse.SSEClientTransport);
+    expect(SDK_BUILDS[0]!.HttpTransport).toBe(adoptedHttp.StreamableHTTPClientTransport);
+    expect(SDK_BUILDS[0]!.EmptyResultSchema).toBe(adoptedTypes.EmptyResultSchema);
+    expect(SDK_BUILDS[1]!.Client).toBe(candidateClient.Client as never);
+    expect(SDK_BUILDS[1]!.SseTransport).toBe(candidateSse.SSEClientTransport as never);
+    expect(SDK_BUILDS[1]!.HttpTransport).toBe(candidateHttp.StreamableHTTPClientTransport as never);
+    expect(SDK_BUILDS[1]!.EmptyResultSchema).toBe(candidateTypes.EmptyResultSchema as never);
+  });
+
   it("configures Redis exactly as the production provider does", () => {
     const provider = readFileSync(resolve(agentRoot(), "src/shared/redis.provider.ts"), "utf8");
     expect(provider).toContain(`keyPrefix: "${REDIS_KEY_PREFIX}"`);
+  });
+
+  it("mounts the production ScopeGuard and NOT the two production pieces the harness header names", () => {
+    // The harness header claims exactly two omissions from the production
+    // request path for `/mcp`. Both halves of each claim are read here — the
+    // production source that HAS the piece, and the harness source that does
+    // not — so the paragraph cannot quietly become false in either direction.
+    const appModule = readFileSync(resolve(agentRoot(), "src/app.module.ts"), "utf8");
+    const main = readFileSync(resolve(agentRoot(), "src/main.ts"), "utf8");
+    const harness = readFileSync(resolve(agentRoot(), "src/mcp-platform/mcp-conformance.test-fixture.ts"), "utf8");
+
+    // PRODUCTION: two global guards.
+    expect(appModule).toContain("{ provide: APP_GUARD, useClass: ScopeGuard },");
+    expect(appModule).toContain("{ provide: APP_GUARD, useClass: RateLimitGuard },");
+    // HARNESS: the first only, and it is the production class this file imports.
+    expect(harness).toContain("{ provide: APP_GUARD, useValue: new ScopeGuard() },");
+    expect(harness).toContain('import { ScopeGuard } from "../auth/scope.guard";');
+    expect(typeof ScopeGuard.prototype.canActivate).toBe("function");
+    expect(APP_GUARD).toBe("APP_GUARD");
+    // The header NAMES the rate limiter as the piece it does not mount, so what
+    // is asserted absent is the import and any construction of it.
+    expect(harness).not.toMatch(/^import .*RateLimitGuard/mu);
+    expect(harness).not.toMatch(/new RateLimitGuard\(/u);
+
+    // PRODUCTION: the unauthenticated `/mcp` body cap, ahead of the 15 MB parser.
+    expect(main).toContain('{ prefix: "/mcp", cap: MCP_BODY_CAP_BYTES },');
+    expect(main).toContain("payload_too_large");
+    // HARNESS: the parser, no cap. A 413 the production surface would return is
+    // therefore outside every conclusion this file draws.
+    expect(harness).toContain('app.useBodyParser("json", { limit: "15mb" });');
+    expect(harness).not.toContain("payload_too_large");
   });
 
   it("binds every controller constructor parameter to a token read from its source", () => {
@@ -266,6 +390,117 @@ describeWithServices("MCP protocol conformance of the Platos servers", () => {
     expect(servers.boundTokens.McpEntityController).toHaveLength(9);
     expect(servers.boundTokens.DocsMcpController).toEqual(["DocsMcpService"]);
   });
+
+  it("hands a tool the request's abort signal UNABORTED when the client is still there", async () => {
+    // THE DEFECT THIS CASE FOUND. `McpPlatformController.jsonRpc` builds an
+    // `AbortController` for the request and pre-checks whether the client has
+    // already gone, as `req.aborted || req.destroyed || res.destroyed`. Node
+    // destroys an `IncomingMessage` the moment its body has been read to the end,
+    // and the JSON parser reads every body BEFORE the handler runs — so
+    // `req.destroyed` was true on every request that carried a body, and every
+    // dispatch started with an aborted signal. Measured at the handler:
+    // `{ aborted: false, destroyed: true, complete: true, socket.destroyed: false }`.
+    //
+    // Only three platform tools take that signal, and none of the matrix's calls
+    // is one of them, so the whole conformance suite was green over a transport on
+    // which `macros.replay` could not complete a single step: it checks the signal
+    // at the top of each step and throws `MCP macro replay cancelled`, which the
+    // router reports as `-32603 "internal error"`.
+    //
+    // The oracle is the tool's own OUTCOME, not an inspection of the flag: a
+    // one-step macro whose step is `platos.whoami`, replayed over Streamable HTTP.
+    // With the pre-check as it was, this is a -32603.
+    const macro = await schema.prisma.macro.create({
+      data: {
+        environmentId: tenant.environmentId,
+        name: "conformance-abort-signal",
+        steps: [{ tool: "platos.whoami", params: {} }] as never,
+        createdBy: tenant.userId,
+      },
+      select: { id: true },
+    });
+    const answered = await fetch(new URL("/mcp/platform", servers.baseUrl), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${tenant.platformToken}`,
+        "x-forwarded-for": "198.51.100.200",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "abort-signal",
+        method: "tools/call",
+        params: { name: "macros.replay", arguments: { macroId: macro.id, params: {} } },
+      }),
+    });
+    expect(answered.status).toBe(200);
+    const body = (await answered.json()) as {
+      error?: { code?: number; message?: string };
+      result?: { content?: Array<{ text?: string }> };
+    };
+    expect({ error: body.error }).toEqual({ error: undefined });
+    const replayed = JSON.parse(body.result!.content![0]!.text!) as {
+      stepCount: number;
+      results: Array<{ ok: boolean; tool: string }>;
+    };
+    expect({ stepCount: replayed.stepCount, ok: replayed.results.map((step) => step.ok) }).toEqual({
+      stepCount: 1,
+      ok: [true],
+    });
+  });
+
+  it("leaves no entity SSE session behind when the client hangs up during the handshake", async () => {
+    // WHAT THIS GUARDS. `McpEntityController.sse` writes its headers, then does
+    // three awaited Redis round trips — the session record, the subscriber's
+    // READY check (added by this tranche), SUBSCRIBE — and only then registered
+    // its `close` listeners. A client that hung up inside that window left the
+    // duplicated subscriber connection open, the ping interval running and the
+    // session record in Redis with its full one-hour TTL: a per-disconnect leak
+    // on a route anything on the internet can open. `McpPlatformController.sse`
+    // already re-checked a `cleanedUp` flag after each await; the entity handler
+    // now registers its listeners BEFORE the first one and re-checks the same way.
+    //
+    // THE WINDOW IS NOT GUESSED AT. `res.flushHeaders()` runs BEFORE those awaits,
+    // so `fetch` resolves while the handler is still inside them: aborting the
+    // moment the response object arrives lands in the window essentially always.
+    //
+    // THE ORACLE IS REDIS ITSELF — the session records the server wrote, counted
+    // on the same connection the server uses.
+    const sessionKeys = async (): Promise<string[]> => servers.redis.keys("*mcp:entity:session:*");
+    const baseline = (await sessionKeys()).length;
+
+    // NON-VACUITY: a session opened properly DOES write exactly one record, so the
+    // pattern above is the right one and a zero below means "cleaned up", not
+    // "never looked in the right place".
+    const healthy = new AbortController();
+    const healthyStream = await fetch(endpoint("entity", "legacy-sse"), {
+      headers: { ...bearer("entity"), accept: "text/event-stream" },
+      signal: healthy.signal,
+    });
+    expect(healthyStream.status).toBe(200);
+    const reader = healthyStream.body!.getReader();
+    const firstChunk = new TextDecoder().decode((await reader.read()).value!);
+    expect(firstChunk).toContain("event: endpoint");
+    expect((await sessionKeys()).length).toBe(baseline + 1);
+    healthy.abort();
+    await reader.cancel().catch(() => undefined);
+    for (let attempt = 0; attempt < 40 && (await sessionKeys()).length > baseline; attempt += 1) await settle();
+    expect((await sessionKeys()).length).toBe(baseline);
+
+    // THE CASE: ten handshakes abandoned the instant the headers arrive.
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const aborting = new AbortController();
+      const opened = await fetch(endpoint("entity", "legacy-sse"), {
+        headers: { ...bearer("entity"), accept: "text/event-stream" },
+        signal: aborting.signal,
+      });
+      expect(opened.status).toBe(200);
+      aborting.abort();
+      await opened.body?.cancel().catch(() => undefined);
+    }
+    for (let attempt = 0; attempt < 40 && (await sessionKeys()).length > baseline; attempt += 1) await settle();
+    expect(await sessionKeys()).toHaveLength(baseline);
+  }, 60_000);
 
   // -------------------------------------------------------------------------
   // THE MATRIX
