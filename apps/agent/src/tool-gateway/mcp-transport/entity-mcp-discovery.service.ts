@@ -366,8 +366,9 @@ export class EntityMcpDiscoveryService {
           );
         } catch (listError) {
           // WIN-269 — same eviction as the executor's call path: a failed
-          // enumeration must not leave a dead session pooled for the next call.
-          this.pool.evict(sdkClient);
+          // enumeration must not leave a dead session pooled for the next call,
+          // and a timed-out or refused one must not close a live session.
+          this.pool.evictAfterFailure(sdkClient, listError);
           throw listError;
         }
         const raw = listed?.tools ?? [];

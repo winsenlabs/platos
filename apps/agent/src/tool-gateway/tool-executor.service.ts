@@ -1548,8 +1548,10 @@ export class ToolExecutorService {
       } catch (callError) {
         // WIN-269 — the session may be dead (a restarted server answers a stale
         // `Mcp-Session-Id` with 404 forever). Evict exactly this client so the
-        // next call rebuilds it, then report the failure below as before.
-        this.mcpPool.evict(sdkClient);
+        // next call rebuilds it, then report the failure below as before. A
+        // timeout or a JSON-RPC error answer leaves the session to the other
+        // calls sharing it (`failureEndsSession`).
+        this.mcpPool.evictAfterFailure(sdkClient, callError);
         throw callError;
       }
 

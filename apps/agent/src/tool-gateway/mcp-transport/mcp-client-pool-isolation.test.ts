@@ -47,6 +47,15 @@
  * but only while the hung entity is still building. A server that hangs in
  * `tools/call` has already finished its handshake by then, so only the
  * handshake case catches that. The bound is 1 s.
+ *
+ * WHAT EVICTION MUST NOT DO. Eviction closes the pooled client, and one session
+ * carries every call to that entity's tools. The first version evicted on ANY
+ * thrown error, so one tool's request timeout — or a JSON-RPC error the server
+ * answered with — failed every other call pending on the same session with
+ * "Connection closed". The LIVE-session cases put a slow call on the session
+ * while a sibling tool times out or is refused, and require the slow call to
+ * succeed with no new `initialize`; the restart cases still require a dead
+ * session to be evicted.
  */
 
 import { createServer, type IncomingMessage, type Server as HttpServer, type ServerResponse } from "node:http";
@@ -57,7 +66,9 @@ import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
+  ErrorCode,
   ListToolsRequestSchema,
+  McpError,
   isInitializeRequest,
 } from "@modelcontextprotocol/sdk/types.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -65,7 +76,7 @@ import type { RequestScope } from "../../auth/scope.guard";
 import { ToolExecutorService } from "../tool-executor.service";
 import type { OrgToolEntry } from "../tool-registry.service";
 import { EntityMcpDiscoveryService } from "./entity-mcp-discovery.service";
-import { McpConnectionPool } from "./mcp-client-pool.service";
+import { McpConnectionPool, failureEndsSession } from "./mcp-client-pool.service";
 import { McpCredentialService } from "./mcp-credential.service";
 
 const CALL_TIMEOUT_MS = 2_000;
@@ -102,6 +113,18 @@ type Transport = "remote-http" | "remote-sse";
 type Behaviour = "answer" | "hang" | "hang-initialize" | "crash";
 
 /**
+ * A further tool the same server publishes, on the SAME session as its first one.
+ * `hang` never answers its `tools/call`; `refuse` answers it at once with a
+ * JSON-RPC error (the server's protocol layer saying no, not a dead transport);
+ * `answer` answers after `delayMs`.
+ */
+interface SiblingTool {
+  readonly name: string;
+  readonly behaviour: "answer" | "hang" | "refuse";
+  readonly delayMs?: number;
+}
+
+/**
  * One remote MCP server on a real listener.
  *
  * STATEFUL on purpose: `remote-http` hands out an `Mcp-Session-Id` and answers an
@@ -124,6 +147,7 @@ class RemoteMcpServer {
     private readonly toolName: string,
     private readonly behaviour: Behaviour,
     private readonly answerDelayMs = 0,
+    private readonly siblings: readonly SiblingTool[] = [],
   ) {}
 
   get url(): string {
@@ -162,10 +186,20 @@ class RemoteMcpServer {
   private mcpServer(): Server {
     const server = new Server({ name: `fixture-${this.toolName}`, version: "1.0.0" }, { capabilities: { tools: {} } });
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
-      tools: [{ name: this.toolName, inputSchema: { type: "object" as const } }],
+      tools: [this.toolName, ...this.siblings.map((sibling) => sibling.name)].map((name) => ({
+        name,
+        inputSchema: { type: "object" as const },
+      })),
     }));
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
       this.calls.push({ tool: request.params.name, atMs: Date.now() });
+      const sibling = this.siblings.find((candidate) => candidate.name === request.params.name);
+      if (sibling?.behaviour === "hang") return await new Promise<never>(() => undefined);
+      if (sibling?.behaviour === "refuse") throw new McpError(ErrorCode.InvalidParams, `${sibling.name} refuses these arguments`);
+      if (sibling) {
+        await new Promise((resolve) => setTimeout(resolve, sibling.delayMs ?? 0));
+        return { content: [{ type: "text" as const, text: `${sibling.name} answered` }] };
+      }
       if (this.behaviour === "hang") return await new Promise<never>(() => undefined);
       if (this.answerDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, this.answerDelayMs));
       return { content: [{ type: "text" as const, text: `${this.toolName} answered` }] };
@@ -256,8 +290,14 @@ afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => server.stop()));
 });
 
-async function remote(transport: Transport, toolName: string, behaviour: Behaviour, answerDelayMs = 0): Promise<RemoteMcpServer> {
-  const server = new RemoteMcpServer(transport, toolName, behaviour, answerDelayMs);
+async function remote(
+  transport: Transport,
+  toolName: string,
+  behaviour: Behaviour,
+  answerDelayMs = 0,
+  siblings: readonly SiblingTool[] = [],
+): Promise<RemoteMcpServer> {
+  const server = new RemoteMcpServer(transport, toolName, behaviour, answerDelayMs, siblings);
   await server.start();
   servers.push(server);
   return server;
@@ -536,6 +576,62 @@ describe.each<Transport>(["remote-http", "remote-sse"])(
   },
 );
 
+describe.each<Transport>(["remote-http", "remote-sse"])(
+  "WIN-269 — a call that fails on a LIVE session does not close it under the calls sharing it (%s)",
+  (transport) => {
+    /**
+     * One server, one entity, so ONE pool key and ONE session for every tool below.
+     * `quick.work` warms the session; `slow.work` is the concurrent call whose
+     * success is the claim. Eviction closes the pooled `Client`, and a closed
+     * client rejects every request still pending on it with "Connection closed" —
+     * so a pool that evicted on these failures fails `slow.work` although nothing
+     * is wrong with its session.
+     */
+    async function sharedSession(sibling: SiblingTool) {
+      const server = await remote(transport, "quick.work", "answer", 0, [sibling, { name: "slow.work", behaviour: "answer", delayMs: 1_500 }]);
+      const on = (toolName: string): Entity => ({ pk: "entity-shared", externalId: "shared", toolName, server, transport });
+      const quick = on("quick.work");
+      const failing = on(sibling.name);
+      const slow = on("slow.work");
+      const { executor } = executorFor([quick, failing, slow]);
+      expect((await executor.executeBatch([call(quick)], SCOPE))[0]).toMatchObject({ status: "success" });
+      expect(server.initializes).toBe(1);
+      return { server, executor, failing, slow };
+    }
+
+    it("a sibling tool's call TIMING OUT leaves the session open: the slower call on it still succeeds, with no new initialize", async () => {
+      const { server, executor, failing, slow } = await sharedSession({ name: "hung.work", behaviour: "hang" });
+
+      // t=0: the hung call; t=1 s: the slow call, still pending when the hung one
+      // times out at t=2 s, and answered at t=2.5 s.
+      const hung = executor.executeBatch([call(failing)], SCOPE);
+      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      const slowResult = executor.executeBatch([call(slow)], SCOPE);
+
+      expect((await hung)[0]).toMatchObject({ tool: "hung.work", status: "timeout" });
+      expect((await slowResult)[0]).toMatchObject({ tool: "slow.work", status: "success" });
+      // A request timeout is the CLIENT's clock, not the session dying: kept.
+      expect(server.initializes).toBe(1);
+      expect((await executor.executeBatch([call(slow)], SCOPE))[0]).toMatchObject({ status: "success" });
+      expect(server.initializes).toBe(1);
+    }, 30_000);
+
+    it("a sibling tool's call REFUSED with a JSON-RPC error leaves the session open: the slower call on it still succeeds", async () => {
+      const { server, executor, failing, slow } = await sharedSession({ name: "refusing.work", behaviour: "refuse" });
+
+      const slowResult = executor.executeBatch([call(slow)], SCOPE);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const refused = await executor.executeBatch([call(failing)], SCOPE);
+
+      expect(refused[0]).toMatchObject({ tool: "refusing.work", status: "failed" });
+      expect(String(refused[0]!.error)).toMatch(/refuses these arguments/u);
+      // The server ANSWERED on this session, so the session is alive: kept.
+      expect((await slowResult)[0]).toMatchObject({ tool: "slow.work", status: "success" });
+      expect(server.initializes).toBe(1);
+    }, 30_000);
+  },
+);
+
 describe("WIN-269 — eviction is exact", () => {
   it("evict drops only the client it is handed, and never a replacement another caller already rebuilt", async () => {
     const server = await remote("remote-http", "exact.work", "answer");
@@ -558,5 +654,31 @@ describe("WIN-269 — eviction is exact", () => {
     // And the other entity's session was never touched.
     expect(await pool.getClient(other)).toBe(neighbour);
     expect(server.initializes).toBe(3);
+  }, 30_000);
+
+  it("evictAfterFailure keeps a session the failure did not end, and drops one it did", async () => {
+    const server = await remote("remote-http", "exact.work", "answer");
+    const pool = new McpConnectionPool(new McpCredentialService({} as never));
+    pools.push(pool);
+    const input = { server: { id: "entity-exact" }, resolvedUrl: server.url, resolvedHeaders: {}, transportKind: "remote-http" };
+    const client = await pool.getClient(input);
+
+    // The protocol layer's failures, on an attached transport: kept.
+    const timeout = new McpError(ErrorCode.RequestTimeout, "Request timed out", { timeout: 2_000 });
+    const refusal = new McpError(ErrorCode.InvalidParams, "no such argument");
+    expect(failureEndsSession(client, timeout)).toBe(false);
+    expect(failureEndsSession(client, refusal)).toBe(false);
+    expect(pool.evictAfterFailure(client, timeout)).toBe(false);
+    expect(pool.evictAfterFailure(client, refusal)).toBe(false);
+    expect(await pool.getClient(input)).toBe(client);
+
+    // The same protocol error once the transport is detached, and any transport
+    // failure while attached: ended.
+    expect(failureEndsSession({ transport: undefined }, refusal)).toBe(true);
+    const restarted = new Error("Error POSTing to endpoint (HTTP 404): unknown session");
+    expect(failureEndsSession(client, restarted)).toBe(true);
+    expect(pool.evictAfterFailure(client, restarted)).toBe(true);
+    expect(await pool.getClient(input)).not.toBe(client);
+    expect(server.initializes).toBe(2);
   }, 30_000);
 });

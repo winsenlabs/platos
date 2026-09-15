@@ -20,6 +20,39 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
+/**
+ * WIN-269 — does a call's failure leave its pooled session usable?
+ *
+ * Eviction CLOSES the pooled `Client`, and a closed client rejects every request
+ * still pending on it with "MCP error -32000: Connection closed". The pool key is
+ * `server.id`, the resolved URL and the credential hash, not the call, so one
+ * session carries every concurrent call to that entity's tools — and every end
+ * user whose resolved URL and headers are the same. Evicting on a failure that
+ * did not kill the session therefore fails calls that had nothing wrong with them.
+ *
+ * The session SURVIVES when both hold:
+ *   * the client's transport is still attached (the SDK detaches it on close, and
+ *     then every pending request has already been rejected), and
+ *   * the failure is an `McpError`, i.e. it came out of the protocol layer: the
+ *     server's own JSON-RPC error answer (it answered, on this session), or this
+ *     client's request clock (`RequestTimeout`, -32001 — the client stopped
+ *     waiting; the session did not die).
+ * Everything else ENDS it: an HTTP status from the transport (a restarted server's
+ * 404 for a session it never issued), `fetch failed`, a reset socket, "Not
+ * connected", or a detached transport. Those are what the next call must rebuild
+ * past, and calls pending on such a session fail on their own.
+ *
+ * `name === "McpError"` rather than `instanceof`, so the check holds whichever of
+ * the SDK's dual (CJS/ESM) builds constructed the error.
+ */
+export function failureEndsSession(client: Pick<Client, "transport">, failure: unknown): boolean {
+  if (client.transport === undefined) return true;
+  const candidate = failure as { name?: unknown; code?: unknown } | null;
+  const fromProtocolLayer =
+    typeof candidate === "object" && candidate !== null && candidate.name === "McpError" && typeof candidate.code === "number";
+  return !fromProtocolLayer;
+}
+
 const DEFAULT_POOL_IDLE_MS = 300_000;
 const DEFAULT_POOL_SIZE = 32;
 const DEFAULT_DISCOVERY_TIMEOUT_MS = 15_000;
@@ -179,7 +212,8 @@ export class McpConnectionPool implements OnModuleDestroy {
 
   /**
    * WIN-269 — "external MCP failures are isolated": drop a session whose call
-   * failed, so the NEXT call rebuilds it instead of reusing a dead one.
+   * failed in a way that ended it, so the NEXT call rebuilds it instead of reusing
+   * a dead one.
    *
    * WHY. Before this, entries left the pool only on overflow or on the idle sweep,
    * and `getClient` refreshed `lastUsedAt` on every hit. A remote server that
@@ -188,18 +222,22 @@ export class McpConnectionPool implements OnModuleDestroy {
    * at least once every `MCP_POOL_IDLE_MS` (300 s by default) never recovered
    * until the agent restarted. The V1 context adapter already evicts on exactly
    * this condition (`packages/contexts/tools/adapters/mcp-dispatch.ts`, `evict`
-   * in the `callTool` and `listTools` catch arms), and this matches it: ANY
-   * thrown transport or protocol error evicts, a timeout included, while an
-   * `isError: true` answer does not — that server answered, and its session is
-   * alive.
+   * in the `callTool` and `listTools` catch arms). Callers go through
+   * `evictAfterFailure`, which is NARROWER than that adapter: a request timeout
+   * and a server's JSON-RPC error answer do not evict (see `failureEndsSession`),
+   * and neither does an `isError: true` result — in all three the session is
+   * alive, and closing it would fail every other call pending on it.
    *
    * IDENTITY, NOT KEY. The entry is dropped only if the pool still holds THIS
    * client for its key. A slow call that fails after a concurrent caller already
    * rebuilt the session must not tear down the healthy replacement.
    *
    * Only this session's key is touched, so one entity's failing server never
-   * closes a client another entity — or another end user of the same entity — is
-   * using. Returns whether an entry was dropped.
+   * closes a client another entity is using. It DOES close the session under
+   * every caller sharing the key — other tools of the same entity, and end users
+   * whose resolved URL and headers are the same — which is why only a failure
+   * that already ended the session may reach here. Returns whether an entry was
+   * dropped.
    */
   evict(client: Client): boolean {
     const key = this.keyOfClient.get(client);
@@ -207,6 +245,15 @@ export class McpConnectionPool implements OnModuleDestroy {
     if (this.pool.get(key)?.client !== client) return false;
     this.closeEntry(key);
     return true;
+  }
+
+  /**
+   * Evict `client` only if `failure` ended its session (`failureEndsSession`).
+   * The call path and discovery both use this; returns whether an entry was
+   * dropped.
+   */
+  evictAfterFailure(client: Client, failure: unknown): boolean {
+    return failureEndsSession(client, failure) ? this.evict(client) : false;
   }
 
   /**
