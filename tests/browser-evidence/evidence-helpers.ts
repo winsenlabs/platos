@@ -818,15 +818,84 @@ export async function performMutation(args: {
             createdRow.getByText(credentialReference, { exact: true }),
             "persisted Entity row lost the bare MCP credential reference"
           ).toBeVisible();
+          // THE TERMINAL STATE IS THE SKIPPED DISCOVERY PASS, NOT `connected`.
+          // Registration fires MCP discovery asynchronously and that pass rewrites
+          // the Entity rows, so the credential read-back below has to come after
+          // it. This used to wait for `connected`, which a hosted-* transport only
+          // ever reached because discovery returned an empty tool list, pruned the
+          // Entity's rows and stamped it connected. WIN-269 (M4.3,
+          // entity-mcp-discovery.service.ts) made that pass an honest skip: Platos
+          // does not read a hosted server's static manifest yet, so it records the
+          // reason and a discovery time and leaves `connectionStatus` alone. Its
+          // three persisted states are: contacted (discovery time, no error,
+          // connected), skipped (discovery time AND an error, status unchanged) and
+          // failed (no discovery time, an error, disconnected). The page's own
+          // loader data carries both MCP client columns, so wait for the skipped
+          // shape there, then read the rendered row.
+          const entitiesLoader = new URL(entitiesPath, page.url());
+          entitiesLoader.searchParams.set(
+            "_data",
+            "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities._index"
+          );
+          type DiscoveryStamp = {
+            httpStatus: number;
+            found: boolean;
+            connectionStatus: string | null;
+            transport: string | null;
+            lastDiscoveryAt: string | null;
+            discoveryError: string | null;
+          };
+          let stamp: DiscoveryStamp | undefined;
           await expect
             .poll(
               async () => {
-                await page.reload({ waitUntil: "networkidle" });
-                return createdRow.getByText("connected", { exact: true }).count();
+                stamp = await page.evaluate(
+                  async ({ target, externalId }) => {
+                    const response = await fetch(target, { headers: { Accept: "application/json" } });
+                    const body = (await response.json().catch(() => null)) as {
+                      panel?: { ok?: boolean; data?: { entities?: unknown[]; items?: unknown[] } };
+                    } | null;
+                    const rows = body?.panel?.data?.entities ?? body?.panel?.data?.items ?? [];
+                    const entity = rows
+                      .map((row) => row as Record<string, unknown>)
+                      .find((row) => row.entityId === externalId || row.externalId === externalId);
+                    const client = (entity?.mcpClient ?? null) as Record<string, unknown> | null;
+                    const text = (value: unknown) => (typeof value === "string" ? value : null);
+                    return {
+                      httpStatus: response.status,
+                      found: entity !== undefined,
+                      connectionStatus: text(entity?.connectionStatus),
+                      transport: text(client?.transport),
+                      lastDiscoveryAt: text(client?.lastDiscoveryAt),
+                      discoveryError: text(client?.discoveryError),
+                    };
+                  },
+                  { target: entitiesLoader.toString(), externalId: marker }
+                );
+                return stamp.found && stamp.lastDiscoveryAt !== null && stamp.discoveryError !== null;
               },
-              { message: "persisted Entity never reached its terminal connected status" }
+              { message: "persisted Entity never recorded its terminal (skipped) discovery pass" }
             )
-            .toBe(1);
+            .toBe(true);
+          expect(stamp?.httpStatus, "Entity registry loader read-back failed").toBe(200);
+          expect(stamp?.transport, "terminal Entity lost its hosted MCP transport").toBe("hosted-composio");
+          expect(
+            stamp?.discoveryError ?? "",
+            "terminal discovery error does not name the transport it skipped"
+          ).toContain("hosted-composio");
+          expect(
+            stamp?.connectionStatus,
+            "a discovery pass that asked nothing changed the Entity's connection status"
+          ).toBe("disconnected");
+          await page.reload({ waitUntil: "networkidle" });
+          await expect(
+            createdRow.getByText("disconnected", { exact: true }),
+            "terminal Entity row does not read disconnected"
+          ).toHaveCount(1);
+          await expect(
+            createdRow.getByText("connected", { exact: true }),
+            "terminal Entity row claims a connection no discovery pass made"
+          ).toHaveCount(0);
           await expect(
             createdRow.getByText(credentialReference, { exact: true }),
             "terminal Entity read-back lost the bare MCP credential reference"
