@@ -290,21 +290,31 @@ class V1EventStream:
 
     def _frames(self) -> Iterator[dict[str, Any]]:
         resume_after = self.last_event_id
+        # Reconnects in a row since a connection last applied a frame. The budget
+        # bounds this run, not the stream's lifetime: a lifetime budget makes a
+        # stream that progresses on every connection fail once it has been cut
+        # ``max_reconnects`` times. ``reconnects`` still counts every reconnect.
+        fruitless = 0
         while True:
+            applied_before = self.last_seq
             try:
                 yield from self._connect(resume_after)
                 return
             except _Reconnect as reconnect:
-                if self.reconnects >= self._max_reconnects:
+                if self.last_seq != applied_before:
+                    fruitless = 0
+                if fruitless >= self._max_reconnects:
                     raise PlatosStreamError(
                         0,
                         "STREAM_RECONNECTS_EXHAUSTED",
-                        f"the stream did not finish within {self._max_reconnects} reconnect(s)",
+                        f"the stream did not finish within {self._max_reconnects} consecutive reconnect(s) without progress",
                         reconnect.cause,
                     ) from None
+                fruitless += 1
                 self.reconnects += 1
                 delay = reconnect.delay_s
-                self._sleep(self._backoff_s(self.reconnects - 1) if delay is None else delay)
+                # Backoff grows with the fruitless run, and starts over after progress.
+                self._sleep(self._backoff_s(fruitless - 1) if delay is None else delay)
                 end = self.end
                 resume_after = end["resumeFrom"] if end is not None and end["kind"] == "interrupted" else self.last_event_id
                 self.end = None
@@ -336,7 +346,13 @@ class V1EventStream:
                     "STREAM_MEDIA_TYPE",
                     f"expected {EVENT_STREAM_MEDIA_TYPE}, received {media_type or 'no content type'}",
                 )
-            decoder = codecs.getincrementaldecoder("utf-8")()
+            # ``errors="replace"``, as the WHATWG algorithm decodes and as the
+            # TypeScript reader's ``TextDecoder`` does. A strict decoder raised
+            # ``UnicodeDecodeError`` from the final flush when a connection closed
+            # cleanly between the bytes of one character - which a close-delimited
+            # response does whenever it is cut there - instead of resuming. The
+            # replacement lands only in the torn event, which is discarded.
+            decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
             meta: Optional[dict[str, Any]] = None
             last_received: Optional[dict[str, Any]] = None
             pieces = iter(answer.chunks)

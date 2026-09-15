@@ -182,13 +182,25 @@ Nothing is sent until you iterate. The reader then:
 | a frame at or behind that position | drops it: redelivery after a reconnect is normal |
 | a frame ahead of it (frames were lost) | abandons the connection and re-reads after the last applied cursor |
 | `turn.done` or `stream.error` | ends the iteration; `stream.end` says which |
-| `stream.offline`, or a connection that stops with no terminal frame | reconnects with `Last-Event-ID`, up to `maxReconnects` (`max_reconnects`; default 5), then throws |
+| `stream.offline`, or a connection that stops with no terminal frame | reconnects with `Last-Event-ID`; throws once `maxReconnects` (`max_reconnects`; default 5) reconnects in a row have applied no frame |
 | a 5xx or 429 before the stream opens | retries with the same cursor; any other refusal is thrown as before |
+
+The reconnect budget counts reconnects **in a row** with no frame applied between
+them, not reconnects over the stream's life: a connection that applies at least
+one frame restores it, and the backoff starts over. A long stream behind a proxy
+that closes every connection after a while therefore finishes, while a server
+that keeps answering with nothing new is still given up on. `stream.reconnects`
+counts every reconnect.
 
 A request carries no per-request timeout: a stream is long by design. Instead a
 connection that delivers nothing — heartbeats included — for `idleTimeoutMs`
 (`idle_timeout_s`; default 45 seconds, three of the server's heartbeats) is
 treated as severed and resumed.
+
+A stream request carries the client's `fetchOptions` (`credentials`, `mode`,
+`cache`) exactly as a JSON call does, so a browser that authenticates with the
+session cookie passes `credentials: "include"` once; the reader's own method,
+headers and signal take precedence.
 
 To continue in another process, save `stream.lastEventId` and `stream.lastSeq`
 and pass both back (`lastEventId` + `lastSeq`, or `last_event_id` + `last_seq`);

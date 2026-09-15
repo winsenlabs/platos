@@ -23,7 +23,9 @@ from __future__ import annotations
 import json
 import pathlib
 import re
+import socket
 import sys
+import threading
 from contextlib import contextmanager
 
 PACKAGE_ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -64,8 +66,15 @@ def raises(expected: type[BaseException], match: str | None = None):
 
 
 def pieces_of(connection: dict) -> list[bytes]:
-    """``wire`` as UTF-8, split at the fixture's byte offsets (a split may fall inside a character)."""
+    """``wire`` as UTF-8, split at the fixture's byte offsets (a split may fall inside a character).
+
+    When ``endsAtByte`` is set the body ENDS there, inside ``wire``'s last character:
+    the iterator then stops, which is how a close-delimited response that was cut
+    between the bytes of one character reaches the reader.
+    """
     data = connection["wire"].encode("utf-8")
+    if connection["endsAtByte"] is not None:
+        data = data[: connection["endsAtByte"]]
     cuts = [0, *connection["byteBoundaries"], len(data)]
     return [data[cuts[index] : cuts[index + 1]] for index in range(len(cuts) - 1)]
 
@@ -94,6 +103,11 @@ def drive(scenario: dict):  # noqa: ANN201
 
     def sleep(_seconds: float) -> None:
         current()["end"] = holder["stream"].end
+        # The reader sleeps before EVERY reconnect, outside its own error handling, so
+        # a reader about to open a connection the scenario does not have fails here,
+        # at once, instead of reconnecting forever against a seam it cannot escape.
+        if len(requests) >= len(scenario["connections"]):
+            raise AssertionError(f"{scenario['name']}: the reader is reconnecting past the scenario's last connection")
 
     api = create_v1_client(
         "https://platos.example.com", operator_token="operator-token", stream_opener=opener, sleep=sleep
@@ -105,15 +119,21 @@ def drive(scenario: dict):  # noqa: ANN201
     if scenario["open"]["lastEventId"] is not None:
         options["last_event_id"] = scenario["open"]["lastEventId"]
         options["last_seq"] = scenario["open"]["lastSeq"]
+    if scenario["open"]["maxReconnects"] is not None:
+        options["max_reconnects"] = scenario["open"]["maxReconnects"]
     stream = api.environment_streams.read(FIXTURE["environmentId"], FIXTURE["streamId"], **options)
     holder["stream"] = stream
     assert requests == [], "nothing may be sent before iteration"
     frames = []
-    for frame in stream:
-        frames.append(frame)
-        current()["applied"].append(frame["seq"])
+    error = None
+    try:
+        for frame in stream:
+            frames.append(frame)
+            current()["applied"].append(frame["seq"])
+    except PlatosStreamError as thrown:
+        error = thrown.violation
     current()["end"] = stream.end
-    return requests, connections, frames, stream
+    return requests, connections, frames, stream, error
 
 
 def test_the_rule_ports_give_the_kernels_admissions() -> None:
@@ -139,7 +159,7 @@ def test_each_scenario_connection_by_connection() -> None:
     ).replace(":streamId", FIXTURE["streamId"])
     for scenario in SCENARIOS:
         name = scenario["name"]
-        requests, connections, frames, stream = drive(scenario)
+        requests, connections, frames, stream, error = drive(scenario)
         assert len(requests) == len(scenario["connections"]), name
         for request in requests:
             assert request["method"] == "GET", name
@@ -161,6 +181,7 @@ def test_each_scenario_connection_by_connection() -> None:
         assert stream.last_seq == scenario["expect"]["lastSeq"], name
         assert stream.reconnects == scenario["expect"]["reconnects"], name
         assert stream.end == scenario["expect"]["end"], name
+        assert error == scenario["expect"]["error"], name
 
 
 def test_the_reconnect_falls_in_the_middle_of_the_sequence() -> None:
@@ -171,6 +192,91 @@ def test_the_reconnect_falls_in_the_middle_of_the_sequence() -> None:
     assert f'"seq":{second["expect"]["applied"][0]}' in first["truncatedAfter"]
 
 
+def test_a_clean_close_inside_a_character_is_pinned_at_the_connections_end() -> None:
+    cut = [c for s in SCENARIOS for c in s["connections"] if c["endsAtByte"] is not None]
+    assert cut
+    for connection in cut:
+        data = connection["wire"].encode("utf-8")
+        last = connection["wire"][-1].encode("utf-8")
+        assert len(last) > 1
+        assert len(data) - len(last) < connection["endsAtByte"] < len(data)
+        assert data[connection["endsAtByte"]] & 0xC0 == 0x80, "the withheld byte must be a continuation byte"
+        assert all(boundary < connection["endsAtByte"] for boundary in connection["byteBoundaries"])
+    first, second = next(s for s in SCENARIOS if s["name"] == "severed-inside-a-character")["connections"]
+    assert first["endsAtByte"] is not None and first["expect"]["applied"]
+    assert first["expect"]["end"]["kind"] == "severed"
+    assert first["expect"]["applied"][-1] + 1 == second["expect"]["applied"][0]
+
+
+def test_the_budget_counts_reconnects_in_a_row_without_progress() -> None:
+    renewed = next(s for s in SCENARIOS if s["name"] == "progress-restores-the-budget")
+    exhausted = next(s for s in SCENARIOS if s["name"] == "a-fruitless-run-exhausts-the-budget")
+    assert renewed["expect"]["reconnects"] > renewed["open"]["maxReconnects"]
+    assert renewed["expect"]["error"] is None
+    assert all(c["expect"]["applied"] for c in renewed["connections"])
+    budget = exhausted["open"]["maxReconnects"]
+    assert exhausted["expect"]["error"] == "STREAM_RECONNECTS_EXHAUSTED"
+    assert exhausted["expect"]["reconnects"] > budget
+    trailing = exhausted["connections"][-budget:]
+    assert len(trailing) == budget
+    assert all(not c["expect"]["applied"] and c["expect"]["meta"] is not None for c in trailing)
+    assert exhausted["connections"][-(budget + 1)]["expect"]["applied"]
+    assert any(not c["expect"]["applied"] for c in exhausted["connections"][: -(budget + 1)])
+
+
+def test_the_default_urllib_opener_resumes_a_close_delimited_body_cut_inside_a_character() -> None:
+    """The same scenario over a REAL socket and the default opener, not the seam.
+
+    The seam models a clean close as the chunk iterator stopping. This case checks
+    that model against urllib itself: an HTTP/1.1 response with no Content-Length
+    and no chunking, whose body the server ends by closing the connection between
+    the two bytes of one character.
+    """
+    scenario = next(s for s in SCENARIOS if s["name"] == "severed-inside-a-character")
+    listener = socket.create_server(("127.0.0.1", 0))
+    listener.settimeout(10)
+    port = listener.getsockname()[1]
+    seen: list = []
+
+    def serve() -> None:
+        for connection in scenario["connections"]:
+            client, _address = listener.accept()
+            with client:
+                client.settimeout(10)
+                request = b""
+                while b"\r\n\r\n" not in request:
+                    piece = client.recv(4096)
+                    if not piece:
+                        break
+                    request += piece
+                header_lines = request.split(b"\r\n\r\n", 1)[0].decode("latin-1").split("\r\n")[1:]
+                headers = {name.strip().lower(): value.strip() for name, _, value in (line.partition(":") for line in header_lines)}
+                seen.append(headers.get("last-event-id"))
+                body = connection["wire"].encode("utf-8")
+                if connection["endsAtByte"] is not None:
+                    body = body[: connection["endsAtByte"]]
+                client.sendall(
+                    b"HTTP/1.1 200 OK\r\ncontent-type: " + connection["response"]["contentType"].encode()
+                    + b"\r\nconnection: close\r\n\r\n" + body
+                )
+                client.shutdown(socket.SHUT_WR)
+
+    server = threading.Thread(target=serve, daemon=True)
+    server.start()
+    try:
+        api = create_v1_client(f"http://127.0.0.1:{port}", sleep=lambda _s: None)
+        stream = api.environment_streams.read(FIXTURE["environmentId"], FIXTURE["streamId"], idle_timeout_s=10)
+        frames = [frame for frame in stream]
+    finally:
+        server.join(timeout=10)
+        listener.close()
+    assert [frame["seq"] for frame in frames] == scenario["expect"]["applied"]
+    assert "".join(frame.get("text", "") for frame in frames) == scenario["expect"]["text"]
+    assert seen == [connection["expect"]["lastEventId"] for connection in scenario["connections"]]
+    assert stream.reconnects == scenario["expect"]["reconnects"]
+    assert stream.end == scenario["expect"]["end"]
+
+
 def answering(*answers):  # noqa: ANN001, ANN201
     calls: list[dict] = []
 
@@ -178,7 +284,13 @@ def answering(*answers):  # noqa: ANN001, ANN201
         calls.append(dict(headers))
         return answers[min(len(calls) - 1, len(answers) - 1)]()
 
-    client = create_v1_client("https://platos.example.com", stream_opener=opener, sleep=lambda _s: None)
+    def sleep(_seconds: float) -> None:
+        # A bound on the harness, not on the reader: a reader whose budget never runs
+        # out fails here instead of hanging the suite.
+        if len(calls) > 50:
+            raise AssertionError("the reader kept reconnecting past 50 connections")
+
+    client = create_v1_client("https://platos.example.com", stream_opener=opener, sleep=sleep)
     return calls, client
 
 

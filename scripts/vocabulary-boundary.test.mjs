@@ -782,7 +782,16 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         `vendor`. The ids are Platos's, so the classification was wrong rather
   //         than stale: the comments were reworded and `--write` removed exactly those
   //         six as resolved. No row was added.
-  assert.equal(manifest.exceptions.length, 19448);
+  //
+  //         AND TWO MORE, taking it to 19446: the same misdescription survived in the
+  //         `currentScope()` / `current_scope()` example of each package README, which
+  //         ships in the npm tarball and the PyPI distribution beside the doc comments
+  //         it repeats. Both lines now name the Platos tenancy scope and `--write`
+  //         removed the two `vendor` rows. Two surviving rows keyed to
+  //         `.changeset/eobd-83-followup-package-repo-urls.md` and one keyed to
+  //         `docs/sdk-v1-migration.md` had line numbers that no longer pointed at their
+  //         text; their anchors were unchanged, so only the diagnostic line moved.
+  assert.equal(manifest.exceptions.length, 19446);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

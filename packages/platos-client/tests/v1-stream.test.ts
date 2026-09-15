@@ -23,9 +23,10 @@
 // this programme has been burned by exactly that.
 
 import { readFileSync } from "node:fs";
+import { createServer, type AddressInfo } from "node:net";
 import { fileURLToPath } from "node:url";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import * as sse from "../../../apps/core-api/src/transports/ws/sse.js";
 import { isOk } from "../../kernel/src/vo/error.js";
@@ -73,12 +74,14 @@ interface Connection {
   readonly writes: readonly Write[];
   readonly truncatedAfter: string | null;
   readonly wire: string;
+  /** The body is `wire`'s UTF-8 cut at this many bytes, inside its last character; null sends all of it. */
+  readonly endsAtByte: number | null;
   readonly byteBoundaries: readonly number[];
   readonly expect: ConnectionExpect;
 }
 interface Scenario {
   readonly name: string;
-  readonly open: { readonly lastEventId: string | null; readonly lastSeq: number | null };
+  readonly open: { readonly lastEventId: string | null; readonly lastSeq: number | null; readonly maxReconnects: number | null };
   readonly connections: readonly Connection[];
   readonly expect: {
     readonly applied: readonly number[];
@@ -87,6 +90,8 @@ interface Scenario {
     readonly lastSeq: number;
     readonly reconnects: number;
     readonly end: V1StreamEnd;
+    /** The `PlatosStreamError` violation the scenario ends with, or null. */
+    readonly error: string | null;
   };
 }
 interface Fixture {
@@ -135,9 +140,9 @@ function encode(write: Write): string {
   return encoded.bytes;
 }
 
-/** A body that hands the reader `wire` split at the fixture's UTF-8 byte offsets. */
+/** A body that hands the reader `wire` split at the fixture's UTF-8 byte offsets, and ended at `endsAtByte`. */
 function bodyOf(connection: Connection): ReadableStream<Uint8Array> {
-  const bytes = new TextEncoder().encode(connection.wire);
+  const bytes = new TextEncoder().encode(connection.wire).slice(0, connection.endsAtByte ?? undefined);
   const cuts = [0, ...connection.byteBoundaries, bytes.length];
   const pieces = cuts.slice(1).map((end, index) => bytes.slice(cuts[index], end));
   return new ReadableStream<Uint8Array>({
@@ -280,6 +285,12 @@ async function drive(scenario: Scenario) {
     sleep: async () => {
       // Between connections: the one that just ended has classified itself.
       current().end = stream?.end ?? null;
+      // The reader sleeps before EVERY reconnect, outside its own error handling, so
+      // a reader about to open a connection the scenario does not have fails here,
+      // at once, instead of reconnecting forever against a fetch it swallows errors from.
+      if (requests.length >= scenario.connections.length) {
+        throw new Error(`${scenario.name}: the reader is reconnecting past the scenario's last connection`);
+      }
     },
     fetch: (async (url: string, init: RequestInit) => {
       const headers = { ...(init.headers as Record<string, string>) };
@@ -296,6 +307,7 @@ async function drive(scenario: Scenario) {
   stream = client.environmentStreams.read(fixture.environmentId, fixture.streamId, {
     ...(scenario.open.lastEventId === null ? {} : { lastEventId: scenario.open.lastEventId }),
     ...(scenario.open.lastSeq === null ? {} : { lastSeq: scenario.open.lastSeq }),
+    ...(scenario.open.maxReconnects === null ? {} : { maxReconnects: scenario.open.maxReconnects }),
     onConnect: ({ meta }) => {
       current().meta = meta;
     },
@@ -305,17 +317,23 @@ async function drive(scenario: Scenario) {
   });
   expect(requests, "nothing may be sent before iteration").toHaveLength(0);
   const frames: V1StreamFrame[] = [];
-  for await (const frame of stream) {
-    frames.push(frame);
-    current().applied.push(frame.seq);
+  let error: string | null = null;
+  try {
+    for await (const frame of stream) {
+      frames.push(frame);
+      current().applied.push(frame.seq);
+    }
+  } catch (thrown) {
+    if (!(thrown instanceof PlatosStreamError)) throw thrown;
+    error = thrown.violation;
   }
   current().end = stream.end;
-  return { requests, connections, frames, stream };
+  return { requests, connections, frames, stream, error };
 }
 
 describe("the TypeScript reader does what each scenario states, connection by connection", () => {
   it.each(fixture.scenarios.map((scenario) => [scenario.name, scenario] as const))("%s", async (_name, scenario) => {
-    const { requests, connections, frames, stream } = await drive(scenario);
+    const { requests, connections, frames, stream, error } = await drive(scenario);
 
     expect(requests).toHaveLength(scenario.connections.length);
     for (const [index, request] of requests.entries()) {
@@ -344,6 +362,7 @@ describe("the TypeScript reader does what each scenario states, connection by co
     expect(stream.lastSeq).toBe(scenario.expect.lastSeq);
     expect(stream.reconnects).toBe(scenario.expect.reconnects);
     expect(stream.end).toEqual(scenario.expect.end);
+    expect(error).toBe(scenario.expect.error);
   });
 
   it("pins a reconnect in the middle of the sequence, not at either edge", () => {
@@ -355,6 +374,87 @@ describe("the TypeScript reader does what each scenario states, connection by co
     // second connection's first.
     expect(first!.wire.endsWith("\n\n")).toBe(false);
     expect(first!.truncatedAfter).toContain(`"seq":${second!.expect.applied[0]}`);
+  });
+
+  it("resumes a close-delimited body cut inside a character over a REAL socket, with the runtime's own fetch", async () => {
+    // The fake body above models a clean close as the stream closing. This checks
+    // that model against a real HTTP/1.1 response with no Content-Length and no
+    // chunking, ended by the server closing the socket between two bytes of one
+    // character, read by the default `globalThis.fetch`.
+    const scenario = fixture.scenarios.find((entry) => entry.name === "severed-inside-a-character")!;
+    const seen: (string | null)[] = [];
+    let served = 0;
+    const server = createServer((socket) => {
+      const connection = scenario.connections[served++];
+      let request = "";
+      socket.on("data", (piece) => {
+        request += piece.toString("latin1");
+        if (!request.includes("\r\n\r\n")) return;
+        const match = /^last-event-id:\s*(.*)$/imu.exec(request.split("\r\n\r\n")[0]!);
+        seen.push(match === null ? null : match[1]!.trim());
+        if (connection === undefined) return void socket.destroy();
+        const body = new TextEncoder().encode(connection.wire).slice(0, connection.endsAtByte ?? undefined);
+        socket.write(`HTTP/1.1 200 OK\r\ncontent-type: ${connection.response.contentType}\r\nconnection: close\r\n\r\n`);
+        socket.end(body);
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const { port } = server.address() as AddressInfo;
+      const client = createV1Client({ baseUrl: `http://127.0.0.1:${port}`, sleep: async () => {} });
+      const stream = client.environmentStreams.read(fixture.environmentId, fixture.streamId, { idleTimeoutMs: 10_000 });
+      const frames: V1StreamFrame[] = [];
+      for await (const frame of stream) frames.push(frame);
+      expect(frames.map((frame) => frame.seq)).toEqual(scenario.expect.applied);
+      expect(frames.map((frame) => (typeof frame["text"] === "string" ? frame["text"] : "")).join("")).toBe(scenario.expect.text);
+      expect(seen).toEqual(scenario.connections.map((connection) => connection.expect.lastEventId));
+      expect(stream.reconnects).toBe(scenario.expect.reconnects);
+      expect(stream.end).toEqual(scenario.expect.end);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("pins a clean close INSIDE a character at the connection's end, not at a chunk boundary", () => {
+    const cut = fixture.scenarios.flatMap((scenario) => scenario.connections).filter((c) => c.endsAtByte !== null);
+    expect(cut.length).toBeGreaterThan(0);
+    for (const connection of cut) {
+      const bytes = new TextEncoder().encode(connection.wire);
+      const last = new TextEncoder().encode([...connection.wire].at(-1)!);
+      // Strictly inside the last character: at least one byte of it sent, at least one withheld.
+      expect(last.length).toBeGreaterThan(1);
+      expect(connection.endsAtByte!).toBeGreaterThan(bytes.length - last.length);
+      expect(connection.endsAtByte!).toBeLessThan(bytes.length);
+      // The withheld byte is a UTF-8 continuation byte, so no decoder can finish the character.
+      expect(bytes[connection.endsAtByte!]! & 0xc0).toBe(0x80);
+      for (const boundary of connection.byteBoundaries) expect(boundary).toBeLessThan(connection.endsAtByte!);
+    }
+    const [first, second] = fixture.scenarios.find((scenario) => scenario.name === "severed-inside-a-character")!.connections;
+    expect(first!.endsAtByte).not.toBeNull();
+    expect(first!.expect.applied.length).toBeGreaterThan(0);
+    expect(first!.expect.end?.kind).toBe("severed");
+    expect(first!.expect.applied.at(-1)! + 1).toBe(second!.expect.applied[0]);
+    expect(first!.truncatedAfter).toContain(first!.wire.at(-1)!);
+  });
+
+  it("pins the budget to reconnects in a row without progress, in both directions", () => {
+    const renewed = fixture.scenarios.find((scenario) => scenario.name === "progress-restores-the-budget")!;
+    const exhausted = fixture.scenarios.find((scenario) => scenario.name === "a-fruitless-run-exhausts-the-budget")!;
+    // More reconnects than the budget, and the stream still finishes: a lifetime budget cannot pass this.
+    expect(renewed.expect.reconnects).toBeGreaterThan(renewed.open.maxReconnects!);
+    expect(renewed.expect.error).toBeNull();
+    expect(renewed.connections.every((connection) => connection.expect.applied.length > 0)).toBe(true);
+    // A connection that answers stream_meta but applies nothing is not progress: a
+    // budget restored by merely connecting cannot pass this.
+    expect(exhausted.expect.error).toBe("STREAM_RECONNECTS_EXHAUSTED");
+    expect(exhausted.expect.reconnects).toBeGreaterThan(exhausted.open.maxReconnects!);
+    const budget = exhausted.open.maxReconnects!;
+    const trailing = exhausted.connections.slice(-budget);
+    expect(trailing).toHaveLength(budget);
+    expect(trailing.every((connection) => connection.expect.applied.length === 0 && connection.expect.meta !== null)).toBe(true);
+    expect(exhausted.connections.at(-(budget + 1))!.expect.applied.length).toBeGreaterThan(0);
+    // And a fruitless connection EARLIER in the stream did not spend what progress restored.
+    expect(exhausted.connections.slice(0, -(budget + 1)).some((connection) => connection.expect.applied.length === 0)).toBe(true);
   });
 });
 
@@ -370,7 +470,12 @@ describe("the reader refuses what the lane never sends", () => {
       const answer = answers[Math.min(calls.length - 1, answers.length - 1)]!;
       return answer();
     }) as unknown as typeof globalThis.fetch;
-    return { calls, client: createV1Client({ baseUrl: "https://platos.example.com", fetch: fetchImpl, sleep: async () => {} }) };
+    // A bound on the harness, not on the reader: a reader whose budget never runs out
+    // fails here instead of spinning the event loop on microtasks forever.
+    const sleep = async () => {
+      if (calls.length > 50) throw new Error("the reader kept reconnecting past 50 connections");
+    };
+    return { calls, client: createV1Client({ baseUrl: "https://platos.example.com", fetch: fetchImpl, sleep }) };
   };
   const eventStream = (text: string, status = 200) => () =>
     new Response(text, { status, headers: { "content-type": "text/event-stream; charset=utf-8" } });
@@ -449,6 +554,101 @@ describe("the reader refuses what the lane never sends", () => {
     const stream = client.environmentStreams.read("e", "s");
     await drain(stream);
     await expect(drain(stream)).rejects.toThrow(/read once/u);
+  });
+});
+
+describe("the reader runs on a browser's fetch", () => {
+  const onlyStream = fixture.scenarios.find((scenario) => scenario.name === "failed-is-final")!.connections[0]!;
+  const streamAnswer = () =>
+    new Response(onlyStream.wire, { status: 200, headers: { "content-type": "text/event-stream; charset=utf-8" } });
+  const jsonAnswer = () => new Response(JSON.stringify({ data: [], nextCursor: null }), { status: 200, headers: { "content-type": "application/json" } });
+
+  /**
+   * A fetch with the WebIDL receiver check a browser's has: `Window.fetch` called
+   * with `this` bound to anything but the global object (or nothing) throws
+   * "Illegal invocation". Node's fetch does not check, which is why every
+   * Node-driven case passed while a browser could not open a single stream.
+   */
+  const brandChecked = (answer: () => Response, inits: RequestInit[]) =>
+    function fetch(this: unknown, _url: string, init: RequestInit) {
+      if (this !== undefined && this !== globalThis) {
+        return Promise.reject(new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation"));
+      }
+      const response = answer();
+      inits.push(init);
+      return Promise.resolve(response);
+    } as unknown as typeof globalThis.fetch;
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("calls the DEFAULT fetch as a plain function, on the stream path as on the JSON path", async () => {
+    const inits: RequestInit[] = [];
+    vi.stubGlobal("fetch", brandChecked(() => (inits.length === 0 ? jsonAnswer() : streamAnswer()), inits));
+    const client = createV1Client({ baseUrl: "https://platos.example.com", sleep: async () => {} });
+    await expect(client.organizations.list()).resolves.toEqual({ data: [], nextCursor: null });
+    const stream = client.environmentStreams.read("e", "s", { maxReconnects: 0 });
+    const types: string[] = [];
+    for await (const frame of stream) types.push(frame.t);
+    expect(types.at(-1)).toBe("stream.error");
+    expect(stream.reconnects).toBe(0);
+    expect(inits).toHaveLength(2);
+  });
+
+  it("calls an INJECTED fetch as a plain function too, when the reader is built directly", async () => {
+    const inits: RequestInit[] = [];
+    const reader = new EventStreamReader(
+      {
+        url: "https://platos.example.com/stream",
+        method: "GET",
+        headers: {},
+        fetch: brandChecked(streamAnswer, inits),
+        sleep: async () => {},
+        backoffMs: () => 0,
+      },
+      { maxReconnects: 0 },
+    );
+    for await (const _frame of reader) {
+      // consumed
+    }
+    expect(reader.end?.kind).toBe("failed");
+    expect(inits).toHaveLength(1);
+  });
+
+  it("merges fetchOptions into every stream request, as send() does, under the reader's own method, headers and signal", async () => {
+    const inits: RequestInit[] = [];
+    const external = new AbortController();
+    const client = createV1Client({
+      baseUrl: "https://platos.example.com",
+      operatorToken: "operator-token",
+      fetch: brandChecked(streamAnswer, inits),
+      fetchOptions: {
+        credentials: "include",
+        mode: "cors",
+        cache: "no-store",
+        method: "POST",
+        headers: { "x-dropped": "1" },
+        signal: external.signal,
+      },
+      sleep: async () => {},
+    });
+    await expect(client.organizations.list().catch(() => "sent")).resolves.toBeDefined();
+    inits.length = 0;
+    const stream = client.environmentStreams.read("e", "s", { maxReconnects: 0 });
+    for await (const _frame of stream) {
+      // consumed
+    }
+    expect(inits).toHaveLength(1);
+    const [init] = inits;
+    expect(init!.credentials).toBe("include");
+    expect(init!.mode).toBe("cors");
+    expect(init!.cache).toBe("no-store");
+    expect(init!.method).toBe("GET");
+    expect(init!.headers).toEqual({ authorization: "Bearer operator-token", accept: "text/event-stream" });
+    // The request's signal is the reader's own (idle timeout, iteration stop), wired to the caller's.
+    expect(init!.signal).toBeInstanceOf(AbortSignal);
+    expect(init!.signal).not.toBe(external.signal);
   });
 });
 
