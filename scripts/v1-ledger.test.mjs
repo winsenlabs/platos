@@ -857,7 +857,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // files and are recorded where they live -- `EXPECTED_FILE_COUNT` in
     // `scripts/arch/env-access.mjs` (1699 -> 1701) and a sixth `PROSE_ONLY` entry in
     // its suite, because the helper MENTIONS `process.env` while reading none.
-    "apps-core-api": 96,
+    //
+    // CORE-API IMAGE 96 -> 97. ONE file, `apps/core-api/Dockerfile`, the image the
+    // deployable had never had. NO LEDGER RULE CHANGED: `apps-core-api.infra.container`
+    // was declared for exactly this path before the file existed and matched it on
+    // arrival (0 -> 1). Every other file the change touches -- the root and core-api
+    // manifests, the compose file, the Caddyfile, the self-hosting page and the
+    // suites that pin them -- is an EDIT.
+    "apps-core-api": 97,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2346,7 +2353,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // existing suite, and the second-channel-adapter measurement is a comment in an
   // existing port. The eight-key re-derivation from the merged `expectedDeltas` is
   // 15 + 1 + 96 + 4 + 10 + 1556 + 24 + 90 = 1796.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1796);
+  //
+  // AND THE CORE-API IMAGE — 1796 -> 1797. ONE file, `apps/core-api/Dockerfile`, in
+  // `apps-core-api` and itemised on that area's delta above. The eight-key
+  // re-derivation from the merged `expectedDeltas` is
+  // 15 + 1 + 97 + 4 + 10 + 1556 + 24 + 90 = 1797.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1797);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2650,7 +2662,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `expectedDeltas["apps-core-api"]` were moved first, this figure was not, and
     // the suite went red on exactly the disagreement it exists to find. 1794 + 2 =
     // 1796, with no mutation-manifest +1 because this tranche pins none either.
-    rulesDocument.baseline.totalFiles + 1796
+    // AND THE CORE-API IMAGE — 1796 -> 1797, moved in the same edit as the total and
+    // as `expectedDeltas["apps-core-api"]`: the one Dockerfile, summed per area here.
+    rulesDocument.baseline.totalFiles + 1797
   );
 });
 
