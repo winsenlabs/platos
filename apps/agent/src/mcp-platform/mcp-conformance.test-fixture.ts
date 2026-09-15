@@ -109,6 +109,23 @@ export function agentRoot(): string {
 const MIGRATIONS_ROOT = () =>
   resolve(agentRoot(), "../../internal-packages/tenancy-database/prisma/migrations");
 
+/** The stdout prefix a child agent node puts before each JSON record it reports. */
+export const NODE_LINE_PREFIX = "MCPNODE ";
+
+/**
+ * The TypeScript runner for a child agent node: `vite-node`, resolved THROUGH
+ * the installed Vitest rather than named, so the child compiles the controllers
+ * with the transform the in-process suites use. (The repository root's `tsx`
+ * bundles esbuild 0.15, which cannot parse this tree's `const` type parameters.)
+ */
+export function viteNodeEntry(): string {
+  const { createRequire } = require("node:module") as typeof import("node:module");
+  const fromVitest = createRequire(require.resolve("vitest/package.json", { paths: [agentRoot()] }));
+  const manifestPath = fromVitest.resolve("vite-node/package.json");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { bin: Record<string, string> };
+  return resolve(manifestPath, "..", manifest.bin["vite-node"]!);
+}
+
 // ---------------------------------------------------------------------------
 // DATABASE — one private schema per suite, built by EVERY canonical migration,
 // dropped afterwards. The same construction the forged-scope suite uses.
@@ -564,4 +581,100 @@ export async function startMcpServers(options: McpServersOptions): Promise<Runni
       redis.disconnect();
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// THE WIRE TAP — every exchange an SDK transport makes, and every frame the
+// server writes on an event stream, recorded below the SDK. The SDK is lenient
+// where the specification is not (it ignores a body on a notification's reply
+// and routes an unparseable frame to `onerror`), so conformance is asserted on
+// this log rather than on what the SDK chose to surface.
+
+export interface Exchange {
+  readonly method: string;
+  readonly path: string;
+  readonly status: number;
+  readonly contentType: string;
+  readonly requestBody: unknown;
+  /** The response text, for everything that is not an event stream. */
+  readonly responseText: string | null;
+}
+
+export interface Frame {
+  readonly event: string;
+  readonly data: string;
+}
+
+export class WireTap {
+  readonly exchanges: Exchange[] = [];
+  readonly frames: Frame[] = [];
+  readonly errors: string[] = [];
+  private pending: Promise<unknown>[] = [];
+
+  constructor(private readonly forwardedFor: string) {}
+
+  readonly fetch = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+    const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+    const headers = new Headers(init?.headers);
+    // The docs server limits by client IP; one address per session keeps the
+    // matrix from spending a single 60-a-minute bucket.
+    headers.set("x-forwarded-for", this.forwardedFor);
+    const method = (init?.method ?? "GET").toUpperCase();
+    const requestBody = typeof init?.body === "string" ? JSON.parse(init.body) : null;
+    const response = await fetch(url, { ...init, headers });
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.startsWith("text/event-stream") && response.body) {
+      const [forClient, forTap] = response.body.tee();
+      this.pending.push(this.readFrames(forTap));
+      this.exchanges.push({ method, path: url.pathname, status: response.status, contentType, requestBody, responseText: null });
+      return new Response(forClient, { status: response.status, statusText: response.statusText, headers: response.headers });
+    }
+    const responseText = await response.clone().text();
+    this.exchanges.push({ method, path: url.pathname, status: response.status, contentType, requestBody, responseText });
+    return response;
+  };
+
+  private async readFrames(stream: ReadableStream<Uint8Array>): Promise<void> {
+    const decoder = new TextDecoder();
+    let buffer = "";
+    const reader = stream.getReader();
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let boundary = buffer.indexOf("\n\n");
+        while (boundary !== -1) {
+          const block = buffer.slice(0, boundary);
+          buffer = buffer.slice(boundary + 2);
+          let event = "message";
+          const data: string[] = [];
+          for (const line of block.split("\n")) {
+            if (line.startsWith("event:")) event = line.slice(6).trim();
+            else if (line.startsWith("data:")) data.push(line.slice(5).replace(/^ /u, ""));
+          }
+          if (data.length > 0) this.frames.push({ event, data: data.join("\n") });
+          boundary = buffer.indexOf("\n\n");
+        }
+      }
+    } catch {
+      // the stream was closed under us, which is how every session ends
+    }
+  }
+
+  /** Every JSON-RPC message the server WROTE on an event stream, parsed. */
+  messageFrames(): Array<Record<string, unknown>> {
+    return this.frames
+      .filter((frame) => frame.event === "message")
+      .map((frame) => JSON.parse(frame.data) as Record<string, unknown>);
+  }
+
+  /** The exchange that carried a JSON-RPC message with this method. */
+  postsFor(method: string): Exchange[] {
+    return this.exchanges.filter(
+      (exchange) =>
+        exchange.method === "POST" &&
+        (exchange.requestBody as { method?: unknown } | null)?.method === method,
+    );
+  }
 }
