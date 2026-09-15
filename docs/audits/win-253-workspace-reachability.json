@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "55faf18ab8d9ff63ccb2d3948c2df72b4fc3651f4c31d4c75785d79c0cafddc9",
+  "evidenceSha256": "73d2232fedde7eec2b490ea5cc3880889968b448cc102055c93318e57cb0a222",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "f2876302fd05747de74bc3b9009edb9999f3519673fe2191a78b54d53eb88dcb",
+    "aggregateSha256": "9889373c58fdf83403ead94c33ded98c0fa49b42ae4297d93e84bba4161280d4",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -2787,7 +2787,7 @@
       },
       {
         "path": "apps/core-api/src/transports/bff/magic-link.controller.ts",
-        "sha256": "47b872a469c42df7ec828910358e6250f57b8b85403408d1ebe57c0876d78a45"
+        "sha256": "6d8a7d56bf64d418573f5b7b6e8a9ad039bf692b636f3744e399b02296649a10"
       },
       {
         "path": "apps/core-api/src/transports/bff/session.controller.ts",
@@ -2859,11 +2859,11 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
-        "sha256": "6ee764896951c1c21c8bda2920a02ae1d9807c6fef0cb8dbfe1f9351253cf3f1"
+        "sha256": "748e57eb30c093ddb364841d108dd73b1b51cba31d3d4b73bb24800f76a72e86"
       },
       {
         "path": "apps/core-api/src/transports/rest/environment-variables.controller.ts",
-        "sha256": "697d8736d6bf9cf0aa229d0fd7bb19c679d29e4b3a72c25fc92f43bf24c2a704"
+        "sha256": "dd0af18a8da55658a3ccc199773f2e2388f0e1d999534b227ea90c49106174dc"
       },
       {
         "path": "apps/core-api/src/transports/rest/fault.ts",
@@ -2871,7 +2871,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-rest.test.ts",
-        "sha256": "bae57081098bc28d4b680511765d5352623f810b6bced99e8124573d6b27c50b"
+        "sha256": "7e088b9250f61a081685112a2c7cdc047c292594f0739078dedf951b166001f3"
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-session.controller.ts",
@@ -2887,7 +2887,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/invitations.controller.ts",
-        "sha256": "4d260eaed66b78fd31fd84e5a385ce6127560ccbd9b81c05a6de1039a8c7b1f0"
+        "sha256": "40f1677c086d8a13ddd70e6057b9f15dcc191c4dc2d3a02a50d1ed2347dd64c4"
       },
       {
         "path": "apps/core-api/src/transports/rest/operator.ts",
@@ -2895,7 +2895,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/organization-members.controller.ts",
-        "sha256": "c225aca86c19c77237b54f60c5f7419293bd32d9c0f333fb5971c49e8c24a301"
+        "sha256": "27c960143064b266ff7dc9d1116e3a352e446f12d4a331e955c67a0086c43b09"
       },
       {
         "path": "apps/core-api/src/transports/rest/organizations.controller.ts",
@@ -15651,7 +15651,7 @@
       },
       {
         "path": "packages/contexts/identity-access/contracts/index.ts",
-        "sha256": "dcb87857963dd79f8e1c94390ad8c67e94fd10af5488e7fdc6fa74ec0a924af8"
+        "sha256": "a34c2545af774b019fb43fa7319f73849dc0eb1914001367bde86e353129735e"
       },
       {
         "path": "packages/contexts/identity-access/domain/access-key.test.ts",
@@ -78704,7 +78704,7 @@
             {
               "file": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
               "from": "apps/core-api",
-              "line": 54,
+              "line": 57,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -80800,7 +80800,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "63ea56f94cc325ca46714ca4532435eec07b5e0f71e39faad40f4241d3ae04d7",
+      "evidenceSha256": "efec15f55cb2fbff953783597a66ae53e691efdd1d2f5740e5a44972363025ab",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -85218,7 +85218,7 @@
             {
               "file": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
               "from": "apps/core-api",
-              "line": 53,
+              "line": 56,
               "specifier": "@platos/kernel"
             },
             {
@@ -95683,7 +95683,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "8216c291bdff810ae7414b611ada1212c1561631060baeca589899e8a7976f87",
+      "evidenceSha256": "cb91339cea743f31be30b44cd51d83b6baf5d191511179a8691f60c0ae795757",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
