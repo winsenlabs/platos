@@ -3203,7 +3203,21 @@
         "core-api"
       ]
     },
+    "TRANSPORT_SESSION_COOKIE_REQUIRES_TLS": {
+      "category": "precondition_failed",
+      "status": 412,
+      "contexts": [
+        "core-api"
+      ]
+    },
     "TRANSPORT_SHUTTING_DOWN": {
+      "category": "unavailable",
+      "status": 503,
+      "contexts": [
+        "core-api"
+      ]
+    },
+    "TRANSPORT_STORE_UNAVAILABLE": {
       "category": "unavailable",
       "status": 503,
       "contexts": [

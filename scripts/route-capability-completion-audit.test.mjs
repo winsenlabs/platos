@@ -73,6 +73,7 @@ function fixture() {
       agent: `ghcr.io/winsenlabs/agent@sha256:${"a".repeat(64)}`,
       webapp: `ghcr.io/winsenlabs/webapp@sha256:${"b".repeat(64)}`,
       migrations: `ghcr.io/winsenlabs/migrations@sha256:${"c".repeat(64)}`,
+      coreApi: `ghcr.io/winsenlabs/core-api@sha256:${"d".repeat(64)}`,
     },
     coverage: { capabilities: 107, cells: 428 },
     cells,

@@ -128,7 +128,7 @@ function validatePendingMatrix(matrix, contract) {
 function validateCandidateImages(candidateImages, candidateSha) {
   assert.deepEqual(
     Object.keys(candidateImages ?? {}).sort(),
-    ["agent", "commitSha", "migrations", "webapp"],
+    ["agent", "commitSha", "coreApi", "migrations", "webapp"],
     "browser candidate image identity shape drifted"
   );
   assert.equal(
@@ -136,7 +136,7 @@ function validateCandidateImages(candidateImages, candidateSha) {
     candidateSha,
     "browser candidate images are not exact HEAD"
   );
-  for (const name of ["agent", "webapp", "migrations"]) {
+  for (const name of ["agent", "webapp", "migrations", "coreApi"]) {
     assert.match(
       candidateImages[name],
       /^ghcr\.io\/.+@sha256:[a-f0-9]{64}$/,

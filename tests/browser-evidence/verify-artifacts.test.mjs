@@ -293,13 +293,14 @@ async function fixtureDirectory(root) {
   const matrixById = new Map(
     matrix.capabilities.map((capability) => [capability.capabilityId, capability])
   );
-  const digestHex = { agent: "a", webapp: "b", migrations: "c" };
+  const digestHex = { agent: "a", webapp: "b", migrations: "c", "core-api": "d" };
   const image = (name) => `ghcr.io/winsenlabs/${name}@sha256:${digestHex[name].repeat(64)}`;
   const candidateImages = {
     commitSha: HEAD,
     agent: image("agent"),
     webapp: image("webapp"),
     migrations: image("migrations"),
+    coreApi: image("core-api"),
   };
   const fixtureBody = {
     schemaVersion: 1,

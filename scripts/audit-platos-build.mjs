@@ -5,6 +5,8 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
 
+import { CORE_API_CONFIG_DIRECTORY, loadCoreApiConfigFields } from "./lib/core-api-config-schema.mjs";
+
 const root = new URL("..", import.meta.url).pathname;
 const failures = [];
 const checks = [];
@@ -136,9 +138,27 @@ function declaredBuildVariables({ keyword, args }) {
   return [...args.matchAll(/(?:^|\s)([A-Za-z_][A-Za-z0-9_]*)=/g)].map((match) => match[1]);
 }
 
-// A name shaped like a credential. A value baked under such a name is in a layer
-// for anyone who pulls the image; credentials arrive at run time or through a
-// secret mount, never through ENV or ARG.
+// ─── No secret reaches an image layer ───
+// A value baked under ENV or ARG is in a layer for anyone who pulls the image;
+// credentials arrive at run time or through a secret mount. The set of names this
+// refuses is JOINED TO THE CORE-API CONFIG SCHEMA: every field its six sections
+// mark `secret: true`, read by importing the field tables themselves
+// (scripts/lib/core-api-config-schema.mjs), not by guessing from a name. The
+// verifier that found the gap baked a PostgreSQL password into the runtime stage
+// as PLATOS_STORE_POSTGRES_URL and every gate stayed green, because a store URL,
+// an object-store access key id and an SMTP URL are secrets whose names say none
+// of SECRET, PASSWORD or TOKEN. The loader's count must also equal an independent
+// count of `secret: true` in the source text, so a loader that lost a section
+// cannot make this check pass by finding nothing.
+const coreApiConfig = await loadCoreApiConfigFields(root);
+const CORE_API_SECRET_FIELDS = new Set(coreApiConfig.fields.filter((field) => field.secret).map((field) => field.name));
+check(
+  `the core-api config schema yields its secret fields to this audit (${CORE_API_SECRET_FIELDS.size} imported from ${CORE_API_CONFIG_DIRECTORY}, ${coreApiConfig.sourceSecretCount} marked in its source)`,
+  CORE_API_SECRET_FIELDS.size > 0 && CORE_API_SECRET_FIELDS.size === coreApiConfig.sourceSecretCount
+);
+
+// The SECOND net, kept for names no schema owns: a credential for some other
+// process (a registry token, an npm token) is still refused by shape.
 const CREDENTIAL_SHAPED_NAME = /SECRET|PASSWORD|PASSWD|TOKEN|PRIVATE|CREDENTIAL|API_?KEY|ENCRYPTION_KEY|SIGNING_KEY|ROOT_KEY/i;
 
 const buildImagesWorkflow = parseYaml(read(".github/workflows/build-images.yml"));
@@ -161,7 +181,13 @@ for (const dockerfile of candidateDockerfiles) {
     if (match?.[2]) stages.add(match[2].toLowerCase());
   }
   check(`${dockerfile}: every FROM is digest-pinned or names an earlier stage`, unpinned.length === 0);
-  const credentialNames = instructions.flatMap(declaredBuildVariables).filter((name) => CREDENTIAL_SHAPED_NAME.test(name));
+  const declaredNames = instructions.flatMap(declaredBuildVariables);
+  const schemaSecrets = declaredNames.filter((name) => CORE_API_SECRET_FIELDS.has(name));
+  check(
+    `${dockerfile}: no ENV or ARG, in any stage, declares a field the core-api config schema marks secret${schemaSecrets.length > 0 ? ` (found: ${[...new Set(schemaSecrets)].join(", ")})` : ""}`,
+    CORE_API_SECRET_FIELDS.size > 0 && schemaSecrets.length === 0
+  );
+  const credentialNames = declaredNames.filter((name) => CREDENTIAL_SHAPED_NAME.test(name));
   check(`${dockerfile}: no ENV or ARG declares a credential-shaped name`, credentialNames.length === 0);
 }
 
@@ -176,35 +202,71 @@ for (const dockerfile of candidateDockerfiles) {
 // candidate, so the check cannot keep passing on a file CI no longer builds.
 // migrations is a candidate too and is NOT held to this: it builds on node:22-alpine
 // and states no such reuse.
-function externalNodeBases(dockerfile) {
+//
+// WHICH STAGES ARE NODE STAGES, WHATEVER REGISTRY THEY NAME. The first version of
+// this check counted a FROM as a node base only when it read `node:` or
+// `docker.io/library/node:`, and a verifier moved the webapp runner to
+// `public.ecr.aws/docker/library/node:22-slim@sha256:3333…` with the audit green.
+// Two nets now. A FROM whose repository's last path segment is `node` is a node
+// stage on any registry (Docker Hub, public.ecr.aws/docker/library, quay.io, a
+// mirror). And in the two files that claim the reuse, EVERY external FROM must be
+// the agent's exact reference unless it is listed below as a reviewed non-node
+// base, so a node image published under another repository name cannot pass as
+// "not node" either.
+const REVIEWED_NON_NODE_BASES = Object.freeze({
+  // goose, the ClickHouse migration binary, compiled in its own stage and copied out.
+  "apps/webapp/Dockerfile.platos": Object.freeze([
+    "golang:1.23-alpine@sha256:383395b794dffa5b53012a212365d40c8e37109a626ca30d6151c8348d380b5f",
+  ]),
+  "apps/core-api/Dockerfile": Object.freeze([]),
+});
+/** The repository path of an image reference: registry host kept, tag and digest dropped. */
+function imageRepository(image) {
+  const withoutDigest = image.split("@")[0];
+  const lastSlash = withoutDigest.lastIndexOf("/");
+  const tagColon = withoutDigest.indexOf(":", lastSlash + 1);
+  return tagColon === -1 ? withoutDigest : withoutDigest.slice(0, tagColon);
+}
+/** Every FROM that is not an earlier stage, in order. */
+function externalBases(dockerfile) {
   const stages = new Set();
   const bases = [];
   for (const { keyword, args } of dockerInstructions(read(dockerfile))) {
     if (keyword !== "FROM") continue;
     const match = /^(?:--platform=\S+\s+)?(\S+)(?:\s+AS\s+(\S+))?$/i.exec(args);
     const image = match?.[1] ?? args;
-    if (!stages.has(image.toLowerCase()) && /^(?:docker\.io\/)?(?:library\/)?node[:@]/.test(image)) bases.push(image);
+    if (!stages.has(image.toLowerCase())) bases.push(image);
     if (match?.[2]) stages.add(match[2].toLowerCase());
   }
   return bases;
 }
+function isNodeImage(image) {
+  return imageRepository(image).split("/").at(-1)?.toLowerCase() === "node";
+}
 const AGENT_DOCKERFILE = "apps/agent/Dockerfile";
-const AGENT_NODE_BASE_REUSERS = ["apps/webapp/Dockerfile.platos", "apps/core-api/Dockerfile"];
-const agentNodeBases = [...new Set(externalNodeBases(AGENT_DOCKERFILE))];
+const AGENT_NODE_BASE_REUSERS = Object.keys(REVIEWED_NON_NODE_BASES);
+const agentNodeBases = [...new Set(externalBases(AGENT_DOCKERFILE).filter(isNodeImage))];
 check(
-  `${AGENT_DOCKERFILE} builds on exactly one digest-pinned node base`,
+  `${AGENT_DOCKERFILE} builds on exactly one digest-pinned node base, and on nothing else`,
   candidateDockerfiles.includes(AGENT_DOCKERFILE) &&
     agentNodeBases.length === 1 &&
-    /^[^\s@]+@sha256:[0-9a-f]{64}$/.test(agentNodeBases[0])
+    /^[^\s@]+@sha256:[0-9a-f]{64}$/.test(agentNodeBases[0]) &&
+    externalBases(AGENT_DOCKERFILE).every((image) => image === agentNodeBases[0])
 );
+const agentNodeDigest = agentNodeBases.length === 1 ? agentNodeBases[0].split("@")[1] : null;
 for (const dockerfile of AGENT_NODE_BASE_REUSERS) {
-  const bases = externalNodeBases(dockerfile);
+  const bases = externalBases(dockerfile);
+  const nodeBases = bases.filter(isNodeImage);
+  const unreviewedOthers = bases.filter(
+    (image) => !isNodeImage(image) && !REVIEWED_NON_NODE_BASES[dockerfile].includes(image)
+  );
   check(
-    `${dockerfile}: is a build-images candidate and every node stage reuses the ${AGENT_DOCKERFILE} digest`,
+    `${dockerfile}: is a build-images candidate, every node stage on any registry is exactly the ${AGENT_DOCKERFILE} reference (digest ${agentNodeDigest ?? "unresolved"}), and every other base is a reviewed non-node base${nodeBases.some((image) => image !== agentNodeBases[0]) ? ` (differs: ${nodeBases.filter((image) => image !== agentNodeBases[0]).join(", ")})` : ""}${unreviewedOthers.length > 0 ? ` (unreviewed: ${unreviewedOthers.join(", ")})` : ""}`,
     candidateDockerfiles.includes(dockerfile) &&
       agentNodeBases.length === 1 &&
-      bases.length > 0 &&
-      bases.every((image) => image === agentNodeBases[0])
+      nodeBases.length > 0 &&
+      nodeBases.every((image) => image === agentNodeBases[0]) &&
+      unreviewedOthers.length === 0
   );
 }
 for (const dockerfile of candidateDockerfiles) {
@@ -265,17 +327,26 @@ for (const schemaPath of webappPrismaGenerates) {
 
 const coreApiInstructions = dockerInstructions(coreApiDockerfile);
 const coreApiDeployIndex = coreApiInstructions.findIndex(
-  ({ text }) => text === "RUN pnpm --filter @platos/core-api deploy --prod --legacy /deploy"
+  ({ text }) => text === "RUN node scripts/deploy-bundle-closure.mjs deploy --importer apps/core-api --bundle /deploy"
 );
 const coreApiClosureIndex = coreApiInstructions.findIndex(
-  ({ text }) =>
-    text ===
-    "RUN node scripts/deploy-bundle-closure.mjs prune --bundle /deploy && node scripts/deploy-bundle-closure.mjs check --bundle /deploy --importer apps/core-api"
+  ({ text }) => text === "RUN node scripts/deploy-bundle-closure.mjs check --bundle /deploy --importer apps/core-api"
 );
 const coreApiRuntimeFromIndex = coreApiInstructions.findLastIndex(({ keyword }) => keyword === "FROM");
 check(
-  "core-api image deploys production dependencies only, then prunes and proves the bundle against the lockfile before the runtime stage",
+  "core-api image deploys its production bundle from the shared lockfile, then proves the bundle against the lockfile before the runtime stage",
   coreApiDeployIndex >= 0 && coreApiClosureIndex > coreApiDeployIndex && coreApiRuntimeFromIndex > coreApiClosureIndex
+);
+// D-ZOD. SHIPPED MUST EQUAL TESTED, so the image may neither fall back to the
+// legacy deploy that re-resolved the Slack adapter's peers against zod 3, nor
+// record a closure package as reviewed-absent: an absence is exactly a package
+// the workspace tests use and the image does not ship.
+const { REVIEWED_ABSENT: DEPLOY_REVIEWED_ABSENT } = await import("./deploy-bundle-closure.mjs");
+check(
+  "core-api image never uses a legacy deploy, and its bundle is allowed no reviewed absence from the lockfile closure",
+  !coreApiInstructions.some(({ keyword, args }) => keyword === "RUN" && /(?:^|\s)--legacy(?:\s|$)|force-legacy-deploy/.test(args)) &&
+    Array.isArray(DEPLOY_REVIEWED_ABSENT["apps/core-api"]) &&
+    DEPLOY_REVIEWED_ABSENT["apps/core-api"].length === 0
 );
 
 const coreApiSchema = read("apps/core-api/src/config/schema.ts");
@@ -333,6 +404,22 @@ try {
 check(
   "core-api image's CMD is exec form and exactly apps/core-api/package.json's `start` script",
   coreApiCmdArgv !== null && coreApiStartArgv.length > 0 && JSON.stringify(coreApiCmdArgv) === JSON.stringify(coreApiStartArgv)
+);
+// V3-4. `dev` SERVES. It used to be `tsc -b --watch`, which recompiled and never
+// started a listener, while the sibling deployables' dev scripts serve
+// (apps/agent: `nest start --watch`). The runner joins the package's own `build`
+// and `start` scripts rather than restating them; this holds the script to that
+// runner and the runner to both joins, so neither can be dropped with CI green.
+const CORE_API_DEV_RUNNER = "apps/core-api/scripts/dev.mjs";
+const coreApiDevRunner = existsSync(join(root, CORE_API_DEV_RUNNER)) ? read(CORE_API_DEV_RUNNER) : "";
+check(
+  `core-api's dev script serves: it runs ${CORE_API_DEV_RUNNER}, which watches the package's tsc build script and restarts its start script after each clean compilation`,
+  coreApiPackage.scripts?.dev === `node ${CORE_API_DEV_RUNNER.slice("apps/core-api/".length)}` &&
+    /^tsc -b(?:\s|$)/.test(coreApiPackage.scripts?.build ?? "") &&
+    coreApiDevRunner.includes("scripts.build") &&
+    coreApiDevRunner.includes("scripts.start") &&
+    coreApiDevRunner.includes('"--watch"') &&
+    /Found \(\\d\+\) errors\?/.test(coreApiDevRunner)
 );
 check(
   "core-api image's runtime stage declares no ENTRYPOINT of its own that would change what CMD runs",
@@ -490,13 +577,15 @@ check(
 // ─── What the pull-only deploy override leaves able to compile on the box ───
 // `docker compose up` builds any service that has a `build:` block and no local
 // image, whether or not `build` is passed (measured on compose 5.1.3 with
-// `up --dry-run`). docker-compose.deploy.yml's header says it "removes every
-// application build block". Under it, core-api and docs-mcp-bridge keep theirs;
-// docs-mcp-bridge already did on origin/v1. That file is byte-pinned to an owner
-// authorization baseline by scripts/clickhouse-split-audit.mjs, so its sentence
-// cannot be corrected there. The exact set is pinned here instead, computed from
-// the two files as compose merges them, and every service scripts/deploy-platos.sh
-// pulls or starts must be reset to a required digest reference.
+// `up --dry-run`). docker-compose.deploy.yml's header used to say it "removes
+// every application build block"; under it, core-api and docs-mcp-bridge keep
+// theirs (docs-mcp-bridge already did on origin/v1). The header now says so: its
+// owner-authorization byte pin in scripts/clickhouse-split-audit.mjs was
+// re-baselined to the corrected bytes under D-DEPLOY-HEADER
+// (docs/adr/M2-M4-delegated-decisions-2026-09-15.md). The exact set is pinned
+// here, computed from the two files as compose merges them, the header must name
+// that set, and every service scripts/deploy-platos.sh pulls or starts must be
+// reset to a required digest reference.
 const SERVICES_KEEPING_A_BUILD_BLOCK_UNDER_DEPLOY = Object.freeze(["core-api", "docs-mcp-bridge"]);
 const COMPOSE_RESET = Symbol("compose !reset");
 const deployOverride = parseYaml(read("docker-compose.deploy.yml"), {
@@ -510,6 +599,14 @@ const keepsBuildUnderDeploy = Object.entries(composeServices)
 check(
   `exactly the reviewed services keep a build block under the deploy override (now: ${keepsBuildUnderDeploy.join(", ") || "none"})`,
   JSON.stringify(keepsBuildUnderDeploy) === JSON.stringify([...SERVICES_KEEPING_A_BUILD_BLOCK_UNDER_DEPLOY].sort())
+);
+const deployOverrideHeader = read("docker-compose.deploy.yml").split("\nservices:")[0];
+check(
+  "docker-compose.deploy.yml's header names every service that keeps a build block under it, and no longer claims to remove every build block",
+  keepsBuildUnderDeploy.length > 0 &&
+    keepsBuildUnderDeploy.every((name) => deployOverrideHeader.includes(`\`${name}\``)) &&
+    !/removes every application build block/.test(deployOverrideHeader) &&
+    !/ignores `build:` when you don't pass `build`/.test(deployOverrideHeader)
 );
 check(
   "of the services keeping a build block under the deploy override, only the reviewed pre-existing docs-mcp-bridge starts without a profile",
@@ -638,10 +735,26 @@ check(
     coreApiEdgeRoutes[0].matcher === null &&
     coreApiEdgeRoutes[0].upstream === `localhost:${coreApiHostPort}`
 );
+// D-COOKIE. The interim `header_down -Set-Cookie` on core-api's host is gone, and
+// that is safe only while two schema facts hold, so the check joins the edge to
+// the config field tables rather than to a sentence in operator.ts: core-api
+// believes no forwarded header unless PLATOS_CORE_API_TRUSTED_PROXY is set (its
+// default is null), and it issues the session cookie only as a Secure __Host-
+// cookie over TLS unless an operator says otherwise
+// (PLATOS_SECURITY_SESSION_COOKIE_SECURE defaults to true). Flip either default
+// and a cookie could leave this host without Secure, so either flip fails here.
+const coreApiFieldDefault = (name) => coreApiConfig.fields.find((field) => field.name === name)?.defaultValue;
 check(
-  "core-api's edge host strips Set-Cookie while core-api does not trust the proxy for the Secure-cookie decision",
-  JSON.stringify(coreApiEdgeRoutes[0]?.options ?? []) === JSON.stringify(["header_down -Set-Cookie"]) &&
-    /return request\.secure === true;/.test(read("apps/core-api/src/transports/rest/operator.ts"))
+  "core-api's edge host passes responses through unmodified, and only because core-api trusts no proxy and issues only a Secure session cookie by default",
+  JSON.stringify(coreApiEdgeRoutes[0]?.options ?? null) === "[]" &&
+    coreApiFieldDefault("PLATOS_CORE_API_TRUSTED_PROXY") === null &&
+    coreApiFieldDefault("PLATOS_SECURITY_SESSION_COOKIE_SECURE") === "true"
+);
+check(
+  "core-api's compose service passes the trusted proxy and the three session cookie settings through blank",
+  ["PLATOS_CORE_API_TRUSTED_PROXY", "PLATOS_SECURITY_SESSION_COOKIE_SECURE", "PLATOS_SECURITY_SESSION_COOKIE_NAME", "PLATOS_SECURITY_SESSION_SAME_SITE"].every(
+    (name) => coreApiService.environment?.[name] === `\${${name}:-}` && coreApiConfig.fields.some((field) => field.name === name)
+  )
 );
 check(
   "no other edge route reaches core-api's host port",

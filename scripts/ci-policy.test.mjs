@@ -97,7 +97,11 @@ const expectedPnpmRunInstructions = new Map([
     [
       "RUN pnpm install --frozen-lockfile",
       "RUN pnpm run build:platos:core-api",
-      "RUN pnpm --filter @platos/core-api deploy --prod --legacy /deploy",
+      // D-ZOD. The deploy is no longer a pnpm RUN of its own: it is
+      // `node scripts/deploy-bundle-closure.mjs deploy`, pnpm's non-legacy deploy
+      // from the shared lockfile, proven by the `check` RUN after it
+      // (scripts/audit-platos-build.mjs pins both instructions and refuses
+      // `--legacy`).
     ],
   ],
 ]);
@@ -2385,6 +2389,57 @@ function policyViolations(input) {
     violations.push("core-api smoke must run the exact smoke script once, unconditionally, after verifying the candidates");
   }
 
+  // D-PUBLISH-CORE. PUBLICATION OF TESTED IDENTITIES ONLY. An independent
+  // verifier added core-api to publish-images.yml's identity loops and its import
+  // loop while candidate-images.json recorded no tested core-api identity, and all
+  // of CI stayed green. So the set this workflow publishes is joined to the set
+  // build-images.yml records as tested, in every place publication names an
+  // identity; and core-api, which the persisted-state job does not start, is
+  // recorded only from the identity smoke-candidate-core-api reported serving.
+  const identityVariables = (text) => [...new Set(text.match(/WIN235_[A-Z_]+_IMAGE\b/gu) ?? [])].sort();
+  const recordingJob = buildJobs.get("persisted-state");
+  const recordStep = workflowSteps(recordingJob).find((step) => step.name === "Record tested candidate identities");
+  const recordRun = typeof recordStep?.run === "string" ? recordStep.run : "";
+  const recordedImages = /const images = \{([\s\S]*?)\};/u.exec(recordRun)?.[1] ?? "";
+  const testedIdentities = [...recordedImages.matchAll(/^\s*[A-Za-z]+: process\.env\.(WIN235_[A-Z_]+_IMAGE),\s*$/gmu)]
+    .map((match) => match[1])
+    .sort();
+  const publishRun = workflowSteps(publishJob)
+    .map((step) => (typeof step.run === "string" ? step.run : ""))
+    .join("\n")
+    .replace(/\\\n\s*/gu, " ");
+  const identityLoops = [...publishRun.matchAll(/for identity_variable in ([^;]+); do/gu)].map((match) => identityVariables(match[1]));
+  const importLoop = identityVariables(/for candidate in ([^;]+); do/u.exec(publishRun)?.[1] ?? "");
+  const importNames = [...(/for candidate in ([^;]+); do/u.exec(publishRun)?.[1] ?? "").matchAll(/"([a-z-]+) WIN235_/gu)].map((match) => match[1]).sort();
+  const sourcedNames = [...new Set([...publishRun.matchAll(/source artifacts\/candidates\/([a-z-]+)\.env/gu)].map((match) => match[1]))].sort();
+  const publishedRecord = identityVariables(/const published = \{([\s\S]*?)\};/u.exec(publishRun)?.[1] ?? "");
+  const testedKey = JSON.stringify(testedIdentities);
+  if (
+    testedIdentities.length === 0 ||
+    identityLoops.length !== 2 ||
+    identityLoops.some((loop) => JSON.stringify(loop) !== testedKey) ||
+    JSON.stringify(importLoop) !== testedKey ||
+    JSON.stringify(publishedRecord) !== testedKey ||
+    JSON.stringify(importNames) !== JSON.stringify(sourcedNames) ||
+    !importNames.every((name) => matrixNames.has(name))
+  ) {
+    violations.push("publish-images must publish exactly the candidate identities build-images records as tested");
+  }
+  const smokeIdentityStepIndex = coreApiSmokeSteps.findIndex((step) => step.id === "tested-identity");
+  const smokeIdentityStep = coreApiSmokeSteps[smokeIdentityStepIndex];
+  if (
+    coreApiSmokeJob?.outputs?.["tested-image"] !== "${{ steps.tested-identity.outputs.image }}" ||
+    smokeIdentityStepIndex <= coreApiSmokeIndex ||
+    smokeIdentityStep?.if !== undefined ||
+    !flatRun(smokeIdentityStep).includes('echo "image=$WIN235_CORE_API_IMAGE" >> "$GITHUB_OUTPUT"') ||
+    !JSON.stringify([recordingJob?.needs ?? []].flat()).includes('"core-api-smoke"') ||
+    recordStep?.env?.WIN235_CORE_API_SMOKE_TESTED_IMAGE !== "${{ needs.core-api-smoke.outputs.tested-image }}" ||
+    !recordRun.includes("smokeTested !== process.env.WIN235_CORE_API_IMAGE") ||
+    !testedIdentities.includes("WIN235_CORE_API_IMAGE")
+  ) {
+    violations.push("build-images must record core-api as tested only from the identity smoke-candidate-core-api served");
+  }
+
   const inventoryShellCommands = normalizedShellCommands(input.webappInventoryAudit);
   const verifierCommands = inventoryShellCommands.filter((command) => command.startsWith("node scripts/verify-webapp-image-inventory.mjs --image "));
   if (JSON.stringify(verifierCommands) !== JSON.stringify(expectedWebappInventoryVerifierCommands)) {
@@ -4291,6 +4346,46 @@ test("CI policy controls fail under generated semantic source mutations", async 
         mutateFixture(input, "buildImages", `run: ${coreApiSmokeCommand}`, "run: echo skipped-core-api-smoke"),
     },
     {
+      name: "core-api published while the gate records no tested core-api identity",
+      expected: "publish-images must publish exactly the candidate identities build-images records as tested",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "            coreApi: process.env.WIN235_CORE_API_IMAGE,\n", ""),
+    },
+    {
+      name: "an untested identity added to a publication loop",
+      expected: "publish-images must publish exactly the candidate identities build-images records as tested",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "publishImages",
+          "WIN235_MIGRATIONS_IMAGE WIN235_CORE_API_IMAGE; do",
+          "WIN235_MIGRATIONS_IMAGE WIN235_CORE_API_IMAGE WIN235_UNTESTED_IMAGE; do"
+        ),
+    },
+    {
+      name: "core-api dropped from the publication record while still published",
+      expected: "publish-images must publish exactly the candidate identities build-images records as tested",
+      mutate: (input) =>
+        mutateFixture(input, "publishImages", "            coreApi: process.env.WIN235_CORE_API_IMAGE,\n", ""),
+    },
+    {
+      name: "core-api recorded as tested without the smoke job's report",
+      expected: "build-images must record core-api as tested only from the identity smoke-candidate-core-api served",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "buildImages",
+          "WIN235_CORE_API_SMOKE_TESTED_IMAGE: ${{ needs.core-api-smoke.outputs.tested-image }}",
+          "WIN235_CORE_API_SMOKE_TESTED_IMAGE: ${{ env.WIN235_CORE_API_IMAGE }}"
+        ),
+    },
+    {
+      name: "persisted-state stops waiting for the core-api smoke it records",
+      expected: "build-images must record core-api as tested only from the identity smoke-candidate-core-api served",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "needs: [build-candidates, core-api-smoke]", "needs: build-candidates"),
+    },
+    {
       name: "core-api candidate smoke verifies a narrower candidate set",
       expected: "core-api smoke must verify and load exactly the core-api and migrations candidates",
       mutate: (input) =>
@@ -5084,12 +5179,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   core-api candidate. ONE for its `setup-node` step (build-images' count 1 -> 2),
   //   and THREE for its rules: the smoke command skipped, the verified candidate set
   //   narrowed, and the job gated off.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 = 394. The count is
+  //   PUBLISH CORE-API, +5. Publication of tested identities only: an identity
+  //   published but not recorded, an untested identity added to a publication loop,
+  //   one dropped from the publication record, core-api recorded without the smoke
+  //   job's report, and the recording job no longer waiting for that smoke.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 5 = 399. The count is
   // pinned rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    394,
+    399,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

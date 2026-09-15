@@ -7,7 +7,9 @@
 #
 # Stage 2 (runtime): thin node image that just copies the deployed bundle and
 # build output.
-# External base index audited and pinned 2026-08-24.
+# External base index pinned 2026-08-24 in commit 6f5cc554 ("ci: add
+# persisted-state release gate"). No review receipt for that pin exists in this
+# repository, so this states the pin and claims no audit.
 
 # ───────────────────────────────────────────────────────────
 # Builder

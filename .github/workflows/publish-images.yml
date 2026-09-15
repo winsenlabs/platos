@@ -4,12 +4,16 @@ name: Publish tested container images
 # push run of build-images.yml on main and publishes the exact OCI archives and
 # persisted-state identity evidence produced by that run. Nothing is rebuilt.
 #
-# The core-api candidate is archived by the same run, and the reverification step
-# below checks its archive checksum, digest and revision label with the others.
-# It is deliberately NOT published: the persisted-state gate does not start it,
-# so candidate-images.json carries no tested identity for it, and this workflow
-# publishes only identities that gate tested. Publishing core-api is a separate
-# decision that starts with the gate booting it.
+# PUBLICATION IS OF TESTED IDENTITIES ONLY, FOUR OF THEM (D-PUBLISH-CORE). The
+# persisted-state gate records candidate-images.json: agent, webapp and
+# migrations as the identities it started and exercised, and core-api as the
+# identity smoke-candidate-core-api verified, loaded and served in the same run
+# (build-images.yml refuses to record one that job did not report). This workflow
+# publishes exactly that set, and scripts/verify-webapp-publication-provenance.mjs
+# refuses to continue unless candidate-images.json equals, byte for byte, the
+# identities of the archives about to be published. scripts/ci-policy.test.mjs
+# fails if the set published here and the set recorded as tested ever differ.
+# Running this workflow remains the founder's decision.
 on:
   workflow_dispatch:
     inputs:
@@ -154,6 +158,7 @@ jobs:
           source artifacts/candidates/agent.env
           source artifacts/candidates/webapp.env
           source artifacts/candidates/migrations.env
+          source artifacts/candidates/core-api.env
           set +a
           node scripts/verify-webapp-publication-provenance.mjs \
             --candidate-identities artifacts/gate/candidate-images.json \
@@ -176,7 +181,7 @@ jobs:
           # Fail before mutation if this source run or commit was previously
           # bound to a different digest. Neither tag may move.
           for identity_variable in \
-            WIN235_AGENT_IMAGE WIN235_WEBAPP_IMAGE WIN235_MIGRATIONS_IMAGE; do
+            WIN235_AGENT_IMAGE WIN235_WEBAPP_IMAGE WIN235_MIGRATIONS_IMAGE WIN235_CORE_API_IMAGE; do
             identity="${!identity_variable}"
             repository="${identity%@*}"
             expected_digest="${identity##*@}"
@@ -193,7 +198,8 @@ jobs:
           for candidate in \
             "agent WIN235_AGENT_IMAGE" \
             "webapp WIN235_WEBAPP_IMAGE" \
-            "migrations WIN235_MIGRATIONS_IMAGE"; do
+            "migrations WIN235_MIGRATIONS_IMAGE" \
+            "core-api WIN235_CORE_API_IMAGE"; do
             read -r name identity_variable <<<"$candidate"
             identity="${!identity_variable}"
             repository="${identity%@*}"
@@ -210,7 +216,7 @@ jobs:
           done
 
           for identity_variable in \
-            WIN235_AGENT_IMAGE WIN235_WEBAPP_IMAGE WIN235_MIGRATIONS_IMAGE; do
+            WIN235_AGENT_IMAGE WIN235_WEBAPP_IMAGE WIN235_MIGRATIONS_IMAGE WIN235_CORE_API_IMAGE; do
             identity="${!identity_variable}"
             repository="${identity%@*}"
             expected_digest="${identity##*@}"
@@ -236,6 +242,7 @@ jobs:
             agent: process.env.WIN235_AGENT_IMAGE,
             webapp: process.env.WIN235_WEBAPP_IMAGE,
             migrations: process.env.WIN235_MIGRATIONS_IMAGE,
+            coreApi: process.env.WIN235_CORE_API_IMAGE,
             mutableLatestPublished: false,
           };
           fs.writeFileSync(

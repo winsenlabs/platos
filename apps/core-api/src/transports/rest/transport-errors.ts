@@ -147,3 +147,46 @@ export function contextUnavailable(context: string): DomainError {
     { details: { context } },
   );
 }
+
+/**
+ * D-COOKIE. A Secure install was asked to set the operator session cookie on a
+ * request that TLS did not reach.
+ *
+ * `PLATOS_SECURITY_SESSION_COOKIE_SECURE` defaults to true, and on such an install
+ * the cookie is `Secure` and `__Host-` prefixed. Writing it on a request that
+ * arrived over plain HTTP — directly, or through a proxy the operator did not name
+ * in `PLATOS_CORE_API_TRUSTED_PROXY` — would put the credential in a response a
+ * browser on the far side of TLS cannot have sent, and is refused rather than
+ * downgraded. `precondition_failed`: the caller can observe the condition and
+ * meet it, by reaching the install through its TLS endpoint.
+ */
+export function sessionCookieRequiresTls(): DomainError {
+  return domainError(
+    "TRANSPORT_SESSION_COOKIE_REQUIRES_TLS",
+    "precondition_failed",
+    "This install sets the operator session cookie only on a request that reached it over TLS.",
+  );
+}
+
+/**
+ * A backing store did not answer, and the request could not be completed.
+ *
+ * Minted by the exception filter, never by a route: it is the classification of a
+ * thrown driver fault `http/store-faults.ts` recognises — a database that stopped
+ * answering a query, closed the connection, could not be reached, or left the
+ * pool with no connection to give. Without it that throw reached the caller as
+ * `TRANSPORT_UNHANDLED_FAULT` at 500, which tells an operator to chase a defect in
+ * a process that is working and a caller that retrying will not help.
+ *
+ * `unavailable` -> 503, with a one-second hint: the store may be back for the
+ * next attempt, and the process itself is healthy. The driver's own text, which
+ * can carry a host and a database name, stays in the log against the `errorId`.
+ */
+export function storeUnavailable(): DomainError {
+  return domainError(
+    "TRANSPORT_STORE_UNAVAILABLE",
+    "unavailable",
+    "A backing store did not answer, so this request was not completed. Retry shortly.",
+    { retryAfterSeconds: 1 },
+  );
+}

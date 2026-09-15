@@ -789,8 +789,17 @@ export const VIOLATION_CODES = Object.freeze({
  * own single frozen `{ ...process.env }` and hands the values in; a helper that read
  * `process.env` itself would be a door this gate could not attribute to the suite
  * that walked through it. Two files landed, thirty-two reads stayed thirty-two.
+ *
+ * CORE-API DEPLOYABILITY RESIDUE: 1701 + 7 = 1708, and NO DOOR OPENED. D-COOKIE's
+ * trusted-proxy range (`config/trusted-proxy.ts`, its suite, and the per-request
+ * decision `runtime/trusted-proxy.ts`), the cookie-transport suite, the
+ * store-unavailable classifier and its suite (`http/store-faults.ts`), and the
+ * compose readiness suite. The proxy address and the three session cookie
+ * settings arrive through `config/`'s typed sections like every other variable;
+ * none of the seven reads the environment, and the compose suite reads the
+ * committed compose file and `.env.example` as FILES, not the ambient environment.
  */
-export const EXPECTED_FILE_COUNT = 1701;
+export const EXPECTED_FILE_COUNT = 1708;
 
 function listSourceFiles(root) {
   const found = [];

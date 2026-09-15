@@ -1,16 +1,20 @@
 # Platos core-api — THE V1 composition root as a container image.
 #
 # Modelled on apps/agent/Dockerfile. Stage 1 (builder) installs the frozen
-# monorepo, builds the explicit core-api graph and runs `pnpm deploy`, which
-# writes a self-contained directory with every workspace package resolved to a
-# real copy, then prunes that directory to core-api's production closure and
-# proves the result against pnpm-lock.yaml. Stage 2 (runtime) copies that
-# bundle, the compiled entry point and the legal files, and runs as an
-# unprivileged account.
+# monorepo, builds the explicit core-api graph and runs pnpm's non-legacy
+# `deploy` from the shared lockfile, which writes a self-contained directory with
+# every workspace package resolved to a real copy and every external package
+# resolved exactly as pnpm-lock.yaml resolves it, then proves the result against
+# pnpm-lock.yaml. Stage 2 (runtime) copies that bundle, the compiled entry point
+# and the legal files, and runs as an unprivileged account.
 #
-# External base index audited and pinned 2026-08-24. It is the SAME digest
-# apps/agent/Dockerfile pins, reused unchanged on 2026-09-15, so this image adds
-# no new supply-chain input to the repository.
+# External base index pinned 2026-08-24 in commit 6f5cc554 ("ci: add
+# persisted-state release gate"); no review receipt for that pin exists in this
+# repository, so this file claims the pin and not an audit. It is the SAME
+# reference apps/agent/Dockerfile pins, reused unchanged on 2026-09-15, so this
+# image adds no new supply-chain input to the repository, and
+# scripts/audit-platos-build.mjs fails if any node stage here, on any registry,
+# stops being exactly that reference.
 #
 # NO BUILDKIT-ONLY SYNTAX. The agent image mounts a pnpm store cache on its
 # install step, and that mount is refused by the classic builder. This file
@@ -53,20 +57,21 @@ RUN pnpm install --frozen-lockfile
 # The explicit core-api graph, defined once in the root package.json.
 RUN pnpm run build:platos:core-api
 
-# Self-contained production bundle at /deploy.
-RUN pnpm --filter @platos/core-api deploy --prod --legacy /deploy
+# SHIPPED EQUALS TESTED (D-ZOD). Self-contained production bundle at /deploy,
+# installed from the shared lockfile's own resolved snapshots. The legacy deploy
+# this replaces re-resolved the peers of injected workspace packages and shipped
+# the Slack channel adapter's chat/ai/@ai-sdk peers against zod 3 while the
+# lockfile and every workspace test used zod 4. The script's header has the
+# mechanism, including the one lockfile setting it holds for the duration of the
+# deploy and restores byte-for-byte.
+RUN node scripts/deploy-bundle-closure.mjs deploy --importer apps/core-api --bundle /deploy
 
-# MINIMAL, AND PROVEN MINIMAL AGAINST THE LOCKFILE. A legacy deploy also installs
-# the workspace root manifest's own `dependencies` into the bundle (measured: 262
-# packages core-api never imports, the changesets CLI and prettier 2 among them).
-# `prune` deletes every store entry the bundle's own production dependencies do
-# not reach, and only deletes. `check` then compares what is left with
+# PROVEN AGAINST THE COMMITTED LOCKFILE. `check` compares the bundle with
 # apps/core-api's production closure as pnpm-lock.yaml states it, and fails the
-# build on any package outside that closure, on any unreviewed closure package
-# that is missing, and on any link that leaves the bundle. The script's header
-# has the mechanism and the three reviewed absences.
-RUN node scripts/deploy-bundle-closure.mjs prune --bundle /deploy \
-    && node scripts/deploy-bundle-closure.mjs check --bundle /deploy --importer apps/core-api
+# build on any package outside that closure, on any closure package that is
+# missing (none is reviewed as absent), on any workspace package set that differs
+# from the importer graph, and on any link that leaves the bundle.
+RUN node scripts/deploy-bundle-closure.mjs check --bundle /deploy --importer apps/core-api
 
 # ───────────────────────────────────────────────────────────
 # Runtime
