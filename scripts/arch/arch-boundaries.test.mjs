@@ -1401,7 +1401,15 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // moved first -- and it caught the omission, which is the whole reason two pins
     // derived differently are kept.
     // 1699 + 2 = 1701.
-    assert.equal(result.fileCount, 1701, "the generated V1 source census must stay exact");
+    //
+    // WIN-302 — THE FACTORY ENTRIES, 1701 -> 1712. ELEVEN files, ALL under
+    // `apps/core-api/src/composition/`: the ten one-line modules of
+    // `factory-entries/`, one per context whose factory is reached through
+    // `./application/index.js`, and `context-factories.test.ts`, which imports
+    // each in a named case of its own. NOTHING under `packages/`: the six manifests
+    // that gained the subpath are scaffolding, and this census reads source.
+    // 1701 + 11 = 1712.
+    assert.equal(result.fileCount, 1712, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1490,7 +1498,10 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // that directory now share. NOTHING under `packages/` and nothing under
       // `transports/`: the four suites that learned to take a SUPPLIED server are
       // edits, as are the two that already could.
-      2);
+      2 +
+      // WIN-302 THE FACTORY ENTRIES: composition 11 -- ten `factory-entries/`
+      // modules and the suite that loads them. NOTHING under `packages/`.
+      11);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

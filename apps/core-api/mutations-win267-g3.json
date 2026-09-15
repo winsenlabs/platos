@@ -178,6 +178,45 @@
       ]
     }
   ],
+  "retiredKills": {
+    "note": [
+      "WIN-302 RETIRED THE CASE FIVE OF THE KILLS ABOVE NAME. 'the context bundles",
+      "those adapters can satisfy > cannot import eight context factories, and",
+      "partitions all seventeen manifests' was renamed twice and then MOVED: the",
+      "partition now lives in src/composition/context-factories.test.ts, and",
+      "UNIMPORTABLE_CONTEXT_FACTORIES is empty. The kills are left as they were",
+      "measured at ff06655f, and this section records where each property is held",
+      "at the tree carrying apps/core-api/mutations-win302.json, which re-ran the",
+      "live ones."
+    ],
+    "entries": [
+      {
+        "mutation": "G3-M05",
+        "status": "inapplicable -- its `from` text no longer exists, because the constant is empty",
+        "heldBy": "context-factories.test.ts > every context's contract factory resolves from apps/core-api, proved by import > governance: its contract factory resolves from apps/core-api, proved by import; and WIN302-M05 for the removal direction"
+      },
+      {
+        "mutation": "G3-M06",
+        "status": "superseded by WIN302-M03, the same shape (an importable context put on the list) against the empty constant",
+        "heldBy": "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable; prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      },
+      {
+        "mutation": "G3-M07",
+        "status": "retired -- it is now TRUE of all seventeen, so the live mutation is its opposite, an entry point REMOVED: WIN302-M04, M05 and M06",
+        "heldBy": "the removed context's own case, e.g. 'every context's contract factory resolves from apps/core-api, proved by import > governance: its contract factory resolves from apps/core-api, proved by import'"
+      },
+      {
+        "mutation": "G3-M08",
+        "status": "re-run as WIN302-M09",
+        "heldBy": "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble; every context's contract factory resolves from apps/core-api, proved by import > agents: its contract factory resolves from apps/core-api, proved by import"
+      },
+      {
+        "mutation": "G3-M09",
+        "status": "re-run at WIN-302 with the same `from`/`to` in dist: 17 failed | 33 passed. The tools case is red, and so are sixteen installation.test.ts cases, because tools is now COMPOSED through toolsContract and was not at ff06655f",
+        "heldBy": "every context's contract factory resolves from apps/core-api, proved by import > tools: its contract factory resolves from apps/core-api, proved by import"
+      }
+    ]
+  },
   "rejectedMutations": [],
   "declaredUnfalsifiable": [
     {
