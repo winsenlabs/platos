@@ -644,5 +644,26 @@ describeWithServices("tool-call parity across execute-batch, internal-execute-to
     // Nothing outside the admitted origins is admitted.
     const outside = await screenedUrl("http://127.0.0.1:1/tools", { allowHttp: true });
     expect(outside.ok).toBe(false);
+    // …including the IPv4-MAPPED IPv6 spelling of an admitted backend, which is a
+    // different origin that connects to the same socket. The real screen let that
+    // spelling through until this lane: the URL parser turns
+    // `[::ffff:127.0.0.1]` into `[::ffff:7f00:1]` before the screen sees it, and
+    // the screen read only the dotted form. Cloud metadata in the same spelling,
+    // and the IPv4-compatible form, are refused; a PUBLIC address in the mapped
+    // spelling is still admitted, so the refusal is about the address.
+    const port = new URL([...admitted][0]!).port;
+    for (const spelled of [
+      `http://[::ffff:127.0.0.1]:${port}/tools`,
+      `http://[::ffff:7f00:1]:${port}/tools`,
+      `http://[0:0:0:0:0:ffff:7f00:0001]:${port}/tools`,
+      "http://[::ffff:169.254.169.254]/latest/meta-data/",
+      "http://[::ffff:a9fe:a9fe]/latest/meta-data/",
+      "http://[::a9fe:a9fe]/latest/meta-data/",
+      "http://[::ffff:10.1.2.3]/",
+    ]) {
+      const refused = await actual.validatePublicUrl(spelled, { allowHttp: true });
+      expect({ spelled, ok: refused.ok }).toEqual({ spelled, ok: false });
+    }
+    await expect(actual.validatePublicUrl("http://[::ffff:8.8.8.8]/", { allowHttp: true })).resolves.toMatchObject({ ok: true });
   });
 });

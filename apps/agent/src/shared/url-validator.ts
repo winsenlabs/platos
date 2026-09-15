@@ -83,6 +83,44 @@ const BLOCKED_PORTS = new Set<number>([
   10250, 10255, 11211, 27017, 27018, 27019,
 ]);
 
+/** The eight hextets of an IPv6 literal in any valid spelling, or null. */
+function ipv6Hextets(ip: string): number[] | null {
+  let canonical: string;
+  try {
+    // The URL parser is the canonicaliser the fetch path itself uses: it folds
+    // a dotted tail into hex and compresses zero runs, so one expansion below
+    // covers every spelling a caller can write.
+    canonical = unbracketHost(new URL(`http://[${ip}]/`).hostname);
+  } catch {
+    return null;
+  }
+  const doubleColon = canonical.indexOf("::");
+  const head = doubleColon === -1 ? canonical : canonical.slice(0, doubleColon);
+  const tail = doubleColon === -1 ? "" : canonical.slice(doubleColon + 2);
+  const left = head === "" ? [] : head.split(":");
+  const right = tail === "" ? [] : tail.split(":");
+  const fill = doubleColon === -1 ? 0 : 8 - left.length - right.length;
+  if (fill < 0) return null;
+  const hextets = [...left, ...Array<string>(fill).fill("0"), ...right].map((part) => Number.parseInt(part, 16));
+  return hextets.length === 8 && hextets.every((value) => Number.isInteger(value) && value >= 0 && value <= 0xffff)
+    ? hextets
+    : null;
+}
+
+/**
+ * The IPv4 address an IPv4-mapped (`::ffff:a.b.c.d`) or IPv4-compatible
+ * (`::a.b.c.d`) IPv6 address embeds, or null. `::` and `::1` are not
+ * IPv4-compatible; the caller already refuses both.
+ */
+function embeddedIpv4(ip: string): string | null {
+  const hextets = ipv6Hextets(ip);
+  if (hextets === null || !hextets.slice(0, 5).every((value) => value === 0)) return null;
+  const mapped = hextets[5] === 0xffff;
+  const compatible = hextets[5] === 0 && (hextets[6] !== 0 || hextets[7]! > 1);
+  if (!mapped && !compatible) return null;
+  return [hextets[6]! >> 8, hextets[6]! & 0xff, hextets[7]! >> 8, hextets[7]! & 0xff].join(".");
+}
+
 /**
  * Returns true if the given IPv4 / IPv6 address falls in a range we
  * refuse to reach from the agent.
@@ -110,11 +148,21 @@ function isPrivateOrReservedIp(ip: string): boolean {
     if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // fc00::/7 unique-local
     if (lower.startsWith("fe80")) return true;               // fe80::/10 link-local
     if (lower.startsWith("ff")) return true;                 // ff00::/8 multicast
-    // IPv4-mapped IPv6 (::ffff:x.x.x.x) — check the embedded v4.
-    if (lower.startsWith("::ffff:")) {
-      const v4 = ip.split(":").pop();
-      if (v4 && net.isIPv4(v4)) return isPrivateOrReservedIp(v4);
-    }
+    // IPv4-mapped (::ffff:0:0/96) and IPv4-compatible (::/96) IPv6 carry an
+    // IPv4 address in their low 32 bits, and a socket connected to one reaches
+    // that IPv4 host. The embedded address is checked in EITHER spelling.
+    //
+    // SECURITY (WIN-269 parity lane, found while building the suite's SSRF
+    // control). This used to read the dotted tail only (`::ffff:169.254.169.254`),
+    // but the WHATWG URL parser NORMALISES that literal to the HEX spelling
+    // before this function sees it — `new URL("http://[::ffff:169.254.169.254]/")`
+    // has hostname `[::ffff:a9fe:a9fe]` — so the dotted branch never ran on a
+    // URL, the hex tail was not an IPv4 string, and the address was reported
+    // PUBLIC. `http://[::ffff:a9fe:a9fe]/latest/meta-data` passed
+    // `validatePublicUrl` and the loopback spelling `[::ffff:7f00:1]` reached a
+    // local listener. The address is now expanded to its eight hextets first.
+    const embedded = embeddedIpv4(lower);
+    if (embedded !== null) return isPrivateOrReservedIp(embedded);
     return false;
   }
   return false;
