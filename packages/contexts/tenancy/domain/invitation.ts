@@ -32,6 +32,18 @@ import type {
 import { normalizeEmail } from "./identifiers.js";
 import type { OrganizationRole } from "./roles.js";
 
+/**
+ * Whether a NORMALIZED address can receive an invitation.
+ *
+ * The oracle's invite route refused `^\S+@\S+\.\S+$` failures with a 400 before
+ * the service ran; this is that rule, moved into the use case the route's deletion
+ * leaves behind. `\S` keeps a CR or LF out of any header the address later lands
+ * in, and 254 is RFC 5321's path ceiling.
+ */
+export function isInvitableEmail(address: string): boolean {
+  return address.length <= 254 && /^\S+@\S+\.\S+$/u.test(address);
+}
+
 export interface OrganizationInvitationRecord {
   readonly id: OrganizationInvitationId;
   readonly organizationId: OrganizationId;

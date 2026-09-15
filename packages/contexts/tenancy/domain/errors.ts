@@ -54,6 +54,49 @@ export function membershipMutationForbidden(reason: string): DomainError {
   );
 }
 
+/**
+ * D1 (2026-09-15) — an invitation refused because the inviter does not administer
+ * the organization, or asked for a role only an OWNER may grant.
+ *
+ * ITS OWN CODE, NOT `TENANCY_MEMBERSHIP_FORBIDDEN`: that one refuses a ROLE
+ * CHANGE, and two guards under one code cannot be told apart in a log. The gate is
+ * in `details` (log-only) for the reason `organization-administration.ts` gives.
+ */
+export function invitationForbidden(gate: string): DomainError {
+  return domainError(
+    "TENANCY_INVITATION_FORBIDDEN",
+    "forbidden",
+    "Operator is not authorized to invite members to this organization",
+    { details: { gate } },
+  );
+}
+
+/**
+ * The team listing refused. Ported from `settings.team`'s 403; a code of its own
+ * for the reason `invitationForbidden` has one.
+ */
+export function memberListForbidden(gate: string): DomainError {
+  return domainError(
+    "TENANCY_MEMBER_LIST_FORBIDDEN",
+    "forbidden",
+    "Operator is not authorized to list this organization's members",
+    { details: { gate } },
+  );
+}
+
+/**
+ * An invitation addressed to something that cannot be an email address.
+ *
+ * The oracle's invite route refused `^\S+@\S+\.\S+$` failures with a 400 before
+ * calling the service; the rule moves into the use case with the route's deletion.
+ * The field is named, the value is not echoed.
+ */
+export function invalidInvitationEmail(): DomainError {
+  return domainError("TENANCY_INVALID_EMAIL", "invalid_input", "Enter a valid email address", {
+    fields: [{ field: "email", code: "TENANCY_INVALID_EMAIL", message: "must be an email address" }],
+  });
+}
+
 /** The 409 `owner_invariant` of `changeMembershipRole`. */
 export function lastOwnerInvariant(): DomainError {
   return domainError(

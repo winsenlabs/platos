@@ -92,12 +92,36 @@ describe("the limit comparison", () => {
 });
 
 describe("the documented behaviour when the limiter itself is unreachable", () => {
-  it("is fail-open, and it is a named policy rather than a swallowed error", () => {
-    expect(LIMITER_UNAVAILABLE_POLICY).toBe("allow");
+  // D3 (2026-09-15) RE-RECORDED THIS PIN. It read `toBe("allow")` under the title
+  // "is fail-open", which was the oracle's behaviour ported verbatim. The founder
+  // delegation chose `deny`, because the budget this protects includes
+  // MFA_VERIFY and "allow" was unlimited TOTP guesses for the length of a Redis
+  // outage. The pin still exists for the reason it always did: the policy is a
+  // named constant a reviewer can see, not a `catch {}`.
+  it("D3: fails CLOSED, and it is a named policy rather than a swallowed error", () => {
+    expect(LIMITER_UNAVAILABLE_POLICY).toBe("deny");
   });
 
-  it("reports a DEGRADED outcome, distinguishable from a healthy allow", () => {
-    const decision = decideOnLimiterFailure();
+  it("D3: refuses with RATE_LIMIT_FAILED_CLOSED, which is neither RATE_LIMITED nor the port's code", () => {
+    const decision = decideOnLimiterFailure("RATE_LIMITER_UNAVAILABLE");
+    expect(decision).toEqual({ outcome: "failed-closed", cause: "RATE_LIMITER_UNAVAILABLE" });
+    expect(isPermitted(decision)).toBe(false);
+    const result = asResult(decision);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("RATE_LIMIT_FAILED_CLOSED");
+    expect(result.error.category).toBe("unavailable");
+    expect(result.error.details["cause"]).toBe("RATE_LIMITER_UNAVAILABLE");
+    // THE DISTINCTNESS, AS AN IDENTITY: a spent budget and an uncountable one are
+    // two answers.
+    const limited = asResult(decide(aRateLimitBucket({ requestCount: 11, expiresAt: at(MINUTE_MS) }), DEFAULT_LOGIN_POLICY, T0));
+    expect(limited.ok).toBe(false);
+    if (limited.ok) return;
+    expect(new Set([limited.error.code, result.error.code]).size).toBe(2);
+  });
+
+  it("still reports a DEGRADED outcome under the allow branch, distinguishable from a healthy allow", () => {
+    const decision = decideOnLimiterFailure("RATE_LIMITER_UNAVAILABLE", "allow");
     expect(decision).toEqual({ outcome: "degraded" });
     expect(isPermitted(decision)).toBe(true);
     expect(asResult(decision).ok).toBe(true);

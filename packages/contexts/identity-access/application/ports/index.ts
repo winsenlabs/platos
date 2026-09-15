@@ -46,6 +46,8 @@ export type { SecretHasher } from "./secret-hasher.js";
 export type { TokenMinter } from "./token-minter.js";
 export type { TotpCodeVerifier } from "./totp-code-verifier.js";
 export type { MfaSecretCipher } from "./mfa-secret-cipher.js";
+// D20 — the seventh port, and the only OPTIONAL one: see `dependencies.ts`.
+export type { MagicLinkDelivery, MagicLinkMessage } from "./magic-link-delivery.js";
 
 // --- what an implementation of the ports above needs in order to build a record
 //

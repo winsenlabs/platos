@@ -256,6 +256,11 @@ export function createInMemoryTenancyRepository(store: TenancyStore): TenancyRep
       return store.organizationMemberships.filter((row) => row.userId === userId);
     },
 
+    async listOrganizationMemberships(organizationId) {
+      // Every row, active or not, for the reason the method above gives.
+      return store.organizationMemberships.filter((row) => row.organizationId === organizationId);
+    },
+
     async listProjectMembershipsForMembership(organizationMembershipId) {
       return store.projectMemberships.filter(
         (row) => row.organizationMembershipId === organizationMembershipId,
