@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "c44558e5fc97cae21bcbd86894575e0bddce94dc3d401c7bb821deffe7948b32",
+  "evidenceSha256": "7f43775a6d4d6ca83d591c820355d1b4e73177344242a134d9361fa4c4518c0a",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "e798ae5bc1eae67fe75e15ed04a35da584a0279f7de316d449a5fde060354c3d",
+    "aggregateSha256": "d1edf4cc062eb07344e0a407d5851d7ff33e0f329ca3a9c85c8ea4f445d06722",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4447,7 +4447,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "f50c01378e34a3c705d68098aceed380c46bbc643df68a8bea28dba68088b2a5"
+        "sha256": "bfa2a2ae00c2f7e92c72cbfe3d1726fdc62855c1b0de8895c6516a5d244af424"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -6475,7 +6475,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "246ac5b9f055b4f1da0017fb3c8e827212876ffa4e5666328babe0d1d60ade3a"
+        "sha256": "fd5119fe51145f7d15bf748a1356f60089f98879900522c57ce2975318bca574"
       },
       {
         "path": "docs/v3-openapi.yaml",
