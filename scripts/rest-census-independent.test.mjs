@@ -312,10 +312,16 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // because `POST /api/v1/agent/providers/keys/:id/rotate-secret` sits under a base
   // path — `agent/providers` — that no controller in this tree had. A reader who
   // assumed "one route, no new class" would expect 9.
-  assert.equal(core.sourceControllers, 10);
-  assert.equal(core.sourceDecorators, 19);
-  assert.equal(core.expandedOperations, 19);
-  assert.equal(core.manifestOperations, 19);
+  //
+  // 2026-09-15: 10 -> 15 controllers and 19 -> 28 decorators — the identity/tenancy REST remainder's NINE routes (2026-09-15): the magic-link pair, the member listing and role change, the invitation issue and accept, the scope by slugs, and the variable listing and write.
+  // Five classes for nine routes, because each concern sits under its own base path
+  // (`bff/magic-link`, `organizations/:organizationId/members`, the pathless
+  // invitations controller carrying both of its routes, `environments` for the slug
+  // resolver, `environments/:environmentId/variables`).
+  assert.equal(core.sourceControllers, 15);
+  assert.equal(core.sourceDecorators, 28);
+  assert.equal(core.expandedOperations, 28);
+  assert.equal(core.manifestOperations, 28);
   // 301 + 14 = 315 BINDINGS, and the manifest's `summary.restOperations` is 313
   // UNIQUE operations: the two mints are served by both deployables, so each is
   // counted under both roots. The census publishes that surplus and the identity
@@ -335,10 +341,13 @@ test("BASELINE: the live tree's scan roots reconcile, and the core-api root now 
   // cleanest illustration of why the identity carries a surplus term: it adds one
   // binding and one shared operation in the same move, because `apps/agent` has
   // served this path since before V1. 320 - 7 = 313.
-  assert.equal(agent.manifestOperations + core.manifestOperations, 320);
+  //
+  // 2026-09-15: 320 -> 329 bindings, surplus unmoved at 7, unique 313 -> 322 — nine
+  // operations served by one deployable only. 329 - 7 = 322.
+  assert.equal(agent.manifestOperations + core.manifestOperations, 329);
   const totals = manifestCensus();
   assert.equal(totals.crossRootBindings, 7);
-  assert.equal(totals.totalOps - totals.crossRootBindings, 313);
+  assert.equal(totals.totalOps - totals.crossRootBindings, 322);
 });
 
 test("BASELINE: the process-edge exclusion still describes the file it excludes", () => {

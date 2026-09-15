@@ -121,7 +121,10 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // which is what caught the one-short pin at WIN-259 and is why the merged
   // 35/122 -- a pair no branch stated, against A1+A2's 35/121 and A3's 33/117 --
   // is a reading rather than a sum somebody trusted.
-  assert.match(output, /35 V1 projects and 122 project edges/u);
+  //
+  // 35/122 -> 35/123 (2026-09-15, D20): `notifier-email` -> `identity-access`, the
+  // owner edge of its second binding, `MagicLinkDelivery`. No project is added.
+  assert.match(output, /35 V1 projects and 123 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -727,7 +730,8 @@ const LIVE_ADAPTERS = [
   // refusals.
   { dir: "channel-slack", port: "ChannelAdapter", owner: "channels", note: "n",
     additional: [{ port: "ChannelRuntime", owner: "channels" }] },
-  { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "n" },
+  // D20 (2026-09-15): the relay's second owner.
+  { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", additional: [{ port: "MagicLinkDelivery", owner: "identity-access" }], note: "n" },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "n" },
   // WIN-259 (M2.4). The fixture copy carries the thirteenth directory and its
   // three bindings, so `checkAdapterTable(LIVE_ADAPTERS)` stays a real copy of
@@ -786,7 +790,7 @@ test("§15 refusal: a SIXTEENTH adapter directory fails, even though bindings ma
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a SIXTY-FIRST binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a SIXTY-SECOND binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -840,7 +844,12 @@ test("§15 refusal: a SIXTY-FIRST binding fails, even though a directory may hol
   // satisfied by the same object holding the same Redis client. The DIRECTORY pin
   // above did not move with it — the same distinction a fourth time — so the
   // refusal this case exercises is now the SIXTY-FIRST.
-  assert.ok(errors.some((error) => error.includes("declares 60 adapter bindings; ADAPTERS flattens to 61")));
+  //
+  // D20 (2026-09-15) moved it to SIXTY-ONE, outside `postgres-tenancy` for the
+  // fifth time: `notifier-email:MagicLinkDelivery` is a second row on the relay's
+  // directory, satisfied by the same object speaking to the same relay. The
+  // refusal this case exercises is now the SIXTY-SECOND.
+  assert.ok(errors.some((error) => error.includes("declares 61 adapter bindings; ADAPTERS flattens to 62")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {

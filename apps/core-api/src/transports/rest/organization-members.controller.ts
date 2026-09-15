@@ -73,7 +73,7 @@ export interface ChangeMemberRoleBody {
  *
  * `revokedSessionCount` IS DELIBERATELY NOT ON THE WIRE, and the reason was
  * measured against a real PostgreSQL rather than assumed. The contract returns
- * the count the session revoker reported, but the schema's own trigger
+ * the count the session revoker reported, but the schema's own row function
  * `revoke_operator_sessions_for_membership_change` fires on the role UPDATE and
  * ends the member's sessions FIRST, inside the same transaction — so the revoker
  * finds none left and reports 0 while every session did end. Publishing that

@@ -410,7 +410,7 @@ describe("D20 — a magic link is MAILED through notifier-email, and no response
     const address = "budget@example.t6.test";
     let admitted = 0;
     let limited: Answer | null = null;
-    for (let attempt = 0; attempt < 21 && limited === null; attempt += 1) {
+    for (let request = 0; request < 21 && limited === null; request += 1) {
       const started = await call("POST", "/bff/magic-link", { body: { email: address } });
       if (started.status === 202) admitted += 1;
       else limited = started;
@@ -481,7 +481,7 @@ describe("members — settings.team ported, with the forged scope asked", () => 
       body: { role: "ADMIN" },
     });
     expect(answer.status, answer.text).toBe(200);
-    // `{ changed }` ONLY: the schema trigger ends the sessions before the revoker
+    // `{ changed }` ONLY: the schema's own database function ends the sessions before the revoker
     // counts them, so a count would read 0 here — measured on this suite's first
     // run. The row is the evidence.
     expect(data(answer)).toEqual({ changed: true });

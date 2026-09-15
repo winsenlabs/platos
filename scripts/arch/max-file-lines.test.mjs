@@ -949,7 +949,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `APPS-TRANSPORTS` term covers `apps/core-api/src/transports/**` and the suite
   // lives in `composition/`, which no selector here names. A reader who assumed
   // "two new files" would expect 1654.
-  assert.equal(result.fileCount, 1653);
+  //
+  // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15), 1653 -> 1673: +7 CONTEXTS,
+  // +6 ADAPTERS (`notifier-email`), +7 APPS-TRANSPORTS (five controllers, the cookie
+  // codec and its unit suite). The integration suite lives in `composition/`, which
+  // no selector names, so twenty files and not twenty-one.
+  assert.equal(result.fileCount, 1673);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1049,7 +1054,11 @@ test("the live selectors scan an exact nonzero source census", () => {
       // integration suite is. Everything else the tranche touched is an EDIT:
       // `http/idempotency-policy.ts`, `transports/rest/operator.ts`,
       // `composition/context-ports.ts` and `composition/installation.test.ts`.
-      1
+      1 +
+      // THE IDENTITY/TENANCY REST REMAINDER (2026-09-15): adapters 6, contexts 7,
+      // transports 7. Its integration suite is under `src/composition/`, which no
+      // selector names, so 20 and not 21.
+      6 + 7 + 7
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1274,7 +1283,10 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `transports/rest/operator.ts` IN PLACE and adds no file under either.
   //
   // 30 + 1093 + 474 + 18 + 38 = 1653.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 38);
+  //
+  // 2026-09-15, +20 across three terms: CONTEXTS 1093 -> 1100, ADAPTERS 474 -> 480,
+  // APPS-TRANSPORTS 38 -> 45. 30 + 1100 + 480 + 18 + 45 = 1673.
+  assert.equal(result.fileCount, 30 + 1100 + 480 + 18 + 45);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

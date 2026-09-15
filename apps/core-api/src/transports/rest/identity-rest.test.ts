@@ -356,7 +356,7 @@ describe("WIN-267 R1 — the finding that no V1 REST route could spend an authen
     const ports = testPorts();
     const published = createIdentityAccessService(ports);
     let refusal: DomainError | null = null;
-    for (let attempt = 0; attempt < 20 && refusal === null; attempt += 1) {
+    for (let request = 0; request < 20 && refusal === null; request += 1) {
       const started = await published.startMagicLinkLogin({ email: "operator@example.com" });
       if (!started.ok) refusal = started.error;
     }

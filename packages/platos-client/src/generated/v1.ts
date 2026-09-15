@@ -238,6 +238,7 @@ export const WIRE_ERROR_CODES = [
   "IDENTITY_STORE_UNAVAILABLE",
   "IMPERSONATION_FORBIDDEN",
   "INVALID_ACCESS_KEY_MATERIAL",
+  "INVALID_EMAIL_ADDRESS",
   "INVALID_END_USER_FILTER",
   "INVALID_GRANT",
   "INVALID_KEY_RING",
@@ -273,6 +274,8 @@ export const WIRE_ERROR_CODES = [
   "JOB_SERVICE_UNAVAILABLE",
   "JOB_TIMEOUT",
   "LEGACY_ENVELOPE_UNREADABLE",
+  "MAGIC_LINK_DELIVERY_FAILED",
+  "MAGIC_LINK_DELIVERY_UNAVAILABLE",
   "MCP_ENTITY_ENVIRONMENT_MISMATCH",
   "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
   "MEMORY_AGENT_AMBIGUOUS",
@@ -304,6 +307,11 @@ export const WIRE_ERROR_CODES = [
   "MEMORY_UNTRUSTED_SOURCE",
   "MFA_REQUIRED",
   "MISSING_PERMISSION",
+  "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
+  "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
+  "NOTIFIER_EMAIL_MESSAGE_REFUSED",
+  "NOTIFIER_EMAIL_RELAY_REFUSED",
+  "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
   "OBSERVABILITY_AUDIT_ACTION_INVALID",
   "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
   "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
@@ -378,6 +386,7 @@ export const WIRE_ERROR_CODES = [
   "PROVIDERS_UNKNOWN_PROVIDER",
   "RATE_LIMITED",
   "RATE_LIMITER_UNAVAILABLE",
+  "RATE_LIMIT_FAILED_CLOSED",
   "RETRY_POLICY_BASE_DELAY_INVALID",
   "RETRY_POLICY_CEILING_BELOW_BASE",
   "RETRY_POLICY_JITTER_FRACTION_INVALID",
@@ -422,14 +431,18 @@ export const WIRE_ERROR_CODES = [
   "TENANCY_AUTHORIZATION_FORGED",
   "TENANCY_CROSS_TENANT_MEMBERSHIP",
   "TENANCY_ENVIRONMENT_FORBIDDEN",
+  "TENANCY_INVALID_EMAIL",
   "TENANCY_INVALID_NAME",
+  "TENANCY_INVALID_ROLE",
   "TENANCY_INVALID_SLUG",
   "TENANCY_INVITATION_ALREADY_ACTIVE",
   "TENANCY_INVITATION_CONSUMED",
   "TENANCY_INVITATION_EMAIL_MISMATCH",
+  "TENANCY_INVITATION_FORBIDDEN",
   "TENANCY_INVITATION_INVALID",
   "TENANCY_LAST_OWNER",
   "TENANCY_MEMBERSHIP_FORBIDDEN",
+  "TENANCY_MEMBER_LIST_FORBIDDEN",
   "TENANCY_NOT_FOUND",
   "TENANCY_PROJECT_CREATE_FORBIDDEN",
   "TENANCY_SLUG_TAKEN",
@@ -475,6 +488,16 @@ export type WireErrorCode = (typeof WIRE_ERROR_CODES)[number];
 /** The header M0.4 section 2 binds one-time-secret mints to. */
 export const IDEMPOTENCY_KEY_HEADER = "idempotency-key";
 
+export interface AcceptInvitationBody {
+  readonly "token": string;
+}
+
+export interface AcceptedInvitationResource {
+  readonly "organizationId": string;
+  readonly "role": string;
+  readonly "membershipId": string;
+}
+
 export interface BearerCredentialResource {
   readonly "tokenId": string;
   readonly "label": string;
@@ -489,6 +512,10 @@ export interface BearerCredentialResource {
   readonly "revokedBy": string | null;
 }
 
+export interface ChangeMemberRoleBody {
+  readonly "role": string;
+}
+
 export interface CollectionEnvelope_BearerCredentialResource {
   readonly "data": readonly BearerCredentialResource[];
   readonly "page": PageBlock;
@@ -496,6 +523,16 @@ export interface CollectionEnvelope_BearerCredentialResource {
 
 export interface CollectionEnvelope_EndUserResource {
   readonly "data": readonly EndUserResource[];
+  readonly "page": PageBlock;
+}
+
+export interface CollectionEnvelope_EnvironmentVariableResource {
+  readonly "data": readonly EnvironmentVariableResource[];
+  readonly "page": PageBlock;
+}
+
+export interface CollectionEnvelope_OrganizationMemberResource {
+  readonly "data": readonly OrganizationMemberResource[];
   readonly "page": PageBlock;
 }
 
@@ -512,6 +549,10 @@ export interface CollectionEnvelope_OrganizationResource {
 export interface CollectionEnvelope_ProjectResource {
   readonly "data": readonly ProjectResource[];
   readonly "page": PageBlock;
+}
+
+export interface CompleteMagicLinkBody {
+  readonly "token": string;
 }
 
 export interface CreateOrganizationBody {
@@ -566,6 +607,28 @@ export interface EndUserResource {
   readonly "identities": readonly EndUserIdentityResource[];
 }
 
+export interface EnvironmentScopeResource {
+  readonly "organization": TenantNodeResource;
+  readonly "project": TenantNodeResource;
+  readonly "environment": TenantNodeResource;
+  readonly "environments": readonly TenantNodeResource[];
+  readonly "access": string;
+  readonly "organizationRole": string;
+  readonly "projectRole": string | null;
+}
+
+export interface EnvironmentVariableResource {
+  readonly "id": string;
+  readonly "key": string;
+  readonly "kind": string;
+  readonly "value": string | null;
+  readonly "hasSecret": boolean;
+  readonly "version": number;
+  readonly "lastUpdatedBy": string | null;
+  readonly "createdAt": string;
+  readonly "updatedAt": string;
+}
+
 export interface ErrorEnvelope {
   readonly "error": WireError;
 }
@@ -574,8 +637,54 @@ export interface ExchangeSessionBody {
   readonly "token": string;
 }
 
+export interface IssueInvitationBody {
+  readonly "email": string;
+  readonly "role"?: string;
+}
+
+export interface IssuedInvitationResource {
+  readonly "invitationId": string;
+  readonly "expiresAt": string;
+  readonly "supersededCount": number;
+}
+
+export interface ItemEnvelope_AcceptedInvitationResource {
+  readonly "data": AcceptedInvitationResource;
+  readonly "meta": ItemMeta;
+}
+
 export interface ItemEnvelope_CreatedProjectResource {
   readonly "data": CreatedProjectResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_EnvironmentScopeResource {
+  readonly "data": EnvironmentScopeResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_EnvironmentVariableResource {
+  readonly "data": EnvironmentVariableResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_IssuedInvitationResource {
+  readonly "data": IssuedInvitationResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_MagicLinkRequestResource {
+  readonly "data": MagicLinkRequestResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_MagicLinkSessionResource {
+  readonly "data": MagicLinkSessionResource;
+  readonly "meta": ItemMeta;
+}
+
+export interface ItemEnvelope_MemberRoleChangeResource {
+  readonly "data": MemberRoleChangeResource;
   readonly "meta": ItemMeta;
 }
 
@@ -619,6 +728,21 @@ export interface ItemMeta {
   readonly "degraded"?: DegradedNotice;
 }
 
+export interface MagicLinkRequestResource {
+  readonly "email": string;
+  readonly "expiresAt": string;
+}
+
+export interface MagicLinkSessionResource {
+  readonly "userId": string;
+  readonly "sessionId": string;
+  readonly "expiresAt": string;
+}
+
+export interface MemberRoleChangeResource {
+  readonly "changed": boolean;
+}
+
 export interface MintEntityTokenBody {
   readonly "environmentId": string;
   readonly "label": string;
@@ -657,6 +781,15 @@ export interface OperatorSessionResource {
   readonly "expiresAt": string;
   readonly "mfaVerifiedAt": string | null;
   readonly "impersonating": OperatorSessionResource_impersonating;
+}
+
+export interface OrganizationMemberResource {
+  readonly "membershipId": string;
+  readonly "userId": string;
+  readonly "role": string;
+  readonly "createdAt": string;
+  readonly "email": string | null;
+  readonly "accountDisabledAt": string | null;
 }
 
 export interface OrganizationPolicyResource {
@@ -736,9 +869,24 @@ export interface RotateProviderKeySecretBody {
   readonly "plaintext": string;
 }
 
+export interface SetEnvironmentVariableBody {
+  readonly "value": string;
+  readonly "secret"?: boolean;
+}
+
 export interface SetOrganizationPolicyBody {
   readonly "pattern": string;
   readonly "state": "auto_allow" | "require_approval" | "block";
+}
+
+export interface StartMagicLinkBody {
+  readonly "email": string;
+}
+
+export interface TenantNodeResource {
+  readonly "id": string;
+  readonly "slug": string;
+  readonly "name": string;
 }
 
 export interface WireError_fields_item {
@@ -781,6 +929,22 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     idempotency: "required",
   },
   {
+    operationId: "post__api_v1_bff_magic_link",
+    method: "POST",
+    template: "/api/v1/bff/magic-link",
+    pathParameters: [],
+    successStatus: 202,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "post__api_v1_bff_magic_link_complete",
+    method: "POST",
+    template: "/api/v1/bff/magic-link/complete",
+    pathParameters: [],
+    successStatus: 200,
+    idempotency: "exempt",
+  },
+  {
     operationId: "delete__api_v1_bff_session",
     method: "DELETE",
     template: "/api/v1/bff/session",
@@ -813,12 +977,44 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     idempotency: "not-applicable",
   },
   {
+    operationId: "get__api_v1_environments_by_environmentId_variables",
+    method: "GET",
+    template: "/api/v1/environments/:environmentId/variables",
+    pathParameters: ["environmentId"],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
+    operationId: "put__api_v1_environments_by_environmentId_variables_by_key",
+    method: "PUT",
+    template: "/api/v1/environments/:environmentId/variables/:key",
+    pathParameters: ["environmentId", "key"],
+    successStatus: 200,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "get__api_v1_environments_by_slugs",
+    method: "GET",
+    template: "/api/v1/environments/by-slugs",
+    pathParameters: [],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
     operationId: "get__api_v1_identity_session",
     method: "GET",
     template: "/api/v1/identity/session",
     pathParameters: [],
     successStatus: 200,
     idempotency: "not-applicable",
+  },
+  {
+    operationId: "post__api_v1_invitations_accept",
+    method: "POST",
+    template: "/api/v1/invitations/accept",
+    pathParameters: [],
+    successStatus: 200,
+    idempotency: "accepted",
   },
   {
     operationId: "get__api_v1_organizations",
@@ -834,6 +1030,30 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     template: "/api/v1/organizations",
     pathParameters: [],
     successStatus: 201,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "post__api_v1_organizations_by_organizationId_invitations",
+    method: "POST",
+    template: "/api/v1/organizations/:organizationId/invitations",
+    pathParameters: ["organizationId"],
+    successStatus: 201,
+    idempotency: "accepted",
+  },
+  {
+    operationId: "get__api_v1_organizations_by_organizationId_members",
+    method: "GET",
+    template: "/api/v1/organizations/:organizationId/members",
+    pathParameters: ["organizationId"],
+    successStatus: 200,
+    idempotency: "not-applicable",
+  },
+  {
+    operationId: "patch__api_v1_organizations_by_organizationId_members_by_membershipId",
+    method: "PATCH",
+    template: "/api/v1/organizations/:organizationId/members/:membershipId",
+    pathParameters: ["organizationId", "membershipId"],
+    successStatus: 200,
     idempotency: "accepted",
   },
   {
@@ -1005,6 +1225,31 @@ export class ProviderKeysV1Api {
 
 }
 
+export class BffMagicLinkV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** POST /api/v1/bff/magic-link */
+  async start(body: StartMagicLinkBody): Promise<ItemEnvelope_MagicLinkRequestResource> {
+    return this.transport.send<ItemEnvelope_MagicLinkRequestResource>({
+      operation: operation("post__api_v1_bff_magic_link"),
+      path: "/api/v1/bff/magic-link",
+      body: body,
+      query: undefined,
+    });
+  }
+
+  /** POST /api/v1/bff/magic-link/complete */
+  async complete(body: CompleteMagicLinkBody): Promise<ItemEnvelope_MagicLinkSessionResource> {
+    return this.transport.send<ItemEnvelope_MagicLinkSessionResource>({
+      operation: operation("post__api_v1_bff_magic_link_complete"),
+      path: "/api/v1/bff/magic-link/complete",
+      body: body,
+      query: undefined,
+    });
+  }
+
+}
+
 export class BffSessionV1Api {
   constructor(private readonly transport: V1Transport) {}
 
@@ -1060,6 +1305,46 @@ export class EnvironmentStreamsV1Api {
 
 }
 
+export class EnvironmentVariablesV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** GET /api/v1/environments/:environmentId/variables */
+  async list(environmentId: string): Promise<CollectionEnvelope_EnvironmentVariableResource> {
+    return this.transport.send<CollectionEnvelope_EnvironmentVariableResource>({
+      operation: operation("get__api_v1_environments_by_environmentId_variables"),
+      path: fill("/api/v1/environments/:environmentId/variables", { environmentId }),
+      body: undefined,
+      query: undefined,
+    });
+  }
+
+  /** PUT /api/v1/environments/:environmentId/variables/:key */
+  async set(environmentId: string, key: string, body: SetEnvironmentVariableBody): Promise<ItemEnvelope_EnvironmentVariableResource> {
+    return this.transport.send<ItemEnvelope_EnvironmentVariableResource>({
+      operation: operation("put__api_v1_environments_by_environmentId_variables_by_key"),
+      path: fill("/api/v1/environments/:environmentId/variables/:key", { environmentId, key }),
+      body: body,
+      query: undefined,
+    });
+  }
+
+}
+
+export class EnvironmentScopeV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** GET /api/v1/environments/by-slugs */
+  async resolve(query: { readonly environmentSlug: string; readonly organizationSlug: string; readonly projectSlug: string }): Promise<ItemEnvelope_EnvironmentScopeResource> {
+    return this.transport.send<ItemEnvelope_EnvironmentScopeResource>({
+      operation: operation("get__api_v1_environments_by_slugs"),
+      path: "/api/v1/environments/by-slugs",
+      body: undefined,
+      query: compactQuery(query),
+    });
+  }
+
+}
+
 export class IdentitySessionV1Api {
   constructor(private readonly transport: V1Transport) {}
 
@@ -1069,6 +1354,31 @@ export class IdentitySessionV1Api {
       operation: operation("get__api_v1_identity_session"),
       path: "/api/v1/identity/session",
       body: undefined,
+      query: undefined,
+    });
+  }
+
+}
+
+export class InvitationsV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** POST /api/v1/invitations/accept */
+  async accept(body: AcceptInvitationBody): Promise<ItemEnvelope_AcceptedInvitationResource> {
+    return this.transport.send<ItemEnvelope_AcceptedInvitationResource>({
+      operation: operation("post__api_v1_invitations_accept"),
+      path: "/api/v1/invitations/accept",
+      body: body,
+      query: undefined,
+    });
+  }
+
+  /** POST /api/v1/organizations/:organizationId/invitations */
+  async issue(organizationId: string, body: IssueInvitationBody): Promise<ItemEnvelope_IssuedInvitationResource> {
+    return this.transport.send<ItemEnvelope_IssuedInvitationResource>({
+      operation: operation("post__api_v1_organizations_by_organizationId_invitations"),
+      path: fill("/api/v1/organizations/:organizationId/invitations", { organizationId }),
+      body: body,
       query: undefined,
     });
   }
@@ -1093,6 +1403,31 @@ export class OrganizationsV1Api {
     return this.transport.send<ItemEnvelope_OrganizationResource>({
       operation: operation("post__api_v1_organizations"),
       path: "/api/v1/organizations",
+      body: body,
+      query: undefined,
+    });
+  }
+
+}
+
+export class OrganizationMembersV1Api {
+  constructor(private readonly transport: V1Transport) {}
+
+  /** GET /api/v1/organizations/:organizationId/members */
+  async list(organizationId: string): Promise<CollectionEnvelope_OrganizationMemberResource> {
+    return this.transport.send<CollectionEnvelope_OrganizationMemberResource>({
+      operation: operation("get__api_v1_organizations_by_organizationId_members"),
+      path: fill("/api/v1/organizations/:organizationId/members", { organizationId }),
+      body: undefined,
+      query: undefined,
+    });
+  }
+
+  /** PATCH /api/v1/organizations/:organizationId/members/:membershipId */
+  async changeRole(organizationId: string, membershipId: string, body: ChangeMemberRoleBody): Promise<ItemEnvelope_MemberRoleChangeResource> {
+    return this.transport.send<ItemEnvelope_MemberRoleChangeResource>({
+      operation: operation("patch__api_v1_organizations_by_organizationId_members_by_membershipId"),
+      path: fill("/api/v1/organizations/:organizationId/members/:membershipId", { organizationId, membershipId }),
       body: body,
       query: undefined,
     });
@@ -1233,11 +1568,16 @@ export class McpPlatformTokensV1Api {
 /** Every generated V1 namespace, attached to one transport. */
 export class V1Api {
   readonly providerKeys: ProviderKeysV1Api;
+  readonly bffMagicLink: BffMagicLinkV1Api;
   readonly bffSession: BffSessionV1Api;
   readonly environmentEndUsers: EnvironmentEndUsersV1Api;
   readonly environmentStreams: EnvironmentStreamsV1Api;
+  readonly environmentVariables: EnvironmentVariablesV1Api;
+  readonly environmentScope: EnvironmentScopeV1Api;
   readonly identitySession: IdentitySessionV1Api;
+  readonly invitations: InvitationsV1Api;
   readonly organizations: OrganizationsV1Api;
+  readonly organizationMembers: OrganizationMembersV1Api;
   readonly projects: ProjectsV1Api;
   readonly mcpEntityTokens: McpEntityTokensV1Api;
   readonly mcpOrganizationPolicies: McpOrganizationPoliciesV1Api;
@@ -1245,11 +1585,16 @@ export class V1Api {
 
   constructor(transport: V1Transport) {
     this.providerKeys = new ProviderKeysV1Api(transport);
+    this.bffMagicLink = new BffMagicLinkV1Api(transport);
     this.bffSession = new BffSessionV1Api(transport);
     this.environmentEndUsers = new EnvironmentEndUsersV1Api(transport);
     this.environmentStreams = new EnvironmentStreamsV1Api(transport);
+    this.environmentVariables = new EnvironmentVariablesV1Api(transport);
+    this.environmentScope = new EnvironmentScopeV1Api(transport);
     this.identitySession = new IdentitySessionV1Api(transport);
+    this.invitations = new InvitationsV1Api(transport);
     this.organizations = new OrganizationsV1Api(transport);
+    this.organizationMembers = new OrganizationMembersV1Api(transport);
     this.projects = new ProjectsV1Api(transport);
     this.mcpEntityTokens = new McpEntityTokensV1Api(transport);
     this.mcpOrganizationPolicies = new McpOrganizationPoliciesV1Api(transport);

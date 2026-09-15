@@ -280,6 +280,19 @@ export const ALLOWED = Object.freeze([
     why: "Real-PostgreSQL and real-Redis integration suite for the V1 identity REST surface. It copies and freezes the ambient environment once, at module load, and reads values out of the copy: the supplied PostgreSQL and Redis urls that let it run where Docker may not, a psql binary override for the second reader, and the inherited environment it spawns the ORM's migration CLI with. Neither path skips.",
   }),
   Object.freeze({
+    // 2026-09-15 — the identity/tenancy REST remainder's suite (magic link over a
+    // real relay, members, invitations, scope by slugs, environment variables, the
+    // legacy Remix cookie, and D3's limiter stopped mid-run). The sibling above's
+    // shape, and ONE read for the same reason: `prisma migrate deploy` is a spawned
+    // process that needs PATH. It takes a supplied PostgreSQL url and a psql
+    // override out of the same frozen copy; its Redis is always a container it
+    // starts, because D3's case stops it.
+    path: "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts",
+    role: "test-support",
+    reads: 1,
+    why: "Real-PostgreSQL, real-Redis and real-SMTP integration suite for the identity/tenancy REST remainder. It copies and freezes the ambient environment once, at module load, and reads the supplied PostgreSQL url, the psql binary override and the inherited environment the ORM's migration CLI is spawned with out of the copy. Nothing skips.",
+  }),
+  Object.freeze({
     // WIN-272 (M4.6) — the stream-lane suite. The identity-REST entry above with
     // an SSE reader on the end, and it reads the environment in exactly the same
     // ONE place and for the same reason: `prisma migrate deploy` is a spawned
@@ -789,8 +802,15 @@ export const VIOLATION_CODES = Object.freeze({
  * own single frozen `{ ...process.env }` and hands the values in; a helper that read
  * `process.env` itself would be a door this gate could not attribute to the suite
  * that walked through it. Two files landed, thirty-two reads stayed thirty-two.
+ *
+ * 2026-09-15 (identity/tenancy REST remainder): 1701 + 21 = 1722, and ONE door, the
+ * suite declared above. The twenty-one: `notifier-email`'s six source files, seven
+ * in the two contexts (the delivery port, the administration gate, two read models
+ * and three suites), and eight in core-api (five controllers, the cookie codec, a
+ * unit suite and the integration suite). Thirty-two declared reads become
+ * thirty-three.
  */
-export const EXPECTED_FILE_COUNT = 1701;
+export const EXPECTED_FILE_COUNT = 1722;
 
 function listSourceFiles(root) {
   const found = [];

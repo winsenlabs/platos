@@ -867,14 +867,10 @@
         "properties": {
           "changed": {
             "type": "boolean"
-          },
-          "revokedSessionCount": {
-            "type": "number"
           }
         },
         "required": [
-          "changed",
-          "revokedSessionCount"
+          "changed"
         ]
       },
       "MintEntityTokenBody": {
@@ -1660,6 +1656,7 @@
               "IDENTITY_STORE_UNAVAILABLE",
               "IMPERSONATION_FORBIDDEN",
               "INVALID_ACCESS_KEY_MATERIAL",
+              "INVALID_EMAIL_ADDRESS",
               "INVALID_END_USER_FILTER",
               "INVALID_GRANT",
               "INVALID_KEY_RING",
@@ -1695,6 +1692,8 @@
               "JOB_SERVICE_UNAVAILABLE",
               "JOB_TIMEOUT",
               "LEGACY_ENVELOPE_UNREADABLE",
+              "MAGIC_LINK_DELIVERY_FAILED",
+              "MAGIC_LINK_DELIVERY_UNAVAILABLE",
               "MCP_ENTITY_ENVIRONMENT_MISMATCH",
               "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
               "MEMORY_AGENT_AMBIGUOUS",
@@ -1726,6 +1725,11 @@
               "MEMORY_UNTRUSTED_SOURCE",
               "MFA_REQUIRED",
               "MISSING_PERMISSION",
+              "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
+              "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
+              "NOTIFIER_EMAIL_MESSAGE_REFUSED",
+              "NOTIFIER_EMAIL_RELAY_REFUSED",
+              "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
               "OBSERVABILITY_AUDIT_ACTION_INVALID",
               "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
               "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
@@ -1800,6 +1804,7 @@
               "PROVIDERS_UNKNOWN_PROVIDER",
               "RATE_LIMITED",
               "RATE_LIMITER_UNAVAILABLE",
+              "RATE_LIMIT_FAILED_CLOSED",
               "RETRY_POLICY_BASE_DELAY_INVALID",
               "RETRY_POLICY_CEILING_BELOW_BASE",
               "RETRY_POLICY_JITTER_FRACTION_INVALID",
@@ -1844,14 +1849,18 @@
               "TENANCY_AUTHORIZATION_FORGED",
               "TENANCY_CROSS_TENANT_MEMBERSHIP",
               "TENANCY_ENVIRONMENT_FORBIDDEN",
+              "TENANCY_INVALID_EMAIL",
               "TENANCY_INVALID_NAME",
+              "TENANCY_INVALID_ROLE",
               "TENANCY_INVALID_SLUG",
               "TENANCY_INVITATION_ALREADY_ACTIVE",
               "TENANCY_INVITATION_CONSUMED",
               "TENANCY_INVITATION_EMAIL_MISMATCH",
+              "TENANCY_INVITATION_FORBIDDEN",
               "TENANCY_INVITATION_INVALID",
               "TENANCY_LAST_OWNER",
               "TENANCY_MEMBERSHIP_FORBIDDEN",
+              "TENANCY_MEMBER_LIST_FORBIDDEN",
               "TENANCY_NOT_FOUND",
               "TENANCY_PROJECT_CREATE_FORBIDDEN",
               "TENANCY_SLUG_TAKEN",
@@ -13354,7 +13363,7 @@
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
     "componentSchemas": 62,
-    "canonicalErrorCodes": 459,
+    "canonicalErrorCodes": 472,
     "queryParametersNotDerived": []
   }
 }

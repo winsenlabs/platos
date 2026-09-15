@@ -2472,7 +2472,14 @@ export const EXPECTED = Object.freeze({
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
   "packages/adapters/model-router-providers": { files: 15, cases: 198 },
-  "packages/adapters/notifier-email": { files: 0, cases: 0 },
+  // 0 -> 2 files, 0 -> 14 cases (2026-09-15, D20). The directory stopped being a
+  // generated interface: `message.test.ts` (10 — the RFC 5322 bytes, base64 bodies
+  // dot-stuffing cannot alter, header injection refused, the relay URL and the
+  // login page admitted or refused) and `smtp-session.test.ts` (4 — a scripted
+  // relay on a real socket for the refusals a real sink will not give on demand:
+  // no STARTTLS with credentials, a 550 at RCPT, a silent greeting, a closed
+  // port). The accepting path is proven against a real relay in core-api.
+  "packages/adapters/notifier-email": { files: 2, cases: 14 },
   "packages/adapters/notifier-webhook": { files: 0, cases: 0 },
   "packages/adapters/objectstore-minio": { files: 0, cases: 0 },
   // M2 INTEGRATION: outbox 4 + 0 + 1 = 5 files, 41 + 5 (the replay codes) + 22
@@ -2610,7 +2617,9 @@ export const EXPECTED = Object.freeze({
   // one — and P15 normalised a junk `McpToken.tier` instead of refusing it, which
   // nothing noticed because nothing wrote one. Both are recorded in
   // `scripts/mutations-win268-lifecycle.json`.
-  "packages/adapters/postgres-tenancy": { files: 141, cases: 1570 },
+  // 1570 -> 1571 (2026-09-15): `listOrganizationMemberships` against a real
+  // PostgreSQL — one organization's rows, deactivated included, never another's.
+  "packages/adapters/postgres-tenancy": { files: 141, cases: 1571 },
   // WIN-260 adopts this project and gives it its first suites.
   //
   // WIN-267 A3 4 -> 6 files, 65 -> 84 cases: `providers`' `ProviderProbeCache`
@@ -2746,7 +2755,17 @@ export const EXPECTED = Object.freeze({
   // every case stayed green, because nothing listed more than one credential in an
   // order-sensitive way — so the fake could have contradicted the SQL it exists to
   // stand in for. Both are recorded in `scripts/mutations-win268-lifecycle.json`.
-  "packages/contexts/identity-access": { files: 25, cases: 355 },
+  //
+  // 25 -> 26 files, 355 -> 366 cases (2026-09-15, D3 and D20). +5 in
+  // `identity-access-service.magic-link.test.ts` (the published start answers no
+  // token and derives the oracle's bucket; the completion's token exists only in a
+  // registered directive; D3 refuses a start with nothing delivered); +4 net in
+  // `magic-link-login.test.ts` (no token returned, an unmailable address refused
+  // before anything is spent, delivery absent and delivery refused as two codes);
+  // +2 net in the rate-limit suites, whose fail-open pins were RE-RECORDED under D3
+  // rather than deleted (fails closed with its own code; an unspent budget is
+  // refused during an outage; a scope-less action still refuses).
+  "packages/contexts/identity-access": { files: 26, cases: 366 },
   "packages/contexts/jobs": { files: 16, cases: 386 },
   "packages/contexts/memory": { files: 28, cases: 605 },
   "packages/contexts/observability": { files: 15, cases: 288 },
@@ -2758,7 +2777,15 @@ export const EXPECTED = Object.freeze({
   // same package, so the counts add.
   "packages/contexts/secrets": { files: 23, cases: 293 },
   "packages/contexts/skills": { files: 20, cases: 306 },
-  "packages/contexts/tenancy": { files: 20, cases: 207 },
+  // 20 -> 22 files, 207 -> 223 cases (2026-09-15, D1). +9 in
+  // `invitation-authorization.test.ts` (OWNER and ADMIN admitted; MEMBER,
+  // deactivated ADMIN, archived organization and the FORGED-scope ADMIN of another
+  // organization refused under one code with named gates; an ADMIN may not invite
+  // an OWNER; nothing written on refusal; bad role and address refused), +5 in
+  // `team-and-scope-read-models.test.ts` (settings.team and requireEnvironmentScope
+  // ported) and +1 each in the invitation and role-change suites for a role that
+  // arrives from a wire.
+  "packages/contexts/tenancy": { files: 22, cases: 223 },
   // WIN-269 (M4.3): tools 362 -> 366 cases, files UNCHANGED at 19. All four land
   // in `application/execution.test.ts` and all four are the `DispatchTarget`
   // transport gap, which only became visible when somebody tried to write the
@@ -3723,7 +3750,13 @@ export const EXPECTED = Object.freeze({
 // `fields[]` path points — and `apps/core-api` is outside `PACKAGE_ROOTS`, so this
 // census moves not one number for them. A reader taking this file as the measure of
 // what stage 3 proved would be reading two thirds of it.
-export const EXPECTED_RUNTIME_TOTAL = 8359;
+//
+// 8359 -> 8401 (2026-09-15, the identity/tenancy REST remainder): +14
+// notifier-email, +11 identity-access, +16 tenancy, +1 postgres-tenancy, each
+// accounted for on its row. The same asymmetry a FOURTH time: the 12 new
+// `apps/core-api` unit cases and the 22-case integration suite that proves these
+// routes over HTTP move no number here.
+export const EXPECTED_RUNTIME_TOTAL = 8401;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

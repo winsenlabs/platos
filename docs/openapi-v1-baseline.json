@@ -1,6 +1,36 @@
 {
   "components": {
     "schemas": {
+      "AcceptInvitationBody": {
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "type": "object"
+      },
+      "AcceptedInvitationResource": {
+        "properties": {
+          "membershipId": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "membershipId",
+          "organizationId",
+          "role"
+        ],
+        "type": "object"
+      },
       "BearerCredentialResource": {
         "properties": {
           "createdAt": {
@@ -79,6 +109,17 @@
         ],
         "type": "object"
       },
+      "ChangeMemberRoleBody": {
+        "properties": {
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "type": "object"
+      },
       "CollectionEnvelope_BearerCredentialResource": {
         "properties": {
           "data": {
@@ -102,6 +143,42 @@
           "data": {
             "items": {
               "$ref": "#/components/schemas/EndUserResource"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "type": "object"
+      },
+      "CollectionEnvelope_EnvironmentVariableResource": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EnvironmentVariableResource"
+            },
+            "type": "array"
+          },
+          "page": {
+            "$ref": "#/components/schemas/PageBlock"
+          }
+        },
+        "required": [
+          "data",
+          "page"
+        ],
+        "type": "object"
+      },
+      "CollectionEnvelope_OrganizationMemberResource": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/OrganizationMemberResource"
             },
             "type": "array"
           },
@@ -166,6 +243,17 @@
         "required": [
           "data",
           "page"
+        ],
+        "type": "object"
+      },
+      "CompleteMagicLinkBody": {
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
         ],
         "type": "object"
       },
@@ -346,6 +434,96 @@
         ],
         "type": "object"
       },
+      "EnvironmentScopeResource": {
+        "properties": {
+          "access": {
+            "type": "string"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/TenantNodeResource"
+          },
+          "environments": {
+            "items": {
+              "$ref": "#/components/schemas/TenantNodeResource"
+            },
+            "type": "array"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/TenantNodeResource"
+          },
+          "organizationRole": {
+            "type": "string"
+          },
+          "project": {
+            "$ref": "#/components/schemas/TenantNodeResource"
+          },
+          "projectRole": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "access",
+          "environment",
+          "environments",
+          "organization",
+          "organizationRole",
+          "project",
+          "projectRole"
+        ],
+        "type": "object"
+      },
+      "EnvironmentVariableResource": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "hasSecret": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "lastUpdatedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "createdAt",
+          "hasSecret",
+          "id",
+          "key",
+          "kind",
+          "lastUpdatedBy",
+          "updatedAt",
+          "value",
+          "version"
+        ],
+        "type": "object"
+      },
       "ErrorEnvelope": {
         "properties": {
           "error": {
@@ -368,10 +546,148 @@
         ],
         "type": "object"
       },
+      "IssueInvitationBody": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "IssuedInvitationResource": {
+        "properties": {
+          "expiresAt": {
+            "type": "string"
+          },
+          "invitationId": {
+            "type": "string"
+          },
+          "supersededCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "invitationId",
+          "supersededCount"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_AcceptedInvitationResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AcceptedInvitationResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
       "ItemEnvelope_CreatedProjectResource": {
         "properties": {
           "data": {
             "$ref": "#/components/schemas/CreatedProjectResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_EnvironmentScopeResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EnvironmentScopeResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_EnvironmentVariableResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/EnvironmentVariableResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_IssuedInvitationResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/IssuedInvitationResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_MagicLinkRequestResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MagicLinkRequestResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_MagicLinkSessionResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MagicLinkSessionResource"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ItemMeta"
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ],
+        "type": "object"
+      },
+      "ItemEnvelope_MemberRoleChangeResource": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberRoleChangeResource"
           },
           "meta": {
             "$ref": "#/components/schemas/ItemMeta"
@@ -499,6 +815,51 @@
         },
         "required": [
           "contractVersion"
+        ],
+        "type": "object"
+      },
+      "MagicLinkRequestResource": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "expiresAt"
+        ],
+        "type": "object"
+      },
+      "MagicLinkSessionResource": {
+        "properties": {
+          "expiresAt": {
+            "type": "string"
+          },
+          "sessionId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "expiresAt",
+          "sessionId",
+          "userId"
+        ],
+        "type": "object"
+      },
+      "MemberRoleChangeResource": {
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "changed"
         ],
         "type": "object"
       },
@@ -666,6 +1027,43 @@
           "impersonating",
           "mfaVerifiedAt",
           "sessionId"
+        ],
+        "type": "object"
+      },
+      "OrganizationMemberResource": {
+        "properties": {
+          "accountDisabledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "membershipId": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "accountDisabledAt",
+          "createdAt",
+          "email",
+          "membershipId",
+          "role",
+          "userId"
         ],
         "type": "object"
       },
@@ -949,6 +1347,20 @@
         ],
         "type": "object"
       },
+      "SetEnvironmentVariableBody": {
+        "properties": {
+          "secret": {
+            "type": "boolean"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "type": "object"
+      },
       "SetOrganizationPolicyBody": {
         "properties": {
           "pattern": {
@@ -966,6 +1378,36 @@
         "required": [
           "pattern",
           "state"
+        ],
+        "type": "object"
+      },
+      "StartMagicLinkBody": {
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "TenantNodeResource": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
         ],
         "type": "object"
       },
@@ -1205,6 +1647,7 @@
               "IDENTITY_STORE_UNAVAILABLE",
               "IMPERSONATION_FORBIDDEN",
               "INVALID_ACCESS_KEY_MATERIAL",
+              "INVALID_EMAIL_ADDRESS",
               "INVALID_END_USER_FILTER",
               "INVALID_GRANT",
               "INVALID_KEY_RING",
@@ -1240,6 +1683,8 @@
               "JOB_SERVICE_UNAVAILABLE",
               "JOB_TIMEOUT",
               "LEGACY_ENVELOPE_UNREADABLE",
+              "MAGIC_LINK_DELIVERY_FAILED",
+              "MAGIC_LINK_DELIVERY_UNAVAILABLE",
               "MCP_ENTITY_ENVIRONMENT_MISMATCH",
               "MCP_TOKEN_MINT_WHILE_IMPERSONATING",
               "MEMORY_AGENT_AMBIGUOUS",
@@ -1271,6 +1716,11 @@
               "MEMORY_UNTRUSTED_SOURCE",
               "MFA_REQUIRED",
               "MISSING_PERMISSION",
+              "NOTIFIER_EMAIL_CONFIGURATION_INVALID",
+              "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
+              "NOTIFIER_EMAIL_MESSAGE_REFUSED",
+              "NOTIFIER_EMAIL_RELAY_REFUSED",
+              "NOTIFIER_EMAIL_RELAY_UNREACHABLE",
               "OBSERVABILITY_AUDIT_ACTION_INVALID",
               "OBSERVABILITY_AUDIT_STATE_NOT_AN_OBJECT",
               "OBSERVABILITY_AUDIT_SUBJECT_INVALID",
@@ -1345,6 +1795,7 @@
               "PROVIDERS_UNKNOWN_PROVIDER",
               "RATE_LIMITED",
               "RATE_LIMITER_UNAVAILABLE",
+              "RATE_LIMIT_FAILED_CLOSED",
               "RETRY_POLICY_BASE_DELAY_INVALID",
               "RETRY_POLICY_CEILING_BELOW_BASE",
               "RETRY_POLICY_JITTER_FRACTION_INVALID",
@@ -1389,14 +1840,18 @@
               "TENANCY_AUTHORIZATION_FORGED",
               "TENANCY_CROSS_TENANT_MEMBERSHIP",
               "TENANCY_ENVIRONMENT_FORBIDDEN",
+              "TENANCY_INVALID_EMAIL",
               "TENANCY_INVALID_NAME",
+              "TENANCY_INVALID_ROLE",
               "TENANCY_INVALID_SLUG",
               "TENANCY_INVITATION_ALREADY_ACTIVE",
               "TENANCY_INVITATION_CONSUMED",
               "TENANCY_INVITATION_EMAIL_MISMATCH",
+              "TENANCY_INVITATION_FORBIDDEN",
               "TENANCY_INVITATION_INVALID",
               "TENANCY_LAST_OWNER",
               "TENANCY_MEMBERSHIP_FORBIDDEN",
+              "TENANCY_MEMBER_LIST_FORBIDDEN",
               "TENANCY_NOT_FOUND",
               "TENANCY_PROJECT_CREATE_FORBIDDEN",
               "TENANCY_SLUG_TAKEN",
@@ -1552,6 +2007,100 @@
         "x-platos-schema-source": "typescript-dto"
       }
     },
+    "/api/v1/bff/magic-link": {
+      "post": {
+        "operationId": "post__api_v1_bff_magic_link",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartMagicLinkBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MagicLinkRequestResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/bff/magic-link/complete": {
+      "post": {
+        "operationId": "post__api_v1_bff_magic_link_complete",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteMagicLinkBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MagicLinkSessionResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
     "/api/v1/bff/session": {
       "delete": {
         "operationId": "delete__api_v1_bff_session",
@@ -1624,6 +2173,69 @@
           }
         ],
         "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/environments/by-slugs": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_slugs",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "environmentSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "organizationSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectSlug",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_EnvironmentScopeResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "derived",
         "x-platos-schema-source": "typescript-dto"
       }
     },
@@ -1754,6 +2366,118 @@
         "x-platos-schema-source": "typescript-dto"
       }
     },
+    "/api/v1/environments/{environmentId}/variables": {
+      "get": {
+        "operationId": "get__api_v1_environments_by_environmentId_variables",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_EnvironmentVariableResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "refused",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/environments/{environmentId}/variables/{key}": {
+      "put": {
+        "operationId": "put__api_v1_environments_by_environmentId_variables_by_key",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "environmentId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEnvironmentVariableBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_EnvironmentVariableResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
     "/api/v1/identity/session": {
       "get": {
         "operationId": "get__api_v1_identity_session",
@@ -1763,6 +2487,53 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ItemEnvelope_OperatorSessionResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/invitations/accept": {
+      "post": {
+        "operationId": "post__api_v1_invitations_accept",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_AcceptedInvitationResource"
                 }
               }
             },
@@ -1845,6 +2616,175 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ItemEnvelope_OrganizationResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/organizations/{organizationId}/invitations": {
+      "post": {
+        "operationId": "post__api_v1_organizations_by_organizationId_invitations",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organizationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueInvitationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_IssuedInvitationResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "none-declared",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/organizations/{organizationId}/members": {
+      "get": {
+        "operationId": "get__api_v1_organizations_by_organizationId_members",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organizationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollectionEnvelope_OrganizationMemberResource"
+                }
+              }
+            },
+            "description": "Success."
+          },
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Failure. Every non-2xx answer from the V1 surface uses ADR M0.4 section 2's envelope. Which codes a given route can mint is not derivable from the transport and is not claimed here; `error.code` is drawn from the canonical taxonomy enumerated on the schema."
+          }
+        },
+        "security": [
+          {
+            "sessionToken": []
+          },
+          {
+            "directHeaders": []
+          }
+        ],
+        "x-platos-query-parameters": "refused",
+        "x-platos-schema-source": "typescript-dto"
+      }
+    },
+    "/api/v1/organizations/{organizationId}/members/{membershipId}": {
+      "patch": {
+        "operationId": "patch__api_v1_organizations_by_organizationId_members_by_membershipId",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organizationId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeMemberRoleBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemEnvelope_MemberRoleChangeResource"
                 }
               }
             },

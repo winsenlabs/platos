@@ -421,29 +421,16 @@ describe("read semantics", () => {
     const organizationId = await harness.seedOrganization("team-listing");
     const otherOrganizationId = await harness.seedOrganization("team-listing-other");
     await harness.adapter.unitOfWork.run(async (transaction) => {
-      await harness.adapter.upsertOrganizationMembership(
-        { organizationId, userId: userId(OWNER_USER), role: OrganizationRole.OWNER, at: AT },
-        transaction,
-      );
-      const removed = await harness.adapter.upsertOrganizationMembership(
-        { organizationId, userId: userId(MEMBER_USER), role: OrganizationRole.MEMBER, at: new Date(AT.getTime() + 1000) },
-        transaction,
-      );
+      await harness.adapter.upsertOrganizationMembership({ organizationId, userId: userId(OWNER_USER), role: OrganizationRole.OWNER, at: AT }, transaction);
+      const later = new Date(AT.getTime() + 1000);
+      const removed = await harness.adapter.upsertOrganizationMembership({ organizationId, userId: userId(MEMBER_USER), role: OrganizationRole.MEMBER, at: later }, transaction);
       await harness.adapter.saveOrganizationMembership({ ...removed, deactivatedAt: AT, updatedAt: AT }, transaction);
-      await harness.adapter.upsertOrganizationMembership(
-        { organizationId: otherOrganizationId, userId: userId(OWNER_USER), role: OrganizationRole.ADMIN, at: AT },
-        transaction,
-      );
+      await harness.adapter.upsertOrganizationMembership({ organizationId: otherOrganizationId, userId: userId(OWNER_USER), role: OrganizationRole.ADMIN, at: AT }, transaction);
     });
     const rows = await harness.adapter.listOrganizationMemberships(organizationId);
-    expect(rows.map((row) => [row.userId, row.role, row.deactivatedAt !== null])).toEqual([
-      [userId(OWNER_USER), OrganizationRole.OWNER, false],
-      [userId(MEMBER_USER), OrganizationRole.MEMBER, true],
-    ]);
-    expect(rows.every((row) => row.organizationId === organizationId)).toBe(true);
-    expect((await harness.adapter.listOrganizationMemberships(otherOrganizationId)).map((row) => row.role)).toEqual([
-      OrganizationRole.ADMIN,
-    ]);
+    const other = await harness.adapter.listOrganizationMemberships(otherOrganizationId);
+    expect(rows.map((row) => `${row.userId}|${row.role}|${String(row.deactivatedAt !== null)}`)).toEqual([`${userId(OWNER_USER)}|OWNER|false`, `${userId(MEMBER_USER)}|MEMBER|true`]);
+    expect([rows.every((row) => row.organizationId === organizationId), other.map((row) => row.role)]).toEqual([true, ["ADMIN"]]);
   });
 });
 

@@ -438,7 +438,19 @@ export const ADAPTERS = [
     additional: [{ port: "ChannelRuntime", owner: "channels" }],
     note: "one channel client, inbound and outbound",
   },
-  { dir: "notifier-email", port: "Notifier", owner: "cost-monitoring", note: "outbound email" },
+  {
+    dir: "notifier-email",
+    port: "Notifier",
+    owner: "cost-monitoring",
+    // D20 (2026-09-15) ADDS A SECOND, `identity-access:MagicLinkDelivery`, and the
+    // question it answers is §15's: does the directory that already holds the
+    // relay satisfy the port. YES — one SMTP relay, one client, one set of
+    // credentials; a sixteenth directory would have been a second SMTP client for
+    // one relay. Its owner is a context this directory did not have, so it moves
+    // `EXPECTED_EDGE_COUNT` by one and gives the directory a second owner edge.
+    additional: [{ port: "MagicLinkDelivery", owner: "identity-access" }],
+    note: "outbound email over one SMTP relay",
+  },
   { dir: "notifier-webhook", port: "Notifier", owner: "cost-monitoring", note: "outbound HTTP callbacks" },
   // WIN-259 (M2.4). THE THIRTEENTH DIRECTORY, and the first one added since the
   // §15 amendment. It is a directory rather than a row on `postgres-tenancy`
@@ -848,7 +860,10 @@ export function adapterOwnerPackages(adapter) {
 // exactly the arrangement §15 exists to refuse. This run is SERIAL, so the pin
 // moves once, to the value this tree produces.
 export const EXPECTED_ADAPTER_COUNT = 15;
-export const EXPECTED_BINDING_COUNT = 60;
+// D20 (2026-09-15): 60 -> 61 and the DIRECTORY pin does not move.
+// `notifier-email:MagicLinkDelivery` is the second row on an EXISTING directory,
+// satisfied by the same object speaking to the same relay.
+export const EXPECTED_BINDING_COUNT = 61;
 
 /**
  * The `owner:Port` pairs that legitimately have more than one adapter.
@@ -1097,7 +1112,12 @@ export const EXPECTED_PROJECT_COUNT = 35;
 //
 // READ BACK from `gen-v1-skeleton --check` rather than trusted from this
 // arithmetic, and carried independently in `scripts/arch/v1-project-graph.mjs`.
-export const EXPECTED_EDGE_COUNT = 122;
+//
+// D20 (2026-09-15): 122 + 1 = 123 -- `packages/adapters/notifier-email` ->
+// `packages/contexts/identity-access`, carrying `MagicLinkDelivery`. A second owner
+// edge on a directory that had one. No cycle: identity-access imports only the
+// kernel, and `adapters-only-from-core` makes the return edge unrepresentable.
+export const EXPECTED_EDGE_COUNT = 123;
 
 // The three per-project files that make up the SCAFFOLDING tier. Adoption never
 // releases these: a project's manifest, its tsconfig (which carries the project
@@ -1199,6 +1219,7 @@ export const ADOPTED_PROJECTS = [
   "packages/adapters/tokenmint-totp", // WIN-267 A2 — the per-kind token widths the extraction source mints at, the RFC 4648 base32 secret, and the RFC 6238 verifier that tests every candidate counter
   "packages/adapters/channel-slack", // WIN-271 (M4.5) — the channels ChannelRuntime: Slack's own published request-verification vector, three distinguishable refusals over the exact received octets, and the outbound deadline that separates "did not land" from "do not know"
   "packages/adapters/redis-ratelimit", // WIN-267 A3 — the identity-access RateLimiter over ONE Lua script: the last token of a window is unshareable, the clock is the caller's, and a dead Redis refuses rather than inventing a bucket
+  "packages/adapters/notifier-email", // D20 (2026-09-15) — outbound email for two owners over ONE SMTP submission client written here: STARTTLS whenever offered, credentials never sent in clear, base64 bodies dot-stuffing cannot alter, and a header value with a line break refused rather than cleaned
   "packages/adapters/redis-streams", // WIN-272 (M4.6) — the kernel EventBus and StreamJournal over ONE Redis Streams client: the producer's own sequence IS the server-enforced entry id, a trimmed resume position is REFUSED rather than answered with a gap, and a bus that reconnects joins the live end because it is a fan-out seam and not a queue
 ];
 
@@ -2074,9 +2095,16 @@ const CORE_API_RUNTIME_DEPENDENCIES = {
 // hashes nothing and would pass against a `SecretHasher` that returned a
 // constant. Byte-identical to the specifier `postgres-tenancy` already uses, so
 // it resolves to the entry already in the lockfile.
+//
+// D20 (2026-09-15) ADDS `testcontainers` ITSELF, for the one container the two
+// scoped packages do not wrap: the SMTP relay the magic-link email is delivered
+// to and read back from. Byte-identical to the specifier
+// `internal-packages/testcontainers` already uses, so it resolves to the
+// testcontainers@10.28.0 entry already in the lockfile.
 const CORE_API_DEV_DEPENDENCIES = {
   "@testcontainers/postgresql": "^10.28.0",
   "@testcontainers/redis": "^10.28.0",
+  testcontainers: "^10.28.0",
 };
 
 function appManifest({
