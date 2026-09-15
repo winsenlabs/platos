@@ -413,6 +413,38 @@ describe("read semantics", () => {
     const rows = await harness.adapter.listOrganizationMembershipsForUser(userId(MEMBER_USER));
     expect(rows.some((row) => row.organizationId === organizationId && row.deactivatedAt !== null)).toBe(true);
   });
+
+  // WIN-257 T6 (2026-09-15) — the team listing's port. Keyed by the organization
+  // column, deactivated rows INCLUDED (the read model filters), and never a row of
+  // another organization even when the same user belongs to both.
+  test("listOrganizationMemberships returns one organization's rows, deactivated included, oldest first", async () => {
+    const organizationId = await harness.seedOrganization("team-listing");
+    const otherOrganizationId = await harness.seedOrganization("team-listing-other");
+    await harness.adapter.unitOfWork.run(async (transaction) => {
+      await harness.adapter.upsertOrganizationMembership(
+        { organizationId, userId: userId(OWNER_USER), role: OrganizationRole.OWNER, at: AT },
+        transaction,
+      );
+      const removed = await harness.adapter.upsertOrganizationMembership(
+        { organizationId, userId: userId(MEMBER_USER), role: OrganizationRole.MEMBER, at: new Date(AT.getTime() + 1000) },
+        transaction,
+      );
+      await harness.adapter.saveOrganizationMembership({ ...removed, deactivatedAt: AT, updatedAt: AT }, transaction);
+      await harness.adapter.upsertOrganizationMembership(
+        { organizationId: otherOrganizationId, userId: userId(OWNER_USER), role: OrganizationRole.ADMIN, at: AT },
+        transaction,
+      );
+    });
+    const rows = await harness.adapter.listOrganizationMemberships(organizationId);
+    expect(rows.map((row) => [row.userId, row.role, row.deactivatedAt !== null])).toEqual([
+      [userId(OWNER_USER), OrganizationRole.OWNER, false],
+      [userId(MEMBER_USER), OrganizationRole.MEMBER, true],
+    ]);
+    expect(rows.every((row) => row.organizationId === organizationId)).toBe(true);
+    expect((await harness.adapter.listOrganizationMemberships(otherOrganizationId)).map((row) => row.role)).toEqual([
+      OrganizationRole.ADMIN,
+    ]);
+  });
 });
 
 describe("expand/contract during a rollout", () => {
