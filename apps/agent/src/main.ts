@@ -159,11 +159,11 @@ async function bootstrap() {
   // run before `listen()`; it is placed first because everything below reasons
   // about the FINAL wire path this call produces.
   //
-  // The body caps installed below (`http/request-body-limits.ts`) still match
-  // `/api/v1/...` literally, and they must: they inspect an inbound request URL,
-  // and if this call ever stopped producing that prefix they would stop firing on
-  // the public surface — which is a failure the route-identity test names and
-  // this file would rather have than paper over with a derived string.
+  // The body caps installed below (`http/request-body-limits.ts`) are mounted on
+  // wire prefixes the pre-M4.1 table spelled `/api/v1/...` literally, and those
+  // stay literal: if this call ever stopped producing that prefix they would stop
+  // firing on the public surface, which is a failure the route-identity test and
+  // the manifest join in `request-body-limits.test.ts` name rather than paper over.
   applyApiSurface(app);
 
   // L8 — clamp body size on the UNAUTHENTICATED bypass surface BEFORE the

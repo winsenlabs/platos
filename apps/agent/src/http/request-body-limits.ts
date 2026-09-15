@@ -1,5 +1,7 @@
 import type { NestExpressApplication } from "@nestjs/platform-express";
 
+import { API_V1_PREFIX } from "./api-surface";
+
 /**
  * L8 — THE BODY CAP ON THE UNAUTHENTICATED BYPASS SURFACE, AND THE PARSER IT
  * MUST RUN AHEAD OF.
@@ -36,12 +38,25 @@ import type { NestExpressApplication } from "@nestjs/platform-express";
  * whose size is unknown until it has been buffered is exactly what the cap exists
  * to refuse.
  *
- * WHY THE PREFIXES ARE LITERAL WIRE PATHS. `http/api-surface.ts` records this
- * table, with `auth/scope.guard.ts`, as the deliberate exception to "the version
- * is written once": both compare an INBOUND REQUEST PATHNAME against the path a
- * client really sends, and a guard that kept matching the literal it always
+ * WHY THE ROUTER, NOT A STRING COMPARISON, DECIDES WHICH REQUESTS A CAP SEES.
+ * Each entry is mounted with Express's own `use(prefix, ...)`, so a cap sees
+ * exactly the requests the router would hand to a route under that prefix, under
+ * the router's own rules. Those rules are wider than `req.url.startsWith(prefix)`:
+ * Express matches case-insensitively, and it reads the pathname out of an
+ * absolute-form request target. The first version of this module compared the raw
+ * `req.url`, so `POST /MCP/platform`, `POST /OAUTH/token` and
+ * `POST http://host/mcp/platform` reached the real controllers with no cap: a
+ * chunked body was admitted, and an over-cap declared length got no answer while
+ * the 15mb parser waited for it. `request-body-limits.test.ts` sends those
+ * spellings over a socket.
+ *
+ * WHY THE MOVED PREFIXES ARE LITERAL WIRE PATHS. `http/api-surface.ts` records
+ * this table, with `auth/scope.guard.ts`, as the deliberate exception to "the
+ * version is written once": both compare an inbound request path against the path
+ * a client really sends, and a guard that kept matching the literal it always
  * matched is the independent witness that the router did not move them. The
- * literals below are the ones `main.ts` carried, moved, not new.
+ * literals below are the ones `main.ts` carried, moved and not new. The one entry
+ * M4 added is composed from `API_V1_PREFIX` instead, for the reason given on it.
  */
 
 /** `/oauth` and `/api/v1/public` are tiny control-plane payloads; 256KB is generous. */
@@ -121,7 +136,12 @@ export function resolveUnauthBodyCaps(environment: BodyCapEnvironment): readonly
     // by asking every public body-bearing route for a cap rather than trusting
     // this list. It is the only operation the manifest records under this prefix,
     // and its body is a scope triple plus a claims bag: 256KB is generous.
-    { prefix: "/api/v1/entities", cap: PUBLIC_BODY_CAP_BYTES },
+    //
+    // COMPOSED, NOT WRITTEN. This entry has no historical literal to witness, and
+    // a new `api/v1` literal is exactly what `api-surface.ts` exists to prevent.
+    // Its independent witness is the manifest join, which reads the route out of
+    // the controllers rather than out of this table.
+    { prefix: `${API_V1_PREFIX}/entities`, cap: PUBLIC_BODY_CAP_BYTES },
     { prefix: "/api/v1/channels/inbound", cap: channelsCap },
     // Connect v3 marketplace-app events (POST /api/v1/channels/apps/:id/events)
     // — same unauthenticated-bypass shape as /channels/inbound (auth is the
@@ -141,7 +161,6 @@ export function resolveUnauthBodyCaps(environment: BodyCapEnvironment): readonly
 
 interface CapRequest {
   readonly method?: string;
-  readonly url?: string;
   readonly headers: Record<string, string | string[] | undefined>;
 }
 
@@ -151,29 +170,36 @@ interface CapResponse {
   end(body: string): unknown;
 }
 
-/** The first cap whose prefix owns `path`, matched on a segment boundary. */
+/**
+ * The first cap whose prefix owns `path`, matched on a segment boundary and
+ * without regard to letter case, as the router matches. The runtime does not call
+ * this (the router does the matching, see `installRequestBodyLimits`). It is the
+ * table lookup the manifest join in the suite asks about canonical paths.
+ */
 export function capFor(caps: readonly UnauthBodyCap[], path: string): UnauthBodyCap | undefined {
-  return caps.find((c) => path === c.prefix || path.startsWith(c.prefix + "/"));
+  const lower = path.toLowerCase();
+  return caps.find((c) => {
+    const prefix = c.prefix.toLowerCase();
+    return lower === prefix || lower.startsWith(prefix + "/");
+  });
 }
 
 /**
- * The middleware. Refuses with `413 {"error":"payload_too_large","limit":N}` when
- * a body-bearing request on a capped prefix declares more than the cap OR declares
- * no finite length at all.
+ * The refusal for ONE cap. It never reads the path, because it is only ever
+ * mounted on its prefix. It refuses with `413 {"error":"payload_too_large","limit":N}`
+ * when a body-bearing request declares more than the cap OR declares no finite
+ * length at all.
  */
 export function unauthBodyCapMiddleware(
-  caps: readonly UnauthBodyCap[],
+  cap: number,
 ): (req: CapRequest, res: CapResponse, next: () => void) => void {
   return (req, res, next) => {
     if (BODY_CAP_SKIPPED_METHODS.includes(String(req.method))) return next();
-    const path = String(req.url || "").split("?")[0] ?? "";
-    const match = capFor(caps, path);
-    if (!match) return next();
     const len = Number(req.headers["content-length"]);
-    if (!Number.isFinite(len) || len > match.cap) {
+    if (!Number.isFinite(len) || len > cap) {
       res.statusCode = 413;
       res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ error: PAYLOAD_TOO_LARGE_ERROR, limit: match.cap }));
+      res.end(JSON.stringify({ error: PAYLOAD_TOO_LARGE_ERROR, limit: cap }));
       return;
     }
     return next();
@@ -194,7 +220,8 @@ export function installRequestBodyLimits(
   app: Pick<NestExpressApplication, "use" | "useBodyParser">,
   caps: readonly UnauthBodyCap[],
 ): void {
-  app.use(unauthBodyCapMiddleware(caps));
+  // No prefix in the table owns another, so at most one cap sees a request.
+  for (const entry of caps) app.use(entry.prefix, unauthBodyCapMiddleware(entry.cap));
   app.useBodyParser("json", { limit: AUTHENTICATED_BODY_PARSER_LIMIT });
   app.useBodyParser("urlencoded", { extended: true, limit: AUTHENTICATED_BODY_PARSER_LIMIT });
 }

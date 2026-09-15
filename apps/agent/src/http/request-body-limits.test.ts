@@ -226,6 +226,13 @@ describe("WIN-268 body limit — refused before authentication, over a real sock
     expect(capFor(resolveUnauthBodyCaps({ PLATOS_MCP_BODY_CAP_BYTES: "lots" }), "/mcp")?.cap).toBe(2 * 1024 * 1024);
     // A prefix owns a path only on a segment boundary.
     expect(capFor(caps, "/mcpx/platform")).toBeUndefined();
+    // No prefix owns another, so the one cap `capFor` names is the only cap the
+    // router mounts over a request, and the manifest join below asks the right one.
+    for (const outer of caps) {
+      for (const inner of caps) {
+        if (inner !== outer) expect(capFor([outer], inner.prefix), `${outer.prefix} owns ${inner.prefix}`).toBeUndefined();
+      }
+    }
   });
 
   it("CONTROL: an under-cap POST /mcp/platform enters the guard pipeline AND reaches the controller's bearer check", async () => {
@@ -351,6 +358,69 @@ describe("WIN-268 body limit — refused before authentication, over a real sock
       expect(harness.pipeline, `${method} ${path}`).toEqual([`${method} ${path}`]);
     }
     expect(BODY_CAP_SKIPPED_METHODS).toEqual(["GET", "HEAD", "OPTIONS", "DELETE"]);
+  });
+
+  it("every spelling the ROUTER delivers to a capped controller is capped: letter case and absolute-form targets included", async () => {
+    // Express matches routes case-insensitively and reads the pathname out of an
+    // absolute-form request target (`POST http://host/mcp/platform`), so these
+    // reach the same controllers the canonical paths do. A cap that compared the
+    // raw `req.url` against `/mcp` let every one of them through uncapped.
+    //
+    // CONTROL FIRST: the router really delivers a case variant. Without this, a
+    // variant that merely 404ed would pass every assertion below for free.
+    reset();
+    const small = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" });
+    const control = await raw(
+      harness.port,
+      head("POST", "/MCP/platform", {
+        Authorization: "Bearer plt_mcp_probe",
+        "Content-Type": "application/json",
+        "Content-Length": String(Buffer.byteLength(small)),
+      }),
+      small,
+    );
+    expect(control.status).toBe(401);
+    expect(harness.dependencyCalls).toContain("McpPlatformController.tokenService.verify");
+
+    const routed: Array<[string, number]> = [
+      ["/MCP/platform", DEFAULT_MCP_BODY_CAP_BYTES],
+      ["/Mcp/entity/acme", DEFAULT_MCP_BODY_CAP_BYTES],
+      ["/mcp/platform/", DEFAULT_MCP_BODY_CAP_BYTES],
+      ["/mcp/platform?probe=1", DEFAULT_MCP_BODY_CAP_BYTES],
+      [`http://127.0.0.1:${harness.port}/mcp/platform`, DEFAULT_MCP_BODY_CAP_BYTES],
+      ["/OAUTH/token", PUBLIC_BODY_CAP_BYTES],
+      [`http://127.0.0.1:${harness.port}/OAuth/token`, PUBLIC_BODY_CAP_BYTES],
+    ];
+    for (const [target, cap] of routed) {
+      reset();
+      const chunked = await raw(
+        harness.port,
+        head("POST", target, { "Content-Type": "application/json", "Transfer-Encoding": "chunked" }),
+        `2\r\n{}\r\n0\r\n\r\n`,
+      );
+      expect(chunked.status, `chunked ${target}`).toBe(413);
+      const overCap = await raw(
+        harness.port,
+        head("POST", target, { "Content-Type": "application/json", "Content-Length": String(cap + 1) }),
+      );
+      expect(overCap.status, `over-cap ${target}`).toBe(413);
+      expect(JSON.parse(overCap.body), target).toEqual({ error: "payload_too_large", limit: cap });
+      expect(harness.pipeline, target).toEqual([]);
+      expect(harness.dependencyCalls, target).toEqual([]);
+    }
+
+    // Spellings the router does NOT deliver may be refused or 404ed; what they
+    // must never do is reach a controller with an uncapped body.
+    for (const target of ["/%6Dcp/platform", "//mcp/platform", "/mcp//platform", "/mcpx/platform"]) {
+      reset();
+      await raw(
+        harness.port,
+        head("POST", target, { "Content-Type": "application/json", "Transfer-Encoding": "chunked" }),
+        `2\r\n{}\r\n0\r\n\r\n`,
+      );
+      expect(harness.pipeline, target).toEqual([]);
+      expect(harness.dependencyCalls, target).toEqual([]);
+    }
   });
 });
 
