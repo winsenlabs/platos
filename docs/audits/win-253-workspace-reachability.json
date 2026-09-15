@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "588a9b5e91ca30d088a2441e26a24c6dc35c1ac20d632e01de031cb2bc76c5b3",
+  "evidenceSha256": "22b277538f0d527d38a38bea6fdcf7ae874c183b7b6c6f5183a659e0492b50a3",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "12db3ebddad0262c10f61c58f7073b31635c981d88f5e30deab91f82c909614d",
+    "aggregateSha256": "70827391d55fc8ef41d78772bc3f03dda59730b1f25b8b358ecb61f4d1e45ed7",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -20827,7 +20827,7 @@
       },
       {
         "path": "scripts/vendored-build-audit.test.mjs",
-        "sha256": "4c7f3d9a90379f7d4e0b3957a9fce3d96b95f9d07d9a60698915fcad9e1f0dab"
+        "sha256": "7572f15705984f6fcdf62487d8d2f613bb72615adb04b8c80fb3c5f0bb5187b8"
       },
       {
         "path": "scripts/verify-advisory-nonvacuity.mjs",
@@ -20867,7 +20867,7 @@
       },
       {
         "path": "scripts/vocabulary-boundary.test.mjs",
-        "sha256": "4886a5f3a27fedaa2a0a3f039311d0495e0cc2aff5d754a23b0c2d1eb4828d05"
+        "sha256": "63534be629c4b3c11197c0c24e05139827968b69633d18b394ea0a3bacfcdf5b"
       },
       {
         "path": "scripts/vocabulary/classify.mjs",
@@ -95968,7 +95968,12 @@
             {
               "from": "scripts/vendored-build-audit.test.mjs",
               "kind": "reference",
-              "line": 398
+              "line": 397
+            },
+            {
+              "from": "scripts/vocabulary-boundary.test.mjs",
+              "kind": "reference",
+              "line": 779
             },
             {
               "from": "tests/sdk-contract/platools-protocol.json",
@@ -96062,6 +96067,10 @@
               "scripts/vendored-build-audit.test.mjs"
             ],
             [
+              "scripts/vocabulary-boundary.test.mjs",
+              "scripts/vocabulary-boundary.test.mjs"
+            ],
+            [
               "tests/sdk-contract/platools-protocol.json",
               "tests/sdk-contract/platools-protocol.json"
             ]
@@ -96088,6 +96097,7 @@
             "scripts/sdk/v1-contract.test.mjs",
             "scripts/v1-ledger.test.mjs",
             "scripts/vendored-build-audit.test.mjs",
+            "scripts/vocabulary-boundary.test.mjs",
             "tests/sdk-contract/platools-protocol.json"
           ]
         }
@@ -96098,7 +96108,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "f8baf57066aa45fed6319eb3ca2f2ed82727bbd388b1a609025efe6fcdba7abd",
+      "evidenceSha256": "b45d5ce3bc6cb19198babae65735225eb667a92785d9190e072ad898adb0283b",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
