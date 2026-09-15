@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "446020d7accf343708277c92dedef6621574770d777dcf229af01ff741f91f8c",
+  "evidenceSha256": "73a5d15c472c5596c27a889a4d2b5afc742618edf7abe0c475e217279428f9f2",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "eb62b7ebf0c280a96b90f239db6ba26591e8cde8cc5d7d7371772a27d0f47040",
+    "aggregateSha256": "38e4b15c84a96b19d4e467e2a74eadf28432cc54df512874f36412c61bee4e7a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4471,7 +4471,7 @@
       },
       {
         "path": "docs/audits/sbom/advisory/osv-report.json",
-        "sha256": "081ceb94d79bb656f4d033b7d679f121d9031d69f6cdc477a13c280f0de72fb2"
+        "sha256": "5bda9da44004fe1f71676baa2dc1c2de78dcf3cdf9f77df82b6e8b3e65d5ca82"
       },
       {
         "path": "docs/audits/sbom/closure-contract.md",
@@ -4479,7 +4479,7 @@
       },
       {
         "path": "docs/audits/sbom/closure-receipts.json",
-        "sha256": "31a3539842569fd0eaae0e0a65b06d605ad709e3000bf42c88bac73f5deb25e2"
+        "sha256": "7ad26eea670107b1351c00daa3e7c5b190edf83659de16ad42a8b98109d1383c"
       },
       {
         "path": "docs/audits/sbom/licence-resolution.json",
@@ -4575,7 +4575,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "2b074e618606ce4e09d88126dbfb0a9b49c0c410f802ef264f235bab2549b99b"
+        "sha256": "8a2605f1c1a70d9e1fe9f5dc4d52d6ae69ec033e6971ea81202d74877a51ed89"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
