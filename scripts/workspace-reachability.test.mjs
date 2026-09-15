@@ -259,6 +259,20 @@ test("lockfile importer parser rejects malformed and duplicate keys", () => {
 // INSIDE the body moves those anchors into a context nobody has reviewed --
 // which `pnpm audit:vocabulary` reported as CHANGED-CONTEXT the first time this
 // note was written there.
+//
+// TWO COUNTS MOVE WITH `build-candidate-core-api`, BOTH BY 34, BOTH MEASURED off
+// the regenerated report rather than predicted: the OCI image closure 6 -> 40 and
+// the OCI-root + devDependency closure 10 -> 44. `apps/core-api/Dockerfile`
+// becomes a CI-declared shipping Dockerfile, rooted at `@platos/core-api` by its
+// one `--filter`, and its closure adds exactly 34 workspaces no existing image
+// rooted: `apps/core-api`, the kernel, all seventeen contexts and fifteen adapter
+// directories (derived by diffing `ociImageClosure.reachable` across the two
+// reports). The tenancy database package is in the new closure too, but the agent
+// image already rooted it, so it is not one of the 34. The registered,
+// application/deployable, union, install-traversal and review-candidate counts do
+// NOT move, because every one of those 34 was already reached through
+// `apps/core-api` as an executable manifest.
+// Written out here rather than inside the body, for the vocabulary reason above.
 test("committed baseline independently captures OCI, application/deployable, and migrations-union closures", () => {
   const report = repositoryReport();
   // WIN-267 A1 moves four of these by ONE and leaves three alone, which is the
@@ -268,10 +282,10 @@ test("committed baseline independently captures OCI, application/deployable, and
   // frozen install. It is NOT in an OCI image closure (no shipping Dockerfile
   // roots it), NOT in the OCI+dev closure, and NOT a review candidate.
   assert.equal(report.summary.registeredWorkspaceCount, 63);
-  assert.equal(report.summary.ociImageWorkspaceCount, 6);
+  assert.equal(report.summary.ociImageWorkspaceCount, 40);
   assert.equal(report.summary.applicationDeployableWorkspaceCount, 40);
   assert.equal(report.summary.deploymentUnionWorkspaceCount, 41);
-  assert.equal(report.summary.repositoryDevWorkspaceCount, 10);
+  assert.equal(report.summary.repositoryDevWorkspaceCount, 44);
   assert.equal(report.summary.installTraversalWorkspaceCount, 63);
   assert.equal(report.summary.reviewCandidateCount, 22);
   const applicationRootKinds = new Set(
