@@ -5845,6 +5845,8 @@ test("the candidate verifier's subset selection refuses an unknown name and an a
 
 const AGENT_PACKAGE_ROOT = "apps/agent";
 const AGENT_VITEST_PREFIX = "pnpm --filter platos-agent exec vitest run ";
+const CORE_API_PACKAGE_ROOT = "apps/core-api";
+const CORE_API_VITEST_PREFIX = "pnpm --filter @platos/core-api exec vitest run ";
 
 const M4_GATE_STEPS = Object.freeze([
   {
@@ -5876,10 +5878,14 @@ const M4_GATE_STEPS = Object.freeze([
       "src/mcp-platform/permission-gateway-forged-scope.integration.test.ts",
       "src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts",
     ],
+    // D21's core-api mirror is the same clause in the other deployable, so it is
+    // the step's SECOND command rather than a line in another job.
+    coreApiSuites: ["src/http/mcp-body-cap.test.ts"],
     after: [
       "pnpm --filter @platos/tenancy-database build",
       "pnpm --filter @internal/workload-identity build",
       "pnpm --filter @platosdev/token-mint build",
+      "pnpm --filter @platos/core-api^... build",
     ],
   },
 ]);
@@ -5895,14 +5901,20 @@ const M4_GATED_SUBJECTS = Object.freeze([
   "src/tool-gateway/mcp-transport/mcp-client-pool.service",
 ]);
 
-/** The file arguments of one normalized `pnpm --filter platos-agent exec vitest run` command. */
-function agentVitestFiles(command) {
-  if (!command.startsWith(AGENT_VITEST_PREFIX)) return [];
+/** The gated core-api subject, core-api-root-relative without extension (D21). */
+const M4_GATED_CORE_API_SUBJECTS = Object.freeze(["src/http/mcp-body-cap"]);
+
+/** The file arguments of one normalized `pnpm --filter <prefix> exec vitest run` command. */
+function vitestFiles(command, prefix) {
+  if (!command.startsWith(prefix)) return [];
   return command
-    .slice(AGENT_VITEST_PREFIX.length)
+    .slice(prefix.length)
     .split(" ")
     .filter((argument) => argument !== "" && !argument.startsWith("-"));
 }
+
+const agentVitestFiles = (command) => vitestFiles(command, AGENT_VITEST_PREFIX);
+const coreApiVitestFiles = (command) => vitestFiles(command, CORE_API_VITEST_PREFIX);
 
 function m4GateViolations(workflowText, readSuite) {
   const violations = [];
@@ -5920,13 +5932,25 @@ function m4GateViolations(workflowText, readSuite) {
       violations.push(`"${gate.name}" must be unconditional and fail-fast`);
     }
     const commands = typeof step.run === "string" ? normalizedShellCommands(step.run) : [];
-    if (commands.length !== 1 || !commands[0].startsWith(AGENT_VITEST_PREFIX)) {
-      violations.push(`"${gate.name}" must be exactly one direct platos-agent Vitest run`);
+    const expectedCommands = gate.coreApiSuites === undefined ? 1 : 2;
+    if (commands.length !== expectedCommands || !commands[0].startsWith(AGENT_VITEST_PREFIX)) {
+      violations.push(
+        gate.coreApiSuites === undefined
+          ? `"${gate.name}" must be exactly one direct platos-agent Vitest run`
+          : `"${gate.name}" must be a direct platos-agent Vitest run followed by a direct core-api Vitest run`
+      );
       continue;
     }
     const named = agentVitestFiles(commands[0]);
     const missing = gate.suites.filter((suite) => !named.includes(suite));
     if (missing.length > 0) violations.push(`"${gate.name}" no longer names ${missing.join(", ")}`);
+    if (gate.coreApiSuites !== undefined) {
+      const namedCoreApi = coreApiVitestFiles(commands[1]);
+      const missingCoreApi = gate.coreApiSuites.filter((suite) => !namedCoreApi.includes(suite));
+      if (missingCoreApi.length > 0) {
+        violations.push(`"${gate.name}" no longer names core-api ${missingCoreApi.join(", ")}`);
+      }
+    }
 
     // A SKIP IS A FAILURE: every `*_REQUIRED` flag a named suite reads must be set.
     const flags = requiredGateFlagsIn(named.map((suite) => readSuite(suite)));
@@ -5950,11 +5974,11 @@ function m4GateViolations(workflowText, readSuite) {
   return violations;
 }
 
-/** Every agent `*.test.ts` that imports a gated subject, repository-relative to the agent root. */
-function agentSuitesImportingGatedSubjects(readFile = (file) => readFileSync(path.join(repositoryRoot, AGENT_PACKAGE_ROOT, file), "utf8")) {
+/** Every `*.test.ts` under `packageRoot` that imports one of `subjects`, relative to that root. */
+function suitesImportingSubjects(packageRoot, subjects, readFile = (file) => readFileSync(path.join(repositoryRoot, packageRoot, file), "utf8")) {
   const found = [];
   const walk = (relativeDirectory) => {
-    for (const entry of readdirSync(path.join(repositoryRoot, AGENT_PACKAGE_ROOT, relativeDirectory), { withFileTypes: true })) {
+    for (const entry of readdirSync(path.join(repositoryRoot, packageRoot, relativeDirectory), { withFileTypes: true })) {
       if (entry.name === "node_modules" || entry.name === "dist") continue;
       const next = path.posix.join(relativeDirectory, entry.name);
       if (entry.isDirectory()) {
@@ -5964,7 +5988,7 @@ function agentSuitesImportingGatedSubjects(readFile = (file) => readFileSync(pat
       if (!entry.name.endsWith(".test.ts")) continue;
       for (const match of readFile(next).matchAll(/from\s+["'](\.{1,2}\/[^"']+)["']/gu)) {
         const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(next), match[1])).replace(/\.(?:js|ts)$/u, "");
-        if (M4_GATED_SUBJECTS.includes(resolved)) {
+        if (subjects.includes(resolved)) {
           found.push(next);
           break;
         }
@@ -5973,6 +5997,20 @@ function agentSuitesImportingGatedSubjects(readFile = (file) => readFileSync(pat
   };
   walk("src");
   return found.sort();
+}
+
+const agentSuitesImportingGatedSubjects = () => suitesImportingSubjects(AGENT_PACKAGE_ROOT, M4_GATED_SUBJECTS);
+const coreApiSuitesImportingGatedSubjects = () =>
+  suitesImportingSubjects(CORE_API_PACKAGE_ROOT, M4_GATED_CORE_API_SUBJECTS);
+
+/** The core-api files named by the one core-api Vitest run on the WIN-268 step, and nowhere else. */
+function coreApiVitestFilesOnRegressionStep(workflowText) {
+  const violations = [];
+  const workflow = parseWorkflow(workflowText, ".github/workflows/ci.yml", violations);
+  const gate = M4_GATE_STEPS.find((candidate) => candidate.coreApiSuites !== undefined);
+  const step = workflowSteps(workflowJobs(workflow).get(gate.job)).find((candidate) => candidate.name === gate.name);
+  const run = typeof step?.run === "string" ? step.run : "";
+  return new Set(normalizedShellCommands(run).flatMap(coreApiVitestFiles));
 }
 
 function agentVitestFilesNamedAnywhere(workflowText) {
@@ -6023,6 +6061,17 @@ test("M4 gates: every agent suite importing a gated subject is named by an agent
     [],
     "an apps/agent suite tests a gated M4 subject and no CI job names it; add it to its clause's step"
   );
+
+  // The same join for core-api's D21 mirror, held to the WIN-268 step itself: a
+  // second suite for the MCP body cap that the step does not name turns this red.
+  const importingCoreApi = coreApiSuitesImportingGatedSubjects();
+  assert.ok(importingCoreApi.includes("src/http/mcp-body-cap.test.ts"), "the core-api subject walk no longer finds mcp-body-cap.test.ts");
+  const namedCoreApi = coreApiVitestFilesOnRegressionStep(ciWorkflowText());
+  assert.deepEqual(
+    importingCoreApi.filter((suite) => !namedCoreApi.has(suite)),
+    [],
+    "an apps/core-api suite tests the D21 MCP body cap and the WIN-268 step does not name it"
+  );
 });
 
 test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
@@ -6057,10 +6106,28 @@ test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
     {
       name: "the token-mint prerequisite build removed",
       text: pristine.replace(
-        "run: pnpm --filter @internal/workload-identity build && pnpm --filter @platosdev/token-mint build",
-        "run: pnpm --filter @internal/workload-identity build"
+        "&& pnpm --filter @platosdev/token-mint build &&",
+        "&&"
       ),
       expected: 'after a step running "pnpm --filter @platosdev/token-mint build"',
+    },
+    {
+      name: "the core-api dependency build removed",
+      text: pristine.replace(' && pnpm --filter "@platos/core-api^..." build\n', "\n"),
+      expected: 'after a step running "pnpm --filter @platos/core-api^... build"',
+    },
+    {
+      name: "the core-api D21 mirror dropped from the WIN-268 step",
+      text: pristine.replace("          pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts\n", ""),
+      expected: "followed by a direct core-api Vitest run",
+    },
+    {
+      name: "the core-api D21 mirror swapped for another core-api suite",
+      text: pristine.replace(
+        "pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts",
+        "pnpm --filter @platos/core-api exec vitest run src/http/api-surface.test.ts"
+      ),
+      expected: "no longer names core-api src/http/mcp-body-cap.test.ts",
     },
   ];
   for (const mutation of mutations) {
@@ -6079,4 +6146,16 @@ test("M4 gates: the checkers fail on the mutations they exist to catch", () => {
   const stillNamed = agentVitestFilesNamedAnywhere(unnamed);
   const dark = agentSuitesImportingGatedSubjects().filter((suite) => !stillNamed.has(suite));
   assert.deepEqual(dark, ["src/http/request-body-limits.test.ts", "src/streaming/streaming-terminal-frame.test.ts"]);
+
+  // The core-api join, asked about a workflow whose WIN-268 step no longer names
+  // the mirror (and which names it in a DIFFERENT step instead, which must not count).
+  const moved = pristine
+    .replace("          pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts\n", "")
+    .replace(
+      "run: pnpm test:agent-tenancy-postgres:integration",
+      "run: pnpm test:agent-tenancy-postgres:integration && pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts"
+    );
+  assert.notEqual(moved, pristine);
+  const onStep = coreApiVitestFilesOnRegressionStep(moved);
+  assert.deepEqual(coreApiSuitesImportingGatedSubjects().filter((suite) => !onStep.has(suite)), ["src/http/mcp-body-cap.test.ts"]);
 });
