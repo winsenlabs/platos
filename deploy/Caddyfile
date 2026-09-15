@@ -31,6 +31,16 @@ agent.test.platos.dev {
 # changes target: pointing any existing route at core-api is the cutover, and
 # that is a separate decision. This hostname needs a DNS record before Caddy
 # can obtain its certificate.
+#
+# NO COOKIE LEAVES THIS HOST. Caddy terminates TLS and proxies plain HTTP, and
+# core-api decides the operator session cookie's Secure attribute and __Host-
+# name from the connection alone (apps/core-api/src/transports/rest/operator.ts,
+# isSecureTransport); it trusts no proxy header. Behind this block it would mint
+# that credential without Secure. Until trusting this proxy is decided, the
+# block strips Set-Cookie, so bearer-token calls work and no browser session is
+# ever issued through it.
 core.test.platos.dev {
-	reverse_proxy localhost:3200
+	reverse_proxy localhost:3200 {
+		header_down -Set-Cookie
+	}
 }

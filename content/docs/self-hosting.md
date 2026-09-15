@@ -71,7 +71,6 @@ Compose requires these variables through `${NAME:?required}`:
 - `PLATOS_INTERNAL_AUTH_TOKEN`
 - `PLATOS_ERASURE_HASH_SALT`
 - `MANAGED_WORKER_SECRET`
-- `PLATOS_ENVIRONMENT` — one of `development`, `test`, `staging`, `production`. Only `core-api` reads it, but Compose interpolates every service, so it is required even when the `core-api` profile is off.
 
 Production must also replace the default `MINIO_ROOT_USER` and `MINIO_ROOT_PASSWORD`; the application rejects the development sentinels.
 
@@ -119,6 +118,20 @@ curl http://127.0.0.1:3200/readyz
 ```
 
 `/livez` answers 200 whenever the process is running, independent of any store. `/readyz` answers 503 until every declared adapter binding is satisfied, and some bindings are still generated interfaces that no configuration can satisfy, so a 503 there is the expected answer today rather than a failed install. The detailed body is returned only with `Authorization: Bearer $PLATOS_CORE_API_ADMIN_HEALTH_TOKEN`; the variables it reads are listed in `docs/env-vars.md`.
+
+`core-api` requires `PLATOS_ENVIRONMENT` (one of `development`, `test`, `staging`, `production`). Compose does not refuse to parse without it, so installs that never enable the profile are unaffected; the container itself exits 78 before binding a port when it is blank.
+
+What composes depends on the security variables, which `.env.example` leaves unset:
+
+| Set in `.env` | `/readyz` bindings | `composedContexts` |
+|---|---|---|
+| `PLATOS_ENVIRONMENT` only | 49 of 60 | `tenancy` |
+| plus `PLATOS_SECURITY_SESSION_SECRET`, `PLATOS_SECURITY_ENCRYPTION_KEY`, `PLATOS_SECURITY_ENCRYPTION_KEY_VERSION` | 53 of 60 | `identityAccess`, `tenancy`, `secrets`, `providers`, `tools` |
+| plus `PLATOS_CHANNELS_SLACK_SIGNING_SECRET` | 55 of 60 | the same five |
+
+Operator authentication, secrets, providers and tools are therefore not running until the three security variables are set. Generate the session secret and the encryption key with `openssl rand -hex 32`, independently of every other key in `.env`.
+
+`core-api` is reachable at the edge only through its own host block in `deploy/Caddyfile`, and that block removes `Set-Cookie` from every response: the process does not yet trust the proxy for the Secure-cookie decision, so it would otherwise issue the operator session cookie without `Secure` behind TLS. Bearer-token calls work through it; browser sessions do not.
 
 ## Network boundary
 

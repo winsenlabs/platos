@@ -684,11 +684,16 @@ services:
   # plain `up -d` there from doing so.
   #
   # CONFIGURATION IS apps/core-api/src/config, and docs/env-vars.md is its
-  # table. PLATOS_ENVIRONMENT is the one variable that module REQUIRES, so it is
-  # the one this file refuses to parse without. Every other variable below is
-  # an optional group anchor: blank reads as absent, the group is not wired,
-  # and /readyz says so. Compose interpolates the whole file regardless of
-  # profile, so PLATOS_ENVIRONMENT is required even when this service is off.
+  # table. PLATOS_ENVIRONMENT is the one variable that module REQUIRES, and the
+  # PROCESS is where that is enforced: blank, the container exits 78 before it
+  # binds a port. This file deliberately does not use `:?` for it. Compose
+  # interpolates every service whether or not its profile is active, so a `:?`
+  # here would make every compose command, on every install that never enables
+  # this profile, refuse to parse until the variable was added.
+  # Every other variable below is an optional group anchor: blank reads as
+  # absent, the group is not wired, and /readyz says so. WHAT THAT MEANS FOR
+  # WHAT COMPOSES is in .env.example beside the variables: without the security
+  # pair, core-api composes the tenancy context alone.
   # ─────────────────────────────────────────────────────────────
   core-api:
     build:
@@ -718,7 +723,8 @@ services:
       memory-profile-migrate:
         condition: service_completed_successfully
     environment:
-      PLATOS_ENVIRONMENT: "${PLATOS_ENVIRONMENT:?required — development, test, staging or production}"
+      # Blank when unset: the process refuses it (exit 78), the parse does not.
+      PLATOS_ENVIRONMENT: "${PLATOS_ENVIRONMENT:-}"
       # stores.postgres and stores.redis — the same canonical database and Redis
       # the agent and webapp use.
       PLATOS_STORE_POSTGRES_URL: "postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-platos_control}"
