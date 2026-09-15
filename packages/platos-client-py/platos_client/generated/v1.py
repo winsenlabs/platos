@@ -477,6 +477,27 @@ WIRE_ERROR_CODES: tuple[str, ...] = (
 #: The header M0.4 section 2 binds one-time-secret mints to.
 IDEMPOTENCY_KEY_HEADER = "idempotency-key"
 
+#: The media type an event-stream operation answers with, read off core-api's SSE lane.
+EVENT_STREAM_MEDIA_TYPE = "text/event-stream"
+
+#: The request header a reader resumes with, as core-api's SSE lane reads it.
+LAST_EVENT_ID_HEADER = "last-event-id"
+
+#: The SSE event name of the leading frame that states ``sv`` and the position resumed from.
+STREAM_META_EVENT = "stream_meta"
+
+#: The lowest stream schema version (``sv``) this client reads: the kernel's floor.
+STREAM_SCHEMA_VERSION_MIN = 1
+
+#: The highest stream schema version (``sv``) this client reads: the kernel's ceiling.
+STREAM_SCHEMA_VERSION_MAX = 1
+
+#: The frame types that end a stream, as the kernel lists them.
+TERMINAL_FRAME_TYPES: tuple[str, ...] = ("turn.done", "stream.error", "stream.offline",)
+
+#: The fields the stream envelope owns on the wire, as the kernel lists them.
+RESERVED_FRAME_FIELDS: tuple[str, ...] = ("sv", "t", "seq", "ts",)
+
 class BearerCredentialResource(TypedDict):
     tokenId: str
     label: str
@@ -770,6 +791,7 @@ class WireError(WireErrorOptional):
 
 
 V1IdempotencyClass = Literal["required", "accepted", "exempt", "not-applicable"]
+V1ResponseKind = Literal["json", "event-stream"]
 
 
 class V1Operation(TypedDict):
@@ -779,6 +801,7 @@ class V1Operation(TypedDict):
     pathParameters: list[str]
     successStatus: int
     idempotency: V1IdempotencyClass
+    responseKind: V1ResponseKind
 
 
 V1_OPERATIONS: tuple[V1Operation, ...] = (
@@ -789,6 +812,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["id"],
         "successStatus": 200,
         "idempotency": "required",
+        "responseKind": "json",
     },
     {
         "operationId": "delete__api_v1_bff_session",
@@ -797,6 +821,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 204,
         "idempotency": "accepted",
+        "responseKind": "json",
     },
     {
         "operationId": "post__api_v1_bff_session",
@@ -805,6 +830,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 200,
         "idempotency": "accepted",
+        "responseKind": "json",
     },
     {
         "operationId": "get__api_v1_environments_by_environmentId_end_users",
@@ -813,6 +839,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["environmentId"],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "json",
     },
     {
         "operationId": "get__api_v1_environments_by_environmentId_streams_by_streamId",
@@ -821,6 +848,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["environmentId", "streamId"],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "event-stream",
     },
     {
         "operationId": "get__api_v1_identity_session",
@@ -829,6 +857,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "json",
     },
     {
         "operationId": "get__api_v1_organizations",
@@ -837,6 +866,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "json",
     },
     {
         "operationId": "post__api_v1_organizations",
@@ -845,6 +875,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 201,
         "idempotency": "accepted",
+        "responseKind": "json",
     },
     {
         "operationId": "get__api_v1_projects",
@@ -853,6 +884,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "json",
     },
     {
         "operationId": "post__api_v1_projects",
@@ -861,6 +893,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 201,
         "idempotency": "accepted",
+        "responseKind": "json",
     },
     {
         "operationId": "get__mcp_entity_by_entityId_tokens",
@@ -869,6 +902,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["entityId"],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "json",
     },
     {
         "operationId": "post__mcp_entity_by_entityId_tokens",
@@ -877,6 +911,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["entityId"],
         "successStatus": 201,
         "idempotency": "required",
+        "responseKind": "json",
     },
     {
         "operationId": "delete__mcp_entity_by_entityId_tokens_by_tokenId",
@@ -885,6 +920,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["entityId", "tokenId"],
         "successStatus": 200,
         "idempotency": "exempt",
+        "responseKind": "json",
     },
     {
         "operationId": "get__mcp_platform_environments_by_environmentId_policies",
@@ -893,6 +929,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["environmentId"],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "json",
     },
     {
         "operationId": "put__mcp_platform_environments_by_environmentId_policies",
@@ -901,6 +938,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["environmentId"],
         "successStatus": 200,
         "idempotency": "accepted",
+        "responseKind": "json",
     },
     {
         "operationId": "delete__mcp_platform_environments_by_environmentId_policies_by_policyId",
@@ -909,6 +947,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["environmentId", "policyId"],
         "successStatus": 200,
         "idempotency": "accepted",
+        "responseKind": "json",
     },
     {
         "operationId": "get__mcp_platform_tokens",
@@ -917,6 +956,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 200,
         "idempotency": "not-applicable",
+        "responseKind": "json",
     },
     {
         "operationId": "post__mcp_platform_tokens",
@@ -925,6 +965,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": [],
         "successStatus": 201,
         "idempotency": "required",
+        "responseKind": "json",
     },
     {
         "operationId": "post__mcp_platform_tokens_by_id_revoke",
@@ -933,6 +974,7 @@ V1_OPERATIONS: tuple[V1Operation, ...] = (
         "pathParameters": ["id"],
         "successStatus": 200,
         "idempotency": "exempt",
+        "responseKind": "json",
     },
 )
 
@@ -950,6 +992,9 @@ T = TypeVar("T")
 class V1Transport(Protocol):
     def send(self, request: V1Request) -> Any:
         """Perform one V1 request and return its decoded body."""
+
+    def stream(self, request: V1Request, **options: Any) -> Any:
+        """Open one event-stream operation; its frames are admitted and resumed across reconnects."""
 
 
 _BY_ID = {operation["operationId"]: operation for operation in V1_OPERATIONS}
@@ -1052,15 +1097,22 @@ class EnvironmentStreamsV1Api:
     def __init__(self, transport: V1Transport) -> None:
         self._transport = transport
 
-    def read(self, environment_id: str, stream_id: str) -> None:
-        """GET /api/v1/environments/:environmentId/streams/:streamId"""
-        return self._transport.send(
+    def read(self, environment_id: str, stream_id: str, **options: Any) -> Any:
+        """GET /api/v1/environments/:environmentId/streams/:streamId
+
+        An event stream, not a JSON call: core-api's handler opens the SSE lane. The
+        frames are parsed, admitted by the kernel's ``admitFrame`` rule and resumed
+        with ``Last-Event-ID`` by the transport's ``stream``; nothing is sent until
+        iteration. ``options`` are that method's keywords.
+        """
+        return self._transport.stream(
             {
                 "operation": _operation("get__api_v1_environments_by_environmentId_streams_by_streamId"),
                 "path": _fill("/api/v1/environments/:environmentId/streams/:streamId", {"environmentId": environment_id, "streamId": stream_id}),
                 "body": None,
                 "query": None,
-            }
+            },
+            **options,
         )
 
 

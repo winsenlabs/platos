@@ -16,7 +16,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync, execFileSync } from "node:child_process";
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
@@ -27,6 +27,7 @@ import {
   NON_SHIPPING,
   classifyPath,
   evaluate,
+  fixtureSurface,
   readPackages,
   repositoryRoot,
 } from "./changeset-gate.mjs";
@@ -64,6 +65,18 @@ test("the generated SDK artifacts are the files the generator writes, owned by t
   );
   assert.equal(classifyPath(GENERATED_SDK_ARTIFACTS[0], packages)?.package.name, "@platosdev/client");
   assert.equal(classifyPath(GENERATED_SDK_ARTIFACTS[1], packages)?.package.private ?? null, null);
+});
+
+test("a fixture diff confined to its source digests is provenance, and any other fixture change is surface", () => {
+  const committed = readFileSync(join(repositoryRoot, GENERATED_SDK_ARTIFACTS[2]), "utf8");
+  const parsed = JSON.parse(committed);
+  assert.ok(Object.keys(parsed.sourceDigests ?? {}).length > 0, "the fixture no longer records source digests");
+  const digestsMoved = { ...parsed, sourceDigests: Object.fromEntries(Object.keys(parsed.sourceDigests).map((key) => [key, "0000000000000000"])) };
+  assert.equal(fixtureSurface(JSON.stringify(digestsMoved)), fixtureSurface(committed));
+  const surfaceMoved = { ...parsed, operations: parsed.operations.slice(1) };
+  assert.notEqual(fixtureSurface(JSON.stringify(surfaceMoved)), fixtureSurface(committed));
+  const streamMoved = { ...parsed, stream: { ...parsed.stream, resumeHeader: "x-probe" } };
+  assert.notEqual(fixtureSurface(JSON.stringify(streamMoved)), fixtureSurface(committed));
 });
 
 test("shipped and test-only paths are told apart, rule by rule", () => {
@@ -200,6 +213,17 @@ test("a planted change in a real worktree fires the CLI, and version intent clea
   const generated = runHere();
   assert.equal(generated.status, 1, generated.stderr);
   assert.match(generated.stderr, /@platosdev\/client changed without a changeset naming it: packages\/platos-client-py\/platos_client\/generated\/v1\.py/u);
+
+  git(["reset", "-q", "--hard", "HEAD~1"], worktree);
+  const fixturePath = join(worktree, "tests", "sdk-contract", "v1-fixtures.json");
+  const provenance = JSON.parse(readFileSync(fixturePath, "utf8"));
+  const firstInput = Object.keys(provenance.sourceDigests)[0];
+  provenance.sourceDigests[firstInput] = "ffffffffffffffff";
+  writeFileSync(fixturePath, `${JSON.stringify(provenance, null, 2)}\n`);
+  commit("move only the fixture's provenance digests");
+  const digestOnly = runHere();
+  assert.equal(digestOnly.status, 0, digestOnly.stderr);
+  assert.match(digestOnly.stderr, /only its sourceDigests moved/u);
 
   git(["reset", "-q", "--hard", "HEAD~1"], worktree);
   writeFileSync(join(worktree, ".changeset", "gate-test-kernel.md"), '---\n"@platos/kernel": patch\n---\n\nPrivate.\n');

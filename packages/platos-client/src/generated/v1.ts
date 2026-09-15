@@ -7,6 +7,10 @@
 
 /* eslint-disable */
 
+// The hand-written SSE reader owns the stream's runtime types; this module only
+// names them, so the dependency is type-only and erased from the emitted JavaScript.
+import type { V1EventStream, V1StreamOptions } from "../v1-stream.js";
+
 /** Every `error.code` the canonical taxonomy admits, as the V1 document enumerates it. */
 export const WIRE_ERROR_CODES = [
   "ACCESS_KEY_ROTATION_SUPERSEDED",
@@ -475,6 +479,27 @@ export type WireErrorCode = (typeof WIRE_ERROR_CODES)[number];
 /** The header M0.4 section 2 binds one-time-secret mints to. */
 export const IDEMPOTENCY_KEY_HEADER = "idempotency-key";
 
+/** The media type an event-stream operation answers with, read off core-api's SSE lane. */
+export const EVENT_STREAM_MEDIA_TYPE = "text/event-stream";
+
+/** The request header a reader resumes with, as core-api's SSE lane reads it. */
+export const LAST_EVENT_ID_HEADER = "last-event-id";
+
+/** The SSE event name of the leading frame that states `sv` and the position resumed from. */
+export const STREAM_META_EVENT = "stream_meta";
+
+/** The lowest stream schema version (`sv`) this client reads: the kernel's floor. */
+export const STREAM_SCHEMA_VERSION_MIN = 1;
+
+/** The highest stream schema version (`sv`) this client reads: the kernel's ceiling. */
+export const STREAM_SCHEMA_VERSION_MAX = 1;
+
+/** The frame types that end a stream, as the kernel lists them. */
+export const TERMINAL_FRAME_TYPES = ["turn.done", "stream.error", "stream.offline"] as const;
+
+/** The fields the stream envelope owns on the wire, as the kernel lists them. */
+export const RESERVED_FRAME_FIELDS = ["sv", "t", "seq", "ts"] as const;
+
 export interface BearerCredentialResource {
   readonly "tokenId": string;
   readonly "label": string;
@@ -761,6 +786,9 @@ export interface WireError {
 /** How a caller must treat `Idempotency-Key` on one operation. */
 export type V1IdempotencyClass = "required" | "accepted" | "exempt" | "not-applicable";
 
+/** Whether an operation answers with one JSON body or with an event stream. */
+export type V1ResponseKind = "json" | "event-stream";
+
 export interface V1Operation {
   readonly operationId: string;
   readonly method: string;
@@ -769,6 +797,7 @@ export interface V1Operation {
   readonly pathParameters: readonly string[];
   readonly successStatus: number;
   readonly idempotency: V1IdempotencyClass;
+  readonly responseKind: V1ResponseKind;
 }
 
 export const V1_OPERATIONS: readonly V1Operation[] = [
@@ -779,6 +808,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["id"],
     successStatus: 200,
     idempotency: "required",
+    responseKind: "json",
   },
   {
     operationId: "delete__api_v1_bff_session",
@@ -787,6 +817,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 204,
     idempotency: "accepted",
+    responseKind: "json",
   },
   {
     operationId: "post__api_v1_bff_session",
@@ -795,6 +826,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 200,
     idempotency: "accepted",
+    responseKind: "json",
   },
   {
     operationId: "get__api_v1_environments_by_environmentId_end_users",
@@ -803,6 +835,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["environmentId"],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "json",
   },
   {
     operationId: "get__api_v1_environments_by_environmentId_streams_by_streamId",
@@ -811,6 +844,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["environmentId", "streamId"],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "event-stream",
   },
   {
     operationId: "get__api_v1_identity_session",
@@ -819,6 +853,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "json",
   },
   {
     operationId: "get__api_v1_organizations",
@@ -827,6 +862,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "json",
   },
   {
     operationId: "post__api_v1_organizations",
@@ -835,6 +871,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 201,
     idempotency: "accepted",
+    responseKind: "json",
   },
   {
     operationId: "get__api_v1_projects",
@@ -843,6 +880,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "json",
   },
   {
     operationId: "post__api_v1_projects",
@@ -851,6 +889,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 201,
     idempotency: "accepted",
+    responseKind: "json",
   },
   {
     operationId: "get__mcp_entity_by_entityId_tokens",
@@ -859,6 +898,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["entityId"],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "json",
   },
   {
     operationId: "post__mcp_entity_by_entityId_tokens",
@@ -867,6 +907,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["entityId"],
     successStatus: 201,
     idempotency: "required",
+    responseKind: "json",
   },
   {
     operationId: "delete__mcp_entity_by_entityId_tokens_by_tokenId",
@@ -875,6 +916,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["entityId", "tokenId"],
     successStatus: 200,
     idempotency: "exempt",
+    responseKind: "json",
   },
   {
     operationId: "get__mcp_platform_environments_by_environmentId_policies",
@@ -883,6 +925,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["environmentId"],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "json",
   },
   {
     operationId: "put__mcp_platform_environments_by_environmentId_policies",
@@ -891,6 +934,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["environmentId"],
     successStatus: 200,
     idempotency: "accepted",
+    responseKind: "json",
   },
   {
     operationId: "delete__mcp_platform_environments_by_environmentId_policies_by_policyId",
@@ -899,6 +943,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["environmentId", "policyId"],
     successStatus: 200,
     idempotency: "accepted",
+    responseKind: "json",
   },
   {
     operationId: "get__mcp_platform_tokens",
@@ -907,6 +952,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 200,
     idempotency: "not-applicable",
+    responseKind: "json",
   },
   {
     operationId: "post__mcp_platform_tokens",
@@ -915,6 +961,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: [],
     successStatus: 201,
     idempotency: "required",
+    responseKind: "json",
   },
   {
     operationId: "post__mcp_platform_tokens_by_id_revoke",
@@ -923,6 +970,7 @@ export const V1_OPERATIONS: readonly V1Operation[] = [
     pathParameters: ["id"],
     successStatus: 200,
     idempotency: "exempt",
+    responseKind: "json",
   },
 ];
 
@@ -943,7 +991,13 @@ export interface V1Request {
 }
 
 export interface V1Transport {
+  /** A JSON operation: one request, one decoded body or a thrown refusal. */
   send<T>(request: V1Request): Promise<T>;
+  /**
+   * An event-stream operation: the frames, admitted and resumed across reconnects.
+   * Never routed through `send`, whose JSON decode throws on every valid stream.
+   */
+  stream(request: V1Request, options?: V1StreamOptions): V1EventStream;
 }
 
 const BY_ID = new Map(V1_OPERATIONS.map((operation) => [operation.operationId, operation]));
@@ -1048,14 +1102,23 @@ export class EnvironmentEndUsersV1Api {
 export class EnvironmentStreamsV1Api {
   constructor(private readonly transport: V1Transport) {}
 
-  /** GET /api/v1/environments/:environmentId/streams/:streamId */
-  async read(environmentId: string, streamId: string): Promise<void> {
-    return this.transport.send<void>({
-      operation: operation("get__api_v1_environments_by_environmentId_streams_by_streamId"),
-      path: fill("/api/v1/environments/:environmentId/streams/:streamId", { environmentId, streamId }),
-      body: undefined,
-      query: undefined,
-    });
+  /**
+   * GET /api/v1/environments/:environmentId/streams/:streamId
+   *
+   * AN EVENT STREAM, NOT A JSON CALL: core-api's handler opens the SSE lane. The
+   * frames are parsed, admitted by the kernel's `admitFrame` rule and resumed with
+   * `Last-Event-ID` by the transport's `stream`; nothing is sent until iteration.
+   */
+  read(environmentId: string, streamId: string, options?: V1StreamOptions): V1EventStream {
+    return this.transport.stream(
+      {
+        operation: operation("get__api_v1_environments_by_environmentId_streams_by_streamId"),
+        path: fill("/api/v1/environments/:environmentId/streams/:streamId", { environmentId, streamId }),
+        body: undefined,
+        query: undefined,
+      },
+      options,
+    );
   }
 
 }

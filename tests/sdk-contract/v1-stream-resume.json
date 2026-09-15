@@ -1,0 +1,1420 @@
+{
+  "$comment": [
+    "HAND-STATED, BYTES FROM THE SERVER'S ENCODERS. WIN-272 (M4.6), clients resume without missing or double-applying state.",
+    "",
+    "Read by packages/platos-client/tests/v1-stream.test.ts (vitest) and packages/platos-client-py/tests/test_v1_stream.py",
+    "(standard library; also collected by pytest). Each drives its own SDK's generated environmentStreams.read through a fake",
+    "HTTP seam that answers connection N with connection N's `wire`, split into chunks at `byteBoundaries` (UTF-8 byte offsets,",
+    "so a split can fall inside a character), and compares what the reader did PER CONNECTION: the Last-Event-ID it sent, the",
+    "stream_meta it read, the kernel admission of every frame, the sequences it applied, and how that connection ended.",
+    "",
+    "WHERE EACH SPLIT FELL IS PINNED, NOT JUST THE CONCATENATION. A reader that re-applied frames after a reconnect, applied a",
+    "torn frame, or resumed from the wrong cursor can still produce the right concatenated text in some scenario; it cannot",
+    "produce the right per-connection lists.",
+    "",
+    "The TypeScript suite joins this file to what it describes: `wire` must equal core-api's own encodeStreamMeta /",
+    "encodeSseFrame / encodeSseEvent / encodeHeartbeat output for `writes` (cut after `truncatedAfter`); every cursor must be",
+    "the kernel's encodeStreamCursor(journalStreamId, seq); `journalStreamId` must follow streams.controller.ts; each",
+    "connection's admissions and end must be what the kernel's admitFrame and classifyStreamEnd return; and `admissionGrid`",
+    "and `endGrid` must be the kernel's answers. The Python port is checked against those two grids here."
+  ],
+  "environmentId": "env_fixture_alpha",
+  "streamId": "turn-fixture-7",
+  "journalStreamId": "env_fixture_alpha/turn-fixture-7",
+  "cursors": {
+    "1": "1.32.env_fixture_alpha/turn-fixture-71",
+    "2": "1.32.env_fixture_alpha/turn-fixture-72",
+    "3": "1.32.env_fixture_alpha/turn-fixture-73",
+    "4": "1.32.env_fixture_alpha/turn-fixture-74",
+    "5": "1.32.env_fixture_alpha/turn-fixture-75",
+    "6": "1.32.env_fixture_alpha/turn-fixture-76"
+  },
+  "admissionGrid": [
+    {
+      "lastApplied": 0,
+      "seq": 1,
+      "admission": {
+        "kind": "apply"
+      }
+    },
+    {
+      "lastApplied": 0,
+      "seq": 2,
+      "admission": {
+        "kind": "gap",
+        "missing": 1
+      }
+    },
+    {
+      "lastApplied": 0,
+      "seq": 3,
+      "admission": {
+        "kind": "gap",
+        "missing": 2
+      }
+    },
+    {
+      "lastApplied": 0,
+      "seq": 4,
+      "admission": {
+        "kind": "gap",
+        "missing": 3
+      }
+    },
+    {
+      "lastApplied": 0,
+      "seq": 5,
+      "admission": {
+        "kind": "gap",
+        "missing": 4
+      }
+    },
+    {
+      "lastApplied": 0,
+      "seq": 6,
+      "admission": {
+        "kind": "gap",
+        "missing": 5
+      }
+    },
+    {
+      "lastApplied": 1,
+      "seq": 1,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 1,
+      "seq": 2,
+      "admission": {
+        "kind": "apply"
+      }
+    },
+    {
+      "lastApplied": 1,
+      "seq": 3,
+      "admission": {
+        "kind": "gap",
+        "missing": 1
+      }
+    },
+    {
+      "lastApplied": 1,
+      "seq": 4,
+      "admission": {
+        "kind": "gap",
+        "missing": 2
+      }
+    },
+    {
+      "lastApplied": 1,
+      "seq": 5,
+      "admission": {
+        "kind": "gap",
+        "missing": 3
+      }
+    },
+    {
+      "lastApplied": 1,
+      "seq": 6,
+      "admission": {
+        "kind": "gap",
+        "missing": 4
+      }
+    },
+    {
+      "lastApplied": 2,
+      "seq": 1,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 2,
+      "seq": 2,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 2,
+      "seq": 3,
+      "admission": {
+        "kind": "apply"
+      }
+    },
+    {
+      "lastApplied": 2,
+      "seq": 4,
+      "admission": {
+        "kind": "gap",
+        "missing": 1
+      }
+    },
+    {
+      "lastApplied": 2,
+      "seq": 5,
+      "admission": {
+        "kind": "gap",
+        "missing": 2
+      }
+    },
+    {
+      "lastApplied": 2,
+      "seq": 6,
+      "admission": {
+        "kind": "gap",
+        "missing": 3
+      }
+    },
+    {
+      "lastApplied": 3,
+      "seq": 1,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 3,
+      "seq": 2,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 3,
+      "seq": 3,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 3,
+      "seq": 4,
+      "admission": {
+        "kind": "apply"
+      }
+    },
+    {
+      "lastApplied": 3,
+      "seq": 5,
+      "admission": {
+        "kind": "gap",
+        "missing": 1
+      }
+    },
+    {
+      "lastApplied": 3,
+      "seq": 6,
+      "admission": {
+        "kind": "gap",
+        "missing": 2
+      }
+    },
+    {
+      "lastApplied": 4,
+      "seq": 1,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 4,
+      "seq": 2,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 4,
+      "seq": 3,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 4,
+      "seq": 4,
+      "admission": {
+        "kind": "duplicate"
+      }
+    },
+    {
+      "lastApplied": 4,
+      "seq": 5,
+      "admission": {
+        "kind": "apply"
+      }
+    },
+    {
+      "lastApplied": 4,
+      "seq": 6,
+      "admission": {
+        "kind": "gap",
+        "missing": 1
+      }
+    }
+  ],
+  "endGrid": [
+    {
+      "lastFrame": null,
+      "resumeFrom": null,
+      "end": {
+        "kind": "severed",
+        "resumeFrom": null
+      },
+      "resumable": true
+    },
+    {
+      "lastFrame": null,
+      "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72",
+      "end": {
+        "kind": "severed",
+        "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+      },
+      "resumable": true
+    },
+    {
+      "lastFrame": {
+        "t": "assistant.delta"
+      },
+      "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72",
+      "end": {
+        "kind": "severed",
+        "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+      },
+      "resumable": true
+    },
+    {
+      "lastFrame": {
+        "t": "turn.done"
+      },
+      "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72",
+      "end": {
+        "kind": "completed"
+      },
+      "resumable": false
+    },
+    {
+      "lastFrame": {
+        "t": "stream.error",
+        "code": "STREAM_CURSOR_EXPIRED"
+      },
+      "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72",
+      "end": {
+        "kind": "failed",
+        "code": "STREAM_CURSOR_EXPIRED"
+      },
+      "resumable": false
+    },
+    {
+      "lastFrame": {
+        "t": "stream.error",
+        "code": ""
+      },
+      "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72",
+      "end": {
+        "kind": "failed",
+        "code": null
+      },
+      "resumable": false
+    },
+    {
+      "lastFrame": {
+        "t": "stream.error"
+      },
+      "resumeFrom": null,
+      "end": {
+        "kind": "failed",
+        "code": null
+      },
+      "resumable": false
+    },
+    {
+      "lastFrame": {
+        "t": "stream.offline",
+        "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-75"
+      },
+      "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72",
+      "end": {
+        "kind": "interrupted",
+        "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-75"
+      },
+      "resumable": true
+    },
+    {
+      "lastFrame": {
+        "t": "stream.offline"
+      },
+      "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72",
+      "end": {
+        "kind": "interrupted",
+        "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+      },
+      "resumable": true
+    },
+    {
+      "lastFrame": {
+        "t": "stream.offline"
+      },
+      "resumeFrom": null,
+      "end": {
+        "kind": "severed",
+        "resumeFrom": null
+      },
+      "resumable": true
+    },
+    {
+      "lastFrame": {
+        "t": "stream.offline",
+        "resumeFrom": ""
+      },
+      "resumeFrom": null,
+      "end": {
+        "kind": "severed",
+        "resumeFrom": null
+      },
+      "resumable": true
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "severed-mid-frame",
+      "summary": "THE RECONNECT IN THE MIDDLE OF THE SEQUENCE. The first connection delivers frames 1-3 and dies inside frame 4's data line. Frame 4 is NOT applied (an event without its blank line is discarded), the second request resumes after frame 3's cursor, and the second connection applies exactly 4, 5 and the terminal 6. A reader that re-applied 1-3, or that applied the torn 4, or that put all six in either connection, fails the per-connection lists.",
+      "open": {
+        "lastEventId": null,
+        "lastSeq": null
+      },
+      "connections": [
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": null
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 1,
+                "ts": 1757900000001,
+                "fields": {
+                  "text": "Hel"
+                }
+              }
+            },
+            {
+              "heartbeat": true
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 2,
+                "ts": 1757900000002,
+                "fields": {
+                  "text": "lo, "
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 3,
+                "ts": 1757900000003,
+                "fields": {
+                  "text": "wö"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {
+                  "text": "rld"
+                }
+              }
+            }
+          ],
+          "truncatedAfter": "\"seq\":4,\"ts\":",
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":null}\n\nid: 1.32.env_fixture_alpha/turn-fixture-71\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":1,\"ts\":1757900000001,\"text\":\"Hel\"}\n\n: keep-alive\n\nid: 1.32.env_fixture_alpha/turn-fixture-72\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":2,\"ts\":1757900000002,\"text\":\"lo, \"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-73\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":3,\"ts\":1757900000003,\"text\":\"wö\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":4,\"ts\":",
+          "byteBoundaries": [
+            45,
+            54,
+            426,
+            474
+          ],
+          "expect": {
+            "lastEventId": null,
+            "meta": {
+              "sv": 1,
+              "replayFrom": null
+            },
+            "admissions": [
+              {
+                "seq": 1,
+                "kind": "apply"
+              },
+              {
+                "seq": 2,
+                "kind": "apply"
+              },
+              {
+                "seq": 3,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              1,
+              2,
+              3
+            ],
+            "end": {
+              "kind": "severed",
+              "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+            }
+          }
+        },
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {
+                  "text": "rld"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 5,
+                "ts": 1757900000005,
+                "fields": {
+                  "text": "!"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "turn.done",
+                "seq": 6,
+                "ts": 1757900000006,
+                "fields": {}
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":\"1.32.env_fixture_alpha/turn-fixture-73\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":4,\"ts\":1757900000004,\"text\":\"rld\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-75\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":5,\"ts\":1757900000005,\"text\":\"!\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-76\ndata: {\"sv\":1,\"t\":\"turn.done\",\"seq\":6,\"ts\":1757900000006}\n\n",
+          "byteBoundaries": [
+            19,
+            296
+          ],
+          "expect": {
+            "lastEventId": "1.32.env_fixture_alpha/turn-fixture-73",
+            "meta": {
+              "sv": 1,
+              "replayFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+            },
+            "admissions": [
+              {
+                "seq": 4,
+                "kind": "apply"
+              },
+              {
+                "seq": 5,
+                "kind": "apply"
+              },
+              {
+                "seq": 6,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              4,
+              5,
+              6
+            ],
+            "end": {
+              "kind": "completed"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "applied": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "text": "Hello, wörld!",
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-76",
+        "lastSeq": 6,
+        "reconnects": 1,
+        "end": {
+          "kind": "completed"
+        }
+      }
+    },
+    {
+      "name": "redelivery-is-dropped",
+      "summary": "AT-LEAST-ONCE. core-api's journal resumes strictly after the cursor, but the kernel documents redelivery as normal, so the reader must drop a frame it already applied. The second connection redelivers frame 2; it is admitted as a duplicate and not handed to the caller.",
+      "open": {
+        "lastEventId": null,
+        "lastSeq": null
+      },
+      "connections": [
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": null
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 1,
+                "ts": 1757900000001,
+                "fields": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 2,
+                "ts": 1757900000002,
+                "fields": {
+                  "text": "b"
+                }
+              }
+            },
+            {
+              "heartbeat": true
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":null}\n\nid: 1.32.env_fixture_alpha/turn-fixture-71\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":1,\"ts\":1757900000001,\"text\":\"a\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-72\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":2,\"ts\":1757900000002,\"text\":\"b\"}\n\n: keep-alive\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": null,
+            "meta": {
+              "sv": 1,
+              "replayFrom": null
+            },
+            "admissions": [
+              {
+                "seq": 1,
+                "kind": "apply"
+              },
+              {
+                "seq": 2,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              1,
+              2
+            ],
+            "end": {
+              "kind": "severed",
+              "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+            }
+          }
+        },
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 2,
+                "ts": 1757900000002,
+                "fields": {
+                  "text": "b"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 3,
+                "ts": 1757900000003,
+                "fields": {
+                  "text": "c"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "turn.done",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {}
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":\"1.32.env_fixture_alpha/turn-fixture-72\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-72\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":2,\"ts\":1757900000002,\"text\":\"b\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-73\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":3,\"ts\":1757900000003,\"text\":\"c\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"turn.done\",\"seq\":4,\"ts\":1757900000004}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": "1.32.env_fixture_alpha/turn-fixture-72",
+            "meta": {
+              "sv": 1,
+              "replayFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+            },
+            "admissions": [
+              {
+                "seq": 2,
+                "kind": "duplicate"
+              },
+              {
+                "seq": 3,
+                "kind": "apply"
+              },
+              {
+                "seq": 4,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              3,
+              4
+            ],
+            "end": {
+              "kind": "completed"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "applied": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "text": "abc",
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-74",
+        "lastSeq": 4,
+        "reconnects": 1,
+        "end": {
+          "kind": "completed"
+        }
+      }
+    },
+    {
+      "name": "gap-is-re-read",
+      "summary": "LOST FRAMES. The first connection skips from 2 to 4. Frame 4 is admitted as a gap of one and NOT applied; the reader abandons the connection and re-reads after frame 2's cursor, not frame 4's, so frame 3 is recovered instead of rendered as a hole.",
+      "open": {
+        "lastEventId": null,
+        "lastSeq": null
+      },
+      "connections": [
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": null
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 1,
+                "ts": 1757900000001,
+                "fields": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 2,
+                "ts": 1757900000002,
+                "fields": {
+                  "text": "b"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {
+                  "text": "d"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "turn.done",
+                "seq": 5,
+                "ts": 1757900000005,
+                "fields": {}
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":null}\n\nid: 1.32.env_fixture_alpha/turn-fixture-71\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":1,\"ts\":1757900000001,\"text\":\"a\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-72\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":2,\"ts\":1757900000002,\"text\":\"b\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":4,\"ts\":1757900000004,\"text\":\"d\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-75\ndata: {\"sv\":1,\"t\":\"turn.done\",\"seq\":5,\"ts\":1757900000005}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": null,
+            "meta": {
+              "sv": 1,
+              "replayFrom": null
+            },
+            "admissions": [
+              {
+                "seq": 1,
+                "kind": "apply"
+              },
+              {
+                "seq": 2,
+                "kind": "apply"
+              },
+              {
+                "seq": 4,
+                "kind": "gap",
+                "missing": 1
+              }
+            ],
+            "applied": [
+              1,
+              2
+            ],
+            "end": null
+          }
+        },
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 3,
+                "ts": 1757900000003,
+                "fields": {
+                  "text": "c"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {
+                  "text": "d"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "turn.done",
+                "seq": 5,
+                "ts": 1757900000005,
+                "fields": {}
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":\"1.32.env_fixture_alpha/turn-fixture-72\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-73\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":3,\"ts\":1757900000003,\"text\":\"c\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":4,\"ts\":1757900000004,\"text\":\"d\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-75\ndata: {\"sv\":1,\"t\":\"turn.done\",\"seq\":5,\"ts\":1757900000005}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": "1.32.env_fixture_alpha/turn-fixture-72",
+            "meta": {
+              "sv": 1,
+              "replayFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+            },
+            "admissions": [
+              {
+                "seq": 3,
+                "kind": "apply"
+              },
+              {
+                "seq": 4,
+                "kind": "apply"
+              },
+              {
+                "seq": 5,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              3,
+              4,
+              5
+            ],
+            "end": {
+              "kind": "completed"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "applied": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "text": "abcd",
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-75",
+        "lastSeq": 5,
+        "reconnects": 1,
+        "end": {
+          "kind": "completed"
+        }
+      }
+    },
+    {
+      "name": "offline-names-its-cursor",
+      "summary": "INTERRUPTED. A journaled stream.offline frame carries resumeFrom; the kernel says the frame's own cursor wins, so the next request resumes after it.",
+      "open": {
+        "lastEventId": null,
+        "lastSeq": null
+      },
+      "connections": [
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": null
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 1,
+                "ts": 1757900000001,
+                "fields": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 2,
+                "ts": 1757900000002,
+                "fields": {
+                  "text": "b"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "stream.offline",
+                "seq": 3,
+                "ts": 1757900000003,
+                "fields": {
+                  "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+                }
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":null}\n\nid: 1.32.env_fixture_alpha/turn-fixture-71\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":1,\"ts\":1757900000001,\"text\":\"a\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-72\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":2,\"ts\":1757900000002,\"text\":\"b\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-73\ndata: {\"sv\":1,\"t\":\"stream.offline\",\"seq\":3,\"ts\":1757900000003,\"resumeFrom\":\"1.32.env_fixture_alpha/turn-fixture-73\"}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": null,
+            "meta": {
+              "sv": 1,
+              "replayFrom": null
+            },
+            "admissions": [
+              {
+                "seq": 1,
+                "kind": "apply"
+              },
+              {
+                "seq": 2,
+                "kind": "apply"
+              },
+              {
+                "seq": 3,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              1,
+              2,
+              3
+            ],
+            "end": {
+              "kind": "interrupted",
+              "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+            }
+          }
+        },
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {
+                  "text": "c"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "turn.done",
+                "seq": 5,
+                "ts": 1757900000005,
+                "fields": {}
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":\"1.32.env_fixture_alpha/turn-fixture-73\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":4,\"ts\":1757900000004,\"text\":\"c\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-75\ndata: {\"sv\":1,\"t\":\"turn.done\",\"seq\":5,\"ts\":1757900000005}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": "1.32.env_fixture_alpha/turn-fixture-73",
+            "meta": {
+              "sv": 1,
+              "replayFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+            },
+            "admissions": [
+              {
+                "seq": 4,
+                "kind": "apply"
+              },
+              {
+                "seq": 5,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              4,
+              5
+            ],
+            "end": {
+              "kind": "completed"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "applied": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "text": "abc",
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-75",
+        "lastSeq": 5,
+        "reconnects": 1,
+        "end": {
+          "kind": "completed"
+        }
+      }
+    },
+    {
+      "name": "failed-is-final",
+      "summary": "FAILED. A transport-minted stream.error carries no id: line and is numbered lastSeq+1. It is applied and ends the stream; nothing reconnects, and the resume position stays frame 1's cursor because the id buffer persists across an event without one.",
+      "open": {
+        "lastEventId": null,
+        "lastSeq": null
+      },
+      "connections": [
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": null
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 1,
+                "ts": 1757900000001,
+                "fields": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "event": {
+                "t": "stream.error",
+                "seq": 2,
+                "ts": 1757900000002,
+                "fields": {
+                  "code": "STREAM_CREDENTIAL_EXPIRED"
+                }
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":null}\n\nid: 1.32.env_fixture_alpha/turn-fixture-71\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":1,\"ts\":1757900000001,\"text\":\"a\"}\n\ndata: {\"sv\":1,\"t\":\"stream.error\",\"seq\":2,\"ts\":1757900000002,\"code\":\"STREAM_CREDENTIAL_EXPIRED\"}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": null,
+            "meta": {
+              "sv": 1,
+              "replayFrom": null
+            },
+            "admissions": [
+              {
+                "seq": 1,
+                "kind": "apply"
+              },
+              {
+                "seq": 2,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              1,
+              2
+            ],
+            "end": {
+              "kind": "failed",
+              "code": "STREAM_CREDENTIAL_EXPIRED"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "applied": [
+          1,
+          2
+        ],
+        "text": "a",
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-71",
+        "lastSeq": 2,
+        "reconnects": 0,
+        "end": {
+          "kind": "failed",
+          "code": "STREAM_CREDENTIAL_EXPIRED"
+        }
+      }
+    },
+    {
+      "name": "resume-from-a-saved-position",
+      "summary": "A LATER READER. Opened with the lastEventId and lastSeq an earlier reader reported, the first request already carries the cursor.",
+      "open": {
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-73",
+        "lastSeq": 3
+      },
+      "connections": [
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {
+                  "text": "d"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "turn.done",
+                "seq": 5,
+                "ts": 1757900000005,
+                "fields": {}
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":\"1.32.env_fixture_alpha/turn-fixture-73\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":4,\"ts\":1757900000004,\"text\":\"d\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-75\ndata: {\"sv\":1,\"t\":\"turn.done\",\"seq\":5,\"ts\":1757900000005}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": "1.32.env_fixture_alpha/turn-fixture-73",
+            "meta": {
+              "sv": 1,
+              "replayFrom": "1.32.env_fixture_alpha/turn-fixture-73"
+            },
+            "admissions": [
+              {
+                "seq": 4,
+                "kind": "apply"
+              },
+              {
+                "seq": 5,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              4,
+              5
+            ],
+            "end": {
+              "kind": "completed"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "applied": [
+          4,
+          5
+        ],
+        "text": "d",
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-75",
+        "lastSeq": 5,
+        "reconnects": 0,
+        "end": {
+          "kind": "completed"
+        }
+      }
+    },
+    {
+      "name": "retryable-refusal-keeps-the-cursor",
+      "summary": "A 503 ON RECONNECT. The journal is briefly unreachable; the refusal is retryable, so the reader tries again with the SAME cursor and spends a second reconnect.",
+      "open": {
+        "lastEventId": null,
+        "lastSeq": null
+      },
+      "connections": [
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": null
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 1,
+                "ts": 1757900000001,
+                "fields": {
+                  "text": "a"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 2,
+                "ts": 1757900000002,
+                "fields": {
+                  "text": "b"
+                }
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":null}\n\nid: 1.32.env_fixture_alpha/turn-fixture-71\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":1,\"ts\":1757900000001,\"text\":\"a\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-72\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":2,\"ts\":1757900000002,\"text\":\"b\"}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": null,
+            "meta": {
+              "sv": 1,
+              "replayFrom": null
+            },
+            "admissions": [
+              {
+                "seq": 1,
+                "kind": "apply"
+              },
+              {
+                "seq": 2,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              1,
+              2
+            ],
+            "end": {
+              "kind": "severed",
+              "resumeFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+            }
+          }
+        },
+        {
+          "response": {
+            "status": 503,
+            "contentType": "application/json"
+          },
+          "writes": [],
+          "truncatedAfter": null,
+          "wire": "{\"error\":{\"code\":\"STREAM_JOURNAL_UNAVAILABLE\",\"title\":\"The stream journal is unreachable.\",\"body\":\"The stream journal is unreachable, so this stream cannot be read or resumed.\",\"errorId\":\"err_fixture\",\"traceRef\":\"trace_fixture\",\"version\":\"1\"}}",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": "1.32.env_fixture_alpha/turn-fixture-72",
+            "meta": null,
+            "admissions": [],
+            "applied": [],
+            "end": null
+          }
+        },
+        {
+          "response": {
+            "status": 200,
+            "contentType": "text/event-stream; charset=utf-8"
+          },
+          "writes": [
+            {
+              "meta": {
+                "sv": 1,
+                "replayFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+              }
+            },
+            {
+              "frame": {
+                "t": "assistant.delta",
+                "seq": 3,
+                "ts": 1757900000003,
+                "fields": {
+                  "text": "c"
+                }
+              }
+            },
+            {
+              "frame": {
+                "t": "turn.done",
+                "seq": 4,
+                "ts": 1757900000004,
+                "fields": {}
+              }
+            }
+          ],
+          "truncatedAfter": null,
+          "wire": "event: stream_meta\ndata: {\"sv\":1,\"replayFrom\":\"1.32.env_fixture_alpha/turn-fixture-72\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-73\ndata: {\"sv\":1,\"t\":\"assistant.delta\",\"seq\":3,\"ts\":1757900000003,\"text\":\"c\"}\n\nid: 1.32.env_fixture_alpha/turn-fixture-74\ndata: {\"sv\":1,\"t\":\"turn.done\",\"seq\":4,\"ts\":1757900000004}\n\n",
+          "byteBoundaries": [],
+          "expect": {
+            "lastEventId": "1.32.env_fixture_alpha/turn-fixture-72",
+            "meta": {
+              "sv": 1,
+              "replayFrom": "1.32.env_fixture_alpha/turn-fixture-72"
+            },
+            "admissions": [
+              {
+                "seq": 3,
+                "kind": "apply"
+              },
+              {
+                "seq": 4,
+                "kind": "apply"
+              }
+            ],
+            "applied": [
+              3,
+              4
+            ],
+            "end": {
+              "kind": "completed"
+            }
+          }
+        }
+      ],
+      "expect": {
+        "applied": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "text": "abc",
+        "lastEventId": "1.32.env_fixture_alpha/turn-fixture-74",
+        "lastSeq": 4,
+        "reconnects": 2,
+        "end": {
+          "kind": "completed"
+        }
+      }
+    }
+  ]
+}

@@ -47,6 +47,12 @@
 // fixture is a change to the generated surface `@platosdev/client` ships, and the
 // Python client has no npm identity of its own to name.
 //
+// ONE EXCEPTION, AND IT IS PROVENANCE: the fixture records `sourceDigests` of its
+// inputs, so ANY edit to the OpenAPI document, the manifest, the policy, core-api's
+// SSE lane or the kernel's stream module moves that one field even when no client
+// changes. A fixture diff confined to `sourceDigests` is not a surface change and
+// asks for no intent; every other byte of it does.
+//
 //   node scripts/sdk/changeset-gate.mjs --base <rev> [--head <rev>] [--release-plan] [--root <checkout>]
 
 import { execFileSync } from "node:child_process";
@@ -171,6 +177,26 @@ function parseChangeset(source) {
   const cliRequire = createRequire(createRequire(import.meta.url).resolve("@changesets/cli/package.json"));
   const parsed = cliRequire("@changesets/parse");
   return (parsed.default ?? parsed)(source);
+}
+
+/** The fixture's surface: everything but the provenance digests. */
+export function fixtureSurface(text) {
+  const parsed = JSON.parse(text);
+  delete parsed.sourceDigests;
+  return JSON.stringify(parsed);
+}
+
+/**
+ * Generated artifacts in the diff whose change is provenance only (see the header).
+ * An artifact absent on either side is a surface change by definition.
+ */
+export function provenanceOnlyChanges(changedPaths, mergeBase, head, root) {
+  const fixture = GENERATED_SDK_ARTIFACTS[2];
+  if (!changedPaths.includes(fixture)) return new Set();
+  const before = gitOrNull(["show", `${mergeBase}:${fixture}`], root);
+  const after = gitOrNull(["show", `${head}:${fixture}`], root);
+  if (before === null || after === null) return new Set();
+  return fixtureSurface(before) === fixtureSurface(after) ? new Set([fixture]) : new Set();
 }
 
 /** Changesets the diff adds or edits, parsed at head. Deleted ones are the version step's business. */
@@ -306,7 +332,13 @@ export function runGate({ base, head = "HEAD", withReleasePlan = false, root = r
     .split("\0")
     .filter(Boolean)
     .reduce((rows, value, index, all) => (index % 2 === 0 ? [...rows, { status: value, path: all[index + 1] }] : rows), []);
-  const changedPaths = changedWithStatus.map((row) => row.path);
+  const provenanceOnly = provenanceOnlyChanges(
+    changedWithStatus.map((row) => row.path),
+    mergeBase,
+    headCommit,
+    root,
+  );
+  const changedPaths = changedWithStatus.map((row) => row.path).filter((path) => !provenanceOnly.has(path));
   const packages = readPackages(headCommit, root);
   const changesets = readChangesets(changedWithStatus, headCommit, root).map((changeset) => ({
     ...changeset,
@@ -328,7 +360,7 @@ export function runGate({ base, head = "HEAD", withReleasePlan = false, root = r
       }
     }
   }
-  return { mergeBase, changedPaths, packages, changesets, plan, ...verdict };
+  return { mergeBase, changedPaths, provenanceOnly, packages, changesets, plan, ...verdict };
 }
 
 function runCli(argv = process.argv.slice(2)) {
@@ -352,13 +384,20 @@ function runCli(argv = process.argv.slice(2)) {
     `[changeset-gate] merge base ${result.mergeBase.slice(0, 12)}; ${result.changedPaths.length} changed path(s); ` +
       `${publishable.length} non-private ${PACKAGE_GLOB} package(s); ${result.changesets.length} changeset(s) in the diff\n`,
   );
+  for (const path of result.provenanceOnly) {
+    process.stderr.write(`  ${path}: only its sourceDigests moved (provenance, not surface)\n`);
+  }
   for (const [name, paths] of result.moved) {
     process.stderr.write(`  moved ${name} (${paths.length} shipped path(s)) named by ${(result.named.get(name) ?? ["nothing"]).join(", ")}\n`);
   }
   if (result.plan !== null) {
     for (const name of result.named.keys()) {
       const release = result.plan.releases.find((entry) => entry.name === name);
-      if (release) process.stderr.write(`  plan ${name} ${release.oldVersion} -> ${release.newVersion} (${release.type})\n`);
+      if (release) {
+        process.stderr.write(
+          `  plan ${name} ${release.oldVersion} -> ${release.newVersion} (${release.type}), from this diff's changesets\n`,
+        );
+      }
     }
   }
   if (result.violations.length > 0) {
