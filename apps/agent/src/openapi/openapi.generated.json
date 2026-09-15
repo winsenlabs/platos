@@ -1440,7 +1440,9 @@
               "TRANSPORT_CONTEXT_UNAVAILABLE",
               "TRANSPORT_REQUEST_INVALID",
               "TRANSPORT_ROUTE_NOT_FOUND",
+              "TRANSPORT_SESSION_COOKIE_REQUIRES_TLS",
               "TRANSPORT_SHUTTING_DOWN",
+              "TRANSPORT_STORE_UNAVAILABLE",
               "TRANSPORT_UNHANDLED_FAULT",
               "UNAUTHENTICATED",
               "UNKNOWN_CLIENT"
@@ -12351,7 +12353,7 @@
     "undeclaredReason": "apps/agent controller; no declared wire DTO to derive from (WIN-267 W2 derives apps/core-api only)",
     "derivedFrom": "apps/core-api TypeScript handler types, via apps/agent/scripts/rest-schema-derivation.mjs",
     "componentSchemas": 38,
-    "canonicalErrorCodes": 459,
+    "canonicalErrorCodes": 461,
     "queryParametersNotDerived": []
   }
 }
