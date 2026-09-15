@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "c32137164284d414111d6d0abfa25b0b02cf05786047c6e2daa692bbc66e522f",
+  "evidenceSha256": "588a9b5e91ca30d088a2441e26a24c6dc35c1ac20d632e01de031cb2bc76c5b3",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "57e0c271494572fb25ed1fd30324ab4e365dcbc3edf5413f831edd073060affa",
+    "aggregateSha256": "12db3ebddad0262c10f61c58f7073b31635c981d88f5e30deab91f82c909614d",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -6491,7 +6491,7 @@
       },
       {
         "path": "docs/v1-ledger-rules.json",
-        "sha256": "2c0b3aa5de7b55a3f02010bd92ef465421cadfe126ce784d96af5616751ac1e8"
+        "sha256": "42bb5618c00ce6cba2b9b26b922a5824f7efba2f17825ce1d00ba626c1f0cfb6"
       },
       {
         "path": "docs/v3-openapi.yaml",
@@ -20819,7 +20819,7 @@
       },
       {
         "path": "scripts/v1-ledger.test.mjs",
-        "sha256": "ecb6a41f56bda58103e3db2e61466d95a5d7442cfb3f8dcbbd82132619890f1f"
+        "sha256": "7dd9dd35ab4a9f03e2904ee3e34898931d9120bdf097ff9142e7c380fd1a4b92"
       },
       {
         "path": "scripts/vendored-build-audit.mjs",
@@ -40331,7 +40331,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2732
+              "line": 2759
             }
           ],
           "reversePaths": [
@@ -40356,7 +40356,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "dfab7d1b41ff7f4d952e8b5205484771c70cf582d6353ad8f0fbb8677fad0116",
+      "evidenceSha256": "c4c924c07a9a6ab4e62f3f4613d4772e7531409032aac4c82c1322bf51dfe71c",
       "manifestSha256": "273951969710da5e07cfbb09885f792bbc938df2dfe3aed8d8e480438e113753",
       "name": "@platos/otlp-importer",
       "ociImageClosure": {
@@ -41497,7 +41497,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 2731
+              "line": 2758
             },
             {
               "from": "scripts/workspace-reachability.test.mjs",
@@ -41722,7 +41722,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1e4ed426a3d5ab74230260a967d41e92e4fb4e6c9536b4a6cfdeb771e5f166ed",
+      "evidenceSha256": "d4a8c4d54648c2e3b71023bec70fd1850909ffef2062c3d2f822d66d309cf728",
       "manifestSha256": "5e3c30277d328e92c5781a7be8a60a9de1f5ab81898649bcd150b0ce5f3b48ab",
       "name": "@internal/run-engine",
       "ociImageClosure": {
@@ -63470,7 +63470,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1769
+              "line": 1782
             }
           ],
           "reversePaths": [
@@ -63830,7 +63830,7 @@
           "packages/contexts/skills"
         ]
       },
-      "evidenceSha256": "3f1cf5231976ab6f6e9fdaecb50202bd9ba3351985d74aebf944b6159b7931e4",
+      "evidenceSha256": "80918dab7ff9f84afa405334adc5574ce7c156c808e7549f7448a5bbc7a7f2f0",
       "manifestSha256": "39fe0424b871775bb785e2d759c32cd0e833a9cf71c9934313d397ca699950ca",
       "name": "@platos/context-files",
       "ociImageClosure": {
@@ -68880,7 +68880,7 @@
             {
               "from": "scripts/v1-ledger.test.mjs",
               "kind": "reference",
-              "line": 1768
+              "line": 1781
             }
           ],
           "reversePaths": [
@@ -69183,7 +69183,7 @@
           "packages/contexts/jobs"
         ]
       },
-      "evidenceSha256": "3bdcd27ed07ca1398145da389901524be1fe32b94557355beb1ec388b532a777",
+      "evidenceSha256": "c4292ca4212f4760af38c9520ec0fcfc7ca2da5c0e00cef419512c6752eb9da5",
       "manifestSha256": "da3cc481236d02e85484094c0def2d6fc84c838c3c285f44efe4619a6c26e08c",
       "name": "@platos/context-jobs",
       "ociImageClosure": {
@@ -95961,6 +95961,11 @@
               "line": 383
             },
             {
+              "from": "scripts/v1-ledger.test.mjs",
+              "kind": "reference",
+              "line": 1569
+            },
+            {
               "from": "scripts/vendored-build-audit.test.mjs",
               "kind": "reference",
               "line": 398
@@ -96049,6 +96054,10 @@
               "scripts/sdk/v1-contract.test.mjs"
             ],
             [
+              "scripts/v1-ledger.test.mjs",
+              "scripts/v1-ledger.test.mjs"
+            ],
+            [
               "scripts/vendored-build-audit.test.mjs",
               "scripts/vendored-build-audit.test.mjs"
             ],
@@ -96077,6 +96086,7 @@
             "scripts/docs-examples.test.mjs",
             "scripts/license-distribution.test.mjs",
             "scripts/sdk/v1-contract.test.mjs",
+            "scripts/v1-ledger.test.mjs",
             "scripts/vendored-build-audit.test.mjs",
             "tests/sdk-contract/platools-protocol.json"
           ]
@@ -96088,7 +96098,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "1a36f78a0756010b97b4f5f1de227f2c2251936ab2cbe084ab79af18f8bd8c59",
+      "evidenceSha256": "f8baf57066aa45fed6319eb3ca2f2ed82727bbd388b1a609025efe6fcdba7abd",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
