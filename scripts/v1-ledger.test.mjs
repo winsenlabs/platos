@@ -1564,7 +1564,14 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // two planners and its new refusals, the service, the double, the bearer store and
     // `harness.ts`'s one opt-in variable add no file. 1550 + 6 = 1556, and NO LEDGER
     // RULE CHANGED.
-    packages: 1556,
+    // WIN-271 (M4.5), D10 1556 -> 1577. TWENTY-ONE files, all under
+    // `packages/adapters/channel-discord/`: the three generator-owned scaffolding
+    // files (`package.json`, `tsconfig.json`, `README.md`) and eighteen under
+    // `src/` — thirteen modules and five suites. A NEW directory, so no generated
+    // placeholder is netted against them. NOT ONE under `packages/contexts/`, which
+    // is the clause the directory evidences. They land on the existing
+    // `packages.adapters.*` rules; NO LEDGER RULE CHANGED.
+    packages: 1577,
     // WIN-254 added four reviewed docs; WIN-252 legal provenance adds five
     // exact evidence files under docs/audits/sbom.
     //
@@ -2103,7 +2110,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and `scripts/lib/shipping-components.mjs`, the one derivation of each shipping
     // image's component set that the SBOM and the advisory scan share, on
     // `root-infra.tooling.scripts`. NO LEDGER RULE CHANGED.
-    "root-infra": 95,
+    // WIN-271 (M4.5), D10 95 -> 97. TWO files on `root-infra.tooling.scripts`:
+    // `scripts/win271-discord-mutation-plan.json`, the rows the existing WIN-271
+    // driver applies (the driver itself is edited in place to take a plan path),
+    // and `scripts/mutations-win271-discord.json`, the ledger that sweep wrote.
+    // NO LEDGER RULE CHANGED.
+    "root-infra": 97,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2398,7 +2410,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   //
   // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804. ONE file in `docs-content`,
   // itemised on that area's delta above: 15 + 1 + 97 + 4 + 10 + 1556 + 26 + 95 = 1804.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1804);
+  //
+  // AND THE SECOND CHANNEL RUNTIME (WIN-271 (M4.5), D10) — 1804 -> 1827. TWENTY-THREE
+  // files in two areas, each itemised on its delta above: `packages` +21 and
+  // `root-infra` +2. This lane runs in PARALLEL with others; the integrator re-reads
+  // this sum off the merged tree rather than adding branch totals.
+  // 15 + 1 + 97 + 4 + 10 + 1577 + 26 + 97 = 1827.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1827);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2709,7 +2727,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // edit as the total and both area deltas: three root-infra files and one SBOM.
     // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804, moved in the same edit as
     // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
-    rulesDocument.baseline.totalFiles + 1804
+    // AND THE SECOND CHANNEL RUNTIME — 1804 -> 1827, `packages` +21 and
+    // `root-infra` +2, moved in the same edit as the total above.
+    rulesDocument.baseline.totalFiles + 1827
   );
 });
 

@@ -1,0 +1,639 @@
+{
+  "$schema-note": "Mutation ledger for the second channel runtime. Every row was APPLIED to the named file in the working tree, the named command was run from the repository root, the file was restored, and the recorded exit code is what that run returned. `killedCases` are read back out of the command's own output (none are parsed for node --test commands, whose failure lines vitest's pattern does not match; the exit code is the record there). Nothing here is a prediction.",
+  "tranche": "M4.5 — packages/adapters/channel-discord, the second ChannelRuntime (founder decision D10: Discord first)",
+  "branch": "tejas/m2m4-lane-channel-discord",
+  "base": "329222cb69a05d907b9a23c3619b9d3ceec2db0c",
+  "purpose": "A green suite proves the code passes its own cases. Each row removes exactly one property this directory, its wiring or its configuration claims, and records whether a named case turned red.",
+  "procedure": "node scripts/run-win271-mutations.mjs scripts/win271-discord-mutation-plan.json <results> — the same committed driver as the Slack sweep, now taking a plan path. Adapter rows run the adapter's vitest suites (which read the context through its built dist, unchanged by any row); composition rows run the composition-root audit, arch-boundaries, the generator's suite, or core-api's vitest suites over source.",
+  "commands": {
+    "comp": "node scripts/arch/composition-root.mjs",
+    "discord": "pnpm --filter @platos/adapter-channel-discord exec vitest run",
+    "discordSig": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+    "discordNorm": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+    "discordTx": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+    "discordAdmit": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/signed-admission.test.ts",
+    "arch": "node scripts/arch/arch-boundaries.mjs",
+    "genSkeleton": "node --test scripts/arch/gen-v1-skeleton.test.mjs",
+    "coreApiConfig": "pnpm --filter @platos/core-api exec vitest run src/config/sections.test.ts src/config/platform.test.ts",
+    "coreApiInstall": "pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts"
+  },
+  "baseline": {
+    "packages/adapters/channel-discord": "106/106 across 5 files",
+    "apps/core-api": "494/494 unit (vitest, integration excluded)",
+    "scripts/arch/composition-root.mjs": "ok: 62 bindings"
+  },
+  "history": [
+    "FIRST SWEEP (45 adapter rows): 44/45 killed. D32 'the global limit binds interaction followups' SURVIVED: the route carried a `globalBound` flag, and no case could tell it from its negation because a followup's rate-limit identity is a digest of the interaction token, never the bot token, so no bot's global block is ever looked up for it. The flag was dead logic and was DELETED from rate-limit.ts; the row was replaced by 'a global 429 is treated as an ordinary bucket 429', which is killed. Recorded rather than rewritten, because a survivor that removed code is the most useful thing a sweep finds.",
+    "The same first run also motivated three cases before it was counted: trailing garbage after a genuine signature and after a genuine key (Buffer.from hex truncation), and an unreadable 200 answer on a READ. Without them D08, D09 and D38 would have been equivalent mutants under node:crypto's own length checks."
+  ],
+  "summary": "52/52 killed",
+  "mutations": [
+    {
+      "name": "D01 the replay window becomes one-sided",
+      "guards": "a capture replayed with a FUTURE timestamp is refused too",
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify is refused, with a code that says why > refuses STALE for a timestamp an hour in the FUTURE, which is the same replay",
+        "a delivery that does not verify is refused, with a code that says why > accepts at the window edge and refuses one second past it, on both sides"
+      ]
+    },
+    {
+      "name": "D02 the window edge moves by one second",
+      "guards": "exactly maxAgeSeconds is accepted and one past it is refused",
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify is refused, with a code that says why > accepts at the window edge and refuses one second past it, on both sides"
+      ]
+    },
+    {
+      "name": "D03 the signed message is body + timestamp",
+      "guards": "the construction is Discord's order, joined to Discord's own library rather than to this adapter's signer",
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's construction, as Discord's own library reads it > accepts every fixture through discord-interactions AND verifies each one here",
+        "Discord's construction, as Discord's own library reads it > refuses a delivery signed over body + timestamp, and so does Discord's library",
+        "a delivery that does not verify is refused, with a code that says why > refuses STALE for a genuine delivery received an hour late, which Discord's library would accept"
+      ]
+    },
+    {
+      "name": "D04 the timestamp is left out of the signed message",
+      "guards": "the timestamp is SIGNED, so moving it inside the window is refused by cryptography",
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's construction, as Discord's own library reads it > accepts every fixture through discord-interactions AND verifies each one here",
+        "Discord's construction, as Discord's own library reads it > refuses a delivery signed over body + timestamp, and so does Discord's library",
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID when the timestamp changes by one second, still inside the window",
+        "a delivery that does not verify is refused, with a code that says why > refuses STALE for a genuine delivery received an hour late, which Discord's library would accept"
+      ]
+    },
+    {
+      "name": "D05 an unparseable timestamp is reported INVALID",
+      "guards": "STALE and INVALID stay two operator actions",
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify is refused, with a code that says why > refuses STALE for a timestamp that is not whole seconds"
+      ]
+    },
+    {
+      "name": "D06 a blank header counts as present",
+      "guards": "a whitespace-only signature header is ABSENT, not a malformed signature",
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify is refused, with a code that says why > refuses ABSENT with no headers, with only one, and with a blank one"
+      ]
+    },
+    {
+      "name": "D07 the parsed-key cache ignores which key it holds",
+      "guards": "a rotated key takes effect on the next delivery",
+      "file": "packages/adapters/channel-discord/src/verify.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID under a real key that did not sign it",
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID when the configured key is not a key at all",
+        "a delivery that does not verify is refused, with a code that says why > follows a rotated key on the next delivery, and back again"
+      ]
+    },
+    {
+      "name": "D08 the signature grammar check is removed",
+      "guards": "trailing garbage after a genuine signature is refused, not truncated away by Buffer.from",
+      "file": "packages/adapters/channel-discord/src/ed25519.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "hex is parsed as a grammar, never truncated > refuses a signature that is not exactly 128 hex digits, without throwing",
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID for one flipped hex digit of the signature, and for a malformed one"
+      ]
+    },
+    {
+      "name": "D09 the public-key grammar check is removed",
+      "guards": "a configured key with a trailing typo is not silently truncated into the genuine key",
+      "file": "packages/adapters/channel-discord/src/ed25519.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "hex is parsed as a grammar, never truncated > refuses a key that is not exactly 64 hex digits",
+        "a delivery that does not verify is refused, with a code that says why > refuses INVALID when the configured key is not a key at all"
+      ]
+    },
+    {
+      "name": "D10 the SPKI prefix names a different key length",
+      "guards": "the raw-key wrapping is proven by RFC 8032 rather than by a second copy of itself",
+      "file": "packages/adapters/channel-discord/src/ed25519.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-signature.test.ts src/rfc8032.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "RFC 8032 §7.1 is transcribed, not invented > TEST 1: the public key is the one its secret key derives, and the message is the stated length",
+        "RFC 8032 §7.1 is transcribed, not invented > TEST 2: the public key is the one its secret key derives, and the message is the stated length",
+        "RFC 8032 §7.1 is transcribed, not invented > TEST 3: the public key is the one its secret key derives, and the message is the stated length",
+        "RFC 8032 §7.1 is transcribed, not invented > TEST 1024: the public key is the one its secret key derives, and the message is the stated length",
+        "RFC 8032 §7.1 is transcribed, not invented > TEST SHA(abc): the public key is the one its secret key derives, and the message is the stated length",
+        "the verifier this adapter uses agrees with RFC 8032 > TEST 1 is ACCEPTED over the raw published key"
+      ]
+    },
+    {
+      "name": "D11 the PING is answered with the wrong callback type",
+      "guards": "the handshake echo is exactly PONG",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the PING is the handshake, answered with PONG and never admitted > echoes exactly {\"type\":1} and carries no event id",
+        "the PING and an ignorable interaction are acknowledged, not admitted > answers the PING with the PONG body and writes no row"
+      ]
+    },
+    {
+      "name": "D12 PONG is mistranscribed in vendor.ts",
+      "guards": "the vendor numbers are joined to Discord's own library enums",
+      "file": "packages/adapters/channel-discord/src/vendor.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the PING is the handshake, answered with PONG and never admitted > echoes exactly {\"type\":1} and carries no event id",
+        "Discord's construction, as Discord's own library reads it > uses the interaction and callback numbers Discord's library defines",
+        "the PING and an ignorable interaction are acknowledged, not admitted > answers the PING with the PONG body and writes no row"
+      ]
+    },
+    {
+      "name": "D13 the PING arm is deleted",
+      "guards": "a PING is a handshake, never an ignorable delivery",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the PING is the handshake, answered with PONG and never admitted > echoes exactly {\"type\":1} and carries no event id",
+        "the PING and an ignorable interaction are acknowledged, not admitted > answers the PING with the PONG body and writes no row"
+      ]
+    },
+    {
+      "name": "D14 a thread is keyed on itself",
+      "guards": "a channel routing rule for the parent matches inside its threads",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a chat-input command becomes an InboundMessage > keys a thread UNDER its parent, so a channel rule for the parent still matches",
+        "a chat-input command becomes an InboundMessage > recognises an ANNOUNCEMENT thread (type 10) as a thread, which the legacy SDK does not"
+      ]
+    },
+    {
+      "name": "D15 announcement threads stop being threads",
+      "guards": "all three documented thread channel types key under their parent",
+      "file": "packages/adapters/channel-discord/src/vendor.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a chat-input command becomes an InboundMessage > recognises an ANNOUNCEMENT thread (type 10) as a thread, which the legacy SDK does not"
+      ]
+    },
+    {
+      "name": "D16 the bot guard is deleted",
+      "guards": "a bot-invoked command never starts a turn",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "verified interactions with no behaviour are acknowledged, not admitted > a command invoked by a bot is IGNORABLE with no event id"
+      ]
+    },
+    {
+      "name": "D17 a command with no id is admitted",
+      "guards": "no inbox row without the provider's idempotency key",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a verified command that cannot be admitted is REFUSED as an input defect > no interaction id is CHANNELS_EVENT_PAYLOAD_INVALID, never a signature code"
+      ]
+    },
+    {
+      "name": "D18 a non-snowflake channel id becomes an address",
+      "guards": "a hostile channel id never becomes a key segment",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a verified command that cannot be admitted is REFUSED as an input defect > refuses a channel id that is not a snowflake rather than keying on it"
+      ]
+    },
+    {
+      "name": "D19 command text stops descending into sub-commands",
+      "guards": "a sub-command's option values are the text",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a chat-input command becomes an InboundMessage > keys a DM on the DM channel and descends into sub-command options for the text"
+      ]
+    },
+    {
+      "name": "D20 context-menu commands start turns",
+      "guards": "only CHAT_INPUT commands are messages",
+      "file": "packages/adapters/channel-discord/src/normalize.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "verified interactions with no behaviour are acknowledged, not admitted > a message context-menu command is IGNORABLE with no event id"
+      ]
+    },
+    {
+      "name": "D21 the snowflake grammar admits any segment",
+      "guards": "nothing that is not a snowflake becomes a REST path segment",
+      "file": "packages/adapters/channel-discord/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a verified command that cannot be admitted is REFUSED as an input defect > refuses a channel id that is not a snowflake rather than keying on it",
+        "anything that would become a path is refused before a socket opens > refuses a key with a traversal segment as REJECTED",
+        "anything that would become a path is refused before a socket opens > refuses a message id that is not a snowflake as REJECTED",
+        "anything that would become a path is refused before a socket opens > refuses a malformed interaction reply path and a non-snowflake user id"
+      ]
+    },
+    {
+      "name": "D22 a thread reply is posted to the parent channel",
+      "guards": "a Discord thread is a channel and the reply goes into it",
+      "file": "packages/adapters/channel-discord/src/provider.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > posts a THREAD reply to the thread's own channel id, not to its parent",
+        "Discord's rate limits, read from Discord's headers > splits a bucket by channel, so one busy channel does not silence another"
+      ]
+    },
+    {
+      "name": "D23 a reset socket is treated as never connected",
+      "guards": "a connection lost AFTER the far side read the request is INDETERMINATE",
+      "file": "packages/adapters/channel-discord/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a lost connection is classified by WHERE it was lost > AFTER the far side read the request: dropped, INDETERMINATE, and the far side holds the message"
+      ]
+    },
+    {
+      "name": "D24 403 is reported as a dead credential",
+      "guards": "Missing Permissions on one channel does not send the refresh fence to re-authorize",
+      "file": "packages/adapters/channel-discord/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's own refusals, in this context's vocabulary > maps 403 Missing Permissions to REJECTED and NOT to a dead credential"
+      ]
+    },
+    {
+      "name": "D25 a 5xx on a write is retried",
+      "guards": "a write the far side may have performed is RECONCILE",
+      "file": "packages/adapters/channel-discord/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's own refusals, in this context's vocabulary > maps a 500 on a WRITE to INDETERMINATE, because the far side may have created it",
+        "Discord's own refusals, in this context's vocabulary > maps a 500 on a READ to UNAVAILABLE, and an unreadable success on a READ too",
+        "Discord's own refusals, in this context's vocabulary > maps a gateway's HTML page to INDETERMINATE on a write, whatever its status"
+      ]
+    },
+    {
+      "name": "D26 a timed-out write is retried",
+      "guards": "a request written and never answered is INDETERMINATE",
+      "file": "packages/adapters/channel-discord/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a write that times out mid-flight > is INDETERMINATE and RECONCILE, and the channel really does hold the message",
+        "a write that times out mid-flight > does NOT post twice when the caller obeys the disposition rule",
+        "Discord's own refusals, in this context's vocabulary > gives four DISTINGUISHABLE codes for the four outcomes"
+      ]
+    },
+    {
+      "name": "D27 a 429 forgets the wait Discord asked for",
+      "guards": "retryAfterSeconds carries Discord's Retry-After / retry_after",
+      "file": "packages/adapters/channel-discord/src/failure.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > maps a 429 to UNAVAILABLE carrying the LATER of Retry-After and retry_after, and creates nothing"
+      ]
+    },
+    {
+      "name": "D28 the bucket gate never refuses",
+      "guards": "a request on an exhausted bucket never leaves the process",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > refuses the next call on that bucket BEFORE opening a socket, until the wait has passed",
+        "Discord's rate limits, read from Discord's headers > stops on X-RateLimit-Remaining: 0 from a SUCCESS, before Discord has to refuse"
+      ]
+    },
+    {
+      "name": "D29 the shorter of two waits wins",
+      "guards": "the LATER of Retry-After and retry_after is honoured",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > maps a 429 to UNAVAILABLE carrying the LATER of Retry-After and retry_after, and creates nothing"
+      ]
+    },
+    {
+      "name": "D30 a bucket is not split by top-level resource",
+      "guards": "one busy channel does not silence another",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > splits a bucket by channel, so one busy channel does not silence another",
+        "Discord's own refusals, in this context's vocabulary > gives four DISTINGUISHABLE codes for the four outcomes"
+      ]
+    },
+    {
+      "name": "D31 X-RateLimit-Remaining: 0 on a success is ignored",
+      "guards": "the client stops before Discord has to refuse",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > stops on X-RateLimit-Remaining: 0 from a SUCCESS, before Discord has to refuse"
+      ]
+    },
+    {
+      "name": "D32 a global 429 is treated as an ordinary bucket 429",
+      "guards": "a GLOBAL limit holds every route for that bot, not only the route that was refused",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > holds every bot route on a GLOBAL 429, except interaction followups, and only for that bot"
+      ]
+    },
+    {
+      "name": "D33 every credential shares one rate-limit identity",
+      "guards": "two bots never throttle each other",
+      "file": "packages/adapters/channel-discord/src/rate-limit.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's rate limits, read from Discord's headers > holds every bot route on a GLOBAL 429, except interaction followups, and only for that bot"
+      ]
+    },
+    {
+      "name": "D34 a followup presents the bot authorization scheme",
+      "guards": "the interaction token in the path is the only authorization a followup sends",
+      "file": "packages/adapters/channel-discord/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "an interaction's followups travel on the interaction token > creates a followup with wait=true and presents NO bot token"
+      ]
+    },
+    {
+      "name": "D35 the deadline timer is not cleared",
+      "guards": "no per-call timer outlives its call",
+      "file": "packages/adapters/channel-discord/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a write that times out mid-flight > leaves no timer holding the event loop open"
+      ]
+    },
+    {
+      "name": "D36 mention parsing is left on",
+      "guards": "an echoed @everyone notifies nobody",
+      "file": "packages/adapters/channel-discord/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > creates the message with the bot token, Discord's User-Agent form, and no mention parsing",
+        "an interaction's followups travel on the interaction token > creates a followup with wait=true and presents NO bot token"
+      ]
+    },
+    {
+      "name": "D37 wait=true is dropped from a followup create",
+      "guards": "a followup answers with the created message so it can be edited",
+      "file": "packages/adapters/channel-discord/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "an interaction's followups travel on the interaction token > creates a followup with wait=true and presents NO bot token"
+      ]
+    },
+    {
+      "name": "D38 an unreadable success body is treated as success",
+      "guards": "a proxy's 200 HTML page on a read is not Discord confirming the token",
+      "file": "packages/adapters/channel-discord/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "Discord's own refusals, in this context's vocabulary > maps a 500 on a READ to UNAVAILABLE, and an unreadable success on a READ too",
+        "Discord's own refusals, in this context's vocabulary > maps a gateway's HTML page to INDETERMINATE on a write, whatever its status"
+      ]
+    },
+    {
+      "name": "D39 deliveredAt is the wall clock",
+      "guards": "the delivered instant is the one Discord's snowflake encodes",
+      "file": "packages/adapters/channel-discord/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > reports the far side's own message id and the instant that id encodes"
+      ]
+    },
+    {
+      "name": "D40 the documented User-Agent is not sent",
+      "guards": "Discord's HTTP API requires DiscordBot ($url, $versionNumber)",
+      "file": "packages/adapters/channel-discord/src/send.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > creates the message with the bot token, Discord's User-Agent form, and no mention parsing"
+      ]
+    },
+    {
+      "name": "D41 an edit is sent as a new post",
+      "guards": "streaming a turn edits one message instead of flooding the channel",
+      "file": "packages/adapters/channel-discord/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "streaming a turn back is an EDIT, not a flood > edits the same message twice and the channel still holds ONE"
+      ]
+    },
+    {
+      "name": "D42 a non-snowflake message id reaches the path",
+      "guards": "an edit id is refused before a socket opens",
+      "file": "packages/adapters/channel-discord/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "anything that would become a path is refused before a socket opens > refuses a message id that is not a snowflake as REJECTED"
+      ]
+    },
+    {
+      "name": "D43 the REST base drops to v9",
+      "guards": "every route is under /api/v10/",
+      "file": "packages/adapters/channel-discord/src/vendor.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > resolves every route under /api/v10/ without eating a path segment"
+      ]
+    },
+    {
+      "name": "D44 a bot token is presented as Bearer",
+      "guards": "Discord's bot scheme is Bot, and Bearer is refused 401",
+      "file": "packages/adapters/channel-discord/src/vendor.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the ordinary path, so the failures below are not vacuous > creates the message with the bot token, Discord's User-Agent form, and no mention parsing"
+      ]
+    },
+    {
+      "name": "D45 verification is skipped for well-formed bodies",
+      "guards": "verification runs before anything reads the body, so an unsigned body is refused in the use case",
+      "file": "packages/adapters/channel-discord/src/adapter.ts",
+      "command": "pnpm --filter @platos/adapter-channel-discord exec vitest run src/signed-admission.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "a delivery that does not verify never reaches the store > refuses a forged body",
+        "a delivery that does not verify never reaches the store > refuses a replay an hour late",
+        "a delivery that does not verify never reaches the store > refuses an unsigned body that would parse perfectly, before anything reads it"
+      ]
+    },
+    {
+      "name": "C01 channel-discord is listed as unimplemented",
+      "guards": "rule (C7) joins UNIMPLEMENTED_ADAPTERS to the directory's own source in both directions",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "node scripts/arch/composition-root.mjs",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "UNIMPLEMENTED_ADAPTERS says channel-discord cannot be constructed, but packages/adapters/channel-discord/src/index.ts exports a constructor; drop it from the list"
+      ]
+    },
+    {
+      "name": "C02 the Discord construction arm never builds the adapter",
+      "guards": "a declared channels.discord group produces a constructed channel-discord",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "constructing the adapters an install declared > builds the directory every declared configuration group configures",
+        "readiness over what was actually constructed > reports 50 of 57, and the 7 that remain are exactly the bindings with no implementation",
+        "the context bundles those adapters can satisfy > still cannot compose channels, and names the two directories that stop it"
+      ]
+    },
+    {
+      "name": "C03 the ChannelRuntime satisfaction obligation is dropped",
+      "guards": "every declared binding is proven at compile time",
+      "file": "apps/core-api/src/composition/adapter-bindings.ts",
+      "command": "node scripts/arch/composition-root.mjs",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "PORT_SATISFACTION has no entry for channel-discord:ChannelRuntime; that binding is asserted, not proven",
+        "PORT_SATISFACTION has 61 entr(ies); 62 binding(s) are declared"
+      ]
+    },
+    {
+      "name": "C04 the discord-sdk-only home points at the wrong directory",
+      "guards": "Discord's client libraries have exactly one home in the V1 tree",
+      "file": "scripts/arch/boundary-rules.mjs",
+      "command": "node scripts/arch/arch-boundaries.mjs",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "[discord-sdk-only] packages/adapters/channel-discord/src/discord-signature.test.ts -> discord-interactions"
+      ]
+    },
+    {
+      "name": "C05 the channel ports lose their multi-home entries",
+      "guards": "a second home for a port is refused unless declared",
+      "file": "scripts/arch/gen-v1-skeleton.mjs",
+      "command": "node --test scripts/arch/gen-v1-skeleton.test.mjs",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": []
+    },
+    {
+      "name": "C06 the public-key grammar admits a suffix",
+      "guards": "a key with a stray tail is refused at boot rather than truncated into the genuine key",
+      "file": "apps/core-api/src/config/channels.ts",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/config/sections.test.ts src/config/platform.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the redaction classification, joined to what the loader actually prints > refuses a Discord public key that is not exactly a raw Ed25519 key, and names it"
+      ]
+    },
+    {
+      "name": "C07 the Discord group assembles the replay window from the wrong variable",
+      "guards": "each declared default survives the real loader",
+      "file": "apps/core-api/src/config/channels.ts",
+      "command": "pnpm --filter @platos/core-api exec vitest run src/config/sections.test.ts src/config/platform.test.ts",
+      "exit": 1,
+      "outcome": "killed",
+      "killedCases": [
+        "the anchor contract platform.ts decides with > proves each declared default survives the real loader, not just the table"
+      ]
+    }
+  ]
+}

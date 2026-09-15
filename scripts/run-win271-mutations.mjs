@@ -31,6 +31,10 @@ const COMMANDS = {
   discordNorm: "pnpm --filter @platos/adapter-channel-discord exec vitest run src/normalize.test.ts",
   discordTx: "pnpm --filter @platos/adapter-channel-discord exec vitest run src/discord-transport.test.ts",
   discordAdmit: "pnpm --filter @platos/adapter-channel-discord exec vitest run src/signed-admission.test.ts",
+  arch: "node scripts/arch/arch-boundaries.mjs",
+  genSkeleton: "node --test scripts/arch/gen-v1-skeleton.test.mjs",
+  coreApiConfig: "pnpm --filter @platos/core-api exec vitest run src/config/sections.test.ts src/config/platform.test.ts",
+  coreApiInstall: "pnpm --filter @platos/core-api exec vitest run src/composition/installation.test.ts",
 };
 
 // `node scripts/run-win271-mutations.mjs [plan] [results]`. With no arguments it

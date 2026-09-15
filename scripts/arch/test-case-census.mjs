@@ -2468,6 +2468,19 @@ export const EXPECTED = Object.freeze({
   // job is to be correct when the far side misbehaves, so an emptied body would
   // drop a refusal that a real socket or a published digest produced, not a
   // repetition of a happy path.
+  // WIN-271 (M4.5), D10. 0 -> 5 files, 0 -> 106 cases: the SECOND channel runtime,
+  // a new directory. discord-transport 35 (a real `node:http` far side keeping
+  // `received` and `created` apart: silent, slow, refused, reset AFTER the read,
+  // 429 with both wait headers, a bucket exhausted before a socket opens, the
+  // global limit and the routes it does not bind), rfc8032 24 (all five RFC 8032
+  // section 7.1 vectors, each re-derived from its secret key), normalize 21,
+  // discord-signature 16 (the construction joined to Discord's own helper library,
+  // then one thing changed per refusal), signed-admission 10 (the context's own use
+  // case with this runtime behind the port, and one case pinning the Core gap that
+  // keeps it from production). Counted statically: the vector and fixture tables
+  // are spelled as literals or walked inside one case, because a generated table
+  // has no row count this census can see.
+  "packages/adapters/channel-discord": { files: 5, cases: 106 },
   "packages/adapters/channel-slack": { files: 5, cases: 61 },
   "packages/adapters/clickhouse-observability": { files: 0, cases: 0 },
   "packages/adapters/durable-runtime": { files: 0, cases: 0 },
@@ -3723,7 +3736,13 @@ export const EXPECTED = Object.freeze({
 // `fields[]` path points — and `apps/core-api` is outside `PACKAGE_ROOTS`, so this
 // census moves not one number for them. A reader taking this file as the measure of
 // what stage 3 proved would be reading two thirds of it.
-export const EXPECTED_RUNTIME_TOTAL = 8359;
+//
+// WIN-271 (M4.5), D10: 8359 + 106 = 8465 over 564 + 5 = 569 files. ONE row moves,
+// `packages/adapters/channel-discord` 0 -> 106 across 5 NEW files, itemised on its
+// own row above. `packages/contexts/channels` is UNMOVED at 274 — the clause the
+// directory evidences is that the context needed no change, and a case added
+// there would have been one.
+export const EXPECTED_RUNTIME_TOTAL = 8465;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {

@@ -121,7 +121,10 @@ test("--check accepts the live generated tree and reports both ownership tiers",
   // which is what caught the one-short pin at WIN-259 and is why the merged
   // 35/122 -- a pair no branch stated, against A1+A2's 35/121 and A3's 33/117 --
   // is a reading rather than a sum somebody trusted.
-  assert.match(output, /35 V1 projects and 122 project edges/u);
+  //
+  // WIN-271 (M4.5), D10: 36/124. The sixteenth directory is one project and two
+  // edges (its owner reference and the composition root's). READ BACK.
+  assert.match(output, /36 V1 projects and 124 project edges/u);
 });
 
 test("writing a complete generated tree is byte-idempotent", () => {
@@ -175,7 +178,7 @@ test("stale, missing, and extra owned files each fail closed", () => {
 // source tier is released only by an explicit, monotonic adoption.
 // ---------------------------------------------------------------------------
 
-test("the scaffolding tier is exactly 103 files and is only ever manifests, tsconfigs and READMEs", () => {
+test("the scaffolding tier is exactly 109 files and is only ever manifests, tsconfigs and READMEs", () => {
   const files = renderSkeleton([]);
   const { scaffolding, placeholders, total } = tierCounts(files);
   assert.equal(scaffolding, EXPECTED_SCAFFOLDING_FILE_COUNT);
@@ -190,7 +193,10 @@ test("the scaffolding tier is exactly 103 files and is only ever manifests, tsco
   // 100 + 3 + 3 = 106 and 106 + 2 + 2 = 110. `keyring-envelope`'s fourth BINDING
   // adds nothing here — a binding is a row in a table, not a file on disk —
   // which is exactly the distinction this total is worth asserting for.
-  assert.equal(total, 216, "an unadopted skeleton is the M1 tree plus the thirteenth, fourteenth and fifteenth adapters");
+  //
+  // WIN-271 (M4.5), D10 216 -> 221: the sixteenth directory's three scaffolding
+  // files and two placeholders, by the same arithmetic a fourth time.
+  assert.equal(total, 221, "an unadopted skeleton is the M1 tree plus the thirteenth through sixteenth adapters");
 
   const scaffoldingPaths = [...files.keys()].filter((path) => isScaffoldingPath(path));
   assert.equal(scaffoldingPaths.length, EXPECTED_SCAFFOLDING_FILE_COUNT);
@@ -751,6 +757,12 @@ const LIVE_ADAPTERS = [
   { dir: "tokenmint-totp", port: "TokenMinter", owner: "identity-access", additional: [
       { port: "TotpCodeVerifier", owner: "identity-access" },
     ], note: "n" },
+  // WIN-271 (M4.5), D10. The SIXTEENTH, with its two bindings — and the row that
+  // makes `channels:ChannelAdapter` and `channels:ChannelRuntime` multi-home, so
+  // a copy without it would fail the allow-list's "must still be earned" rule.
+  { dir: "channel-discord", port: "ChannelAdapter", owner: "channels", additional: [
+      { port: "ChannelRuntime", owner: "channels" },
+    ], note: "n" },
 ];
 
 test("the live adapter table passes its own check, and the fixture copy of it does too", () => {
@@ -776,17 +788,19 @@ test("the live adapter table passes its own check, and the fixture copy of it do
 // anything, which is what §15's consolidation rule is about. The refusal this
 // case proves is unchanged in any rename: a directory beyond the declared count
 // still fails.
-test("§15 refusal: a SIXTEENTH adapter directory fails, even though bindings may exceed fifteen", () => {
+// WIN-271 (M4.5), D10 renames it SIXTEENTH -> SEVENTEENTH: `channel-discord` is a
+// different VENDOR, which is the one thing §15 never consolidates.
+test("§15 refusal: a SEVENTEENTH adapter directory fails, even though bindings may exceed sixteen", () => {
   const errors = checkAdapterTable([
     ...LIVE_ADAPTERS,
     { dir: "notifier-sms", port: "Notifier", owner: "cost-monitoring", note: "n" },
   ]);
-  assert.ok(errors.some((error) => error.includes("names 15 concrete adapter directories; ADAPTERS has 16")));
+  assert.ok(errors.some((error) => error.includes("names 16 concrete adapter directories; ADAPTERS has 17")));
 });
 
 // WIN-259 (M2.4) 44 -> 47: `secrets`' three cryptography ports bound to the
 // thirteenth directory. The case is renamed with the number it now guards.
-test("§15 refusal: a SIXTY-FIRST binding fails, even though a directory may hold more than one", () => {
+test("§15 refusal: a SIXTY-THIRD binding fails, even though a directory may hold more than one", () => {
   // WIN-258 T5 moved this from thirty-one to forty-four across nine tranches:
   // `providers`' one, `conversations`' four, `skills`' one, `memory`'s two,
   // `privacy`'s one, `jobs`' two, `files`' one, `observability`'s one and
@@ -840,7 +854,10 @@ test("§15 refusal: a SIXTY-FIRST binding fails, even though a directory may hol
   // satisfied by the same object holding the same Redis client. The DIRECTORY pin
   // above did not move with it — the same distinction a fourth time — so the
   // refusal this case exercises is now the SIXTY-FIRST.
-  assert.ok(errors.some((error) => error.includes("declares 60 adapter bindings; ADAPTERS flattens to 61")));
+  //
+  // WIN-271 (M4.5), D10 moved it to SIXTY-TWO with a NEW directory's two rows,
+  // so the refusal this case exercises is now the SIXTY-THIRD.
+  assert.ok(errors.some((error) => error.includes("declares 62 adapter bindings; ADAPTERS flattens to 63")));
 });
 
 test("§15 refusal: an ADDITIONAL binding's owner is held to the same check as the primary one", () => {
@@ -882,6 +899,16 @@ test("§15 refusal: one directory declaring the same port twice fails", () => {
       error.includes("postgres-tenancy declares TenancyRepository more than once")
     )
   );
+});
+
+test("§15 refusal: the CHANNEL ports' multi-home entries are earned by two providers, not by one", () => {
+  // WIN-271 (M4.5), D10. The two entries `channel-discord` added to
+  // MULTI_HOME_PORTS are exemptions, and an exemption must fail the day it stops
+  // being needed: drop the second provider and both channel ports have one home.
+  const slackOnly = LIVE_ADAPTERS.filter((adapter) => adapter.dir !== "channel-discord");
+  const errors = checkAdapterTable(slackOnly);
+  assert.ok(errors.some((error) => error.includes("channels:ChannelAdapter is declared as a multi-home port but has 1 home(s)")));
+  assert.ok(errors.some((error) => error.includes("channels:ChannelRuntime is declared as a multi-home port but has 1 home(s)")));
 });
 
 test("§15 refusal: the multi-home allow-list must still be earned", () => {

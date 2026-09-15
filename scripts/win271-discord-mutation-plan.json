@@ -358,5 +358,61 @@
     "from": "    if (!verified.ok) return err(verified.error);\n",
     "to": "",
     "command": "discordAdmit"
+  },
+  {
+    "name": "C01 channel-discord is listed as unimplemented",
+    "guards": "rule (C7) joins UNIMPLEMENTED_ADAPTERS to the directory's own source in both directions",
+    "file": "apps/core-api/src/composition/adapter-bindings.ts",
+    "from": "  \"notifier-email\",\n  \"notifier-webhook\",\n]);",
+    "to": "  \"notifier-email\",\n  \"notifier-webhook\",\n  \"channel-discord\",\n]);",
+    "command": "comp"
+  },
+  {
+    "name": "C02 the Discord construction arm never builds the adapter",
+    "guards": "a declared channels.discord group produces a constructed channel-discord",
+    "file": "apps/core-api/src/composition/adapter-bindings.ts",
+    "from": "    adapters[\"channel-discord\"] = createChannelDiscordAdapter({\n      requestMaxAgeSeconds: input.channels.discord.requestMaxAgeSeconds,\n    });",
+    "to": "    void createChannelDiscordAdapter;",
+    "command": "coreApiInstall"
+  },
+  {
+    "name": "C03 the ChannelRuntime satisfaction obligation is dropped",
+    "guards": "every declared binding is proven at compile time",
+    "file": "apps/core-api/src/composition/adapter-bindings.ts",
+    "from": "  \"channel-discord:ChannelRuntime\": true,\n",
+    "to": "",
+    "command": "comp"
+  },
+  {
+    "name": "C04 the discord-sdk-only home points at the wrong directory",
+    "guards": "Discord's client libraries have exactly one home in the V1 tree",
+    "file": "scripts/arch/boundary-rules.mjs",
+    "from": "    home: \"^packages/adapters/channel-discord/\",",
+    "to": "    home: \"^packages/adapters/channel-slack/\",",
+    "command": "arch"
+  },
+  {
+    "name": "C05 the channel ports lose their multi-home entries",
+    "guards": "a second home for a port is refused unless declared",
+    "file": "scripts/arch/gen-v1-skeleton.mjs",
+    "from": "export const MULTI_HOME_PORTS = [\"cost-monitoring:Notifier\", \"channels:ChannelAdapter\", \"channels:ChannelRuntime\"];",
+    "to": "export const MULTI_HOME_PORTS = [\"cost-monitoring:Notifier\"];",
+    "command": "genSkeleton"
+  },
+  {
+    "name": "C06 the public-key grammar admits a suffix",
+    "guards": "a key with a stray tail is refused at boot rather than truncated into the genuine key",
+    "file": "apps/core-api/src/config/channels.ts",
+    "from": "  pattern: \"[0-9a-fA-F]{64}\",",
+    "to": "  pattern: \"[0-9a-fA-F]{64}.*\",",
+    "command": "coreApiConfig"
+  },
+  {
+    "name": "C07 the Discord group assembles the replay window from the wrong variable",
+    "guards": "each declared default survives the real loader",
+    "file": "apps/core-api/src/config/channels.ts",
+    "from": "          requestMaxAgeSeconds: Number(read(\"PLATOS_CHANNELS_DISCORD_REQUEST_MAX_AGE_S\")),",
+    "to": "          requestMaxAgeSeconds: Number(read(\"PLATOS_CHANNELS_WEBHOOK_TIMEOUT_MS\")),",
+    "command": "coreApiConfig"
   }
 ]
