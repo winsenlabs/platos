@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `0fa16961d430ee55b57e6ab947a9e7a789ae99c057e0a7c8b9619a678b5f8cba`
+Evidence SHA-256: `79e96593b61ce9b85b9abc815bf3c57b859150e1fc6d68cab3849835fdbf846b`
 
 ## Baseline
 
@@ -41,7 +41,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | --- | --- | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
 | `apps/agent` | `platos-agent` | yes | yes | yes | yes | retain-oci-image | no | no | `7b826f5d134c0878…` |
 | `apps/core-api` | `@platos/core-api` | yes | yes | yes | yes | retain-oci-image | no | no | `98cada04795f1def…` |
-| `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `6504b3a99a6bc3b5…` |
+| `apps/mcp-stdio` | `@platos/mcp-stdio` | no | yes | yes | no | retain-application-deployable | no | no | `b2762de3c297f1df…` |
 | `apps/webapp` | `webapp` | yes | yes | yes | yes | retain-oci-image | no | no | `bd7c6dd9c1a2f448…` |
 | `docs` | `docs` | no | no | no | no | owner-review-repository-referenced | no | yes | `faa685668d065cc4…` |
 | `internal-packages/cache` | `@internal/cache` | no | no | no | no | owner-review-repository-referenced | no | yes | `f9f2db1155272a42…` |
@@ -88,11 +88,11 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/contexts/memory` | `@platos/context-memory` | yes | yes | yes | yes | retain-oci-image | no | no | `2d1ae994c11d2252…` |
 | `packages/contexts/observability` | `@platos/context-observability` | yes | yes | yes | yes | retain-oci-image | no | no | `8362ceeba3630251…` |
 | `packages/contexts/privacy` | `@platos/context-privacy` | yes | yes | yes | yes | retain-oci-image | no | no | `00f84c0a51836312…` |
-| `packages/contexts/providers` | `@platos/context-providers` | yes | yes | yes | yes | retain-oci-image | no | no | `b3479b0790d73378…` |
+| `packages/contexts/providers` | `@platos/context-providers` | yes | yes | yes | yes | retain-oci-image | no | no | `aa5efcb0345f0492…` |
 | `packages/contexts/secrets` | `@platos/context-secrets` | yes | yes | yes | yes | retain-oci-image | no | no | `b8138572333880a5…` |
 | `packages/contexts/skills` | `@platos/context-skills` | yes | yes | yes | yes | retain-oci-image | no | no | `61c7c26e718d55d8…` |
 | `packages/contexts/tenancy` | `@platos/context-tenancy` | yes | yes | yes | yes | retain-oci-image | no | no | `29665ab1181917c9…` |
-| `packages/contexts/tools` | `@platos/context-tools` | yes | yes | yes | yes | retain-oci-image | no | no | `29b205f1909bff65…` |
+| `packages/contexts/tools` | `@platos/context-tools` | yes | yes | yes | yes | retain-oci-image | no | no | `4c55e6c36939e15b…` |
 | `packages/core` | `@platos/core` | no | no | no | yes | owner-review-public-boundary | yes | yes | `82c8b3cf98a0d966…` |
 | `packages/kernel` | `@platos/kernel` | yes | yes | yes | yes | retain-oci-image | no | no | `56dc3440f49fe560…` |
 | `packages/platools-js` | `@platosdev/platools-sdk` | no | no | no | no | owner-review-public-boundary | yes | yes | `82251a27f3841f6e…` |
