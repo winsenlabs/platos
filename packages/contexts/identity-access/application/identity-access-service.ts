@@ -387,16 +387,6 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
     },
 
     /**
-     * WIN-268 (M4.2). The SCOPE IS WIDENED FROM A `TenantScope` HERE, once.
-     *
-     * The contract publishes a `TenantScope` because that is what a transport
-     * holds after `authorizeEnvironment`; the domain works in
-     * `AuthorizationScope`, whose kind it can check. `tenantAuthorizationScope`
-     * is the one conversion, and it is the same one `mintBearerCredential`'s use
-     * case applies — so a listing, a mint and a revocation cannot disagree about
-     * what environment a caller named.
-     */
-    /**
      * D20. The bucket and the (absent) tenant are decided HERE, from the address,
      * so the contract request has nothing a caller could use to spend somebody
      * else's budget.
@@ -439,6 +429,16 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
       });
     },
 
+    /**
+     * WIN-268 (M4.2). The SCOPE IS WIDENED FROM A `TenantScope` HERE, once.
+     *
+     * The contract publishes a `TenantScope` because that is what a transport
+     * holds after `authorizeEnvironment`; the domain works in
+     * `AuthorizationScope`, whose kind it can check. `tenantAuthorizationScope`
+     * is the one conversion, and it is the same one `mintBearerCredential`'s use
+     * case applies — so a listing, a mint and a revocation cannot disagree about
+     * what environment a caller named.
+     */
     async listBearerCredentials(
       request: ListBearerCredentialsRequest,
     ): Promise<Result<BearerCredentialPageView>> {

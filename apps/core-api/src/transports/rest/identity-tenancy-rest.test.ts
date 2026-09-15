@@ -128,4 +128,28 @@ describe("what each new route accepts — SHAPE only, every violation at once", 
       "query.projectSlug:required",
     ]);
   });
+
+  it("the scope resolver takes the oracle's access level: absent is metadata, secret:mutate is kept, anything else is refused rather than downgraded", () => {
+    const slugs = { organizationSlug: "a", projectSlug: "b", environmentSlug: "c" };
+    // THE ORACLE'S DEFAULT: `params.access ?? "metadata"` (auth.server.ts).
+    expect(environmentScopeQueryValidator(slugs)).toEqual({ ok: true, value: { ...slugs, access: "metadata" } });
+    expect(environmentScopeQueryValidator({ ...slugs, access: "metadata" })).toEqual({
+      ok: true,
+      value: { ...slugs, access: "metadata" },
+    });
+    expect(environmentScopeQueryValidator({ ...slugs, access: "secret:mutate" })).toEqual({
+      ok: true,
+      value: { ...slugs, access: "secret:mutate" },
+    });
+    // A level the domain does not know would be decided as `metadata` by gate 4's
+    // `=== "secret:mutate"` test and echoed back as granted — so it never gets there.
+    for (const level of ["secret:read", "SECRET:MUTATE", "", "admin"]) {
+      expect(fields(environmentScopeQueryValidator({ ...slugs, access: level })), level).toEqual([
+        "query.access:unsupported",
+      ]);
+    }
+    expect(fields(environmentScopeQueryValidator({ ...slugs, access: ["secret:mutate", "metadata"] }))).toEqual([
+      "query.access:repeated",
+    ]);
+  });
 });

@@ -442,6 +442,53 @@ describe("WIN-267 R1 — the finding that no V1 REST route could spend an authen
     expect(await present()).not.toBe("RATE_LIMITED");
     expect(reached).toBe(admitted + 1);
   });
+
+  it("INVITE_ACCEPT is keyed on the ACTOR, not the impersonated account: the impersonator's guesses exhaust the impersonator's bucket and nobody else's", async () => {
+    // A RULE THIS TRANSPORT CHOSE (see invitations.controller.ts's banner): the
+    // oracle took a caller-supplied `rateLimitIdentifier`. An impersonating session
+    // has two users, and exactly one of them is the human sending the guesses.
+    const tenancy = createTenancyService(createTenancyFixture().dependencies);
+    const session = { actor: "support-engineer", effective: "support-engineer" };
+    const identityAccess: IdentityAccessContract = {
+      ...createIdentityAccessService(testPorts()),
+      authenticateOperator: () =>
+        Promise.resolve(
+          ok({
+            sessionId: `session-${session.actor}-as-${session.effective}`,
+            actorUserId: session.actor,
+            effectiveUserId: session.effective,
+            email: "guesser@example.com",
+            expiresAt: new Date("2030-01-01T00:00:00.000Z"),
+            mfaVerifiedAt: null,
+            impersonating: null,
+          }),
+        ),
+    };
+    const controller = new InvitationsController({
+      app: { contexts: { identityAccess, tenancy } } as unknown as AppModule,
+    });
+    const present = async (actor: string, effective: string): Promise<string> => {
+      session.actor = actor;
+      session.effective = effective;
+      const thrown = await controller.accept({ headers: {} }, { token: "plt_inv_a-guess" }).catch((error: unknown) => error);
+      return domainErrorOf(thrown)?.code ?? "(accepted)";
+    };
+
+    // THE SUPPORT ENGINEER, IMPERSONATING A CUSTOMER, GUESSES UNTIL REFUSED.
+    let refused = false;
+    for (let request = 0; request < 21 && !refused; request += 1) {
+      refused = (await present("support-engineer", "customer")) === "RATE_LIMITED";
+    }
+    expect(refused, "the impersonating session must be refused within twenty-one requests").toBe(true);
+
+    // THE CUSTOMER'S OWN SESSION IS NOT REFUSED: their account was the effective
+    // user of every guess, and none of those guesses spent their budget.
+    expect(await present("customer", "customer")).not.toBe("RATE_LIMITED");
+    // THE ENGINEER IS STILL REFUSED impersonating somebody else, and signed in as
+    // themselves: the budget spent was theirs, whichever account they wore.
+    expect(await present("support-engineer", "another-customer")).toBe("RATE_LIMITED");
+    expect(await present("support-engineer", "support-engineer")).toBe("RATE_LIMITED");
+  });
 });
 
 /** The method names a real service object publishes, sorted. */

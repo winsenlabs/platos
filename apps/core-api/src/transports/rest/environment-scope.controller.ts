@@ -24,14 +24,34 @@
 // authorization does not. That is the running product's behaviour, kept rather
 // than silently tightened, and recorded as a finding in the read model's banner.
 //
-// `access` IS NOT A PARAMETER. The oracle took one because a Remix action reused
-// the loader's resolver with `secret:mutate`; here the mutation routes authorize
-// their own access level, so this read asks for the weakest one and says so.
+// `?access=` IS A PARAMETER, BECAUSE THE ORACLE'S IS LOAD-BEARING.
+//
+// `requireEnvironmentScope` takes `access` ("metadata" | "secret:mutate",
+// defaulting to "metadata") and refuses at the level asked for. The webapp asks
+// for `secret:mutate` before it calls apps/agent — `m4Mutation.server.ts` and the
+// agent-tools, agents.$agentId.tools, agents.$agentId.canary, apikeys and
+// environment-variables.new routes — and apps/agent trusts the workload token
+// the webapp mints for that tenant (`platosAgent.server.ts`), so for those calls
+// the operator-level gate 4 exists ONLY in this resolver. A route that could
+// answer "may this operator see it" but not "may this operator mutate it" would
+// leave the T8 cutover two bad options: drop the gate, or copy the four-gate
+// policy into the webapp from the roles this resource exposes. So the level is
+// the caller's to choose, exactly as it was:
+//
+//   absent             metadata (the oracle's default)
+//   metadata           gates 1-3
+//   secret:mutate      gates 1-4 — org OWNER/ADMIN or project ADMIN, else
+//                      TENANCY_ENVIRONMENT_FORBIDDEN (403), the oracle's refusal
+//   anything else      TRANSPORT_REQUEST_INVALID (400), `query.access:unsupported`
+//
+// The third row is refused HERE rather than passed on: the domain's gate 4 tests
+// `access === "secret:mutate"`, so an unrecognised level would be decided as
+// `metadata` and echoed back as if it had been granted.
 
 import { Controller, Get, Inject, Query, Req } from "@nestjs/common";
 
 import { asIdentifier, err, ok, type FieldViolation, type Result } from "@platos/kernel";
-import type { EnvironmentRecord, OperatorEnvironmentView, UserId } from "@platos/context-tenancy";
+import type { EnvironmentAccess, EnvironmentRecord, OperatorEnvironmentView, UserId } from "@platos/context-tenancy";
 
 import { API_VERSION } from "../../http/api-surface.js";
 import { DomainValidationPipe } from "../../http/validation.pipe.js";
@@ -41,17 +61,20 @@ import { raise } from "./fault.js";
 import { authenticateOperator, requireTenancy, type InboundOperatorRequest } from "./operator.js";
 import { requestInvalid } from "./transport-errors.js";
 
-/** `?organizationSlug=&projectSlug=&environmentSlug=` — what a caller sends. Every one a string. */
+/** `?organizationSlug=&projectSlug=&environmentSlug=[&access=]` — what a caller sends. Every one a string. */
 export interface EnvironmentScopeWireQuery {
   readonly organizationSlug: string;
   readonly projectSlug: string;
   readonly environmentSlug: string;
+  /** `metadata` (the default when absent) or `secret:mutate`. See the banner. */
+  readonly access?: string;
 }
 
 export interface EnvironmentScopeQuery {
   readonly organizationSlug: string;
   readonly projectSlug: string;
   readonly environmentSlug: string;
+  readonly access: EnvironmentAccess;
 }
 
 export interface TenantNodeResource {
@@ -66,7 +89,7 @@ export interface EnvironmentScopeResource {
   readonly environment: TenantNodeResource;
   /** The project's unarchived environments, oldest first — the switcher's list. */
   readonly environments: readonly TenantNodeResource[];
-  /** The access level this answer was authorized at. Always `metadata`; see the banner. */
+  /** The access level this answer was authorized at: the `?access=` asked for, `metadata` when absent. */
   readonly access: string;
   readonly organizationRole: string;
   readonly projectRole: string | null;
@@ -74,9 +97,37 @@ export interface EnvironmentScopeResource {
 
 const SLUG_PARAMETERS = ["organizationSlug", "projectSlug", "environmentSlug"] as const;
 
+/** The oracle's `EnvironmentAuthorizationAccess`, as the levels a caller may name. */
+export const ENVIRONMENT_SCOPE_ACCESS_LEVELS: readonly EnvironmentAccess[] = ["metadata", "secret:mutate"];
+
+/** `?access=`: absent is the oracle's default; a level outside the two is refused, never downgraded. */
+function accessLevel(value: unknown, violations: FieldViolation[]): EnvironmentAccess {
+  if (value === undefined) return "metadata";
+  if (typeof value !== "string") {
+    violations.push({
+      field: "query.access",
+      code: "repeated",
+      message: "Send this parameter once; it was sent more than once.",
+    });
+    return "metadata";
+  }
+  const level = ENVIRONMENT_SCOPE_ACCESS_LEVELS.find((candidate) => candidate === value);
+  if (level === undefined) {
+    violations.push({
+      field: "query.access",
+      code: "unsupported",
+      message: `access must be one of: ${ENVIRONMENT_SCOPE_ACCESS_LEVELS.join(", ")}.`,
+    });
+    return "metadata";
+  }
+  return level;
+}
+
 /**
- * SHAPE ONLY: three single-valued strings. A slug that names nothing is the read
- * model's 404, not this file's 400 — the grammar is tenancy's.
+ * SHAPE ONLY: three single-valued strings and an optional access level. A slug
+ * that names nothing is the read model's 404, not this file's 400 — the grammar
+ * is tenancy's. The access level is the one closed set checked here, because the
+ * domain would otherwise downgrade an unknown one (see `accessLevel`).
  */
 export const environmentScopeQueryValidator = (input: unknown): Result<EnvironmentScopeQuery> => {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
@@ -100,11 +151,13 @@ export const environmentScopeQueryValidator = (input: unknown): Result<Environme
           : "Send this parameter once; it was sent more than once.",
     });
   }
+  const access = accessLevel(query["access"], violations);
   if (violations.length > 0) return err(requestInvalid(violations));
   return ok({
     organizationSlug: values["organizationSlug"] as string,
     projectSlug: values["projectSlug"] as string,
     environmentSlug: values["environmentSlug"] as string,
+    access,
   });
 };
 
@@ -149,7 +202,7 @@ export class EnvironmentScopeController {
         actorUserId: asIdentifier<UserId>(operator.actorUserId),
         effectiveUserId: asIdentifier<UserId>(operator.effectiveUserId),
       },
-      access: "metadata",
+      access: query.access,
     });
     if (!resolved.ok) raise(resolved.error);
     return itemEnvelope(environmentScopeResource(resolved.value));

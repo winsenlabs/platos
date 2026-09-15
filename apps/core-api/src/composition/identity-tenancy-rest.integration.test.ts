@@ -653,8 +653,9 @@ describe("D1 — invitations, against the database that enforces one live invita
 });
 
 describe("environment by slugs — requireEnvironmentScope ported, with the forged scope asked", () => {
-  const query = (organization: string, project: string, environment: string) =>
-    `/environments/by-slugs?organizationSlug=${organization}&projectSlug=${project}&environmentSlug=${environment}`;
+  const query = (organization: string, project: string, environment: string, access?: string) =>
+    `/environments/by-slugs?organizationSlug=${organization}&projectSlug=${project}&environmentSlug=${environment}` +
+    (access === undefined ? "" : `&access=${encodeURIComponent(access)}`);
 
   it("resolves acme/app/prod for its OWNER, with the LIVE environments oldest first", async () => {
     const answer = await call("GET", query("acme-t6", "app", "prod"), { as: "owner" });
@@ -672,6 +673,46 @@ describe("environment by slugs — requireEnvironmentScope ported, with the forg
     const own = await call("GET", query("globex-t6", "app", "prod"), { as: "rival" });
     expect(own.status, own.text).toBe(200);
     expect((data(own)["environment"] as Record<string, unknown>)["id"]).toBe(ID.globexProd);
+  });
+
+  it("authorizes at the level the caller asks for, as the oracle's `access` does: a VIEWER sees at metadata and is refused at secret:mutate", async () => {
+    // THE WEBAPP GATES ITS apps/agent CALLS WITH `access: "secret:mutate"`, and
+    // apps/agent trusts the webapp's workload token — so this refusal is the gate.
+    const absent = await call("GET", query("acme-t6", "app", "prod"), { as: "member" });
+    expect(absent.status, absent.text).toBe(200);
+    expect(data(absent)).toMatchObject({ access: "metadata", organizationRole: "MEMBER", projectRole: "VIEWER" });
+    const metadata = await call("GET", query("acme-t6", "app", "prod", "metadata"), { as: "member" });
+    expect(metadata.status, metadata.text).toBe(200);
+    expect(data(metadata)["access"]).toBe("metadata");
+    const mutate = await call("GET", query("acme-t6", "app", "prod", "secret:mutate"), { as: "member" });
+    expectRefused(mutate, "TENANCY_ENVIRONMENT_FORBIDDEN");
+    // GATE 4, AND ONLY GATE 4, refused it — the same operator passed gates 1-3 one
+    // request earlier — yet the wire does not say which gate: the oracle's single
+    // `environmentForbidden()` is kept indistinguishable.
+    expect(mutate.text).not.toContain("secret-mutate-role");
+
+    // AN ORGANIZATION ADMIN NEEDS NO PROJECT ROLE AT EITHER LEVEL.
+    const owner = await call("GET", query("acme-t6", "app", "prod", "secret:mutate"), { as: "owner" });
+    expect(owner.status, owner.text).toBe(200);
+    expect(data(owner)).toMatchObject({ access: "secret:mutate", organizationRole: "OWNER", projectRole: null });
+    expect((data(owner)["environment"] as Record<string, unknown>)["id"]).toBe(ID.acmeProd);
+  });
+
+  it("refuses globex's ADMIN naming acme's slugs at secret:mutate too, and refuses a level that is not one of the two before anything is resolved", async () => {
+    // THE FORGED SCOPE AT THE STRONGER LEVEL: an ADMIN — of globex — is refused at
+    // the organization gate, not waved through by an admin role held elsewhere.
+    const forged = await call("GET", query("acme-t6", "app", "prod", "secret:mutate"), { as: "rival" });
+    expectRefused(forged, "TENANCY_ENVIRONMENT_FORBIDDEN");
+    expect(codeOf(forged)).not.toBe("TENANCY_NOT_FOUND");
+    const own = await call("GET", query("globex-t6", "app", "prod", "secret:mutate"), { as: "rival" });
+    expect(own.status, own.text).toBe(200);
+    expect(data(own)).toMatchObject({ access: "secret:mutate", organizationRole: "ADMIN" });
+
+    // NEVER DOWNGRADED: gate 4 tests `=== "secret:mutate"`, so an unknown level
+    // would otherwise be decided as metadata and echoed back as granted.
+    const unknown = await call("GET", query("acme-t6", "app", "prod", "secret:read"), { as: "member" });
+    expectRefused(unknown, "TRANSPORT_REQUEST_INVALID");
+    expect(unknown.text).toContain("query.access");
   });
 });
 

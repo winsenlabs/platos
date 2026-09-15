@@ -233,6 +233,13 @@ export function rateLimitFailedClosed(cause: string): DomainError {
   );
 }
 
+/** An address a sign-in link cannot be mailed to. Carries the field, never the value. */
+export function invalidEmailAddress(field = "email"): DomainError {
+  return domainError("INVALID_EMAIL_ADDRESS", "invalid_input", "Enter a valid email address", {
+    fields: [{ field, code: "INVALID_EMAIL_ADDRESS", message: "must be an email address" }],
+  });
+}
+
 /**
  * D20 — a magic link was asked for and this install composed no way to deliver
  * one.
@@ -242,13 +249,6 @@ export function rateLimitFailedClosed(cause: string): DomainError {
  * from `MAGIC_LINK_DELIVERY_FAILED`: this one is fixed by configuration and a
  * retry will never help.
  */
-/** An address a sign-in link cannot be mailed to. Carries the field, never the value. */
-export function invalidEmailAddress(field = "email"): DomainError {
-  return domainError("INVALID_EMAIL_ADDRESS", "invalid_input", "Enter a valid email address", {
-    fields: [{ field, code: "INVALID_EMAIL_ADDRESS", message: "must be an email address" }],
-  });
-}
-
 export function magicLinkDeliveryUnavailable(): DomainError {
   return domainError(
     "MAGIC_LINK_DELIVERY_UNAVAILABLE",

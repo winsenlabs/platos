@@ -37,6 +37,25 @@
 //   MAGIC_LINK_DELIVERY_FAILED   503  the relay did not accept the message
 //   UNAUTHENTICATED              401  the link cannot be spent
 //
+// DIVERGENCE, RECORDED: THERE IS NO DIRECT SIGN-IN. The oracle's login action has
+// a non-production branch — `NODE_ENV !== "production"` and `BACKDOOR_PLATOS_DEV`
+// or `PLATOS_TEST_MODE` set to "1", optionally pinned to `BACKDOOR_PLATOS_DEV_EMAIL`
+// — that calls `issueMagicLink`, spends the token at once with `consumeMagicLink`
+// and answers `Set-Cookie`, mailing nothing. It is not ported, and D20 is why: the
+// branch works only because the BFF holds the login-capable token, which is the
+// one thing D20 says it never receives, and a route that turned D20 off by an
+// environment flag would be a sign-in-as-anyone endpoint one misconfiguration
+// from production. Measured at this tranche's base, nothing tracked turns the
+// branch ON: the webapp declares the flags (`env.server.ts`), its route test
+// mocks both to "0" (`test/operatorSessionRouteEvidence.test.ts`), both compose
+// files pass `PLATOS_TEST_MODE` to the AGENT service only, and
+// `content/docs/credential-inventory.md` lists `BACKDOOR_PLATOS_DEV` as a
+// development-only bypass. What is lost is a developer's hand-set local sign-in,
+// and T8 must say so when it deletes the Remix action. The next step is the one
+// `composition/identity-tenancy-rest.integration.test.ts` already takes: point
+// `PLATOS_CHANNELS_EMAIL_SMTP_URL` at a test relay (Mailpit), and have the harness
+// read the link out of the relay's API and POST it to `/bff/magic-link/complete`.
+//
 // IDEMPOTENCY. The start takes the unlisted default, `accepted`: a key a caller
 // sends is honoured, so a retried form submission does not mail a second link,
 // and none is demanded, because the one-time secret is never in the response a
