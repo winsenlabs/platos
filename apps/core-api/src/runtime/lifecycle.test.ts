@@ -9,6 +9,7 @@
 import { connect } from "node:net";
 import { readFileSync } from "node:fs";
 
+import type { Clock } from "@platos/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 
 import type { SuppliedAdapters } from "../composition/adapter-bindings.js";
@@ -60,6 +61,7 @@ async function start(
   adapters?: SuppliedAdapters,
   inFlight?: InFlightRegister,
   drainables?: readonly Drainable[],
+  clock?: Clock,
 ): Promise<Harness> {
   const outcome = loadCoreApiConfiguration({
     PLATOS_ENVIRONMENT: "test",
@@ -77,6 +79,7 @@ async function start(
     adapters,
     inFlight,
     drainables,
+    clock,
     logger: createProcessLogger({ minimumLevel: "debug", write: (line) => written.push(line) }),
   });
   running = api;
@@ -649,6 +652,47 @@ describe("shutdown drains deferred work out of the SAME budget", () => {
     expect(called).toEqual([]);
     expect(outcome.deferred.steps[0]?.outcome.stoppedBecause).toBe(SHUTDOWN_DRAIN_BUDGET_SPENT);
     expect(outcome.deferred.budgetMs).toBe(0);
+  }, 20_000);
+
+  it("treats a fired in-flight deadline as the whole budget spent, whatever the clock reads", async () => {
+    // THE RACE THE TEST ABOVE LOST ON A HOSTED RUNNER (CI run 35008240485). The
+    // in-flight deadline is a timer, and a timer is due on libuv's millisecond
+    // loop clock; the leftover was measured on the injected wall clock. The two
+    // truncate at different sub-millisecond phases, so a 60ms timer can fire
+    // while the wall clock says 59ms have passed — and the drainable was then
+    // CALLED with a 1ms slice after the budget had in fact run out.
+    //
+    // A clock that never advances makes that disagreement total and repeatable:
+    // it reads zero elapsed after the 60ms deadline has fired. The deadline
+    // firing is the budget being spent, so the drainable must still not be
+    // called.
+    const frozenAt = new Date("2026-09-15T18:46:40.000Z");
+    const frozen: Clock = { now: () => new Date(frozenAt.getTime()) };
+    const called: string[] = [];
+    const drainable: Drainable = {
+      name: "outbox",
+      drain: () => {
+        called.push("outbox");
+        return Promise.resolve({ drained: true, handled: 0, remaining: 0, stoppedBecause: null });
+      },
+    };
+    const harness = await start(
+      { PLATOS_CORE_API_SHUTDOWN_TIMEOUT_MS: "60" },
+      undefined,
+      undefined,
+      [drainable],
+      frozen,
+    );
+    harness.api.app.inFlight.begin("never-settles");
+
+    const outcome = await harness.api.stop("SIGTERM");
+    running = null;
+
+    expect(outcome.drained).toBe(false);
+    expect(outcome.remaining).toBe(1);
+    expect(called).toEqual([]);
+    expect(outcome.deferred.budgetMs).toBe(0);
+    expect(outcome.deferred.steps[0]?.outcome.stoppedBecause).toBe(SHUTDOWN_DRAIN_BUDGET_SPENT);
   }, 20_000);
 
   it("drains nothing, cleanly, when no drainable is supplied", async () => {

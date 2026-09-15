@@ -265,12 +265,20 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
       // without spending real seconds. Handing the full timeout to each would
       // spend the budget twice and guarantee the outbox flush is killed
       // mid-page; shutdown-drain.ts states that failure and its arithmetic.
+      //
+      // A DEADLINE THAT FIRED IS A BUDGET THAT IS SPENT. The in-flight drain ends
+      // undrained only when its timer, armed with the WHOLE budget, fires. That
+      // timer is due on libuv's millisecond loop clock, while the leftover is
+      // measured on the injected wall clock, and the two truncate at different
+      // sub-millisecond phases: a 60ms deadline can fire while the wall clock
+      // reads 59ms. Subtracting would then hand the deferred drain a 1ms slice of
+      // a budget that has run out (hosted CI run 35008240485 did exactly that).
+      // So the subtraction is taken only when the drain finished early.
       const budgetStartedAt = clock.now().getTime();
       const outcome = await inFlight.drain(configuration.shutdownTimeoutMs, () => clock.now().getTime());
-      const leftOverMs = Math.max(
-        configuration.shutdownTimeoutMs - (clock.now().getTime() - budgetStartedAt),
-        0,
-      );
+      const leftOverMs = outcome.drained
+        ? Math.max(configuration.shutdownTimeoutMs - (clock.now().getTime() - budgetStartedAt), 0)
+        : 0;
       const deferred = await drainAll(drainables, leftOverMs, () => clock.now().getTime());
 
       // RELEASE EVERY REMAINING SOCKET BEFORE HANDING OVER TO THE FRAMEWORK.
