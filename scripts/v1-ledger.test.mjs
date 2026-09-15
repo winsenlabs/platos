@@ -2075,7 +2075,16 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // SIXTH tranche to use that convention. It is evidence rather than a gate: no
     // script reads it, and its whole value is that four of its thirty-five rows say
     // `survived` on a first pass and name the case that closes each one.
-    "root-infra": 90,
+    //
+    // CORE-API BUNDLE CLOSURE 90 -> 92. TWO files:
+    // `scripts/deploy-bundle-closure.mjs`, the prune and lockfile-closure check
+    // `apps/core-api/Dockerfile` runs on its deploy bundle, and its suite
+    // `scripts/deploy-bundle-closure.test.mjs`. They take the blanket
+    // `root-infra.tooling.scripts` and `root-infra.test.script-suites` rules every
+    // script and suite above them took. The Dockerfile, `ci.yml`,
+    // `ci-policy.test.mjs` and `audit-platos-build.mjs` are edited IN PLACE. NO
+    // LEDGER RULE CHANGED.
+    "root-infra": 92,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2358,7 +2367,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // `apps-core-api` and itemised on that area's delta above. The eight-key
   // re-derivation from the merged `expectedDeltas` is
   // 15 + 1 + 97 + 4 + 10 + 1556 + 24 + 90 = 1797.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1797);
+  //
+  // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799. TWO files in `root-infra`, the
+  // script and its suite, itemised on that area's delta above:
+  // 15 + 1 + 97 + 4 + 10 + 1556 + 24 + 92 = 1799.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1799);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2664,7 +2677,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // 1796, with no mutation-manifest +1 because this tranche pins none either.
     // AND THE CORE-API IMAGE — 1796 -> 1797, moved in the same edit as the total and
     // as `expectedDeltas["apps-core-api"]`: the one Dockerfile, summed per area here.
-    rulesDocument.baseline.totalFiles + 1797
+    // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799, the script and its suite.
+    rulesDocument.baseline.totalFiles + 1799
   );
 });
 
