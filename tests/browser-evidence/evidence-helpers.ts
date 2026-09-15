@@ -716,6 +716,34 @@ async function submitForm(page: Page, form: Locator, buttonName: RegExp) {
   await page.waitForLoadState("networkidle");
 }
 
+/**
+ * Submit a Remix POST form and wait for ITS action response before the page is
+ * read again.
+ *
+ * `submitForm` alone does not wait for the write. A Remix `<Form>` submits by
+ * fetch, and `waitForLoadState("networkidle")` resolves at once on a page that
+ * is already idle, so the witness could read the typed value and hard-reload
+ * while the action was still in flight. The reload cancels the browser's fetch
+ * and reads the persisted field from before the write. The origins and revoke
+ * handlers already wait for their action response; the MCP config and Tool ACL
+ * handlers did not, and a local replay of the persisted-state gate failed
+ * mcp-identity-context with "hard reload changed the intended persisted field"
+ * while PostgreSQL held the submitted rateLimitPerMinute.
+ */
+async function submitAwaitedAction(page: Page, form: Locator, buttonName: RegExp, operation: string) {
+  const actionPathname = new URL(page.url()).pathname;
+  const actionResponsePromise = page.waitForResponse((response) => {
+    const request = response.request();
+    return request.method() === "POST" && new URL(response.url()).pathname === actionPathname;
+  });
+  await submitForm(page, form, buttonName);
+  const actionResponse = await actionResponsePromise;
+  expect(actionResponse.status(), `${operation} action did not succeed`).toBe(200);
+  const actionPayload = (await actionResponse.json()) as { ok?: boolean };
+  expect(actionPayload.ok, `${operation} action returned a failure payload`).toBe(true);
+  await page.waitForLoadState("networkidle");
+}
+
 async function existingTokenForm(page: Page, intent: "revoke" | "token-revoke") {
   const form = page
     .locator(`form:has(input[name="intent"][value="${intent}"])`)
@@ -818,15 +846,84 @@ export async function performMutation(args: {
             createdRow.getByText(credentialReference, { exact: true }),
             "persisted Entity row lost the bare MCP credential reference"
           ).toBeVisible();
+          // THE TERMINAL STATE IS THE SKIPPED DISCOVERY PASS, NOT `connected`.
+          // Registration fires MCP discovery asynchronously and that pass rewrites
+          // the Entity rows, so the credential read-back below has to come after
+          // it. This used to wait for `connected`, which a hosted-* transport only
+          // ever reached because discovery returned an empty tool list, pruned the
+          // Entity's rows and stamped it connected. WIN-269 (M4.3,
+          // entity-mcp-discovery.service.ts) made that pass an honest skip: Platos
+          // does not read a hosted server's static manifest yet, so it records the
+          // reason and a discovery time and leaves `connectionStatus` alone. Its
+          // three persisted states are: contacted (discovery time, no error,
+          // connected), skipped (discovery time AND an error, status unchanged) and
+          // failed (no discovery time, an error, disconnected). The page's own
+          // loader data carries both MCP client columns, so wait for the skipped
+          // shape there, then read the rendered row.
+          const entitiesLoader = new URL(entitiesPath, page.url());
+          entitiesLoader.searchParams.set(
+            "_data",
+            "routes/_app.orgs.$organizationSlug.projects.$projectParam.env.$envParam.agent-entities._index"
+          );
+          type DiscoveryStamp = {
+            httpStatus: number;
+            found: boolean;
+            connectionStatus: string | null;
+            transport: string | null;
+            lastDiscoveryAt: string | null;
+            discoveryError: string | null;
+          };
+          let stamp: DiscoveryStamp | undefined;
           await expect
             .poll(
               async () => {
-                await page.reload({ waitUntil: "networkidle" });
-                return createdRow.getByText("connected", { exact: true }).count();
+                stamp = await page.evaluate(
+                  async ({ target, externalId }) => {
+                    const response = await fetch(target, { headers: { Accept: "application/json" } });
+                    const body = (await response.json().catch(() => null)) as {
+                      panel?: { ok?: boolean; data?: { entities?: unknown[]; items?: unknown[] } };
+                    } | null;
+                    const rows = body?.panel?.data?.entities ?? body?.panel?.data?.items ?? [];
+                    const entity = rows
+                      .map((row) => row as Record<string, unknown>)
+                      .find((row) => row.entityId === externalId || row.externalId === externalId);
+                    const client = (entity?.mcpClient ?? null) as Record<string, unknown> | null;
+                    const text = (value: unknown) => (typeof value === "string" ? value : null);
+                    return {
+                      httpStatus: response.status,
+                      found: entity !== undefined,
+                      connectionStatus: text(entity?.connectionStatus),
+                      transport: text(client?.transport),
+                      lastDiscoveryAt: text(client?.lastDiscoveryAt),
+                      discoveryError: text(client?.discoveryError),
+                    };
+                  },
+                  { target: entitiesLoader.toString(), externalId: marker }
+                );
+                return stamp.found && stamp.lastDiscoveryAt !== null && stamp.discoveryError !== null;
               },
-              { message: "persisted Entity never reached its terminal connected status" }
+              { message: "persisted Entity never recorded its terminal (skipped) discovery pass" }
             )
-            .toBe(1);
+            .toBe(true);
+          expect(stamp?.httpStatus, "Entity registry loader read-back failed").toBe(200);
+          expect(stamp?.transport, "terminal Entity lost its hosted MCP transport").toBe("hosted-composio");
+          expect(
+            stamp?.discoveryError ?? "",
+            "terminal discovery error does not name the transport it skipped"
+          ).toContain("hosted-composio");
+          expect(
+            stamp?.connectionStatus,
+            "a discovery pass that asked nothing changed the Entity's connection status"
+          ).toBe("disconnected");
+          await page.reload({ waitUntil: "networkidle" });
+          await expect(
+            createdRow.getByText("disconnected", { exact: true }),
+            "terminal Entity row does not read disconnected"
+          ).toHaveCount(1);
+          await expect(
+            createdRow.getByText("connected", { exact: true }),
+            "terminal Entity row claims a connection no discovery pass made"
+          ).toHaveCount(0);
           await expect(
             createdRow.getByText(credentialReference, { exact: true }),
             "terminal Entity read-back lost the bare MCP credential reference"
@@ -1419,7 +1516,7 @@ export async function performMutation(args: {
             expect(Number.isFinite(current), "rateLimitPerMinute is not numeric").toBe(true);
             await control.fill(String(current >= 10_000 ? current - 1 : current + 1));
           }
-          await submitForm(page, form, /save typed mcp config/i);
+          await submitAwaitedAction(page, form, /save typed mcp config/i, "MCP config");
         },
       });
     }
@@ -1436,7 +1533,7 @@ export async function performMutation(args: {
         mutate: async () => {
           if (wasExposed) await exposed.uncheck();
           else await exposed.check();
-          await submitForm(page, form, /save tool policy/i);
+          await submitAwaitedAction(page, form, /save tool policy/i, "MCP Tool ACL");
         },
       });
     }
