@@ -19,6 +19,7 @@ candidates=(
   "agent AGENT platos-agent"
   "webapp WEBAPP platos-webapp"
   "migrations MIGRATIONS platos-migrations"
+  "core-api CORE_API platos-core-api"
 )
 expected_archives=""
 for candidate in "${candidates[@]}"; do

@@ -35,6 +35,14 @@ const expectedCandidates = [
     dockerfile: "internal-packages/tenancy-database/Dockerfile.migrations",
     env_name: "MIGRATIONS",
   },
+  // The FOURTH candidate: the V1 composition root. See the note on
+  // `coreApiBuildScriptTarget` for what its Dockerfile runs.
+  {
+    name: "core-api",
+    image: "platos-core-api",
+    dockerfile: "apps/core-api/Dockerfile",
+    env_name: "CORE_API",
+  },
 ];
 const expectedInstallInstructions = new Map([
   [
@@ -53,6 +61,13 @@ const expectedInstallInstructions = new Map([
   [
     "internal-packages/tenancy-database/Dockerfile.migrations",
     ["RUN pnpm install --frozen-lockfile --prod"],
+  ],
+  // NO STORE CACHE MOUNT, unlike the agent line above. The core-api Dockerfile
+  // avoids BuildKit-only syntax so the same file builds under the classic
+  // builder as well as buildx; its own header states the trade.
+  [
+    "apps/core-api/Dockerfile",
+    ["RUN pnpm install --frozen-lockfile"],
   ],
 ]);
 const expectedPnpmRunInstructions = new Map([
@@ -76,6 +91,14 @@ const expectedPnpmRunInstructions = new Map([
   [
     "internal-packages/tenancy-database/Dockerfile.migrations",
     ["RUN pnpm install --frozen-lockfile --prod"],
+  ],
+  [
+    "apps/core-api/Dockerfile",
+    [
+      "RUN pnpm install --frozen-lockfile",
+      "RUN pnpm run build:platos:core-api",
+      "RUN pnpm --filter @platos/core-api deploy --prod --legacy /deploy",
+    ],
   ],
 ]);
 // DELTA — WIN-284 moves ci from 3 to 4, and WIN-258 from 4 to 5. The count is
@@ -369,11 +392,6 @@ const agentBuildScriptTarget =
 // agent string above lists its prerequisites one by one because the agent's
 // strict build reaches packages that are not its dependencies; this graph has no
 // such reach. Proven on a fresh worktree with no dist anywhere, not on a warm tree.
-//
-// NOT YET A CANDIDATE. `build-candidate-core-api` needs a build-images.yml matrix
-// row, and the credential that landed this pin cannot write workflow files. Until
-// that row lands, `expectedCandidates` and the shipping Dockerfile tables above
-// stay at the three the matrix declares, rather than claiming a fourth it does not.
 const coreApiBuildScriptTarget = 'pnpm --filter "@platos/core-api..." build';
 const agentRuntimeSmokeInvocation =
   "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
@@ -2613,10 +2631,12 @@ function mutateWorkflowJob(input, key, jobName, mutate) {
 }
 
 test("committed CI and image-build policy is executable, correlated, and complete", () => {
-  assert.equal(expectedCandidates.length, 3, "candidate selector must be non-empty and explicit");
+  // 3 -> 4, 3 -> 4 and 4 -> 5: `apps/core-api/Dockerfile` is the fourth candidate,
+  // the fourth shipping Dockerfile, and carries exactly one shipping install.
+  assert.equal(expectedCandidates.length, 4, "candidate selector must be non-empty and explicit");
   assert.equal(
     shippingDockerfiles.length,
-    3,
+    4,
     "shipping Dockerfile selector must be non-empty and explicit"
   );
   assert.equal(
@@ -2624,8 +2644,8 @@ test("committed CI and image-build policy is executable, correlated, and complet
       (total, instructions) => total + instructions.length,
       0
     ),
-    4,
-    "shipping install selector must cover all four executable installs"
+    5,
+    "shipping install selector must cover all five executable installs"
   );
   assert.equal(
     relocatedCommands.length,
@@ -4975,16 +4995,17 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   commands: producing the 18 cells and saying what closing them means are
   //   different claims, and deleting either is how a number stops being stated.
   //   CORE-API IMAGE, +1. The exact `build:platos:core-api` pin that
-  //   apps/core-api/Dockerfile's build step resolves to. The Dockerfile is NOT
-  //   yet in the shipping table above, because it is not yet a build-images.yml
-  //   matrix row, and that table is the matrix's Dockerfiles; see the note on
-  //   `coreApiBuildScriptTarget`.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 = 387. The count is
+  //   apps/core-api/Dockerfile's build step resolves to.
+  //   CORE-API CANDIDATE, +3. `apps/core-api/Dockerfile` joins the shipping
+  //   Dockerfile table with ONE install instruction, and the install loop derives
+  //   THREE controls per such file (the install commented out, the frozen lockfile
+  //   dropped, and every install removed).
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 = 390. The count is
   // pinned rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    387,
+    390,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {

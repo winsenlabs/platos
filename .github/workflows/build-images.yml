@@ -45,6 +45,10 @@ jobs:
             image: platos-migrations
             dockerfile: internal-packages/tenancy-database/Dockerfile.migrations
             env_name: MIGRATIONS
+          - name: core-api
+            image: platos-core-api
+            dockerfile: apps/core-api/Dockerfile
+            env_name: CORE_API
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

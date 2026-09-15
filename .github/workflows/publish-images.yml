@@ -3,6 +3,13 @@ name: Publish tested container images
 # Publication is an explicit, protected action. It accepts only a successful
 # push run of build-images.yml on main and publishes the exact OCI archives and
 # persisted-state identity evidence produced by that run. Nothing is rebuilt.
+#
+# The core-api candidate is archived by the same run, and the reverification step
+# below checks its archive checksum, digest and revision label with the others.
+# It is deliberately NOT published: the persisted-state gate does not start it,
+# so candidate-images.json carries no tested identity for it, and this workflow
+# publishes only identities that gate tested. Publishing core-api is a separate
+# decision that starts with the gate booting it.
 on:
   workflow_dispatch:
     inputs:
