@@ -1,0 +1,492 @@
+{
+  "clause": "SDK 1.30.x candidate upgrade is compatibility-tested before adoption",
+  "adopted": "1.26.0",
+  "candidate": "1.30.0",
+  "adoption": "NOT ADOPTED — every runtime importer still resolves the adopted version; adopting the candidate is a separate change",
+  "suites": [
+    {
+      "file": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "side": "server"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "side": "client"
+    },
+    {
+      "file": "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+      "side": "client"
+    }
+  ],
+  "totals": {
+    "questions": 55,
+    "adoptedPassed": 55,
+    "candidatePassed": 55,
+    "sharedCases": 26,
+    "sharedPassed": 26
+  },
+  "verdict": "compatible",
+  "questions": [
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over legacy-sse answers requests 200 or 202-on-the-stream, and NEVER answers a notification",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over legacy-sse calls a tool and returns the MCP content envelope",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over legacy-sse completes initialize with this server's identity, the Platos wire revision and its capabilities",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over legacy-sse honours the logging capability it advertises, and refuses an unknown severity with -32602",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over legacy-sse lists tools the SDK's own schema accepts, with no pagination cursor",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over legacy-sse returns JSON-RPC error codes the SDK surfaces as McpError",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over legacy-sse serves resources only where it declares them",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over streamable-http answers requests 200 or 202-on-the-stream, and NEVER answers a notification",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over streamable-http calls a tool and returns the MCP content envelope",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over streamable-http completes initialize with this server's identity, the Platos wire revision and its capabilities",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over streamable-http honours the logging capability it advertises, and refuses an unknown severity with -32602",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over streamable-http lists tools the SDK's own schema accepts, with no pagination cursor",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over streamable-http returns JSON-RPC error codes the SDK surfaces as McpError",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> docs server over streamable-http serves resources only where it declares them",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over legacy-sse answers requests 200 or 202-on-the-stream, and NEVER answers a notification",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over legacy-sse calls a tool and returns the MCP content envelope",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over legacy-sse completes initialize with this server's identity, the Platos wire revision and its capabilities",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over legacy-sse honours the logging capability it advertises, and refuses an unknown severity with -32602",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over legacy-sse lists tools the SDK's own schema accepts, with no pagination cursor",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over legacy-sse returns JSON-RPC error codes the SDK surfaces as McpError",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over legacy-sse serves resources only where it declares them",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over streamable-http answers requests 200 or 202-on-the-stream, and NEVER answers a notification",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over streamable-http calls a tool and returns the MCP content envelope",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over streamable-http completes initialize with this server's identity, the Platos wire revision and its capabilities",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over streamable-http honours the logging capability it advertises, and refuses an unknown severity with -32602",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over streamable-http lists tools the SDK's own schema accepts, with no pagination cursor",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over streamable-http returns JSON-RPC error codes the SDK surfaces as McpError",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> entity server over streamable-http serves resources only where it declares them",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over legacy-sse answers requests 200 or 202-on-the-stream, and NEVER answers a notification",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over legacy-sse calls a tool and returns the MCP content envelope",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over legacy-sse completes initialize with this server's identity, the Platos wire revision and its capabilities",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over legacy-sse honours the logging capability it advertises, and refuses an unknown severity with -32602",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over legacy-sse lists tools the SDK's own schema accepts, with no pagination cursor",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over legacy-sse returns JSON-RPC error codes the SDK surfaces as McpError",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over legacy-sse serves resources only where it declares them",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over streamable-http answers requests 200 or 202-on-the-stream, and NEVER answers a notification",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over streamable-http calls a tool and returns the MCP content envelope",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over streamable-http completes initialize with this server's identity, the Platos wire revision and its capabilities",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over streamable-http honours the logging capability it advertises, and refuses an unknown severity with -32602",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over streamable-http lists tools the SDK's own schema accepts, with no pagination cursor",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over streamable-http returns JSON-RPC error codes the SDK surfaces as McpError",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "question": "MCP protocol conformance of the Platos servers <build> SDK -> platform server over streamable-http serves resources only where it declares them",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+      "question": "legacy MCP SSE across two agent processes sharing one Redis <build> SDK, entity server: the stream on A carries B's responses exactly once, in B's order, split where the balancer switched",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+      "question": "legacy MCP SSE across two agent processes sharing one Redis <build> SDK, platform server: the stream on A carries B's responses exactly once, in B's order, split where the balancer switched",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the MCP transport, against the SDK's own server over a real socket carries the resolved credential to the <build> SDK server on the initialize request",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the MCP transport, against the SDK's own server over a real socket completes the handshake, calls the tool, and returns what the <build> SDK server answered",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the MCP transport, against the SDK's own server over a real socket enumerates the <build> SDK server's tools into the port's UNADMITTED intake shape",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the MCP transport, against the SDK's own server over a real socket reads a slow tool on the <build> SDK server as timeout, using the target's own budget",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the MCP transport, against the SDK's own server over a real socket reads the protocol's own isError from the <build> SDK server as failed, not as a success carrying an error",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the session pool, keyed on the value the domain computed closes every live session on close() (<build> SDK server)",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the session pool, keyed on the value the domain computed does not open two sessions when two calls on one key race (<build> SDK server)",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the session pool, keyed on the value the domain computed opens a SECOND session for a different pool key, even on the same URL (<build> SDK server)",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the session pool, keyed on the value the domain computed shares ONE session between two calls carrying the same pool key (<build> SDK server)",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the SSE transport, against the SDK's own legacy server over a real socket completes the handshake with the <build> SDK server, calls the tool over sse and returns its answer",
+      "adopted": "passed",
+      "candidate": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "question": "the SSE transport, against the SDK's own legacy server over a real socket enumerates the <build> SDK server's tools over sse into the UNADMITTED intake shape",
+      "adopted": "passed",
+      "candidate": "passed"
+    }
+  ],
+  "shared": [
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers binds every controller constructor parameter to a token read from its source",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers configures Redis exactly as the production provider does",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers RECORDED_NON_CONFORMANCE a body that is not a JSON-RPC request is an HTTP 400 from the framework, not a JSON-RPC -32600",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers RECORDED_NON_CONFORMANCE an entity tool whose dispatch fails is a -32603 protocol error, not an isError result",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers RECORDED_NON_CONFORMANCE platform and entity answer the transport's optional GET stream 404, where the specification requires 405",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-protocol-conformance.integration.test.ts",
+      "case": "MCP protocol conformance of the Platos servers runs two DIFFERENT SDK builds: the adopted pin and a 1.30.x candidate, both as the lockfile resolves them",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+      "case": "legacy MCP SSE across two agent processes sharing one Redis RECORDED: the docs server's SSE sessions are process-local, so a POST to the other node is 404",
+      "status": "passed"
+    },
+    {
+      "suite": "apps/agent/src/mcp-platform/mcp-sse-multi-node.integration.test.ts",
+      "case": "legacy MCP SSE across two agent processes sharing one Redis runs two distinct operating-system processes on two distinct ports",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "stdio, which this deployable has no client for is a DIFFERENT code from an unrecognised transport, which an operator can fix",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "stdio, which this deployable has no client for names the transport in details, and puts the supplier decision in the reason",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "stdio, which this deployable has no client for refuses discovery on stdio under the same code, so no tool list is pruned",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "stdio, which this deployable has no client for refuses under its OWN code and never reports the call as failed",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "stdio, which this deployable has no client for sends ZERO BYTES: a listener that is up is never touched",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the MCP transport, against the SDK's own server over a real socket reads a failed enumeration as an err, so discovery prunes nothing",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the MCP transport, against the SDK's own server over a real socket reads a server that refuses the handshake as failed, since it WAS reached",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the SDK builds this suite runs against are two DIFFERENT installed versions: the adopted pin and a 1.30.x candidate, as the lockfile resolves them",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener carries the already-resolved headers and never lets one displace the content type",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener does NOT follow a redirect, which is the destination screen this port does not have",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener falls back to 30 seconds when Retry-After is an HTTP-date rather than a count",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener keeps a non-JSON 200 as a success, because `result` is unknown on the port",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener POSTs the tool, the arguments and the call id, and returns the parsed body",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener reads 429 as rateLimited and honours the backend's own Retry-After",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener reads a refused connection as failed with the machine code and no address",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener reads a timeout as timeout and not as failed, decided by our clock",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener reads any other non-2xx as failed, carrying the status and NOT the body",
+      "status": "passed"
+    },
+    {
+      "suite": "packages/contexts/tools/adapters/dispatch.integration.test.ts",
+      "case": "the wire transport, against a real HTTP listener refuses to DISCOVER a wire entity, and does not answer with an empty tool list",
+      "status": "passed"
+    }
+  ]
+}

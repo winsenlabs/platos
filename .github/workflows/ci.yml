@@ -858,6 +858,17 @@ jobs:
     # canonical migration into a private schema. The same digest-pinned image
     # `postgres-memory-evidence` uses, so the two jobs cannot drift onto different
     # servers.
+    #
+    # REDIS, SINCE WIN-268/WIN-269 (M4). Three suites under the walked roots need
+    # one: `mcp-protocol-conformance.integration.test.ts` (the three Platos MCP
+    # servers driven by the official SDK client, adopted and 1.30.x candidate, on
+    # Streamable HTTP and legacy SSE), `mcp-sse-multi-node.integration.test.ts`
+    # (the legacy SSE stream on one agent PROCESS and its POSTs on another, joined
+    # only by this Redis) and `tool-call-parity.integration.test.ts` (one tool call
+    # through execute-batch, internal-execute-tool and TurnDispatchService). Each
+    # reads `PLATOS_TEST_REDIS_URL` and throws when its `*_REQUIRED` flag is set and
+    # the URL is not — and the walker sets every flag it finds — so a job that lost
+    # this service fails at import instead of skipping.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -876,8 +887,18 @@ jobs:
           --health-interval 2s
           --health-timeout 5s
           --health-retries 30
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     env:
       PLATOS_POSTGRES_INTEGRATION_DATABASE_URL: postgresql://platos_agent_tenancy_ci:postgres-agent-tenancy@127.0.0.1:55434/platos_agent_tenancy_ci?schema=public
+      PLATOS_TEST_REDIS_URL: redis://127.0.0.1:6379
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -905,8 +926,28 @@ jobs:
         # tenancy rule.
         run: pnpm --filter @platos/tenancy-database build
 
+      - name: Build the packages the MCP conformance and tool-call parity suites resolve
+        # The conformance harness mounts the production `ScopeGuard`, which
+        # imports `@internal/workload-identity`, and the docs MCP server, which
+        # reads `@internal/docs`; both ship only a compiled dist entry. Without
+        # this step those suites fail to LOAD rather than fail an assertion.
+        run: pnpm --filter @internal/workload-identity build && pnpm --filter @internal/docs build
+
       - name: MCP-surface and tool-lifecycle real-PostgreSQL suites
         run: pnpm test:agent-tenancy-postgres:integration
+
+      - name: MCP SDK 1.30.x candidate compatibility, re-derived and compared
+        # WIN-268 (M4.2). The candidate is aliased as a DEV dependency and asked the
+        # same questions as the adopted SDK — its client against Platos' servers,
+        # its server behind the Platos client. The derivation reruns those suites
+        # and requires the result to equal the committed
+        # `docs/audits/win-268-mcp-sdk-candidate-compatibility.json` byte for byte,
+        # so the evidence cannot go stale behind a green run. The tools-context
+        # build is what `packages/contexts/tools`' dispatch suite resolves through.
+        run: |
+          pnpm --filter "@platos/context-tools..." build
+          node --test scripts/mcp-sdk-candidate-compatibility.test.mjs
+          node scripts/mcp-sdk-candidate-compatibility.mjs --check
 
   non-browser-completion-postgres:
     name: non-browser-completion-postgres

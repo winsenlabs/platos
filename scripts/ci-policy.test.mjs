@@ -695,6 +695,24 @@ const expectedDifferentialConservationCommand = "pnpm test:differential-harness:
 // suite under either joins with no line to add.
 const agentTenancyPostgresJob = "agent-tenancy-postgres";
 const agentTenancyPostgresCommand = "pnpm test:agent-tenancy-postgres:integration";
+// WIN-268/WIN-269 (M4). Three suites under the walked roots — the MCP protocol
+// conformance matrix, the two-process legacy SSE suite and the tool-call parity
+// suite — need a real Redis as well as the database, and the SDK 1.30.x
+// candidate's compatibility result is re-derived in the same job, where both
+// services exist. Deleting the service, its URL or either command is exactly how
+// that evidence would stop being produced while the job stayed green, so each is
+// its own violation with its own control.
+const mcpSdkCandidateCommands = [
+  "node --test scripts/mcp-sdk-candidate-compatibility.test.mjs",
+  "node scripts/mcp-sdk-candidate-compatibility.mjs --check",
+];
+const agentTenancyRedisUrl = "redis://127.0.0.1:6379";
+const expectedAgentTenancyRedisService = {
+  image: "redis:7",
+  ports: ["6379:6379"],
+  options:
+    '--health-cmd "redis-cli ping" --health-interval 2s --health-timeout 5s --health-retries 30',
+};
 const expectedAgentTenancyPostgresScripts = new Map([
   [
     "test:agent-tenancy-postgres:integration",
@@ -1887,8 +1905,24 @@ function policyViolations(input) {
   const agentTenancyJob = ciJobs.get(agentTenancyPostgresJob);
   if (agentTenancyJob === undefined) {
     violations.push("CI must retain the agent tenancy real-PostgreSQL job");
-  } else if (countExact(normalizedRunCommands(agentTenancyJob), agentTenancyPostgresCommand) !== 1) {
-    violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+  } else {
+    const agentTenancyRuns = normalizedRunCommands(agentTenancyJob);
+    if (countExact(agentTenancyRuns, agentTenancyPostgresCommand) !== 1) {
+      violations.push("agent tenancy PostgreSQL job must run its suite walker exactly once");
+    }
+    for (const command of mcpSdkCandidateCommands) {
+      if (countExact(agentTenancyRuns, command) !== 1) {
+        violations.push(`agent tenancy PostgreSQL job must run ${command} exactly once`);
+      }
+    }
+    if (
+      JSON.stringify(agentTenancyJob.services?.redis) !== JSON.stringify(expectedAgentTenancyRedisService) ||
+      agentTenancyJob.env?.PLATOS_TEST_REDIS_URL !== agentTenancyRedisUrl
+    ) {
+      violations.push(
+        "agent tenancy PostgreSQL job must serve the exact Redis 7 its MCP and tool-call parity suites require"
+      );
+    }
   }
 
   // M4 finish — the non-browser completion evidence job. A separate job for the
@@ -3583,6 +3617,25 @@ test("CI policy controls fail under generated semantic source mutations", async 
           "        run: echo skipped"
         ),
     },
+    // WIN-268/WIN-269 (M4) — the candidate evidence and the Redis the suites
+    // need. Each deletion is a way the job stays green while the evidence stops.
+    ...mcpSdkCandidateCommands.map((command) => ({
+      name: `agent tenancy PostgreSQL job cannot stop running ${command}`,
+      expected: `agent tenancy PostgreSQL job must run ${command} exactly once`,
+      mutate: (input) => mutateFixture(input, "ci", `          ${command}\n`, "          echo skipped\n"),
+    })),
+    {
+      name: "agent tenancy PostgreSQL job cannot lose the Redis URL its suites read",
+      expected:
+        "agent tenancy PostgreSQL job must serve the exact Redis 7 its MCP and tool-call parity suites require",
+      mutate: (input) =>
+        mutateFixture(
+          input,
+          "ci",
+          `platos_agent_tenancy_ci?schema=public\n      PLATOS_TEST_REDIS_URL: ${agentTenancyRedisUrl}\n`,
+          "platos_agent_tenancy_ci?schema=public\n"
+        ),
+    },
     ...[...expectedAgentTenancyPostgresScripts].map(([name, target]) => ({
       name: `agent tenancy PostgreSQL script ${name} cannot be repointed`,
       expected: `package.json must wire exact agent tenancy PostgreSQL script ${name}: ${target}`,
@@ -5084,12 +5137,17 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   core-api candidate. ONE for its `setup-node` step (build-images' count 1 -> 2),
   //   and THREE for its rules: the smoke command skipped, the verified candidate set
   //   narrowed, and the job gated off.
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 = 394. The count is
+  //   MCP CONFORMANCE LANE, +3. The `agent-tenancy-postgres` job gains a Redis
+  //   service and the SDK 1.30.x candidate's re-derived compatibility result. TWO
+  //   for its commands — the derivation's own tests and the `--check` — and ONE for
+  //   the Redis URL the conformance, two-process SSE and tool-call parity suites
+  //   read. No setup-node step is added: it is the same job.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 + 3 = 397. The count is
   // pinned rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    394,
+    397,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
