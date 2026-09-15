@@ -123,7 +123,19 @@ export function schemaModels(root = repositoryRoot) {
   return models;
 }
 
-/** Files under the surface roots, excluding tests. */
+/**
+ * The suffixes of files that never ship, and so hold no surface ORM site.
+ *
+ * `*.test.ts` and `*.spec.ts` from the start; `*.test-fixture.ts` since WIN-268's
+ * conformance harness, whose seeding writes (`prisma.user.create`, …) are a
+ * suite building its database and not the MCP surface reaching a store. The
+ * list is the agent's own `tsconfig.build.json` exclusion list — the test file
+ * beside this one joins the two — so a suffix cannot be excused here that the
+ * build still compiles into the image.
+ */
+export const NON_SHIPPING_SUFFIX = /\.(test|spec|test-fixture)\.tsx?$/u;
+
+/** Files under the surface roots, excluding everything that never ships. */
 export function surfaceFiles(root = repositoryRoot) {
   const found = [];
   for (const surfaceRoot of SURFACE_ROOTS) {
@@ -142,7 +154,7 @@ export function surfaceFiles(root = repositoryRoot) {
           walk(path);
           continue;
         }
-        if (!path.endsWith(".ts") || /\.(test|spec)\.tsx?$/u.test(path)) continue;
+        if (!path.endsWith(".ts") || NON_SHIPPING_SUFFIX.test(path)) continue;
         found.push(relative(root, path));
       }
     };

@@ -2791,7 +2791,22 @@ export const EXPECTED = Object.freeze({
   //   transport this deployable has no client for and refuses under its own code.
   //
   // 366 + 8 + 26 = 400; 19 + 2 = 21.
-  "packages/contexts/tools": { files: 21, cases: 400 },
+  //
+  // WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 400 -> 414, files UNCHANGED, all fourteen
+  // in `adapters/dispatch.integration.test.ts` (26 -> 40). NINE existing cases that
+  // put the SDK'S OWN SERVER on the far side of the adopted client become
+  // `it.each([ADOPTED, CANDIDATE])` — the handshake-and-call, the credential on
+  // `initialize`, enumeration, `isError`, the slow-tool timeout and the four pool
+  // cases — so each is asked of the 1.26.0 server and of the 1.30.0 candidate
+  // aliased as `@modelcontextprotocol/sdk-candidate`: +9. FOUR are new, the `sse`
+  // transport against both builds' `SSEServerTransport` (call and enumeration),
+  // which no case had put a server behind: +4. ONE joins the two installed
+  // versions to `pnpm-lock.yaml` and requires them to differ, so the table cannot
+  // collapse into one build asked twice: +1. The table is an array literal so this
+  // census counts its rows rather than refusing it.
+  //
+  // 400 + 9 + 4 + 1 = 414; 21 files.
+  "packages/contexts/tools": { files: 21, cases: 414 },
   // M2 INTEGRATION: kernel 3 + 1 + 2 = 6 files, 44 + 16 (the redactor's
   // two-sided suite) + 69 (retry and the transaction-outcome behaviour) = 129.
   //
@@ -3723,7 +3738,15 @@ export const EXPECTED = Object.freeze({
 // `fields[]` path points — and `apps/core-api` is outside `PACKAGE_ROOTS`, so this
 // census moves not one number for them. A reader taking this file as the measure of
 // what stage 3 proved would be reading two thirds of it.
-export const EXPECTED_RUNTIME_TOTAL = 8359;
+//
+// WIN-268 (M4.2) SDK 1.30.x CANDIDATE: 8359 + 14 = 8373 over 564 files — files
+// UNCHANGED. All fourteen land in `packages/contexts/tools`, itemised on its row
+// above. The contexts term alone moves. The candidate is ALSO asked of Platos'
+// own MCP servers — by `apps/agent/src/mcp-platform/mcp-protocol-conformance
+// .integration.test.ts` and the two-process SSE suite beside it — and
+// `apps/agent` is outside `PACKAGE_ROOTS`, so this census moves not one number
+// for that half.
+export const EXPECTED_RUNTIME_TOTAL = 8373;
 
 /** Every case-declaring package directory, in byte order. */
 export function listPackages(root = repositoryRoot) {
