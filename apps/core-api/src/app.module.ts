@@ -12,13 +12,17 @@
 // is how `app.module.test.ts` proves the mis-wire detection without binding a
 // port.
 //
-// WHY THE CONTEXTS ARE `Partial`. Seventeen contexts are declared; FIVE are real
-// (WIN-256: identity-access, tenancy, secrets, files, providers) and twelve are
-// still declaration-only placeholders. Of the five, TWO are composed here today
-// — identity-access and tenancy — see the note below on what an install must
-// still supply. Modelling that as `Partial<ContextContracts>` states the truth
-// in the type instead of shipping seventeen `null!` casts that would compile and
-// then explode.
+// WHY THE CONTEXTS ARE `Partial`. Seventeen contexts are declared, and only some
+// of them can be composed in a given install: a context is built only when
+// every port in its bundle has an adapter this install constructed. Which ones
+// that is, is not a figure this note keeps. It is the `contexts` object at the
+// end of `composeApplication`, published on `/readyz` as
+// `detail.composedContexts`, which `process.test.ts` reads off a real socket —
+// in a fully declared install today `identityAccess`, `tenancy`, `secrets`,
+// `providers` and `tools`. (This note used to say "FIVE are real ... TWO are
+// composed here today", and both figures had moved without it.) Modelling that
+// as `Partial<ContextContracts>` states the truth in the type instead of
+// shipping seventeen `null!` casts that would compile and then explode.
 //
 // ---------------------------------------------------------------------------
 // THE WIN-297 FINDING, CLOSED BY WIN-257 (M2.2).
@@ -32,10 +36,13 @@
 // dead surface, and named WIN-257 as the issue that could prove the export.
 //
 // `APPLICATION_ENTRY_PROJECTS` in `scripts/arch/gen-v1-skeleton.mjs` now
-// publishes `./application/index.js` for the contexts this file ACTUALLY
-// composes — two entries today, `identity-access` and `tenancy` — and
-// `selfCheck` refuses an entry that is not an adopted context. So the surface is
-// not dead: the imports below are the consumers that justify it.
+// publishes `./application/index.js` for every context whose factory a V1
+// project imports through it, and `selfCheck` refuses an entry that is not an
+// adopted context. WIN-257 started it with the two this file imports below,
+// `identity-access` and `tenancy`; WIN-302 finished it, so every one of the
+// seventeen factories now resolves from this package, proved one named case
+// per context by `composition/context-factories.test.ts`. So the surface is not
+// dead: each entry has an import that justifies it.
 //
 // WHAT IS STILL OPEN, RESTATED AFTER WIN-258 M2.3. Both contexts are still
 // composed from a supplied PORT BUNDLE rather than from an adapter — but the
@@ -78,15 +85,16 @@
 // interfaces and cannot be, and every one of them reaches readiness with a cause
 // saying which of those two it is.
 //
-// WHAT REMAINS OPEN, restated to the one sentence that is still true: TWO
-// contexts are composed and only ONE of them can be composed from an adapter.
-// `tenancy`'s six driven ports and its unit of work are all properties of one
-// `PostgresTenancyAdapter`, so a database URL is the whole of what it needs;
-// `identity-access` still takes a supplied bundle because four of its eight
-// slots — a rate limiter, a secret hasher, a token minter, a TOTP verifier and a
-// MFA cipher — are satisfied by no adapter directory in this tree.
-// `composition/context-ports.ts` states that per context and is the file that
-// assembles what CAN be assembled.
+// WHAT REMAINS OPEN IS PER CONTEXT, AND IT IS NOT KEPT IN THIS NOTE. The
+// paragraph that stood here said "TWO contexts are composed and only ONE of them
+// can be composed from an adapter", and that `identity-access` "still takes a
+// supplied bundle because four of its eight slots ... are satisfied by no adapter
+// directory in this tree". Both went stale: WIN-267 A1, A2 and A3 landed every
+// one of those directories, `identity-access` is composed from its TEN slots
+// (`installation.test.ts` joins each to its source), and `secrets`, `providers`
+// and `tools` are composed beside it and `tenancy`.
+// `composition/context-ports.ts` states per context what still stops the rest,
+// and is the file that assembles what CAN be assembled.
 // ---------------------------------------------------------------------------
 
 import type {
@@ -222,9 +230,11 @@ export interface AppModule {
    * been nameable from the composition root, and `UNIMPORTABLE_CONTEXT_FACTORIES`
    * simply listed it by mistake. What actually stops it is its BUNDLE:
    * `ConversationsDependencies` names ELEVEN peers, and `files` and `jobs` are
-   * themselves unimportable while `agents` is short `AgentVersionLock` and
-   * `MacroRecorder` and `skills` is short three ports with no directory. The
-   * conclusion is unchanged and the reason is now true.
+   * themselves uncomposed while `agents` is short `AgentVersionLock` and
+   * `MacroRecorder` and `skills` is short three ports with no directory. (This
+   * said `files` and `jobs` were "themselves unimportable" until WIN-302
+   * published both factories.) The conclusion is unchanged and the reason is
+   * now true.
    */
   readonly streamJournal: StreamJournal | null;
   /**

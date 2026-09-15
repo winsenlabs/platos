@@ -789,8 +789,18 @@ export const VIOLATION_CODES = Object.freeze({
  * own single frozen `{ ...process.env }` and hands the values in; a helper that read
  * `process.env` itself would be a door this gate could not attribute to the suite
  * that walked through it. Two files landed, thirty-two reads stayed thirty-two.
+ *
+ * WIN-302 FACTORY ENTRIES: 1701 + 18 = 1719, and NO DOOR OPENED. Seventeen are
+ * the one-line modules of `apps/core-api/src/composition/factory-entries/`, each
+ * re-exporting one context's contract factory from the entry point its manifest
+ * publishes (`.` for seven, `./application/index.js` for ten), and the
+ * eighteenth is `context-factories.test.ts`, which loads them one named case per
+ * context. The first ten landed alone (1712); the seven `.`-route modules
+ * followed once a removed `.` entry was measured failing that suite at load.
+ * None reads a variable: the suite reads the platform's own files through
+ * `import.meta.url`, the way `config/sections.test.ts` does.
  */
-export const EXPECTED_FILE_COUNT = 1701;
+export const EXPECTED_FILE_COUNT = 1719;
 
 function listSourceFiles(root) {
   const found = [];

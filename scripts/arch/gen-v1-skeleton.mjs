@@ -1214,12 +1214,22 @@ export const ADOPTED_PROJECTS = [
 // recorded that as a finding and deliberately did not fix it, on the grounds
 // that publishing an entry point nothing imports is dead surface.
 //
-// So the list is not "every adopted context": it is the contexts `apps/core-api`
-// ACTUALLY composes. An entry here without a matching import in the composition
-// root is exactly the dead surface WIN-297 declined to create, and every entry
-// must be an adopted project — `selfCheck` fails otherwise, because an
-// unadopted project's source tree is generated placeholders and its
-// `application/index.ts` would be one too.
+// So the list is not "every adopted context": it is the contexts whose
+// `application/index.js` a V1 project ACTUALLY IMPORTS. An entry here without a
+// matching import is exactly the dead surface WIN-297 declined to create —
+// `gen-v1-skeleton.test.mjs` reads every V1 source file and fails in both
+// directions — and every entry must be an adopted project: `selfCheck` fails
+// otherwise, because an unadopted project's source tree is generated
+// placeholders and its `application/index.ts` would be one too.
+//
+// WHO COUNTS AS THE IMPORTER HAS WIDENED TWICE, AND THE RULE HAS NOT. It was
+// the composition root alone (WIN-257); WIN-258 T5 added the canonical-store
+// adapter's conformance differentials; WIN-302 added the per-context modules
+// of `apps/core-api/src/composition/factory-entries/`, because that issue's
+// acceptance is "every context's contract factory resolves from
+// `apps/core-api`, proved by import", and a context whose factory is on no `.`
+// barrel can only meet it through this subpath. An entry is still earned by an
+// import, never by an intention to compose.
 // ---------------------------------------------------------------------------
 export const APPLICATION_ENTRY_PROJECTS = [
   "packages/contexts/identity-access", // WIN-257 — composed by apps/core-api as the identity/session owner
@@ -1278,96 +1288,96 @@ export const APPLICATION_ENTRY_PROJECTS = [
   // publishes is a factory for a KERNEL PORT, which is why the import is real
   // today rather than a placeholder for a composition that has not happened.
   "packages/contexts/governance",
+  // WIN-302 — THE LAST SIX, and the reason is the issue's acceptance rather than
+  // a composition. Each keeps its `create*Contract` in `application/` with no
+  // re-export from `.`, so until these lines the composition root could not
+  // name it at all. NONE OF THE SIX IS COMPOSED and the entries do not say so.
+  // Each is imported by ONE module of `apps/core-api/src/composition/factory-entries/`,
+  // and `context-factories.test.ts` loads each module in a named case of its
+  // own — so deleting any one line below turns exactly that context's case red
+  // rather than failing a whole file at load.
+  "packages/contexts/channels", // WIN-302 — createChannelsContract
+  "packages/contexts/eventing", // WIN-302 — createEventingContract
+  "packages/contexts/files", // WIN-302 — createFilesContract
+  "packages/contexts/jobs", // WIN-302 — createJobsContract
+  "packages/contexts/observability", // WIN-302 — createObservabilityContract
+  "packages/contexts/privacy", // WIN-302 — createPrivacyContract
 ];
 
 // ---------------------------------------------------------------------------
-// WIN-267 T3 (M4.1) ADDED NOTHING TO THAT LIST, AND THE REASON IS MEASURED.
+// WIN-267 T3 (M4.1) ADDED NOTHING TO THAT LIST, AND THE REASON WAS MEASURED.
 //
 // That tranche's brief expected entries here: the composition root began
 // CONSTRUCTING adapters, so contexts a route needs should have become
-// composable. They did not, and adding an entry anyway would have created
-// exactly the dead surface WIN-297 declined to create — the rule above is "the
-// contexts `apps/core-api` ACTUALLY composes", not "the contexts it might".
+// composable. They did not, and an entry without a matching import would have
+// been exactly the dead surface WIN-297 declined to create. The entries that
+// came later each came with their import — `governance` at WIN-267 for
+// `createGovernanceSafetyEventSink`, the last six at WIN-302 for the factory
+// modules named above.
 //
-// THE COUNT, AND WHERE IT FALLS AWAY. A context is composable only when three
-// things hold at once:
+// A context is COMPOSABLE only when three things hold at once:
 //
 //   1. it publishes a factory over its whole contract, AND `apps/core-api` can
-//      IMPORT that factory. SEVENTEEN publish one; NINE are importable.
+//      IMPORT that factory. SEVENTEEN publish one, SEVENTEEN are importable,
+//      and NONE is unimportable.
 //
 //   2. every driven port in its bundle has an implementation in this tree;
 //
 //   3. that implementation is reachable from a constructed adapter.
 //
-// CONDITION 1 USED TO BE ONE CLAUSE HERE AND IT WAS FALSE (WIN-267 G3). It read
-// "ELEVEN do ... SIX do not: `agents`, `tools`, `secrets`, `memory`,
-// `cost-monitoring` and `providers` publish their use cases one at a time and no
-// assembler". Every one of those six publishes an assembler, and publishes it
-// from `.`: `agentsContract`, `toolsContract`, `secretsContract`,
-// `memoryContract`, `costMonitoringContract` and `providersContract` are all in
-// their own packages' `contracts/index.ts`. `secrets` and `providers` were
-// corrected in `context-ports.ts` when they were composed; this copy of the
-// claim was not, and kept the other four wrong for a further tranche. There is
-// no context in this tree without an assembler, and there never was.
+// CONDITION 1 WAS WRONG IN PRINT FOUR TIMES BEFORE ANYBODY MEASURED IT, and the
+// withdrawn wordings are QUOTED here rather than paraphrased, so no figure in
+// them can be read as current. It read "ELEVEN do ... SIX do not: `agents`,
+// `tools`, `secrets`, `memory`, `cost-monitoring` and `providers` publish their
+// use cases one at a time and no assembler"; every one of those six publishes
+// an assembler from `.`, and there is no context in this tree without one. It
+// then read "NINE factories can be named from the composition root ... The
+// remaining EIGHT — `channels`, `conversations`, `eventing`, `files`,
+// `governance`, `jobs`, `observability` and `privacy`", and this file's own
+// copy of the clause read "SEVENTEEN publish one; NINE are importable". That was
+// wrong twice over: WIN-267 had already published `governance`'s subpath, and
+// `conversations/contracts/index.ts` re-exports `createConversationsContract`
+// as a VALUE. WIN-302 counted against Node's resolver and got "ELEVEN and SIX",
+// and then published the six instead of recording them.
 //
-// WHAT IS REAL IS THE OTHER HALF, and it is this list's own subject — but the
-// FIGURE that stood here was wrong twice, and WIN-302 measured it instead of
-// repeating it. It read: "NINE factories can be named from the composition root
-// ... The remaining EIGHT — `channels`, `conversations`, `eventing`, `files`,
-// `governance`, `jobs`, `observability` and `privacy`".
+// THE PARTITION NOW, which a suite derives rather than this paragraph asserting.
+// Route one is a factory on the `.` barrel — `agents`, `conversations`,
+// `cost-monitoring`, `memory`, `providers`, `secrets` and `tools`. Route two is
+// the `./application/index.js` this list publishes, and `agents` and `secrets`
+// are on both. Every context is on at least one route, so
+// `UNIMPORTABLE_CONTEXT_FACTORIES` in `apps/core-api/src/composition/context-ports.ts`
+// is EMPTY — kept as a constant, because it is what the readback below joins to.
 //
-// Counted against Node's own resolver and against the seventeen manifests, it is
-// ELEVEN and SIX:
+// AND IT IS A TEST IN THREE PARTS, all in
+// `apps/core-api/src/composition/context-factories.test.ts`: one named case per
+// context that IMPORTS its factory; a partition that derives both routes from
+// the seventeen manifests and barrels and joins them to that constant; and a
+// readback of every count of importable or unimportable factories stated in the
+// repository's comments and Markdown — this paragraph included — against the
+// constant. A figure outside
+// quotation marks that disagrees with it is a red case, which is the failure
+// this clause never had in any of its four wrong versions.
 //
-//   SEVEN from `.`         agents, conversations, cost-monitoring, memory,
-//                          providers, secrets, tools
-//   FOUR from the subpath  governance, identity-access, skills, tenancy
-//   SIX unimportable       channels, eventing, files, jobs, observability,
-//                          privacy
+// WHICH CONTEXTS CLEAR ALL THREE is `/readyz`'s `detail.composedContexts`, read
+// off a real socket by `apps/core-api/src/process.test.ts`, and not a figure this
+// paragraph keeps. `tenancy` was the first — its six driven ports and unit of
+// work are all properties of one `PostgresTenancyAdapter` (WIN-258 tranches 1
+// and 3). `identity-access` was the near miss this paragraph used to describe:
+// it said `rateLimiter` is "still this generator's own placeholder" and that
+// `hasher`, `minter`, `totp` and `cipher` are "satisfied by no adapter directory
+// at all", and WIN-267 A1, A2 and A3 closed all five, while the kernel
+// `SafetyEventSink` it lacked is now `governance`'s own
+// `createGovernanceSafetyEventSink`. `secrets`, `providers` and `tools` followed.
 //
-// `governance` IS IN THIS LIST, twenty lines above, added by WIN-267 — so the
-// sentence further down that reads "AND `governance` IS IN THE UNIMPORTABLE
-// EIGHT" contradicted the data in its own file and is corrected there too.
-// `conversations` was never unimportable at all: its `contracts/index.ts`
-// re-exports `createConversationsContract` as a VALUE from the `.` entry point.
-//
-// So WIN-297's finding is open for SIX contexts, each keeping a `create*Contract`
-// in `application/` behind a manifest publishing only `.`,
-// `./application/ports/index.js` and `./application/testing/index.js`. The fix is
-// one line here each — held back by this list's own rule until the context is
-// actually composed.
-//
-// AND IT IS A TEST NOW. `apps/core-api/src/composition/installation.test.ts`
-// derives the `.`-entry half from the seventeen packages' own barrels and joins it
-// to `UNIMPORTABLE_CONTEXT_FACTORIES`, so this count cannot go stale again without
-// a named case going red.
-//
-// ONE context clears all three: `tenancy`, whose six driven ports and unit of
-// work are all properties of a single `PostgresTenancyAdapter` (WIN-258 tranches
-// 1 and 3). It is already on the list, and what changed is that it is now
-// composed over REAL PostgreSQL rather than over a bundle an install handed in.
-//
-// `identity-access` WAS the near miss and its ports have since landed, so the
-// paragraph that stood here is withdrawn rather than carried: it said
-// `rateLimiter` is "still this generator's own placeholder" and that `hasher`,
-// `minter`, `totp` and `cipher` are "satisfied by no adapter directory at all".
-// WIN-267 A1, A2 and A3 closed all five — `redis-ratelimit`,
-// `node-crypto-digest`, `keyring-envelope` and `tokenmint-totp` — and all six of
-// its driven ports are now satisfied. What holds it is the kernel
-// `SafetyEventSink`, implemented only by `governance`.
-//
-// AND `governance` IS NOT IN THE UNIMPORTABLE SET, which is the correction WIN-302
-// makes to the fact a tranche planning that work needs first. This paragraph said
-// it was, and the entry twenty lines above — added by WIN-267, in the same tranche
-// that wrote this sentence — already made `createGovernanceContract` nameable from
-// the composition root. So landing adapters for its unbound ports is NOT blocked
-// on packaging; `GOVERNANCE_UNBOUND_PORTS` is empty and what remains is the peer
-// chain alone. Its
-// `AgentsContract` slot needs a composed `agents` too, and `agents` is short
+// `governance` ITSELF IS STILL NOT COMPOSED, AND PACKAGING IS NOT THE REASON. The
+// sentence that stood here said it was: "AND `governance` IS IN THE
+// UNIMPORTABLE EIGHT". Its subpath has been published since WIN-267, and
+// `GOVERNANCE_UNBOUND_PORTS` is empty. What remains is the peer chain: its
+// `AgentsContract` slot needs a composed `agents`, and `agents` is short
 // `AgentVersionLock` and `MacroRecorder` plus a `skills` peer.
 // `apps/core-api/src/composition/context-ports.ts` states this per context, and
-// its suite checks the identity-access, agents and importability halves against
-// `ADAPTER_BINDINGS` and against the resolver rather than asserting them.
+// `installation.test.ts` checks it against `ADAPTER_BINDINGS` rather than
+// asserting it.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -1377,8 +1387,8 @@ export const APPLICATION_ENTRY_PROJECTS = [
 // A SECOND LIST RATHER THAN A SECOND USE OF THE ONE ABOVE, because the two
 // publish different things for different readers and the honesty check that
 // keeps each list true is a different check. `APPLICATION_ENTRY_PROJECTS`
-// publishes the factory that BUILDS a context and is true when
-// `apps/core-api/src/app.module.ts` imports it. This list publishes
+// publishes the factory that BUILDS a context and is true when a V1 project
+// imports it, the composition root first among them. This list publishes
 // `application/testing/index.js` — the in-memory doubles a context already
 // writes for its own suites — and is true when a CANONICAL-STORE ADAPTER
 // imports it.

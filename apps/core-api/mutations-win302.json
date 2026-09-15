@@ -1,0 +1,329 @@
+{
+  "$schema-note": "Hand-maintained. Data, not code: nothing under src/ imports this file.",
+  "purpose": [
+    "The mutation ledger for WIN-302's three acceptance clauses, run against",
+    "`src/composition/context-factories.test.ts` and the suites that share its",
+    "subject. One entry per mutation, carrying the file (repository-relative), the",
+    "EXACT text removed or changed (`from`), what replaced it (`to`), and the NAMED",
+    "cases that were SEEN to go red (`kills`).",
+    "",
+    "CLAUSE 1 -- every context's contract factory resolves from apps/core-api,",
+    "proved by import. M09 renames a `.`-route factory in the artifact the runner",
+    "resolves; M04-M06 remove a subpath-route entry point and M11-M12 a `.` one.",
+    "",
+    "CLAUSE 2 -- a mutation removing ONE entry point turns a NAMED test red, on",
+    "BOTH routes. M04, M05 and M06 each delete one `./application/index.js`; M11",
+    "and M12 each delete one `.`. Each turns that context's own case red while",
+    "the unrelated per-context cases stay green. They cover the import situations",
+    "the tree has: `channels` and `memory` are imported by nothing but their",
+    "factory-entries module; `tenancy` is also imported statically by",
+    "`app.module.ts`; `governance` and `providers` are also imported statically",
+    "by `context-ports.ts`. For those three, `installation.test.ts` fails at LOAD,",
+    "as it did before this tranche, which is why the per-context cases live in a",
+    "file that imports neither module at its top. M12 also reddens `conversations`,",
+    "whose package loads `providers` at run time.",
+    "",
+    "CLAUSE 3 -- no stale count survives, and a readback stops the next one. M01",
+    "and M02 put the pre-WIN-302 figure back into the prose of the two files the",
+    "WIN-302 comment names. M03 moves the constant and leaves the prose alone. M08",
+    "restores both files exactly as they stood at the branch base 3f422333, which",
+    "is the state the readback exists to have caught. M13-M18 are the shapes the",
+    "first readback could not see, four of them the round-1 verifier's probes.",
+    "",
+    "ROUND 2. The first version of this sweep had ten entries, all on the subpath",
+    "route or the prose. The round-1 verifier showed that removing a `.` entry",
+    "failed the whole file at load, because the seven `.`-route cases imported the",
+    "package literally, and that four stale phrasings passed the readback. Every",
+    "entry below was re-run on the tree that fixes both, and M11-M21 are new.",
+    "",
+    "A SEPARATE FILE FROM `mutations-win267-g3.json`, which recorded the partition",
+    "this tranche replaced. Its kill names for G3-M05..G3-M09 name a case that no",
+    "longer exists, and that ledger's `retiredKills` says where each property is",
+    "held now, rather than rewriting what was measured at ff06655f."
+  ],
+  "procedure": [
+    "Base: tejas/m2m4-lane-factories, the tree of the commit that carries this file",
+    "(branched from tejas/m2-m4-complete @ 3f422333).",
+    "",
+    "  suite    pnpm --filter @platos/core-api exec vitest run \\",
+    "             src/composition/context-factories.test.ts \\",
+    "             src/composition/installation.test.ts",
+    "  baseline 50 passed (50): 20 in context-factories.test.ts, 30 in",
+    "           installation.test.ts. Re-confirmed green after the sweep.",
+    "",
+    "Each mutation was applied to the working tree from a byte copy, the suite run,",
+    "and the copy restored. `git status` showed the tree unchanged after each.",
+    "M09 edits `dist/`, which is gitignored, and was restored the same way. M10 and",
+    "M19 also ran `node --test scripts/arch/gen-v1-skeleton.test.mjs` (baseline 26",
+    "passed).",
+    "",
+    "WHY NO ENTRY IS A MODULE-LOAD FAILURE OF THE FILE UNDER TEST. A literal",
+    "`await import(\"@platos/context-channels/application/index.js\")` inside a case",
+    "fails in Vite's import-analysis TRANSFORM when the manifest does not publish",
+    "the subpath (vitest 3.1.4, vite 5.4.21: `Missing \"./application/index.js\"",
+    "specifier`, `Tests  no tests`), and a literal `await import(\"@platos/context-memory\")`",
+    "fails the same way when the manifest does not publish `.`. Both are vacuous",
+    "reds. Through a relative module that re-exports the factory, the same removal",
+    "fails ONE case and passes its siblings, which is the shape `factory-entries/`",
+    "implements for all seventeen contexts."
+  ],
+  "sweep": {
+    "head": "the tree of the commit that carries this file, on tejas/m2m4-lane-factories",
+    "entries": 21,
+    "killed": 21,
+    "equivalent": 0,
+    "vacuous": 0,
+    "rejected": 0
+  },
+  "mutations": [
+    {
+      "name": "WIN302-M01 context-ports.ts prose says NINE are importable again",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "this package can import it. SEVENTEEN publish one, SEVENTEEN are",
+      "to": "this package can import it. SEVENTEEN publish one; NINE are",
+      "suites": ["vitest"],
+      "note": "The exact figure the WIN-302 comment found still standing at 3f422333. Only the prose readback goes red: the constant, the manifests and the imports are all unchanged, so nothing else has anything to disagree with. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M02 the generator's copy of the clause says ELEVEN are importable",
+      "file": "scripts/arch/gen-v1-skeleton.mjs",
+      "from": "IMPORT that factory. SEVENTEEN publish one, SEVENTEEN are importable,",
+      "to": "IMPORT that factory. SEVENTEEN publish one, ELEVEN are importable,",
+      "suites": ["vitest"],
+      "note": "The second copy, in a script outside apps/core-api that no vitest suite imports. It is reached because the readback walks every source and Markdown file under the repository root. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M03 UNIMPORTABLE_CONTEXT_FACTORIES regains channels, prose untouched",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "  // each is now on `APPLICATION_ENTRY_PROJECTS`. Nothing was left to list.\n]);",
+      "to": "  // each is now on `APPLICATION_ENTRY_PROJECTS`. Nothing was left to list.\n  \"channels\",\n]);",
+      "suites": ["vitest"],
+      "note": "The other direction of drift: the constant moves and the sentences do not. Every 'SEVENTEEN are importable' and 'NONE is unimportable' now disagrees with the constant's length, and the partition's complement no longer equals it. 3 failed | 47 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable",
+        "the context bundles those adapters can satisfy > still cannot compose channels, and names the two directories that stop it"
+      ]
+    },
+    {
+      "name": "WIN302-M04 channels stops publishing ./application/index.js",
+      "file": "packages/contexts/channels/package.json",
+      "from": "\"./application/index.js\": { \"types\": \"./dist/application/index.d.ts\", \"import\": \"./dist/application/index.js\" }",
+      "to": "(the key removed from `exports`)",
+      "suites": ["vitest"],
+      "note": "CLAUSE 2's mutation on the subpath route. The rejection surfaces INSIDE the channels case, from factory-entries/channels.ts: `Missing \"./application/index.js\" specifier in \"@platos/context-channels\" package`. The other sixteen per-context cases passed, as did all 30 of installation.test.ts. The partition is the second red because it reads the same manifest. 2 failed | 48 passed.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > channels: its contract factory resolves from apps/core-api, proved by import",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable"
+      ]
+    },
+    {
+      "name": "WIN302-M05 governance stops publishing ./application/index.js",
+      "file": "packages/contexts/governance/package.json",
+      "from": "\"./application/index.js\": { \"types\": \"./dist/application/index.d.ts\", \"import\": \"./dist/application/index.js\" }",
+      "to": "(the key removed from `exports`)",
+      "suites": ["vitest"],
+      "note": "The context `context-ports.ts` imports statically. installation.test.ts fails at LOAD (no case runs), which is the caveat the WIN-302 comment raised. context-factories.test.ts still names the context: its governance case is red, and so are the two cases that load context-ports.js inside the case. The other sixteen per-context cases and the negative-control case pass. context-factories.test.ts: 3 failed | 17 passed; installation.test.ts: failed to load.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > governance: its contract factory resolves from apps/core-api, proved by import",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable",
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M06 tenancy stops publishing ./application/index.js",
+      "file": "packages/contexts/tenancy/package.json",
+      "from": "\"./application/index.js\": { \"types\": \"./dist/application/index.d.ts\", \"import\": \"./dist/application/index.js\" }",
+      "to": "(the key removed from `exports`)",
+      "suites": ["vitest"],
+      "note": "The context `app.module.ts` imports statically. installation.test.ts fails at LOAD. context-factories.test.ts names it: the tenancy case and the manifest-reading partition are red, and the other sixteen per-context cases pass. context-factories.test.ts: 2 failed | 18 passed; installation.test.ts: failed to load.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > tenancy: its contract factory resolves from apps/core-api, proved by import",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable"
+      ]
+    },
+    {
+      "name": "WIN302-M07 the files case is deleted",
+      "file": "apps/core-api/src/composition/context-factories.test.ts",
+      "from": "  it(\"files: its contract factory resolves from apps/core-api, proved by import\", async () => {\n    expectFactoryImport(\"files\", APPLICATION_ENTRY, await import(\"./factory-entries/files.js\"));\n  });\n",
+      "to": "",
+      "suites": ["vitest"],
+      "note": "Deleting a case is the quiet way to lose clause 1 for one context. The manifests still derive seventeen routes, so only the join from the partition to the declared cases can see it. 1 failed | 48 passed (49).",
+      "kills": [
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable"
+      ]
+    },
+    {
+      "name": "WIN302-M08 context-ports.ts and gen-v1-skeleton.mjs restored to 3f422333",
+      "file": "apps/core-api/src/composition/context-ports.ts, scripts/arch/gen-v1-skeleton.mjs",
+      "from": "this tranche's versions of both files",
+      "to": "`git show 3f422333:<file>` for both -- the six-entry constant and the 9/8 prose -- with this tranche's manifests kept",
+      "suites": ["vitest"],
+      "note": "The counterfactual: had the readback existed at the base, would it have caught the stale state? Against the base's six-entry constant (expected 11 importable, 6 unimportable) it reports 'NINE are importable' in both files, 'The eight contexts whose contract factory this root cannot IMPORT', and 'Nine factories are reachable from here', a wording this readback's first version could not see. It also reports two true sentences of this tranche, 'every one of the seventeen factories now resolves from this package' in app.module.ts and the partition case's own title 'leaves none unimportable', because they now disagree with the restored constant, which is the direction M03 measures. It over-reports one base sentence, 'all five of GOVERNANCE_UNBOUND_PORTS ... the factory is not importable', whose 'five' is not a factory count; that sentence was stale too and is gone. Recorded as the readback's known imprecision: a figure within twelve words before the word is read as its count. 3 failed | 47 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable",
+        "the context bundles those adapters can satisfy > still cannot compose channels, and names the two directories that stop it"
+      ]
+    },
+    {
+      "name": "WIN302-M09 agentsContract is renamed in the artifact the runner resolves",
+      "file": "packages/contexts/agents/dist/contracts/index.js",
+      "from": "export function agentsContract(",
+      "to": "export function assembleAgents(",
+      "suites": ["vitest"],
+      "note": "G3-M08 re-run against the new instrument, and applied to dist for the reason G3-M08 records: renaming the source fails the agents build, so dist never changes and the run is vacuously green. factory-entries/agents.ts re-exports a name the artifact no longer has, so the agents case sees no factory and fails inside the case. 2 failed | 48 passed.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > agents: its contract factory resolves from apps/core-api, proved by import",
+        "the context bundles those adapters can satisfy > names an AgentsContract that a published factory DOES assemble"
+      ]
+    },
+    {
+      "name": "WIN302-M10 a factory-entries module is deleted (jobs)",
+      "file": "apps/core-api/src/composition/factory-entries/jobs.ts",
+      "from": "export { createJobsContract } from \"@platos/context-jobs/application/index.js\";",
+      "to": "(the file removed)",
+      "suites": ["node:test", "vitest"],
+      "note": "The six new APPLICATION_ENTRY_PROJECTS entries are justified by these modules, and the generator's importer gate is what says so. Removing one leaves jobs' entry with no importer: gen-v1-skeleton.test.mjs 1 failed | 25 passed. The vitest side: the jobs case cannot load its module, and the partition cannot read the module its declared case names. 2 failed | 48 passed.",
+      "kills": [
+        "every published application entry point is imported by a V1 project",
+        "every context's contract factory resolves from apps/core-api, proved by import > jobs: its contract factory resolves from apps/core-api, proved by import",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable"
+      ]
+    },
+    {
+      "name": "WIN302-M11 memory stops publishing `.`",
+      "file": "packages/contexts/memory/package.json",
+      "from": "\".\": { \"types\": \"./dist/contracts/index.d.ts\", \"import\": \"./dist/contracts/index.js\" }",
+      "to": "(the key removed from `exports`)",
+      "suites": ["vitest"],
+      "note": "CLAUSE 2's mutation on the `.` route, and the one the round-1 verifier found unkilled. Before this round the seven `.`-route cases imported `@platos/context-<x>` LITERALLY, and this same mutation failed context-factories.test.ts at LOAD (`Missing \".\" specifier in \"@platos/context-memory\" package`, Tests 30 passed (30) across both files, none of them in this file). Re-measured on the lane tree before the fix with the same result. Now factory-entries/memory.ts carries the import, and the rejection lands in the memory case alone: the other sixteen per-context cases, the partition, both prose cases and all 30 of installation.test.ts pass. 1 failed | 49 passed.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > memory: its contract factory resolves from apps/core-api, proved by import"
+      ]
+    },
+    {
+      "name": "WIN302-M12 providers stops publishing `.`",
+      "file": "packages/contexts/providers/package.json",
+      "from": "\".\": { \"types\": \"./dist/contracts/index.d.ts\", \"import\": \"./dist/contracts/index.js\" }",
+      "to": "(the key removed from `exports`)",
+      "suites": ["vitest"],
+      "note": "The `.`-route context with the most importers, chosen for the same reason as M05 and M06. installation.test.ts imports providersContract statically and fails at LOAD. context-ports.ts imports DEFAULT_PROVIDER_CATALOGUE from `.`, so the two cases that load it inside the case are red too. The conversations case is red for a reason that is true rather than collateral: `@platos/context-conversations` loads `@platos/context-providers` at run time, and its case reports the same missing specifier. The other fifteen per-context cases pass. context-factories.test.ts: 4 failed | 16 passed; installation.test.ts: failed to load.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > providers: its contract factory resolves from apps/core-api, proved by import",
+        "every context's contract factory resolves from apps/core-api, proved by import > conversations: its contract factory resolves from apps/core-api, proved by import",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable",
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M13 a count phrased 'can be imported' is planted in context-ports.ts",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([",
+      "to": "// Only 11 context factories can be imported from this root.\nexport const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([",
+      "suites": ["vitest"],
+      "note": "Round-1 verifier probe A, which passed the first readback because its claim words had 'cannot be imported' and not the positive passive. Reported as importable 11 against 17. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M14 a count phrased 'unreachable' is planted in context-ports.ts",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([",
+      "to": "// Six context factories are unreachable from apps/core-api.\nexport const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([",
+      "suites": ["vitest"],
+      "note": "Round-1 verifier probe B. Reported as unimportable 6 against 0. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M15 a count placed after the adjective is planted in context-ports.ts",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([",
+      "to": "// The importable factories number eleven.\nexport const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([",
+      "suites": ["vitest"],
+      "note": "Round-1 verifier probe C: the figure follows the word. Reported as importable 11 against 17. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M16 a stale count is planted as a trailing comment on a code line",
+      "file": "apps/core-api/src/composition/context-ports.ts",
+      "from": "export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([",
+      "to": "export const UNIMPORTABLE_CONTEXT_FACTORIES: readonly string[] = Object.freeze([ // NINE are importable.",
+      "suites": ["vitest"],
+      "note": "Round-1 verifier probe D. The first readback read whole comment lines only; the comment scanner finds this one after code. Reported as importable 9 against 17. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M17 a stale count is planted in a Markdown document",
+      "file": "docs/env-vars.md",
+      "from": "(end of file)",
+      "to": "Only nine context factories are importable from `apps/core-api`.",
+      "suites": ["vitest"],
+      "note": "The first readback read no Markdown. Reported at docs/env-vars.md as importable 9 against 17. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M18 a stale count is planted in a legacy, non-V1 application",
+      "file": "apps/agent/src/app.module.ts",
+      "from": "(start of file)",
+      "to": "// Eight context factories cannot be imported from the V1 composition root.",
+      "suites": ["vitest"],
+      "note": "The first readback read only the root solution's V1 projects plus scripts/arch. Reported at apps/agent/src/app.module.ts as unimportable 8 against 0. 1 failed | 49 passed.",
+      "kills": [
+        "prose that counts importable context factories > states no count of importable factories that UNIMPORTABLE_CONTEXT_FACTORIES does not measure"
+      ]
+    },
+    {
+      "name": "WIN302-M19 a `.`-route factory-entries module is deleted (memory)",
+      "file": "apps/core-api/src/composition/factory-entries/memory.ts",
+      "from": "export { memoryContract } from \"@platos/context-memory\";",
+      "to": "(the file removed)",
+      "suites": ["node:test", "vitest"],
+      "note": "M10's counterpart on the `.` route. The generator's importer gate counts application subpaths only, so it stays green (gen-v1-skeleton.test.mjs 26 passed), and that is correct: `.` is not an APPLICATION_ENTRY_PROJECTS entry. The vitest side names it: the memory case cannot load its module, and the partition cannot read it. 2 failed | 48 passed.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > memory: its contract factory resolves from apps/core-api, proved by import",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable"
+      ]
+    },
+    {
+      "name": "WIN302-M20 a module imports a route its manifest does not publish (conversations)",
+      "file": "apps/core-api/src/composition/factory-entries/conversations.ts",
+      "from": "from \"@platos/context-conversations\";",
+      "to": "from \"@platos/context-conversations/application/index.js\";",
+      "suites": ["vitest"],
+      "note": "`conversations/application/index.ts` does carry createConversationsContract, so a reader could think the subpath is a second valid route. The manifest does not publish it: the conversations case fails with `Missing \"./application/index.js\" specifier`, and the partition's join refuses a module whose specifier is not the route the derivation gives. 2 failed | 48 passed.",
+      "kills": [
+        "every context's contract factory resolves from apps/core-api, proved by import > conversations: its contract factory resolves from apps/core-api, proved by import",
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable"
+      ]
+    },
+    {
+      "name": "WIN302-M21 a module re-exports something besides its factory (providers)",
+      "file": "apps/core-api/src/composition/factory-entries/providers.ts",
+      "from": "(end of file)",
+      "to": "export { DEFAULT_PROVIDERS_POLICY } from \"@platos/context-providers\";",
+      "suites": ["vitest"],
+      "note": "The shape the per-context case cannot see: the module still holds exactly one factory, so the providers case passes. Only the join holds the 'one specifier and nothing else' rule: `factory-entries/providers.ts imports one specifier and nothing else: expected [...] to have a length of 1 but got 2`. 1 failed | 49 passed.",
+      "kills": [
+        "the importability partition, derived rather than typed > partitions all seventeen by DERIVING both routes, and leaves none unimportable"
+      ]
+    }
+  ],
+  "rejectedMutations": [],
+  "declaredUnfalsifiable": []
+}

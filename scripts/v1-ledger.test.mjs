@@ -864,7 +864,32 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // arrival (0 -> 1). Every other file the change touches -- the root and core-api
     // manifests, the compose file, the Caddyfile, the self-hosting page and the
     // suites that pin them -- is an EDIT.
-    "apps-core-api": 97,
+    //
+    // WIN-302 THE FACTORY ENTRIES 97 -> 116. NINETEEN files, ALL in `apps-core-api`,
+    // and NO LEDGER RULE CHANGED:
+    //
+    //   SEVENTEEN on `source.process` (33 -> 50): the modules of
+    //   `src/composition/factory-entries/`, one per context. Each re-exports that
+    //   context's one contract factory from the entry point its manifest
+    //   publishes, `.` or `./application/index.js`, so a manifest that stops
+    //   publishing it fails ONE named case and not a whole suite at load. Ten
+    //   landed first (97 -> 109); the seven `.`-route modules followed when a
+    //   removed `.` entry was measured failing the whole suite at load.
+    //
+    //   ONE on `test.suites` (34 -> 35): `src/composition/context-factories.test.ts`,
+    //   one case per context that imports its factory, the partition that moved
+    //   out of `installation.test.ts`, and the readback of importability counts in
+    //   the repository's prose.
+    //
+    //   ONE on `config.package` (7 -> 8): `mutations-win302.json`, the sweep that
+    //   shows each of those three can go red.
+    //
+    // The six manifests that gained the subpath, `context-ports.ts`,
+    // `gen-v1-skeleton.mjs` and every corrected comment are EDITS. Two other pins
+    // moved with the eighteen source files and are recorded where they live:
+    // `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs` and the re-derivation
+    // in `scripts/arch/arch-boundaries.test.mjs`, both 1701 -> 1719.
+    "apps-core-api": 116,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2367,7 +2392,8 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // its real-race proof. Nothing else this tranche adds a file. Its context-factory
   // half adds none at all — it corrects a CONSTANT
   // (`UNIMPORTABLE_CONTEXT_FACTORIES`, 7 -> 6), derives the other side of that
-  // partition inside `installation.test.ts`, and replaces a false reason at four
+  // partition inside `installation.test.ts` (the factory entries below later
+  // moved it to `context-factories.test.ts`), and replaces a false reason at four
   // sites, every one of which is an EDIT. The eight-key re-derivation from the merged
   // `expectedDeltas` is 15 + 1 + 94 + 4 + 10 + 1556 + 24 + 90 = 1794.
   //
@@ -2398,7 +2424,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   //
   // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804. ONE file in `docs-content`,
   // itemised on that area's delta above: 15 + 1 + 97 + 4 + 10 + 1556 + 26 + 95 = 1804.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1804);
+  //
+  // AND THE WIN-302 FACTORY ENTRIES — 1804 -> 1823. NINETEEN files, all in
+  // `apps-core-api` and itemised on that area's delta above: seventeen
+  // factory-entry modules, their suite and the mutation ledger. Re-measured on
+  // the integrated tree, not summed from either branch:
+  // 15 + 1 + 116 + 4 + 10 + 1556 + 26 + 95 = 1823.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1823);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2709,7 +2741,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // edit as the total and both area deltas: three root-infra files and one SBOM.
     // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804, moved in the same edit as
     // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
-    rulesDocument.baseline.totalFiles + 1804
+    // AND THE WIN-302 FACTORY ENTRIES — 1804 -> 1823, moved in the same edit as the
+    // total and as `expectedDeltas["apps-core-api"]`: nineteen core-api files.
+    rulesDocument.baseline.totalFiles + 1823
   );
 });
 

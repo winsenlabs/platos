@@ -24,30 +24,12 @@ import { DEFAULT_PROVIDER_CATALOGUE, DEFAULT_PROVIDERS_POLICY } from "@platos/co
 import { agentsContract } from "@platos/context-agents";
 import { secretsContract } from "@platos/context-secrets";
 import { providersContract } from "@platos/context-providers";
-// WIN-267 G3. THE OTHER THREE FACTORIES ON A `.` ENTRY POINT, imported for the
-// same reason: the sentence this suite reads back named `agents`, `tools`,
-// `memory` and `cost-monitoring` as the four contexts with no assembler, and
-// the only honest way to withdraw a claim about another package's exports is to
-// resolve them. Nothing composes these three; the import IS the assertion.
-import { toolsContract } from "@platos/context-tools";
-import { memoryContract } from "@platos/context-memory";
-import { costMonitoringContract } from "@platos/context-cost-monitoring";
-// WIN-302. THE SEVENTH FACTORY ON A `.` ENTRY POINT, and the one that had been
-// sitting on `UNIMPORTABLE_CONTEXT_FACTORIES` while being importable the whole
-// time. `conversations/contracts/index.ts` re-exports `createConversationsContract`
-// as a VALUE, so this import resolves — and the reason nobody noticed is the
-// reason the derived half of the partition below now exists: route one was
-// enumerated by a hand-written literal, and a literal compared to another literal
-// cannot fail. Nothing composes this context; the import IS the assertion.
-import { createConversationsContract } from "@platos/context-conversations";
-// And the THREE reached through `./application/index.js` instead. STATIC, so
-// rule (C4) can see them: `composition-root.mjs` refuses a specifier assembled
-// at run time, and this is the shape that proves the resolver rather than
-// evading it. `app.module.ts` already imports the first two this way.
-import { createIdentityAccessService } from "@platos/context-identity-access/application/index.js";
-import { createGovernanceContract } from "@platos/context-governance/application/index.js";
-import { createTenancyService } from "@platos/context-tenancy/application/index.js";
-import { createSkillsContract } from "@platos/context-skills/application/index.js";
+// WIN-302. THE OTHER FOURTEEN FACTORIES ARE NOT IMPORTED HERE ANY MORE, and
+// that is the point rather than a loss. This suite loads `app.module.ts` and
+// `context-ports.ts`, which import three contexts' `./application/index.js`
+// statically, so a removed entry point fails this FILE at load instead of a
+// named case. `context-factories.test.ts` imports all seventeen, one named case
+// per context, and holds the partition that used to live below.
 
 import { composeApplication } from "../app.module.js";
 import { loadPlatformConfiguration } from "../config/platform.js";
@@ -751,10 +733,11 @@ describe("the context bundles those adapters can satisfy", () => {
     expect(app.eventBus).toBe(construction.adapters["redis-streams"]);
     expect(app.streamJournal).toBe(construction.adapters["redis-streams"]?.journal);
 
-    // The context's factory is not importable either, which is the SECOND
-    // blocker and the one `UNIMPORTABLE_CONTEXT_FACTORIES` measures against
-    // Node's own resolver.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toContain("channels");
+    // AND PACKAGING IS NO LONGER A SECOND BLOCKER. This used to assert that the
+    // context's factory could not be imported. WIN-302 published `channels`'
+    // `./application/index.js`, and `context-factories.test.ts` imports
+    // `createChannelsContract` through it, so the chain above is all that is left.
+    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("channels");
   });
 
   it("holds the governance port partition, and the sink it does build", () => {
@@ -1057,236 +1040,6 @@ describe("the context bundles those adapters can satisfy", () => {
     for (const binding of owned) expect(AGENTS_UNBOUND_PORTS).not.toContain(binding.port);
   });
 
-  it("cannot import SIX context factories, and partitions all seventeen by DERIVING route one", () => {
-    // THE OTHER HALF OF THE SAME CORRECTION, and the one that will bite the next
-    // tranche. Every one of the seventeen contexts publishes a factory over its
-    // whole contract; SIX of them keep it in `application/` behind a manifest
-    // that publishes no `./application/index.js`, so this package cannot name it.
-    //
-    // THE COUNT HAS MOVED TWICE AND ONLY ONE OF THE MOVES WAS A CHANGE TO THE
-    // TREE. It was EIGHT until WIN-267 published `governance`'s subpath, which
-    // this file's own import of `createGovernanceSafetyEventSink` required — a
-    // real change. WIN-302 takes it from seven to SIX and nothing about
-    // `conversations` moved: its root barrel has re-exported
-    // `createConversationsContract` all along, so the list was simply WRONG, and
-    // it was wrong in the direction that costs a tranche its plan. The derived
-    // half below is what makes that class of error a red test instead of a
-    // paragraph somebody has to re-measure.
-    //
-    // JOINED TO THE MANIFESTS, WHICH IS WHAT THE RESOLVER READS. A negative
-    // about packaging is exactly the kind of claim this file has been wrong
-    // about three times, so it is measured against the `exports` map of every
-    // context package rather than asserted -- and against ALL SEVENTEEN, as a
-    // PARTITION, so a context cannot fall out of both halves and be counted by
-    // neither. The day a manifest publishes the subpath, it moves from one side
-    // of the partition to the other and this case fails.
-    //
-    // IT READS THE FILES RATHER THAN IMPORTING THE SUBPATHS, and that is rule
-    // (C4) rather than a preference: a specifier assembled at run time is one
-    // `composition-root.mjs` refuses outside `apps/mcp-stdio/src/runtime.ts`,
-    // because no boundary rule can see it, and a LITERAL dynamic import of a
-    // subpath that does not exist fails in Vite's transform -- the whole file
-    // fails to load and no case runs, which is a vacuous red rather than an
-    // assertion. `config/sections.test.ts` reads the platform's own files the
-    // same way for the same reason.
-    const root = fileURLToPath(new URL("../../../../", import.meta.url));
-    const manifestOf = (context: string): { readonly exports?: Record<string, unknown> } =>
-      JSON.parse(readFileSync(`${root}packages/contexts/${context}/package.json`, "utf8")) as {
-        readonly exports?: Record<string, unknown>;
-      };
-
-    // The seventeen ADR M0.3 §4 names, spelled out rather than globbed: a
-    // directory listing would shrink silently with the tree and make the
-    // partition below a statement about whatever happened to be there.
-    const contexts = [
-      "identity-access", "tenancy", "secrets", "providers", "agents", "skills",
-      "tools", "memory", "channels", "files", "observability", "cost-monitoring",
-      "governance", "jobs", "conversations", "eventing", "privacy",
-    ] as const;
-    expect(contexts).toHaveLength(17);
-
-    // A FACTORY IS IMPORTABLE BY EITHER OF TWO ROUTES, and getting that wrong is
-    // how the sentence being withdrawn stayed wrong: `cost-monitoring`, `memory`,
-    // `providers` and `tools` publish NO `./application/index.js` and are
-    // importable anyway, because their factory is on the `.` entry point. A
-    // partition drawn on the manifest subpath alone would put those four on the
-    // wrong side and reproduce the original error in a new place.
-    //
-    // ROUTE ONE, PROVED BY THE MODULE GRAPH. Every one of these was imported
-    // statically at the head of this file, from the `.` specifier
-    // `app.module.ts` already imports each context's TYPE from. Delete any of
-    // the six exports and this file stops resolving.
-    const onDotEntry = {
-      agents: agentsContract,
-      "cost-monitoring": costMonitoringContract,
-      memory: memoryContract,
-      providers: providersContract,
-      secrets: secretsContract,
-      tools: toolsContract,
-      // WIN-302 — see this entry's import. It was missing here and PRESENT on
-      // `UNIMPORTABLE_CONTEXT_FACTORIES`, which is the drift the derived half
-      // below now makes impossible.
-      conversations: createConversationsContract,
-    } as const;
-    // ROUTE TWO, PROVED THE SAME WAY, through the subpath the remaining SEVEN do
-    // not have. WIN-267 adds `governance`: this file imports
-    // `createGovernanceSafetyEventSink` from that subpath, which is why the
-    // manifest publishes it, and `createGovernanceContract` rides the same
-    // barrel. It is named here by the CONTRACT factory rather than by the sink,
-    // because what this partition measures is whether the context's assembler
-    // can be reached -- and the answer for `governance` is now yes, while the
-    // context still cannot be BUILT for the reasons three cases above state.
-    const onApplicationEntry = {
-      governance: createGovernanceContract,
-      "identity-access": createIdentityAccessService,
-      skills: createSkillsContract,
-      tenancy: createTenancyService,
-    } as const;
-    for (const [context, factory] of [
-      ...Object.entries(onDotEntry),
-      ...Object.entries(onApplicationEntry),
-    ]) {
-      expect(typeof factory, `${context} publishes an importable factory`).toBe("function");
-    }
-
-    // ---------------------------------------------------------------------
-    // WIN-302 — ROUTE ONE IS NOW DERIVED FROM THE CONTEXTS' OWN BARRELS, AND
-    // THAT IS THE GATE THAT SHOULD HAVE EXISTED SINCE WIN-267 G3.
-    //
-    // The literal above proves that each named factory RESOLVES; the module
-    // graph settles that and nothing else can. What it could never prove is the
-    // COMPLEMENT — that no OTHER context also publishes one from `.` — because
-    // the literal and `UNIMPORTABLE_CONTEXT_FACTORIES` are both maintained by
-    // hand, and this programme's first lesson is that an assertion comparing two
-    // things you control cannot fail. It did not fail: `conversations`
-    // re-exported `createConversationsContract` from its root barrel and sat on
-    // the unimportable list for two tranches, and the partition below was green
-    // the whole time because both of its sides had been edited to agree.
-    //
-    // SO THE EXPECTATION IS COMPUTED FROM SEVENTEEN FILES THIS PACKAGE DOES NOT
-    // OWN. For each context, the accepted factory NAMES are derived from the
-    // DIRECTORY NAME — `cost-monitoring` -> `costMonitoringContract` /
-    // `createCostMonitoringContract` / `costMonitoringService` /
-    // `createCostMonitoringService` — so nothing here is a list of names somebody
-    // has to remember to extend. The day a context re-exports its assembler from
-    // `contracts/index.ts`, this case fails until the literal above and the
-    // constant below both move.
-    //
-    // IT READS THE FILES RATHER THAN IMPORTING THEM, for the two reasons this
-    // case already records: rule (C4) refuses a specifier assembled at run time,
-    // and a literal dynamic import of a subpath that does not exist fails in
-    // Vite's TRANSFORM, taking the whole file down as a vacuous red.
-    //
-    // `export * from` IS FOLLOWED, up to two levels. `tenancy`, `agents` and
-    // `privacy` all star-export inside their root barrels today, so a rule that
-    // stopped at the barrel's own text would silently answer "no factory" for a
-    // context that publishes one through a star — reintroducing the exact blind
-    // spot this derivation exists to close, in a new place.
-    const factoryNames = (context: string): readonly string[] => {
-      const pascal = context
-        .split("-")
-        .map((part) => `${(part[0] ?? "").toUpperCase()}${part.slice(1)}`)
-        .join("");
-      const camel = `${(pascal[0] ?? "").toLowerCase()}${pascal.slice(1)}`;
-      return [
-        `${camel}Contract`,
-        `create${pascal}Contract`,
-        `${camel}Service`,
-        `create${pascal}Service`,
-      ];
-    };
-    const exportedFactory = (file: string, wanted: readonly string[], depth = 0): string | null => {
-      if (depth > 2 || !existsSync(file)) return null;
-      const source = readFileSync(file, "utf8");
-      for (const name of wanted) {
-        if (new RegExp(`^export function ${name}\\s*(?:<|\\()`, "mu").test(source)) return name;
-        if (new RegExp(`^export const ${name}\\b`, "mu").test(source)) return name;
-        if (new RegExp(`^export \\{[^}]*\\b${name}\\b[^}]*\\} from `, "msu").test(source)) return name;
-      }
-      for (const match of source.matchAll(/^export \* from "(\.[^"]+)";/gmu)) {
-        const relative = (match[1] ?? "").replace(/\.js$/u, ".ts");
-        const target = new URL(relative, new URL(file, "file:///"));
-        const found = exportedFactory(fileURLToPath(target), wanted, depth + 1);
-        if (found !== null) return found;
-      }
-      return null;
-    };
-    const derivedOnDotEntry = contexts.filter(
-      (context) =>
-        exportedFactory(`${root}packages/contexts/${context}/contracts/index.ts`, factoryNames(context)) !==
-        null,
-    );
-    // THE JOIN. Not a length, not a superset: set equality in both directions, so
-    // a factory added to a barrel fails here and a name deleted from the literal
-    // fails here too.
-    expect([...derivedOnDotEntry].sort()).toEqual([...Object.keys(onDotEntry)].sort());
-    // AND IT IS NOT VACUOUS. A derivation that matched nothing — a typo in the
-    // name rule, a moved barrel — would make the equality above a comparison of
-    // two empty sets, which is exactly the failure this whole case is about.
-    expect(derivedOnDotEntry.length).toBeGreaterThan(1);
-    for (const context of derivedOnDotEntry) {
-      expect(
-        exportedFactory(`${root}packages/contexts/${context}/contracts/index.ts`, factoryNames(context)),
-        `${context} must publish a factory whose name the DIRECTORY implies`,
-      ).not.toBeNull();
-    }
-
-    // THE MANIFEST HALF, which is the only instrument that can speak for the
-    // absent: route two exists exactly when the package publishes the subpath.
-    const publishesEntry = contexts.filter(
-      (context) => manifestOf(context).exports?.["./application/index.js"] !== undefined,
-    );
-    expect([...publishesEntry].sort()).toEqual(
-      [...Object.keys(onApplicationEntry), "agents", "secrets"].sort(),
-    );
-    // AND `governance` MUST HAVE LEFT THE UNIMPORTABLE LIST, in both directions:
-    // the list shrank by exactly one and the name that left is the one whose
-    // manifest changed. A list edited without the manifest, or a manifest
-    // changed without the list, fails here.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(6);
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("governance");
-    expect(publishesEntry).toContain("governance");
-    // WIN-302 — AND `conversations` HAS LEFT IT TOO, by the OTHER route. It never
-    // needed the subpath: its root barrel re-exports the factory, so it was
-    // importable on the day the list first named it. Both halves are asserted so
-    // the removal cannot be mistaken for a manifest change that did not happen.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("conversations");
-    expect(publishesEntry).not.toContain("conversations");
-    expect(derivedOnDotEntry).toContain("conversations");
-
-    // AND THE PARTITION OVER ALL SEVENTEEN. Importable is the UNION of the two
-    // routes -- `agents` and `secrets` are in both -- and the complement is the
-    // list. 10 + 7 = 17, so a context cannot fall out of both halves and be
-    // counted by neither, which is what a list checked only against itself
-    // allows. It was 9 + 8 until WIN-267 published `governance`'s subpath.
-    const importable = new Set([
-      ...Object.keys(onDotEntry),
-      ...Object.keys(onApplicationEntry),
-    ]);
-    expect(importable.size).toBe(11);
-    expect([...contexts].filter((context) => !importable.has(context)).sort()).toEqual(
-      [...UNIMPORTABLE_CONTEXT_FACTORIES].sort(),
-    );
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).toHaveLength(6);
-    for (const context of UNIMPORTABLE_CONTEXT_FACTORIES) {
-      expect(contexts, `${context} must be one of the seventeen`).toContain(context);
-      // The manifest IS there and publishes `.` -- so each of these is a context
-      // that declined to publish the subpath, not a package that is missing,
-      // which is what a misspelled name on the list would be.
-      expect(Object.keys(manifestOf(context).exports ?? {})).toContain(".");
-      expect(manifestOf(context).exports?.["./application/index.js"]).toBeUndefined();
-    }
-
-    // `governance` WAS THE ONE THAT MATTERED, and WIN-267 closed it. G3's
-    // finding was that a tranche landing all five of `GOVERNANCE_UNBOUND_PORTS`
-    // still could not compose the context because `createGovernanceContract`
-    // could not be NAMED from here. Both halves moved in this tranche: the five
-    // ports landed and the subpath is published, so what is left is the peer
-    // chain and nothing about packaging.
-    expect(UNIMPORTABLE_CONTEXT_FACTORIES).not.toContain("governance");
-    expect(typeof createGovernanceContract).toBe("function");
-  });
-
   it("declines secrets and providers by NAMING the directory that is missing", () => {
     // FALSIFIABILITY, FROM THE OTHER SIDE. An install with a database and no
     // root key ring composes tenancy and neither of the two new contexts, and
@@ -1440,10 +1193,10 @@ describe("composing tools, whose two remaining ports no adapter directory may ho
 
   it("publishes the adapters barrel from EXACTLY ONE of the seventeen, and it is the SDK's home", () => {
     // THE MANIFESTS ARE READ AND THE SUBPATHS ARE NOT IMPORTED, which is the trap
-    // the `UNIMPORTABLE_CONTEXT_FACTORIES` case above already documents and paid
-    // for: a LITERAL dynamic import of a subpath that does not exist fails in
-    // Vite's TRANSFORM, so the whole file fails to load and no case runs at all — a
-    // vacuous red rather than an assertion. Measured here after reproducing it.
+    // `context-factories.test.ts` documents and routes around: a LITERAL dynamic
+    // import of a subpath that does not exist fails in Vite's TRANSFORM, so the
+    // whole file fails to load and no case runs at all — a vacuous red rather than
+    // an assertion. Measured here after reproducing it, and again at WIN-302.
     const root = fileURLToPath(new URL("../../../../", import.meta.url));
     const contexts = [
       "identity-access", "tenancy", "secrets", "providers", "agents", "skills",
