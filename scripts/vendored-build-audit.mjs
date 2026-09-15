@@ -191,6 +191,11 @@ const allowedProtectedSdkChanges = [
       "WIN-270 (M4.4): `currentScope()` and the `PlatosCallContext` field table documented organizationId, projectId and environmentId as an external vendor's ids. Platos mints and owns them; the doc comments now say so, and the six vocabulary exception rows that excused the old wording are deleted. Documentation only.",
   },
   {
+    path: "packages/platools-js/README.md",
+    reason:
+      "WIN-270 (M4.4): the `currentScope()` example repeated the misdescription the doc comments carried, calling the Platos tenancy scope an external vendor's, and the README ships in the npm tarball. Reworded; its vocabulary exception row is deleted. Documentation only.",
+  },
+  {
     path: "packages/platools-js/tests/protocol-fixture.test.ts",
     reason:
       "WIN-270 (M4.4), cross-language fixtures: drives the real PlatoolsClient through registration and dispatch against `tests/sdk-contract/platools-protocol.json`, the fixture the platools-py suite also reads, and joins its frame keys to the platform's own protocol header.",
@@ -199,6 +204,11 @@ const allowedProtectedSdkChanges = [
     path: "packages/platools-py/platools/context.py",
     reason:
       "WIN-270 (M4.4): the Python twin of the platools-js doc correction; `current_scope()` and the module example described Platos tenancy ids as an external vendor's scope. Documentation only.",
+  },
+  {
+    path: "packages/platools-py/README.md",
+    reason:
+      "WIN-270 (M4.4): the Python twin of the platools-js README correction on the `current_scope()` example. Documentation only.",
   },
   {
     path: "packages/platools-py/requirements-ci.in",
@@ -219,6 +229,11 @@ const allowedProtectedSdkChanges = [
     path: "packages/platos-client/src/v1-stream.ts",
     reason:
       "WIN-272 (M4.6): the event-stream reader behind the generated `environmentStreams.read`, which previously went through the JSON transport and threw on every valid stream. WHATWG parsing, the kernel's admitFrame/classifyStreamEnd/isResumable ported and checked against the kernel, and Last-Event-ID resume.",
+  },
+  {
+    path: "packages/platos-client/vitest.config.ts",
+    reason:
+      "WIN-272 (M4.6): test-only. Aliases `@platos/kernel` to its source so `tests/v1-stream.test.ts`, which imports core-api's SSE encoders, loads on a cold checkout instead of only after `build:v1` has produced the kernel's dist.",
   },
   {
     path: "packages/platos-client/tests/v1-stream.test.ts",

@@ -162,10 +162,12 @@ jobs:
       - name: Changeset gate for publishable packages and the generated SDK
         # WIN-270 (M4.4), semver automation; founder decision D15: VERSION
         # automation only, and no publish step may ever be added here. Fails when a
-        # non-private `packages/*` package or a generated SDK artifact changed since
-        # the merge base without a changeset naming it, and when a changeset in the
-        # diff names a package that is not publishable or that nothing changed. It
-        # then computes the release plan (`changeset status --output`) as a dry run.
+        # non-private `packages/*` package (the two Python SDKs under their npm
+        # twins) or a generated SDK artifact changed since the merge base without a
+        # changeset naming it, and when a changeset in the diff names a package that
+        # is not publishable or that nothing changed. Licence metadata reconciled to
+        # the governing licence is exempt, as CHANGESETS.md rules. It then computes
+        # the release plan (`changeset status --output`) as a dry run.
         # `changeset status --since` passes once the diff adds ANY changeset, whatever
         # package it names, and nothing ran even that: commit 77864609 changed
         # @platosdev/client with no intent recorded.

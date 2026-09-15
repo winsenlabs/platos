@@ -33,7 +33,9 @@
 //   in the diff or be cited: the changeset's body names a commit, reachable from
 //   head, that changed a shipped path of that package. That is how an entry that
 //   records intent for an EARLIER change (the retry guard) stays honest — it has
-//   to say which change it is for, and the gate checks that the commit did it.
+//   to say which change it is for, and the gate checks that the commit did it. A
+//   release an EDITED changeset already declared, with the same bump, at the merge
+//   base is carried intent rather than a new claim, and needs neither.
 //
 // A SHIPPED PATH is any path inside the package directory that is not test-only:
 // see `NON_SHIPPING`. The package set is read from the COMMITTED head tree, from
@@ -47,11 +49,39 @@
 // fixture is a change to the generated surface `@platosdev/client` ships, and the
 // Python client has no npm identity of its own to name.
 //
-// ONE EXCEPTION, AND IT IS PROVENANCE: the fixture records `sourceDigests` of its
-// inputs, so ANY edit to the OpenAPI document, the manifest, the policy, core-api's
-// SSE lane or the kernel's stream module moves that one field even when no client
-// changes. A fixture diff confined to `sourceDigests` is not a surface change and
-// asks for no intent; every other byte of it does.
+// THE TWO PYTHON SDKS ARE PACKAGES TOO. `packages/platos-client-py` and
+// `packages/platools-py` publish to PyPI and have no `package.json`, so a gate that
+// read only npm manifests let every hand-written change to them through with no
+// intent at all. Changesets cannot bump a `pyproject.toml` (`docs/sdk-v1-migration.md`,
+// "Version policy"), and this repository already records a Python SDK's intent
+// beside its TypeScript twin's (`.changeset/platools-sdk-tenancy-id-docs.md`). So
+// each is mapped to that twin in `PYTHON_SDK_TWINS`: a shipped change to the Python
+// tree needs a changeset naming the npm twin. The map is checked against the tree
+// on every run — each Python directory must carry a `pyproject.toml` project name
+// and each twin a non-private `package.json` — and a `packages/*` directory with
+// no `package.json` that the map does not name is a REFUSAL, so a third Python SDK
+// cannot be added outside the gate.
+//
+// TWO EXCEPTIONS, BOTH NAMED BY THIS REPOSITORY'S OWN RULES, AND NEITHER A SURFACE:
+//
+//   PROVENANCE. The fixture records `sourceDigests` of its inputs, so ANY edit to
+//   the OpenAPI document, the manifest, the policy, core-api's SSE lane or the
+//   kernel's stream module moves that one field even when no client changes. A
+//   fixture diff confined to `sourceDigests` is not a surface change and asks for
+//   no intent; every other byte of it does.
+//
+//   LEGAL METADATA RECONCILED TO THE GOVERNING LICENCE. CHANGESETS.md: the
+//   reconciliation of every non-private package to the repository's governing
+//   Apache-2.0 metadata "does not itself create package-version intent". Measured
+//   before this rule: the gate run against `origin/main` failed on
+//   `@platos/react-hooks`, whose ONLY changes were that reconciliation (its MIT
+//   `license` field and a new LICENSE file) — so the pull request from v1 to main
+//   would have been red on the repository's own policy. Exempt, path by path, and
+//   nothing wider: a package `LICENSE` whose head bytes equal the repository root
+//   `LICENSE`, and a `package.json` whose parsed content differs from the merge base
+//   in `license` ALONE, set to `GOVERNING_LICENSE`. A licence moved anywhere else,
+//   a LICENSE with any other text, or a manifest with any other change still
+//   requires intent.
 //
 //   node scripts/sdk/changeset-gate.mjs --base <rev> [--head <rev>] [--release-plan] [--root <checkout>]
 
@@ -72,6 +102,29 @@ export const PACKAGE_GLOB = "packages/*";
 
 export const CHANGESET_DIRECTORY = ".changeset";
 
+/**
+ * The SPDX id CHANGESETS.md calls the repository's governing licence metadata, and
+ * the one `scripts/license-distribution.test.mjs` requires of every non-private
+ * package manifest. `changeset-gate.test.mjs` reads that test to keep the two equal.
+ */
+export const GOVERNING_LICENSE = "Apache-2.0";
+
+/**
+ * Python SDK directories under `packages/*`, each with the npm package whose
+ * changesets record its version intent. See the header. The TypeScript client's
+ * twin is the directory the generator writes the Python client into, so that pair
+ * is derived from `scripts/sdk/v1-contract.mjs` rather than restated; the platools
+ * pair is stated, and the test suite joins it to the SDK pairing
+ * `scripts/capability-matrix.mjs` records.
+ */
+export const PYTHON_SDK_TWINS = Object.freeze([
+  {
+    directory: relative(repositoryRoot, PYTHON_OUTPUT).split("/").slice(0, 2).join("/"),
+    twin: relative(repositoryRoot, TYPESCRIPT_OUTPUT).split("/").slice(0, 2).join("/"),
+  },
+  { directory: "packages/platools-py", twin: "packages/platools-js" },
+]);
+
 /** The generated SDK artifacts, as repository-relative paths. */
 export const GENERATED_SDK_ARTIFACTS = Object.freeze(
   [TYPESCRIPT_OUTPUT, PYTHON_OUTPUT, FIXTURE_OUTPUT].map((path) => relative(repositoryRoot, path)),
@@ -88,6 +141,9 @@ export const NON_SHIPPING = Object.freeze([
   { reason: "test directory", test: (segments) => segments.slice(0, -1).some((s) => s === "test" || s === "tests" || s === "__tests__") },
   { reason: "test file", test: (segments) => /\.(?:test|spec)\.[^/]+$/u.test(segments.at(-1)) },
   { reason: "test config", test: (segments) => segments.length === 1 && /^(?:vitest\.config\.[^/]+|tsconfig\.test\.json)$/u.test(segments[0]) },
+  // The Python SDK suites' CI install: the pins and hashed lock `.github/workflows/ci.yml`
+  // installs pytest from. Neither reaches a wheel, and neither is a runtime dependency.
+  { reason: "test requirements", test: (segments) => segments.length === 1 && /^requirements-ci\.(?:in|txt)$/u.test(segments[0]) },
   { reason: "written by the version step", test: (segments) => segments.length === 1 && segments[0] === "CHANGELOG.md" },
 ]);
 
@@ -120,8 +176,19 @@ export function resolveCommit(revision, root) {
   return sha.trim();
 }
 
-/** The non-private `packages/*` packages in the committed `head` tree. */
-export function readPackages(head, root) {
+/** The `[project]` name a committed `pyproject.toml` declares, or null. */
+export function pyprojectName(source) {
+  const project = /^\[project\]\s*$([\s\S]*?)(?=^\[|(?![\s\S]))/mu.exec(source);
+  const name = project === null ? null : /^name\s*=\s*"([^"]+)"\s*$/mu.exec(project[1]);
+  return name === null ? null : name[1];
+}
+
+/**
+ * The `packages/*` packages in the committed `head` tree: every npm manifest, and
+ * every Python SDK directory under the npm name of its twin (`python` names the
+ * PyPI distribution). A directory that is neither is a refusal.
+ */
+export function readPackages(head, root, twins = PYTHON_SDK_TWINS) {
   const workspace = git(["show", `${head}:pnpm-workspace.yaml`], root);
   if (!new RegExp(`^\\s*-\\s*["']?${PACKAGE_GLOB.replace("*", "\\*")}["']?\\s*$`, "mu").test(workspace)) {
     throw new GateError(`pnpm-workspace.yaml no longer declares ${PACKAGE_GLOB}; the gate's package set is gone`);
@@ -129,12 +196,60 @@ export function readPackages(head, root) {
   const directories = git(["ls-tree", "--name-only", "-d", `${head}`, "packages/"], root)
     .split("\n")
     .filter(Boolean);
+  // Directories the workspace declares as CONTAINERS (`packages/contexts/*`): each
+  // holds packages of its own under another glob, and has no manifest itself.
+  const containers = new Set(
+    [...workspace.matchAll(/^\s*-\s*["']?([^"'\s#]+)\/\*["']?\s*$/gmu)].map((match) => match[1]),
+  );
   const packages = [];
+  const unmanifested = [];
   for (const directory of directories) {
     const manifest = gitOrNull(["show", `${head}:${directory}/package.json`], root);
-    if (manifest === null) continue;
+    if (manifest === null && containers.has(directory)) {
+      // Outside this gate's glob, and CHANGESETS.md scopes intent to `packages/*`:
+      // so every package in the container must be private, or the gate refuses.
+      const children = git(["ls-tree", "--name-only", "-d", `${head}`, `${directory}/`], root).split("\n").filter(Boolean);
+      for (const child of children) {
+        const childManifest = gitOrNull(["show", `${head}:${child}/package.json`], root);
+        if (childManifest !== null && JSON.parse(childManifest).private !== true) {
+          throw new GateError(
+            `${child} is a non-private package outside ${PACKAGE_GLOB}; CHANGESETS.md scopes version intent to ${PACKAGE_GLOB}, ` +
+              "so the gate cannot tell whether its changes need a changeset",
+          );
+        }
+      }
+      continue;
+    }
+    if (manifest === null) {
+      unmanifested.push(directory);
+      continue;
+    }
     const parsed = JSON.parse(manifest);
-    packages.push({ name: parsed.name, directory, private: parsed.private === true });
+    packages.push({ name: parsed.name, directory, private: parsed.private === true, python: null });
+  }
+  for (const directory of unmanifested) {
+    const pairing = twins.find((entry) => entry.directory === directory);
+    if (pairing === undefined) {
+      throw new GateError(
+        `${directory} has no package.json and is not a Python SDK in PYTHON_SDK_TWINS; ` +
+          "the gate cannot tell whether it publishes, so it refuses rather than let its changes through",
+      );
+    }
+    const pyproject = gitOrNull(["show", `${head}:${directory}/pyproject.toml`], root);
+    const distribution = pyproject === null ? null : pyprojectName(pyproject);
+    if (distribution === null) {
+      throw new GateError(`${directory} is mapped as a Python SDK but carries no pyproject.toml [project] name`);
+    }
+    const twin = packages.find((entry) => entry.directory === pairing.twin);
+    if (twin === undefined || twin.private) {
+      throw new GateError(`${directory}'s twin ${pairing.twin} is not a non-private npm package; its intent has nowhere to be recorded`);
+    }
+    packages.push({ name: twin.name, directory, private: false, python: distribution });
+  }
+  for (const pairing of twins) {
+    if (!directories.includes(pairing.directory)) {
+      throw new GateError(`PYTHON_SDK_TWINS names ${pairing.directory}, which is not in the ${PACKAGE_GLOB} tree; the map is stale`);
+    }
   }
   return packages;
 }
@@ -199,21 +314,90 @@ export function provenanceOnlyChanges(changedPaths, mergeBase, head, root) {
   return fixtureSurface(before) === fixtureSurface(after) ? new Set([fixture]) : new Set();
 }
 
-/** Changesets the diff adds or edits, parsed at head. Deleted ones are the version step's business. */
-export function readChangesets(changedWithStatus, head, root) {
+/**
+ * Whether one changed path is legal metadata reconciled to the governing licence
+ * (see the header). `before`/`after` are the path's content at the merge base and
+ * head (null when absent); `rootLicense` is the repository root `LICENSE` at head.
+ */
+export function isLicenseReconciliation({ path, before, after, rootLicense, packages }) {
+  const owner = packages.find((entry) => path.startsWith(`${entry.directory}/`));
+  if (owner === undefined || owner.python !== null || after === null) return false;
+  const inside = path.slice(owner.directory.length + 1);
+  if (inside === "LICENSE") return rootLicense !== null && Buffer.compare(after, rootLicense) === 0;
+  if (inside !== "package.json" || before === null) return false;
+  let previous;
+  let next;
+  try {
+    previous = JSON.parse(before.toString("utf8"));
+    next = JSON.parse(after.toString("utf8"));
+  } catch {
+    return false;
+  }
+  if (previous?.license === next?.license) return false;
+  const { license: _before, ...restBefore } = previous;
+  const { license: _after, ...restAfter } = next;
+  return JSON.stringify(restBefore) === JSON.stringify(restAfter);
+}
+
+function gitBlob(revision, path, root) {
+  try {
+    return execFileSync("git", ["show", `${revision}:${path}`], {
+      cwd: root,
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** Changed paths that are licence reconciliation only. */
+export function licenseReconciliations(changedPaths, mergeBase, head, packages, root) {
+  const rootLicense = gitBlob(head, "LICENSE", root);
+  const exempt = new Set();
+  for (const path of changedPaths) {
+    if (!/\/(?:LICENSE|package\.json)$/u.test(path)) continue;
+    const verdict = isLicenseReconciliation({
+      path,
+      before: gitBlob(mergeBase, path, root),
+      after: gitBlob(head, path, root),
+      rootLicense,
+      packages,
+    });
+    if (verdict) exempt.add(path);
+  }
+  return exempt;
+}
+
+/**
+ * Changesets the diff adds or edits, parsed at head. Deleted ones are the version step's business.
+ *
+ * `carried` holds the `name:type` releases an EDITED changeset already declared at
+ * the merge base. Those are pending intent recorded for an earlier change, not intent
+ * this diff creates: when WIN-253 deleted the retired package names from
+ * `.changeset/eobd-83-followup-package-repo-urls.md`, the two names it kept did not
+ * become claims about this diff. A release that is new, or whose bump changed, is.
+ */
+export function readChangesets(changedWithStatus, head, root, mergeBase = null) {
   const found = [];
+  const parseAt = (revision, path) => {
+    const source = git(["show", `${revision}:${path}`], root);
+    try {
+      return parseChangeset(source);
+    } catch (error) {
+      throw new GateError(`${path} at ${revision.slice(0, 12)} is not a changeset Changesets can parse: ${error.message}`);
+    }
+  };
   for (const { status, path } of changedWithStatus) {
     if (status === "D") continue;
     if (!path.startsWith(`${CHANGESET_DIRECTORY}/`) || !path.endsWith(".md")) continue;
     if (path.slice(CHANGESET_DIRECTORY.length + 1).includes("/") || path.endsWith("/README.md")) continue;
-    const source = git(["show", `${head}:${path}`], root);
-    let parsed;
-    try {
-      parsed = parseChangeset(source);
-    } catch (error) {
-      throw new GateError(`${path} is not a changeset Changesets can parse: ${error.message}`);
+    const parsed = parseAt(head, path);
+    const carried = new Set();
+    if (status === "M" && mergeBase !== null) {
+      for (const release of parseAt(mergeBase, path).releases) carried.add(`${release.name}:${release.type}`);
     }
-    found.push({ path, releases: parsed.releases, summary: parsed.summary });
+    found.push({ path, releases: parsed.releases, summary: parsed.summary, carried });
   }
   return found;
 }
@@ -241,7 +425,8 @@ export function citedCommits(summary, head, root) {
 export function evaluate({ changedPaths, packages, changesets }) {
   const violations = [];
   const moved = movedPackages(changedPaths, packages);
-  const byName = new Map(packages.map((entry) => [entry.name, entry]));
+  // Resolved against npm manifests only: a Python SDK carries its twin's name.
+  const byName = new Map(packages.filter((entry) => entry.python === null).map((entry) => [entry.name, entry]));
 
   const named = new Map();
   for (const changeset of changesets) {
@@ -273,6 +458,7 @@ export function evaluate({ changedPaths, packages, changesets }) {
         continue;
       }
       if (moved.has(release.name)) continue;
+      if (changeset.carried?.has(`${release.name}:${release.type}`)) continue;
       const cites = (changeset.cited ?? []).filter(({ touched }) =>
         movedPackages(touched, packages).has(release.name),
       );
@@ -338,9 +524,18 @@ export function runGate({ base, head = "HEAD", withReleasePlan = false, root = r
     headCommit,
     root,
   );
-  const changedPaths = changedWithStatus.map((row) => row.path).filter((path) => !provenanceOnly.has(path));
   const packages = readPackages(headCommit, root);
-  const changesets = readChangesets(changedWithStatus, headCommit, root).map((changeset) => ({
+  const licenseOnly = licenseReconciliations(
+    changedWithStatus.map((row) => row.path),
+    mergeBase,
+    headCommit,
+    packages,
+    root,
+  );
+  const changedPaths = changedWithStatus
+    .map((row) => row.path)
+    .filter((path) => !provenanceOnly.has(path) && !licenseOnly.has(path));
+  const changesets = readChangesets(changedWithStatus, headCommit, root, mergeBase).map((changeset) => ({
     ...changeset,
     cited: citedCommits(changeset.summary, headCommit, root),
   }));
@@ -360,7 +555,7 @@ export function runGate({ base, head = "HEAD", withReleasePlan = false, root = r
       }
     }
   }
-  return { mergeBase, changedPaths, provenanceOnly, packages, changesets, plan, ...verdict };
+  return { mergeBase, changedPaths, provenanceOnly, licenseOnly, packages, changesets, plan, ...verdict };
 }
 
 function runCli(argv = process.argv.slice(2)) {
@@ -379,13 +574,19 @@ function runCli(argv = process.argv.slice(2)) {
     process.exit(2);
     return;
   }
-  const publishable = result.packages.filter((entry) => !entry.private).map((entry) => entry.name);
+  const publishable = result.packages.filter((entry) => !entry.private && entry.python === null).map((entry) => entry.name);
+  const python = result.packages.filter((entry) => entry.python !== null);
   process.stderr.write(
     `[changeset-gate] merge base ${result.mergeBase.slice(0, 12)}; ${result.changedPaths.length} changed path(s); ` +
-      `${publishable.length} non-private ${PACKAGE_GLOB} package(s); ${result.changesets.length} changeset(s) in the diff\n`,
+      `${publishable.length} non-private npm ${PACKAGE_GLOB} package(s) and ${python.length} Python SDK(s) ` +
+      `(${python.map((entry) => `${entry.python} -> ${entry.name}`).join(", ")}); ` +
+      `${result.changesets.length} changeset(s) in the diff\n`,
   );
   for (const path of result.provenanceOnly) {
     process.stderr.write(`  ${path}: only its sourceDigests moved (provenance, not surface)\n`);
+  }
+  for (const path of result.licenseOnly) {
+    process.stderr.write(`  ${path}: reconciled to the governing ${GOVERNING_LICENSE} licence metadata (CHANGESETS.md: not version intent)\n`);
   }
   for (const [name, paths] of result.moved) {
     process.stderr.write(`  moved ${name} (${paths.length} shipped path(s)) named by ${(result.named.get(name) ?? ["nothing"]).join(", ")}\n`);
