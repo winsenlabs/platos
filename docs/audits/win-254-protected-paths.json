@@ -13,7 +13,7 @@
     {
       "path": ".github/workflows/ci.yml",
       "mode": "100644",
-      "sha256": "f0ff43693e8bd355fcee75a01e48e45d8b4dfcfc364dfa140805d6c1e50b8029"
+      "sha256": "d33c7c337bab80e8652ee826e66b51abe725a419a39e1c65208614e30e4c537a"
     },
     {
       "path": "LICENSE",
@@ -1048,12 +1048,12 @@
     {
       "path": "docs/audits/win-253-workspace-reachability.json",
       "mode": "100644",
-      "sha256": "42dceb3e133ee71d91e04163666ce1df5d2d5e8642eb66d992e5fbdfff3d5b44"
+      "sha256": "23d6bbe1730a0acc8b0f1e0232adf964e9fb25839a368c5e6b68f63b65950b20"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "mode": "100644",
-      "sha256": "be62d86814c67e4f8b85b1088de8ce5fca151c1ee46e35b20eb5e2249e830217"
+      "sha256": "36c9a9fd978ba94c74b45923af1795c1ba827d08ea3b5a7223518c5f4f5772b3"
     },
     {
       "path": "docs/audits/win-259-secret-response-census.json",
@@ -1073,12 +1073,12 @@
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.json",
       "mode": "100644",
-      "sha256": "135253bbc01d16941faae0cc1d761757253277453876a9334da609ba98cb4566"
+      "sha256": "5fa935b57e9b3465f78f74244b585654ad7acd03299d11679fe654eb8e69d66c"
     },
     {
       "path": "docs/audits/win-269-tool-lifecycle-reach.md",
       "mode": "100644",
-      "sha256": "c6c71642ff3d6d63cd56cf032d3d9392294e3a645fc4943690d31b695da94dda"
+      "sha256": "17448273e5be4f71adb7b24dbd9d8222d4977355db420c07e3dff1d42433f9aa"
     },
     {
       "path": "docs/audits/win-284-differential-coverage.json",
@@ -1103,7 +1103,7 @@
     {
       "path": "docs/audits/win253-removals/vendored-build.json",
       "mode": "100644",
-      "sha256": "d70d312afc20988fa2a9e6e61f1d93e07ff4cfcb4348f797bab1392bc23bfff7"
+      "sha256": "0e50c33fd75e10921831cd30e26c8ccdd4a2bfddad005907af7bea3752a1d31e"
     },
     {
       "path": "docs/audits/win253-removals/vendored-build.md",
@@ -3963,7 +3963,7 @@
     {
       "path": "scripts/v1-ledger.test.mjs",
       "mode": "100644",
-      "sha256": "ecb6a41f56bda58103e3db2e61466d95a5d7442cfb3f8dcbbd82132619890f1f"
+      "sha256": "606a70439d0cef46e1b75f058c780aa91775d29e2dd271116d7207920f037374"
     },
     {
       "path": "scripts/verify-advisory-nonvacuity.mjs",
