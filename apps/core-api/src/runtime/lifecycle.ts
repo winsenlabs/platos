@@ -64,7 +64,7 @@ import type { CoreApiConfiguration } from "../config/schema.js";
 import type { LifecycleState } from "../health/readiness.js";
 import { applyApiSurface } from "../http/api-surface.js";
 import { CoreApiHttpModule } from "../http/http.module.js";
-import { createMcpBodyCap } from "../http/mcp-body-cap.js";
+import { installMcpBodyLimits } from "../http/mcp-body-cap.js";
 import { createEdgeMiddleware } from "./edge-middleware.js";
 import { createInFlightRegister, type InFlightRegister } from "./in-flight.js";
 import { createProcessLogger, systemClock, ulidGenerator } from "./process-ports.js";
@@ -216,13 +216,13 @@ export async function startCoreApi(options: StartOptions): Promise<RunningCoreAp
   );
 
   // D21 (founder decision, 2026-09-15). The MCP body cap, mirroring `apps/agent`:
-  // 2 MiB, `413 payload_too_large`, before authentication. It must precede Nest's
-  // own body parser, which registers inside `init()` — so it is installed here,
-  // before `listen()`, and after the edge so a refused request still carries its
-  // correlation id. Without it the parser answers an oversized declared length
-  // only after draining every byte of it. `http/mcp-body-cap.ts` states the
+  // 2 MiB, `413 payload_too_large`, before authentication, and a 2 MiB parser for
+  // the MCP root so what the cap admits is parsed rather than refused as a fault.
+  // Both must precede Nest's own body parsers, which register inside `init()` —
+  // so they are installed here, before `listen()`, and after the edge so a refused
+  // request still carries its correlation id. `http/mcp-body-cap.ts` states the
   // mirror clause by clause and `mcp-body-cap.test.ts` drives this process.
-  nest.use(createMcpBodyCap());
+  installMcpBodyLimits(nest);
 
   await nest.listen(configuration.port, configuration.host);
   const server = nest.getHttpServer() as ClosableServer;
