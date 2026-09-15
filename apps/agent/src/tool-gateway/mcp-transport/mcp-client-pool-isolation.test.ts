@@ -336,7 +336,7 @@ function call(entity: Entity) {
   return { tool: entity.toolName, params: {} };
 }
 
-describe("WIN-269 — a remote server restarted mid-session recovers on the next call (remote-http)", () => {
+describe("WIN-269 — a remote server restarted mid-session recovers on the next call", () => {
   it("the stale session fails ONCE, is evicted, and the next call re-initialises against the restarted server", async () => {
     const server = await remote("remote-http", "notes.search", "answer");
     const entity: Entity = { pk: "entity-notes", externalId: "notes", toolName: "notes.search", server, transport: "remote-http" };
@@ -361,6 +361,30 @@ describe("WIN-269 — a remote server restarted mid-session recovers on the next
 
     const recovered = await executor.executeBatch([call(entity)], SCOPE);
     // WITHOUT EVICTION this is a second 404, and a third, until the idle sweep.
+    expect(recovered[0]).toMatchObject({ status: "success" });
+    expect(server.initializes).toBe(1);
+    expect(server.calls.at(-1)?.tool).toBe("notes.search");
+  }, 30_000);
+
+  it("remote-sse the same way: the restarted server's unknown session fails once, and the next call opens a new stream", async () => {
+    const server = await remote("remote-sse", "notes.search", "answer");
+    const entity: Entity = { pk: "entity-notes-sse", externalId: "notes-sse", toolName: "notes.search", server, transport: "remote-sse" };
+    const { executor } = executorFor([entity]);
+
+    expect((await executor.executeBatch([call(entity)], SCOPE))[0]).toMatchObject({ status: "success" });
+    expect(server.initializes).toBe(1);
+
+    await server.restart();
+
+    // The pooled client still posts to `/messages?sessionId=<old>`, which the
+    // restarted server never issued (or, if the dead stream is noticed first, the
+    // transport itself is gone). Either way the session is the OLD one.
+    const stale = await executor.executeBatch([call(entity)], SCOPE);
+    expect(stale[0]).toMatchObject({ status: "failed" });
+    expect(String(stale[0]!.error)).toMatch(/404|unknown session|Not connected|fetch failed|other side closed|ECONNRESET/u);
+
+    const recovered = await executor.executeBatch([call(entity)], SCOPE);
+    // WITHOUT EVICTION this is the same failure again, until the idle sweep.
     expect(recovered[0]).toMatchObject({ status: "success" });
     expect(server.initializes).toBe(1);
     expect(server.calls.at(-1)?.tool).toBe("notes.search");
