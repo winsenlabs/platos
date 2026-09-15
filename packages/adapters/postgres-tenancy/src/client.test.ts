@@ -29,15 +29,24 @@ describe("buildDatasourceUrl", () => {
     const built = new URL(buildDatasourceUrl(BASE));
     expect(built.searchParams.has("connection_limit")).toBe(false);
     expect(built.searchParams.has("pool_timeout")).toBe(false);
+    expect(built.searchParams.has("socket_timeout")).toBe(false);
     expect(built.searchParams.has("options")).toBe(false);
   });
 
   test("writes each POOL setting it is given, with the driver's own parameter names", () => {
     const built = new URL(
-      buildDatasourceUrl(BASE, { connectionLimit: 12, poolTimeoutSeconds: 9 }),
+      buildDatasourceUrl(BASE, { connectionLimit: 12, poolTimeoutSeconds: 9, socketTimeoutSeconds: 21 }),
     );
     expect(built.searchParams.get("connection_limit")).toBe("12");
     expect(built.searchParams.get("pool_timeout")).toBe("9");
+    expect(built.searchParams.get("socket_timeout")).toBe("21");
+    expect(built.searchParams.get("options")).toBeNull();
+    // The client deadline is refused on the same terms as every pool setting.
+    for (const socketTimeoutSeconds of [0, -1, 2.5]) {
+      expect(() => buildDatasourceUrl(BASE, { socketTimeoutSeconds })).toThrowError(
+        expect.objectContaining({ code: POOL_SETTING_INVALID }),
+      );
+    }
     expect(built.pathname).toBe("/platos");
   });
 

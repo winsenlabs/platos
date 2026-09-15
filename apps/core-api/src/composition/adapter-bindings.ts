@@ -1339,6 +1339,22 @@ export interface AdapterConstruction {
 }
 
 /**
+ * The client-side deadline on one PostgreSQL query, DERIVED from the server-side
+ * one rather than configured beside it.
+ *
+ * `statementTimeoutMs` is enforced by PostgreSQL, so it bounds nothing once the
+ * server stops answering; a request would then hold its HTTP connection open
+ * indefinitely. Five seconds past the statement timeout the server has had every
+ * chance to cancel the statement and say so, so abandoning the socket then can
+ * only cut off a server that is not responding. A URL that already names
+ * `socket_timeout` is overridden, which is the adapter's rule for every pool
+ * setting it is handed.
+ */
+export function postgresSocketTimeoutSeconds(statementTimeoutMs: number): number {
+  return Math.ceil(statementTimeoutMs / 1000) + 5;
+}
+
+/**
  * Build every adapter this configuration declares, and say why for the rest.
  *
  * PURE OVER ITS INPUT in the sense that matters: it reads no environment, takes
@@ -1377,6 +1393,7 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
         databaseUrl: postgres.url,
         connectionLimit: postgres.poolMax,
         statementTimeoutMs: postgres.statementTimeoutMs,
+        socketTimeoutSeconds: postgresSocketTimeoutSeconds(postgres.statementTimeoutMs),
       });
       const adapter = buildPostgresTenancyAdapter(client, {}, input.correlation);
       adapters["postgres-tenancy"] = adapter;

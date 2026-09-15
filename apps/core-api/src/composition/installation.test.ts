@@ -58,6 +58,7 @@ import {
   ADAPTER_BINDINGS,
   UNIMPLEMENTED_ADAPTERS,
   constructAdapters,
+  postgresSocketTimeoutSeconds,
   type AdapterConstruction,
   type AdapterName,
 } from "./adapter-bindings.js";
@@ -209,6 +210,20 @@ function readiness(env: Readonly<Record<string, string>>) {
 }
 
 describe("constructing the adapters an install declared", () => {
+  it("gives the database client a deadline that can only cut off a server that stopped answering", () => {
+    // Joined to the schema, not restated: every statement timeout the stores
+    // section accepts must leave the server time to cancel and report first.
+    const field = PLATFORM_SECTIONS.flatMap((section) => section.groups)
+      .flatMap((group) => [group.anchor, ...group.requiredWithAnchor, ...group.optional])
+      .find((candidate) => candidate.name === "PLATOS_STORE_POSTGRES_STATEMENT_TIMEOUT_MS");
+    expect(field?.minimum).toBeDefined();
+    expect(field?.maximum).toBeDefined();
+    for (const statementTimeoutMs of [field!.minimum!, Number(field!.defaultValue), field!.maximum!]) {
+      expect(postgresSocketTimeoutSeconds(statementTimeoutMs) * 1000).toBeGreaterThanOrEqual(statementTimeoutMs + 5000);
+    }
+    expect(postgresSocketTimeoutSeconds(Number(field!.defaultValue))).toBe(20);
+  });
+
   it("builds the directory every declared configuration group configures", () => {
     const declared = platform(FULLY_DECLARED).declaredGroups;
     // The left-hand column is a claim about the CONFIGURATION CONTRACT, so it is
