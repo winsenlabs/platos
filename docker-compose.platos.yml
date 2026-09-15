@@ -676,12 +676,17 @@ services:
   # OPT-IN PROFILE. A plain `up -d` starts exactly the services it started
   # before; add the profile to run this one:
   #   docker compose -f docker-compose.platos.yml --profile core-api up -d core-api
-  # NOT FOR A PULL-ONLY HOST YET. docker-compose.deploy.yml strips every other
-  # application build block, but it does not carry this service: that file is
-  # byte-pinned by scripts/clickhouse-split-audit.mjs, and no publication path
-  # produces a core-api digest for it to require. Activating this profile on
-  # top of that override would compile on the box. The profile is what keeps a
-  # plain `up -d` there from doing so.
+  # NOT FOR A PULL-ONLY HOST YET. docker-compose.deploy.yml resets the build
+  # blocks of the services scripts/deploy-platos.sh pulls and starts, and does
+  # not carry this one: that file is byte-pinned to an owner authorization
+  # baseline by scripts/clickhouse-split-audit.mjs, and no publication path
+  # produces a core-api digest for it to require. ITS HEADER OVERSTATES THIS.
+  # It says the override removes every application build block. Under it, this
+  # service and docs-mcp-bridge both keep theirs, and scripts/audit-platos-build.mjs
+  # pins that exact set. `docker compose up` builds such a service whether or not
+  # `build` is passed, so activating this profile on top of that override would
+  # compile on the box. The profile is what keeps a plain `up -d` there from
+  # starting this service.
   #
   # CONFIGURATION IS apps/core-api/src/config, and docs/env-vars.md is its
   # table. PLATOS_ENVIRONMENT is the one variable that module REQUIRES, and the

@@ -97,10 +97,14 @@ check(
 );
 
 // ─── Deployability invariants the core-api image and its compose service state ───
-// Each of these was previously a sentence in a comment that no gate read, and an
-// independent verifier mutated every one of them with every check still green.
-// They join to things this file does not write: the config schema's port
-// default, the health controller's routes, the build-images candidate matrix,
+// Each of these was a sentence in a comment that no gate read until an
+// independent verifier mutated it with every check still green. Two verifier
+// rounds found them: the first found the port, profile, edge and build-step
+// sentences; the second found the runtime ENV and CMD, the warm-context exclusion,
+// the migration ordering, the store addresses and the deploy override's build
+// blocks. They join to things this file does not write: the config schema, the
+// package's start script and tsc project, the Prisma schemas, the health
+// controller's routes, the build-images candidate matrix, scripts/deploy-platos.sh,
 // and a route table pinned from origin/v1.
 
 /** Dockerfile instructions with continuation lines joined and comments dropped. */
@@ -387,22 +391,33 @@ check(
 
 // ─── What the pull-only deploy override leaves able to compile on the box ───
 // `docker compose up` builds any service that has a `build:` block and no local
-// image, whether or not `build` is passed. docker-compose.deploy.yml states which
-// services keep their build block under it; that sentence is held equal to the
-// two files as compose would merge them, and every service scripts/deploy-platos.sh
+// image, whether or not `build` is passed (measured on compose 5.1.3 with
+// `up --dry-run`). docker-compose.deploy.yml's header says it "removes every
+// application build block". Under it, core-api and docs-mcp-bridge keep theirs;
+// docs-mcp-bridge already did on origin/v1. That file is byte-pinned to an owner
+// authorization baseline by scripts/clickhouse-split-audit.mjs, so its sentence
+// cannot be corrected there. The exact set is pinned here instead, computed from
+// the two files as compose merges them, and every service scripts/deploy-platos.sh
 // pulls or starts must be reset to a required digest reference.
+const SERVICES_KEEPING_A_BUILD_BLOCK_UNDER_DEPLOY = Object.freeze(["core-api", "docs-mcp-bridge"]);
 const COMPOSE_RESET = Symbol("compose !reset");
-const deployOverrideText = read("docker-compose.deploy.yml");
-const deployOverride = parseYaml(deployOverrideText, { customTags: [{ tag: "!reset", resolve: () => COMPOSE_RESET }] });
+const deployOverride = parseYaml(read("docker-compose.deploy.yml"), {
+  customTags: [{ tag: "!reset", resolve: () => COMPOSE_RESET }],
+});
 const deployOverrideServices = deployOverride?.services ?? {};
 const keepsBuildUnderDeploy = Object.entries(composeServices)
   .filter(([name, service]) => service?.build !== undefined && deployOverrideServices[name]?.build !== COMPOSE_RESET)
   .map(([name]) => name)
   .sort();
-const statedKeepsBuild = (/^#\s+keeps-build:\s+(.+)$/m.exec(deployOverrideText)?.[1] ?? "").trim().split(/\s+/).filter(Boolean).sort();
 check(
-  `docker-compose.deploy.yml names exactly the services that keep a build block under it (${keepsBuildUnderDeploy.join(", ")})`,
-  statedKeepsBuild.length > 0 && JSON.stringify(statedKeepsBuild) === JSON.stringify(keepsBuildUnderDeploy)
+  `exactly the reviewed services keep a build block under the deploy override (now: ${keepsBuildUnderDeploy.join(", ") || "none"})`,
+  JSON.stringify(keepsBuildUnderDeploy) === JSON.stringify([...SERVICES_KEEPING_A_BUILD_BLOCK_UNDER_DEPLOY].sort())
+);
+check(
+  "of the services keeping a build block under the deploy override, only the reviewed pre-existing docs-mcp-bridge starts without a profile",
+  keepsBuildUnderDeploy
+    .filter((name) => !(Array.isArray(composeServices[name]?.profiles) && composeServices[name].profiles.length > 0))
+    .every((name) => name === "docs-mcp-bridge")
 );
 const deployScript = read("scripts/deploy-platos.sh");
 const deployAppServices = (/^APP_SERVICES="([^"]+)"$/m.exec(deployScript)?.[1] ?? "").split(/\s+/).filter(Boolean);
