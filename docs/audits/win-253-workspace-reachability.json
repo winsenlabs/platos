@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "ee0c56738282993b128ffe8c20448f90314d546063f544f81cf1c09318001ef2",
+  "evidenceSha256": "430b5192f97632a7e377e8e1c451f0647ef860567b2d56e2c0684ae1c909de57",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 40,
@@ -117,7 +117,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "1412ff534cb92a1118eda7294579db411fac1e8dd9370aa92a4f98e26db8872b",
+    "aggregateSha256": "2ce19a71432166e1b6ea0ec14c20047017e307ea2483e2d4cad989d9fddb6b84",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11341,15 +11341,15 @@
       },
       {
         "path": "packages/adapters/channel-discord/src/adapter.ts",
-        "sha256": "0f769e7c2601ccd5c9eeaf136c2c93c4dc042e9509a95dcc90013c2de3da63d6"
+        "sha256": "00762a538104614c7506e8a5afa1b08225e3ece5c976c4de85b9dc44d0fb7cd8"
       },
       {
         "path": "packages/adapters/channel-discord/src/discord-signature.test.ts",
-        "sha256": "6b1e2a3bf0b97aa4d666333be63a555bafe331a25e19bc98e759a84e8e6dbbaf"
+        "sha256": "a6f500ad9999bc31d819d60ce97e9257cab5ec5b6268742f6c88755f1c35904d"
       },
       {
         "path": "packages/adapters/channel-discord/src/discord-transport.test.ts",
-        "sha256": "25522349b59481b09052ff3b4cc0c754fb9f2e604cd8e554687fb034e1e62336"
+        "sha256": "97c30dd2d6ff7ce59b271b19080077fbe83c1e7ad20a29a27c865498e1891391"
       },
       {
         "path": "packages/adapters/channel-discord/src/ed25519.ts",
@@ -11365,7 +11365,7 @@
       },
       {
         "path": "packages/adapters/channel-discord/src/fixtures.ts",
-        "sha256": "e096c7fe33361ebd10ce12e0f9ca7e13137731879fd54c656bf79559f15457b5"
+        "sha256": "85bbca9d7c4116acce0a8e1136176d8485087022f063be56e3f1e95e9c71fb82"
       },
       {
         "path": "packages/adapters/channel-discord/src/index.ts",
@@ -11373,7 +11373,7 @@
       },
       {
         "path": "packages/adapters/channel-discord/src/normalize.test.ts",
-        "sha256": "078855a5e81ebd7d5e3a3e99febbcfd2ec9ccfe4d877832fe0bbaa5487acb362"
+        "sha256": "84cdc2083de9a1aa5dd3ce5f6880cf0f2ebe8f18eacd8c627ba0f6484140eeb7"
       },
       {
         "path": "packages/adapters/channel-discord/src/normalize.ts",
@@ -11385,7 +11385,7 @@
       },
       {
         "path": "packages/adapters/channel-discord/src/rate-limit.ts",
-        "sha256": "60d8eace5fa31e5398ebabcdbece5a8eaa100994c61e571e679110211f0a133b"
+        "sha256": "3d388a1acfe8247ca44ccef9a0a4a2dbbae2efe5ed8ddd27067e5a27ad279dec"
       },
       {
         "path": "packages/adapters/channel-discord/src/rfc8032-vectors.ts",
@@ -20489,11 +20489,11 @@
       },
       {
         "path": "scripts/arch/test-case-census.mjs",
-        "sha256": "90832f6fd0932550b2f122cf91aae8036ccac390d6f29d79c06c19d2f55afd04"
+        "sha256": "ebe8a4bd11bb0e21037b5405035efa3f71b28348b8d0faeeb0ae8b4222c2e3c2"
       },
       {
         "path": "scripts/arch/test-case-census.test.mjs",
-        "sha256": "e542e0182aaf972dcc402b115fa0407558ee268bbc06bf9f4e20100280ef7e39"
+        "sha256": "54244f3680f229477e0d912065b26f62c10897cd86bf9d09df0800290e0520e2"
       },
       {
         "path": "scripts/arch/tool-lifecycle-reach.mjs",
@@ -20745,7 +20745,7 @@
       },
       {
         "path": "scripts/mutations-win271-discord.json",
-        "sha256": "f3c0ee70641e0838cf3d275a4568c544f67f12e1c5fed554075bd5822d735516"
+        "sha256": "6466838b300f774ab23a7a6387492e460ba45704e9634dfb2df234a8d0957ea8"
       },
       {
         "path": "scripts/mutations-win271-m45.json",
@@ -20957,7 +20957,7 @@
       },
       {
         "path": "scripts/win271-discord-mutation-plan.json",
-        "sha256": "8f28b178dba1c37fbcbae28f13ecb8776454f3625c1649a1815f67293b3e4f0e"
+        "sha256": "9962a1c0626648afc0ce37a81e4df58c753b538df5c6be91877f21e1a2deadee"
       },
       {
         "path": "scripts/win271-mutation-plan.json",
@@ -59339,7 +59339,7 @@
             {
               "file": "packages/adapters/channel-discord/src/adapter.ts",
               "from": "packages/adapters/channel-discord",
-              "line": 57,
+              "line": 63,
               "specifier": "@platos/context-channels/application/ports/index.js"
             },
             {
@@ -60137,7 +60137,7 @@
           "packages/contexts/channels"
         ]
       },
-      "evidenceSha256": "aaa04771993995e7e407b28bd63335bf93ad181723bff08034743033145d2325",
+      "evidenceSha256": "39101111f5a32eac4dcb766bce4f88ebe76dbf5faadc48a11b5c11858714946b",
       "manifestSha256": "83395ffe4b76070f9efb7bd1bb4b49d7228aea090069f569a5eec747aa98ab74",
       "name": "@platos/context-channels",
       "ociImageClosure": {

@@ -2,7 +2,7 @@
 
 > Non-destructive evidence only. This report does not authorize deletion, quarantine, merge, or publication.
 
-Evidence SHA-256: `ee0c56738282993b128ffe8c20448f90314d546063f544f81cf1c09318001ef2`
+Evidence SHA-256: `430b5192f97632a7e377e8e1c451f0647ef860567b2d56e2c0684ae1c909de57`
 
 ## Baseline
 
@@ -78,7 +78,7 @@ The OCI closure is derived from CI-declared shipping Dockerfiles. The applicatio
 | `packages/adapters/redis-streams` | `@platos/adapter-redis-streams` | yes | yes | yes | yes | retain-oci-image | no | no | `8be5476a4e7b60bb…` |
 | `packages/adapters/tokenmint-totp` | `@platos/adapter-tokenmint-totp` | yes | yes | yes | yes | retain-oci-image | no | no | `ada4390f200a3dda…` |
 | `packages/contexts/agents` | `@platos/context-agents` | yes | yes | yes | yes | retain-oci-image | no | no | `3255ebd67bcc538b…` |
-| `packages/contexts/channels` | `@platos/context-channels` | yes | yes | yes | yes | retain-oci-image | no | no | `aaa04771993995e7…` |
+| `packages/contexts/channels` | `@platos/context-channels` | yes | yes | yes | yes | retain-oci-image | no | no | `39101111f5a32eac…` |
 | `packages/contexts/conversations` | `@platos/context-conversations` | yes | yes | yes | yes | retain-oci-image | no | no | `4949bbf6525ec055…` |
 | `packages/contexts/cost-monitoring` | `@platos/context-cost-monitoring` | yes | yes | yes | yes | retain-oci-image | no | no | `15f9970aa7b7fee6…` |
 | `packages/contexts/eventing` | `@platos/context-eventing` | yes | yes | yes | yes | retain-oci-image | no | no | `82d21eeff9dcbee1…` |
