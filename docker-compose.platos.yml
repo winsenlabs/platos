@@ -746,14 +746,18 @@ services:
       # satisfied, and five of the sixty are generated interfaces no
       # configuration can satisfy yet, so a readiness healthcheck would mark
       # this container unhealthy forever. /readyz is the load balancer's signal.
-      # 127.0.0.1 rather than localhost: the listener is IPv4 0.0.0.0, and
-      # localhost can resolve to ::1 first inside the container.
+      # THROUGH THE CONTAINER'S OWN NETWORK ADDRESS, NOT LOOPBACK. The container
+      # hostname resolves to its address on the compose network, which is where
+      # the published port and every other service reach it. A listener bound to
+      # 127.0.0.1 would answer a loopback probe and nothing else, and read as
+      # healthy while unreachable; this probe reads it as unhealthy. IPv4 only:
+      # the listener is 0.0.0.0, and the hostname may also resolve to IPv6.
       test:
         [
           "CMD",
           "node",
           "-e",
-          "require('http').get('http://127.0.0.1:3030/livez', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
+          "require('http').get({ host: require('os').hostname(), family: 4, port: 3030, path: '/livez' }, r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))",
         ]
       interval: 10s
       timeout: 5s
