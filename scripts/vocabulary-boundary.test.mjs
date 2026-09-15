@@ -774,7 +774,15 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         without matching a previous run's artifacts. Each row copies the
   //         classification, owner and rationale of the file's existing rows for that
   //         context. The smoke script's own loop counter was renamed instead.
-  assert.equal(manifest.exceptions.length, 19454);
+  //
+  //         THE SDK LANE REMOVES SIX, taking it to 19448. Four rows in
+  //         `packages/platools-js/src/context.ts` and two in
+  //         `packages/platools-py/platools/context.py` excused doc comments that
+  //         described Platos-owned tenancy ids as an external vendor's ids, classified
+  //         `vendor`. The ids are Platos's, so the classification was wrong rather
+  //         than stale: the comments were reworded and `--write` removed exactly those
+  //         six as resolved. No row was added.
+  assert.equal(manifest.exceptions.length, 19448);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {
