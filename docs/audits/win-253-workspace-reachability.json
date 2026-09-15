@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "73232862256626745934f916cd2127c73227abfc77bb2a2478de2f6617b5863b",
+  "evidenceSha256": "fa2c5b0af626b12abcb6f92b10392cb72587a4aa0ae553ec8c03260e1f63bbb4",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "0ac0f4a06f3fc4b2a6bf15bb3a57647ae8609152a19a3b60f9bba4ec5d2320a7",
+    "aggregateSha256": "df63c436a18e07f7d91920384463f7f2279878e40feec19048d4f47ee0087504",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -255,7 +255,7 @@
       },
       {
         "path": ".github/compose/persisted-state-gate.yml",
-        "sha256": "10b58761c926b8d85547cbd11ccbb7ee3fac94c16f5f88cd9d9a543badfa1c5f"
+        "sha256": "35cb6bdee14235c7233ea80fc970bf452a97f9a365d33c1015a991f6763104bd"
       },
       {
         "path": ".github/labeler.yml",
@@ -2751,11 +2751,11 @@
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.test.ts",
-        "sha256": "6e349d7f993cd19f063f37bb6ebfaf346d703694347579fb03d9dc7055b22e90"
+        "sha256": "8a200e313f438af1395235030fca564f4b3be02533db8a5d06ef7d3d23ca4c4e"
       },
       {
         "path": "apps/core-api/src/runtime/lifecycle.ts",
-        "sha256": "ac708536749557ca03ce06ca1438f5dc495041a75aa2f734282fba364ca1ded8"
+        "sha256": "25ad94afc1421246ef3e8a1c1d23fbdec99af309dc52d5dc93e0cb8e25c91914"
       },
       {
         "path": "apps/core-api/src/runtime/log-redaction.test.ts",
@@ -4275,7 +4275,7 @@
       },
       {
         "path": "docker-compose.platos.yml",
-        "sha256": "c6741593e99686f81f17f5e5f5a958226578bbedaf19c53f9cbd9acc9ea372a7"
+        "sha256": "1fbddf69a063f1ff5c1616525d4d71f6f6003a5c7bd6429ff859f711984faddf"
       },
       {
         "path": "docs/.gitignore",
@@ -20451,7 +20451,7 @@
       },
       {
         "path": "scripts/audit-platos-build.mjs",
-        "sha256": "624724567571152cf36d7afd25e8cf6f038e4b95a9855298193ef4195488856c"
+        "sha256": "c42f868fd9f5e54ec7e6a1c389ec9f9d764c32904ca4467b86648de2e6711aba"
       },
       {
         "path": "scripts/audit-sbom.mjs",
@@ -20915,7 +20915,7 @@
       },
       {
         "path": "tests/browser-evidence/evidence-helpers.ts",
-        "sha256": "c6979223038393a777a0edf3e3ee63e9f602c4647845af13e5105e93c6c2c16a"
+        "sha256": "f40b8b70a480516193bd6db5420e6447df605868f22451eddae613389abd1177"
       },
       {
         "path": "tests/browser-evidence/global-setup.ts",
@@ -22174,7 +22174,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 323
+              "line": 327
             }
           ],
           "reversePaths": [
@@ -26273,7 +26273,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "e82077134c09833d5f10e2a81a0405f6fd0324d39791002549c9a5487febfd99",
+      "evidenceSha256": "5bb2b889410283a38d75c2c7075a1f6db85bf504a2770c888a3b370be766084e",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -26457,7 +26457,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 671
+              "line": 675
             }
           ],
           "reversePaths": [
@@ -27903,7 +27903,7 @@
           "apps/core-api"
         ]
       },
-      "evidenceSha256": "e5d899b4d0f24bd8f82fcbca0953c2e5337d5bd83c11bdfd9c22f0e7f933ac69",
+      "evidenceSha256": "ec73e533417235381e2ecbb03ff39f201a5cfa3d9a25c281007073a4fabadfc7",
       "manifestSha256": "5d89045f4a7df5dcc6c2590c1767bfe663e7cbf79c82ca10531129ef0a0133f4",
       "name": "@platos/core-api",
       "ociImageClosure": {
@@ -28608,7 +28608,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 503
+              "line": 507
             }
           ],
           "reversePaths": [
@@ -30757,7 +30757,7 @@
           "apps/webapp"
         ]
       },
-      "evidenceSha256": "abe67fe2a6dd0ec719df82a8939a37c7f66102175aa369604a526f86e96b8808",
+      "evidenceSha256": "2dc3ae4a0c5423d7c7278c2ed927886fa108101bcaa3587d03c5495f5869ded5",
       "manifestSha256": "c9306804b1e392861c3407975bcd63f456c8b17e06be7039fce615a5fc9629ed",
       "name": "webapp",
       "ociImageClosure": {
@@ -36435,7 +36435,7 @@
             {
               "from": "apps/core-api/src/runtime/lifecycle.test.ts",
               "kind": "reference",
-              "line": 32
+              "line": 33
             },
             {
               "from": "apps/core-api/src/transports/error-status.test.ts",
@@ -37000,7 +37000,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "3c87eee6da88918dadefccb72369c36043d356d7b4e68449c1095013e88cc930",
+      "evidenceSha256": "f1c9455f268e5edd2b9b0b1b7414be172fdb4114e2cb08a8482f29e6c607b872",
       "manifestSha256": "5a1b05b0f1876135c37f848f7cbe73191e71b9c34ebb6980d97602ecc345a79f",
       "name": "docs",
       "ociImageClosure": {
@@ -42222,7 +42222,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 226
+              "line": 230
             },
             {
               "from": "internal-packages/tenancy-database/Dockerfile.migrations",
@@ -44544,7 +44544,7 @@
           "packages/adapters/postgres-tenancy"
         ]
       },
-      "evidenceSha256": "b5ef259183f8ec08769c099701248861eb617ac8228c83af34b11c012c6e465e",
+      "evidenceSha256": "130923cacc72e0800756ba26d6878398f73ed9dbed1e0a9ea0e9d647b1766ae7",
       "manifestSha256": "22bd55003e357c1af7df013be8c2b416898d3b19fd4b38c763ffd701fb7e9de1",
       "name": "@platos/tenancy-database",
       "ociImageClosure": {
@@ -91751,6 +91751,11 @@
               "line": 43
             },
             {
+              "from": "apps/core-api/src/runtime/lifecycle.test.ts",
+              "kind": "reference",
+              "line": 12
+            },
+            {
               "from": "apps/core-api/src/runtime/log-redaction.test.ts",
               "kind": "reference",
               "line": 25
@@ -93102,6 +93107,10 @@
               "apps/core-api/src/http/rest-chassis.test.ts"
             ],
             [
+              "apps/core-api/src/runtime/lifecycle.test.ts",
+              "apps/core-api/src/runtime/lifecycle.test.ts"
+            ],
+            [
               "apps/core-api/src/runtime/log-redaction.test.ts",
               "apps/core-api/src/runtime/log-redaction.test.ts"
             ],
@@ -94158,6 +94167,7 @@
             "apps/core-api/src/http/failure.test.ts",
             "apps/core-api/src/http/idempotency.test.ts",
             "apps/core-api/src/http/rest-chassis.test.ts",
+            "apps/core-api/src/runtime/lifecycle.test.ts",
             "apps/core-api/src/runtime/log-redaction.test.ts",
             "apps/core-api/src/runtime/process-ports.test.ts",
             "apps/core-api/src/transports/error-status.test.ts",
@@ -95249,7 +95259,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "9afbd839abc5ec9bcd7901e9e64c43c475f77b2e05f5ab58cf7e283692595b4d",
+      "evidenceSha256": "da25d2bc0d005110e5c6ab894a9816b77ca5591c7678a1c1cc9c1b4c892ac68c",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
@@ -95385,7 +95395,7 @@
             {
               "from": "docker-compose.platos.yml",
               "kind": "reference",
-              "line": 790
+              "line": 794
             },
             {
               "from": "references/entity-docs-mcp-bridge/Dockerfile",
@@ -95957,7 +95967,7 @@
         "reversePaths": [],
         "roots": []
       },
-      "evidenceSha256": "b2da39b373c42d042dc17bb512983451422be25ae9cd97f7d2363619967c5c62",
+      "evidenceSha256": "3060cecf558dc8287489f46722add7013dc9273f48740851ad7faccd6334a3c5",
       "manifestSha256": "034ba4b3197329fff038fd94dd604197d163940839c7e2a33b94de884b2d7f4a",
       "name": "@platosdev/platools-sdk",
       "ociImageClosure": {
