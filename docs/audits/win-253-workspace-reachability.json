@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "5e8ad217e5af3ca90181f35daf7dcb9df18f599e857475a3053afb653c7d8302",
+  "evidenceSha256": "55faf18ab8d9ff63ccb2d3948c2df72b4fc3651f4c31d4c75785d79c0cafddc9",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "298963fecf5b2e174b684597e0e05788157b40fe5ad545f49b1fd88c81e69146",
+    "aggregateSha256": "f2876302fd05747de74bc3b9009edb9999f3519673fe2191a78b54d53eb88dcb",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -11771,7 +11771,7 @@
       },
       {
         "path": "packages/adapters/notifier-email/src/smtp-session.test.ts",
-        "sha256": "e89a26f7a8780a6999b1e877f0c5678c45566aedf1318e578e940161cf1af9ff"
+        "sha256": "9c17fe46b5411e80eab837fe526e62104ee0fa46a3a06c4fd2eed8e5d586bb2c"
       },
       {
         "path": "packages/adapters/notifier-email/src/smtp-session.ts",
