@@ -34,7 +34,8 @@
 // GAP: frames were lost, so the connection is abandoned and the stream re-read from
 // the last applied cursor rather than rendered with a hole in it. A stream that
 // stops without a terminal frame is SEVERED and a `stream.offline` frame is
-// INTERRUPTED; both reconnect with `Last-Event-ID`, under a bounded budget.
+// INTERRUPTED; both reconnect with `Last-Event-ID`, under a budget of reconnects in a
+// row that applied nothing — progress restores it.
 
 import { PlatosError, errorFromResponse, isRetryableError, PlatosNetworkError, PlatosRateLimitError } from "./errors.js";
 import {
@@ -234,7 +235,14 @@ export interface V1StreamOptions {
   readonly lastEventId?: string | null;
   /** The `lastSeq` the same previous reader reported. */
   readonly lastSeq?: number;
-  /** Reconnects allowed across the life of this stream. Default 5. */
+  /**
+   * Reconnects allowed IN A ROW with no frame applied between them. Default 5.
+   *
+   * A connection that applies at least one frame restores the whole budget, so a
+   * long stream behind a proxy that cuts every connection after a while still
+   * finishes, while a server that keeps answering with nothing new is still
+   * given up on. `reconnects` counts every reconnect regardless.
+   */
   readonly maxReconnects?: number;
   /** Abandon a connection that delivers nothing, heartbeats included, for this long. Default 45s. */
   readonly idleTimeoutMs?: number;
@@ -253,7 +261,7 @@ export interface V1EventStream extends AsyncIterable<V1StreamFrame> {
   readonly lastSeq: number;
   /** How the stream ended, once it has. */
   readonly end: V1StreamEnd | null;
-  /** Reconnects spent so far. */
+  /** Every reconnect so far, productive or not. The budget counts only the fruitless run. */
   readonly reconnects: number;
 }
 
@@ -262,6 +270,15 @@ export interface V1StreamConnection {
   readonly url: string;
   readonly method: string;
   readonly headers: Readonly<Record<string, string>>;
+  /**
+   * Merged into every request before the reader's own `method`, `headers` and
+   * `signal`: the transport's `fetchOptions` — `credentials`, `mode`, `cache`.
+   */
+  readonly init?: RequestInit;
+  /**
+   * Called as a PLAIN FUNCTION, never as a method of this object: a browser's
+   * `fetch` throws "Illegal invocation" when `this` is not the global object.
+   */
   readonly fetch: typeof globalThis.fetch;
   readonly sleep: (ms: number) => Promise<void>;
   readonly backoffMs: (reconnectIndex: number) => number;
@@ -303,22 +320,32 @@ export class EventStreamReader implements V1EventStream {
     if (this.started) throw new Error("V1 stream: a stream is read once; open another to read again");
     this.started = true;
     const maxReconnects = this.options.maxReconnects ?? DEFAULT_MAX_RECONNECTS;
+    // Plain functions, not methods of the connection object (see `V1StreamConnection.fetch`).
+    const { sleep, backoffMs } = this.connection;
     // The position the NEXT request asks to resume after. Normally the last
     // applied cursor; a `stream.offline` frame may name its own.
     let resumeAfter = this.lastEventId;
+    // Reconnects in a row since a connection last applied a frame. THE BUDGET
+    // BOUNDS THIS RUN, NOT THE STREAM'S LIFETIME: a lifetime budget makes a stream
+    // that progresses on every connection fail once it has been cut five times.
+    let fruitless = 0;
     for (;;) {
+      const appliedBefore = this.lastSeq;
       const outcome = yield* this.connect(resumeAfter);
       if (outcome.kind === "end") return;
-      if (this.reconnects >= maxReconnects) {
+      if (this.lastSeq !== appliedBefore) fruitless = 0;
+      if (fruitless >= maxReconnects) {
         throw new PlatosStreamError(
           0,
           "STREAM_RECONNECTS_EXHAUSTED",
-          `the stream did not finish within ${maxReconnects} reconnect(s)`,
+          `the stream did not finish within ${maxReconnects} consecutive reconnect(s) without progress`,
           outcome.cause,
         );
       }
+      fruitless += 1;
       this.reconnects += 1;
-      await this.connection.sleep(outcome.delayMs ?? this.connection.backoffMs(this.reconnects - 1));
+      // Backoff grows with the fruitless run, and starts over after progress.
+      await sleep(outcome.delayMs ?? backoffMs(fruitless - 1));
       resumeAfter = this.end?.kind === "interrupted" ? this.end.resumeFrom : this.lastEventId;
       this.end = null;
     }
@@ -354,8 +381,14 @@ export class EventStreamReader implements V1EventStream {
     try {
       touch();
       let response: Response;
+      // UNBOUND. `this.connection.fetch(...)` would call a browser's fetch with
+      // `this` set to the connection object, which it refuses as an illegal
+      // invocation on every connection; Node's fetch does not check, so no Node
+      // run notices.
+      const fetchImpl = this.connection.fetch;
       try {
-        response = await this.connection.fetch(this.connection.url, {
+        response = await fetchImpl(this.connection.url, {
+          ...(this.connection.init ?? {}),
           method: this.connection.method,
           headers: {
             ...this.connection.headers,

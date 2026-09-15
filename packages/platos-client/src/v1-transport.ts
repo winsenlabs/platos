@@ -253,6 +253,14 @@ export class V1HttpTransport implements V1Transport {
         url: this.urlFor(request),
         method: request.operation.method,
         headers,
+        // THE SAME `fetchOptions` `send()` merges. A browser caller that
+        // authenticates with the session cookie passes `credentials: "include"`
+        // here (see `operatorToken`); a stream that dropped it would be refused
+        // on the one path the cookie pattern exists for.
+        init: this.options.fetchOptions ?? {},
+        // The reader calls this as a plain function. A browser's `fetch` is a
+        // WebIDL operation on `Window` and throws "Illegal invocation" when it is
+        // called as a method of any other object.
         fetch: this.options.fetch ?? globalThis.fetch,
         sleep: this.options.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms))),
         backoffMs: (reconnectIndex) => this.backoffMs(reconnectIndex),

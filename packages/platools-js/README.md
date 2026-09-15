@@ -97,7 +97,7 @@ export const listOrders = platools.tool(
     // when auth === "user" and the upstream request carried one).
     const token = currentUserToken();
 
-    // The trigger.dev scope tuple — useful if you cache per-project.
+    // The Platos tenancy scope — useful if you cache per-project.
     const { organizationId, projectId, environmentId } = currentScope();
 
     return db.listOrders({ customerId, actingUser, bearer: token });
