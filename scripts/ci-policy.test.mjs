@@ -5781,27 +5781,39 @@ test("the candidate verifier's subset selection refuses an unknown name and an a
   // `core-api-smoke` verifies two candidates, not four, so the script takes a
   // selection. A selection must not become a way to download an archive and
   // verify nothing about it, nor to name a candidate the list does not have.
+  //
+  // WHERE IT STOPS, NOT ONLY WHAT IT SAYS. Every candidate in these fixtures lacks
+  // its env file, so a guard that printed its refusal and carried on would still
+  // exit 1 a line later, at `test -s`, with the same message already on stderr.
+  // A mutation battery showed exactly that: deleting a guard's `exit 1` left the
+  // status and message assertions green. So the script runs under `bash -x`, and
+  // a refusal must stop before any per-candidate check executes.
   const directory = mkdtempSync(path.join(os.tmpdir(), "platos-candidate-selection-"));
   const run = (selection) =>
-    spawnSync("bash", [path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false", selection], {
+    spawnSync("bash", ["-x", path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false", selection], {
       encoding: "utf8",
       env: { ...process.env, PLATOS_CANDIDATE_SHA: "0".repeat(40), GITHUB_REPOSITORY_OWNER: "example" },
     });
+  const reachedCandidateChecks = (result) => /^\++ test -s /mu.test(result.stderr);
   try {
     const unknown = run("core-api no-such-candidate");
     assert.equal(unknown.status, 1, unknown.stderr);
     assert.match(unknown.stderr, /selected candidate with no verification entry: no-such-candidate/u);
+    assert.equal(reachedCandidateChecks(unknown), false, "an unknown selection must stop before any candidate is checked");
 
     writeFileSync(path.join(directory, "webapp.oci.tar"), "not an image\n");
     const unselected = run("core-api migrations");
     assert.equal(unselected.status, 1, unselected.stderr);
     assert.match(unselected.stderr, /candidate archive present but not selected for verification: webapp\.oci\.tar/u);
+    assert.equal(reachedCandidateChecks(unselected), false, "an unselected archive must stop before any candidate is checked");
 
     // CONTROL: the same archive, selected, gets past both guards and fails later on
-    // its missing env file, a different refusal carrying neither message.
+    // its missing env file: a different refusal carrying neither message, and one
+    // that DOES reach the per-candidate checks, so the trace probe can tell them apart.
     const selected = run("webapp");
     assert.notEqual(selected.status, 0);
     assert.doesNotMatch(selected.stderr, /not selected for verification|no verification entry/u);
+    assert.equal(reachedCandidateChecks(selected), true, "the control must reach the per-candidate checks");
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
