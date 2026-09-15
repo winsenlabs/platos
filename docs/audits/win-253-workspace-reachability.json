@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "356cf9ede358a497d9be95470152bbb774912f36b75152a1233946b83fd9ebf2",
+  "evidenceSha256": "c99427f56006ec0f4988678b32a9d61d8a0003255dc78cef3fff9b5f73be9f63",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "46641ba1305bcf41bbc4c96f8afe9b174ff29ca3c440a816f437471c4a76d268",
+    "aggregateSha256": "6db696840201fbf9ca280f6a01e3c284dcd19acfcc138c705ff74d23d4b1ee81",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1803,7 +1803,7 @@
       },
       {
         "path": "apps/agent/src/openapi/openapi.generated.json",
-        "sha256": "5992521ee0a28c454816bf7ee23e2b2d0a79259d1d1f410e233516eb2a27e87b"
+        "sha256": "2f7e6e797d20d6143f92987666f2c6272101ac6ec856f9c8ee1608a51953ee3b"
       },
       {
         "path": "apps/agent/src/openapi/openapi.module.ts",
@@ -6027,7 +6027,7 @@
       },
       {
         "path": "docs/openapi-v1-baseline.json",
-        "sha256": "bdd0863a1528fbe56d838dea06986f969bda1c8bf6aea59b162e29af25ed130c"
+        "sha256": "b2b38b7c015056f490412b45f9441a0fd90256dc97a17af226fa92447d4a1af6"
       },
       {
         "path": "docs/openapi.yml",
