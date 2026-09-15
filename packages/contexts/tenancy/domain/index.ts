@@ -19,6 +19,7 @@ export * from "./scope-path.js";
 export * from "./record-builders.js";
 export * from "./membership.js";
 export * from "./membership-policy.js";
+export * from "./organization-administration.js";
 export * from "./session-revocation.js";
 export * from "./invitation.js";
 export * from "./environment-session.js";

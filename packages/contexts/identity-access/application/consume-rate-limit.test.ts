@@ -92,28 +92,46 @@ describe("spending an authentication budget", () => {
 });
 
 describe("when the limiter itself is unreachable", () => {
-  it("FAILS OPEN — the documented availability-over-limiting policy", async () => {
+  // D3 (2026-09-15) RE-RECORDED THESE. They encoded the oracle's fail-open
+  // behaviour — "FAILS OPEN", `{ outcome: "degraded" }`, and an exhausted budget
+  // ADMITTED during an outage. The founder delegation chose fail-closed, so each
+  // expectation below is the same observation with the decided answer.
+  it("D3: FAILS CLOSED with RATE_LIMIT_FAILED_CLOSED, not RATE_LIMITED", async () => {
     const ports = testPorts();
     ports.rateLimiter.breakLimiter();
     const result = await consumeRateLimit(ports, request);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value).toEqual({ outcome: "degraded" });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("RATE_LIMIT_FAILED_CLOSED");
+    expect(result.error.category).toBe("unavailable");
+    expect(result.error.details).toMatchObject({ cause: "IDENTITY_STORE_UNAVAILABLE" });
   });
 
-  it("reports the degradation, so an outage is discoverable rather than silent", async () => {
+  it("reports the outage as BLOCKED, so it is discoverable rather than silent", async () => {
     const ports = testPorts();
     ports.rateLimiter.breakLimiter();
     await consumeRateLimit(ports, request);
     const observation = ports.safety.observations.at(-1);
     expect(observation?.rule).toBe("identity.rate_limit.degraded");
+    expect(observation?.outcome).toBe("blocked");
     expect(observation?.details).toMatchObject({ reason: "IDENTITY_STORE_UNAVAILABLE" });
   });
 
-  it("does not let an exhausted budget survive a limiter outage as a refusal", async () => {
+  it("D3: refuses an UNSPENT budget during an outage too — the limiter cannot count, so nothing is admitted", async () => {
     const ports = testPorts();
-    await spend(ports, DEFAULT_LOGIN_POLICY.requests + 1);
+    await spend(ports, 1);
     ports.rateLimiter.breakLimiter();
-    expect((await consumeRateLimit(ports, request)).ok).toBe(true);
+    const refused = await consumeRateLimit(ports, request);
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.error.code).toBe("RATE_LIMIT_FAILED_CLOSED");
+  });
+
+  it("records nothing to the sink for a scope-less action, and still refuses", async () => {
+    const ports = testPorts();
+    ports.rateLimiter.breakLimiter();
+    const refused = await consumeRateLimit(ports, { ...request, scope: null });
+    expect(refused.ok).toBe(false);
+    expect(ports.safety.observations).toHaveLength(0);
   });
 });

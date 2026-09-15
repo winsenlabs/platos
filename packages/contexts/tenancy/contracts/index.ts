@@ -12,6 +12,7 @@ import type { EnvironmentScope, TenantScope } from "@platos/kernel";
 
 import type {
   AncestryLevel,
+  EmailAddress,
   EntityRecord,
   EnvironmentAccess,
   EnvironmentOperatorAuthorization,
@@ -182,6 +183,75 @@ export interface CreatedProject {
   readonly membership: ProjectMembershipRecord;
 }
 
+/**
+ * D1 (2026-09-15) — issue an invitation. `inviterUserId` is the authorization
+ * subject: the use case refuses unless it holds an ACTIVE OWNER/ADMIN membership
+ * of `organizationId`. `role` defaults to MEMBER, the only role the Remix route
+ * ever invited with; only an OWNER may invite an OWNER.
+ */
+export interface IssueInvitationRequest {
+  readonly organizationId: OrganizationId;
+  readonly inviterUserId: UserId;
+  readonly email: string;
+  readonly role?: OrganizationRole;
+}
+
+/**
+ * An issued invitation. `token` IS THE SECRET TO DELIVER, returned to the
+ * composition root exactly as the use case always returned it — and a transport
+ * must not put it in a response: D9 approves no class it would fall in, and
+ * `apps/core-api` answers with the other three fields.
+ */
+export interface IssuedInvitationView {
+  readonly invitationId: string;
+  readonly token: string;
+  readonly expiresAt: Date;
+  readonly supersededCount: number;
+}
+
+/** Accept one. The address is the one the accepting operator PROVED control of. */
+export interface AcceptInvitationRequest {
+  readonly token: string;
+  readonly userId: UserId;
+  readonly email: string;
+}
+
+export interface AcceptedInvitationView {
+  readonly organizationId: OrganizationId;
+  readonly role: OrganizationRole;
+  readonly membership: OrganizationMembershipRecord;
+}
+
+/** The team listing's request. Keyed by the organization named and the actor authenticated. */
+export interface ListOrganizationMembersRequest {
+  readonly organizationId: OrganizationId;
+  readonly actorUserId: UserId;
+}
+
+/** One active member, and the operator account behind it (null when absent). */
+export interface OrganizationMemberView {
+  readonly membership: OrganizationMembershipRecord;
+  readonly account: { readonly email: EmailAddress; readonly disabledAt: Date | null } | null;
+}
+
+/** An environment addressed by the three slugs of a dashboard URL. */
+export interface ResolveOperatorEnvironmentRequest {
+  readonly organizationSlug: string;
+  readonly projectSlug: string;
+  readonly environmentSlug: string;
+  readonly operator: OperatorPrincipal;
+  readonly access: EnvironmentAccess;
+}
+
+/** The scope resolver's answer: the minted authorization plus what a switcher lists. */
+export interface OperatorEnvironmentView {
+  readonly authorization: EnvironmentOperatorAuthorization;
+  readonly organization: OrganizationRecord;
+  readonly project: ProjectRecord;
+  readonly environment: EnvironmentRecord;
+  readonly environments: readonly EnvironmentRecord[];
+}
+
 export interface RevokeAccessKeyGenerationRequest {
   readonly environmentId: EnvironmentId;
   readonly expectedGeneration?: number;
@@ -234,8 +304,8 @@ export interface TenancyContract {
    * one: the only creator was a Prisma nested write in the Remix route. Both
    * rows commit together, because an organization with no owner has almost no
    * path back — `changeMembershipRole` and `addProjectMember` both refuse an
-   * actor who is not an active organization admin, and the one path that does
-   * not check a role, `issueInvitation`, is gated only by its caller. See
+   * actor who is not an active organization admin, and since D1 (2026-09-15)
+   * so does `issueInvitation`, which was the one path that did not. See
    * `application/create-organization.ts`.
    */
   createOrganization(request: CreateOrganizationRequest): Promise<Result<CreatedOrganization>>;
@@ -265,6 +335,38 @@ export interface TenancyContract {
     organizationId: OrganizationId,
     userId: UserId,
   ): Promise<Result<OrganizationMembershipRecord>>;
+
+  /**
+   * D1 (2026-09-15) — issue an invitation, refused `TENANCY_INVITATION_FORBIDDEN`
+   * unless the inviter is an ACTIVE OWNER/ADMIN of the organization.
+   *
+   * Published because the Remix invite route is one of the operations T8 deletes
+   * and a V1 route may only reach a contract method. The rule it carried moved
+   * INTO the use case first, so deleting the route deletes no authorization.
+   */
+  issueInvitation(request: IssueInvitationRequest): Promise<Result<IssuedInvitationView>>;
+
+  /** Spend an invitation token for the operator who proved the invited address. */
+  acceptInvitation(request: AcceptInvitationRequest): Promise<Result<AcceptedInvitationView>>;
+
+  /**
+   * The ACTIVE members of one organization with each one's sign-in address, oldest
+   * first — `settings.team`'s loader, ported. Refused
+   * `TENANCY_MEMBER_LIST_FORBIDDEN` unless the actor is an active OWNER/ADMIN.
+   */
+  listOrganizationMembers(
+    request: ListOrganizationMembersRequest,
+  ): Promise<Result<readonly OrganizationMemberView[]>>;
+
+  /**
+   * The environment a dashboard URL's three slugs name, authorized for the
+   * operator, with its live siblings — `requireEnvironmentScope`, ported.
+   * `TENANCY_NOT_FOUND` when no live environment has those slugs, and the four-gate
+   * refusal unchanged when one does and the operator may not see it.
+   */
+  resolveOperatorEnvironment(
+    request: ResolveOperatorEnvironmentRequest,
+  ): Promise<Result<OperatorEnvironmentView>>;
 
   /**
    * "My organizations", in the order the dashboard lands an operator in them.

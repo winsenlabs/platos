@@ -2,7 +2,7 @@
   "name": "@platos/adapter-notifier-email",
   "version": "0.0.0",
   "private": true,
-  "description": "Implements the cost-monitoring Notifier port.",
+  "description": "Implements the cost-monitoring Notifier port and the identity-access MagicLinkDelivery port.",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,9 +15,11 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@platos/context-cost-monitoring": "workspace:*"
+    "@platos/context-cost-monitoring": "workspace:*",
+    "@platos/context-identity-access": "workspace:*"
   }
 }

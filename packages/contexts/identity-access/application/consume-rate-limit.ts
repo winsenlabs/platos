@@ -8,14 +8,21 @@
 // (g) `identity-isolation` makes the direct import unrepresentable, so the edge
 // cannot come back by accident.
 //
-// FAIL-OPEN IS APPLIED HERE, ONCE, AND IT IS VISIBLE. When the limiter is
-// unreachable the request is ALLOWED — availability over limiting, the
-// behaviour the running system already has. What is new is that it is a named
-// domain policy (`LIMITER_UNAVAILABLE_POLICY`) rather than a bare `catch`, that
-// it is reported as a `degraded` outcome rather than being indistinguishable
-// from a healthy allow, and that the degradation is itself recorded to the
-// safety sink — so "the limiter was down for six hours" is a fact somebody can
-// discover instead of a silence.
+// THE UNREACHABLE-LIMITER POLICY IS APPLIED HERE, ONCE, AND IT IS VISIBLE. It is
+// a named domain policy (`LIMITER_UNAVAILABLE_POLICY`) rather than a bare
+// `catch`. Under D3 (2026-09-15) it is `deny`: the request is REFUSED with
+// `RATE_LIMIT_FAILED_CLOSED`, which is neither `RATE_LIMITED` nor the port's own
+// `RATE_LIMITER_UNAVAILABLE`. The running system is fail-open and that is
+// deliberately not ported — its consumers include MFA verification, where
+// "allow" is unlimited guesses at a six-digit code for as long as Redis is down.
+// Either way the event is recorded to the safety sink, so "the limiter was down
+// for six hours" is a fact somebody can discover instead of a silence.
+//
+// A SCOPE MAY BE NULL, AND THEN NOTHING IS WRITTEN TO THE SINK. A LOGIN is spent
+// before any tenant is known, and the kernel `SafetyObservation` requires a
+// `TenantScope` (governance's sink drops anything but an environment). So a
+// scope-less refusal is LOGGED under the same rule name instead — a line
+// somebody can count, rather than an invented tenant nobody can.
 
 import {
   asResult,
@@ -40,7 +47,8 @@ export interface ConsumeRateLimitInput {
    * Hashed here so no plaintext identifier ever reaches the limiter keyspace.
    */
   readonly identifier: string;
-  readonly scope: TenantScope;
+  /** Null for an action spent before any tenant is known — see the banner. */
+  readonly scope: TenantScope | null;
   readonly principalId: PrincipalId | null;
   /** Defaults to the action's policy from `domain/rate-limit.ts`. */
   readonly policy?: RateLimitPolicy;
@@ -68,25 +76,37 @@ export async function consumeRateLimit(
   });
 
   if (!consumed.ok) {
-    const decision = decideOnLimiterFailure();
-    ports.logger.log("warn", "rate limiter unavailable; applying the fail-open policy", {
-      action: input.action,
-      outcome: decision.outcome,
-      error: consumed.error.code,
-    });
-    await ports.safety.record({
-      rule: DEGRADED_RULE,
-      outcome: decision.outcome === "limited" ? "blocked" : "allowed",
-      scope: input.scope,
-      principalId: input.principalId,
-      observedAt: now,
-      details: { action: input.action, reason: consumed.error.code },
-    });
+    const decision = decideOnLimiterFailure(consumed.error.code);
+    const blocked = decision.outcome === "failed-closed";
+    ports.logger.log(
+      "warn",
+      blocked
+        ? "rate limiter unavailable; the request was refused under the fail-closed policy (D3)"
+        : "rate limiter unavailable; the request was admitted under the fail-open policy",
+      { rule: DEGRADED_RULE, action: input.action, outcome: decision.outcome, error: consumed.error.code },
+    );
+    if (input.scope !== null) {
+      await ports.safety.record({
+        rule: DEGRADED_RULE,
+        outcome: blocked ? "blocked" : "allowed",
+        scope: input.scope,
+        principalId: input.principalId,
+        observedAt: now,
+        details: { action: input.action, reason: consumed.error.code },
+      });
+    }
     return asResult(decision);
   }
 
   const decision = decide(consumed.value, policy, now);
-  if (decision.outcome === "limited") {
+  if (decision.outcome === "limited" && input.scope === null) {
+    ports.logger.log("warn", "authentication rate limit exceeded", {
+      rule: EXCEEDED_RULE,
+      action: input.action,
+      limit: policy.requests,
+      windowMs: policy.windowMs,
+    });
+  } else if (decision.outcome === "limited" && input.scope !== null) {
     await ports.safety.record({
       rule: EXCEEDED_RULE,
       outcome: "blocked",

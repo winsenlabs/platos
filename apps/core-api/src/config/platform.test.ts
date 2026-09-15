@@ -168,6 +168,34 @@ describe("INCOMPLETE — an anchor with a required member missing", () => {
   });
 });
 
+describe("INCOMPLETE — D20's email relay with no sign-in page", () => {
+  // D20 (2026-09-15) made the relay the way an operator signs in, so a relay with
+  // no page for the link to open is an install that mails dead links. Refused at
+  // boot, naming the missing field rather than the relay.
+  it("refuses an SMTP relay and sender with no login URL, naming the login URL", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+    });
+    expect(outcome.ok).toBe(false);
+    if (outcome.ok) return;
+    expect(outcome.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CHANNELS_EMAIL_LOGIN_URL"]);
+  });
+
+  it("accepts the three together and hands the page to the notifier's configuration", () => {
+    const outcome = loadPlatformConfiguration({
+      ...MINIMAL,
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
+    });
+    expect(outcome.ok).toBe(true);
+    if (!outcome.ok) return;
+    expect(outcome.value.channels.emailNotifier?.loginUrl).toBe("https://app.platos.example/magic");
+  });
+});
+
 describe("ORPHANED — a member set with no anchor", () => {
   // This is the case the anchor exists for. Under any scheme that judges fields
   // independently, every environment below validates, boots, and wires nothing.
@@ -369,6 +397,7 @@ describe("a fully wired install", () => {
     PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(32),
     PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtps://relay.internal:465",
     PLATOS_CHANNELS_EMAIL_FROM: "alerts@platos.example",
+    PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
     PLATOS_CHANNELS_WEBHOOK_SIGNING_KEY: "w".repeat(32),
     PLATOS_DURABLE_RUNTIME_API_URL: "https://durable.internal",
     PLATOS_DURABLE_RUNTIME_SECRET_KEY: "d".repeat(24),

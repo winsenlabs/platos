@@ -8,10 +8,10 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 
 - MCP tools: **202** across **35** namespaces (24 admin-tier).
 - MCP contract: **v1.0.0** (major **1**), MCP protocol `2025-06-18`, catalog digest `ac8e1aadba3fa8ac`.
-- REST operations: **313** unique method/path pairs from **320** route bindings.
+- REST operations: **322** unique method/path pairs from **329** route bindings.
 - Ambiguous duplicate REST method/path pairs: **7**, of which **7** are one handler in EACH deployable (a route mid-migration) rather than two in one router (a defect).
 - MCP classifications: MAPPED=82, MCP_ONLY=120.
-- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=157.
+- REST classifications: DEPRECATED=15, INTERNAL=14, MAPPED=82, PUBLIC_TRANSPORT=45, REST_ONLY=166.
 
 ## REST inventory
 
@@ -226,6 +226,8 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/agent/tools/matrix` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#toolMatrix` |
 | `GET /api/v1/agent/tools/search` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#searchTools` |
 | `GET /api/v1/agent/tools/stats` | REST_ONLY | — | `explicit-default-rest-only` | `apps/agent/src/agent-runtime/agent.controller.ts#toolStats` |
+| `POST /api/v1/bff/magic-link` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/bff/magic-link.controller.ts#start` |
+| `POST /api/v1/bff/magic-link/complete` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/bff/magic-link.controller.ts#complete` |
 | `DELETE /api/v1/bff/session` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/bff/session.controller.ts#signOut` |
 | `POST /api/v1/bff/session` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/bff/session.controller.ts#exchange` |
 | `POST /api/v1/channels/apps/:appId/events` | PUBLIC_TRANSPORT | — | `channel-webhooks-and-oauth` | `apps/agent/src/channels/channel-app-events.controller.ts#events` |
@@ -238,7 +240,11 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `POST /api/v1/entities/:entityId/session-tokens` | PUBLIC_TRANSPORT | — | `public-token-mint` | `apps/agent/src/auth/session-token.controller.ts#mint` |
 | `GET /api/v1/environments/:environmentId/end-users` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/environment-end-users.controller.ts#list` |
 | `GET /api/v1/environments/:environmentId/streams/:streamId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/ws/streams.controller.ts#read` |
+| `GET /api/v1/environments/:environmentId/variables` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/environment-variables.controller.ts#list` |
+| `PUT /api/v1/environments/:environmentId/variables/:key` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/environment-variables.controller.ts#set` |
+| `GET /api/v1/environments/by-slugs` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/environment-scope.controller.ts#resolve` |
 | `GET /api/v1/identity/session` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/identity-session.controller.ts#session` |
+| `POST /api/v1/invitations/accept` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/invitations.controller.ts#accept` |
 | `GET /api/v1/memory` | MAPPED | `memories.list` | Reviewed behavioral equivalence: the REST adapter and memories.list invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#listMemories` |
 | `POST /api/v1/memory` | MAPPED | `memories.upsert` | Reviewed behavioral equivalence: the REST adapter and memories.upsert invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/memory/:id` | MAPPED | `memories.delete` | Reviewed behavioral equivalence: the REST adapter and memories.delete invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |
@@ -256,6 +262,9 @@ The **explicit operation manifest** is canonical. Platform MCP metadata is seede
 | `GET /api/v1/memory/search` | MAPPED | `memories.search` | Reviewed behavioral equivalence: the REST adapter and memories.search invoke the same scope-pinned MemoryService operation; only transport parameters/envelopes differ. | `apps/agent/src/memory/memory.controller.ts#searchMemories` |
 | `GET /api/v1/organizations` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organizations.controller.ts#list` |
 | `POST /api/v1/organizations` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organizations.controller.ts#create` |
+| `POST /api/v1/organizations/:organizationId/invitations` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/invitations.controller.ts#issue` |
+| `GET /api/v1/organizations/:organizationId/members` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organization-members.controller.ts#list` |
+| `PATCH /api/v1/organizations/:organizationId/members/:membershipId` | REST_ONLY | — | `explicit-default-rest-only` | `apps/core-api/src/transports/rest/organization-members.controller.ts#changeRole` |
 | `GET /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `GET /api/v1/memory`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#listMemories` |
 | `POST /api/v1/platos/memory` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `POST /api/v1/memory`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#createMemory` |
 | `DELETE /api/v1/platos/memory/:id` | DEPRECATED | — | `legacy-platos-memory-prefix` — superseded by `DELETE /api/v1/memory/:id`, sunset 2027-03-31 | `apps/agent/src/memory/memory.controller.ts#deleteMemory` |

@@ -133,6 +133,10 @@ describe("the redaction classification, joined to what the loader actually print
       // both files say so where the field is declared.
       "PLATOS_STORE_OBJECT_ENDPOINT",
       "PLATOS_DURABLE_RUNTIME_API_URL",
+      // D20 (2026-09-15): the page a sign-in link opens. It is printed in every
+      // email this install sends, so it cannot be a secret; the token appended to
+      // it is, and that never reaches configuration.
+      "PLATOS_CHANNELS_EMAIL_LOGIN_URL",
     ]);
     for (const field of everyField()) {
       if (!bearsCredential.test(field.name) || openByDesign.has(field.name)) continue;

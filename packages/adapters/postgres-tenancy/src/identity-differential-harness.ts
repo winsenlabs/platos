@@ -28,8 +28,10 @@ import {
   fakeRateLimiter,
   fakeTotpCodeVerifier,
   fixedClock,
+  recordingMagicLinkDelivery,
   recordingSafetySink,
   silentLogger,
+  type RecordingMagicLinkDelivery,
 } from "@platos/context-identity-access/application/index.js";
 import type {
   OrganizationId,
@@ -45,6 +47,11 @@ import { startIdentityHarness } from "./identity-harness.js";
 export let harness: IdentityHarness;
 export let tenant: SeededTenant;
 export let ports: IdentityAccessPorts;
+/**
+ * D20 — where the V1 side's magic-link token goes. `startMagicLinkLogin` returns
+ * none, so the differential reads it where a recipient would: the outbox.
+ */
+export let delivery: RecordingMagicLinkDelivery;
 export let oracle: PlatosAuthService;
 
 export const NOW = new Date("2026-05-01T09:00:00.000Z");
@@ -95,6 +102,7 @@ export async function startDifferential(): Promise<void> {
   harness = await startIdentityHarness();
   tenant = await harness.seedTenant("differential");
   const clock = fixedClock(NOW);
+  delivery = recordingMagicLinkDelivery();
   ports = {
     repository: harness.repository,
     rateLimiter: fakeRateLimiter(),
@@ -106,6 +114,7 @@ export async function startDifferential(): Promise<void> {
     ids: uuids as never,
     safety: recordingSafetySink(),
     logger: silentLogger(),
+    magicLinks: delivery,
   };
   oracle = new PlatosAuthService(harness.client as never, {
     encryptionKey: ENCRYPTION_KEY,

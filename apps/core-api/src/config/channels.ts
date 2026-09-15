@@ -2,7 +2,9 @@
 //
 // ADR M0.3 §4 gives three adapter directories to this section: `channel-slack`
 // satisfies `ChannelAdapter` for the `channels` context, and `notifier-email` and
-// `notifier-webhook` each satisfy `Notifier` for `cost-monitoring`. Two adapters
+// `notifier-webhook` each satisfy `Notifier` for `cost-monitoring`. Since D20
+// (2026-09-15) `notifier-email` also satisfies identity-access's
+// `MagicLinkDelivery`, which is why its group now names a login page. Two adapters
 // on one port is not a mistake in the binding table — a budget alert can go to a
 // mailbox, to an endpoint, or to both — so they are two independent groups here,
 // and an install may declare either, neither or both.
@@ -107,6 +109,23 @@ export const CHANNELS_SECTION: ConfigSectionSpec = Object.freeze({
           patternDescribe: "an email address",
           minimumLength: 6,
         }),
+        // D20 (2026-09-15) — the page a sign-in link opens. REQUIRED WITH THE RELAY
+        // because the relay is now also how an operator signs in: `notifier-email`
+        // satisfies identity-access's `MagicLinkDelivery`, and a link to nowhere is
+        // a sign-in nobody can finish. It is configuration and never request data:
+        // a link base a caller could choose would let anyone mail a victim a valid
+        // token pointing at the caller's own host. No install declared this group
+        // before the adapter existed (nothing read it), so requiring the field
+        // breaks no deployed configuration.
+        Object.freeze({
+          name: "PLATOS_CHANNELS_EMAIL_LOGIN_URL",
+          kind: "url",
+          required: false,
+          defaultValue: null,
+          secret: false,
+          describe: "the page a sign-in email links to; the single-use token is appended as ?token=",
+          schemes: Object.freeze(["https:", "http:"]),
+        }),
       ]),
       optional: Object.freeze([]),
     }),
@@ -139,6 +158,7 @@ export interface SlackChannelConfiguration {
 export interface EmailNotifierConfiguration {
   readonly smtpUrl: string;
   readonly from: string;
+  readonly loginUrl: string;
 }
 
 export interface WebhookNotifierConfiguration {
@@ -165,6 +185,7 @@ export function assembleChannels(read: SectionReader, declared: GroupPresence): 
       : Object.freeze({
           smtpUrl: read("PLATOS_CHANNELS_EMAIL_SMTP_URL") ?? "",
           from: read("PLATOS_CHANNELS_EMAIL_FROM") ?? "",
+          loginUrl: read("PLATOS_CHANNELS_EMAIL_LOGIN_URL") ?? "",
         }),
     webhookNotifier: !declared("webhookNotifier")
       ? null

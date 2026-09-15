@@ -11,6 +11,7 @@ import type { EntityId, EnvironmentId, OrganizationId, ProjectId, Result } from 
 import { contains, err, ok, type TenantScope } from "@platos/kernel";
 
 import {
+  OrganizationRole,
   ancestryScope,
   archivedAncestor,
   requireAuthorization,
@@ -20,8 +21,12 @@ import {
   type UserId,
 } from "../domain/index.js";
 import type {
+  AcceptInvitationRequest,
   AddProjectMemberRequest,
   AuthorizeEnvironmentOperatorRequest,
+  IssueInvitationRequest,
+  ListOrganizationMembersRequest,
+  ResolveOperatorEnvironmentRequest,
   ChangeMembershipRoleRequest,
   CreateOrganizationRequest,
   CreateProjectRequest,
@@ -37,6 +42,9 @@ import { createAuthorizeEnvironmentOperator } from "./authorize-environment-oper
 import { createChangeMembershipRole, createDeactivateMembership } from "./change-membership-role.js";
 import { createCreateOrganization } from "./create-organization.js";
 import { createCreateProject } from "./create-project.js";
+import { createAcceptInvitation, createIssueInvitation } from "./invitations.js";
+import { createListOrganizationMembers } from "./organization-members.js";
+import { createResolveOperatorEnvironment } from "./resolve-operator-environment.js";
 import {
   createListOperatorOrganizations,
   createListVisibleProjects,
@@ -55,6 +63,15 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
   const listOperatorOrganizations = createListOperatorOrganizations(dependencies);
   const listVisibleProjects = createListVisibleProjects(dependencies);
   const revokeAccessKeyGeneration = createRevokeAccessKeyGeneration(dependencies);
+  const issueInvitation = createIssueInvitation(dependencies);
+  const acceptInvitation = createAcceptInvitation(dependencies);
+  const listOrganizationMembers = createListOrganizationMembers(dependencies);
+  // The SAME authorize closure every other caller gets, so the slug resolver and
+  // the id-keyed route cannot disagree about the four gates.
+  const resolveOperatorEnvironment = createResolveOperatorEnvironment(
+    dependencies,
+    authorizeEnvironmentOperator,
+  );
 
   return {
     name: "tenancy",
@@ -104,6 +121,35 @@ export function createTenancyService(dependencies: TenancyDependencies): Tenancy
       if (membership === null) return err(tenantNotFound("organization"));
       return ok(membership);
     },
+
+    issueInvitation: async (request: IssueInvitationRequest) => {
+      const issued = await issueInvitation({
+        organizationId: request.organizationId,
+        inviterId: request.inviterUserId,
+        email: request.email,
+        role: request.role ?? OrganizationRole.MEMBER,
+      });
+      return issued.ok
+        ? ok({
+            invitationId: issued.value.invitationId,
+            token: issued.value.token,
+            expiresAt: issued.value.expiresAt,
+            supersededCount: issued.value.supersededCount,
+          })
+        : issued;
+    },
+
+    acceptInvitation: (request: AcceptInvitationRequest) =>
+      acceptInvitation({ token: request.token, userId: request.userId, email: request.email }),
+
+    listOrganizationMembers: (request: ListOrganizationMembersRequest) =>
+      listOrganizationMembers({
+        organizationId: request.organizationId,
+        actorUserId: request.actorUserId,
+      }),
+
+    resolveOperatorEnvironment: (request: ResolveOperatorEnvironmentRequest) =>
+      resolveOperatorEnvironment(request),
 
     listOperatorOrganizations: (userId: UserId) => listOperatorOrganizations(userId),
 

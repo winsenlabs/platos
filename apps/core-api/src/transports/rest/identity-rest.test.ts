@@ -313,46 +313,31 @@ describe("WIN-267 W3 — a sign-out that could not end the session says so", () 
   });
 });
 
-describe("WIN-267 R1 — the finding: no V1 REST route can spend an authentication budget", () => {
-  it("publishes a limiter whose three actions have no published performer", () => {
+describe("WIN-267 R1 — the finding that no V1 REST route could spend an authentication budget, REVISITED", () => {
+  it("publishes exactly these methods, and the magic-link start is now the one that spends LOGIN", async () => {
     const identityAccess = createIdentityAccessService(testPorts());
     const methods = Object.keys(identityAccess)
       .filter((key) => typeof (identityAccess as unknown as Record<string, unknown>)[key] === "function")
       .sort();
 
-    // THE WHOLE PUBLISHED SURFACE, PINNED. Not a literal asserted against itself:
-    // the left side is read off a REAL service object, so this fails the day the
-    // contract gains or loses a method — which is the day somebody must revisit
-    // the finding below rather than inherit it.
+    // THE WHOLE PUBLISHED SURFACE, PINNED, read off a REAL service object so it
+    // fails the day the contract gains or loses a method — which is the day the
+    // finding below must be revisited rather than inherited. It went red for
+    // `revokeOperatorSession` (W3), for `mintBearerCredential` (M4.2 P1) and for
+    // `listBearerCredentials` + `revokeBearerCredential` (M4.2), and each time the
+    // answer was that the new method spends no pre-authentication budget.
     //
-    // IT WENT RED EXACTLY ONCE, AS DESIGNED. WIN-267 W3 published
-    // `revokeOperatorSession`, this assertion failed, and the finding below was
-    // revisited: the new method performs no rate-limited action either — a
-    // sign-out spends no authentication budget — so the finding stands and the
-    // name was added.
-    //
-    // AND A SECOND TIME, FOR WIN-268 (M4.2) P1's `mintBearerCredential`. Same
-    // question, same answer: minting an MCP token spends no AUTHENTICATION
-    // budget — its three actions are still LOGIN, INVITE_ACCEPT and MFA_VERIFY,
-    // all pre-authentication — so the finding below stands unchanged and the
-    // name is added. A mint is rate-limited, if at all, on a different axis
-    // (how many credentials one environment may hold), which no contract in
-    // this repository publishes.
-    //
-    // AND A THIRD TIME, FOR WIN-268 (M4.2)'s `listBearerCredentials` and
-    // `revokeBearerCredential`. REVISITED AND THE ANSWER IS AGAIN NO, for a reason
-    // worth stating rather than assuming: both are reached only AFTER
-    // `authenticateOperator` and `authorizeEnvironment` have already succeeded, so
-    // a caller who can spend anything on them has finished authenticating — and the
-    // limiter's three actions are, by name and by enum, the pre-authentication ones.
-    // A revocation is the operation an attacker would most like to guess ids
-    // against, and the defence against that is that guessing requires a live
-    // operator session in an authorized environment, not an authentication budget.
-    // So the finding below stands unchanged and the two names are added.
+    // IT WENT RED A FIFTH TIME FOR D20 (2026-09-15), AND THIS TIME THE ANSWER IS
+    // YES. `startMagicLinkLogin` and `completeMagicLinkLogin` are published, the
+    // start spends the LOGIN budget, and `POST /api/v1/bff/magic-link` reaches it —
+    // so RATE_LIMITED, and under D3 RATE_LIMIT_FAILED_CLOSED, CAN now truthfully
+    // reach this surface. The finding is withdrawn for LOGIN and stands for the
+    // other two actions, whose performers are still unpublished.
     expect(methods).toEqual([
       "authenticateBearer",
       "authenticateOperator",
       "clearSessionCookie",
+      "completeMagicLinkLogin",
       "consumeRateLimit",
       "describeSessionCookie",
       "issueSessionCookie",
@@ -362,24 +347,24 @@ describe("WIN-267 R1 — the finding: no V1 REST route can spend an authenticati
       "revokeBearerCredential",
       "revokeOperatorSession",
       "rotateSessionCookie",
+      "startMagicLinkLogin",
       "verifySessionCookie",
     ]);
 
-    // `consumeRateLimit` IS published, so the limiter is reachable. What is not
-    // reachable is anything to spend it ON: its actions are LOGIN, INVITE_ACCEPT
-    // and MFA_VERIFY, and every use case that performs one of those lives in
-    // `application/` behind no contract method. A V1 route may only reach a
-    // contract method (`composition-root.mjs` C8 and ADR M0.3 §2), so RATE_LIMITED
-    // cannot truthfully reach this surface in R1.
-    expect(methods).toContain("consumeRateLimit");
-    for (const performer of [
-      "startMagicLinkLogin",
-      "completeMagicLinkLogin",
-      "verifyMfaForSession",
-      "beginTotpEnrolment",
-      "acceptInvitation",
-    ]) {
-      expect(methods, `${performer} is now published — revisit the R1 rate-limit finding`).not.toContain(
+    // LOGIN IS SPENT THROUGH THE PUBLISHED METHOD — measured, not asserted: the
+    // budget runs out and the refusal is the limiter's own code.
+    const ports = testPorts();
+    const published = createIdentityAccessService(ports);
+    let refusal: DomainError | null = null;
+    for (let attempt = 0; attempt < 20 && refusal === null; attempt += 1) {
+      const started = await published.startMagicLinkLogin({ email: "operator@example.com" });
+      if (!started.ok) refusal = started.error;
+    }
+    expect(refusal?.code).toBe("RATE_LIMITED");
+
+    // AND THE TWO THAT STILL HAVE NO PUBLISHED PERFORMER.
+    for (const performer of ["verifyMfaForSession", "beginTotpEnrolment", "acceptInvitation"]) {
+      expect(methods, `${performer} is now published — revisit the MFA_VERIFY / INVITE_ACCEPT finding`).not.toContain(
         performer,
       );
     }

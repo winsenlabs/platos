@@ -50,6 +50,7 @@ import { BodyReader, jsonBody } from "../rest/body.js";
 import { REST_APPLICATION, type RestApplication } from "../rest/dependencies.js";
 import { itemEnvelope, type ItemEnvelope } from "../rest/envelope.js";
 import { raise } from "../rest/fault.js";
+import { encodeLegacySessionValue } from "../rest/session-cookie-value.js";
 import {
   operatorSessionResource,
   type OperatorSessionResource,
@@ -101,7 +102,10 @@ export function serializeSetCookie(directive: SessionCookieDirectiveView): strin
   const { shape } = directive;
   const sameSite = `${shape.sameSite.charAt(0).toUpperCase()}${shape.sameSite.slice(1)}`;
   const parts = [
-    `${shape.name}=${encodeURIComponent(directive.value)}`,
+    // D19/D11: the VALUE in Remix's dialect, so a Remix loader still serving a
+    // route during the per-route cutover reads the session core-api set. See
+    // `rest/session-cookie-value.ts`; the empty clearing value stays empty.
+    `${shape.name}=${encodeURIComponent(encodeLegacySessionValue(directive.value))}`,
     `Path=${shape.path}`,
     `Max-Age=${String(directive.maxAgeSeconds)}`,
     `Expires=${directive.expiresAt.toUTCString()}`,

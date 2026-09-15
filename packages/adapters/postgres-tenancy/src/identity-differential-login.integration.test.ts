@@ -51,10 +51,12 @@ describe("issueMagicLink and consumeMagicLink", () => {
       scope,
     });
     if (!v1Link.ok) throw new Error("the V1 magic link was not issued");
+    // D20: the V1 use case returns no token; it is read from the delivery port.
+    const v1Token = shared.delivery.delivered.at(-1)?.token ?? "";
 
     const oracleLogin = await shared.oracle.consumeMagicLink(oracleLink.token);
     const v1Login = await completeMagicLinkLogin(shared.ports, {
-      presentedToken: v1Link.value.token,
+      presentedToken: v1Token,
     });
     if (!v1Login.ok) throw new Error("the V1 magic link was not consumed");
 
@@ -91,13 +93,14 @@ describe("issueMagicLink and consumeMagicLink", () => {
       scope,
     });
     if (!v1Link.ok) throw new Error("the V1 magic link was not issued");
+    const v1Token = shared.delivery.delivered.at(-1)?.token ?? "";
 
     const oracleLogin = await shared.oracle.consumeMagicLink(oracleLink.token);
-    const v1Login = await completeMagicLinkLogin(shared.ports, { presentedToken: v1Link.value.token });
+    const v1Login = await completeMagicLinkLogin(shared.ports, { presentedToken: v1Token });
     if (!v1Login.ok) throw new Error("the V1 magic link was not consumed");
 
     await expect(shared.oracle.consumeMagicLink(oracleLink.token)).rejects.toThrow();
-    const replay = await completeMagicLinkLogin(shared.ports, { presentedToken: v1Link.value.token });
+    const replay = await completeMagicLinkLogin(shared.ports, { presentedToken: v1Token });
     expect(replay.ok).toBe(false);
 
     const left = await snapshot(oracleLogin.userId, oracleAddress);

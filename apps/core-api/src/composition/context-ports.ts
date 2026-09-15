@@ -392,6 +392,10 @@ export const IDENTITY_ACCESS_SLOT_SOURCES: Readonly<Record<string, string>> = Ob
   ids: "kernel",
   logger: "kernel",
   safety: "governance:createGovernanceSafetyEventSink",
+  // D20 (2026-09-15) — the ELEVENTH slot and the only OPTIONAL one. A declared
+  // relay fills it; without one the context still composes and refuses only the
+  // magic-link start. `installation.test.ts` proves both halves.
+  magicLinks: "notifier-email",
 });
 
 /**
@@ -750,6 +754,9 @@ export function assembleContextPorts(
   const ratelimit = adapters["redis-ratelimit"];
   const digest = adapters["node-crypto-digest"];
   const tokenmint = adapters["tokenmint-totp"];
+  // D20 (2026-09-15) — the one OPTIONAL identity-access slot. Absent, the context
+  // still composes and `startMagicLinkLogin` refuses MAGIC_LINK_DELIVERY_UNAVAILABLE.
+  const notifierEmail = adapters["notifier-email"];
 
   if (postgres === undefined) {
     unassembled.push(
@@ -916,6 +923,9 @@ export function assembleContextPorts(
       ids: dependencies.ids,
       safety: safetyEventSink,
       logger: dependencies.logger,
+      // D20. BY NAME, like the ten above, and only when the relay was constructed:
+      // an absent key is the context's own signal that no link can be delivered.
+      ...(notifierEmail === undefined ? {} : { magicLinks: notifierEmail }),
     };
   }
 

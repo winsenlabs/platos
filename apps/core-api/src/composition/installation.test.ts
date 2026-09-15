@@ -104,6 +104,11 @@ const FULLY_DECLARED = Object.freeze({
   // secret worth the name for an HMAC an attacker can grind offline against a
   // body they chose.
   PLATOS_CHANNELS_SLACK_SIGNING_SECRET: "c".repeat(64),
+  // D20 (2026-09-15). The email relay group — relay, sender and the page a sign-in
+  // link opens. Constructing the adapter opens no socket; it only admits the three.
+  PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtp://127.0.0.1:1",
+  PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+  PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
 });
 
 /** Nothing wired at all — the install part-way through setup that must boot. */
@@ -132,6 +137,9 @@ const GROUP_BUILDS: Readonly<Record<string, AdapterName>> = Object.freeze({
   // signing secret from the start, and until this tranche `channel-slack` was a
   // generated interface with no constructor to hand it to.
   "channels.slack": "channel-slack",
+  // D20 (2026-09-15). The SIXTH: the relay group now builds `notifier-email`, which
+  // left `UNIMPLEMENTED_ADAPTERS` in the same tranche.
+  "channels.emailNotifier": "notifier-email",
 });
 
 /**
@@ -462,8 +470,12 @@ describe("readiness over what was actually constructed", () => {
     // 51 + 1 (the new row) + 2 (the two rows the directory now serves, minus
     // the one it used to fail) — stated as 59 - 6 = 53 below and derived rather
     // than written, so the two halves cannot drift.
-    expect(ADAPTER_BINDINGS).toHaveLength(60);
-    expect(unimplementable).toHaveLength(5);
+    // D20 (2026-09-15): 60 -> 61 declared and 5 -> 4 unimplementable, the same
+    // subtraction a fourth time. `notifier-email` gained `MagicLinkDelivery` and
+    // left `UNIMPLEMENTED_ADAPTERS`, and FULLY_DECLARED now declares its group, so
+    // satisfied moves by TWO to 57.
+    expect(ADAPTER_BINDINGS).toHaveLength(61);
+    expect(unimplementable).toHaveLength(4);
     // WIN-267 A1 + A2: 41 -> 45. Two new directories brought FOUR bindings
     // between them and both directories are constructible, so all four are
     // satisfied; the eight that remained were the same eight.
@@ -471,9 +483,9 @@ describe("readiness over what was actually constructed", () => {
     // WIN-267 G1: 47 -> 48 of 54 -> 55. WIN-267 G2: 48 -> 51 of 55 -> 58.
     // WIN-271 (M4.5): 51 -> 53 of 58 -> 59. WIN-272 (M4.6): 53 -> 55 of 59 -> 60.
     // See the subtraction above.
-    expect(verdict.detail.satisfiedBindings).toHaveLength(55);
+    expect(verdict.detail.satisfiedBindings).toHaveLength(57);
     expect(verdict.detail.satisfiedBindings).toHaveLength(ADAPTER_BINDINGS.length - unimplementable.length);
-    expect(verdict.detail.unsatisfiedBindings).toHaveLength(5);
+    expect(verdict.detail.unsatisfiedBindings).toHaveLength(4);
     // STILL RED, AND HONESTLY SO. Five ports have no implementation in this
     // build, so this process cannot serve the routes that need them. Going green
     // on "everything this install could have wired" would be comparing the
@@ -520,7 +532,9 @@ describe("readiness over what was actually constructed", () => {
     // bindings move to the satisfied side.
     // 6 -> 5 (WIN-272, M4.6): `redis-streams` is now built too, off the
     // `stores.redis` group -- the same subtraction a third time.
-    expect(construction.unwired).toHaveLength(5);
+    // 5 -> 4 (D20, 2026-09-15): `notifier-email` is now built, from the
+    // `channels.emailNotifier` group this fixture declares -- a fourth time.
+    expect(construction.unwired).toHaveLength(4);
     expect(app.unwired).toEqual(construction.unwired);
     expect(verdict.detail.unwiredAdapters).toEqual(construction.unwired);
   });
@@ -582,6 +596,7 @@ describe("the context bundles those adapters can satisfy", () => {
     const owned = ADAPTER_BINDINGS.filter((binding) => binding.owner === "identity-access");
     expect(owned.map((binding) => binding.port).sort()).toEqual([
       "IdentityAccessRepository",
+      "MagicLinkDelivery",
       "MfaSecretCipher",
       "RateLimiter",
       "SecretHasher",
@@ -607,7 +622,11 @@ describe("the context bundles those adapters can satisfy", () => {
     const bundle = assembly.ports.identityAccess;
     expect(bundle, "the assembler must have produced the bundle").toBeDefined();
     expect(Object.keys(bundle ?? {}).sort()).toEqual(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES).sort());
-    expect(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES)).toHaveLength(10);
+    // 10 -> 11 (D20, 2026-09-15): `magicLinks`, filled here because FULLY_DECLARED
+    // declares the relay; the next case proves it is the one slot whose absence
+    // does not stop the context composing.
+    expect(Object.keys(IDENTITY_ACCESS_SLOT_SOURCES)).toHaveLength(11);
+    expect(bundle?.magicLinks).toBe(construction.adapters["notifier-email"]);
 
     // AND THE SLOTS THAT COULD BE TRANSPOSED ARE PINNED BY IDENTITY. `minter`
     // and `totp` come off the SAME object, so a bundle that had swapped them
@@ -674,6 +693,17 @@ describe("the context bundles those adapters can satisfy", () => {
     const withoutStore = { ...construction.adapters };
     delete withoutStore["postgres-tenancy"];
     expect(assembleContextPorts(withoutStore, defaults).safetyEventSink).toBeNull();
+
+    // AND THE ONE DIRECTORY WHOSE REMOVAL MUST NOT STOP IT (D20, 2026-09-15).
+    // `notifier-email` fills the optional `magicLinks` slot: without it the context
+    // still composes, and only that slot is gone — an install with no relay can
+    // authenticate every session it already has.
+    const withoutRelay = { ...construction.adapters };
+    delete withoutRelay["notifier-email"];
+    const relayless = assembleContextPorts(withoutRelay, defaults).ports.identityAccess;
+    expect(relayless, "identity-access must still assemble without a relay").toBeDefined();
+    expect(Object.keys(relayless ?? {})).not.toContain("magicLinks");
+    expect(Object.keys(relayless ?? {})).toHaveLength(10);
   });
 
   it("still cannot compose governance, and names the chain that stops it", () => {
@@ -1435,7 +1465,8 @@ describe("composing tools, whose two remaining ports no adapter directory may ho
     // AND THE BINDING COUNT DID NOT MOVE. This is the sentence `process.test.ts`
     // reads off a real socket, asserted here against the table instead: composing
     // `tools` adds a CONTEXT and no BINDING, so `declaredBindings` is untouched.
-    expect(ADAPTER_BINDINGS).toHaveLength(60);
+    // (60 -> 61 is D20's `notifier-email:MagicLinkDelivery`, 2026-09-15, not tools'.)
+    expect(ADAPTER_BINDINGS).toHaveLength(61);
   });
 
   it("publishes the adapters barrel from EXACTLY ONE of the seventeen, and it is the SDK's home", () => {

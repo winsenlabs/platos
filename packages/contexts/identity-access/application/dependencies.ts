@@ -14,6 +14,7 @@
 import type { Clock, IdGenerator, Logger, SafetyEventSink } from "@platos/kernel";
 import type {
   IdentityAccessRepository,
+  MagicLinkDelivery,
   MfaSecretCipher,
   RateLimiter,
   SecretHasher,
@@ -28,6 +29,17 @@ export interface IdentityAccessPorts {
   readonly minter: TokenMinter;
   readonly totp: TotpCodeVerifier;
   readonly cipher: MfaSecretCipher;
+  /**
+   * D20 — where a sign-in link is sent. OPTIONAL, AND THE ABSENCE IS AN ANSWER.
+   *
+   * Every other slot is required because nothing in this context works without
+   * it. This one gates exactly one use case: an install with no email relay can
+   * still authenticate sessions, mint bearers and rate-limit, and making the slot
+   * required would have made the whole context uncomposable for want of SMTP.
+   * `startMagicLinkLogin` refuses with `MAGIC_LINK_DELIVERY_UNAVAILABLE` when it is
+   * absent, before a token exists, and `/readyz` reports the unbound binding.
+   */
+  readonly magicLinks?: MagicLinkDelivery;
   /** Kernel ports. Time and identity are inputs, never ambient. */
   readonly clock: Clock;
   readonly ids: IdGenerator;

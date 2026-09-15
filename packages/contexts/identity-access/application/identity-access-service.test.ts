@@ -450,14 +450,17 @@ describe("consumeRateLimit", () => {
     expect(second.value.remaining).toBe(DEFAULT_POLICIES.LOGIN.requests - 2);
   });
 
-  it("reports a limiter outage as degraded rather than as a healthy allow", async () => {
+  // D3 (2026-09-15) re-recorded: this read "reports a limiter outage as degraded
+  // rather than as a healthy allow" and asserted an `ok` with `degraded`, the
+  // oracle's fail-open answer. Under fail-closed the outage is a refusal with a
+  // code of its own, and the safety event still names the degradation.
+  it("D3: refuses a limiter outage with RATE_LIMIT_FAILED_CLOSED rather than admitting it", async () => {
     const ports = testPorts();
     ports.rateLimiter.breakLimiter();
     const result = await createIdentityAccessService(ports).consumeRateLimit(request);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.value.outcome).toBe("degraded");
-    expect(result.value.remaining).toBeNull();
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.code).toBe("RATE_LIMIT_FAILED_CLOSED");
     expect(ports.safety.observations.map((observation) => observation.rule)).toContain(
       "identity.rate_limit.degraded",
     );

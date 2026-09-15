@@ -160,7 +160,9 @@ describe("the process starts and serves", () => {
     // 59 -> 60 (WIN-272, M4.6): `kernel:StreamJournal`, a second row on
     // `redis-streams`. The SATISFIED count stays at ZERO for the reason WIN-271's
     // note gives — this case supplies no adapter at all.
-    expect(started).toMatchObject({ bindings: "0/60 adapter bindings satisfied", unsatisfied: 60 });
+    // 60 -> 61 (D20, 2026-09-15): `identity-access:MagicLinkDelivery`, a second row
+    // on `notifier-email`. Satisfied stays ZERO: this case supplies no adapter.
+    expect(started).toMatchObject({ bindings: "0/61 adapter bindings satisfied", unsatisfied: 61 });
   });
 });
 
@@ -194,7 +196,7 @@ describe("readiness tells the truth about what is wired", () => {
       headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
     });
     const body = (await response.json()) as { detail: { unsatisfiedBindings: string[]; declaredBindings: number } };
-    expect(body.detail.declaredBindings).toBe(60);
+    expect(body.detail.declaredBindings).toBe(61);
     // Named per BINDING (ADR M0.3 §15), so an operator reading a 503 learns
     // WHICH port is unserved rather than only which package is absent.
     expect(body.detail.unsatisfiedBindings).toContain("postgres-tenancy:TenancyRepository");

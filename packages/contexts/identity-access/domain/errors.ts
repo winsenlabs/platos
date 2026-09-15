@@ -212,6 +212,67 @@ export function rateLimiterUnavailable(reason: string): DomainError {
 }
 
 /**
+ * D3 (2026-09-15) — the request was REFUSED because the limiter could not count.
+ *
+ * NOT `RATE_LIMITER_UNAVAILABLE`, which is what the limiter PORT answers when it
+ * cannot reach its store, and NOT `RATE_LIMITED`, which says the caller spent a
+ * budget. This is the use case's decision about the first under the fail-closed
+ * policy, and it is a third fact: the caller did nothing wrong, the service is in
+ * an outage, and the request was not admitted. Collapsing it into either of the
+ * other two would make one of two guards invisible.
+ *
+ * `cause` is the port's own code — never a message, never a driver object — so an
+ * operator can still tell a Redis outage from a PostgreSQL one.
+ */
+export function rateLimitFailedClosed(cause: string): DomainError {
+  return domainError(
+    "RATE_LIMIT_FAILED_CLOSED",
+    "unavailable",
+    "Authentication is temporarily unavailable because its rate limiter cannot be reached",
+    { retryAfterSeconds: 1, details: { cause } },
+  );
+}
+
+/**
+ * D20 — a magic link was asked for and this install composed no way to deliver
+ * one.
+ *
+ * Refused BEFORE a token is minted and before the LOGIN budget is spent, so an
+ * install with no email relay never writes a link nobody can receive. Distinct
+ * from `MAGIC_LINK_DELIVERY_FAILED`: this one is fixed by configuration and a
+ * retry will never help.
+ */
+/** An address a sign-in link cannot be mailed to. Carries the field, never the value. */
+export function invalidEmailAddress(field = "email"): DomainError {
+  return domainError("INVALID_EMAIL_ADDRESS", "invalid_input", "Enter a valid email address", {
+    fields: [{ field, code: "INVALID_EMAIL_ADDRESS", message: "must be an email address" }],
+  });
+}
+
+export function magicLinkDeliveryUnavailable(): DomainError {
+  return domainError(
+    "MAGIC_LINK_DELIVERY_UNAVAILABLE",
+    "unavailable",
+    "This installation has no configured way to deliver a sign-in link",
+  );
+}
+
+/**
+ * D20 — the relay was asked to deliver the link and did not accept it.
+ *
+ * The link row exists and its token exists nowhere else, so it is inert and
+ * expires on its own. `cause` is the delivery port's code.
+ */
+export function magicLinkDeliveryFailed(cause: string): DomainError {
+  return domainError(
+    "MAGIC_LINK_DELIVERY_FAILED",
+    "unavailable",
+    "The sign-in link could not be delivered",
+    { retryAfterSeconds: 5, details: { cause } },
+  );
+}
+
+/**
  * WIN-268 P1 — a mint whose MATERIAL is unusable.
  *
  * Distinct from `INVALID_ACCESS_KEY_MATERIAL`, and the distinction is the rule

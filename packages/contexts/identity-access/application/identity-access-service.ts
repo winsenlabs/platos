@@ -21,6 +21,8 @@
 // discovering a second one at this seam.
 
 import {
+  magicLinkLoginBucket,
+  normalizeEmail,
   checkSessionCookieShape,
   clearSessionCookie,
   describeSessionCookie,
@@ -46,6 +48,10 @@ import type {
   AuthorizationScopeView,
   BearerCredentialPageView,
   BearerCredentialView,
+  CompletedMagicLinkLoginView,
+  CompleteMagicLinkLoginRequest,
+  StartedMagicLinkLoginView,
+  StartMagicLinkLoginRequest,
   EndUserPageView,
   IdentityAccessContract,
   IssueSessionCookieRequest,
@@ -75,6 +81,7 @@ import {
 } from "./mint-bearer-credential.js";
 import { authenticateOperator, revokeOperatorSession } from "./authenticate-operator.js";
 import { consumeRateLimit } from "./consume-rate-limit.js";
+import { completeMagicLinkLogin, startMagicLinkLogin } from "./magic-link-login.js";
 import type { IdentityAccessPorts } from "./dependencies.js";
 import { err, ok, type Result } from "@platos/kernel";
 
@@ -389,6 +396,49 @@ export function createIdentityAccessService(ports: IdentityAccessPorts): Identit
      * case applies — so a listing, a mint and a revocation cannot disagree about
      * what environment a caller named.
      */
+    /**
+     * D20. The bucket and the (absent) tenant are decided HERE, from the address,
+     * so the contract request has nothing a caller could use to spend somebody
+     * else's budget.
+     */
+    async startMagicLinkLogin(
+      request: StartMagicLinkLoginRequest,
+    ): Promise<Result<StartedMagicLinkLoginView>> {
+      const started = await startMagicLinkLogin(ports, {
+        email: request.email,
+        rateLimitIdentifier: magicLinkLoginBucket(normalizeEmail(request.email)),
+        scope: null,
+      });
+      return started.ok ? ok({ email: started.value.email, expiresAt: started.value.expiresAt }) : started;
+    },
+
+    /**
+     * D20. The session token is put into a directive THIS context mints and
+     * registers, and the view carries the directive rather than the token — so
+     * the only thing a transport can do with it is hand it to a browser.
+     */
+    async completeMagicLinkLogin(
+      request: CompleteMagicLinkLoginRequest,
+    ): Promise<Result<CompletedMagicLinkLoginView>> {
+      const completed = await completeMagicLinkLogin(ports, {
+        presentedToken: request.presentedToken,
+      });
+      if (!completed.ok) return completed;
+      const directive = issueSessionCookie({
+        shape: describeSessionCookie(request),
+        token: completed.value.session.token,
+        sessionExpiresAt: completed.value.session.expiresAt,
+        now: ports.clock.now(),
+      });
+      if (!directive.ok) return directive;
+      return ok({
+        userId: completed.value.userId,
+        sessionId: completed.value.session.sessionId,
+        expiresAt: completed.value.session.expiresAt,
+        cookie: cookieView(directive.value),
+      });
+    },
+
     async listBearerCredentials(
       request: ListBearerCredentialsRequest,
     ): Promise<Result<BearerCredentialPageView>> {
