@@ -80,6 +80,7 @@
         "docs/audits/sbom/license-overlay.json",
         "docs/audits/sbom/license-policy.json",
         "docs/audits/sbom/platos-agent.cdx.json",
+        "docs/audits/sbom/platos-core-api.cdx.json",
         "docs/audits/sbom/platos-webapp.cdx.json",
         "docs/audits/sbom/platos-webapp.image-inventory.json",
         "docs/audits/sbom/provenance/trigger-dev-core-4.4.4.registry.json",
@@ -130,7 +131,7 @@
       ]
     }
   ],
-  "protectedPathSetSha256": "df52e403740aba88a43f783dc415d344264681d0cf08d47e93de95000258dff1",
+  "protectedPathSetSha256": "f7e9a90a8eba9f268bca2b1247b5f943a4bc6445ccd0df4c2227231bd13f9db8",
   "currentStatuses": [
     "ACCEPTED"
   ],
@@ -140,9 +141,9 @@
     "DRAFT"
   ],
   "openQuestions": [],
-  "entryCount": 257,
+  "entryCount": 258,
   "counts": {
-    "ACCEPTED": 231,
+    "ACCEPTED": 232,
     "SUPERSEDED-BY": 4,
     "POINT-IN-TIME": 21,
     "DRAFT": 1
@@ -1383,7 +1384,7 @@
       "path": "docs/audits/sbom/README.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "649a7e7cb30ad34b4eadc95d7e64d6d4446f8a5fccef03519a96632605d0dcf0",
+      "sha256": "f8342870308a723defc786e8b5924627788afd632d894013d802c1266e6ddeb6",
       "binds": "current-repository-truth"
     },
     {
@@ -1397,37 +1398,37 @@
       "path": "docs/audits/sbom/advisory/advisory-policy.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "f3bcc57896293d617ff2fe1d5174fdf6f442b5f392fdf12c84ca876c893b6055",
+      "sha256": "94a6cbdf8a1f208e5c6b1eab62474c5cd327730c99fdd1196ae48f843479edd1",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/sbom/advisory/osv-report.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "bf013d6de0cb7c6b42b92423a4be6c1007a927894e92f3369d38974935bf0517",
+      "sha256": "081ceb94d79bb656f4d033b7d679f121d9031d69f6cdc477a13c280f0de72fb2",
       "sourceSnapshot": "OSV advisory response recorded by scripts/audit-advisory.mjs",
       "baseline": "network advisory snapshot; current dependency truth is the checked lock/image inventory",
-      "date": "2026-09-10"
+      "date": "2026-09-15"
     },
     {
       "path": "docs/audits/sbom/closure-contract.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "35a0df95105a16991a789b52aa9237f19d2ffe49b24550c686bd616c8e5a91a5",
+      "sha256": "c04890093f5ea31fbd82cf9507bac25bed0e33972cc459e94999f8d975ee7128",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/sbom/closure-receipts.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "bfa2a2ae00c2f7e92c72cbfe3d1726fdc62855c1b0de8895c6516a5d244af424",
+      "sha256": "31a3539842569fd0eaae0e0a65b06d605ad709e3000bf42c88bac73f5deb25e2",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/sbom/licence-resolution.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "4aab9409a4c498935f10d95315eb8710185ae8ff8b6241ad0314f7650ff4f27f",
+      "sha256": "78a04c768d68961f7e0c3795e47c36b4250397a8d0cfd2bbbef5d0a84bfd29f6",
       "binds": "current-repository-truth"
     },
     {
@@ -1441,7 +1442,7 @@
       "path": "docs/audits/sbom/license-index.json",
       "status": "POINT-IN-TIME",
       "mode": "100644",
-      "sha256": "6ddfd92742189cdb4a603a7799387fc49beb90c3cc1e126264538b0cf78ed8c1",
+      "sha256": "dce9209b6a293e9bbf504bbb0084776db927a126e0d69c976c5b7eee5258c23f",
       "sourceSnapshot": "frozen registry licence snapshot recorded by scripts/audit-licenses.mjs",
       "baseline": "point-in-time registry metadata baseline; current shipping membership is checked separately",
       "date": "2026-08-30"
@@ -1464,14 +1465,21 @@
       "path": "docs/audits/sbom/platos-agent.cdx.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "8b880df3301024028e23517dc24088f987baaf62005d800f6da8dad70bb485c8",
+      "sha256": "828a09b58d9fcfd4c9c1cbf231ca4f942797fea051e4f799e9d5ca28d89d552e",
+      "binds": "current-repository-truth"
+    },
+    {
+      "path": "docs/audits/sbom/platos-core-api.cdx.json",
+      "status": "ACCEPTED",
+      "mode": "100644",
+      "sha256": "0940f2ec87d60f8a0fc5122615feb7dbd13f174ef2c28fb90a4c365502fe9c38",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/sbom/platos-webapp.cdx.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "89c8d9d5d6948ea37eb32134b5f8aa648dc13740bb25e04c745ab53519344511",
+      "sha256": "45eb8756ccebf614ab7ae12681583c4d5a62e68e3784479c9421efaf4863c15f",
       "binds": "current-repository-truth"
     },
     {
@@ -1534,14 +1542,14 @@
       "path": "docs/audits/win-253-workspace-reachability.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "1669e36bdb9ff3328f478f6480477beb59152098c74a8f77e36b3ab61ab1d7c7",
+      "sha256": "25eb9cab4e622497f69e31b2a42fd958ab7201c51ef65b45184745544f39dd60",
       "binds": "current-repository-truth"
     },
     {
       "path": "docs/audits/win-253-workspace-reachability.md",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "610ebf4f48b8facf08ca17be08627c9a5fe96335012830f97f6bd14edb9d35f3",
+      "sha256": "5650f98bd9b6c615bf2958a54da5a5df46df3cbdf0a8cd56e6612c22e0257117",
       "binds": "current-repository-truth"
     },
     {
@@ -1597,7 +1605,7 @@
       "path": "docs/audits/win253-removals/clickhouse-split.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "b36ab795b078d6a960b00301590747e73374dbe2b8922a0bb1ab752e3ae72754",
+      "sha256": "2b074e618606ce4e09d88126dbfb0a9b49c0c410f802ef264f235bab2549b99b",
       "binds": "current-repository-truth"
     },
     {
@@ -1611,7 +1619,7 @@
       "path": "docs/audits/win253-removals/vendored-build.json",
       "status": "ACCEPTED",
       "mode": "100644",
-      "sha256": "bfa2a42809c4d64ef8eecb9580b0703d43baf0c38af60a5390806f4bf00b0105",
+      "sha256": "5c3899a7a3922a9ae7420db29273a1764b3dedb20ea89e3de6b70c51d97209c3",
       "binds": "current-repository-truth"
     },
     {
