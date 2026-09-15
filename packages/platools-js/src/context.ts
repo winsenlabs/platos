@@ -47,9 +47,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
  *
  * | Field            | Meaning                                            |
  * |------------------|----------------------------------------------------|
- * | organizationId   | trigger.dev org id                                 |
- * | projectId        | trigger.dev project id                             |
- * | environmentId    | trigger.dev environment id (dev/staging/prod/…)    |
+ * | organizationId   | Platos organization id (tenancy root)              |
+ * | projectId        | Platos project id within that organization         |
+ * | environmentId    | Platos environment id (dev/staging/prod/…)         |
  * | entityId         | Which registered entity's SDK is handling this     |
  * | userId           | End-user id the agent is acting on behalf of       |
  * | userToken        | Optional caller access token (present for auth:user)|
@@ -146,8 +146,9 @@ export function currentCallId(): string | undefined {
 }
 
 /**
- * The trigger.dev scope tuple `(organizationId, projectId, environmentId)`
- * for the current call. Any element is `undefined` outside a dispatch.
+ * The Platos tenancy scope `(organizationId, projectId, environmentId)`
+ * for the current call — the three ids Platos mints and every Platos
+ * object is bound to. Any element is `undefined` outside a dispatch.
  */
 export function currentScope(): {
   readonly organizationId?: string;
