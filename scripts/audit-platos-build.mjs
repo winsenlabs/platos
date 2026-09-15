@@ -214,6 +214,36 @@ for (const dockerfile of candidateDockerfiles) {
   check(`${dockerfile}: no stage builds FROM a Debian 11 (bullseye) image`, bullseye.length === 0);
 }
 
+// ─── The MinIO images both compose files pull ───
+// Docker Hub stopped serving minio/minio and minio/mc (both repositories answered
+// 404 on 2026-09-15, and build-images run 35008577255 failed at "pull access
+// denied"). The persisted-state gate's compose file says it now pulls both from
+// quay.io at the digests pinned before, and that docker-compose.platos.yml carries
+// the same two references. Hold both halves: every MinIO image either file names
+// is a digest-pinned quay.io/minio reference, each file names a server and a
+// client image, and the two files name exactly the same set.
+const MINIO_COMPOSE_FILES = ["docker-compose.platos.yml", ".github/compose/persisted-state-gate.yml"];
+const minioImagesByFile = MINIO_COMPOSE_FILES.map((file) => {
+  const services = parseYaml(read(file), { merge: true })?.services ?? {};
+  return Object.values(services)
+    .map((service) => String(service?.image ?? ""))
+    .filter((image) => /(?:^|\/)minio\/(?:minio|mc)[:@]/.test(image));
+});
+MINIO_COMPOSE_FILES.forEach((file, index) => {
+  const images = minioImagesByFile[index];
+  check(
+    `${file}: every MinIO image is a digest-pinned quay.io/minio reference, with a server and a client image`,
+    images.some((image) => image.startsWith("quay.io/minio/minio:")) &&
+      images.some((image) => image.startsWith("quay.io/minio/mc:")) &&
+      images.every((image) => /^quay\.io\/minio\/(?:minio|mc):RELEASE\.[^\s@]+@sha256:[0-9a-f]{64}$/.test(image))
+  );
+});
+check(
+  `${MINIO_COMPOSE_FILES.join(" and ")} name the same MinIO image references`,
+  JSON.stringify([...new Set(minioImagesByFile[0])].sort()) ===
+    JSON.stringify([...new Set(minioImagesByFile[1])].sort())
+);
+
 // The webapp Dockerfile's base comment says the move to OpenSSL 3 needs no
 // schema change because the Prisma client it generates lists `native`, which
 // resolves to the build stage's own OpenSSL engine. Hold that to every

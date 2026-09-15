@@ -156,8 +156,12 @@ services:
   # webapp refuse to start against the sentinel values when
   # NODE_ENV=production.
   # ─────────────────────────────────────────────────────────────
+  # MinIO is pulled from quay.io at the index digests pinned before: Docker Hub
+  # no longer serves minio/minio or minio/mc (hub.docker.com answered 404 for
+  # both on 2026-09-15), and quay.io/minio serves both RELEASE tags at the same
+  # digests, so only the registry host changed.
   minio:
-    image: minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313
+    image: quay.io/minio/minio:RELEASE.2025-02-03T21-03-04Z@sha256:a62e44a7db506b8ed114a44e67b4996c4f1ecca981d9c6e40aa2581334999313
     restart: unless-stopped
     logging: *default-logging
     mem_limit: ${MINIO_MEM_LIMIT:-256m}
@@ -194,7 +198,7 @@ services:
   # One-shot: create the platos-media bucket on first boot.
   # Idempotent — re-running is a no-op if the bucket already exists.
   minio-init:
-    image: minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
+    image: quay.io/minio/mc:RELEASE.2025-01-17T23-25-50Z@sha256:b55b1283c0b81b8bb473c94133d4e00a552518c4796a954ddb04bb7b6e05927d
     logging: *default-logging
     depends_on:
       minio:
