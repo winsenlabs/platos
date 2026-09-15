@@ -143,10 +143,21 @@ export const CONTROL_PATHS = Object.freeze([MANIFEST_PATH, LIFECYCLE_PATH]);
 // 55da5505: the 800 paths are exactly those 799 plus that one, with nothing
 // removed and nothing substituted.
 //
+// THE M2/M4 DELEGATED-DECISIONS ADR adds ONE, no removals and no content
+// substitutions, taking the set from 800 to 801:
+//   docs/adr/M2-M4-delegated-decisions-2026-09-15.md  (the accepted record of the
+//                                                      decisions the founder
+//                                                      delegated on 2026-09-15,
+//                                                      beside ADR M0.3 and M0.4)
+// It falls inside the existing `docs/**` selection rather than widening it, and the
+// difference was verified SET-WISE against the committed 800-path manifest at
+// 3f422333: the 801 paths are exactly those 800 plus that one, with nothing
+// removed and nothing substituted.
+//
 // The anchor is re-pinned by hand rather than derived so that a protected path
 // LEAVING the set stays a hard failure — a silently shrinking protected set is
 // the failure this anchor exists to catch.
-export const EXPECTED_PATH_SET_SHA256 = "f7e9a90a8eba9f268bca2b1247b5f943a4bc6445ccd0df4c2227231bd13f9db8";
+export const EXPECTED_PATH_SET_SHA256 = "d86a13c0f8b707974e0c2b0ad05581aaff1de689ec5042f4e0c7936f3ecaf436";
 const REGULAR_MODES = new Set(["100644", "100755"]);
 const EXACT_PATHS = new Set([
   ".github/workflows/ci.yml",

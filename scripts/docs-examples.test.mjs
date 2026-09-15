@@ -74,13 +74,68 @@ test("every Compose quick-start creates and explains .env before model evaluatio
   assert.ok(quickStartEnvironmentErrors(repositoryRoot, lateCopy).some((error) => error.includes("must create .env")));
 });
 
-test("the documented environment setup permits Compose model evaluation in a fresh fixture", () => {
+// A fresh fixture is fresh only if the shell running the suite cannot supply what
+// .env.example omits. Compose reads an interpolated variable from the process
+// environment BEFORE .env, so a developer or runner that happens to export one
+// would turn a missing example value into a pass. Strip every name the Compose
+// file interpolates, and every COMPOSE_* setting that could change which file or
+// profile is evaluated, and keep the rest (PATH, DOCKER_HOST, ...) so the CLI runs.
+function composeInterpolatedNames(composeSource) {
+  return [...new Set([...composeSource.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)/gu)].map((match) => match[1]))];
+}
+
+function freshComposeEnvironment(composeSource, parent = process.env) {
+  const interpolated = new Set(composeInterpolatedNames(composeSource));
+  return Object.fromEntries(
+    Object.entries(parent).filter(([name]) => !interpolated.has(name) && !name.startsWith("COMPOSE_")),
+  );
+}
+
+function composeRequiredNames(composeSource) {
+  return [...new Set([...composeSource.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*):\?/gu)].map((match) => match[1]))];
+}
+
+function composeQuickStartFixture() {
   const root = mkdtempSync(join("/var/tmp", "platos-compose-quick-start-"));
+  copyFileSync(join(repositoryRoot, ".env.example"), join(root, ".env.example"));
+  copyFileSync(join(repositoryRoot, "docker-compose.platos.yml"), join(root, "docker-compose.platos.yml"));
+  execFileSync("cp", [".env.example", ".env"], { cwd: root });
+  return root;
+}
+
+test("the documented environment setup permits Compose model evaluation in a fresh fixture", () => {
+  const composeSource = readFileSync(join(repositoryRoot, "docker-compose.platos.yml"), "utf8");
+  assert.ok(composeRequiredNames(composeSource).length >= 13, "the required-variable selector must remain non-vacuous");
+  const root = composeQuickStartFixture();
   try {
-    copyFileSync(join(repositoryRoot, ".env.example"), join(root, ".env.example"));
-    copyFileSync(join(repositoryRoot, "docker-compose.platos.yml"), join(root, "docker-compose.platos.yml"));
-    execFileSync("cp", [".env.example", ".env"], { cwd: root });
-    execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--quiet"], { cwd: root });
+    execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--quiet"], {
+      cwd: root,
+      env: freshComposeEnvironment(composeSource),
+      stdio: "pipe",
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("a required Compose variable the example omits fails evaluation even when the parent shell exports it", () => {
+  const composeSource = readFileSync(join(repositoryRoot, "docker-compose.platos.yml"), "utf8");
+  const envExample = readFileSync(join(repositoryRoot, ".env.example"), "utf8");
+  const required = composeRequiredNames(composeSource).find((name) => new RegExp(`^${name}=`, "mu").test(envExample));
+  assert.ok(required, "at least one Compose-required variable must be assigned in .env.example");
+  const root = composeQuickStartFixture();
+  try {
+    writeFileSync(join(root, ".env"), envExample.replace(new RegExp(`^${required}=.*$\\n?`, "mu"), ""));
+    const exported = { ...process.env, [required]: "exported-by-the-parent-shell-0123456789abcdef" };
+    assert.throws(
+      () =>
+        execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--quiet"], {
+          cwd: root,
+          env: freshComposeEnvironment(composeSource, exported),
+          stdio: "pipe",
+        }),
+      (error) => String(error.stderr ?? error.message).includes(required),
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

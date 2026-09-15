@@ -774,7 +774,18 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         without matching a previous run's artifacts. Each row copies the
   //         classification, owner and rationale of the file's existing rows for that
   //         context. The smoke script's own loop counter was renamed instead.
-  assert.equal(manifest.exceptions.length, 19454);
+  //
+  //         THE M2/M4 DELEGATED-DECISIONS ADR ADDS THREE, taking it to 19457, all in
+  //         `docs/adr/M2-M4-delegated-decisions-2026-09-15.md` and all the external
+  //         durable-runtime vendor's own names: two in decision D7, which names that
+  //         product and its sessions SDK as the initial supplier behind the Platos-owned
+  //         adapter, and one in decision D22, which quotes the vendor package's export
+  //         condition it leaves in place. The ADR keeps every decision's wording as the
+  //         founder-delegated record gave it, so the names are quoted rather than
+  //         paraphrased; its own index table (section 7) was written around them. Each
+  //         row copies the classification and owner of the two M0 ADRs' vendor rows,
+  //         and its context digests are the gate's own computed values.
+  assert.equal(manifest.exceptions.length, 19457);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

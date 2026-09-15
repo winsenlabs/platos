@@ -1917,7 +1917,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // beside the agent and webapp SBOMs. It lands on the existing
     // `docs-content.evidence.audit-receipts` rule as `generated`/`regenerate`, under
     // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
-    "docs-content": 25,
+    // M2/M4 DELEGATED DECISIONS 25 -> 26. ONE file:
+    // `docs/adr/M2-M4-delegated-decisions-2026-09-15.md`, the accepted record of the
+    // decisions the founder delegated on 2026-09-15, filed beside ADR M0.3 and M0.4.
+    // It lands on the existing `docs-content.evidence.adr` rule (2 -> 3) as a
+    // `doc`/`retain`, under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 26,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -2390,7 +2395,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // on their areas' deltas above: three in `root-infra` (the smoke script, its
   // suite, the shared shipping-components derivation) and one in `docs-content`
   // (the core-api SBOM): 15 + 1 + 97 + 4 + 10 + 1556 + 25 + 95 = 1803.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1803);
+  //
+  // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804. ONE file in `docs-content`,
+  // itemised on that area's delta above: 15 + 1 + 97 + 4 + 10 + 1556 + 26 + 95 = 1804.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1804);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2699,7 +2707,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // AND THE CORE-API BUNDLE CLOSURE — 1797 -> 1799, the script and its suite.
     // AND THE CORE-API CANDIDATE SMOKE AND SBOM — 1799 -> 1803, moved in the same
     // edit as the total and both area deltas: three root-infra files and one SBOM.
-    rulesDocument.baseline.totalFiles + 1803
+    // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804, moved in the same edit as
+    // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
+    rulesDocument.baseline.totalFiles + 1804
   );
 });
 
