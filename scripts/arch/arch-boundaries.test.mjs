@@ -1411,7 +1411,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // context; the other seven, for the `.` route, followed when a removed `.`
     // entry was measured failing the whole suite at load instead of one case.
     // 1701 + 18 = 1719.
-    assert.equal(result.fileCount, 1719, "the generated V1 source census must stay exact");
+    //
+    // M4 GATES (lane gates, founder decision D21), 1701 -> 1703. TWO files, BOTH under
+    // `apps/core-api/src/http/`: `mcp-body-cap.ts`, the MCP body cap mirrored from
+    // apps/agent, and `mcp-body-cap.test.ts`, its real-socket proof. NOTHING under
+    // `packages/`; `runtime/lifecycle.ts` is an edit. Integrated after the factory
+    // entries: 1719 + 2 = 1721.
+    assert.equal(result.fileCount, 1721, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1504,7 +1510,9 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // WIN-302 THE FACTORY ENTRIES: composition 18 -- seventeen `factory-entries/`
       // modules, one per context, and the suite that loads them. NOTHING under
       // `packages/`.
-      18);
+      18 +
+      // M4 GATES (D21): http 2 -- `mcp-body-cap.ts` and its suite.
+      2);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

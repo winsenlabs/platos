@@ -799,8 +799,14 @@ export const VIOLATION_CODES = Object.freeze({
  * followed once a removed `.` entry was measured failing that suite at load.
  * None reads a variable: the suite reads the platform's own files through
  * `import.meta.url`, the way `config/sections.test.ts` does.
+ *
+ * M4 GATES (founder decision D21): 1719 + 2 = 1721 on the integrated tree, and NO
+ * DOOR OPENED. The two are `apps/core-api/src/http/mcp-body-cap.ts` and its suite. The middleware is handed
+ * its cap as a value and reads nothing ambient; the suite builds its configuration
+ * from a literal source rather than `process.env`. Two files landed, thirty-two
+ * reads stayed thirty-two.
  */
-export const EXPECTED_FILE_COUNT = 1719;
+export const EXPECTED_FILE_COUNT = 1721;
 
 function listSourceFiles(root) {
   const found = [];

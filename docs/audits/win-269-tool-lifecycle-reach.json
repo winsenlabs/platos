@@ -210,7 +210,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 422,
+      "line": 430,
       "shape": "delegate",
       "model": "EntityMcpClient",
       "operation": "update",
@@ -219,7 +219,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 428,
+      "line": 436,
       "shape": "delegate",
       "model": "Entity",
       "operation": "update",
@@ -228,7 +228,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 455,
+      "line": 463,
       "shape": "delegate",
       "model": "EntityMcpClient",
       "operation": "update",
@@ -237,7 +237,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 465,
+      "line": 473,
       "shape": "delegate",
       "model": "EntityMcpClient",
       "operation": "update",
@@ -246,7 +246,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/mcp-transport/entity-mcp-discovery.service.ts",
-      "line": 475,
+      "line": 483,
       "shape": "delegate",
       "model": "Entity",
       "operation": "update",
@@ -291,7 +291,7 @@
     },
     {
       "file": "apps/agent/src/tool-gateway/tool-executor.service.ts",
-      "line": 1598,
+      "line": 1607,
       "shape": "delegate",
       "model": "ToolHealth",
       "operation": "upsert",

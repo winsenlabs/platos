@@ -72,6 +72,12 @@ export class McpConnectionPool implements OnModuleDestroy {
   private readonly pool = new Map<string, PoolEntry>();
   /** In-flight builds — dedupe concurrent getClient() for the same key. */
   private readonly building = new Map<string, Promise<PoolEntry>>();
+  /**
+   * WIN-269 — which pool key a handed-out `Client` was built for, so a caller
+   * whose call failed can evict EXACTLY that session (see `evict`). Weak, so an
+   * evicted or closed client is not kept alive by the lookup.
+   */
+  private readonly keyOfClient = new WeakMap<Client, string>();
   private sweepTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly credentials: McpCredentialService) {
@@ -167,7 +173,40 @@ export class McpConnectionPool implements OnModuleDestroy {
       throw err;
     }
 
+    this.keyOfClient.set(client, key);
     return { key, client, lastUsedAt: Date.now() };
+  }
+
+  /**
+   * WIN-269 — "external MCP failures are isolated": drop a session whose call
+   * failed, so the NEXT call rebuilds it instead of reusing a dead one.
+   *
+   * WHY. Before this, entries left the pool only on overflow or on the idle sweep,
+   * and `getClient` refreshed `lastUsedAt` on every hit. A remote server that
+   * restarted mid-session forgets its `Mcp-Session-Id`, answers every request on
+   * it with 404, and the pooled client kept being handed out — so an entity used
+   * at least once every `MCP_POOL_IDLE_MS` (300 s by default) never recovered
+   * until the agent restarted. The V1 context adapter already evicts on exactly
+   * this condition (`packages/contexts/tools/adapters/mcp-dispatch.ts`, `evict`
+   * in the `callTool` and `listTools` catch arms), and this matches it: ANY
+   * thrown transport or protocol error evicts, a timeout included, while an
+   * `isError: true` answer does not — that server answered, and its session is
+   * alive.
+   *
+   * IDENTITY, NOT KEY. The entry is dropped only if the pool still holds THIS
+   * client for its key. A slow call that fails after a concurrent caller already
+   * rebuilt the session must not tear down the healthy replacement.
+   *
+   * Only this session's key is touched, so one entity's failing server never
+   * closes a client another entity — or another end user of the same entity — is
+   * using. Returns whether an entry was dropped.
+   */
+  evict(client: Client): boolean {
+    const key = this.keyOfClient.get(client);
+    if (key === undefined) return false;
+    if (this.pool.get(key)?.client !== client) return false;
+    this.closeEntry(key);
+    return true;
   }
 
   /**

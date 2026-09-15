@@ -594,7 +594,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `streaming.service.ts`, `tool-registry.service.ts`, `tool-sync-ws.test.ts`,
     // `agent-runtime.module.ts`, `api-surface.test.ts`, `generate-control-plane.mjs`
     // and every generated artifact are edited IN PLACE and add no file.
-    "apps-agent": 15,
+    //
+    // M4 GATES (lane gates) 15 -> 18. THREE files, and NO LEDGER RULE CHANGED — they
+    // land on `apps-agent.source.runtime` (+1, 280 -> 281) and
+    // `apps-agent.test.suites` (+2, 214 -> 216), the same two rules as above.
+    //   `http/request-body-limits.ts` — the unauthenticated body cap and its parser
+    //   order, extracted out of `main.ts` so it can be driven over a socket.
+    //   `http/request-body-limits.test.ts` — WIN-268's body limit: 413 before auth.
+    //   `tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts` — WIN-269's
+    //   external MCP isolation against real remote MCP servers (D13: no stdio).
+    // `main.ts`, `mcp-client-pool.service.ts`, `tool-executor.service.ts`,
+    // `entity-mcp-discovery.service.ts`, `tool-sync-ws.test.ts` and
+    // `mcp-connected-entity.acceptance.test.ts` are EDITS and add no file.
+    "apps-agent": 18,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -889,7 +901,17 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // moved with the eighteen source files and are recorded where they live:
     // `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs` and the re-derivation
     // in `scripts/arch/arch-boundaries.test.mjs`, both 1701 -> 1719.
-    "apps-core-api": 116,
+    //
+    // M4 GATES (founder decision D21), integrated after the factory entries, 116 -> 118.
+    // TWO files under `apps/core-api/src/http/`:
+    // `mcp-body-cap.ts` on `apps-core-api.source.process` (50 -> 51) and its real-socket
+    // suite on `apps-core-api.test.suites` (35 -> 36). NO LEDGER RULE CHANGED.
+    // `runtime/lifecycle.ts`, which installs the cap, is an EDIT. The three V1 source
+    // censuses that count these files moved with them and say so where they live:
+    // `EXPECTED_FILE_COUNT` in `scripts/arch/env-access.mjs` (1719 -> 1721 on the
+    // integrated tree), `arch-boundaries.test.mjs` (1719 -> 1721) and `max-file-lines.test.mjs`
+    // (1653 -> 1655).
+    "apps-core-api": 118,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2430,7 +2452,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   // factory-entry modules, their suite and the mutation ledger. Re-measured on
   // the integrated tree, not summed from either branch:
   // 15 + 1 + 116 + 4 + 10 + 1556 + 26 + 95 = 1823.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1823);
+  //
+  // AND THE M4 GATES LANE — 1823 -> 1828. FIVE files, itemised on their areas'
+  // deltas above: three in `apps-agent` (the body-limit module and its suite, the
+  // external-MCP isolation suite) and two in `apps-core-api` (the D21 MCP body cap and
+  // its suite). Re-measured on the integrated tree:
+  // 18 + 1 + 118 + 4 + 10 + 1556 + 26 + 95 = 1828.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1828);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2743,7 +2771,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
     // AND THE WIN-302 FACTORY ENTRIES — 1804 -> 1823, moved in the same edit as the
     // total and as `expectedDeltas["apps-core-api"]`: nineteen core-api files.
-    rulesDocument.baseline.totalFiles + 1823
+    // AND THE M4 GATES LANE — 1823 -> 1828, moved in the same edit as the total and as
+    // both area deltas: apps-agent +3 and apps-core-api +2, summed per area here.
+    rulesDocument.baseline.totalFiles + 1828
   );
 });
 

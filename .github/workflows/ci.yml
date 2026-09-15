@@ -274,6 +274,34 @@ jobs:
         # analyzer finds fewer call sites than the pin expects.
         run: pnpm --filter platos-agent exec vitest run src/clean-prisma-delegates.test.ts
 
+      - name: WIN-272 legacy SSE terminal-frame and duplicate tool-result suites
+        # "No duplicate tool-result or trailing invalid frames", and both suites
+        # that prove it were DARK. `streaming-terminal-frame.test.ts` reads the
+        # legacy SSE lane back off a real socket and requires at most one terminal
+        # frame and nothing after it; `tool-sync-ws.test.ts` now also proves that a
+        # second `tool_result` or `tool_error` for a call id the service already
+        # settled produces no second settlement. Neither file was named by any job,
+        # and this job selects agent suites by explicit filename, so a suite on no
+        # list is a suite nothing runs.
+        #
+        # Its own step, after "Generate and build compiled Agent dependencies" like
+        # every direct Agent Vitest consumer, so a red log names WHICH clause broke.
+        # `scripts/ci-policy.test.mjs` requires this step, this job, these files,
+        # and every agent suite that imports the subjects they cover.
+        run: pnpm --filter platos-agent exec vitest run src/streaming/streaming-terminal-frame.test.ts src/tool-gateway/tool-sync-ws.test.ts
+
+      - name: WIN-269 external MCP failure isolation against real remote MCP servers
+        # "external MCP failures are isolated" for the LIVE pool, remote-http and
+        # remote-sse only (founder decision D13 excludes stdio, which the product
+        # has never dispatched). The isolation suite starts SDK-built MCP servers on
+        # real listeners and drives `ToolExecutorService.executeBatch` over the real
+        # `McpConnectionPool`: a restarted server recovers on the next call, and a
+        # server hung in a call, hung in the initialize handshake, or crashing
+        # neither delays past a 1 s bound nor fails another entity's concurrent call. The acceptance suite beside it holds the pool
+        # doubles to the methods the executor and discovery really call. No
+        # database, no network beyond loopback, about ten seconds.
+        run: pnpm --filter platos-agent exec vitest run src/tool-gateway/mcp-transport/mcp-client-pool-isolation.test.ts src/tool-gateway/mcp-transport/mcp-connected-entity.acceptance.test.ts
+
       - name: WIN-290 ClickHouse lifecycle, redaction, and DLQ suite
         run: pnpm test:win-290
 
@@ -907,6 +935,66 @@ jobs:
 
       - name: MCP-surface and tool-lifecycle real-PostgreSQL suites
         run: pnpm test:agent-tenancy-postgres:integration
+
+      - name: Build the compiled packages the MCP regression suite imports
+        # The body-limit and auth suites below mount the real MCP and OAuth
+        # controllers and the real ScopeGuard, which import
+        # `@internal/workload-identity` and `@platosdev/token-mint`. Both ship only a
+        # compiled dist entry, so on a fresh checkout Vite cannot resolve them and
+        # the suite reports "no tests" rather than a broken rule — the failure
+        # `non-browser-completion-postgres` records for the first of the two.
+        # core-api's D21 mirror composes the real application, so it needs every
+        # workspace package core-api depends on (`^...`), but not core-api's own
+        # dist: Vitest runs its source.
+        run: pnpm --filter @internal/workload-identity build && pnpm --filter @platosdev/token-mint build && pnpm --filter "@platos/core-api^..." build
+
+      - name: WIN-268 MCP auth, isolation and body-limit regression suite
+        # ONE STEP, THREE CLAIMS, TWO DEPLOYABLES, because the clause is one
+        # sentence: "auth/isolation/body-limit regression suite passes". It was
+        # recorded as met with no such suite named anywhere and no body-limit test in
+        # the tree.
+        #
+        #   body limit  `request-body-limits.test.ts` — over a real socket, /mcp and
+        #               /oauth over their caps are 413 payload_too_large BEFORE the
+        #               guard pipeline or any controller auth runs, in every spelling
+        #               the router delivers (letter case, absolute-form targets);
+        #               chunked bodies fail closed, GET and DELETE are skipped, and
+        #               every public body-bearing route in the generated manifest
+        #               sits under a cap. core-api's D21 mirror,
+        #               `src/http/mcp-body-cap.test.ts`, is the second command: the
+        #               same refusals before `authenticateOperator`, plus what the
+        #               cap ADMITS (up to exactly 2 MiB) being parsed rather than
+        #               answered as a 500, against the real `startCoreApi`.
+        #   auth        ScopeGuard's public-route predicates and decisions, the
+        #               platform and entity MCP bearer verifiers, the per-entity MCP
+        #               controller and the OAuth authorization server.
+        #   isolation   the forged-scope MCP policy refusal and the end-user tenancy
+        #               proof, against this job's real PostgreSQL. They also run in
+        #               the walker step above; they are named here so this step is
+        #               the whole suite on its own.
+        #
+        # A SKIP IS A FAILURE. The two real-database suites skip when their gate
+        # variable is unset; set here, a missing database throws at import instead.
+        # `scripts/ci-policy.test.mjs` reads the flag names out of the suites and
+        # requires each to be set on this step, and requires both commands.
+        env:
+          MCP_FORGED_SCOPE_REQUIRED: "1"
+          END_USER_TENANCY_REQUIRED: "1"
+        run: |
+          pnpm --filter platos-agent exec vitest run \
+            src/http/request-body-limits.test.ts \
+            src/auth/scope.guard.test.ts \
+            src/mcp-platform/token.service.test.ts \
+            src/mcp-platform/mcp-bearer-token.service.test.ts \
+            src/mcp-platform/mcp-entity.controller.test.ts \
+            src/oauth/oauth.service.test.ts \
+            src/oauth/oauth.controller.test.ts \
+            src/mcp-platform/permission-gateway-forged-scope.integration.test.ts \
+            src/mcp-platform/tools/end-users-tenancy-postgres.integration.test.ts \
+            --no-file-parallelism \
+            --testTimeout=300000 \
+            --hookTimeout=300000
+          pnpm --filter @platos/core-api exec vitest run src/http/mcp-body-cap.test.ts
 
   non-browser-completion-postgres:
     name: non-browser-completion-postgres

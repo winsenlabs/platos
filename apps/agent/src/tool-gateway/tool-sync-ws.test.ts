@@ -259,3 +259,173 @@ describe("ToolSyncWsService clean credential handshake", () => {
     ]);
   });
 });
+
+/**
+ * WIN-272 (M4.6) — "No duplicate tool-result or trailing invalid frames", THE
+ * TOOL-RESULT HALF.
+ *
+ * WHAT THE RULE IS. `handleMessage` settles an in-flight call on the FIRST
+ * `tool_result` or `tool_error` for its `call_id` and consumes the pending entry
+ * (`this.pending.delete(callId)`), so a second frame for the same id finds nothing
+ * and is dropped. No test asserted it: the only duplicate protection was one line
+ * and nothing would have gone red without it.
+ *
+ * WHY THE WITNESS IS THE SETTLEMENT AND NOT THE PROMISE. A JavaScript promise
+ * ignores every settle after the first, so `await dispatchToolCall(...)` reads the
+ * same value whether the service settled once or three times — a case built on the
+ * promise alone could never fail. The witness is therefore the settle functions the
+ * service itself stores in its pending map, wrapped at the moment the service
+ * stores them, counting every call the SERVICE makes. The frames still travel over
+ * a real WebSocket from a real client, after a real credential handshake.
+ *
+ * WHY THE SENTINEL. Frames are handled in arrival order, so a `heartbeat` sent
+ * after the duplicates is answered with `heartbeat_ack` only once the service has
+ * processed everything before it. Asserting before that ack would assert against
+ * frames still in flight.
+ *
+ * SINGLE PROCESS. The multi-instance version of this rule — a duplicate arriving at
+ * a DIFFERENT agent replica — depends on the WebSocket fan-out design decision and
+ * is not claimed here.
+ */
+describe("ToolSyncWsService duplicate tool frames", () => {
+  let closeServer: (() => Promise<void>) | undefined;
+  let client: WebSocket | undefined;
+  afterEach(async () => {
+    client?.terminate();
+    client = undefined;
+    await closeServer?.();
+    closeServer = undefined;
+  });
+
+  type Settlement = { callId: string; kind: "resolve" | "reject"; value: unknown };
+
+  /** Count every settle the service performs on a pending call. */
+  function recordSettlements(service: ToolSyncWsService): Settlement[] {
+    const settlements: Settlement[] = [];
+    const pending = (service as any).pending as Map<string, any>;
+    const store = pending.set.bind(pending);
+    pending.set = (callId: string, entry: any) =>
+      store(callId, {
+        ...entry,
+        resolve: (value: unknown) => {
+          settlements.push({ callId, kind: "resolve", value });
+          entry.resolve(value);
+        },
+        reject: (error: Error) => {
+          settlements.push({ callId, kind: "reject", value: error.message });
+          entry.reject(error);
+        },
+      });
+    return settlements;
+  }
+
+  /**
+   * Connect an authenticated SDK client whose reply to every `tool_call` is
+   * `frames(callId)`, followed by a heartbeat sentinel. Resolves once welcomed.
+   */
+  async function connectResponder(
+    port: number,
+    frames: (callId: string) => Array<Record<string, unknown>>,
+  ): Promise<{ ws: WebSocket; drained: Promise<void> }> {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/tools/sync?entity=main&env=env-1`, {
+      headers: { authorization: "Bearer correct-secret" },
+    });
+    client = ws;
+    let markDrained!: () => void;
+    const drained = new Promise<void>((resolve) => (markDrained = resolve));
+    await new Promise<void>((resolve, reject) => {
+      ws.on("message", (raw) => {
+        const message = JSON.parse(raw.toString());
+        if (message.type === "welcome") resolve();
+        if (message.type === "tool_call") {
+          for (const frame of frames(message.call_id)) ws.send(JSON.stringify(frame));
+          ws.send(JSON.stringify({ type: "heartbeat", tools_health: {} }));
+        }
+        if (message.type === "heartbeat_ack") markDrained();
+      });
+      ws.on("error", reject);
+    });
+    return { ws, drained };
+  }
+
+  it("a second tool_result for a consumed callId produces no second resolution", async () => {
+    const service = new ToolSyncWsService(
+      makeDatabase({ secret: "correct-secret" }),
+      makeRegistry() as any,
+      {} as any,
+    );
+    const settlements = recordSettlements(service);
+    const server = await startRawServer(service);
+    closeServer = server.close;
+    const { drained } = await connectResponder(server.port, (callId) => [
+      { type: "tool_result", call_id: callId, result: { answer: "first" }, latency_ms: 3 },
+      { type: "tool_result", call_id: callId, result: { answer: "second" }, latency_ms: 4 },
+      { type: "tool_error", call_id: callId, error: "late error for a settled call" },
+    ]);
+
+    const outcome = await service.dispatchToolCall(
+      "main",
+      "env-1",
+      "search_people",
+      { query: "ada" },
+      5_000,
+      "call-duplicate-result",
+    );
+    await drained;
+
+    expect(outcome).toEqual({ status: "success", result: { answer: "first" }, latencyMs: 3 });
+    // THE RULE: one settlement, the first frame's, and nothing for the two after it.
+    expect(settlements).toEqual([
+      { callId: "call-duplicate-result", kind: "resolve", value: outcome },
+    ]);
+    expect((service as any).pending.size).toBe(0);
+  });
+
+  it("a second tool_error, and a late tool_result, for a consumed callId produce no second settlement", async () => {
+    const service = new ToolSyncWsService(
+      makeDatabase({ secret: "correct-secret" }),
+      makeRegistry() as any,
+      {} as any,
+    );
+    const settlements = recordSettlements(service);
+    const server = await startRawServer(service);
+    closeServer = server.close;
+    const { drained } = await connectResponder(server.port, (callId) => [
+      { type: "tool_error", call_id: callId, error: "connector refused" },
+      { type: "tool_error", call_id: callId, error: "connector refused again" },
+      { type: "tool_result", call_id: callId, result: { answer: "too late" } },
+    ]);
+
+    await expect(
+      service.dispatchToolCall("main", "env-1", "search_people", {}, 5_000, "call-duplicate-error"),
+    ).rejects.toThrow("connector refused");
+    await drained;
+
+    expect(settlements).toEqual([
+      { callId: "call-duplicate-error", kind: "reject", value: "connector refused" },
+    ]);
+    expect((service as any).pending.size).toBe(0);
+  });
+
+  it("CONTROL: the recorder sees every settle the service makes, one per call across two calls", async () => {
+    // Without this, a recorder that failed to wrap anything would report an empty
+    // or single list and the two cases above would pass on a service that settled
+    // every frame it received.
+    const service = new ToolSyncWsService(
+      makeDatabase({ secret: "correct-secret" }),
+      makeRegistry() as any,
+      {} as any,
+    );
+    const settlements = recordSettlements(service);
+    const server = await startRawServer(service);
+    closeServer = server.close;
+    await connectResponder(server.port, (callId) => [
+      { type: "tool_result", call_id: callId, result: { echo: callId } },
+    ]);
+
+    await service.dispatchToolCall("main", "env-1", "search_people", {}, 5_000, "call-a");
+    await service.dispatchToolCall("main", "env-1", "search_people", {}, 5_000, "call-b");
+
+    expect(settlements.map((s) => `${s.kind}:${s.callId}`)).toEqual(["resolve:call-a", "resolve:call-b"]);
+  });
+});

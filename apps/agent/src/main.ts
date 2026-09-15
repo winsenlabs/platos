@@ -4,6 +4,7 @@ import type { CorsOptions } from "@nestjs/common/interfaces/external/cors-option
 import { AppModule } from "./app.module";
 import { AuthService } from "./auth/auth.service";
 import { applyApiSurface } from "./http/api-surface";
+import { installRequestBodyLimits, resolveUnauthBodyCaps } from "./http/request-body-limits";
 import { validateAgentEnv } from "./shared/env";
 import { resolveExternalTriggerConfig } from "./shared/external-trigger-config";
 import { terminateAfterStartupFailure } from "./startup-failure";
@@ -158,99 +159,28 @@ async function bootstrap() {
   // run before `listen()`; it is placed first because everything below reasons
   // about the FINAL wire path this call produces.
   //
-  // The `app.use` body caps below still match `/api/v1/...` literally, and they
-  // must: they inspect an inbound request URL, and if this call ever stopped
-  // producing that prefix they would stop firing on the public surface — which
-  // is a failure the route-identity test names and this file would rather have
-  // than paper over with a derived string.
+  // The body caps installed below (`http/request-body-limits.ts`) are mounted on
+  // wire prefixes the pre-M4.1 table spelled `/api/v1/...` literally, and those
+  // stay literal: if this call ever stopped producing that prefix they would stop
+  // firing on the public surface, which is a failure the route-identity test and
+  // the manifest join in `request-body-limits.test.ts` name rather than paper over.
   applyApiSurface(app);
 
   // L8 — clamp body size on the UNAUTHENTICATED bypass surface BEFORE the
-  // global parser can buffer it. The 15mb limit below exists solely for the
-  // authenticated catalog-ingest route (POST
-  // /api/v1/agent/monitoring/cost/catalog, admin-token gated in ScopeGuard).
-  // The public/unauth prefixes never need a 15mb buffer, so leaving it there is
-  // a memory-amplification DoS vector (auth runs AFTER the body is parsed, so a
-  // big body is buffered before the 401). Registered BEFORE useBodyParser so it
-  // runs FIRST in the Express stack (both are httpAdapter.use() calls appended
-  // in source order): a reject here fails closed before express.json reads a
-  // byte. We inspect Content-Length rather than mounting a second express.json
-  // parser because a direct require("express") is not resolvable in the pruned
-  // production image and useBodyParser is app-global, not per-prefix.
-  //
-  // Per-prefix caps: /oauth + /api/v1/public are tiny control-plane payloads
-  // (256KB is generous); /mcp tool calls can legitimately carry document-sized
-  // arguments (memory upsert, RAG ingest), so they get a higher-but-still-
-  // bounded cap (2MB, env-tunable) — 7.5x below the old 15mb, closing the
-  // amplification vector without 413-ing real tool calls. Body-bearing requests
-  // with no Content-Length (chunked) on these prefixes are rejected too; legit
-  // callers here always send a small, length-framed JSON payload.
-  const PUBLIC_BODY_CAP_BYTES = 256 * 1024;
-  const MCP_BODY_CAP_BYTES =
-    Number(process.env.PLATOS_MCP_BODY_CAP_BYTES) || 2 * 1024 * 1024;
-  // Channels inbound webhooks are also an UNAUTHENTICATED bypass surface (auth
-  // runs in-controller: webhookSecret + provider signature). A provider event
-  // payload is small; 1MB is generous and closes the same memory-amplification
-  // vector the other public prefixes guard against. GET (WhatsApp hub.challenge)
-  // is skipped by the method check below, so its query-string handshake is
-  // unaffected.
-  const CHANNELS_BODY_CAP_BYTES =
-    Number(process.env.PLATOS_CHANNELS_BODY_CAP_BYTES) || 1 * 1024 * 1024;
-  const UNAUTH_BODY_CAPS: Array<{ prefix: string; cap: number }> = [
-    { prefix: "/mcp", cap: MCP_BODY_CAP_BYTES },
-    { prefix: "/oauth", cap: PUBLIC_BODY_CAP_BYTES },
-    { prefix: "/api/v1/public", cap: PUBLIC_BODY_CAP_BYTES },
-    { prefix: "/api/v1/channels/inbound", cap: CHANNELS_BODY_CAP_BYTES },
-    // Connect v3 marketplace-app events (POST /api/v1/channels/apps/:id/events)
-    // — same unauthenticated-bypass shape as /channels/inbound (auth is the
-    // in-controller Slack signature check, which runs AFTER the body is
-    // buffered). Slack event payloads are far under 1MB. The sibling
-    // /api/v1/channels/oauth prefix is GET-only, so the method check above
-    // already skips it.
-    { prefix: "/api/v1/channels/apps", cap: CHANNELS_BODY_CAP_BYTES },
-    // Connect v3 Phase C hosted account linking (/api/v1/channels/link/*). This
-    // is the same unauthenticated-bypass family; the caps list matches by exact
-    // prefix, and neither of the entries above covers `/link`. The link routes
-    // are GET-only today (the method check above skips them), so this is a
-    // forward-guard: if a POST link route is ever added, it inherits the same
-    // 1MB cap instead of falling back to the effectively-unbounded 15mb parser.
-    { prefix: "/api/v1/channels/link", cap: CHANNELS_BODY_CAP_BYTES },
-  ];
-  app.use((req: any, res: any, next: () => void) => {
-    const method = req.method;
-    if (
-      method === "GET" ||
-      method === "HEAD" ||
-      method === "OPTIONS" ||
-      method === "DELETE"
-    ) {
-      return next();
-    }
-    const path = String(req.url || "").split("?")[0];
-    const match = UNAUTH_BODY_CAPS.find(
-      (c) => path === c.prefix || path.startsWith(c.prefix + "/"),
-    );
-    if (!match) return next();
-    const len = Number(req.headers["content-length"]);
-    if (!Number.isFinite(len) || len > match.cap) {
-      res.statusCode = 413;
-      res.setHeader("Content-Type", "application/json");
-      res.end(
-        JSON.stringify({ error: "payload_too_large", limit: match.cap }),
-      );
-      return;
-    }
-    return next();
-  });
-
-  // Body limit: Nest's default express.json cap is 100kb, which 413s the
-  // litellm price-catalog refresh (`POST /monitoring/cost/catalog` carries the
-  // full multi-MB catalog from the platos.cost.refresh_model_prices task).
-  // 15mb bounds it without being effectively unlimited. useBodyParser is the
-  // platform-express API (a direct require("express") is NOT resolvable in
-  // the pruned production image — crashed the boot).
-  app.useBodyParser("json", { limit: "15mb" });
-  app.useBodyParser("urlencoded", { extended: true, limit: "15mb" });
+  // global parser can buffer it, then install the parser. Auth on every capped
+  // prefix runs AFTER the body is parsed, so the order is the guarantee, and
+  // `installRequestBodyLimits` owns it: the cap table, the middleware, the 15mb
+  // parser and the reasons for each live in `http/request-body-limits.ts`, where
+  // `request-body-limits.test.ts` drives the same installer over a real socket.
+  // The two operator overrides are read HERE, at the composition root, and
+  // handed in as values.
+  installRequestBodyLimits(
+    app,
+    resolveUnauthBodyCaps({
+      PLATOS_MCP_BODY_CAP_BYTES: process.env.PLATOS_MCP_BODY_CAP_BYTES,
+      PLATOS_CHANNELS_BODY_CAP_BYTES: process.env.PLATOS_CHANNELS_BODY_CAP_BYTES,
+    }),
+  );
 
   // EOBD.42 — enable graceful shutdown so SentryService.onApplicationShutdown
   // + WS close hooks run on SIGTERM. Without this, Sentry drops in-flight

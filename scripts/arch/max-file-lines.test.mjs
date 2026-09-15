@@ -949,7 +949,11 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `APPS-TRANSPORTS` term covers `apps/core-api/src/transports/**` and the suite
   // lives in `composition/`, which no selector here names. A reader who assumed
   // "two new files" would expect 1654.
-  assert.equal(result.fileCount, 1653);
+  //
+  // M4 GATES (founder decision D21) — 1653 -> 1655. TWO files, and here BOTH count:
+  // `apps/core-api/src/http/mcp-body-cap.ts` and `mcp-body-cap.test.ts` sit under the
+  // `APPS-HTTP` selector, which covers the whole directory.
+  assert.equal(result.fileCount, 1655);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1049,7 +1053,11 @@ test("the live selectors scan an exact nonzero source census", () => {
       // integration suite is. Everything else the tranche touched is an EDIT:
       // `http/idempotency-policy.ts`, `transports/rest/operator.ts`,
       // `composition/context-ports.ts` and `composition/installation.test.ts`.
-      1
+      1 +
+      // M4 GATES (founder decision D21): TWO, under `apps/core-api/src/http/` --
+      // `mcp-body-cap.ts` and its real-socket suite. `runtime/lifecycle.ts`, which
+      // installs the cap, is an edit.
+      2
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1273,8 +1281,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // flat — this tranche edits `apps/core-api/src/http/idempotency-policy.ts` and
   // `transports/rest/operator.ts` IN PLACE and adds no file under either.
   //
-  // 30 + 1093 + 474 + 18 + 38 = 1653.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 38);
+  // M4 GATES (D21), +2, AND IT LANDS IN ONE TERM: APPS-HTTP 18 -> 20, the MCP body
+  // cap and its suite. `runtime/lifecycle.ts` is edited in place and is outside every
+  // selector here.
+  //
+  // 30 + 1093 + 474 + 20 + 38 = 1655.
+  assert.equal(result.fileCount, 30 + 1093 + 474 + 20 + 38);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a
