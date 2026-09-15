@@ -789,8 +789,14 @@ export const VIOLATION_CODES = Object.freeze({
  * own single frozen `{ ...process.env }` and hands the values in; a helper that read
  * `process.env` itself would be a door this gate could not attribute to the suite
  * that walked through it. Two files landed, thirty-two reads stayed thirty-two.
+ *
+ * M4 GATES (founder decision D21): 1701 + 2 = 1703, and NO DOOR OPENED. The two are
+ * `apps/core-api/src/http/mcp-body-cap.ts` and its suite. The middleware is handed
+ * its cap as a value and reads nothing ambient; the suite builds its configuration
+ * from a literal source rather than `process.env`. Two files landed, thirty-two
+ * reads stayed thirty-two.
  */
-export const EXPECTED_FILE_COUNT = 1701;
+export const EXPECTED_FILE_COUNT = 1703;
 
 function listSourceFiles(root) {
   const found = [];
