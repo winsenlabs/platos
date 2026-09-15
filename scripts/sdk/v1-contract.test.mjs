@@ -30,7 +30,7 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
@@ -246,4 +246,56 @@ test("the emitted fixture drives the Python client too", () => {
     `importing platos_client without site-packages failed:\n${entry.stdout ?? ""}\n${entry.stderr ?? ""}`,
   );
   assert.match(entry.stdout ?? "", /PlatosRefusal/u);
+});
+
+// THE SDK GATES ARE WIRED INTO CI, AND NOTHING THERE PUBLISHES.
+//
+// WIN-270 (M4.4). The platools suites, the Python setup they need and the
+// changeset gate are separate steps of the typecheck job, and a step can be
+// deleted in one quiet edit. This file already runs inside the V1 evidence step
+// that `scripts/ci-policy.test.mjs` pins command by command, so asserting the
+// wiring HERE means deleting one of those steps turns a protected gate red.
+// Founder decision D15: publication from this repository stays forbidden, so no
+// workflow step may run a publish.
+test("CI runs both platools suites and the changeset gate, and publishes nothing", async () => {
+  const { parse } = await import("yaml");
+  const workflows = join(repositoryRoot, ".github", "workflows");
+  const ci = parse(readFileSync(join(workflows, "ci.yml"), "utf8"));
+  const steps = ci.jobs.typecheck.steps;
+  const runsOf = (step) =>
+    String(step.run ?? "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  const stepRunning = (command) => steps.find((step) => runsOf(step).includes(command));
+
+  assert.ok(stepRunning("pnpm --filter @platosdev/platools-sdk test"), "no step runs the platools-js suite");
+
+  const pytest = stepRunning("python -m pytest -p no:cacheprovider");
+  assert.ok(pytest, "no step runs the platools-py suite");
+  assert.equal(pytest["working-directory"], "packages/platools-py");
+  assert.ok(
+    runsOf(pytest).includes("python -m pip install --require-hashes --no-deps -r requirements-ci.txt"),
+    "the platools-py dependencies are not installed from the hashed lock",
+  );
+  const python = steps.findIndex((step) => String(step.uses ?? "").startsWith("actions/setup-python@"));
+  assert.ok(python >= 0 && python < steps.indexOf(pytest), "Python is not set up before the pytest step");
+  assert.match(steps[python].uses, /^actions\/setup-python@[0-9a-f]{40}$/u, "setup-python is not pinned by commit");
+  assert.match(String(steps[python].with?.["python-version"]), /^\d+\.\d+\.\d+$/u, "the interpreter is not pinned exactly");
+
+  const gate = stepRunning('pnpm audit:changesets --base "$CHANGESET_GATE_BASE"');
+  assert.ok(gate, "no step runs the changeset gate");
+  assert.ok(runsOf(gate).includes("pnpm test:changesets"), "the changeset gate's own suite does not run");
+  assert.equal(
+    gate.env?.CHANGESET_GATE_BASE,
+    "${{ github.event.pull_request.base.sha || github.event.before }}",
+  );
+  assert.equal(ci.jobs.typecheck.steps[0].with?.["fetch-depth"], 0, "the merge base needs full history");
+
+  const names = readdirSync(workflows).filter((name) => /\.ya?ml$/u.test(name));
+  assert.ok(names.includes("ci.yml") && names.length > 1, "the workflow directory listing is wrong");
+  for (const name of names) {
+    const text = readFileSync(join(workflows, name), "utf8");
+    assert.doesNotMatch(text, /changeset\s+publish|npm\s+publish|pnpm\s+publish|twine\s+upload|uv\s+publish/u, name);
+  }
 });

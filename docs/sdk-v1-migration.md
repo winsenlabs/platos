@@ -153,6 +153,38 @@ indistinguishable from one the taxonomy minted.
 effect is that the error types and the V1 client import with no third-party
 dependency at all.
 
+## Retries
+
+`PlatosClient` in `@platosdev/client` now retries a failed request only when
+sending it again cannot repeat its effect. **This changes observable behaviour**
+(recorded as a major in `.changeset/platos-client-post-retry-guard.md`):
+
+| Request | Before | Now |
+|---|---|---|
+| `GET`, `HEAD`, `PUT`, `DELETE`, `OPTIONS` | retried up to `maxRetries` | unchanged |
+| any method carrying a non-empty `Idempotency-Key` | retried up to `maxRetries` | unchanged, and every retry carries the same key |
+| `POST` or `PATCH` without `Idempotency-Key` | retried up to `maxRetries` | **sent once**; its first failure is thrown |
+
+The idempotent methods are RFC 9110 §9.2.2's. The header is matched
+case-insensitively, and its name is imported from the generated V1 module so it
+cannot drift from the one the server reads. Which failures count as retryable
+(`isRetryableError`: network errors, 5xx, 429) and the `Retry-After` wait are
+unchanged; what changed is whether a non-repeatable request is eligible at all.
+
+In practice this reaches `approvals.resolve`, `jobs.create`, `jobs.update`,
+`jobs.dispatch`, `messages.rate`, `threads.create`, `threads.archive`,
+`threads.unarchive`, `tools.setEnabled` and `tools.test`. A transient failure on
+one of those used to be absorbed, and could apply the effect twice when the first
+request had reached the server; it now reaches your `catch`. Retry it yourself
+only where your application knows repeating it is safe.
+
+`createV1Client` is unaffected: it mints one `Idempotency-Key` per logical call
+for every side-effecting V1 operation core-api's idempotency policy does not
+exempt, and retries under that key. The Python
+`PlatosClient` is also unchanged by this entry — its `_request_with_retry` still
+retries every method, which is a known divergence between the two clients rather
+than a documented equivalence.
+
 ## Version policy
 
 - npm packages use Changesets and receive a major release for this migration.
