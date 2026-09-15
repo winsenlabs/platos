@@ -68,10 +68,20 @@ export interface ChangeMemberRoleBody {
   readonly role: string;
 }
 
-/** What a role change reports: whether anything moved, and how many sessions it ended. */
+/**
+ * What a role change reports: whether anything moved.
+ *
+ * `revokedSessionCount` IS DELIBERATELY NOT ON THE WIRE, and the reason was
+ * measured against a real PostgreSQL rather than assumed. The contract returns
+ * the count the session revoker reported, but the schema's own trigger
+ * `revoke_operator_sessions_for_membership_change` fires on the role UPDATE and
+ * ends the member's sessions FIRST, inside the same transaction — so the revoker
+ * finds none left and reports 0 while every session did end. Publishing that
+ * number would tell an administrator nothing was revoked when everything was.
+ * `identity-tenancy-rest.integration.test.ts` reads the session row back instead.
+ */
 export interface MemberRoleChangeResource {
   readonly changed: boolean;
-  readonly revokedSessionCount: number;
 }
 
 /** SHAPE ONLY. `TENANCY_INVALID_ROLE` is the use case's refusal, not this file's. */
@@ -117,9 +127,9 @@ export class OrganizationMembersController {
   }
 
   /**
-   * 200: the membership already existed and keeps its id. The session count is
-   * on the wire because a demotion ENDS the member's sessions in the same
-   * transaction, and an administrator should be told that happened.
+   * 200: the membership already existed and keeps its id. A change ENDS the
+   * member's sessions in the same transaction; see `MemberRoleChangeResource` for
+   * why the count of them is not reported.
    */
   @Patch(":membershipId")
   @HttpCode(HttpStatus.OK)
@@ -140,9 +150,6 @@ export class OrganizationMembersController {
       role: body.role as OrganizationRole,
     });
     if (!changed.ok) raise(changed.error);
-    return itemEnvelope({
-      changed: changed.value.changed,
-      revokedSessionCount: changed.value.revokedSessionCount,
-    });
+    return itemEnvelope({ changed: changed.value.changed });
   }
 }

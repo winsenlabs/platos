@@ -389,6 +389,9 @@ importers:
       '@testcontainers/redis':
         specifier: ^10.28.0
         version: 10.28.0
+      testcontainers:
+        specifier: ^10.28.0
+        version: 10.28.0
 
   apps/mcp-stdio:
     dependencies:

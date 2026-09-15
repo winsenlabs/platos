@@ -32,10 +32,8 @@ const ASCII_ADDRESS = /^[\x21-\x7e]+@[\x21-\x7e]+$/u;
 /** An envelope address, or a refusal naming the field. */
 export function admitAddress(field: string, value: string): Result<string> {
   if (LINE_BREAK.test(value)) return err(messageRefused(field, "contains a line break"));
-  if (!ASCII_ADDRESS.test(value) || value.includes("<") || value.includes(">")) {
-    return err(messageRefused(field, "must be an ASCII address with one @"));
-  }
-  if (value.indexOf("@") !== value.lastIndexOf("@")) {
+  const oneAt = value.indexOf("@") === value.lastIndexOf("@");
+  if (!ASCII_ADDRESS.test(value) || !oneAt || value.includes("<") || value.includes(">")) {
     return err(messageRefused(field, "must be an ASCII address with one @"));
   }
   return ok(value);
