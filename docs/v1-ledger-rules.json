@@ -391,6 +391,19 @@
         "evidence": "Package, compiler, and framework configuration read by the workspace scripts, plus static manifest data loaded by the module beside it. Declared ahead of the source rules because a *.config.ts is also a *.ts."
       },
       {
+        "id": "apps-core-api.tooling.scripts",
+        "match": [
+          "apps/core-api/scripts/**"
+        ],
+        "kind": "source",
+        "owner_capability": "Core API",
+        "disposition": "retain",
+        "reached_via": [
+          "package-scripts"
+        ],
+        "evidence": "Invoked from apps/core-api/package.json scripts: scripts/dev.mjs is the dev script, which watches the package's build script and restarts its start script. Not part of the image, which copies only dist, the deployed node_modules and the manifest."
+      },
+      {
         "id": "apps-core-api.entry.composition-root",
         "match": [
           "apps/core-api/src/main.ts",

@@ -864,7 +864,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // arrival (0 -> 1). Every other file the change touches -- the root and core-api
     // manifests, the compose file, the Caddyfile, the self-hosting page and the
     // suites that pin them -- is an EDIT.
-    "apps-core-api": 97,
+    //
+    // CORE-API DEPLOYABILITY RESIDUE 97 -> 105. EIGHT files. Seven under `src/`:
+    // `config/trusted-proxy.ts` and `runtime/trusted-proxy.ts` (D-COOKIE's one
+    // trusted hop) and `http/store-faults.ts` (the store-unavailable
+    // classification) on `apps-core-api.source.process`, and four suites --
+    // `config/trusted-proxy.test.ts`, `http/store-faults.test.ts`,
+    // `transports/rest/session-cookie-transport.test.ts` and
+    // `composition/compose-readiness.test.ts` -- on `apps-core-api.test.suites`.
+    // And `scripts/dev.mjs`, the runner the `dev` script now invokes, on the ONE
+    // NEW RULE `apps-core-api.tooling.scripts`, declared because no core-api rule
+    // matched a file outside `src/` that is not config, prose or the Dockerfile.
+    // Every other file the change touches is an EDIT.
+    "apps-core-api": 105,
     // 0 -> 3. The stdio binary's runtime (config, frame loop, host-runtime
     // loader), the in-repository host runtime the executable evidence points at,
     // and its suite.
@@ -2103,7 +2115,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and `scripts/lib/shipping-components.mjs`, the one derivation of each shipping
     // image's component set that the SBOM and the advisory scan share, on
     // `root-infra.tooling.scripts`. NO LEDGER RULE CHANGED.
-    "root-infra": 95,
+    //
+    // CORE-API DEPLOYABILITY RESIDUE 95 -> 96. ONE file,
+    // `scripts/lib/core-api-config-schema.mjs`, which loads the core-api config
+    // field tables so `audit-platos-build.mjs` refuses every schema-secret field in
+    // an image layer. On `root-infra.tooling.scripts`; NO ROOT-INFRA RULE CHANGED.
+    "root-infra": 96,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2398,7 +2415,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   //
   // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804. ONE file in `docs-content`,
   // itemised on that area's delta above: 15 + 1 + 97 + 4 + 10 + 1556 + 26 + 95 = 1804.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1804);
+  //
+  // AND THE CORE-API DEPLOYABILITY RESIDUE — 1804 -> 1813. NINE files, itemised on
+  // their areas' deltas above: eight in `apps-core-api`, one in `root-infra`:
+  // 15 + 1 + 105 + 4 + 10 + 1556 + 26 + 96 = 1813.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1813);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2709,7 +2730,10 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // edit as the total and both area deltas: three root-infra files and one SBOM.
     // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804, moved in the same edit as
     // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
-    rulesDocument.baseline.totalFiles + 1804
+    // AND THE CORE-API DEPLOYABILITY RESIDUE — 1804 -> 1813, moved in the same edit as
+    // the total and both area deltas: eight core-api files and one root-infra
+    // script, summed per area here.
+    rulesDocument.baseline.totalFiles + 1813
   );
 });
 

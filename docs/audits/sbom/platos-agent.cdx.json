@@ -8803,7 +8803,7 @@
       "properties": [
         {
           "name": "platos:image",
-          "value": "agent,webapp"
+          "value": "agent,webapp,core-api"
         },
         {
           "name": "platos:licenseSource",
@@ -15921,7 +15921,7 @@
       "properties": [
         {
           "name": "platos:image",
-          "value": "agent,webapp"
+          "value": "agent,webapp,core-api"
         },
         {
           "name": "platos:licenseSource",
@@ -21441,7 +21441,7 @@
       "properties": [
         {
           "name": "platos:image",
-          "value": "agent"
+          "value": "agent,core-api"
         },
         {
           "name": "platos:licenseSource",
