@@ -949,7 +949,12 @@ test("the live selectors scan an exact nonzero source census", () => {
   // `APPS-TRANSPORTS` term covers `apps/core-api/src/transports/**` and the suite
   // lives in `composition/`, which no selector here names. A reader who assumed
   // "two new files" would expect 1654.
-  assert.equal(result.fileCount, 1653);
+  // THE CORE-API DEPLOYABILITY RESIDUE, 1653 -> 1656. THREE files inside selectors:
+  // `APPS-HTTP` +2 (`http/store-faults.ts` and its suite) and `APPS-TRANSPORTS` +1
+  // (`transports/rest/session-cookie-transport.test.ts`). The tranche's other five
+  // new files are under `config/`, `runtime/`, `composition/` and `scripts/`, which
+  // no selector here names, so they are deliberately absent.
+  assert.equal(result.fileCount, 1656);
   // Written out so a DELETION CANNOT HIDE INSIDE AN ADDITION: adoption replaces
   // a context's four placeholders in place and adds the rest, so this number
   // only ever grows and a fall in it is always a finding.
@@ -1049,7 +1054,10 @@ test("the live selectors scan an exact nonzero source census", () => {
       // integration suite is. Everything else the tranche touched is an EDIT:
       // `http/idempotency-policy.ts`, `transports/rest/operator.ts`,
       // `composition/context-ports.ts` and `composition/installation.test.ts`.
-      1
+      1 +
+      // THE CORE-API DEPLOYABILITY RESIDUE: `APPS-HTTP` 2 (`store-faults.ts` and its
+      // suite) and `APPS-TRANSPORTS` 1 (`session-cookie-transport.test.ts`).
+      2 + 1
   );
   // The adapters row of the four-way disjoint scan carries every tranche, and
   // tranche 5 contributes FIVE times because it landed four canonical stores in
@@ -1273,8 +1281,13 @@ test("the live selectors scan an exact nonzero source census", () => {
   // flat — this tranche edits `apps/core-api/src/http/idempotency-policy.ts` and
   // `transports/rest/operator.ts` IN PLACE and adds no file under either.
   //
-  // 30 + 1093 + 474 + 18 + 38 = 1653.
-  assert.equal(result.fileCount, 30 + 1093 + 474 + 18 + 38);
+  // THE CORE-API DEPLOYABILITY RESIDUE, +3, IN TWO TERMS: APPS-HTTP 18 -> 20
+  // (`store-faults.ts` and its suite) and APPS-TRANSPORTS 38 -> 39
+  // (`session-cookie-transport.test.ts`). `KERNEL`, `CONTEXTS` and `ADAPTERS` are
+  // flat: the identity-access session-cookie change edits two files in place.
+  //
+  // 30 + 1093 + 474 + 20 + 39 = 1656.
+  assert.equal(result.fileCount, 30 + 1093 + 474 + 20 + 39);
   assert.deepEqual(result.errors, []);
   assert.equal(result.findings.filter((finding) => finding.severity === "error").length, 0);
   // Stricter than the gate, on purpose. `audit:max-file-lines` exits 0 on a

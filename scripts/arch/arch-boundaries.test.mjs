@@ -1401,7 +1401,16 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
     // moved first -- and it caught the omission, which is the whole reason two pins
     // derived differently are kept.
     // 1699 + 2 = 1701.
-    assert.equal(result.fileCount, 1701, "the generated V1 source census must stay exact");
+    //
+    // THE CORE-API DEPLOYABILITY RESIDUE, 1701 -> 1709. EIGHT files, ALL under
+    // `apps/core-api`: `config/trusted-proxy.ts` and its suite, `runtime/trusted-proxy.ts`,
+    // `http/store-faults.ts` and its suite, `transports/rest/session-cookie-transport.test.ts`,
+    // `composition/compose-readiness.test.ts`, and `scripts/dev.mjs` -- the one `.mjs`,
+    // which this census reads and `env-access.mjs` (1701 -> 1708) does not, so the two
+    // pins moved by different amounts ON PURPOSE. NOTHING under `packages/`: the
+    // identity-access session-cookie change is an EDIT.
+    // 1701 + 8 = 1709.
+    assert.equal(result.fileCount, 1709, "the generated V1 source census must stay exact");
     assert.equal(result.fileCount, 397 + 44 + 55 + 51 + 77 + 63 + 48 + 48 + 67 + 56 + 42 + 83 + 8 + 34 + 18 + 74 + 12 + 22 + 11 + 9 + 6 + 18 + 16 + 16 + 1 + 15 + 18 + 19 + 16 + 20 + 17 + 21 + 14 + 17 + 18 + 12 + 14 + 7 + 3 + 4 + 2 + 9 + 1 +
       // projection 10, lifecycle 24, errors-and-idempotency 23,
       // outbox/transaction-outcome 8.
@@ -1490,7 +1499,13 @@ describe("ADR M0.3 boundary enforcement — each rule catches a violation and pa
       // that directory now share. NOTHING under `packages/` and nothing under
       // `transports/`: the four suites that learned to take a SUPPLIED server are
       // edits, as are the two that already could.
-      2);
+      2 +
+      // THE CORE-API DEPLOYABILITY RESIDUE: config 2 (`trusted-proxy.ts` and its
+      // suite), runtime 1 (`trusted-proxy.ts`), http 2 (`store-faults.ts` and its
+      // suite), transports 1 (`session-cookie-transport.test.ts`), composition 1
+      // (`compose-readiness.test.ts`) and the package's `scripts/dev.mjs` 1.
+      // 2 + 1 + 2 + 1 + 1 + 1 = 8, and NOTHING under `packages/`.
+      2 + 1 + 2 + 1 + 1 + 1);
     assert.equal(result.violations.length, 0, "the current tree must have zero boundary violations");
   });
 });

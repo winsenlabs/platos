@@ -1,7 +1,7 @@
 {
   "$schema": "platos.audit.osv-receipt/v2",
   "tool": "scripts/audit-advisory.mjs (OSV querybatch + vulnerability details)",
-  "scannedAt": "2026-09-15T13:17:18.164Z",
+  "scannedAt": "2026-09-15T22:55:01.618Z",
   "network": {
     "requestedMode": "public-osv-with-cache",
     "effectiveMode": "public-osv-live",
@@ -24,11 +24,11 @@
     "componentCount": 330,
     "distinctNames": 303
   },
-  "scanSetSha256": "8176649d367da43266c18e8051b0370f4c14ce3c09593734ae48eeae64f74466",
+  "scanSetSha256": "b1903f8e4a67ba91bb93d8d1ec80c806962db8286f619b868f1ed0b7e85b14ee",
   "imageScanSetSha256": {
     "agent": "f971f028d668d880d2c983f52d71f40b104e0a8c0e3dd714eb0af164b6486751",
     "webapp": "b8b4fb78428532a9545374f8eaa5ce78223a2b29ce3c588875bde605550d287b",
-    "core-api": "09db5f398d84a1eb49bfb38a4d2103c0ce79134018a11d3725f61dd851b9a83a"
+    "core-api": "7e38fac24c4f69cc7ce805156baace030c6bbd14d6409bfe2bebf96f0447fc2f"
   },
   "componentsScanned": 879,
   "agentComponents": 718,
@@ -36,7 +36,7 @@
   "imageComponents": {
     "agent": 718,
     "webapp": 330,
-    "core-api": 323
+    "core-api": 326
   },
   "findingsCount": 157,
   "withdrawnCount": 0,

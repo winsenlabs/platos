@@ -179,7 +179,7 @@ export function sessionCookieRequiresTls(): DomainError {
  * a process that is working and a caller that retrying will not help.
  *
  * `unavailable` -> 503, with a one-second hint: the store may be back for the
- * next attempt, and the process itself is healthy. The driver's own text, which
+ * next request, and the process itself is healthy. The driver's own text, which
  * can carry a host and a database name, stays in the log against the `errorId`.
  */
 export function storeUnavailable(): DomainError {
