@@ -764,7 +764,17 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         THIS PARAGRAPH, LIKE THE THREE ABOVE IT, IS WRITTEN AROUND THE REFUSED
   //         WORD rather than quoting it -- the gate reads bytes, and the suite that
   //         pins the count is not exempt from the count.
-  assert.equal(manifest.exceptions.length, 19451);
+  //
+  //         THE CORE-API CANDIDATE SMOKE ADDS THREE, taking it to 19454, all in
+  //         `.github/workflows/build-images.yml` and all the same GitHub Actions
+  //         context: the re-run ordinal every artifact name in that workflow already
+  //         carries. The new `core-api-smoke` job downloads the core-api and
+  //         migrations candidates by their exact artifact names and uploads its own
+  //         evidence under the same naming scheme, so the context cannot be dropped
+  //         without matching a previous run's artifacts. Each row copies the
+  //         classification, owner and rationale of the file's existing rows for that
+  //         context. The smoke script's own loop counter was renamed instead.
+  assert.equal(manifest.exceptions.length, 19454);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

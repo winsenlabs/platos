@@ -184,8 +184,126 @@ check(
     coreApiInstructions.filter(({ keyword }) => keyword === "EXPOSE").map(({ args }) => args).join(" ") === coreApiPortDefault
 );
 
+// ─── What the runtime stage runs, and on which interface ───
+// Two runtime-stage lines decide whether the image can serve at all, and an
+// independent verifier mutated both with every gate still green: without the
+// HOST line the container logs, passes a loopback healthcheck and is unreachable
+// through every published port; with CMD pointed elsewhere it never starts.
+// Each is joined to the file that makes it true: the config schema's field and
+// its loopback default, the package's own `start` script, and the TypeScript
+// project whose output directory that script names.
+const coreApiRuntimeInstructions = coreApiInstructions.slice(coreApiRuntimeFromIndex + 1);
+
+/** ENV assignments in instruction order, both `ENV K=V ...` and legacy `ENV K V`. Later wins. */
+function envAssignments(instructions) {
+  const assignments = new Map();
+  for (const { keyword, args } of instructions) {
+    if (keyword !== "ENV") continue;
+    if (!/^[A-Za-z_][A-Za-z0-9_]*=/.test(args)) {
+      const [name, ...value] = args.split(/\s+/);
+      assignments.set(name, value.join(" "));
+      continue;
+    }
+    for (const match of args.matchAll(/(?:^|\s)([A-Za-z_][A-Za-z0-9_]*)=("(?:[^"\\]|\\.)*"|\S*)/g)) {
+      assignments.set(match[1], match[2].replace(/^"(.*)"$/, "$1"));
+    }
+  }
+  return assignments;
+}
+
+const coreApiHostDefault = /name:\s*"PLATOS_CORE_API_HOST",[\s\S]*?defaultValue:\s*"([^"]*)"/.exec(coreApiSchema)?.[1] ?? null;
+check(
+  "core-api image's runtime stage binds every interface: PLATOS_CORE_API_HOST=0.0.0.0 overrides the config module's loopback default",
+  coreApiHostDefault === "127.0.0.1" && envAssignments(coreApiRuntimeInstructions).get("PLATOS_CORE_API_HOST") === "0.0.0.0"
+);
+
+const coreApiPackage = JSON.parse(read("apps/core-api/package.json"));
+const coreApiTsconfig = JSON.parse(read("apps/core-api/tsconfig.json"));
+const coreApiStartArgv = (coreApiPackage.scripts?.start ?? "").trim().split(/\s+/).filter(Boolean);
+const coreApiCmd = coreApiRuntimeInstructions.filter(({ keyword }) => keyword === "CMD").at(-1)?.args ?? "";
+let coreApiCmdArgv = null;
+try {
+  const parsed = JSON.parse(coreApiCmd);
+  if (Array.isArray(parsed) && parsed.every((word) => typeof word === "string")) coreApiCmdArgv = parsed;
+} catch {
+  coreApiCmdArgv = null;
+}
+check(
+  "core-api image's CMD is exec form and exactly apps/core-api/package.json's `start` script",
+  coreApiCmdArgv !== null && coreApiStartArgv.length > 0 && JSON.stringify(coreApiCmdArgv) === JSON.stringify(coreApiStartArgv)
+);
+check(
+  "core-api image's runtime stage declares no ENTRYPOINT of its own that would change what CMD runs",
+  !coreApiRuntimeInstructions.some(({ keyword }) => keyword === "ENTRYPOINT")
+);
+const coreApiOutDir = String(coreApiTsconfig.compilerOptions?.outDir ?? "").replace(/^\.\//, "").replace(/\/$/, "");
+const coreApiRootDir = String(coreApiTsconfig.compilerOptions?.rootDir ?? "").replace(/^\.\//, "").replace(/\/$/, "");
+const coreApiEntry = coreApiStartArgv.at(-1) ?? "";
+const coreApiRuntimeWorkdir = coreApiRuntimeInstructions.filter(({ keyword }) => keyword === "WORKDIR").at(-1)?.args ?? "";
+const coreApiBuilderWorkdir =
+  coreApiInstructions
+    .slice(0, coreApiRuntimeFromIndex)
+    .filter(({ keyword }) => keyword === "WORKDIR")
+    .at(-1)?.args ?? "";
+check(
+  "core-api's start entry is the tsc output of src/main.ts, and the runtime stage copies that output directory to where CMD resolves it",
+  coreApiOutDir !== "" &&
+    coreApiRootDir !== "" &&
+    coreApiEntry === `${coreApiOutDir}/main.js` &&
+    existsSync(join(root, "apps/core-api", coreApiRootDir, "main.ts")) &&
+    coreApiPackage.main === `./${coreApiEntry}` &&
+    coreApiRuntimeWorkdir.startsWith("/") &&
+    coreApiBuilderWorkdir.startsWith("/") &&
+    coreApiRuntimeInstructions.some(
+      ({ keyword, args }) =>
+        keyword === "COPY" &&
+        [
+          `--from=builder ${coreApiBuilderWorkdir}/apps/core-api/${coreApiOutDir} ./${coreApiOutDir}`,
+          `--from=builder ${coreApiBuilderWorkdir}/apps/core-api/${coreApiOutDir} ${coreApiRuntimeWorkdir}/${coreApiOutDir}`,
+        ].includes(args)
+    )
+);
+
+// ─── The build context a WARM tree sends ───
+// The tenancy client is generated into directories the Prisma schemas name. They
+// are gitignored, so a cold checkout never has them and a warm one does, and a
+// host-generated client (another platform's query engine) reaches an image only
+// if the context carries it. The output directories are read from the schemas,
+// not restated, and .dockerignore must exclude each one without re-including it.
+const dockerignoreLines = read(".dockerignore")
+  .split("\n")
+  .map((line) => line.trim())
+  .filter((line) => line !== "" && !line.startsWith("#"));
+const tenancyPrismaDirectory = "internal-packages/tenancy-database/prisma";
+const tenancyClientOutputs = readdirSync(join(root, tenancyPrismaDirectory))
+  .filter((entry) => entry.endsWith(".prisma"))
+  .flatMap((entry) =>
+    [...read(`${tenancyPrismaDirectory}/${entry}`).matchAll(/^\s*output\s*=\s*"([^"]+)"/gm)].map((match) =>
+      join(tenancyPrismaDirectory, match[1]).split("\\").join("/")
+    )
+  );
+/** A literal (glob-free) exclusion covering `path`, with no later `!` line re-including any of it. */
+function dockerignoreExcludes(path) {
+  const normalize = (pattern) => pattern.replace(/^\//, "").replace(/\/$/, "");
+  const index = dockerignoreLines.findIndex((line) => {
+    const pattern = normalize(line);
+    return !line.startsWith("!") && !/[*?[]/.test(pattern) && (path === pattern || path.startsWith(`${pattern}/`));
+  });
+  if (index === -1) return false;
+  const excluded = normalize(dockerignoreLines[index]);
+  return !dockerignoreLines.slice(index + 1).some((line) => line.startsWith("!") && normalize(line.slice(1)).startsWith(excluded));
+}
+check(
+  "every generated tenancy client directory the Prisma schemas name is excluded from the image build context",
+  tenancyClientOutputs.length > 0 && tenancyClientOutputs.every(dockerignoreExcludes)
+);
+
 const composeDocument = parseYaml(compose, { merge: true });
 const coreApiService = composeDocument.services?.["core-api"] ?? {};
+check(
+  "core-api compose service leaves the image's listener interface alone",
+  coreApiService.environment?.PLATOS_CORE_API_HOST === undefined
+);
 check("core-api compose service is opt-in behind exactly the core-api profile", JSON.stringify(coreApiService.profiles) === '["core-api"]');
 const coreApiPorts = (coreApiService.ports ?? []).map(String);
 const coreApiLoopback =
@@ -197,12 +315,127 @@ check(
 const coreApiHostPort = coreApiLoopback?.[1] ?? null;
 const healthController = read("apps/core-api/src/http/health.controller.ts");
 const coreApiHealthcheck = [coreApiService.healthcheck?.test ?? []].flat().map(String).join(" ");
+// THROUGH THE CONTAINER'S NETWORK ADDRESS, NOT LOOPBACK. A listener bound to
+// 127.0.0.1 inside the container answers a loopback probe and nothing else, so a
+// loopback healthcheck reports that container healthy while every published port
+// and every other service on the network gets a refused connection.
 check(
-  "core-api healthcheck probes liveness on the container port and never readiness",
+  "core-api healthcheck probes liveness on the container port through the container's own network address, never loopback, never readiness",
   /@Get\("livez"\)/.test(healthController) &&
     coreApiPortDefault !== null &&
-    coreApiHealthcheck.includes(`http://127.0.0.1:${coreApiPortDefault}/livez`) &&
-    !coreApiHealthcheck.includes("readyz")
+    coreApiHealthcheck.includes("host: require('os').hostname()") &&
+    coreApiHealthcheck.includes("family: 4") &&
+    coreApiHealthcheck.includes(`port: ${coreApiPortDefault}`) &&
+    coreApiHealthcheck.includes("path: '/livez'") &&
+    !/127\.0\.0\.1|localhost|::1|readyz/.test(coreApiHealthcheck)
+);
+
+// ─── Ordering against the migrations, and the addresses of the stores ───
+// Both are properties no image test sees: an image started by hand is given its
+// addresses and started after the migrations by whoever starts it. In compose
+// they are decided here. The one-shot database jobs are derived, not listed:
+// every service built from the migrations Dockerfile whose DATABASE_URL names
+// the same PostgreSQL host core-api's store URL names.
+/** A compose URL with its interpolations neutralized, parsed; null when it is not a URL. */
+function composeUrl(value) {
+  try {
+    return new URL(String(value ?? "").replace(/\$\{[^}]*\}/g, "x"));
+  } catch {
+    return null;
+  }
+}
+/** The container-side port of a service's first published mapping, as a string. */
+function containerPort(service) {
+  return String((service?.ports ?? [])[0] ?? "").split(":").at(-1) || null;
+}
+const composeServices = composeDocument.services ?? {};
+const coreApiDependsOn = coreApiService.depends_on ?? {};
+const coreApiEnvironment = coreApiService.environment ?? {};
+const coreApiPostgresUrl = composeUrl(coreApiEnvironment.PLATOS_STORE_POSTGRES_URL);
+const coreApiRedisUrl = composeUrl(coreApiEnvironment.PLATOS_STORE_REDIS_URL);
+const coreApiPostgresService = composeServices[coreApiPostgresUrl?.hostname ?? ""];
+const coreApiRedisService = composeServices[coreApiRedisUrl?.hostname ?? ""];
+check(
+  "core-api's PostgreSQL URL names the compose PostgreSQL service, on its container port and database, and core-api waits for it to be healthy",
+  coreApiPostgresUrl?.protocol === "postgresql:" &&
+    /^(?:pgvector\/pgvector|postgres):/.test(String(coreApiPostgresService?.image ?? "")) &&
+    coreApiPostgresUrl.port === containerPort(coreApiPostgresService) &&
+    String(coreApiEnvironment.PLATOS_STORE_POSTGRES_URL).endsWith(`/${coreApiPostgresService?.environment?.POSTGRES_DB}`) &&
+    coreApiDependsOn[coreApiPostgresUrl.hostname]?.condition === "service_healthy"
+);
+check(
+  "core-api's Redis URL names the compose Redis service on its container port, and core-api waits for it to be healthy",
+  coreApiRedisUrl?.protocol === "redis:" &&
+    /^redis:/.test(String(coreApiRedisService?.image ?? "")) &&
+    coreApiRedisUrl.port === containerPort(coreApiRedisService) &&
+    coreApiDependsOn[coreApiRedisUrl.hostname]?.condition === "service_healthy"
+);
+const tenancyMigrationJobs = Object.entries(composeServices)
+  .filter(
+    ([, service]) =>
+      service?.build?.dockerfile === "internal-packages/tenancy-database/Dockerfile.migrations" &&
+      coreApiPostgresUrl !== null &&
+      composeUrl(service.environment?.DATABASE_URL)?.hostname === coreApiPostgresUrl.hostname
+  )
+  .map(([name]) => name)
+  .sort();
+check(
+  `core-api starts only after every one-shot job that migrates its PostgreSQL database completes (${tenancyMigrationJobs.join(", ") || "none found"})`,
+  tenancyMigrationJobs.length > 0 &&
+    tenancyMigrationJobs.every((name) => coreApiDependsOn[name]?.condition === "service_completed_successfully")
+);
+
+// ─── What the pull-only deploy override leaves able to compile on the box ───
+// `docker compose up` builds any service that has a `build:` block and no local
+// image, whether or not `build` is passed. docker-compose.deploy.yml states which
+// services keep their build block under it; that sentence is held equal to the
+// two files as compose would merge them, and every service scripts/deploy-platos.sh
+// pulls or starts must be reset to a required digest reference.
+const COMPOSE_RESET = Symbol("compose !reset");
+const deployOverrideText = read("docker-compose.deploy.yml");
+const deployOverride = parseYaml(deployOverrideText, { customTags: [{ tag: "!reset", resolve: () => COMPOSE_RESET }] });
+const deployOverrideServices = deployOverride?.services ?? {};
+const keepsBuildUnderDeploy = Object.entries(composeServices)
+  .filter(([name, service]) => service?.build !== undefined && deployOverrideServices[name]?.build !== COMPOSE_RESET)
+  .map(([name]) => name)
+  .sort();
+const statedKeepsBuild = (/^#\s+keeps-build:\s+(.+)$/m.exec(deployOverrideText)?.[1] ?? "").trim().split(/\s+/).filter(Boolean).sort();
+check(
+  `docker-compose.deploy.yml names exactly the services that keep a build block under it (${keepsBuildUnderDeploy.join(", ")})`,
+  statedKeepsBuild.length > 0 && JSON.stringify(statedKeepsBuild) === JSON.stringify(keepsBuildUnderDeploy)
+);
+const deployScript = read("scripts/deploy-platos.sh");
+const deployAppServices = (/^APP_SERVICES="([^"]+)"$/m.exec(deployScript)?.[1] ?? "").split(/\s+/).filter(Boolean);
+const deployPulledServices = (/^docker compose \$COMPOSE_FILES pull \$APP_SERVICES (.+)$/m.exec(deployScript)?.[1] ?? "")
+  .split(/\s+/)
+  .filter(Boolean);
+const deployPathServices = [...new Set([...deployAppServices, ...deployPulledServices])].sort();
+check(
+  `every service scripts/deploy-platos.sh pulls or starts is reset to a required digest reference by the deploy override (${deployPathServices.join(", ")})`,
+  deployAppServices.length > 0 &&
+    deployPulledServices.length > 0 &&
+    deployPathServices.every(
+      (name) =>
+        deployOverrideServices[name]?.build === COMPOSE_RESET &&
+        /^\$\{PLATOS_[A-Z_]+_IMAGE:\?[^}]+\}$/.test(String(deployOverrideServices[name]?.image ?? ""))
+    )
+);
+/** Every service `names` start, following depends_on. */
+function dependencyClosure(names) {
+  const seen = new Set();
+  const queue = [...names];
+  while (queue.length > 0) {
+    const name = queue.shift();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    queue.push(...Object.keys(composeServices[name]?.depends_on ?? {}));
+  }
+  return seen;
+}
+const deployPathClosure = dependencyClosure(deployPathServices);
+check(
+  "no service the deploy path starts, directly or through depends_on, keeps a build block under the deploy override",
+  keepsBuildUnderDeploy.every((name) => !deployPathClosure.has(name))
 );
 check(
   "core-api passes PLATOS_ENVIRONMENT through blank when unset: the process refuses it, the parse does not",

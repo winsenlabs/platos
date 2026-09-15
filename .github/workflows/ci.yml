@@ -157,6 +157,7 @@ jobs:
           node scripts/operator-operations.mjs --check
           node --test scripts/license-distribution.test.mjs
           node --test scripts/deploy-bundle-closure.test.mjs
+          node --test tests/persisted-state-gate/smoke-core-api-image.test.mjs
           node scripts/arch/gen-v1-skeleton.mjs --check
           pnpm test:v1-foundation
           pnpm test:install-git-hooks

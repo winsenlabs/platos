@@ -126,9 +126,13 @@ const expectedPnpmRunInstructions = new Map([
 // green pipeline, and 18 REACHABLE blockers were indistinguishable from the 107 that
 // genuinely need a browser. The new job produces the artifact and then asserts what
 // closing those cells MEANS: the residue is `browser evidence 107` and nothing else.
+//
+// build-images TWO, not one: `core-api-smoke` (job name `smoke-candidate-core-api`)
+// is the first job that STARTS the core-api candidate. It needs Node for the
+// smoke script and, like every job here, takes the version from .nvmrc.
 const expectedSetupNodeCounts = new Map([
   ["ci", 7],
-  ["buildImages", 1],
+  ["buildImages", 2],
 ]);
 const relocatedCommands = [
   "pnpm --filter platos-agent exec vitest run src/auth/rate-limit.guard.test.ts",
@@ -395,6 +399,9 @@ const agentBuildScriptTarget =
 const coreApiBuildScriptTarget = 'pnpm --filter "@platos/core-api..." build';
 const agentRuntimeSmokeInvocation =
   "tests/persisted-state-gate/smoke-agent-runtime-image.sh \\\n  2>&1 | tee artifacts/win235/agent-runtime-smoke.log";
+// The one command that starts the core-api candidate, and the verifier it must follow.
+const coreApiSmokeCommand = "node tests/persisted-state-gate/smoke-core-api-image.mjs";
+const candidatePreparationScriptPath = "tests/persisted-state-gate/prepare-candidate-images.sh";
 const expectedV1EvidenceCommands = [
   "pnpm test:ci-policy",
   ...repositoryGovernanceCommands,
@@ -422,6 +429,11 @@ const expectedV1EvidenceCommands = [
   // reason as the capability-matrix suite above: root package.json is a webapp
   // image build input.
   "node --test scripts/deploy-bundle-closure.test.mjs",
+  // What the core-api candidate smoke (build-images.yml `core-api-smoke`) reads
+  // from the compose file and the operation manifest, and every refusal of its
+  // readiness readback, each with a negative control. Invoked directly for the
+  // same reason: root package.json is a webapp image build input.
+  "node --test tests/persisted-state-gate/smoke-core-api-image.test.mjs",
   "node scripts/arch/gen-v1-skeleton.mjs --check",
   "pnpm test:v1-foundation",
   "pnpm test:install-git-hooks",
@@ -2329,6 +2341,50 @@ function policyViolations(input) {
     );
   }
 
+  // THE CORE-API CANDIDATE IS SERVED, NOT ONLY BUILT. An independent verifier
+  // showed a loopback-bound listener and a CMD naming a missing file each passing
+  // every gate that only builds, verifies or loads the image. `core-api-smoke`
+  // starts it; each rule below is how that job could stop meaning anything.
+  const coreApiSmokeJob = buildJobs.get("core-api-smoke");
+  const coreApiSmokeSteps = workflowSteps(coreApiSmokeJob);
+  const flatRun = (step) =>
+    typeof step?.run === "string" ? step.run.replace(/\\\n\s*/gu, " ").replace(/\s+/gu, " ").trim() : "";
+  const coreApiNeeds = [coreApiSmokeJob?.needs ?? []].flat();
+  if (
+    coreApiSmokeJob === undefined ||
+    coreApiSmokeJob.name !== "smoke-candidate-core-api" ||
+    JSON.stringify(coreApiNeeds) !== JSON.stringify(["build-candidates"]) ||
+    coreApiSmokeJob.if !== "${{ !cancelled() }}" ||
+    coreApiSmokeJob["continue-on-error"] !== undefined ||
+    coreApiSmokeJob.defaults?.run?.shell !== undefined ||
+    coreApiSmokeSteps.some((step) => step["continue-on-error"] !== undefined)
+  ) {
+    violations.push(
+      "build-images must serve the core-api candidate in a fail-fast smoke job that runs whenever the candidate matrix finished"
+    );
+  }
+  const coreApiPrepareIndex = coreApiSmokeSteps.findIndex((step) => flatRun(step).startsWith(`${candidatePreparationScriptPath} `));
+  const coreApiSelected = /^\S+ artifacts\/candidates "\$RUNNER_TEMP\/core-api-smoke-oci" true "([^"]+)"$/u
+    .exec(flatRun(coreApiSmokeSteps[coreApiPrepareIndex]))?.[1]
+    ?.split(" ");
+  const matrixNames = new Set(candidates.map((candidate) => candidate.name));
+  if (
+    JSON.stringify(coreApiSelected) !== JSON.stringify(["core-api", "migrations"]) ||
+    !coreApiSelected.every((name) => matrixNames.has(name))
+  ) {
+    violations.push("core-api smoke must verify and load exactly the core-api and migrations candidates");
+  }
+  const coreApiSmokeIndex = coreApiSmokeSteps.findIndex((step) => flatRun(step) === coreApiSmokeCommand);
+  if (
+    countSubstring([input.buildImages], coreApiSmokeCommand) !== 1 ||
+    coreApiSmokeIndex === -1 ||
+    coreApiPrepareIndex === -1 ||
+    coreApiSmokeIndex <= coreApiPrepareIndex ||
+    coreApiSmokeSteps[coreApiSmokeIndex].if !== undefined
+  ) {
+    violations.push("core-api smoke must run the exact smoke script once, unconditionally, after verifying the candidates");
+  }
+
   const inventoryShellCommands = normalizedShellCommands(input.webappInventoryAudit);
   const verifierCommands = inventoryShellCommands.filter((command) => command.startsWith("node scripts/verify-webapp-image-inventory.mjs --image "));
   if (JSON.stringify(verifierCommands) !== JSON.stringify(expectedWebappInventoryVerifierCommands)) {
@@ -4229,6 +4285,25 @@ test("CI policy controls fail under generated semantic source mutations", async 
         ),
     },
     {
+      name: "core-api candidate smoke skipped",
+      expected: "core-api smoke must run the exact smoke script once, unconditionally, after verifying the candidates",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", `run: ${coreApiSmokeCommand}`, "run: echo skipped-core-api-smoke"),
+    },
+    {
+      name: "core-api candidate smoke verifies a narrower candidate set",
+      expected: "core-api smoke must verify and load exactly the core-api and migrations candidates",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", 'true "core-api migrations"', 'true "migrations"'),
+    },
+    {
+      name: "core-api candidate smoke job gated off",
+      expected:
+        "build-images must serve the core-api candidate in a fail-fast smoke job that runs whenever the candidate matrix finished",
+      mutate: (input) =>
+        mutateFixture(input, "buildImages", "if: ${{ !cancelled() }}\n    runs-on: ubuntu-latest", "if: false\n    runs-on: ubuntu-latest"),
+    },
+    {
       name: "exact YAML parser dependency",
       expected: "package.json must pin yaml 2.6.1 as an exact root devDependency",
       mutate: (input) => mutateFixture(input, "packageJson", '"yaml": "2.6.1"', '"yaml": "^2.6.1"'),
@@ -5005,12 +5080,16 @@ test("CI policy controls fail under generated semantic source mutations", async 
   //   Dockerfile table with ONE install instruction, and the install loop derives
   //   THREE controls per such file (the install commented out, the frozen lockfile
   //   dropped, and every install removed).
-  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 = 390. The count is
+  //   CORE-API SMOKE, +4. The `core-api-smoke` job, the first that STARTS the
+  //   core-api candidate. ONE for its `setup-node` step (build-images' count 1 -> 2),
+  //   and THREE for its rules: the smoke command skipped, the verified candidate set
+  //   narrowed, and the job gated off.
+  // 340 + 2 + 9 + 5 + 2 + 1 + 2 + 2 + 4 + 2 + 2 + 2 + 2 + 2 + 1 + 3 + 5 + 1 + 3 + 4 = 394. The count is
   // pinned rather than derived so that a control silently disappearing is a failure
   // rather than a smaller number nobody reads.
   assert.equal(
     controls.length,
-    390,
+    394,
     "semantic mutation control table must cover every declared checkpoint"
   );
   for (const control of controls) {
@@ -5693,6 +5772,36 @@ test("the candidate verifier refuses an archive it has no verification row for",
     });
     assert.notEqual(named.status, 0);
     assert.doesNotMatch(named.stderr, /unexpected candidate archive/u);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("the candidate verifier's subset selection refuses an unknown name and an archive it would leave unverified", () => {
+  // `core-api-smoke` verifies two candidates, not four, so the script takes a
+  // selection. A selection must not become a way to download an archive and
+  // verify nothing about it, nor to name a candidate the list does not have.
+  const directory = mkdtempSync(path.join(os.tmpdir(), "platos-candidate-selection-"));
+  const run = (selection) =>
+    spawnSync("bash", [path.join(repositoryRoot, candidatePreparationScript), directory, path.join(directory, "layout"), "false", selection], {
+      encoding: "utf8",
+      env: { ...process.env, PLATOS_CANDIDATE_SHA: "0".repeat(40), GITHUB_REPOSITORY_OWNER: "example" },
+    });
+  try {
+    const unknown = run("core-api no-such-candidate");
+    assert.equal(unknown.status, 1, unknown.stderr);
+    assert.match(unknown.stderr, /selected candidate with no verification entry: no-such-candidate/u);
+
+    writeFileSync(path.join(directory, "webapp.oci.tar"), "not an image\n");
+    const unselected = run("core-api migrations");
+    assert.equal(unselected.status, 1, unselected.stderr);
+    assert.match(unselected.stderr, /candidate archive present but not selected for verification: webapp\.oci\.tar/u);
+
+    // CONTROL: the same archive, selected, gets past both guards and fails later on
+    // its missing env file, a different refusal carrying neither message.
+    const selected = run("webapp");
+    assert.notEqual(selected.status, 0);
+    assert.doesNotMatch(selected.stderr, /not selected for verification|no verification entry/u);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

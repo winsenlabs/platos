@@ -126,6 +126,82 @@ jobs:
           compression-level: 0
           retention-days: 14
 
+  # SERVE THE CORE-API CANDIDATE. Every other job only builds, verifies or loads
+  # it, and an image that cannot serve (a loopback-bound listener, a CMD naming a
+  # missing file) passes all of that. This job starts the exact loaded candidate
+  # against the migrations candidate and the compose-pinned stores and reads it
+  # back through its published port; the script's header lists every assertion.
+  #
+  # INDEPENDENT OF THE OTHER CANDIDATES. It downloads only the two archives it
+  # serves, verifies exactly those, and runs whenever the matrix finished, so a
+  # red webapp leg or the persisted-state job's webapp inventory step cannot
+  # hide whether core-api serves. A missing core-api or migrations archive fails
+  # the download.
+  core-api-smoke:
+    name: smoke-candidate-core-api
+    needs: build-candidates
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ env.PLATOS_CANDIDATE_SHA }}
+
+      - name: Download the core-api candidate OCI artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: win235-candidate-core-api-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/candidates
+
+      - name: Download the migrations candidate OCI artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: win235-candidate-migrations-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/candidates
+
+      - name: Install checksum-pinned regctl
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/regctl-bin"
+          curl --fail --silent --show-error --location \
+            "https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64" \
+            --output "$RUNNER_TEMP/regctl-bin/regctl"
+          printf '%s  %s\n' "$REGCTL_LINUX_AMD64_SHA256" "$RUNNER_TEMP/regctl-bin/regctl" \
+            | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/regctl-bin/regctl"
+          echo "$RUNNER_TEMP/regctl-bin" >> "$GITHUB_PATH"
+
+      - name: Verify and load the exact core-api and migrations candidates without registry access
+        shell: bash
+        run: |
+          tests/persisted-state-gate/prepare-candidate-images.sh \
+            artifacts/candidates "$RUNNER_TEMP/core-api-smoke-oci" true "core-api migrations"
+
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Serve the exact core-api candidate against migrated stores and read it back
+        shell: bash
+        env:
+          CORE_API_SMOKE_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/core-api-smoke
+        run: node tests/persisted-state-gate/smoke-core-api-image.mjs
+
+      - name: Upload core-api candidate smoke evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: core-api-candidate-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/core-api-smoke
+          if-no-files-found: warn
+          retention-days: 14
+
   persisted-state:
     name: persisted-state-completion
     needs: build-candidates

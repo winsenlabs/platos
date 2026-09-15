@@ -1,17 +1,27 @@
 # Production deploy override — pull pre-built images, never build on the box.
 #
-# Usage on the VPS:
+# Usage on the VPS (scripts/deploy-platos.sh runs this sequence with its gates):
 #   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
 #     pull agent webapp migrations-init memory-profile-migrate clickhouse-migrate
 #   docker compose -f docker-compose.platos.yml -f docker-compose.deploy.yml \
-#     --profile app up -d
+#     up -d agent webapp
 #
-# This override REPLACES the `build:` blocks from docker-compose.platos.yml with
-# registry image refs from GHCR (published only by the separately authorized
-# .github/workflows/publish-images.yml action).
-# Compose ignores `build:` when you don't pass `build`, while this override also
-# removes every application build block and requires immutable digest references
-# so `pull` can only fetch the off-box artifacts that passed the gate.
+# This override REPLACES the `build:` blocks of the services above with registry
+# image refs from GHCR (published only by the separately authorized
+# .github/workflows/publish-images.yml action), and requires immutable digest
+# references so `pull` can only fetch the off-box artifacts that passed the gate.
+#
+# NOT EVERY BUILD BLOCK. `docker compose up` builds any service that has a
+# `build:` block and no local image whether or not `build` is passed, so a
+# service this file does not reset can still compile on the box. These services
+# of docker-compose.platos.yml keep their build block under this override, and
+# scripts/audit-platos-build.mjs holds the list equal to the two files merged:
+#   keeps-build: core-api docs-mcp-bridge
+# core-api is behind the opt-in `core-api` profile and starts only when that
+# profile is named; no publication path produces a digest for it yet.
+# docs-mcp-bridge has no profile, so a bare `up -d` with no service names
+# starts and builds it. Name the services, as the usage above and the deploy
+# script do.
 #
 # Every application and migration image must be supplied as the exact tested
 # `ghcr.io/...@sha256:...` reference. Tags are promotion pointers, not runtime
