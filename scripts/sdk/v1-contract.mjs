@@ -34,6 +34,16 @@
 //   apps/core-api/src/http/idempotency-errors.ts
 //       `IDEMPOTENCY_KEY_HEADER`, so the emitted clients spell the header the
 //       way the middleware reads it rather than the way a doc comment does.
+//   apps/core-api/src/**/*.ts (the handlers) and .../transports/ws/sse.ts
+//       WIN-272 (M4.6). WHICH operations answer with an event stream: a handler
+//       that calls the SSE lane's `openEventStream`, found on the AST. The
+//       document cannot say — the route's 200 reads "No content." — and a client
+//       that sent a stream through the JSON path threw `SyntaxError` on every valid
+//       response. `sse.ts` also supplies the media type, the resume header and the
+//       leading meta event's name, read off the functions that write and read them.
+//   packages/kernel/src/vo/stream-frame.ts
+//       The stream schema-version band, the terminal frame types and the reserved
+//       envelope fields, so the SSE readers classify a frame by the kernel's lists.
 //
 // A DTO edit, a policy row, or a renamed header therefore moves the emitted
 // files, and `--check` fails until somebody regenerates. That is the whole
@@ -60,9 +70,11 @@
 // keeps joining them to the manifest.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import ts from "typescript";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 export const repositoryRoot = resolve(scriptDir, "..", "..");
@@ -79,6 +91,14 @@ export const POLICY_PATH = join(
 export const POLICY_HEADER_PATH = join(
   repositoryRoot, "apps", "core-api", "src", "http", "idempotency-errors.ts",
 );
+export const SSE_TRANSPORT_PATH = join(
+  repositoryRoot, "apps", "core-api", "src", "transports", "ws", "sse.ts",
+);
+export const STREAM_FRAME_PATH = join(
+  repositoryRoot, "packages", "kernel", "src", "vo", "stream-frame.ts",
+);
+/** Where a handler that opens an event stream can live. WALKED, never listed. */
+export const EVENT_STREAM_HANDLER_ROOT = join(repositoryRoot, "apps", "core-api", "src");
 
 export const TYPESCRIPT_OUTPUT = join(
   repositoryRoot, "packages", "platos-client", "src", "generated", "v1.ts",
@@ -150,6 +170,114 @@ export function readIdempotencyHeader(source) {
 }
 
 /**
+ * What the SSE lane writes and reads, off `apps/core-api/src/transports/ws/sse.ts`.
+ *
+ * FOUR FACTS, EACH FROM THE LINE THAT ENACTS IT: the media type `openEventStream`
+ * sets, the name of that opener, the request header `presentedResumeId` reads, and
+ * the event name `encodeStreamMeta` writes. A reader that spelled any of them from
+ * memory would resume with a header the server ignores or wait for a meta frame
+ * that arrives under another name.
+ */
+export function readSseTransport(source) {
+  const opener = /export function ([A-Za-z]+)\(response: StreamResponse\): void \{\s*response\.setHeader\("Content-Type", "([a-z]+\/[a-z-]+)[^"]*"\)/u.exec(source);
+  if (opener === null) fail("sse.ts no longer opens an event stream by setting Content-Type in an exported opener");
+  const resume = /export function presentedResumeId\([^)]*\)[^{]*\{\s*const header = request\.headers\["([a-z0-9-]+)"\]/u.exec(source);
+  if (resume === null) fail("sse.ts no longer reads a resume header off the request");
+  const meta = /`event: ([A-Za-z_.]+)\\ndata: \$\{payload\}/u.exec(source);
+  if (meta === null) fail("sse.ts no longer writes a named leading meta event");
+  return { opener: opener[1], mediaType: opener[2], resumeHeader: resume[1], metaEvent: meta[1] };
+}
+
+/**
+ * The kernel's stream vocabulary, off `packages/kernel/src/vo/stream-frame.ts`.
+ *
+ * Strict for the reason the policy parse is: a list that came back empty would
+ * emit readers that treat no frame as terminal and resume a finished stream forever.
+ */
+export function readStreamVocabulary(source) {
+  const integer = (name) => {
+    const found = new RegExp(`export const ${name}\\s*=\\s*(\\d+);`, "u").exec(source);
+    if (found === null) fail(`stream-frame.ts no longer declares ${name} as an integer literal`);
+    return Number(found[1]);
+  };
+  const list = (name) => {
+    const found = new RegExp(`export const ${name}\\s*=\\s*Object\\.freeze\\(\\[([^\\]]*)\\]`, "u").exec(source);
+    if (found === null) fail(`stream-frame.ts no longer declares ${name} as a frozen array`);
+    const values = [...found[1].matchAll(/"([^"]+)"/gu)].map((match) => match[1]);
+    if (values.length === 0) fail(`${name} parsed as empty`);
+    return values;
+  };
+  const schemaVersion = { min: integer("STREAM_SCHEMA_VERSION_MIN"), max: integer("STREAM_SCHEMA_VERSION_MAX") };
+  if (schemaVersion.min < 1 || schemaVersion.min > schemaVersion.max) {
+    fail(`the kernel's stream schema-version band [${schemaVersion.min}, ${schemaVersion.max}] is empty`);
+  }
+  return {
+    schemaVersion,
+    terminalFrameTypes: list("TERMINAL_FRAME_TYPES"),
+    reservedFrameFields: list("RESERVED_FRAME_FIELDS"),
+  };
+}
+
+/**
+ * `Controller.handler` for every method that opens an event stream.
+ *
+ * ON THE AST, NOT BY PATTERN: a method counts when its body CALLS the opener
+ * `readSseTransport` named. A comment, an import or a string that mentions it is
+ * not a call. The key is the operation's `summary`, which is how the document
+ * names the same handler.
+ */
+export function readEventStreamHandlers(files, opener) {
+  const handlers = new Map();
+  for (const { path, text } of files) {
+    if (!text.includes(opener)) continue;
+    const source = ts.createSourceFile(path, text, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+    const calls = (node) => {
+      let found = false;
+      const walk = (current) => {
+        if (found) return;
+        if (ts.isCallExpression(current) && ts.isIdentifier(current.expression) && current.expression.text === opener) {
+          found = true;
+          return;
+        }
+        ts.forEachChild(current, walk);
+      };
+      walk(node);
+      return found;
+    };
+    const visit = (node, className) => {
+      if (ts.isClassDeclaration(node) && node.name !== undefined) {
+        ts.forEachChild(node, (child) => visit(child, node.name.text));
+        return;
+      }
+      if (ts.isMethodDeclaration(node) && className !== null && node.body !== undefined && ts.isIdentifier(node.name)) {
+        if (calls(node.body)) handlers.set(`${className}.${node.name.text}`, path);
+        return;
+      }
+      ts.forEachChild(node, (child) => visit(child, className));
+    };
+    visit(source, null);
+  }
+  return handlers;
+}
+
+/** Every non-test `.ts` file under a directory, repository-relative and sorted. */
+function listHandlerSources(root, directory) {
+  const found = [];
+  const walk = (absolute) => {
+    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      const next = join(absolute, entry.name);
+      if (entry.isDirectory()) walk(next);
+      else if (/\.ts$/u.test(entry.name) && !/\.(?:test|spec)\.ts$/u.test(entry.name) && !entry.name.endsWith(".d.ts")) {
+        found.push(relative(root, next));
+      }
+    }
+  };
+  walk(join(root, relative(repositoryRoot, directory)));
+  return found.sort();
+}
+
+/**
  * The class of one operation, stated over TEMPLATES.
  *
  * `classifyRequest` in `idempotency-policy.ts` answers the same question over a
@@ -176,7 +304,7 @@ const openApiPath = (template) => template.replaceAll(/:([A-Za-z0-9_]+)/gu, "{$1
  * operation the document derives but the manifest does not carry is impossible
  * — the document is built from the manifest — and is raised rather than skipped.
  */
-export function derivedOperations({ document, manifest, policy }) {
+export function derivedOperations({ document, manifest, policy, streamHandlers = new Map() }) {
   const operations = [];
   for (const entry of manifest.inventories.restOperations) {
     const path = openApiPath(entry.path);
@@ -229,7 +357,14 @@ export function derivedOperations({ document, manifest, policy }) {
         ),
       queryNotDerivedDetail: operation["x-platos-query-not-derived-detail"] ?? null,
       idempotency: classifyTemplate(entry.method, entry.path, policy),
+      // WIN-272 (M4.6). A handler that opens an event stream is emitted as a
+      // STREAMING method. One the document ALSO gives a JSON body is a
+      // contradiction, and is raised rather than resolved in either direction.
+      responseKind: streamHandlers.has(summary) ? "event-stream" : "json",
     });
+    if (operations.at(-1).responseKind === "event-stream" && operations.at(-1).responseSchema !== null) {
+      fail(`${entry.method} ${entry.path}: ${summary} opens an event stream, but the document declares a JSON response body`);
+    }
   }
   if (operations.length === 0) fail("no operation in the document declares a derived schema; the input is wrong");
   return operations;
@@ -439,7 +574,7 @@ function sampleQueryFor(operation) {
 }
 
 /** The request one operation must produce when driven with the sample arguments. */
-function invocationFor(operation, hoisted) {
+function invocationFor(operation, hoisted, stream) {
   const pathParameters = Object.fromEntries(
     operation.pathParameters.map((name) => [name, samplePathValue(name)]),
   );
@@ -482,17 +617,19 @@ function invocationFor(operation, hoisted) {
               .join("&")}`,
       sendsIdempotencyKey: operation.idempotency === "required" || operation.idempotency === "accepted",
       contentType: body === null ? null : "application/json",
+      accept: operation.responseKind === "event-stream" ? stream.mediaType : "application/json",
     },
   };
 }
 
-export function buildFixture({ operations, hoisted, header, sources }) {
+export function buildFixture({ operations, hoisted, header, sources, stream }) {
   return {
     $comment:
       "GENERATED by `pnpm generate:sdk-v1`. The V1 request every generated SDK must produce, " +
       "and the type inventory both must declare. Edited by hand it stops matching the contract " +
       "it was derived from, and `pnpm audit:sdk-v1` fails.",
     idempotencyKeyHeader: header,
+    stream,
     sourceDigests: sources,
     typeNames: [...hoisted.keys()].sort(),
     operations: operations
@@ -505,10 +642,11 @@ export function buildFixture({ operations, hoisted, header, sources }) {
         responseSchema: operation.responseSchema,
         successStatus: operation.successStatus,
         idempotency: operation.idempotency,
+        responseKind: operation.responseKind,
         queryParameters: operation.queryParameters,
         typescript: { namespace: tsNamespace(operation), method: tsMethod(operation) },
         python: { namespace: pyNamespace(operation), method: pyMethod(operation) },
-        ...invocationFor(operation, hoisted),
+        ...invocationFor(operation, hoisted, stream),
       }))
       .sort((left, right) => (left.operationId < right.operationId ? -1 : 1)),
   };
@@ -565,8 +703,70 @@ function pyType(node) {
   }
 }
 
-function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
+/** The stream facts both emitted clients carry, as TypeScript declarations. */
+function typescriptStreamConstants(stream) {
+  return [
+    "/** The media type an event-stream operation answers with, read off core-api's SSE lane. */",
+    `export const EVENT_STREAM_MEDIA_TYPE = ${JSON.stringify(stream.mediaType)};`,
+    "",
+    "/** The request header a reader resumes with, as core-api's SSE lane reads it. */",
+    `export const LAST_EVENT_ID_HEADER = ${JSON.stringify(stream.resumeHeader)};`,
+    "",
+    "/** The SSE event name of the leading frame that states `sv` and the position resumed from. */",
+    `export const STREAM_META_EVENT = ${JSON.stringify(stream.metaEvent)};`,
+    "",
+    "/** The lowest stream schema version (`sv`) this client reads: the kernel's floor. */",
+    `export const STREAM_SCHEMA_VERSION_MIN = ${String(stream.schemaVersion.min)};`,
+    "",
+    "/** The highest stream schema version (`sv`) this client reads: the kernel's ceiling. */",
+    `export const STREAM_SCHEMA_VERSION_MAX = ${String(stream.schemaVersion.max)};`,
+    "",
+    "/** The frame types that end a stream, as the kernel lists them. */",
+    `export const TERMINAL_FRAME_TYPES = [${stream.terminalFrameTypes.map((value) => JSON.stringify(value)).join(", ")}] as const;`,
+    "",
+    "/** The fields the stream envelope owns on the wire, as the kernel lists them. */",
+    `export const RESERVED_FRAME_FIELDS = [${stream.reservedFrameFields.map((value) => JSON.stringify(value)).join(", ")}] as const;`,
+    "",
+  ];
+}
+
+/** One event-stream operation, as a method that returns the stream rather than awaiting a body. */
+function typescriptStreamMember(member, args) {
+  return [
+    "  /**",
+    `   * ${member.method} ${member.template}`,
+    "   *",
+    "   * AN EVENT STREAM, NOT A JSON CALL: core-api's handler opens the SSE lane. The",
+    "   * frames are parsed, admitted by the kernel's `admitFrame` rule and resumed with",
+    "   * `Last-Event-ID` by the transport's `stream`; nothing is sent until iteration.",
+    "   */",
+    `  ${tsMethod(member)}(${[...args, "options?: V1StreamOptions"].join(", ")}): V1EventStream {`,
+    "    return this.transport.stream(",
+    "      {",
+    `        operation: operation(${JSON.stringify(member.operationId)}),`,
+    member.pathParameters.length === 0
+      ? `        path: ${JSON.stringify(member.template)},`
+      : `        path: fill(${JSON.stringify(member.template)}, { ${member.pathParameters.join(", ")} }),`,
+    `        body: ${member.requestSchema === null ? "undefined" : "body"},`,
+    `        query: ${
+      member.queryParameters === "not-derived" || member.queryFields.length > 0 ? "compactQuery(query)" : "undefined"
+    },`,
+    "      },",
+    "      options,",
+    "    );",
+    "  }",
+    "",
+  ];
+}
+
+function emitTypescript({ operations, hoisted, header, wireErrorCodes, stream }) {
   const lines = [...BANNER, "", "/* eslint-disable */", ""];
+  lines.push(
+    "// The hand-written SSE reader owns the stream's runtime types; this module only",
+    "// names them, so the dependency is type-only and erased from the emitted JavaScript.",
+    'import type { V1EventStream, V1StreamOptions } from "../v1-stream.js";',
+    "",
+  );
   lines.push(
     "/** Every `error.code` the canonical taxonomy admits, as the V1 document enumerates it. */",
     "export const WIRE_ERROR_CODES = [",
@@ -578,6 +778,7 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
     "/** The header M0.4 section 2 binds one-time-secret mints to. */",
     `export const IDEMPOTENCY_KEY_HEADER = ${JSON.stringify(header)};`,
     "",
+    ...typescriptStreamConstants(stream),
   );
 
   for (const [name, fields] of hoisted) {
@@ -593,6 +794,9 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
     "/** How a caller must treat `Idempotency-Key` on one operation. */",
     'export type V1IdempotencyClass = "required" | "accepted" | "exempt" | "not-applicable";',
     "",
+    "/** Whether an operation answers with one JSON body or with an event stream. */",
+    'export type V1ResponseKind = "json" | "event-stream";',
+    "",
     "export interface V1Operation {",
     "  readonly operationId: string;",
     "  readonly method: string;",
@@ -601,6 +805,7 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
     "  readonly pathParameters: readonly string[];",
     "  readonly successStatus: number;",
     "  readonly idempotency: V1IdempotencyClass;",
+    "  readonly responseKind: V1ResponseKind;",
     "}",
     "",
     "export const V1_OPERATIONS: readonly V1Operation[] = [",
@@ -614,6 +819,7 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
       `    pathParameters: [${operation.pathParameters.map((name) => JSON.stringify(name)).join(", ")}],`,
       `    successStatus: ${String(operation.successStatus)},`,
       `    idempotency: ${JSON.stringify(operation.idempotency)},`,
+      `    responseKind: ${JSON.stringify(operation.responseKind)},`,
       "  },",
     );
   }
@@ -637,7 +843,13 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
     "}",
     "",
     "export interface V1Transport {",
+    "  /** A JSON operation: one request, one decoded body or a thrown refusal. */",
     "  send<T>(request: V1Request): Promise<T>;",
+    "  /**",
+    "   * An event-stream operation: the frames, admitted and resumed across reconnects.",
+    "   * Never routed through `send`, whose JSON decode throws on every valid stream.",
+    "   */",
+    "  stream(request: V1Request, options?: V1StreamOptions): V1EventStream;",
     "}",
     "",
     "const BY_ID = new Map(V1_OPERATIONS.map((operation) => [operation.operationId, operation]));",
@@ -714,6 +926,10 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
         args.push(`query${optional ? "?" : ""}: { ${shape} }`);
       }
       const returns = member.responseSchema === null ? "void" : member.responseSchema;
+      if (member.responseKind === "event-stream") {
+        lines.push(...typescriptStreamMember(member, args));
+        continue;
+      }
       if (member.queryParameters === "not-derived" && member.queryNotDerivedDetail !== null) {
         lines.push(
           "  /**",
@@ -763,7 +979,7 @@ function emitTypescript({ operations, hoisted, header, wireErrorCodes }) {
   return `${lines.join("\n")}`;
 }
 
-function emitPython({ operations, hoisted, header, wireErrorCodes }) {
+function emitPython({ operations, hoisted, header, wireErrorCodes, stream }) {
   const lines = [
     '"""',
     "GENERATED FILE - DO NOT EDIT.",
@@ -785,6 +1001,27 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
     "",
     "#: The header M0.4 section 2 binds one-time-secret mints to.",
     `IDEMPOTENCY_KEY_HEADER = ${JSON.stringify(header)}`,
+    "",
+    "#: The media type an event-stream operation answers with, read off core-api's SSE lane.",
+    `EVENT_STREAM_MEDIA_TYPE = ${JSON.stringify(stream.mediaType)}`,
+    "",
+    "#: The request header a reader resumes with, as core-api's SSE lane reads it.",
+    `LAST_EVENT_ID_HEADER = ${JSON.stringify(stream.resumeHeader)}`,
+    "",
+    "#: The SSE event name of the leading frame that states ``sv`` and the position resumed from.",
+    `STREAM_META_EVENT = ${JSON.stringify(stream.metaEvent)}`,
+    "",
+    "#: The lowest stream schema version (``sv``) this client reads: the kernel's floor.",
+    `STREAM_SCHEMA_VERSION_MIN = ${String(stream.schemaVersion.min)}`,
+    "",
+    "#: The highest stream schema version (``sv``) this client reads: the kernel's ceiling.",
+    `STREAM_SCHEMA_VERSION_MAX = ${String(stream.schemaVersion.max)}`,
+    "",
+    "#: The frame types that end a stream, as the kernel lists them.",
+    `TERMINAL_FRAME_TYPES: tuple[str, ...] = (${stream.terminalFrameTypes.map((value) => JSON.stringify(value)).join(", ")},)`,
+    "",
+    "#: The fields the stream envelope owns on the wire, as the kernel lists them.",
+    `RESERVED_FRAME_FIELDS: tuple[str, ...] = (${stream.reservedFrameFields.map((value) => JSON.stringify(value)).join(", ")},)`,
     "",
   ];
 
@@ -810,6 +1047,7 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
 
   lines.push(
     'V1IdempotencyClass = Literal["required", "accepted", "exempt", "not-applicable"]',
+    'V1ResponseKind = Literal["json", "event-stream"]',
     "",
     "",
     "class V1Operation(TypedDict):",
@@ -819,6 +1057,7 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
     "    pathParameters: list[str]",
     "    successStatus: int",
     "    idempotency: V1IdempotencyClass",
+    "    responseKind: V1ResponseKind",
     "",
     "",
     "V1_OPERATIONS: tuple[V1Operation, ...] = (",
@@ -832,6 +1071,7 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
       `        "pathParameters": [${operation.pathParameters.map((name) => JSON.stringify(name)).join(", ")}],`,
       `        "successStatus": ${String(operation.successStatus)},`,
       `        "idempotency": ${JSON.stringify(operation.idempotency)},`,
+      `        "responseKind": ${JSON.stringify(operation.responseKind)},`,
       "    },",
     );
   }
@@ -852,6 +1092,9 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
     "class V1Transport(Protocol):",
     "    def send(self, request: V1Request) -> Any:",
     '        """Perform one V1 request and return its decoded body."""',
+    "",
+    "    def stream(self, request: V1Request, **options: Any) -> Any:",
+    '        """Open one event-stream operation; its frames are admitted and resumed across reconnects."""',
     "",
     "",
     "_BY_ID = {operation[\"operationId\"]: operation for operation in V1_OPERATIONS}",
@@ -912,6 +1155,10 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
         }
       }
       const returns = member.responseSchema === null ? "None" : `"${member.responseSchema}"`;
+      if (member.responseKind === "event-stream") {
+        lines.push(...pythonStreamMember(member, args));
+        continue;
+      }
       lines.push(`    def ${pyMethod(member)}(${args.join(", ")}) -> ${returns}:`);
       if (member.queryParameters === "not-derived" && member.queryNotDerivedDetail !== null) {
         lines.push(
@@ -961,6 +1208,33 @@ function emitPython({ operations, hoisted, header, wireErrorCodes }) {
   return lines.join("\n");
 }
 
+/** One event-stream operation, as a Python method that returns the stream. */
+function pythonStreamMember(member, args) {
+  const values = member.pathParameters.map((name) => `${JSON.stringify(name)}: ${snake(name)}`).join(", ");
+  return [
+    `    def ${pyMethod(member)}(${[...args, "**options: Any"].join(", ")}) -> Any:`,
+    '        """' + `${member.method} ${member.template}`,
+    "",
+    "        An event stream, not a JSON call: core-api's handler opens the SSE lane. The",
+    "        frames are parsed, admitted by the kernel's ``admitFrame`` rule and resumed",
+    "        with ``Last-Event-ID`` by the transport's ``stream``; nothing is sent until",
+    "        iteration. ``options`` are that method's keywords.",
+    '        """',
+    "        return self._transport.stream(",
+    "            {",
+    `                "operation": _operation(${JSON.stringify(member.operationId)}),`,
+    member.pathParameters.length === 0
+      ? `                "path": ${JSON.stringify(member.template)},`
+      : `                "path": _fill(${JSON.stringify(member.template)}, {${values}}),`,
+    `                "body": ${member.requestSchema === null ? "None" : "body"},`,
+    `                "query": ${pyQueryArgument(member)},`,
+    "            },",
+    "            **options,",
+    "        )",
+    "",
+  ];
+}
+
 /**
  * The Python expression that assembles one operation's query dict.
  *
@@ -1003,13 +1277,31 @@ export function buildArtifacts({ root = repositoryRoot, overrides = new Map() } 
   const manifestText = read(MANIFEST_PATH);
   const policyText = read(POLICY_PATH);
   const headerText = read(POLICY_HEADER_PATH);
+  const sseText = read(SSE_TRANSPORT_PATH);
+  const streamFrameText = read(STREAM_FRAME_PATH);
 
   const document = JSON.parse(openapiText);
   const manifest = JSON.parse(manifestText);
   const policy = readIdempotencyPolicy(policyText);
   const header = readIdempotencyHeader(headerText);
+  const sse = readSseTransport(sseText);
+  const vocabulary = readStreamVocabulary(streamFrameText);
+  const handlerFiles = listHandlerSources(root, EVENT_STREAM_HANDLER_ROOT).map((path) => ({
+    path,
+    text: read(join(repositoryRoot, path)),
+  }));
+  const streamHandlers = readEventStreamHandlers(handlerFiles, sse.opener);
+  if (streamHandlers.size === 0) {
+    fail(`no handler under ${relative(repositoryRoot, EVENT_STREAM_HANDLER_ROOT)} calls ${sse.opener}; the event-stream join is gone`);
+  }
+  const stream = {
+    mediaType: sse.mediaType,
+    resumeHeader: sse.resumeHeader,
+    metaEvent: sse.metaEvent,
+    ...vocabulary,
+  };
 
-  const operations = derivedOperations({ document, manifest, policy });
+  const operations = derivedOperations({ document, manifest, policy, streamHandlers });
   const hoisted = analyseComponents(document, operations);
 
   const wireErrorCodes = document.components?.schemas?.WireError?.properties?.code?.enum;
@@ -1022,12 +1314,19 @@ export function buildArtifacts({ root = repositoryRoot, overrides = new Map() } 
     "apps/agent/src/control-plane/operation-manifest.generated.json": digest(manifestText),
     "apps/core-api/src/http/idempotency-policy.ts": digest(policyText),
     "apps/core-api/src/http/idempotency-errors.ts": digest(headerText),
+    [relative(repositoryRoot, SSE_TRANSPORT_PATH)]: digest(sseText),
+    [relative(repositoryRoot, STREAM_FRAME_PATH)]: digest(streamFrameText),
+    ...Object.fromEntries(
+      [...new Set(streamHandlers.values())]
+        .sort()
+        .map((path) => [path, digest(handlerFiles.find((file) => file.path === path).text)]),
+    ),
   };
 
   return {
-    [TYPESCRIPT_OUTPUT]: `${emitTypescript({ operations, hoisted, header, wireErrorCodes })}`,
-    [PYTHON_OUTPUT]: `${emitPython({ operations, hoisted, header, wireErrorCodes })}`,
-    [FIXTURE_OUTPUT]: `${JSON.stringify(buildFixture({ operations, hoisted, header, sources }), null, 2)}\n`,
+    [TYPESCRIPT_OUTPUT]: `${emitTypescript({ operations, hoisted, header, wireErrorCodes, stream })}`,
+    [PYTHON_OUTPUT]: `${emitPython({ operations, hoisted, header, wireErrorCodes, stream })}`,
+    [FIXTURE_OUTPUT]: `${JSON.stringify(buildFixture({ operations, hoisted, header, sources, stream }), null, 2)}\n`,
   };
 }
 
@@ -1078,4 +1377,18 @@ function runCli(argv = process.argv.slice(2)) {
 
 export { GenerationError, runCli };
 
-if (resolve(process.argv[1] ?? "") === fileURLToPath(import.meta.url)) runCli();
+/**
+ * Whether this module is the entry point, compared by REAL path: a symlinked
+ * invocation (macOS `/tmp`) otherwise skips `runCli()` and `--check` exits 0
+ * having compared nothing.
+ */
+function isEntryPoint() {
+  if (process.argv[1] === undefined) return false;
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntryPoint()) runCli();

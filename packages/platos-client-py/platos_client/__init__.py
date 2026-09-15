@@ -59,6 +59,10 @@ _LAZY = {
     "IDEMPOTENCY_KEY_HEADER": ("platos_client.generated.v1", "IDEMPOTENCY_KEY_HEADER"),
     "V1HttpTransport": ("platos_client.v1_transport", "V1HttpTransport"),
     "create_v1_client": ("platos_client.v1_transport", "create_v1_client"),
+    # WIN-272 (M4.6) — the event-stream reader behind `environment_streams.read`.
+    "V1EventStream": ("platos_client.v1_stream", "V1EventStream"),
+    "PlatosStreamError": ("platos_client.v1_stream", "PlatosStreamError"),
+    "SseParser": ("platos_client.v1_stream", "SseParser"),
 }
 
 
@@ -97,4 +101,7 @@ __all__ = [
     "IDEMPOTENCY_KEY_HEADER",
     "V1HttpTransport",
     "create_v1_client",
+    "V1EventStream",
+    "PlatosStreamError",
+    "SseParser",
 ]

@@ -153,6 +153,50 @@ indistinguishable from one the taxonomy minted.
 effect is that the error types and the V1 client import with no third-party
 dependency at all.
 
+### Reading an event stream
+
+`environmentStreams.read` (`environment_streams.read` in Python) is an event
+stream, and the generated method is now a **streaming method**. **This changes
+its signature**: it used to return `Promise<void>` through the JSON transport,
+which threw `SyntaxError` on every valid stream, so no working caller depended on
+the old shape.
+
+```ts
+const stream = v1.environmentStreams.read(environmentId, streamId);
+for await (const frame of stream) render(frame); // frame: { sv, t, seq, ts, ...fields }
+// stream.end: { kind: "completed" } | { kind: "failed", code } | ...
+```
+
+```python
+stream = v1.environment_streams.read(environment_id, stream_id)
+for frame in stream:
+    render(frame)
+```
+
+Nothing is sent until you iterate. The reader then:
+
+| On the wire | What the reader does |
+|---|---|
+| the leading `stream_meta` event | checks `sv` is in the band this SDK reads and `replayFrom` is the position it asked for; anything else is a `PlatosStreamError` |
+| a frame the kernel's `admitFrame` says to apply | hands it to you and records its `seq` and its `id:` cursor |
+| a frame at or behind that position | drops it: redelivery after a reconnect is normal |
+| a frame ahead of it (frames were lost) | abandons the connection and re-reads after the last applied cursor |
+| `turn.done` or `stream.error` | ends the iteration; `stream.end` says which |
+| `stream.offline`, or a connection that stops with no terminal frame | reconnects with `Last-Event-ID`, up to `maxReconnects` (`max_reconnects`; default 5), then throws |
+| a 5xx or 429 before the stream opens | retries with the same cursor; any other refusal is thrown as before |
+
+A request carries no per-request timeout: a stream is long by design. Instead a
+connection that delivers nothing — heartbeats included — for `idleTimeoutMs`
+(`idle_timeout_s`; default 45 seconds, three of the server's heartbeats) is
+treated as severed and resumed.
+
+To continue in another process, save `stream.lastEventId` and `stream.lastSeq`
+and pass both back (`lastEventId` + `lastSeq`, or `last_event_id` + `last_seq`);
+one without the other is refused, because a frame is admitted against a sequence
+and the cursor is opaque. A custom `V1Transport` must now implement
+`stream(request, options)` as well as `send`, and `V1Operation` carries
+`responseKind`.
+
 ## Retries
 
 `PlatosClient` in `@platosdev/client` now retries a failed request only when
