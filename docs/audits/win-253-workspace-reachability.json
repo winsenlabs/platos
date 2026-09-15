@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "0982be8524839c63fa88f47a33c861dcaaf02d73b89dd27daedef958e7735916",
+  "evidenceSha256": "5e8ad217e5af3ca90181f35daf7dcb9df18f599e857475a3053afb653c7d8302",
   "generatedOwnership": {
     "explicitHeaderFileCount": 21,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "306b84e46a94421c66d7ae58cebfe7fb6f1aeb8ffeba3d9018db7fe27559a9c2",
+    "aggregateSha256": "298963fecf5b2e174b684597e0e05788157b40fe5ad545f49b1fd88c81e69146",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -1803,7 +1803,7 @@
       },
       {
         "path": "apps/agent/src/openapi/openapi.generated.json",
-        "sha256": "e2fa1cbe96e68125b819b44823e862dfbb78cd0aa998118acc8fda4950bc9adc"
+        "sha256": "c180bc86b657798632054cb1a5369827e1d57a824c3fccba7b0a84972866f371"
       },
       {
         "path": "apps/agent/src/openapi/openapi.module.ts",
@@ -2563,7 +2563,7 @@
       },
       {
         "path": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts",
-        "sha256": "db6965a1e1964455ceca56073a9551c36c1cac447fc1471dc5623a861bf58e56"
+        "sha256": "d9f3b38959b32bc964115a1fe7476e3c83a5433a927479285ee0b9eeec4ac08e"
       },
       {
         "path": "apps/core-api/src/composition/installation.test.ts",
@@ -2787,7 +2787,7 @@
       },
       {
         "path": "apps/core-api/src/transports/bff/magic-link.controller.ts",
-        "sha256": "01c5b0042dbb82222a8779aae83b3f27fc639dbaf0c08d3e159b92a75b0d5e64"
+        "sha256": "47b872a469c42df7ec828910358e6250f57b8b85403408d1ebe57c0876d78a45"
       },
       {
         "path": "apps/core-api/src/transports/bff/session.controller.ts",
@@ -2859,7 +2859,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
-        "sha256": "170d56bf8d5db356e94fbe5c767e3dcc0543b267f9a4b2bd0d887d7014c40af5"
+        "sha256": "6ee764896951c1c21c8bda2920a02ae1d9807c6fef0cb8dbfe1f9351253cf3f1"
       },
       {
         "path": "apps/core-api/src/transports/rest/environment-variables.controller.ts",
@@ -2871,7 +2871,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-rest.test.ts",
-        "sha256": "bea9ce984929dc4e017ed3808c2eb2c1ef37db0fca2d6dffa4b1ee9b0764e27c"
+        "sha256": "bae57081098bc28d4b680511765d5352623f810b6bced99e8124573d6b27c50b"
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-session.controller.ts",
@@ -2879,7 +2879,7 @@
       },
       {
         "path": "apps/core-api/src/transports/rest/identity-tenancy-rest.test.ts",
-        "sha256": "18863aa3cf1e4d5f073ef31c73a73822b3c9a5a4d1325ba3615ec84ed1061743"
+        "sha256": "19486186687a76a0bba610e9e623ec8f3e6427bcbeb26e2f391a56b8667e1b30"
       },
       {
         "path": "apps/core-api/src/transports/rest/index.ts",
@@ -6023,7 +6023,7 @@
       },
       {
         "path": "docs/openapi-v1-baseline.json",
-        "sha256": "86371861a655e3917cd746bb76dbc438cec83ba6879bdabea61c087c8b16feb6"
+        "sha256": "b77ec640c1988d300fe4606f8df43bffc9775901591ef87a1ce7a4b8f444face"
       },
       {
         "path": "docs/openapi.yml",
@@ -15539,7 +15539,7 @@
       },
       {
         "path": "packages/contexts/identity-access/application/identity-access-service.ts",
-        "sha256": "95e1c56400010a6adfd3eb7790b35d8bb2ae0c3a3ec604c6f46236a44f1c5621"
+        "sha256": "eb2171c483311eeaf42da60a2f98a89d97cfa1d62be62f67ef03f8ae8ddbd89d"
       },
       {
         "path": "packages/contexts/identity-access/application/impersonation.test.ts",
@@ -15691,7 +15691,7 @@
       },
       {
         "path": "packages/contexts/identity-access/domain/errors.ts",
-        "sha256": "0c319217827af0a15a843c56e8a3767c388a1bd5521b16c8c15c68547c2751f1"
+        "sha256": "6cd47f32dcdcc02c8f51abce4c15f1450dd2205891d95f9d303b3afdc18235dc"
       },
       {
         "path": "packages/contexts/identity-access/domain/index.ts",
@@ -19759,7 +19759,7 @@
       },
       {
         "path": "packages/platos-client-py/platos_client/generated/v1.py",
-        "sha256": "bbd513be9944c21defbca006b27835e120774be7d5fa146a3bc808ea5c13935e"
+        "sha256": "3175cef1becfe754f742accfd5b9d6d7a2ac2420b6dadc8cb5d6593dcd5ebd33"
       },
       {
         "path": "packages/platos-client-py/platos_client/py.typed",
@@ -19855,7 +19855,7 @@
       },
       {
         "path": "packages/platos-client/src/generated/v1.ts",
-        "sha256": "bfa92d6845674935aa5a081f80486479245995e2f00afd9a16c45f14e1aef1ec"
+        "sha256": "0c9c5c4d6fedae8fde6776e853873e84ac99c21a477d762ca01b6661dccddd8e"
       },
       {
         "path": "packages/platos-client/src/index.ts",
@@ -21251,7 +21251,7 @@
       },
       {
         "path": "tests/sdk-contract/v1-fixtures.json",
-        "sha256": "37ecf44d5ede263fa4886dbe4decf16426cec04c2bbb79c3ce69dc6cd94ebdf2"
+        "sha256": "b20e99c00435bda03289f825ea2f160bd3aeea0352942487301170f01286ed41"
       },
       {
         "path": "tests/vocabulary-fixtures/scenarios.mjs",
@@ -24543,6 +24543,11 @@
               "line": 139
             },
             {
+              "from": "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts",
+              "kind": "reference",
+              "line": 679
+            },
+            {
               "from": "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
               "kind": "reference",
               "line": 8
@@ -25744,6 +25749,10 @@
               "apps/core-api/src/composition/identity-rest.integration.test.ts"
             ],
             [
+              "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts",
+              "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts"
+            ],
+            [
               "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
               "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts"
             ],
@@ -26218,6 +26227,7 @@
             "apps/agent/src/trigger-tasks/registration-manifest.test.ts",
             "apps/agent/test/setup.ts",
             "apps/core-api/src/composition/identity-rest.integration.test.ts",
+            "apps/core-api/src/composition/identity-tenancy-rest.integration.test.ts",
             "apps/core-api/src/composition/mcp-organization-policy.integration.test.ts",
             "apps/core-api/src/composition/mcp-token-mint.integration.test.ts",
             "apps/core-api/src/composition/operator-authentication.integration.test.ts",
@@ -26333,7 +26343,7 @@
           "apps/agent"
         ]
       },
-      "evidenceSha256": "91e7d211f6e5b245413443318e5431c804cfd8cd54655ccaa9e8b311ba9da03b",
+      "evidenceSha256": "a014b86c13249bb62ea3926907aab6cfd7bf3e809640e802f8b27496413f379a",
       "manifestSha256": "fb2672b4f608ba550dae81193ca9fbf7f9347a1402bd16841914dd9373e8e4af",
       "name": "platos-agent",
       "ociImageClosure": {
@@ -78694,7 +78704,7 @@
             {
               "file": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
               "from": "apps/core-api",
-              "line": 34,
+              "line": 54,
               "specifier": "@platos/context-tenancy"
             },
             {
@@ -80790,7 +80800,7 @@
           "packages/contexts/tools"
         ]
       },
-      "evidenceSha256": "867671b835c92da0a8f6b8eaaecd5dc666ff9146eec72608d0303620085d93a0",
+      "evidenceSha256": "63ea56f94cc325ca46714ca4532435eec07b5e0f71e39faad40f4241d3ae04d7",
       "manifestSha256": "552444b4f4df12b062f2eb788b926946ca8310d37b21721f111e9995e78b2a94",
       "name": "@platos/context-tenancy",
       "ociImageClosure": {
@@ -85142,7 +85152,7 @@
             {
               "file": "apps/core-api/src/transports/bff/magic-link.controller.ts",
               "from": "apps/core-api",
-              "line": 48,
+              "line": 67,
               "specifier": "@platos/kernel"
             },
             {
@@ -85208,7 +85218,7 @@
             {
               "file": "apps/core-api/src/transports/rest/environment-scope.controller.ts",
               "from": "apps/core-api",
-              "line": 33,
+              "line": 53,
               "specifier": "@platos/kernel"
             },
             {
@@ -95673,7 +95683,7 @@
           "packages/kernel"
         ]
       },
-      "evidenceSha256": "095ad75c9f3d26d5926479080b9f98d720718e4ff91c0f312b574a2f552ad20d",
+      "evidenceSha256": "8216c291bdff810ae7414b611ada1212c1561631060baeca589899e8a7976f87",
       "manifestSha256": "4f315c3595455a1866bf39b540a93c4e447888035d3c5a445fc0bbf836219212",
       "name": "@platos/kernel",
       "ociImageClosure": {
