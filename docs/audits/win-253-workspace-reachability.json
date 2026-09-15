@@ -22,7 +22,7 @@
     "repositoryDev": "OCI image roots plus devDependencies",
     "workspaceRegistration": "filesystem package.json paths matched by pnpm-workspace.yaml, exact-set checked against lockfile importers"
   },
-  "evidenceSha256": "f02ed6be252cc323851fc50d35abb83c92ea96b4ee695e478e56d9e7b72b0dda",
+  "evidenceSha256": "69334b1bd4de98001d44fc97ab456866afdb47b9e15719dc1d7e412918e15514",
   "generatedOwnership": {
     "explicitHeaderFileCount": 22,
     "generatedProjectCount": 39,
@@ -115,7 +115,7 @@
     ]
   },
   "inputs": {
-    "aggregateSha256": "673c19a9c9a6e0cbce782fd35ae1e6d538988e9b08b179b89f603c1bbcb514e5",
+    "aggregateSha256": "5e867d7006523bb6910ece72819ba6b3cc1d47c7f49693947f4c55eab017749a",
     "files": [
       {
         "path": ".changeset/README.md",
@@ -4627,11 +4627,11 @@
       },
       {
         "path": "docs/audits/win-269-tool-lifecycle-reach.json",
-        "sha256": "5fa935b57e9b3465f78f74244b585654ad7acd03299d11679fe654eb8e69d66c"
+        "sha256": "d9e11abcc8e511c9f423275cd55281b28e8ae50811b97ae4c8ad081323011a1d"
       },
       {
         "path": "docs/audits/win-269-tool-lifecycle-reach.md",
-        "sha256": "17448273e5be4f71adb7b24dbd9d8222d4977355db420c07e3dff1d42433f9aa"
+        "sha256": "789768f58952fe907bd2c2938f9307154b14036571fb4204ae668a334a7ac298"
       },
       {
         "path": "docs/audits/win-284-differential-coverage.json",
@@ -4643,7 +4643,7 @@
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.json",
-        "sha256": "06c6c3a5a737c0d05e207bf333332ea061fa20c202d7ca2b54daf5bbe550ca31"
+        "sha256": "ddb91ae17203c9a6128a2018204b52a92530a04d0bdcba44b20c4a8d7034695d"
       },
       {
         "path": "docs/audits/win253-removals/clickhouse-split.md",
