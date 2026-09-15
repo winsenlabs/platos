@@ -29,7 +29,13 @@ function scenario() {
   });
   seedMember(fixture.store, globex, "rival", { organizationRole: OrganizationRole.OWNER });
   for (const user of ["owner", "member", "gone", "rival"]) {
-    fixture.operators.add({ userId: userId(user), email: normalizeEmail(`${user}@example.com`), disabledAt: null });
+    fixture.operators.add({
+      userId: userId(user),
+      email: normalizeEmail(`${user}@example.com`),
+      // One named account, so the listing is seen to carry the name AND the null.
+      displayName: user === "owner" ? "Olive Owner" : null,
+      disabledAt: null,
+    });
   }
   return { fixture, acme, globex, tenancy: createTenancyService(fixture.dependencies) };
 }
@@ -45,9 +51,9 @@ describe("listOrganizationMembers — settings.team, ported", () => {
     if (!listed.ok) return;
     // Both rows share the record builders' epoch, so the oracle's `createdAt asc`
     // falls to the id tiebreak: `member-in-acme` before `owner-in-acme`.
-    expect(listed.value.map((row) => [row.membership.role, row.account?.email])).toEqual([
-      [OrganizationRole.MEMBER, "member@example.com"],
-      [OrganizationRole.OWNER, "owner@example.com"],
+    expect(listed.value.map((row) => [row.membership.role, row.account?.email, row.account?.displayName])).toEqual([
+      [OrganizationRole.MEMBER, "member@example.com", null],
+      [OrganizationRole.OWNER, "owner@example.com", "Olive Owner"],
     ]);
   });
 

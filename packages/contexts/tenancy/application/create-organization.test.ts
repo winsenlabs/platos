@@ -15,6 +15,7 @@ function scenario(options: { readonly disabledAt?: Date | null } = {}) {
   fixture.operators.add({
     userId: FOUNDER,
     email: normalizeEmail("ada@example.com"),
+    displayName: null,
     disabledAt: options.disabledAt ?? null,
   });
   return { fixture, create: createCreateOrganization(fixture.dependencies) };

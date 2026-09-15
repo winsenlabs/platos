@@ -24,6 +24,7 @@ function scenario() {
   fixture.operators.add({
     userId: ADA,
     email: normalizeEmail(EMAIL),
+    displayName: null,
     disabledAt: null,
   });
   return {
@@ -223,6 +224,7 @@ describe("acceptInvitation", () => {
     fixture.operators.add({
       userId: ADA,
       email: normalizeEmail(EMAIL),
+      displayName: null,
       disabledAt: new Date("2026-01-02T00:00:00.000Z"),
     });
     const issued = await issue({

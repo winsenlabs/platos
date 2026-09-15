@@ -1,7 +1,7 @@
 // The notifier-email adapter's refusals — one code per distinct failure.
 //
 // `scripts/error-taxonomy.mjs` scans `packages/adapters` and holds every code here
-// to `docs/error-taxonomy.json`; its rule is the reason there are five and not
+// to `docs/error-taxonomy.json`; its rule is the reason there are six and not
 // one: an operator told "the relay refused" must be able to tell a relay that
 // never answered from one that answered no, and both from a message this adapter
 // would not write.
@@ -42,6 +42,24 @@ export function insecureAuthenticationRefused(): DomainError {
     "NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED",
     "unavailable",
     "The email relay offered no TLS, so its credentials were not sent",
+  );
+}
+
+/**
+ * TLS is required (`PLATOS_CHANNELS_EMAIL_REQUIRE_TLS`, true unless set false)
+ * and the connection has none: an `smtp://` relay that offered no STARTTLS, or a
+ * path that stripped the offer from its EHLO reply.
+ *
+ * Refused BEFORE the envelope, and distinct from
+ * `NOTIFIER_EMAIL_INSECURE_AUTH_REFUSED`: that one protects a relay PASSWORD and
+ * holds whatever this setting says; this one protects the MESSAGE — a sign-in
+ * link is a login-capable secret — and an operator fixes the two differently.
+ */
+export function insecureTransportRefused(): DomainError {
+  return domainError(
+    "NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED",
+    "unavailable",
+    "The email relay offered no TLS, so the message was not sent",
   );
 }
 

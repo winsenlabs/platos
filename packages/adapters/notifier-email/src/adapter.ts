@@ -22,7 +22,8 @@
 // identity-access decided before calling, nor any budget fact.
 //
 // THE TOKEN IS WRITTEN INTO THE LINK AND INTO NOTHING ELSE: not a log line, not a
-// refusal's `details`, not a header.
+// refusal's `details`, not a header — and, unless an install turns
+// `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS` off, not onto a connection without TLS.
 
 import { randomUUID } from "node:crypto";
 
@@ -66,6 +67,14 @@ export interface NotifierEmailOptions {
   readonly clock: { now(): Date };
   /** The whole relay transaction's budget. Fifteen seconds unless told otherwise. */
   readonly timeoutMs?: number;
+  /**
+   * `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS`. TRUE UNLESS SET FALSE: every message —
+   * a sign-in link is a login-capable secret — goes over `smtps:` or a
+   * STARTTLS-upgraded connection, or not at all
+   * (`NOTIFIER_EMAIL_INSECURE_TRANSPORT_REFUSED`). `false` exists for a local
+   * sink that speaks no TLS; it never lets credentials go in clear.
+   */
+  readonly requireTls?: boolean;
   /** A private CA for the relay's certificate. Verification is never turned off. */
   readonly tls?: SmtpOptions["tls"];
 }
@@ -126,6 +135,7 @@ function buildAdapter(
 ): NotifierEmailAdapter {
   const smtp: SmtpOptions = {
     timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    requireTls: options.requireTls ?? true,
     ...(options.tls === undefined ? {} : { tls: options.tls }),
   };
   const senderDomain = domainOf(from);

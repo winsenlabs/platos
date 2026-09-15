@@ -34,6 +34,21 @@
 // and against the account's own. The claimed address here is the authenticated
 // operator's — the one identity-access verified by delivering a sign-in link to
 // it — so a body field cannot claim somebody else's. The token is the only input.
+//
+// -----------------------------------------------------------------------------
+// AND IT SPENDS THE INVITE_ACCEPT BUDGET FIRST, AS THE ORACLE DOES
+//
+// The oracle's `PlatosAuthService.acceptInvitation`
+// (`internal-packages/tenancy-database/src/auth.ts`) consumes
+// `AuthRateLimitAction.INVITE_ACCEPT` before its transaction opens, so a caller
+// guessing tokens is refused at the limiter whether or not a guess would have
+// matched. The budget belongs to identity-access and the use case to tenancy, and
+// neither context may reach into the other's application, so the TRANSPORT spends
+// it through identity-access's published `consumeRateLimit` and only then calls
+// tenancy — two published methods, in the oracle's order. The bucket is the
+// authenticated ACTOR (the human guessing, not an impersonated account), and the
+// scope is null because no organization is known until the token resolves. With
+// the limiter unreachable this refuses under D3 (`RATE_LIMIT_FAILED_CLOSED`).
 
 import { Body, Controller, HttpCode, HttpStatus, Inject, Param, Post, Req } from "@nestjs/common";
 
@@ -46,7 +61,12 @@ import { BodyReader, jsonBody } from "./body.js";
 import { REST_APPLICATION, type RestApplication } from "./dependencies.js";
 import { itemEnvelope, type ItemEnvelope } from "./envelope.js";
 import { raise } from "./fault.js";
-import { authenticateOperator, requireTenancy, type InboundOperatorRequest } from "./operator.js";
+import {
+  authenticateOperator,
+  requireIdentityAccess,
+  requireTenancy,
+  type InboundOperatorRequest,
+} from "./operator.js";
 import { instant } from "./resources.js";
 import { requestInvalid } from "./transport-errors.js";
 
@@ -106,6 +126,11 @@ export const acceptInvitationValidator = (input: unknown): Result<AcceptInvitati
   return reader.finish({ token });
 };
 
+/** The INVITE_ACCEPT bucket for one authenticated human. See the banner. */
+export function inviteAcceptBucket(actorUserId: string): string {
+  return `invite-accept:user:${actorUserId}`;
+}
+
 const ISSUE_PIPE = new DomainValidationPipe(issueInvitationValidator);
 const ACCEPT_PIPE = new DomainValidationPipe(acceptInvitationValidator);
 
@@ -146,6 +171,13 @@ export class InvitationsController {
   ): Promise<ItemEnvelope<AcceptedInvitationResource>> {
     const app = this.application.app;
     const operator = await authenticateOperator(app, request);
+    const budget = await requireIdentityAccess(app).consumeRateLimit({
+      action: "INVITE_ACCEPT",
+      identifier: inviteAcceptBucket(operator.actorUserId),
+      scope: null,
+      principalId: null,
+    });
+    if (!budget.ok) raise(budget.error);
     const accepted = await requireTenancy(app).acceptInvitation({
       token: body.token,
       userId: asIdentifier<UserId>(operator.effectiveUserId),

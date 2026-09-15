@@ -18,6 +18,11 @@ import type { EmailAddress, UserId } from "../../domain/index.js";
 export interface OperatorAccount {
   readonly userId: UserId;
   readonly email: EmailAddress;
+  /**
+   * identity-access's `User.displayName`, or null. Read by the member listing
+   * alone: `settings.team` renders `displayName ?? email`. No rule decides on it.
+   */
+  readonly displayName: string | null;
   /** identity-access's `User.disabledAt`. A disabled account accepts nothing. */
   readonly disabledAt: Date | null;
 }

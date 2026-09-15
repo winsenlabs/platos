@@ -193,6 +193,28 @@ describe("INCOMPLETE — D20's email relay with no sign-in page", () => {
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
     expect(outcome.value.channels.emailNotifier?.loginUrl).toBe("https://app.platos.example/magic");
+    // TLS IS REQUIRED BY DEFAULT: an install that says nothing gets a relay that
+    // will not carry a sign-in link over a connection without TLS.
+    expect(outcome.value.channels.emailNotifier?.requireTls).toBe(true);
+  });
+
+  it("turns required TLS off only for exactly `false`, and refuses any other spelling by name", () => {
+    const declared = {
+      ...MINIMAL,
+      PLATOS_CHANNELS_EMAIL_SMTP_URL: "smtp://mailpit.local:1025",
+      PLATOS_CHANNELS_EMAIL_FROM: "login@platos.example",
+      PLATOS_CHANNELS_EMAIL_LOGIN_URL: "https://app.platos.example/magic",
+    };
+    const off = loadPlatformConfiguration({ ...declared, PLATOS_CHANNELS_EMAIL_REQUIRE_TLS: "false" });
+    expect(off.ok).toBe(true);
+    if (!off.ok) return;
+    expect(off.value.channels.emailNotifier?.requireTls).toBe(false);
+    const on = loadPlatformConfiguration({ ...declared, PLATOS_CHANNELS_EMAIL_REQUIRE_TLS: "true" });
+    expect(on.ok && on.value.channels.emailNotifier?.requireTls).toBe(true);
+    const misspelt = loadPlatformConfiguration({ ...declared, PLATOS_CHANNELS_EMAIL_REQUIRE_TLS: "no" });
+    expect(misspelt.ok).toBe(false);
+    if (misspelt.ok) return;
+    expect(misspelt.diagnostics.map((entry) => entry.field)).toEqual(["PLATOS_CHANNELS_EMAIL_REQUIRE_TLS"]);
   });
 });
 

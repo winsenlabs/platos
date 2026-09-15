@@ -231,7 +231,12 @@ export interface ListOrganizationMembersRequest {
 /** One active member, and the operator account behind it (null when absent). */
 export interface OrganizationMemberView {
   readonly membership: OrganizationMembershipRecord;
-  readonly account: { readonly email: EmailAddress; readonly disabledAt: Date | null } | null;
+  readonly account: {
+    readonly email: EmailAddress;
+    /** `User.displayName`, or null; the team page renders it ahead of the address. */
+    readonly displayName: string | null;
+    readonly disabledAt: Date | null;
+  } | null;
 }
 
 /** An environment addressed by the three slugs of a dashboard URL. */

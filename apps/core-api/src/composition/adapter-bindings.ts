@@ -1600,6 +1600,7 @@ export function constructAdapters(input: AdapterConstructionInput): AdapterConst
       smtpUrl: input.channels.emailNotifier.smtpUrl,
       from: input.channels.emailNotifier.from,
       loginUrl: input.channels.emailNotifier.loginUrl,
+      requireTls: input.channels.emailNotifier.requireTls,
       clock: input.clock,
     });
     if (notifier.ok) adapters["notifier-email"] = notifier.value;

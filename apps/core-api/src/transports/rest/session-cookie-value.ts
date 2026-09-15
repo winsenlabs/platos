@@ -37,7 +37,7 @@
 // WHY THE ALGORITHM IS RESTATED RATHER THAN IMPORTED. `@remix-run/node` is the
 // webapp's dependency and a framework; core-api may not take either. The encoding
 // is four lines of a published library that has not changed shape since Remix 1,
-// and `identity-rest-legacy-cookie.integration.test.ts` executes the REAL library
+// and `composition/identity-tenancy-rest.integration.test.ts` executes the REAL library
 // in the webapp's own package to mint and to parse, so a divergence is a red test
 // rather than a quiet 401.
 

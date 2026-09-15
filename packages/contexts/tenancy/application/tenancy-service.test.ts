@@ -135,6 +135,7 @@ describe("TenancyContract", () => {
     fixture.operators.add({
       userId: OWNER,
       email: normalizeEmail("owner@example.com"),
+      displayName: null,
       disabledAt: null,
     });
     const created = await contract.createOrganization({

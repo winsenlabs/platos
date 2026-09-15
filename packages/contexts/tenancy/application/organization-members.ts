@@ -6,7 +6,7 @@
 // read: `organization.findFirst({ where: { id/slug, archivedAt: null,
 // memberships: { some: { userId, deactivatedAt: null, role in OWNER/ADMIN } } },
 // select: { memberships: { where: { deactivatedAt: null }, orderBy: createdAt
-// asc, select: { id, role, user: { email } } } } })`, and a 403 when nothing
+// asc, select: { id, role, user: { email, displayName } } } } })`, and a 403 when nothing
 // comes back. Here the rule is `administrationGate` and the read is two port
 // calls, so the rule can be deleted from this file only by a change a test sees.
 //
@@ -46,8 +46,14 @@ export interface OrganizationMember {
    * The operator account behind the membership, or null when identity-access has
    * no such user. A disabled account is still LISTED — the oracle selected
    * `user.email` with no filter — and says so, so a team page can show it.
+   * `displayName` is the oracle's other selected field (`user: { email,
+   * displayName }`), which the page renders ahead of the address.
    */
-  readonly account: { readonly email: EmailAddress; readonly disabledAt: Date | null } | null;
+  readonly account: {
+    readonly email: EmailAddress;
+    readonly displayName: string | null;
+    readonly disabledAt: Date | null;
+  } | null;
 }
 
 export type ListOrganizationMembers = (
@@ -81,7 +87,10 @@ export function createListOrganizationMembers(dependencies: Dependencies): ListO
       const account = await operators.findAccount(membership.userId);
       members.push({
         membership,
-        account: account === null ? null : { email: account.email, disabledAt: account.disabledAt },
+        account:
+          account === null
+            ? null
+            : { email: account.email, displayName: account.displayName, disabledAt: account.disabledAt },
       });
     }
     return ok(members);

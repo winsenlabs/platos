@@ -6,8 +6,9 @@
 // once, here:
 //
 //   smtps://host[:465]   implicit TLS from the first byte (RFC 8314 §3.3)
-//   smtp://host[:25]     plaintext, upgraded with STARTTLS whenever the relay
-//                        offers it — and credentials are NEVER sent unless it did
+//   smtp://host[:25]     plaintext, upgraded with STARTTLS — REQUIRED unless the
+//                        install sets `PLATOS_CHANNELS_EMAIL_REQUIRE_TLS=false`,
+//                        and credentials are NEVER sent without it either way
 //
 // THE CREDENTIALS ARE PERCENT-DECODED, ONCE. A URL is the only place this
 // install carries them, and a password containing `@` or `:` has to be encoded to
