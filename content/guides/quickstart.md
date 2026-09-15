@@ -26,7 +26,7 @@ cd platos
 cp .env.example .env
 ```
 
-Before starting Compose, populate every variable listed under [Required Compose variables](/docs/self-hosting#required-compose-variables). The example file contains development sentinels and does not provide usable values for every required secret, including `PLATOS_COMPONENT_AUTH_SECRET` and `MANAGED_WORKER_SECRET`. Generate independent values even for a loopback-only evaluation; use [Self-host with Docker Compose](/guides/install-self-host) before exposing Platos.
+Before starting Compose, populate every variable listed under [Required Compose variables](/docs/self-hosting#required-compose-variables). The example file assigns a development sentinel to every required variable, including `PLATOS_COMPONENT_AUTH_SECRET` and `MANAGED_WORKER_SECRET`, so Compose can evaluate a copied `.env`. The sentinels are public values: replace each secret with an independent generated value even for a loopback-only evaluation; use [Self-host with Docker Compose](/guides/install-self-host) before exposing Platos.
 
 ## 2. Start the stack
 

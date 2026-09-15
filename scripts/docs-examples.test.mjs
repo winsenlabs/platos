@@ -141,6 +141,64 @@ test("a required Compose variable the example omits fails evaluation even when t
   }
 });
 
+// What Compose RESOLVED for every required variable, read back from its own model.
+// An unquoted `.env` value followed by `   # a comment` is not a blank value in
+// Compose: the comment becomes the value, so `:?required` is satisfied by the text
+// of a comment and the service starts with it as its secret. Evaluating is not
+// enough; the resolved value has to be one somebody wrote as a value.
+function resolvedRequiredValues(root, composeSource) {
+  const model = JSON.parse(
+    execFileSync("docker", ["compose", "-f", "docker-compose.platos.yml", "config", "--format", "json"], {
+      cwd: root,
+      env: freshComposeEnvironment(composeSource),
+      stdio: ["ignore", "pipe", "pipe"],
+      encoding: "utf8",
+    }),
+  );
+  const required = new Set(composeRequiredNames(composeSource));
+  const resolved = [];
+  for (const [service, definition] of Object.entries(model.services ?? {})) {
+    for (const [name, value] of Object.entries(definition.environment ?? {})) {
+      if (required.has(name)) resolved.push({ service, name, value: String(value ?? "") });
+    }
+  }
+  return resolved;
+}
+
+const COMMENT_AS_VALUE = /(?:^|\s)#/u;
+
+test("no Compose-required variable resolves to an inline comment from .env.example", () => {
+  const composeSource = readFileSync(join(repositoryRoot, "docker-compose.platos.yml"), "utf8");
+  const root = composeQuickStartFixture();
+  try {
+    const resolved = resolvedRequiredValues(root, composeSource);
+    // NON-VACUITY: the model really carries the required secrets, by name.
+    for (const name of ["PLATOS_COMPONENT_AUTH_SECRET", "MANAGED_WORKER_SECRET", "PLATOS_INTERNAL_AUTH_TOKEN"]) {
+      assert.ok(resolved.some((entry) => entry.name === name), `the resolved model no longer carries ${name}`);
+    }
+    assert.deepEqual(
+      resolved.filter((entry) => COMMENT_AS_VALUE.test(entry.value)),
+      [],
+      "put the comment on its own line: Compose reads an unquoted inline comment as the value",
+    );
+
+    // NEGATIVE CONTROL: the shape this case exists for is SEEN when planted.
+    const envExample = readFileSync(join(root, ".env"), "utf8");
+    writeFileSync(
+      join(root, ".env"),
+      envExample.replace(/^MANAGED_WORKER_SECRET=.*$/mu, "MANAGED_WORKER_SECRET=   # generate with openssl rand -hex 32"),
+    );
+    assert.deepEqual(
+      resolvedRequiredValues(root, composeSource)
+        .filter((entry) => entry.name === "MANAGED_WORKER_SECRET")
+        .map((entry) => COMMENT_AS_VALUE.test(entry.value)),
+      [true],
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("the harness rejects an HTTP example absent from generated OpenAPI", () => {
   const root = contractFixture();
   try {

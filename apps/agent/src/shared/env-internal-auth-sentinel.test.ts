@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { validateAgentEnv } from "./env";
 
@@ -58,6 +59,38 @@ describe("PLATOS_INTERNAL_AUTH_TOKEN production sentinel", () => {
       ? false
       : JSON.stringify(result).includes("PLATOS_INTERNAL_AUTH_TOKEN");
     expect(tokenIssue).toBe(false);
+  });
+});
+
+describe("PLATOS_COMPONENT_AUTH_SECRET production placeholder", () => {
+  // `.env.example` gives this compose-required secret a development value so a
+  // copied `.env` evaluates, and says the agent refuses that value in production.
+  // Read the value from the file itself, so the claim holds for whatever the
+  // example ships rather than for a literal copied into this suite.
+  const example = readFileSync(new URL("../../../../.env.example", import.meta.url), "utf8");
+  const shipped = /^PLATOS_COMPONENT_AUTH_SECRET=(.*)$/mu.exec(example)?.[1];
+
+  it("rejects the value .env.example ships, in production", () => {
+    expect(shipped, ".env.example must assign PLATOS_COMPONENT_AUTH_SECRET").toMatch(/\S/u);
+    const result = validateAgentEnv({
+      ...PROD_BASE,
+      PLATOS_INTERNAL_AUTH_TOKEN: "aa".repeat(32),
+      PLATOS_COMPONENT_AUTH_SECRET: shipped,
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(JSON.stringify(result)).toContain("PLATOS_COMPONENT_AUTH_SECRET must be set to a strong random value in production");
+    }
+  });
+
+  it("raises NO component-secret issue for a generated value, in production (control)", () => {
+    const result = validateAgentEnv({
+      ...PROD_BASE,
+      PLATOS_INTERNAL_AUTH_TOKEN: "aa".repeat(32),
+      PLATOS_COMPONENT_AUTH_SECRET: "bb".repeat(32),
+    });
+    const componentIssue = result.ok ? false : JSON.stringify(result).includes("PLATOS_COMPONENT_AUTH_SECRET");
+    expect(componentIssue).toBe(false);
   });
 });
 

@@ -785,7 +785,14 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         paraphrased; its own index table (section 7) was written around them. Each
   //         row copies the classification and owner of the two M0 ADRs' vendor rows,
   //         and its context digests are the gate's own computed values.
-  assert.equal(manifest.exceptions.length, 19457);
+  //
+  //         THE M2/M4 INTEGRATION REMOVES ONE, taking it to 19456. `.env.example`'s
+  //         comment on the component auth secret named the durable-runtime vendor's
+  //         task workers; the comment was rewritten when that line stopped handing
+  //         Compose an inline comment as the secret's value, and it now says "task
+  //         workers" alone. The one vendor row for that word is removed by
+  //         `--write`, not by hand, and every other `.env.example` row is unchanged.
+  assert.equal(manifest.exceptions.length, 19456);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {
