@@ -785,7 +785,17 @@ test("the split identity model reconstructs the gate's anchor byte for byte", ()
   //         paraphrased; its own index table (section 7) was written around them. Each
   //         row copies the classification and owner of the two M0 ADRs' vendor rows,
   //         and its context digests are the gate's own computed values.
-  assert.equal(manifest.exceptions.length, 19457);
+  //
+  //         THE TOOL-CALL PARITY SUITE ADDS THREE, taking it to 19460, all in
+  //         `apps/agent/src/tool-gateway/tool-call-parity.integration.test.ts` and all
+  //         the external durable-runtime vendor's own names: the two environment
+  //         variables whose presence makes `TurnDispatchService.resolveMode` read an
+  //         agent's binding (the suite's durable arm needs that read), and the bridge
+  //         module's directory in the import of `InternalExecuteToolController`. The
+  //         suite's prose was rewritten around every other occurrence. Each row copies
+  //         the classification and owner of `turn-dispatch.service.spec.ts`'s vendor
+  //         rows, and its context digests are the gate's own computed values.
+  assert.equal(manifest.exceptions.length, 19460);
 });
 
 test("vendored receipts are exact-excluded and cannot contribute vocabulary rows", () => {

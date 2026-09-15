@@ -594,7 +594,19 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // `streaming.service.ts`, `tool-registry.service.ts`, `tool-sync-ws.test.ts`,
     // `agent-runtime.module.ts`, `api-surface.test.ts`, `generate-control-plane.mjs`
     // and every generated artifact are edited IN PLACE and add no file.
-    "apps-agent": 15,
+    //
+    // MCP CONFORMANCE LANE 15 -> 21. SIX files, all under rules that already
+    // existed. On `apps-agent.source.runtime` (280 -> 283):
+    //   `mcp-platform/redis-subscriber.ts` — the READY-before-SUBSCRIBE subscriber
+    //   the legacy SSE sessions now use, which stopped losing `initialize` frames;
+    //   `mcp-platform/mcp-conformance.test-fixture.ts` and
+    //   `mcp-platform/mcp-sse-node.test-fixture.ts` — the real-socket harness for
+    //   the three MCP servers and the child agent process the two-node suite
+    //   starts (both excluded from `tsconfig.build.json`).
+    // On `apps-agent.test.suites` (214 -> 217): the MCP protocol conformance
+    // matrix, the two-process legacy SSE suite and the tool-call parity suite.
+    // NO LEDGER RULE CHANGED.
+    "apps-agent": 21,
     // WIN-272 (M4.6) 0 -> 1. `test/publicGuestBoundary.test.ts`: the public-guest
     // and embed boundary over two real `node:http` listeners with `fetch`
     // unstubbed. It is the FIRST file this programme has added under
@@ -1922,7 +1934,12 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // decisions the founder delegated on 2026-09-15, filed beside ADR M0.3 and M0.4.
     // It lands on the existing `docs-content.evidence.adr` rule (2 -> 3) as a
     // `doc`/`retain`, under `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
-    "docs-content": 26,
+    // MCP SDK 1.30.x CANDIDATE 26 -> 27. ONE file:
+    // `docs/audits/win-268-mcp-sdk-candidate-compatibility.json`, the re-derived
+    // result of asking the adopted SDK and the candidate the same questions, on the
+    // existing `docs-content.evidence.audit-receipts` rule (23 -> 24), under
+    // `docs/**` and therefore PROTECTED. NO LEDGER RULE CHANGED.
+    "docs-content": 27,
     // WIN-267 (M4.1, T1) 53 -> 54: `scripts/mutations-win267-t1.json`, this
     // tranche's guard ledger, on the same `root-infra.tooling.scripts` rule and
     // for the same reason T0's ledger took it — the blanket rule's verdict
@@ -2103,7 +2120,13 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // and `scripts/lib/shipping-components.mjs`, the one derivation of each shipping
     // image's component set that the SBOM and the advisory scan share, on
     // `root-infra.tooling.scripts`. NO LEDGER RULE CHANGED.
-    "root-infra": 95,
+    //
+    // MCP SDK 1.30.x CANDIDATE 95 -> 97. TWO files:
+    // `scripts/mcp-sdk-candidate-compatibility.mjs`, the derivation the
+    // `agent-tenancy-postgres` job reruns with `--check`, on
+    // `root-infra.tooling.scripts` (121 -> 122), and its suite on
+    // `root-infra.test.script-suites` (35 -> 36). NO LEDGER RULE CHANGED.
+    "root-infra": 97,
   };
   // M2 INTEGRATION: 1495 + 42 + 27 + 15 = 1579, and 3469 + 1579 = 5048, which
   // is what the ledger fingerprint carried before M4.
@@ -2398,7 +2421,11 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
   //
   // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804. ONE file in `docs-content`,
   // itemised on that area's delta above: 15 + 1 + 97 + 4 + 10 + 1556 + 26 + 95 = 1804.
-  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1804);
+  //
+  // AND THE MCP CONFORMANCE LANE — 1804 -> 1813. NINE files, itemised on their
+  // areas' deltas above: six in `apps-agent`, one in `docs-content`, two in
+  // `root-infra`: 21 + 1 + 97 + 4 + 10 + 1556 + 27 + 97 = 1813.
+  assert.equal(summary.totalFiles, rulesDocument.baseline.totalFiles + 1813);
   assert.deepEqual(
     Object.fromEntries(
       Object.entries(summary.areaCounts).map(([area, count]) => [area, count - rulesDocument.baseline.areaCounts[area]])
@@ -2709,7 +2736,9 @@ test("area counts reconcile against the baseline plus exact WIN-254 and legal-pr
     // edit as the total and both area deltas: three root-infra files and one SBOM.
     // AND THE M2/M4 DELEGATED-DECISIONS ADR — 1803 -> 1804, moved in the same edit as
     // the total and `expectedDeltas["docs-content"]`: one ADR, summed per area here.
-    rulesDocument.baseline.totalFiles + 1804
+    // AND THE MCP CONFORMANCE LANE — 1804 -> 1813, moved in the same edit as the
+    // total and the three area deltas: six agent files, one receipt, two scripts.
+    rulesDocument.baseline.totalFiles + 1813
   );
 });
 
